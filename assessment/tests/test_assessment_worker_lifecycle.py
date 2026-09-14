@@ -91,14 +91,28 @@ def test_happy_path_delivers_the_transcript_and_stops_before_evaluation(bootstra
     assert len(ctx.shutdown_callbacks) >= 1  # cloud slot release registered
 
 
-def test_bad_metadata_never_connects(fake_adapter) -> None:
-    ctx = FakeJobContext(metadata='{"backend": "practice"}')
+@pytest.mark.parametrize("metadata", ['{"backend": "practice"}', '{"attempt_id": "attempt-1", "backend": "practice"}'])
+def test_bad_metadata_never_connects(fake_adapter, metadata) -> None:
+    ctx = FakeJobContext(metadata=metadata)
     assert asyncio.run(_session().entrypoint(ctx)) is None
     assert ctx.connect_calls == []
 
 
+def test_the_exact_candidate_is_chosen_in_a_shared_room(bootstrap, fake_adapter, no_other_agents) -> None:
+    """Other humans (a supervisor, a sibling-id trainee) are in the room; audio pins to the dispatched candidate."""
+    room = FakeRoom(local_identity="agent-me")
+    room.join("supervisor-7")
+    room.join("candidate-421")
+    room.join("candidate-42")
+    ctx = FakeJobContext(room, metadata=METADATA)
+    with patch.object(session_module, "fetch_bootstrap", return_value=bootstrap), patch.object(sinks, "post_json", AsyncMock(return_value=200)):
+        outcome = asyncio.run(_session().entrypoint(ctx))
+    assert outcome is not None and outcome.ok
+    assert fake_adapter.init_kwargs["candidate_identity"] == "candidate-42"
+
+
 def test_unknown_backend_label_fails_loudly(fake_adapter) -> None:
-    ctx = FakeJobContext(metadata=json.dumps({"attempt_id": "a", "backend": "employer"}))
+    ctx = FakeJobContext(metadata=json.dumps({"attempt_id": "a", "backend": "employer", "candidate_ref": "c"}))
     with pytest.raises(Exception, match="unknown backend 'employer'"):
         asyncio.run(_session().entrypoint(ctx))
 

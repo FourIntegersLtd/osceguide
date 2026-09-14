@@ -17,6 +17,12 @@ ENDPOINTS = BackendEndpoints(
     label="practice", base_url_env="PRACTICE_URL", secret_env="PRACTICE_SECRET", secret_header="X-Practice-Secret",
     slot_release_path="/r", slot_extend_path="/e", slot_payload_key="room_name",
 )
+PREFIXED = BackendEndpoints(
+    label="institution", base_url_env="PRACTICE_URL", secret_env="PRACTICE_SECRET", secret_header="X-Practice-Secret",
+    slot_release_path="/r", slot_extend_path="/e", slot_payload_key="roomName",
+    transcript_chunks_path="/api/org/worker/attempts/{attempt_id}/chunks",
+    transcript_path="/api/org/worker/attempts/{attempt_id}/done",
+)
 MESSAGE = TranscriptMessage(role=MessageRole.USER, message="Hello", timestamp=datetime(2026, 9, 14, tzinfo=timezone.utc), message_id="m-1", seq=1)
 
 
@@ -53,6 +59,18 @@ def test_complete_posts_the_whole_transcript_once() -> None:
     assert payload["transcript"]["messages"][0]["message"] == "Hello"
     assert payload["transcript"]["complete"] is True
     assert kwargs["timeout"] == 30.0
+
+
+def test_routes_come_from_the_backend_endpoints() -> None:
+    post = AsyncMock(return_value=200)
+    transcript = Transcript(attempt_id="attempt-1", messages=[MESSAGE], complete=True)
+    with patch.object(sinks, "post_json", post):
+        asyncio.run(HttpTranscriptSink(PREFIXED).append("attempt-1", MESSAGE))
+        asyncio.run(HttpTranscriptSink(PREFIXED).complete("attempt-1", transcript))
+    assert [call.args[0] for call in post.call_args_list] == [
+        "https://api.test/api/org/worker/attempts/attempt-1/chunks",
+        "https://api.test/api/org/worker/attempts/attempt-1/done",
+    ]
 
 
 def test_a_rejected_transcript_raises_so_the_runtime_retries() -> None:

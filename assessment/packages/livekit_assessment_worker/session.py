@@ -11,11 +11,12 @@ from osce_assessment.contracts import AIInteractionProfile, AssessmentDefinition
 from osce_assessment.runtime import AttemptRuntime, RuntimeOutcome
 from voice_infra import BackendRegistry
 from voice_infra.cloud_slot import register_cloud_slot_lifecycle
+from voice_infra.participants import other_agents_present, wait_for_candidate
+from voice_infra.worker_config import optional_float
 
 from .adapter import LiveKitInteractionAdapter
 from .bootstrap import Bootstrap, BootstrapError, fetch_bootstrap
 from .metadata import MetadataError, parse_dispatch_metadata
-from voice_infra.participants import other_agents_present, wait_for_candidate
 from .sinks import HttpTranscriptSink
 
 logger = logging.getLogger(__name__)
@@ -26,13 +27,7 @@ CANDIDATE_TIMEOUT_ENV = "LIVEKIT_ASSESSMENT_CANDIDATE_TIMEOUT_S"
 
 
 def candidate_timeout_from_env() -> float:
-    import os
-
-    raw = (os.environ.get(CANDIDATE_TIMEOUT_ENV) or "").strip()
-    try:
-        return float(raw) if raw else CANDIDATE_TIMEOUT_S
-    except ValueError:
-        return CANDIDATE_TIMEOUT_S
+    return optional_float(CANDIDATE_TIMEOUT_ENV, CANDIDATE_TIMEOUT_S)
 
 
 class _BootstrappedScenario:
@@ -94,7 +89,7 @@ class AssessmentSession:
             adapter=LiveKitInteractionAdapter(
                 ctx,
                 candidate_identity=candidate.identity,
-                gender=bootstrap.scenario.patient_gender or "Female",
+                gender=bootstrap.scenario.patient_gender,
                 label=f"assessment:{bootstrap.attempt.definition.interaction_profile.mode.value}",
             ),
             transcript_sink=HttpTranscriptSink(endpoints),

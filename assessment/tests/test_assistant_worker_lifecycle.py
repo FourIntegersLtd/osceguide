@@ -10,9 +10,9 @@ import pytest
 
 from livekit_assistant_worker import session as session_module
 from livekit_assistant_worker.agent_factory import AgentBuild
-from livekit_assistant_worker.bootstrap import AssistantSession
+from livekit_assistant_worker.bootstrap import AssistantSession, GPTLiveInstructions
 from livekit_assistant_worker.runtime_policy import VoiceRuntime
-from livekit_assistant_worker.session import AssistantVoiceSession, resolve_instructions
+from livekit_assistant_worker.session import AssistantVoiceSession
 from voice_infra import BackendRegistry
 from voice_infra.config import BACKENDS_ENV
 
@@ -20,6 +20,8 @@ from _worker_fakes import FakeAgentSession, FakeJobContext, FakeRoom, conversati
 
 SPEC = {"practice": {"base_url_env": "PRACTICE_URL", "secret_env": "PRACTICE_SECRET", "secret_header": "X-S", "slot_release_path": "/r", "slot_extend_path": "/e", "slot_payload_key": "room_name"}}
 METADATA = json.dumps({"session_id": "unified_1", "backend": "practice", "candidate_ref": "user-1"})
+CORPUS = {"entries": [{"section": "Nav", "question": "Where is AI Practice?", "answer": "In the left navigation."}], "no_match_message": "Say you cannot help."}
+GPT_LIVE = GPTLiveInstructions(voice="You are the voice.", backend="You are the delegate.", opening="Introduce yourself.")
 
 
 @pytest.fixture(autouse=True)
@@ -56,12 +58,13 @@ def fake_agent(monkeypatch):
         return AgentBuild(session=agent, definition={"instructions": kwargs["pipeline_instructions"], "tools": kwargs["pipeline_tools"]}, runtime=kwargs["runtime"], opening_instruction=gli.opening if gli else None)
 
     monkeypatch.setattr(session_module, "build_assistant_agent", build)
-    monkeypatch.setattr(session_module, "build_assistant_llm", lambda wt: f"llm:{wt}")
-    monkeypatch.setattr(session_module, "build_assistant_tts", lambda wt, voice_help_intent=None: f"tts:{wt}:{voice_help_intent}")
+    monkeypatch.setattr(session_module, "build_assistant_llm", lambda mode: f"llm:{mode.worker_type.value}")
+    monkeypatch.setattr(session_module, "build_assistant_tts", lambda mode, voice_help_intent=None: f"tts:{mode.worker_type.value}:{voice_help_intent}")
     monkeypatch.setattr(session_module, "ConversationLatencyTracker", lambda **kw: MagicMock())
     monkeypatch.setattr(session_module, "build_room_options", lambda **kw: kw)
-    monkeypatch.setattr(session_module, "build_anthropic_computer_tool", lambda ctx, wt: "computer-tool")
+    monkeypatch.setattr(session_module, "build_anthropic_computer_tool", lambda ctx, wt, navigation: ("computer-tool", navigation))
     monkeypatch.setattr(session_module, "build_offer_navigation_modes_tool", lambda ctx: "nav-mode-tool")
+    monkeypatch.setattr(session_module, "build_search_help_faqs_tool", lambda corpus: ("faq-tool", corpus))
     return builds
 
 
@@ -79,22 +82,22 @@ def _run(bootstrap: AssistantSession, *, joined: str = "user-1"):
 
 
 def test_help_session_on_the_pipeline_with_screen_guidance(fake_agent) -> None:
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", extras={"screen_ui_guidance": True, "voice_help_intent": "guide"})
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Rendered help prompt.", greeting="Hi, I'm the help assistant.", help_corpus=CORPUS, extras={"screen_ui_guidance": True, "voice_help_intent": "guide"})
     voice, ctx, result = _run(bootstrap)
     assert result is bootstrap and voice.runtime is VoiceRuntime.PIPELINE
     build = fake_agent[0]
-    assert build["pipeline_tools"][0] is session_module.search_help_faqs
-    assert build["pipeline_tools"][1:] == ["nav-mode-tool", "computer-tool"]
-    assert "HANDS-OFF NAVIGATION" in build["pipeline_instructions"]
+    assert build["pipeline_tools"][0] == ("faq-tool", bootstrap.help_corpus)  # the tool searches the corpus the backend sent
+    assert build["pipeline_tools"][1:] == ["nav-mode-tool", ("computer-tool", voice.navigation)]  # the tool reads the session's own state
+    assert build["pipeline_instructions"] == "Rendered help prompt."
     assert build["max_tool_steps"] == 10 and build["pipeline_llm"] == "llm:help" and build["pipeline_tts"] == "tts:help:guide"
     agent = FakeAgentSession.instances[-1]
-    assert agent.said[0][0].startswith("Hi, I'm Athena")
-    assert ctx.proc.userdata["navigation_mode"] == "guide"
+    assert agent.said[0][0] == "Hi, I'm the help assistant."
+    assert voice.navigation.mode == "guide"
     assert len(ctx.shutdown_callbacks) >= 2  # cloud slot release + transcript delivery
 
 
 def test_help_transcript_is_captured_and_delivered_once(fake_agent) -> None:
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", extras={"voice_help_intent": "guide"})
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.", extras={"voice_help_intent": "guide"})
     post = AsyncMock(return_value=200)
     with patch("livekit_assistant_worker.transcript.post_json", post):
         room = FakeRoom(local_identity="agent-me")
@@ -122,7 +125,7 @@ def test_help_transcript_is_captured_and_delivered_once(fake_agent) -> None:
 
 
 def test_nav_mode_choice_from_the_browser_switches_mode_and_prompts_the_model(fake_agent) -> None:
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", extras={"screen_ui_guidance": True})
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.", extras={"screen_ui_guidance": True})
     voice, ctx, _ = _run(bootstrap)
     agent = FakeAgentSession.instances[-1]
 
@@ -132,26 +135,57 @@ def test_nav_mode_choice_from_the_browser_switches_mode_and_prompts_the_model(fa
         await asyncio.sleep(0)
 
     asyncio.run(scenario())
-    assert ctx.proc.userdata["navigation_mode"] == "automate"
+    assert voice.navigation.mode == "automate"
     assert "Navigate for me" in agent.replies[-1]["user_input"]
 
 
-def test_onboarding_opens_with_a_generated_reply_and_rebuilds_on_scene_change(fake_agent) -> None:
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", extras={"onboarding_phase": "intro", "user_name": "amina"})
-    voice, ctx, _ = _run(bootstrap)
-    build = fake_agent[0]
-    assert "INTRODUCTION phase" in build["pipeline_instructions"] and "Doctor Amina" in build["pipeline_instructions"]
+def test_a_help_session_without_a_backend_greeting_lets_the_model_open(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.")
+    _run(bootstrap)
     agent = FakeAgentSession.instances[-1]
     assert agent.said == [] and agent.replies[0] == {"allow_interruptions": True}
 
+
+def test_a_session_without_a_corpus_gets_no_faq_tool(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="dashboard", candidate_ref="user-1", instructions="Coach.")
+    _run(bootstrap)
+    assert fake_agent[0]["pipeline_tools"] == []
+
+
+def test_onboarding_opens_with_a_generated_reply_and_asks_the_backend_for_each_scene(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro scene, rendered by the backend.")
+    voice, ctx, _ = _run(bootstrap)
+    assert fake_agent[0]["pipeline_instructions"] == "Intro scene, rendered by the backend."
+    agent = FakeAgentSession.instances[-1]
+    assert agent.said == [] and agent.replies[0] == {"allow_interruptions": True}
+
+    rendered = MagicMock(return_value="Demo scene, rendered by the backend.")
+
     async def scenario():
         packet = MagicMock(data=json.dumps({"type": "scene_change", "phase": "demo", "question": "How would you respond?", "patientLine": "I'm scared."}).encode())
-        ctx.room.emit("data_received", packet)
-        await asyncio.sleep(0)
+        with patch.object(session_module, "fetch_scene_instructions", rendered):
+            ctx.room.emit("data_received", packet)
+            await asyncio.sleep(0.05)
 
     asyncio.run(scenario())
-    assert "The patient says: 'I'm scared.'" in agent.replies[-1]["instructions"]
-    assert agent.replies[-1]["user_input"].startswith("[New scene started")
+    endpoints, session_id, scene = rendered.call_args.args
+    assert (endpoints.label, session_id) == ("practice", "unified_1")
+    assert scene == {"phase": "demo", "question": "How would you respond?", "patientLine": "I'm scared."}
+    assert agent.replies[-1] == {"instructions": "Demo scene, rendered by the backend.", "user_input": session_module.handlers.SCENE_STARTED_INPUT}
+
+
+def test_a_scene_the_backend_cannot_render_leaves_the_current_scene_running(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    async def scenario():
+        with patch.object(session_module, "fetch_scene_instructions", MagicMock(side_effect=RuntimeError("down"))):
+            ctx.room.emit("data_received", MagicMock(data=json.dumps({"type": "scene_change", "phase": "demo"}).encode()))
+            await asyncio.sleep(0.05)
+
+    asyncio.run(scenario())
+    assert len(agent.replies) == 1  # only the opening; no reply on a scene that was not rendered
 
 
 def test_dashboard_and_doctor_use_backend_rendered_instructions(fake_agent) -> None:
@@ -159,24 +193,29 @@ def test_dashboard_and_doctor_use_backend_rendered_instructions(fake_agent) -> N
     _, _, _ = _run(bootstrap)
     assert fake_agent[-1]["pipeline_instructions"] == "Rendered dashboard prompt." and fake_agent[-1]["max_tool_steps"] == 5
     assert FakeAgentSession.instances[-1].said[0][0] == "Custom greeting."
-    doctor = AssistantSession(session_id="unified_1", worker_type="athena-doctor", candidate_ref="user-1")
-    assert resolve_instructions(doctor) == session_module.DEFAULT_INSTRUCTIONS
 
 
 def test_faq_help_with_credentials_runs_on_gpt_live(fake_agent, monkeypatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     monkeypatch.setattr(session_module, "register_gpt_live_session_policy", MagicMock())
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", extras={"voice_help_intent": "faq"})
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.", gpt_live=GPT_LIVE, extras={"voice_help_intent": "faq"})
     voice, _, _ = _run(bootstrap)
     assert voice.runtime is VoiceRuntime.GPT_LIVE
-    assert fake_agent[0]["gpt_live_instructions"] is not None
+    assert fake_agent[0]["gpt_live_instructions"] is GPT_LIVE
     session_module.register_gpt_live_session_policy.assert_called_once()
     agent = FakeAgentSession.instances[-1]
-    assert agent.said == [] and "Athena" in agent.replies[0]["instructions"]
+    assert agent.said == [] and agent.replies[0]["instructions"] == "Introduce yourself."
+
+
+def test_faq_help_stays_on_the_pipeline_when_the_backend_sends_no_gpt_live_instructions(fake_agent, monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.", extras={"voice_help_intent": "faq"})
+    voice, _, _ = _run(bootstrap)
+    assert voice.runtime is VoiceRuntime.PIPELINE and fake_agent[0]["gpt_live_instructions"] is None
 
 
 def test_no_client_within_the_wait_ends_the_job(fake_agent) -> None:
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1")
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Help.")
     _, _, result = _run(bootstrap, joined="")
     assert result is None and fake_agent == []
 

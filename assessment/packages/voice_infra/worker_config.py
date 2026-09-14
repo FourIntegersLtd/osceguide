@@ -67,3 +67,12 @@ def optional_load_threshold(variable: str, *, default: float = 0.99) -> float:
     if not 0 < value < 1:
         raise RuntimeError(f"{variable} must be between 0 and 1 (exclusive)")
     return value
+
+
+def optional_float(variable: str, default: float) -> float:
+    """``default`` when unset or unparsable; workers use it for tunable timeouts."""
+    raw = (os.getenv(variable) or "").strip()
+    try:
+        return float(raw) if raw else default
+    except ValueError:
+        return default

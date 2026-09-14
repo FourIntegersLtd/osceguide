@@ -9,8 +9,7 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import asdict, is_dataclass
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields, is_dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -18,12 +17,13 @@ from livekit.agents import AgentSession, JobContext, UserInputTranscribedEvent
 from livekit.plugins.openai.realtime import GPTLiveSession
 from voice_infra import BackendEndpoints
 from voice_infra.backend_http import post_json
+from voice_infra.worker_config import optional_float
 
 from .metadata import COMPLETION_PATH_TEMPLATE
 
 main_logger = logging.getLogger(__name__)
 
-# Product limits for GPT-Live Help and onboarding.
+# Default limits for speech-to-speech sessions; see GptLiveSessionPolicyConfig.from_env.
 MAX_SECONDS = 300
 HARD_WARNING_SECONDS = 60
 IDLE_WARNING_SECONDS = 60
@@ -42,10 +42,15 @@ class SessionEndReason(StrEnum):
 
 @dataclass(frozen=True)
 class GptLiveSessionPolicyConfig:
-    max_seconds: int = MAX_SECONDS
-    hard_warning_seconds: int = HARD_WARNING_SECONDS
-    idle_warning_seconds: int = IDLE_WARNING_SECONDS
-    idle_grace_seconds: int = IDLE_GRACE_SECONDS
+    max_seconds: float = MAX_SECONDS
+    hard_warning_seconds: float = HARD_WARNING_SECONDS
+    idle_warning_seconds: float = IDLE_WARNING_SECONDS
+    idle_grace_seconds: float = IDLE_GRACE_SECONDS
+
+    @classmethod
+    def from_env(cls) -> "GptLiveSessionPolicyConfig":
+        """The defaults above, overridden by ``GPT_LIVE_<FIELD>`` where set."""
+        return cls(**{f.name: optional_float(f"GPT_LIVE_{f.name.upper()}", getattr(cls, f.name)) for f in fields(cls)})
 
 
 class GptLiveSessionController:
@@ -66,7 +71,7 @@ class GptLiveSessionController:
         self._session_id = session_id
         self._worker_type = worker_type
         self._endpoints = endpoints
-        self._config = config or GptLiveSessionPolicyConfig()
+        self._config = config or GptLiveSessionPolicyConfig.from_env()
         self._started_at = time.monotonic()
         self._last_user_activity = self._started_at
         self._idle_warning_sent = False

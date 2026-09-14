@@ -7,19 +7,13 @@ from dataclasses import dataclass
 from livekit.agents import Agent, AgentSession, llm, tts, vad
 from voice_infra.gpt_live import build_gpt_live_model, build_gpt_live_vad
 from voice_infra.speech import build_stt
+from voice_infra.tool_handling import ASYNC_TOOL_HANDLING
 from voice_infra.turn_handling import MIN_CONSECUTIVE_SPEECH_DELAY, build_turn_handling_options
 
-from .prompts.gpt_live import GPTLiveInstructions
+from .bootstrap import GPTLiveInstructions
 from .runtime_policy import VoiceRuntime
 
-ASYNC_TOOL_HANDLING = {
-    "async_options": {
-        "update_template": (
-            "Background tool `{function_name}` reports: {message}. "
-            "Acknowledge briefly in plain speech. Do not use markdown."
-        ),
-    },
-}
+__all__ = ["ASYNC_TOOL_HANDLING", "AgentBuild", "build_assistant_agent"]
 
 
 @dataclass(frozen=True)

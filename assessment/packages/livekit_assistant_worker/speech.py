@@ -1,40 +1,22 @@
-"""Language and voice stacks for assistant sessions, by session type.
+"""Language and voice stacks for assistant sessions, by mode profile.
 
-Help and onboarding run on Haiku (image blocks for the computer tool; cheap
-voice); the consulting doctor uses the stronger model; everything else the
-cheaper primary, all with a shared Anthropic fallback. Athena's voice is
-Deepgram-first, except FAQ help which is OpenAI-first.
+Delegates to ``voice_infra.speech`` so model ids and voices are deployment
+settings shared with every worker. The only assistant-specific rule is that
+voice-only FAQ help prefers the OpenAI voice.
 """
 
 from __future__ import annotations
 
 from livekit.agents import llm, tts
-from livekit.plugins import anthropic, cartesia, openai
-from livekit.plugins.deepgram import tts as deepgram_tts
-from voice_infra.speech import CARTESIA_FEMALE_VOICE_ID, TUTOR_TTS_MODEL, TUTOR_VOICE
+from voice_infra.speech import build_llm, build_tts, build_vision_llm
 
-HELP_FAQ_INTENT = "faq"
+from .modes import ModeProfile, is_faq_help
 
 
-def build_assistant_llm(worker_type: str) -> llm.LLM:
-    if worker_type in ("help", "onboarding"):
-        return anthropic.LLM(model="claude-haiku-4-5")
-    fallback = anthropic.LLM(model="claude-haiku-4-5", temperature=0.8)
-    primary = openai.LLM(model="gpt-4o" if worker_type == "athena-doctor" else "gpt-4o-mini")
-    return llm.FallbackAdapter([primary, fallback])
+def build_assistant_llm(mode: ModeProfile) -> llm.LLM:
+    return build_vision_llm() if mode.llm == "vision" else build_llm(mode.llm)
 
 
-def _openai_athena() -> tts.TTS:
-    return openai.TTS(
-        model=TUTOR_TTS_MODEL,
-        voice=TUTOR_VOICE,
-        instructions="Speak as Athena, a warm, confident and concise clinical education assistant.",
-    )
-
-
-def build_assistant_tts(worker_type: str, *, voice_help_intent: str | None = None) -> tts.TTS:
-    deepgram = deepgram_tts.TTS(model="aura-2-athena-en")
-    cartesia_voice = cartesia.TTS(voice=CARTESIA_FEMALE_VOICE_ID)
-    if worker_type == "help" and voice_help_intent == HELP_FAQ_INTENT:
-        return tts.FallbackAdapter([_openai_athena(), deepgram, cartesia_voice])
-    return tts.FallbackAdapter([deepgram, _openai_athena(), cartesia_voice])
+def build_assistant_tts(mode: ModeProfile, *, voice_help_intent: str | None = None) -> tts.TTS:
+    primary = "openai" if is_faq_help(mode.worker_type, voice_help_intent) else "deepgram"
+    return build_tts("tutor", primary=primary)

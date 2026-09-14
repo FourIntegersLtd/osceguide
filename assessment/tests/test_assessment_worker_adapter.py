@@ -22,7 +22,8 @@ def _fake_livekit():
     with patch.multiple(
         adapter_module,
         AgentSession=FakeAgentSession,
-        Agent=lambda instructions: {"instructions": instructions},
+        Agent=lambda instructions, tools: {"instructions": instructions, "tools": tools},
+        build_tools=lambda ctx, names, context: [f"tool:{n}" for n in names],
         build_stt=lambda: "stt",
         build_llm=lambda role: f"llm:{role}",
         build_tts=lambda role, gender: f"tts:{role}:{gender}",
@@ -60,7 +61,8 @@ def test_speech_stack_is_built_for_the_role_and_audio_pinned_to_the_candidate() 
         assert session.kwargs["stt"] == "stt"
         assert session.kwargs["llm"] == "llm:patient"
         assert session.kwargs["tts"] == "tts:patient:Male"
-        assert session.started["agent"] == {"instructions": "You are the patient."}
+        assert session.started["agent"] == {"instructions": "You are the patient.", "tools": []}
+        assert "tool_handling" not in session.kwargs
         assert session.started["room_options"] == {"participant_identity": "candidate-42"}
         assert session.said == [("Hello doctor.", {"allow_interruptions": True})]
         ctx.room.emit("participant_disconnected", participant("candidate-42"))
@@ -111,5 +113,22 @@ def test_disconnect_closes_the_session_once() -> None:
         await adapter.disconnect()
         await adapter.disconnect()
         assert session.closed is True
+
+    asyncio.run(scenario())
+
+
+def test_profile_named_tools_are_given_to_the_agent_with_async_tool_handling() -> None:
+    async def scenario():
+        ctx = FakeJobContext()
+        adapter = LiveKitInteractionAdapter(ctx, candidate_identity="candidate-42")
+        profile = PROFILE.model_copy(update={"tools": ("highlight_lines",), "tool_context": {"id_mapping": {"1": "m1"}}})
+        task = asyncio.create_task(adapter.run(profile, lambda role, text: None))
+        await asyncio.sleep(0)
+        session = FakeAgentSession.instances[-1]
+        await asyncio.sleep(0)
+        assert session.started["agent"]["tools"] == ["tool:highlight_lines"]
+        assert session.kwargs["tool_handling"] == adapter_module.ASYNC_TOOL_HANDLING
+        ctx.room.emit("disconnected")
+        await task
 
     asyncio.run(scenario())

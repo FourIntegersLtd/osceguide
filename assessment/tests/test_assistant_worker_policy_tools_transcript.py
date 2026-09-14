@@ -10,6 +10,7 @@ from livekit_assistant_worker.gpt_live_policy import (
     HARD_WARNING_SECONDS, IDLE_GRACE_SECONDS, IDLE_WARNING_SECONDS, MAX_SECONDS,
     GptLiveSessionController, GptLiveSessionPolicyConfig, SessionEndReason, serialize_usage,
 )
+from livekit_assistant_worker.help_corpus import HelpCorpus
 from livekit_assistant_worker.tools.help_search import run_search_help_faqs
 from livekit_assistant_worker.transcript import TranscriptDelivery, TranscriptRecorder
 from livekit_assistant_worker.ui_guidance.base_computer_toolset import BaseComputerTool
@@ -30,8 +31,13 @@ def _agent_and_ctx():
     return agent, ctx
 
 
-def test_policy_constants_match_product_limits() -> None:
+def test_policy_defaults_match_the_legacy_limits_and_come_from_env(monkeypatch) -> None:
     assert (MAX_SECONDS, HARD_WARNING_SECONDS, IDLE_WARNING_SECONDS, IDLE_GRACE_SECONDS) == (300, 60, 60, 30)
+    assert GptLiveSessionPolicyConfig.from_env() == GptLiveSessionPolicyConfig()
+    monkeypatch.setenv("GPT_LIVE_MAX_SECONDS", "600")
+    monkeypatch.setenv("GPT_LIVE_IDLE_GRACE_SECONDS", "not-a-number")
+    config = GptLiveSessionPolicyConfig.from_env()
+    assert config.max_seconds == 600 and config.idle_grace_seconds == IDLE_GRACE_SECONDS
 
 
 def test_hard_timeout_closes_session() -> None:
@@ -87,7 +93,8 @@ def test_search_help_faqs_calls_update_and_filler() -> None:
         filler_cm.__aenter__ = AsyncMock(return_value=None)
         filler_cm.__aexit__ = AsyncMock(return_value=None)
         ctx.with_filler = MagicMock(return_value=filler_cm)
-        result = await run_search_help_faqs(ctx, "Where is AI Practice?")
+        corpus = HelpCorpus.model_validate({"entries": [{"section": "Nav", "question": "Where is AI Practice?", "answer": "Left navigation."}]})
+        result = await run_search_help_faqs(ctx, corpus, "Where is AI Practice?")
         ctx.update.assert_awaited_once_with("Let me check the help articles for your question.")
         assert ctx.with_filler.call_args.kwargs["max_steps"] is None
         assert "AI Practice" in result

@@ -18,7 +18,10 @@ from osce_assessment.runtime._awaitable import maybe_await
 from voice_infra.audio_input import build_room_options
 from voice_infra.latency import ConversationLatencyTracker
 from voice_infra.speech import build_llm, build_stt, build_tts
+from voice_infra.tool_handling import ASYNC_TOOL_HANDLING
 from voice_infra.turn_handling import MIN_CONSECUTIVE_SPEECH_DELAY, build_turn_handling_options
+
+from .tools import build_tools
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +32,17 @@ def role_for(profile: AIInteractionProfile) -> str:
     return "tutor" if profile.mode is InteractionMode.TUTOR else "patient"
 
 
+def voice_gender(profile: AIInteractionProfile, default: str | None) -> str:
+    """The profile's ``voice`` names the gendered voice; the scenario's patient gender is the fallback."""
+    chosen = (profile.voice or default or "").strip().lower()
+    return "Male" if chosen == "male" else "Female"
+
+
 class LiveKitInteractionAdapter:
-    def __init__(self, ctx: Any, *, candidate_identity: str, gender: str = "Female", label: str = "assessment") -> None:
+    def __init__(self, ctx: Any, *, candidate_identity: str, gender: str | None = None, label: str = "assessment") -> None:
         self._ctx = ctx
         self._candidate_identity = candidate_identity
-        self._gender = "Male" if str(gender).strip().lower() == "male" else "Female"
+        self._default_gender = gender
         self._label = label
         self._session: AgentSession | None = None
         self._greeting: str | None = None
@@ -51,14 +60,18 @@ class LiveKitInteractionAdapter:
         loop = asyncio.get_running_loop()
         self._ended = loop.create_future()
         role = role_for(profile)
-        session = AgentSession(
+        tools = build_tools(self._ctx, profile.tools, profile.tool_context)
+        session_kwargs: dict[str, Any] = dict(
             stt=build_stt(),
             llm=build_llm(role),
-            tts=build_tts(role, self._gender),
+            tts=build_tts(role, voice_gender(profile, self._default_gender)),
             turn_handling=build_turn_handling_options(),
             min_consecutive_speech_delay=MIN_CONSECUTIVE_SPEECH_DELAY,
             max_tool_steps=profile.max_tool_steps,
         )
+        if tools:
+            session_kwargs["tool_handling"] = ASYNC_TOOL_HANDLING
+        session = AgentSession(**session_kwargs)
         self._session = session
         ConversationLatencyTracker(label=self._label, room=self._ctx.room.name).attach(session)
         self._wire_transcript(session, on_message)
@@ -66,7 +79,7 @@ class LiveKitInteractionAdapter:
 
         await session.start(
             room=self._ctx.room,
-            agent=Agent(instructions=profile.instructions),
+            agent=Agent(instructions=profile.instructions, tools=tools),
             room_options=build_room_options(participant_identity=self._candidate_identity),
         )
         if self._greeting:

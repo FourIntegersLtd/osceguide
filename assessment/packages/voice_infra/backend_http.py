@@ -70,3 +70,29 @@ async def post_json(
             # Do not wait for the body: these routes only use the status, and
             # some finish their response body after lengthy processing.
             return resp.status
+
+
+def sync_post_json(
+    base_url: str,
+    path: str,
+    payload: dict[str, Any],
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 15.0,
+    log_prefix: str = "worker_api",
+) -> SyncGetResult:
+    """POST and read a JSON object back; callers keep it off the audio loop with ``asyncio.to_thread``."""
+    url = f"{base_url.rstrip('/')}{path}"
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return SyncGetResult(ok=True, status=resp.status, data=data if isinstance(data, dict) else None)
+    except urllib.error.HTTPError as exc:
+        auth_failed = exc.code in {401, 403}
+        (logger.error if auth_failed else logger.warning)("[%s] POST %s HTTP %s", log_prefix, path, exc.code)
+        return SyncGetResult(ok=False, status=exc.code, data=None, auth_failed=auth_failed)
+    except Exception as exc:  # noqa: BLE001 — reported through the result
+        logger.warning("[%s] POST %s failed: %s", log_prefix, path, exc)
+        return SyncGetResult(ok=False, status=None, data=None)

@@ -27,12 +27,13 @@ def validate_environment() -> BackendRegistry:
     return BackendRegistry.from_env()
 
 
-def build_worker_options() -> WorkerOptions:
-    registry = validate_environment()
-    session = AssessmentSession(registry)
+async def _entrypoint(ctx: JobContext) -> None:
+    """Module-level so LiveKit can pickle the entrypoint for job subprocesses (macOS spawn)."""
+    await AssessmentSession(BackendRegistry.from_env()).entrypoint(ctx)
 
-    async def _entrypoint(ctx: JobContext) -> None:
-        await session.entrypoint(ctx)
+
+def build_worker_options() -> WorkerOptions:
+    validate_environment()
 
     options: dict = {
         "entrypoint_fnc": _entrypoint,

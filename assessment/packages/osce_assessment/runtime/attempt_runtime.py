@@ -124,6 +124,8 @@ class AttemptRuntime:
             # consumer that receives it runs the evaluator.
             return self._finish(outcome, AttemptStatus.INTERACTION_COMPLETE)
 
+        if definition.evaluation_policy is None:
+            return self._finish(outcome, AttemptStatus.FAILED, error="evaluation: definition carries no evaluation policy")
         try:
             result = await maybe_await(
                 self._evaluator.evaluate(

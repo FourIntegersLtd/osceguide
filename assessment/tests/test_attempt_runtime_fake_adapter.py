@@ -375,3 +375,17 @@ def test_without_an_evaluator_the_runtime_stops_after_delivery(
     assert outcome.result is None
     assert outcome.delivered is True
     assert len(sink.completed) == 1
+
+
+def test_an_evaluator_without_a_policy_fails_the_attempt_after_delivery(attempt, scenario) -> None:
+    from osce_assessment.runtime import AttemptRuntime, FakeInteractionAdapter
+
+    bare = attempt.model_copy(update={"definition": attempt.definition.model_copy(update={"evaluation_policy": None})})
+    sink = InMemoryTranscriptSink()
+    runtime = AttemptRuntime(
+        scenario_provider=StaticScenarioProvider(scenario), profile_builder=SimpleProfileBuilder(),
+        adapter=FakeInteractionAdapter([(MessageRole.ASSISTANT, "Hi.")]), transcript_sink=sink,
+        evaluator=FakeEvaluator(), result_sink=InMemoryResultSink(),
+    )
+    outcome = asyncio.run(runtime.run(bare))
+    assert outcome.delivered and outcome.attempt.status is AttemptStatus.FAILED and "no evaluation policy" in outcome.error

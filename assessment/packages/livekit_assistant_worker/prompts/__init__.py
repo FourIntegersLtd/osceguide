@@ -1,17 +1,9 @@
-"""Pure prompt templates the assistant worker renders itself."""
+"""The only prompt text the worker owns: how it reports its own tool state to the model.
 
-from .gpt_live import GPTLiveInstructions, build_help_instructions, build_onboarding_instructions, build_onboarding_scene_update
-from .greetings import greeting_for
-from .help import HelpInstructions, instruction_header
-from .onboarding import OnboardingInstructions
+Session instructions, greetings, FAQ content and speech-to-speech
+instructions are the backend's and arrive rendered in the bootstrap.
+"""
 
-__all__ = [
-    "GPTLiveInstructions",
-    "HelpInstructions",
-    "OnboardingInstructions",
-    "build_help_instructions",
-    "build_onboarding_instructions",
-    "build_onboarding_scene_update",
-    "greeting_for",
-    "instruction_header",
-]
+from .navigation import navigation_mode_prompt
+
+__all__ = ["navigation_mode_prompt"]
