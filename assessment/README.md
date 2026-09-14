@@ -92,13 +92,25 @@ End-to-end tests are marked `e2e` and excluded by default; they run only when
 ## Consuming the engine from the backends
 
 `b2c-api` and `b2b-api` deploy from their own directories, so they vendor the
-engine rather than depend on a sibling path:
+engine rather than depend on a sibling path. The `engine` branch of this repo
+is the contents of `packages/osce_assessment` as a standalone history; refresh
+it with `make engine-branch` after any engine change consumers should see.
+
+First time, in a consumer with a clean working tree:
 
 ```bash
-git subtree pull --prefix vendor/osce-assessment <this-repo> engine --squash
+git subtree add --prefix vendor/osce-assessment/osce_assessment \
+    ../assessment-platform engine --squash
 ```
 
-The `engine` branch is produced with
-`git subtree split --prefix=packages/osce_assessment`. Each backend pins a
-snapshot and asserts `osce_assessment.__version__` in its CI validation, so a
-stale vendor copy fails loudly instead of drifting.
+Later updates:
+
+```bash
+git subtree pull --prefix vendor/osce-assessment/osce_assessment \
+    ../assessment-platform engine --squash
+```
+
+The consumer adds `vendor/osce-assessment` to its import path, so
+`import osce_assessment` resolves to the vendored copy. Each consumer's CI
+validation asserts `osce_assessment.__version__` against its pinned minimum,
+so a stale vendor copy fails loudly instead of drifting.
