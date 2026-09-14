@@ -27,7 +27,10 @@ packages/osce_assessment/     the engine — no LiveKit, no LLM SDK, no database
   contracts/framework.py      what a competency framework is: domains, competencies, scale
   contracts/ports.py          the six boundaries the engine talks through
   runtime/                    attempt runtime, transcript collector, idempotent delivery, fake adapter
-  testing/                    in-memory doubles for every port
+  evaluation/                 the shared evaluator: strict structured output, tool-use fallback, schema check
+  schemas/                    marking schemas as JSON data, plus strict/inline transforms and a validator
+  prompts/                    prompt text as data, platform defaults per framework, ported formatters
+  testing/                    in-memory doubles for every port, and a schema-driven example generator
   catalog.py                  the frameworks the platform publishes (content, not machinery)
   compat/                     migration shims, each with a stated end condition
 tests/                        engine tests; tests/e2e/ needs a real LiveKit server

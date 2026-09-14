@@ -26,6 +26,7 @@ from .models import (
 )
 from .ports import (
     Evaluator,
+    FrameworkProvider,
     InteractionAdapter,
     MessageCallback,
     ProfileBuilder,
@@ -45,6 +46,7 @@ __all__ = [
     "CompetencyFramework",
     "EvaluationPolicy",
     "Evaluator",
+    "FrameworkProvider",
     "InteractionAdapter",
     "InteractionMode",
     "InvalidScoreError",

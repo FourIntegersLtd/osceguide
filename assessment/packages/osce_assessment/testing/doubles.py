@@ -11,12 +11,26 @@ from ..contracts import (
     AssessmentAttempt,
     AssessmentDefinition,
     AssessmentResult,
+    CompetencyFramework,
     EvaluationPolicy,
     Scenario,
     ScenarioRef,
     Transcript,
     TranscriptMessage,
 )
+
+
+class StaticFrameworkProvider:
+    def __init__(self, *frameworks: CompetencyFramework) -> None:
+        self._by_id = {fw.id: fw for fw in frameworks}
+        self.calls: list[str] = []
+
+    def get(self, framework_id: str) -> CompetencyFramework:
+        self.calls.append(framework_id)
+        try:
+            return self._by_id[framework_id]
+        except KeyError:
+            raise LookupError(f"unknown framework {framework_id!r}") from None
 
 
 class StaticScenarioProvider:
@@ -75,12 +89,16 @@ class FakeEvaluator:
         self.provider = provider
         self.model = model
         self.fail = fail
-        self.calls: list[tuple[AssessmentAttempt, Transcript, EvaluationPolicy]] = []
+        self.calls: list[tuple[AssessmentAttempt, Transcript, EvaluationPolicy, Scenario]] = []
 
     def evaluate(
-        self, attempt: AssessmentAttempt, transcript: Transcript, policy: EvaluationPolicy
+        self,
+        attempt: AssessmentAttempt,
+        transcript: Transcript,
+        policy: EvaluationPolicy,
+        scenario: Scenario,
     ) -> AssessmentResult:
-        self.calls.append((attempt, transcript, policy))
+        self.calls.append((attempt, transcript, policy, scenario))
         if self.fail:
             raise RuntimeError("evaluator unavailable")
         return AssessmentResult(

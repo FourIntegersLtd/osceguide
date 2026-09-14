@@ -119,7 +119,9 @@ class AttemptRuntime:
 
         try:
             result = await maybe_await(
-                self._evaluator.evaluate(attempt, transcript, definition.evaluation_policy)
+                self._evaluator.evaluate(
+                    attempt, transcript, definition.evaluation_policy, scenario
+                )
             )
             await maybe_await(self._results.save_result(result, attempt.attempt_context))
         except Exception as exc:  # noqa: BLE001 — surfaced on the outcome

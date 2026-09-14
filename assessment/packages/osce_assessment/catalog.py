@@ -24,6 +24,7 @@ from .schemas import load_schema
 
 __all__ = [
     "CASC_RCPSYCH_V1",
+    "CatalogFrameworkProvider",
     "ORTHO_FRCS_V1",
     "PLAB2_GMC_V1",
     "SCA_RCGP_V1",
@@ -111,3 +112,14 @@ def framework_ids() -> tuple[str, ...]:
 
 def all_frameworks() -> tuple[CompetencyFramework, ...]:
     return tuple(_CATALOG.values())
+
+
+class CatalogFrameworkProvider:
+    """The platform catalogue as a ``FrameworkProvider``.
+
+    Consumers with organisation-authored frameworks compose their own provider
+    and fall back to this one for the platform's published frameworks.
+    """
+
+    def get(self, framework_id: str) -> CompetencyFramework:
+        return framework(framework_id)

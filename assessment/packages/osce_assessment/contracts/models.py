@@ -68,6 +68,9 @@ class Scenario(Frozen):
     patient_gender: str | None = None
     candidate_brief: str | None = None
     duration_seconds: int | None = Field(default=None, ge=0)
+    # Extra material the marker should see alongside the transcript, e.g. the
+    # expected answers for an interview-style station. Appended verbatim.
+    examiner_context: str | None = None
     raw: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -106,6 +109,8 @@ class EvaluationPolicy(Frozen):
     primary_model: str
     primary_reasoning_effort: str | None = None
     fallback_model: str | None = None
+    fallback_max_tokens: int = Field(default=7500, gt=0)
+    fallback_temperature: float = Field(default=0.0, ge=0.0)
     timeout_s: int = Field(default=480, gt=0)
     system_prompt_override: str | None = None
     version: str = "1"

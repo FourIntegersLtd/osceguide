@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Protocol, runtime_checkable
 
+from .framework import CompetencyFramework
 from .models import (
     AIInteractionProfile,
     AssessmentAttempt,
@@ -33,6 +34,13 @@ class ScenarioProvider(Protocol):
     def resolve(
         self, scenario_ref: ScenarioRef, attempt_context: Mapping[str, str]
     ) -> Scenario: ...
+
+
+@runtime_checkable
+class FrameworkProvider(Protocol):
+    """Resolves a framework id to its definition (platform catalogue, org-authored, ...)."""
+
+    def get(self, framework_id: str) -> CompetencyFramework: ...
 
 
 @runtime_checkable
@@ -85,11 +93,15 @@ class TranscriptSink(Protocol):
 
 @runtime_checkable
 class Evaluator(Protocol):
+    """Scores a transcript against a policy. Receives the resolved scenario too,
+    because marking needs the station's title and any examiner-only material."""
+
     def evaluate(
         self,
         attempt: AssessmentAttempt,
         transcript: Transcript,
         policy: EvaluationPolicy,
+        scenario: Scenario,
     ) -> AssessmentResult | Awaitable[AssessmentResult]: ...
 
 
