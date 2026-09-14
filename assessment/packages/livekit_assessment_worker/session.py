@@ -22,6 +22,17 @@ logger = logging.getLogger(__name__)
 
 CANDIDATE_TIMEOUT_S = 120.0
 SETTLE_S = 2.0
+CANDIDATE_TIMEOUT_ENV = "LIVEKIT_ASSESSMENT_CANDIDATE_TIMEOUT_S"
+
+
+def candidate_timeout_from_env() -> float:
+    import os
+
+    raw = (os.environ.get(CANDIDATE_TIMEOUT_ENV) or "").strip()
+    try:
+        return float(raw) if raw else CANDIDATE_TIMEOUT_S
+    except ValueError:
+        return CANDIDATE_TIMEOUT_S
 
 
 class _BootstrappedScenario:
@@ -40,9 +51,9 @@ class _RenderedProfile:
 
 
 class AssessmentSession:
-    def __init__(self, registry: BackendRegistry, *, candidate_timeout: float = CANDIDATE_TIMEOUT_S, settle: float = SETTLE_S) -> None:
+    def __init__(self, registry: BackendRegistry, *, candidate_timeout: float | None = None, settle: float = SETTLE_S) -> None:
         self._registry = registry
-        self._candidate_timeout = candidate_timeout
+        self._candidate_timeout = candidate_timeout_from_env() if candidate_timeout is None else candidate_timeout
         self._settle = settle
 
     async def entrypoint(self, ctx: Any) -> RuntimeOutcome | None:

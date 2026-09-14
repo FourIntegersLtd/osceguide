@@ -175,3 +175,24 @@ The consumer adds `vendor/osce-assessment` to its import path, so
 `import osce_assessment` resolves to the vendored copy. Each consumer's CI
 validation asserts `osce_assessment.__version__` against its pinned minimum,
 so a stale vendor copy fails loudly instead of drifting.
+
+## End-to-end tests and the parity harness
+
+`tests/e2e/` runs the assessment worker against a real LiveKit project and is
+skipped unless `LIVEKIT_E2E_URL/KEY/SECRET`, `LIVEKIT_E2E_AUDIO_WAV` (a 16 kHz
+mono WAV of one spoken candidate turn) and the speech keys are set:
+
+```sh
+poetry run pytest -m e2e tests/e2e -q
+```
+
+It starts a stub backend and a worker subprocess, dispatches, joins as the
+candidate, plays the audio and checks that turns are streamed, the transcript
+is delivered exactly once, a duplicate dispatch leaves one agent, and an
+absent candidate delivers nothing.
+
+`scripts/parity_run.py` is the cutover gate: `play` drives a backend-created
+room (legacy-routed or assessment-routed) with the same audio; `compare`
+normalises the two stored transcripts (legacy b2c, legacy b2b or engine shape),
+compares turn and role counts, and with `--evaluate` scores both through the
+shared evaluator and compares the result sections.

@@ -45,7 +45,7 @@ pytest = "^9.1.1"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["packages", "."]
+pythonpath = ["packages", ".", "tests"]
 markers = [
     "e2e: requires a real LiveKit server (skipped unless LIVEKIT_E2E_* env is set)",
 ]
