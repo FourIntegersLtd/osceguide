@@ -14,6 +14,6 @@ The package never learns who is consuming it. Consumer identifiers travel
 opaquely in ``AssessmentAttempt.attempt_context`` and come back untouched.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = ["__version__"]
