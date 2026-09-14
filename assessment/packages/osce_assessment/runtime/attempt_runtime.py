@@ -4,7 +4,10 @@
     → stream every turn → deliver transcript once (retried)
     → evaluate → save result
 
-The runtime never inspects ``attempt_context``; it only hands it to the ports.
+Evaluation is optional: without an evaluator the runtime stops once the
+transcript is delivered, which is how a worker hands off to the backend that
+scores it. The runtime never inspects ``attempt_context``; it only hands it
+to the ports.
 """
 
 from __future__ import annotations
@@ -52,8 +55,8 @@ class AttemptRuntime:
         profile_builder: ProfileBuilder,
         adapter: InteractionAdapter,
         transcript_sink: TranscriptSink,
-        evaluator: Evaluator,
-        result_sink: ResultSink,
+        evaluator: Evaluator | None = None,
+        result_sink: ResultSink | None = None,
         retry_policy: RetryPolicy = RetryPolicy(),
         clock: Clock = utc_now,
         id_factory: IdFactory = new_message_id,
@@ -116,6 +119,10 @@ class AttemptRuntime:
             return self._finish(outcome, AttemptStatus.FAILED, error=repr(interaction_error))
         if not transcript.messages:
             return self._finish(outcome, AttemptStatus.INTERACTION_COMPLETE, error="empty_transcript")
+        if self._evaluator is None or self._results is None:
+            # A worker deployment delivers the transcript and stops here; the
+            # consumer that receives it runs the evaluator.
+            return self._finish(outcome, AttemptStatus.INTERACTION_COMPLETE)
 
         try:
             result = await maybe_await(

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assessment-worker-config
+  namespace: assessment-platform
+data:
+  OSCE_LIVEKIT_HOSTING: "self-hosted"
+  OSCE_LIVEKIT_WORKER: "assessment"
+  LIVEKIT_ASSESSMENT_AGENT_NAME: "assessment-self-hosted"
+  LIVEKIT_ASSESSMENT_WORKER_PORT: "8087"
+  # Backends the worker may be dispatched for, keyed by the opaque label the
+  # dispatching backend puts in job metadata. URLs and secrets come from env
+  # variables named here (see secret.example.yaml).
+  VOICE_BACKENDS_JSON: |
+    {
+      "practice": {
+        "base_url_env": "PRACTICE_API_URL",
+        "secret_env": "PRACTICE_WORKER_SECRET",
+        "secret_header": "X-Worker-Secret",
+        "slot_release_path": "/api/worker/livekit-cloud-slot/release",
+        "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
+        "slot_payload_key": "room_name"
+      },
+      "institution": {
+        "base_url_env": "INSTITUTION_API_URL",
+        "secret_env": "INSTITUTION_WORKER_SECRET",
+        "secret_header": "X-B2B-Worker-Secret",
+        "slot_release_path": "/api/b2b/worker/livekit-cloud-slot/release",
+        "slot_extend_path": "/api/b2b/worker/livekit-cloud-slot/extend",
+        "slot_payload_key": "roomName"
+      }
+    }
+  SENTRY_ENVIRONMENT: "production"

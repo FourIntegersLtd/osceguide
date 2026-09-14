@@ -34,11 +34,48 @@ packages/osce_assessment/     the engine — no LiveKit, no LLM SDK, no database
   catalog.py                  the frameworks the platform publishes (content, not machinery)
   compat/                     migration shims, each with a stated end condition
 tests/                        engine tests; tests/e2e/ needs a real LiveKit server
+packages/voice_infra/         config-driven LiveKit plumbing: backends by label, speech by role, slots, sentry
+packages/livekit_assessment_worker/  the assessment worker (see below)
+hosting/                      container entry, LiveKit Cloud host, gunicorn supervisor for Railway / K8s
+k8s/ Dockerfile railway.toml livekit.assessment.toml  deployment
 ```
 
-Packages still to land: `voice_infra` (config-driven port of `livekit_voice`),
-`livekit_assessment_worker` (patient and debrief interactions),
-`livekit_assistant_worker` (help, onboarding, dashboard, athena-doctor).
+Still to land: `livekit_assistant_worker` (help, onboarding, dashboard, athena-doctor).
+
+## The assessment worker
+
+`livekit_assessment_worker` runs one attempt's interaction and nothing else.
+It knows no product, no station shape, no prompt template and no marking
+schema; the import guard in `tests/test_assessment_worker_boundaries.py`
+fails if it ever loads one.
+
+What a backend must do to dispatch to it:
+
+1. Register itself in the worker's `VOICE_BACKENDS_JSON` under an opaque label
+   (say `practice`), naming the env vars that hold its base URL and worker
+   secret, the header that carries the secret, and its cloud-slot routes.
+2. Dispatch with job metadata `{"attempt_id", "backend", "candidate_ref"}`
+   (snake_case or camelCase).
+3. Serve `GET /api/worker/attempts/{attempt_id}` returning
+   `{"attempt": AssessmentAttempt, "scenario": Scenario}` where the attempt's
+   interaction profile already carries **rendered** instructions. The backend
+   renders; the worker receives finished text.
+4. Accept `POST /api/worker/attempts/{attempt_id}/transcript-chunks` (one
+   `TranscriptMessage` per turn, best effort) and
+   `POST /api/worker/attempts/{attempt_id}/transcript` (the completed
+   `Transcript`, retried on non-2xx, delivered once). Score it there.
+
+Job lifecycle: connect → settle and leave if another agent is present → fetch
+the attempt → wait up to 120s for the candidate (identity substring match) →
+run the engine's `AttemptRuntime` with the LiveKit adapter (audio pinned to
+the candidate, speech stack chosen by the profile's role) → stream and deliver
+the transcript. Evaluation is not the worker's job: the runtime stops at
+`INTERACTION_COMPLETE` when no evaluator is configured.
+
+Run it: `make dev-assessment` locally against `.env`; `make start` in a
+container (gunicorn `/health` supervising the worker, `OSCE_LIVEKIT_WORKER`
+selects which); LiveKit Cloud via `hosting/livekit_cloud_host.py` and
+`livekit.assessment.toml`.
 
 ## The three-layer model
 

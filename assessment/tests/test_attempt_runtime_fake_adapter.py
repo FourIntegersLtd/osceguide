@@ -351,3 +351,27 @@ def test_running_the_same_attempt_again_does_not_redeliver(
     assert delivered[0] is True
     assert all(flag is False for flag in delivered[1:])
     assert sink.complete_calls == 1
+
+
+def test_without_an_evaluator_the_runtime_stops_after_delivery(
+    scenario: Scenario, attempt: AssessmentAttempt
+) -> None:
+    """A worker deployment: capture, deliver, hand off; the backend scores."""
+    sink = InMemoryTranscriptSink()
+    runtime = AttemptRuntime(
+        scenario_provider=StaticScenarioProvider(scenario),
+        profile_builder=SimpleProfileBuilder(),
+        adapter=FakeInteractionAdapter(SCRIPT),
+        transcript_sink=sink,
+        retry_policy=RetryPolicy.immediate(),
+        clock=_Clock(),
+        id_factory=lambda: "msg-id",
+    )
+
+    outcome = asyncio.run(runtime.run(attempt))
+
+    assert outcome.ok
+    assert outcome.attempt.status is AttemptStatus.INTERACTION_COMPLETE
+    assert outcome.result is None
+    assert outcome.delivered is True
+    assert len(sink.completed) == 1

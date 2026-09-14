@@ -67,9 +67,17 @@ the engine must never import `compat` itself.
 `voice_infra` is a config-driven port of `livekit_voice`: it takes a
 `BackendEndpoints` value rather than a `"b2c" | "b2b"` product string, which is
 the branching the legacy shared package leaked. `livekit_assessment_worker`
-covers the patient and debrief interactions; `livekit_assistant_worker` covers
-help, onboarding, dashboard and athena-doctor and must not import
+covers the patient and debrief interactions and must not import
+`osce_assessment.prompts`, `.schemas`, `.catalog`, `.evaluation` or `.compat`,
+nor name a product, station field or storage system (guarded by
+`tests/test_assessment_worker_boundaries.py`). It receives rendered
+instructions from the backend's bootstrap route and delivers transcripts back;
+scoring happens backend-side. `livekit_assistant_worker` covers help,
+onboarding, dashboard and athena-doctor and must not import
 `osce_assessment.runtime` or `osce_assessment.evaluation`.
+
+`hosting/` runs one worker per process, selected by `OSCE_LIVEKIT_WORKER`;
+add a worker to `hosting/workers.py` when it lands.
 
 The LiveKit pins must match `livekit/pyproject.toml` exactly, including the
 documented `anthropic >=0.41,<1.0.0` httpx constraint.

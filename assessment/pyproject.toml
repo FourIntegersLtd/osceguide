@@ -12,6 +12,7 @@ package-mode = true
 packages = [
     { include = "osce_assessment", from = "packages" },
     { include = "voice_infra", from = "packages" },
+    { include = "livekit_assessment_worker", from = "packages" },
 ]
 
 [tool.poetry.dependencies]
@@ -35,13 +36,15 @@ openai = "^2.15.0"
 sentry-sdk = ">=2.20.0,<3.0.0"
 livekit-plugins-noise-cancellation = "~=0.3"
 aiohttp = "^3.11.18"
+# Railway / self-hosted health endpoint + worker supervisor (hosting/supervisor.py).
+gunicorn = ">=23.0.0,<24.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["packages"]
+pythonpath = ["packages", "."]
 markers = [
     "e2e: requires a real LiveKit server (skipped unless LIVEKIT_E2E_* env is set)",
 ]
