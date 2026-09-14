@@ -1,0 +1,470 @@
+{
+  "$defs": {
+    "ScaActionableFeedbackModel": {
+      "additionalProperties": false,
+      "properties": {
+        "cultural_linguistic_considerations": {
+          "description": "Specific feedback on cultural and linguistic appropriateness",
+          "items": {
+            "type": "string"
+          },
+          "title": "Cultural Linguistic Considerations",
+          "type": "array"
+        },
+        "global_skills_feedback": {
+          "$ref": "#/$defs/ScaDomainFeedbackModel",
+          "description": "Analysis and recommendations for global consultation skills"
+        },
+        "language_adaptations": {
+          "description": "Suggestions for clearer communication with non-native English speakers",
+          "items": {
+            "type": "string"
+          },
+          "title": "Language Adaptations",
+          "type": "array"
+        },
+        "overall_priorities": {
+          "description": "2-3 highest priority areas across all domains with detailed improvement plans",
+          "items": {
+            "$ref": "#/$defs/ScaPriorityActionModel"
+          },
+          "title": "Overall Priorities",
+          "type": "array"
+        },
+        "relating_feedback": {
+          "$ref": "#/$defs/ScaDomainFeedbackModel",
+          "description": "Analysis and recommendations for interpersonal skills"
+        },
+        "tasks_feedback": {
+          "$ref": "#/$defs/ScaDomainFeedbackModel",
+          "description": "Analysis and recommendations for clinical tasks"
+        }
+      },
+      "required": [
+        "global_skills_feedback",
+        "tasks_feedback",
+        "relating_feedback",
+        "overall_priorities"
+      ],
+      "title": "ScaActionableFeedbackModel",
+      "type": "object"
+    },
+    "ScaClinicalAnalysisModel": {
+      "additionalProperties": false,
+      "description": "Clinical analysis based on RCGP CSA Toolkit and UK guidelines",
+      "properties": {
+        "key_negatives": {
+          "description": "Critical negative findings not excluded - state clinical risk",
+          "example": [
+            "No red flags checked \u2192 missed cauda equina risk",
+            "No systemic symptoms \u2192 missed red flag conditions"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Negatives",
+          "type": "array"
+        },
+        "key_positives": {
+          "description": "Important positive findings not elicited that would support diagnosis",
+          "example": [
+            "Pattern of joint pain \u2192 would confirm inflammatory arthritis",
+            "Duration of symptoms \u2192 would establish chronicity"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Positives",
+          "type": "array"
+        },
+        "lifestyle_factors": {
+          "description": "Key lifestyle elements affecting condition - state clinical relevance",
+          "example": [
+            "Sedentary work \u2192 maintaining symptoms",
+            "Poor sleep \u2192 impacting pain levels"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Lifestyle Factors",
+          "type": "array"
+        },
+        "missed_examinations": {
+          "description": "Essential examination elements omitted - state clinical impact",
+          "example": [
+            "No joint ROM \u2192 impact on function assessment",
+            "No neurological exam \u2192 missed nerve compression"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Missed Examinations",
+          "type": "array"
+        },
+        "missed_history": {
+          "description": "Key history elements missed per NICE/UK guidelines - state impact on diagnosis/management",
+          "example": [
+            "Morning stiffness duration omitted \u2192 missed differentiating mechanical vs inflammatory",
+            "No family history \u2192 missed genetic/risk factors"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Missed History",
+          "type": "array"
+        },
+        "psychosocial_impact": {
+          "description": "Missed ICE/psychosocial factors affecting management plan",
+          "example": [
+            "Work: Desk job \u2192 impacts exercise compliance",
+            "Family: Caring responsibilities \u2192 affects appointment attendance",
+            "Social: Limited support network \u2192 impacts self-management"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Psychosocial Impact",
+          "type": "array"
+        },
+        "safety_considerations": {
+          "description": "Missed safety elements - state potential risk to patient",
+          "example": [
+            "No cauda equina check \u2192 risk of permanent nerve damage",
+            "Inadequate safety-net \u2192 patient unsure when to seek help"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Safety Considerations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "missed_history",
+        "key_positives",
+        "key_negatives",
+        "missed_examinations",
+        "safety_considerations",
+        "psychosocial_impact",
+        "lifestyle_factors"
+      ],
+      "title": "ScaClinicalAnalysisModel",
+      "type": "object"
+    },
+    "ScaDomainFeedbackModel": {
+      "additionalProperties": false,
+      "properties": {
+        "improvements": {
+          "description": "List specific moments with timestamps showing what went wrong and how to improve.\n        Example: \"At [5:20] used medical jargon without explanation - use plain English instead\" ",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Improvements",
+          "type": "array"
+        },
+        "score": {
+          "description": "Overall domain score (R/A/G)",
+          "title": "Score",
+          "type": "string"
+        },
+        "strengths": {
+          "description": "List specific moments with timestamps showing effective behavior and impact.\n        Example: \"Excellent use of silence at [3:45] when patient became emotional\" ",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Strengths",
+          "type": "array"
+        },
+        "suggested_actions": {
+          "description": "Concrete steps for improvement",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Suggested Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "score",
+        "strengths",
+        "improvements",
+        "suggested_actions"
+      ],
+      "title": "ScaDomainFeedbackModel",
+      "type": "object"
+    },
+    "ScaEvaluationScoreModel": {
+      "additionalProperties": false,
+      "description": "Scoring system for the feedback based on RCGP CSA Consultation Toolkit",
+      "properties": {
+        "score": {
+          "description": "RAG score:\n        R = Major deficiencies (misses multiple elements OR inappropriate/unsafe approach)\n        A = Competent (achieves most elements but with some inconsistency/missed opportunities)\n        G = Exceptional (demonstrates all elements consistently with clear positive impact)\n        Note: Default to lower score if uncertain about performance",
+          "pattern": "^[RAG]$",
+          "title": "Score",
+          "type": "string"
+        },
+        "score_explanation": {
+          "description": "Brief explanation including:\n        1. Key behaviours observed linked to toolkit criteria\n        2. Specific impact on consultation and patient experience\n        3. Required improvements (if not Green) with actionable suggestions\n        4. Consideration of consultation context (face-to-face vs remote)\n        Refer to the GP trainee as \"the doctor\" or \"you\". Never use \"assistant\", \"user\", or \"AI\".\n        Example: \"The doctor missed multiple verbal cues about work stress \u2014 actively explore such hints to understand psychosocial impact\" ",
+          "title": "Score Explanation",
+          "type": "string"
+        },
+        "supporting_phrase": {
+          "description": "Direct quote from the doctor demonstrating the skill being assessed. \n        Must include:\n        1. Exact words used with sufficient context\n        2. Clear demonstration of skill presence/absence\n        3. No additional markup, timestamps or tags\n        4. If no supporting phrase available, return an empty string\n        Example: \"I notice you hesitated when mentioning work - could you tell me more about how this is affecting your daily routine?\" ",
+          "title": "Supporting Phrase",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score",
+        "supporting_phrase",
+        "score_explanation"
+      ],
+      "title": "ScaEvaluationScoreModel",
+      "type": "object"
+    },
+    "ScaGlobalSkillsModel": {
+      "additionalProperties": false,
+      "properties": {
+        "avoids_repetition": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Zero repetition of questions/statements AND demonstrates perfect information retention. Shows active listening.\n        A: ONE justified clarification with clear purpose and acknowledgment.\n        R: \u22652 repeated questions OR asks for previously provided information.\n        Key aspects:\n        - Listen actively and register patient's answers first time\n        - Take notes systematically to avoid repetition\n        - If clarification needed, acknowledge previous answer\n        - Explain reason if repeating question deliberately"
+        },
+        "finishes_data_gathering": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Completes ALL essential history AND examination elements systematically. Shows thoroughness.\n        A: Completes most elements with 1-2 minor omissions.\n        R: Misses multiple essential elements OR shows poor systematic approach.\n        Key aspects:\n        - Use systematic approach to history taking\n        - Complete relevant examination components\n        - Document findings clearly and completely\n        - Ensure no critical information is missed"
+        },
+        "progresses_through_tasks": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Completes ALL consultation stages in sequence WITH clear transitions AND within 10 minutes. Shows efficient flow.\n        A: Completes most stages with 2 minor delays OR slight time overrun.\n        R: >2 delays OR significant time overrun OR incomplete stages.\n        Key aspects:\n        - Move logically between consultation tasks\n        - Complete each task fully before moving on\n        - Use clear transitions between stages\n        - Manage time effectively while maintaining rapport"
+        },
+        "recognises_ethical_implications": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Identifies ALL ethical considerations AND demonstrates clear reasoning. Shows ethical awareness.\n        A: Identifies most ethical issues with some gaps in reasoning.\n        R: Misses major ethical implications OR shows poor ethical reasoning.\n        Key aspects:\n        - Recognize confidentiality, consent, and capacity issues\n        - Consider cultural and religious beliefs\n        - Balance patient autonomy with beneficence\n        - Document ethical decision-making process"
+        },
+        "remains_responsive_to_patient": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Acknowledges ALL verbal/non-verbal cues AND provides \u22653 empathetic responses. Shows active engagement.\n        A: Acknowledges \u226570% of cues with 1-2 empathetic responses.\n        R: Misses >30% of cues OR no empathetic responses.\n        Key aspects:\n        - Stay alert to verbal and non-verbal cues\n        - Respond with appropriate empathy\n        - Adapt consultation style to patient's needs"
+        },
+        "structures_consultation": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Must do ALL: clear opening/introduction, systematic history, focused examination, structured closing, explicit signposting between ALL stages, completes within appropriate timeframes. Shows logical flow.\n        A: Misses ONE element but maintains overall structure and professionalism.\n        R: Misses multiple elements OR unclear framework OR poor time management.\n        Key aspects:\n        - Start with clear introduction and agenda setting\n        - Progress systematically through history, examination, and management\n        - Use explicit signposting between stages\n        - Complete tasks within appropriate timeframes"
+        },
+        "uses_clear_language": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Uses plain English consistently AND checks understanding \u22653 times. Shows communication clarity.\n        A: Uses mostly plain English with 1-2 medical terms explained.\n        R: Uses medical jargon OR fails to explain terms OR no understanding checks.\n        Key aspects:\n        - Avoid medical jargon and technical terms\n        - Use simple, clear language\n        - Check patient understanding regularly\n        - Adapt language to patient's level"
+        }
+      },
+      "required": [
+        "structures_consultation",
+        "avoids_repetition",
+        "progresses_through_tasks",
+        "recognises_ethical_implications",
+        "finishes_data_gathering",
+        "uses_clear_language",
+        "remains_responsive_to_patient"
+      ],
+      "title": "ScaGlobalSkillsModel",
+      "type": "object"
+    },
+    "ScaPriorityActionModel": {
+      "additionalProperties": false,
+      "properties": {
+        "area": {
+          "description": "Area of focus for improvement",
+          "title": "Area",
+          "type": "string"
+        },
+        "current_level": {
+          "description": "Current performance level",
+          "title": "Current Level",
+          "type": "string"
+        },
+        "expected_outcome": {
+          "description": "Expected result after implementing improvements",
+          "title": "Expected Outcome",
+          "type": "string"
+        },
+        "improvement_steps": {
+          "description": "Concrete, actionable steps. Example:\n        - Use plain English instead of medical terms\n        - Check patient understanding after explanations\n        - Practice active listening techniques",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 3,
+          "title": "Improvement Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "area",
+        "current_level",
+        "improvement_steps",
+        "expected_outcome"
+      ],
+      "title": "ScaPriorityActionModel",
+      "type": "object"
+    },
+    "ScaRelatingToOthersModel": {
+      "additionalProperties": false,
+      "properties": {
+        "clarifies_cues": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Identifies AND explores \u22653 verbal/non-verbal cues with specific follow-up questions. Shows active curiosity in patient hints about underlying worries/needs.\n        A: Explores 1-2 cues with some follow-up but may miss subtle hints.\n        R: Misses obvious cues OR inappropriate/no follow-up.\n        Key aspects:\n        - Look for moments where patients drop subtle verbal/non-verbal hints\n        - Pay attention to changes in speech patterns, pauses, or shifts in speaking pace\n        - Always ask for clarification rather than making assumptions\n        - Focus extra attention on vocal changes and hesitations"
+        },
+        "explains_rationale": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Explains reasoning for ALL: questions, examinations, AND investigations clearly. Links questions to diagnostic reasoning.\n        A: Explains reasoning for 2 of 3 elements but may lack complete transparency.\n        R: Minimal/no explanation of clinical reasoning.\n        Key aspects:\n        - Verbalize clinical reasoning to help patients follow thought process\n        - State why you ask each question to clarify hypotheses\n        - Engage patient in decision-making through transparent reasoning\n        - Clear rationale substitutes for visual cues"
+        },
+        "generates_rapport": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Must do ALL:  uses patient's name, acknowledges emotions, demonstrates empathy \u22653 times. Creates mutual trust and understanding.\n        A: Achieves 2-3 elements but misses some opportunities for connection.\n        R: Achieves \u22641 element OR appears disinterested/dismissive.\n        Key aspects:\n        - Focus on creating mutual trust and understanding\n        - Use both verbal and non-verbal cues to show warmth\n        - Demonstrate curiosity and responsiveness"
+        },
+        "listens_curiosity": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Demonstrates ALL: active listening, appropriate silences, meaningful follow-ups, summarizes \u22652 times. Shows genuine interest in patient's story.\n        A: Demonstrates 2-3 elements but inconsistent engagement.\n        R: \u22641 element OR appears disinterested.\n        Key aspects:\n        - Maintain genuine interest in understanding reasons behind presentation\n        - Use curiosity to uncover ICE and psychosocial cues\n        - Show active listening through verbal encouragement\n        - Use phrases like \"I'm interested in that\" to prevent silence from feeling like disinterest"
+        },
+        "negotiates_psychosocial_plan": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Addresses ALL: work impact, social support, lifestyle changes, AND practical constraints. Integrates context into plan.\n        A: Addresses 2-3 psychosocial elements but may miss some practical aspects.\n        R: Addresses \u22641 element OR purely medical focus.\n        Key aspects:\n        - Link recommendations to what matters most to patient\n        - Consider work, family, and financial concerns\n        - Build collaboration through understanding context\n        - Propose solutions that respect circumstances without compromising care"
+        },
+        "shares_ice_plan": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Explicitly addresses ALL: ideas, concerns, AND expectations in management plan. Links choices to patient's perspective.\n        A: Addresses 2 ICE elements in plan but may miss some connections.\n        R: Addresses \u22641 ICE element OR ignores patient perspective.\n        Key aspects:\n        - Link management options to patient's ICE\n        - Share choices in small 'chunks' and invite feedback\n        - Check understanding regularly\n        - Maintain collaborative approach throughout"
+        },
+        "shares_risks": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Discusses ALL: benefits, risks, alternatives, AND obtains informed consent. Shows balanced risk communication.\n        A: Covers 2-3 elements but lacks detail or complete balance.\n        R: Inadequate risk discussion OR no clear consent.\n        Key aspects:\n        - Present balanced information about benefits and risks\n        - Discuss available alternatives clearly\n        - Obtain explicit informed consent\n        - Confirm understanding of risks verbally\n        - Document key points of risk discussion clearly"
+        },
+        "supports_decision_making": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Supports patient autonomy with ALL: clear options, balanced information, AND shared decision-making. Shows patient-centered care.\n        A: Provides options and information but may lean toward medical recommendation.\n        R: Pushes single option OR lacks balanced information.\n        Key aspects:\n        - Present balanced information about all reasonable options\n        - Support patient's right to make informed choices\n        - Help patients weigh benefits and risks\n        - Respect patient preferences even when they differ from medical recommendations"
+        },
+        "uses_closed_questions": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Uses closed questions ONLY for specific clarification AND limits to \u22643 consecutive. Introduces with clear signposting.\n        A: Occasional overuse but maintains narrative flow and patient engagement.\n        R: Dominates with closed questions OR creates interrogative atmosphere.\n        Key aspects:\n        - Use after open exploration to confirm hypotheses\n        - Screen for red flags systematically\n        - Introduce with signposting for sensitive topics\n        - Preserve rapport by delaying closed questions until patient's narrative is complete"
+        },
+        "uses_open_questions": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Uses \u22653 effective open questions AND allows complete responses without interruption. Questions invite narrative responses.\n        A: Uses 1-2 open questions with adequate follow-up but may switch to closed too quickly.\n        R: No open questions OR consistently interrupts responses.\n        Key aspects:\n        - Start with open questions to allow patient's agenda to surface naturally\n        - Use questions beginning with 'what' or 'how'\n        - Allow narrative responses rather than yes/no answers"
+        },
+        "verbalises_diagnosis": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Explains diagnosis with ALL: clear language, specific evidence, patient understanding check. Shows clear clinical reasoning.\n        A: Includes 2 elements but lacks completeness or clarity.\n        R: Unclear explanation OR no understanding check.\n        Key aspects:\n        - State what you think is happening and how you reached that conclusion\n        - Help patients make sense of their symptoms\n        - Prepare them for the management plan\n        - Ensure patients stay engaged"
+        }
+      },
+      "required": [
+        "clarifies_cues",
+        "listens_curiosity",
+        "generates_rapport",
+        "uses_open_questions",
+        "uses_closed_questions",
+        "explains_rationale",
+        "verbalises_diagnosis",
+        "shares_ice_plan",
+        "negotiates_psychosocial_plan",
+        "shares_risks",
+        "supports_decision_making"
+      ],
+      "title": "ScaRelatingToOthersModel",
+      "type": "object"
+    },
+    "ScaTasksModel": {
+      "additionalProperties": false,
+      "properties": {
+        "discovers_ice": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Explicitly explores all three: ideas, concerns, AND expectations. Shows comprehensive understanding.\n        A: Explores two ICE elements but misses opportunities.\n        R: Explores one or no ICE elements.\n        Key aspects:\n        - Understand what patients think is happening\n        - Explore specific worries and fears\n        - Clarify what they hope to achieve\n        - Use ICE to shape diagnosis and management"
+        },
+        "discovers_psychosocial_context": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Explores occupation, living situation, support systems, and impact on daily life. Shows holistic understanding.\n        A: Explores 2-3 psychosocial elements but misses some context.\n        R: Fails to explore any psychosocial context.\n        Key aspects:\n        - Explore work, home, and social factors systematically\n        - Understand how context impacts health choices\n        - Use information in management plans\n         "
+        },
+        "generates_hypotheses": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Generates \u22653 relevant differential diagnoses with clear reasoning. Shows systematic approach.\n        A: 2 reasonable differentials considered but limited exploration.\n        R: Single or incorrect differential.\n        Key aspects:\n        - Start with open questions for initial information\n        - Use targeted questions to test specific hypotheses\n        - Consider both common and serious possibilities\n        -"
+        },
+        "identifies_cues": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Spots and explores >3 verbal/non-verbal cues with appropriate follow-up. Shows active engagement.\n        A: Identifies 1-2 cues with some follow-up but misses subtle hints.\n        R: Misses obvious cues or inappropriate response.\n        Key aspects:\n        - Watch for subtle verbal/non-verbal hints\n        - Notice changes in speech patterns or emotional tone\n        - Follow up on hints about deeper concerns\n        -"
+        },
+        "interprets_tests": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Explains results, significance, and implications with complete accuracy. Shows clear clinical reasoning.\n        A: Minor inaccuracies in explanation but core message correct.\n        R: Major inaccuracies or unclear explanation.\n        Key aspects:\n        - Interpret findings to support/exclude diagnoses\n        - Explain significance clearly\n        - Explain how findings influence clinical reasoning"
+        },
+        "manages_comorbidity": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Addresses all comorbidities with specific medication/interaction considerations. Shows holistic care.\n        A: Acknowledges comorbidities with partial management consideration.\n        R: Ignores relevant comorbidities.\n        Key aspects:\n        - Consider how conditions and treatments interact\n        - Review current medications and allergies\n        - Involve patients in medication decisions\n        - Balance risks and benefits across health context"
+        },
+        "offers_management_plan": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Specific plan with medication details, lifestyle changes, AND follow-up timing. Shows comprehensive care.\n        A: Basic plan missing one key element or lacking detail.\n        R: Vague or inappropriate plan.\n        Key aspects:\n        - Base plan on up-to-date clinical guidelines\n        - Tailor to individual patient context\n        - Include medication details, lifestyle changes, and follow-up\n        - Provide written summaries or links"
+        },
+        "opens_consultation": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Must do ALL: introduces self, confirms patient identity, obtains consent, establishes agenda. Sets foundation for interaction.\n        A: Misses one element but maintains professionalism and rapport.\n        R: Misses multiple elements or appears unprofessional.\n        Key aspects:\n        - Make clear introduction and verify patient's identity\n        - Use engaging open question to start\n        - Establish early rapport\n        "
+        },
+        "provides_safety_net": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Clear safety instructions with specific symptoms and actions. Shows safety awareness.\n        A: Basic safety advice but lacks specificity or timing.\n        R: No safety advice or inappropriate instructions.\n        Key aspects:\n        - Explain what symptoms to watch for\n        - Give clear instructions on when to seek help\n        - Provide contact information for emergencies\n        - Ensure patient understands safety instructions"
+        },
+        "reaches_diagnosis": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Evidence-based diagnosis with clear explanation of reasoning. Shows analytical approach.\n        A: Reasonable diagnosis but incomplete reasoning or justification.\n        R: Incorrect or unsupported diagnosis.\n        Key aspects:\n        - Make diagnosis based on thorough history\n        - Be prepared to revise thinking as new information emerges\n        - Clearly document diagnostic reasoning"
+        },
+        "rules_in_out_disease": {
+          "$ref": "#/$defs/ScaEvaluationScoreModel",
+          "description": "G: Systematically excludes red flags and serious conditions with specific questions. Shows safety focus.\n        A: Partial assessment of serious conditions but misses some aspects.\n        R: Fails to consider serious diagnoses.\n        Key aspects:\n        - Systematically ask about warning symptoms\n        - Never skip red flag assessment\n        - Document red flag assessment clearly"
+        }
+      },
+      "required": [
+        "opens_consultation",
+        "discovers_psychosocial_context",
+        "identifies_cues",
+        "discovers_ice",
+        "interprets_tests",
+        "generates_hypotheses",
+        "rules_in_out_disease",
+        "reaches_diagnosis",
+        "offers_management_plan",
+        "manages_comorbidity",
+        "provides_safety_net"
+      ],
+      "title": "ScaTasksModel",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "actionable_feedback": {
+      "$ref": "#/$defs/ScaActionableFeedbackModel",
+      "description": "Actionable feedback for the doctor"
+    },
+    "clinical_analysis": {
+      "$ref": "#/$defs/ScaClinicalAnalysisModel",
+      "description": "Detailed analysis of clinical aspects of the transcript against UK guidelines"
+    },
+    "global_skills": {
+      "$ref": "#/$defs/ScaGlobalSkillsModel",
+      "description": "Comprehensive evaluation of overall consultation skills OF THE DOCTOR with RAG scoring."
+    },
+    "relating_to_others": {
+      "$ref": "#/$defs/ScaRelatingToOthersModel",
+      "description": "Interpersonal and communication skill analysis OF THE DOCTOR   with RAG scoring."
+    },
+    "tasks": {
+      "$ref": "#/$defs/ScaTasksModel",
+      "description": "Detailed assessment of clinical task performance OF THE DOCTOR with RAG scoring."
+    }
+  },
+  "required": [
+    "global_skills",
+    "tasks",
+    "relating_to_others",
+    "clinical_analysis",
+    "actionable_feedback"
+  ],
+  "title": "ScaFeedbackResponseModel",
+  "type": "object"
+}

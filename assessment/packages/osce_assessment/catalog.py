@@ -6,9 +6,10 @@ organisation's own framework never appears here; when org-authored frameworks
 land it will arrive through a provider, exactly as org-owned scenarios do,
 and this catalogue becomes one implementation among two.
 
-The SCA entry carries the domains and global skills the platform marks today.
-The remaining exams are registered with their identity and scale only; their
-competencies are filled in when the duplicated result models are unified.
+Every entry carries its result schema as data (see ``schemas/``), which is the
+shape the language model is asked to fill. The SCA entry also names the domains
+and global skills the platform marks; the other exams carry their schema only
+until their competencies are lifted out of it.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from .contracts.framework import (
     CompetencyFramework,
     RAG_SCALE,
 )
+from .schemas import load_schema
 
 __all__ = [
     "CASC_RCPSYCH_V1",
@@ -47,6 +49,7 @@ def _global(id_: str, label: str) -> Competency:
 
 SCA_RCGP_V1 = CompetencyFramework(
     id="sca-rcgp-v1",
+    result_schema=load_schema("sca-rcgp-v1"),
     label="RCGP Simulated Consultation Assessment",
     version="1",
     domains=(_GLOBAL_SKILLS, _TASKS, _RELATING),
@@ -64,6 +67,7 @@ SCA_RCGP_V1 = CompetencyFramework(
 
 PLAB2_GMC_V1 = CompetencyFramework(
     id="plab2-gmc-v1",
+    result_schema=load_schema("plab2-gmc-v1"),
     label="GMC PLAB 2",
     version="1",
     scale=RAG_SCALE,
@@ -71,6 +75,7 @@ PLAB2_GMC_V1 = CompetencyFramework(
 
 CASC_RCPSYCH_V1 = CompetencyFramework(
     id="casc-rcpsych-v1",
+    result_schema=load_schema("casc-rcpsych-v1"),
     label="RCPsych CASC",
     version="1",
     scale=RAG_SCALE,
@@ -78,6 +83,7 @@ CASC_RCPSYCH_V1 = CompetencyFramework(
 
 ORTHO_FRCS_V1 = CompetencyFramework(
     id="ortho-frcs-v1",
+    result_schema=load_schema("ortho-frcs-v1"),
     label="FRCS Trauma and Orthopaedics",
     version="1",
     scale=RAG_SCALE,

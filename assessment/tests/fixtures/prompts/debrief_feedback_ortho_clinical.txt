@@ -1,0 +1,30 @@
+## Clinical Station Feedback
+
+**Total Score: 12/50**
+
+
+### Technical Knowledge & Clinical Expertise
+**Score: 7/10**
+
+**Justification:**
+Sound differential for an acute haemarthrosis.
+
+**Evidence:**
+- Named ACL rupture first
+- Requested urgent MRI
+
+**Completed Tasks:**
+✓ Differential
+✓ Investigations
+
+**Suggested Actions:**
+- Mention aspiration for pain relief
+
+### Situational Awareness
+**Score: 5/10**
+
+**Justification:**
+Did not explore the patient's work situation.
+
+**Suggested Actions:**
+- Ask about occupation before planning

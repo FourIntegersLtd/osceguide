@@ -1,0 +1,12 @@
+{
+  "data_gathering": {
+    "history_taking": {"score": 0.75, "completed": ["Onset and duration", "Exertional pattern"], "supporting_phrase": ["When did the tightness start?"], "missed": ["Cardiac risk factors"], "critical_flags": [], "suggested_actions": ["Ask about smoking and family history early"]},
+    "examination": {"score": 0.5, "completed": ["Pulse and BP"], "supporting_phrase": [], "missed": ["Auscultation"], "critical_flags": ["Did not check for calf tenderness"], "suggested_actions": ["Complete the cardiovascular examination"]}
+  },
+  "clinical_management": {
+    "safety_netting": {"score": 1.0, "completed": ["Explained when to call 999"], "supporting_phrase": ["If the pain comes on at rest, call 999 straight away."], "missed": [], "critical_flags": [], "suggested_actions": []}
+  },
+  "interpersonal_skills": {
+    "empathy": {"score": 0.25, "completed": [], "supporting_phrase": [], "missed": ["Acknowledged worry about father"], "critical_flags": [], "suggested_actions": ["Reflect the patient's fear before moving on"]}
+  }
+}
