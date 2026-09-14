@@ -8,10 +8,6 @@
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Diagnostic accuracy\n        - Clinical reasoning\n        - Risk stratification\n        - Recognition of urgency\n        - Appropriate differentials\n        - Evidence-based approach"
         },
-        "follow_up": {
-          "$ref": "#/$defs/PlabEvaluationScoreModel",
-          "description": "Assessment of:\n        - Appropriate timing\n        - Clear instructions\n        - Referral quality\n        - Coordination of care\n        - Documentation\n        - Communication with colleagues"
-        },
         "management_plan": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Treatment appropriateness\n        - Evidence-based choices\n        - Patient involvement\n        - Resource consideration\n        - Practical implementation\n        - Monitoring plans"
@@ -19,6 +15,10 @@
         "safety_netting": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Clear warning signs\n        - Action plans\n        - Emergency instructions\n        - Follow-up arrangements\n        - Documentation\n        - Resource provision"
+        },
+        "follow_up": {
+          "$ref": "#/$defs/PlabEvaluationScoreModel",
+          "description": "Assessment of:\n        - Appropriate timing\n        - Clear instructions\n        - Referral quality\n        - Coordination of care\n        - Documentation\n        - Communication with colleagues"
         }
       },
       "required": [
@@ -34,21 +34,21 @@
       "additionalProperties": false,
       "description": "Comprehensive assessment of clinical information gathering\naligned with PLAB 2 standards.",
       "properties": {
-        "examination": {
-          "$ref": "#/$defs/PlabEvaluationScoreModel",
-          "description": "Assessment of:\n        - Clear explanation of examination rationale\n        - Step-by-step communication of procedure\n        - Appropriate consent and chaperone discussion\n        - Professional and empathetic manner\n        - Patient dignity and comfort\n        - Clear instructions to patient\n        - Systematic examination technique"
-        },
         "history_taking": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Systematic approach\n        - Relevant presenting complaint details\n        - Past medical history\n        - Drug history and allergies\n        - Family and social history\n        - ICE exploration\n        - Red flag symptoms\n        - System review when appropriate"
         },
-        "interpretation": {
+        "examination": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
-          "description": "Assessment of:\n        - Clinical reasoning\n        - Integration of findings\n        - Recognition of patterns\n        - Appropriate differentials\n        - Risk assessment\n        - Clinical judgment"
+          "description": "Assessment of:\n        - Clear explanation of examination rationale\n        - Step-by-step communication of procedure\n        - Appropriate consent and chaperone discussion\n        - Professional and empathetic manner\n        - Patient dignity and comfort\n        - Clear instructions to patient\n        - Systematic examination technique"
         },
         "investigations": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Appropriate test selection\n        - Cost-effectiveness\n        - Result interpretation\n        - Explaining investigations\n        - Risk communication\n        - Consent for procedures"
+        },
+        "interpretation": {
+          "$ref": "#/$defs/PlabEvaluationScoreModel",
+          "description": "Assessment of:\n        - Clinical reasoning\n        - Integration of findings\n        - Recognition of patterns\n        - Appropriate differentials\n        - Risk assessment\n        - Clinical judgment"
         }
       },
       "required": [
@@ -72,12 +72,12 @@
           "title": "Completed",
           "type": "array"
         },
-        "critical_flags": {
-          "description": "Critical errors or patient safety concerns that require immediate attention.",
+        "supporting_phrase": {
+          "description": "ONLY 1-2 direct quotes from the doctor.\n        Must include:\n        1. Exact words used\n        2. Sufficient context to understand the situation\n        ",
           "items": {
             "type": "string"
           },
-          "title": "Critical Flags",
+          "title": "Supporting Phrase",
           "type": "array"
         },
         "missed": {
@@ -103,12 +103,12 @@
           "title": "Suggested Actions",
           "type": "array"
         },
-        "supporting_phrase": {
-          "description": "ONLY 1-2 direct quotes from the doctor.\n        Must include:\n        1. Exact words used\n        2. Sufficient context to understand the situation\n        ",
+        "critical_flags": {
+          "description": "Critical errors or patient safety concerns that require immediate attention.",
           "items": {
             "type": "string"
           },
-          "title": "Supporting Phrase",
+          "title": "Critical Flags",
           "type": "array"
         }
       },
@@ -122,10 +122,6 @@
       "additionalProperties": false,
       "description": "Comprehensive assessment of communication and interpersonal skills\nbased on GMC domains and PLAB 2 requirements.",
       "properties": {
-        "empathy": {
-          "$ref": "#/$defs/PlabEvaluationScoreModel",
-          "description": "Assessment of:\n        - Recognition of patient's emotions\n        - Appropriate emotional responses\n        - Validation of concerns\n        - Supporting patient's psychological needs\n        - Professional compassion"
-        },
         "language": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Clarity and appropriateness of language\n        - Avoidance of medical jargon\n        - Professional tone and manner\n        - Clear explanations at patient's level\n        - Appropriate use of translation services if needed"
@@ -137,6 +133,10 @@
         "rapport": {
           "$ref": "#/$defs/PlabEvaluationScoreModel",
           "description": "Assessment of:\n        - Professional introduction\n        - Building trust\n        - Cultural sensitivity\n        - Appropriate eye contact\n        - Professional boundaries\n        - Respect for patient dignity"
+        },
+        "empathy": {
+          "$ref": "#/$defs/PlabEvaluationScoreModel",
+          "description": "Assessment of:\n        - Recognition of patient's emotions\n        - Appropriate emotional responses\n        - Validation of concerns\n        - Supporting patient's psychological needs\n        - Professional compassion"
         }
       },
       "required": [
@@ -151,13 +151,13 @@
   },
   "description": "Comprehensive station feedback aligned with PLAB 2 requirements,\nproviding detailed assessment across all domains.",
   "properties": {
-    "clinical_management": {
-      "$ref": "#/$defs/ClinicalManagement",
-      "description": "Clinical management feedback"
-    },
     "data_gathering": {
       "$ref": "#/$defs/DataGathering",
       "description": "Data gathering feedback"
+    },
+    "clinical_management": {
+      "$ref": "#/$defs/ClinicalManagement",
+      "description": "Clinical management feedback"
     },
     "interpersonal_skills": {
       "$ref": "#/$defs/PlabInterpersonalSkillsModel",
