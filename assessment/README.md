@@ -36,11 +36,32 @@ packages/osce_assessment/     the engine — no LiveKit, no LLM SDK, no database
 tests/                        engine tests; tests/e2e/ needs a real LiveKit server
 packages/voice_infra/         config-driven LiveKit plumbing: backends by label, speech by role, slots, sentry
 packages/livekit_assessment_worker/  the assessment worker (see below)
+packages/livekit_assistant_worker/   the assistant worker: help, onboarding, dashboard, consulting doctor
 hosting/                      container entry, LiveKit Cloud host, gunicorn supervisor for Railway / K8s
-k8s/ Dockerfile railway.toml livekit.assessment.toml  deployment
+k8s/ Dockerfile railway.toml livekit.*.toml  deployment (one process per worker)
 ```
 
-Still to land: `livekit_assistant_worker` (help, onboarding, dashboard, athena-doctor).
+## The assistant worker
+
+`livekit_assistant_worker` runs the voice features that are not assessments:
+help (FAQ answers, optionally with on-screen guidance through the browser),
+onboarding (scene-by-scene coaching), dashboard coaching, and the
+consulting-doctor role. It never imports the engine's runtime or evaluation
+(guarded by `tests/test_assistant_worker_boundaries.py`).
+
+Dispatch metadata is `{"session_id", "backend", "candidate_ref"}`. The worker
+fetches `GET /api/worker/assistant-sessions/{session_id}` →
+`{"session": {session_id, worker_type, candidate_ref, instructions?, greeting?, extras}}`.
+The backend renders data-dependent instructions (dashboard, athena-doctor);
+help and onboarding render from templates in the worker because onboarding
+rebuilds them on every scene change. Help sessions post their transcript once
+to `POST .../assistant-sessions/{session_id}/transcript`; GPT-Live help posts
+usage to `POST /api/worker/sessions/{session_id}/complete`.
+
+FAQ help runs speech-to-speech on GPT-Live when an OpenAI key is present
+(falling back to the pipeline if it cannot start), with the 5-minute cap and
+idle handling from the legacy worker; everything else runs on the pipeline.
+Run it with `make dev-assistant`, or `OSCE_LIVEKIT_WORKER=assistant make start`.
 
 ## The assessment worker
 

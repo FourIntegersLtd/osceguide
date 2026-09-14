@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assistant-worker
+  namespace: assessment-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assistant-worker
+  template:
+    metadata:
+      labels:
+        app: assistant-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/OWNER/assessment-platform:latest
+          envFrom:
+            - configMapRef:
+                name: assistant-worker-config
+            - secretRef:
+                name: assistant-worker-secrets
+          env:
+            - name: PORT
+              value: "8080"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              memory: "2Gi"

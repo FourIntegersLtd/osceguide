@@ -15,7 +15,7 @@ from voice_infra.cloud_slot import register_cloud_slot_lifecycle
 from .adapter import LiveKitInteractionAdapter
 from .bootstrap import Bootstrap, BootstrapError, fetch_bootstrap
 from .metadata import MetadataError, parse_dispatch_metadata
-from .participants import other_agents_present, wait_for_candidate
+from voice_infra.participants import other_agents_present, wait_for_candidate
 from .sinks import HttpTranscriptSink
 
 logger = logging.getLogger(__name__)

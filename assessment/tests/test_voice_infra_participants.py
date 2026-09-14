@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from livekit_assessment_worker.participants import identity_matches, other_agents_present, wait_for_candidate
+from voice_infra.participants import identity_matches, other_agents_present, wait_for_candidate
 
 from _worker_fakes import FakeRoom
 

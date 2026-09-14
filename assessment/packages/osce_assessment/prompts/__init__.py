@@ -14,7 +14,9 @@ from __future__ import annotations
 from functools import lru_cache
 from importlib import resources
 
+from .athena_doctor import AthenaDoctorFormatter
 from .cv import format_structured_cv_for_llm
+from .dashboard_feedback import DashboardFeedbackPromptFormatter
 from .debrief_feedback import (
     OrthoClinicalSkillFeedbackFormatter,
     OrthoCommunicationSkillFeedbackFormatter,
@@ -83,6 +85,8 @@ def render_user_prompt(*, station_name: str, transcript: str) -> str:
 
 __all__ = [
     "USER_PROMPT_TEMPLATE_ID",
+    "AthenaDoctorFormatter",
+    "DashboardFeedbackPromptFormatter",
     "ConversationPromptFormatter",
     "DebriefPromptFormatter",
     "ManagementPlanFormatter",

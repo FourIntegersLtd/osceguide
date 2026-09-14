@@ -13,6 +13,7 @@ packages = [
     { include = "osce_assessment", from = "packages" },
     { include = "voice_infra", from = "packages" },
     { include = "livekit_assessment_worker", from = "packages" },
+    { include = "livekit_assistant_worker", from = "packages" },
 ]
 
 [tool.poetry.dependencies]

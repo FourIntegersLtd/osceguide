@@ -31,7 +31,7 @@ START_PREREQS := install download-files
 endif
 export PYTHONPATH := $(CURDIR):$(CURDIR)/packages$(if $(PYTHONPATH),:$(PYTHONPATH),)
 
-.PHONY: download-files start start-assessment dev-assessment stop
+.PHONY: download-files start start-assessment start-assistant dev-assessment dev-assistant stop
 
 download-files:
 	$(RUN) python -m livekit.agents download-files
@@ -44,10 +44,17 @@ start: $(START_PREREQS)
 start-assessment:
 	OSCE_LIVEKIT_WORKER=assessment $(MAKE) start
 
-## the assessment worker alone, in dev mode (no supervisor)
+start-assistant:
+	OSCE_LIVEKIT_WORKER=assistant $(MAKE) start
+
+## one worker alone, in dev mode (no supervisor)
 dev-assessment: install
 	poetry run python -m livekit_assessment_worker.entrypoint dev
+
+dev-assistant: install
+	poetry run python -m livekit_assistant_worker.entrypoint dev
 
 stop:
 	@pkill -f "gunicorn.*hosting.supervisor:application" 2>/dev/null || true
 	@pkill -f "livekit_assessment_worker.entrypoint" 2>/dev/null || true
+	@pkill -f "livekit_assistant_worker.entrypoint" 2>/dev/null || true

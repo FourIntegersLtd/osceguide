@@ -1,0 +1,8 @@
+# LiveKit Cloud agent config for the assistant worker.
+# Fill in after `lk agent create --config livekit.assistant.toml --secrets-file <secrets>`;
+# `lk agent deploy --config livekit.assistant.toml` afterwards.
+[project]
+  subdomain = ""
+
+[agent]
+  id = ""

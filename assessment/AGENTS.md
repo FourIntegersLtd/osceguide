@@ -74,7 +74,11 @@ nor name a product, station field or storage system (guarded by
 instructions from the backend's bootstrap route and delivers transcripts back;
 scoring happens backend-side. `livekit_assistant_worker` covers help,
 onboarding, dashboard and athena-doctor and must not import
-`osce_assessment.runtime` or `osce_assessment.evaluation`.
+`osce_assessment.runtime`, `.evaluation`, `.schemas`, `.catalog` or
+`.compat`, nor the assessment worker (guarded by
+`tests/test_assistant_worker_boundaries.py`). Its FAQ data and UI-guidance
+toolset are ports of the legacy worker's; keep them in step with the frontend
+`livekit-ui-guidance` package.
 
 `hosting/` runs one worker per process, selected by `OSCE_LIVEKIT_WORKER`;
 add a worker to `hosting/workers.py` when it lands.

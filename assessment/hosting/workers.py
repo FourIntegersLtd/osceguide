@@ -18,7 +18,7 @@ class WorkerSpec:
 
 WORKERS: dict[str, WorkerSpec] = {
     "assessment": WorkerSpec("assessment", "livekit_assessment_worker.entrypoint", "LIVEKIT_ASSESSMENT_WORKER_PORT", 8087),
-    # "assistant": added when livekit_assistant_worker lands (plan step 10)
+    "assistant": WorkerSpec("assistant", "livekit_assistant_worker.entrypoint", "LIVEKIT_ASSISTANT_WORKER_PORT", 8088),
 }
 
 
