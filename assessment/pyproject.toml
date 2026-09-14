@@ -11,6 +11,7 @@ package-mode = true
 # added here as they land; their LiveKit pins mirror livekit/pyproject.toml exactly.
 packages = [
     { include = "osce_assessment", from = "packages" },
+    { include = "voice_infra", from = "packages" },
 ]
 
 [tool.poetry.dependencies]
@@ -18,6 +19,22 @@ python = ">=3.11,<3.14"
 # The engine depends on pydantic only. LLM clients and LiveKit are injected by the
 # consumer or the worker packages, never imported by osce_assessment.
 pydantic = "^2.10"
+
+# Worker packages (voice_infra and the LiveKit workers). Pins mirror the legacy
+# livekit/pyproject.toml exactly so the two projects run the same stack while
+# both exist.
+# livekit-agents 1.8.1 pins livekit==1.1.18.
+livekit = "1.1.18"
+livekit-api = "^1.2.0"
+livekit-agents = {version = "1.8.1", extras = ["cartesia", "deepgram", "openai", "elevenlabs", "anthropic", "google", "silero"]}
+# livekit-plugins-anthropic 1.7.0 still constructs httpx.AsyncClient and passes it
+# as http_client=. anthropic>=1.0 requires httpx2 and raises TypeError on that client.
+anthropic = ">=0.41,<1.0.0"
+python-dotenv = ">=1.0.1,<2.0.0"
+openai = "^2.15.0"
+sentry-sdk = ">=2.20.0,<3.0.0"
+livekit-plugins-noise-cancellation = "~=0.3"
+aiohttp = "^3.11.18"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
