@@ -1,0 +1,13 @@
+.git
+.venv
+.env
+.env.*
+!.env.sample
+*.secrets
+k8s/secret.yaml
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+logs

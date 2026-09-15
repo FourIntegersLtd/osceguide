@@ -21,6 +21,7 @@ from voice_infra.speech import build_llm, build_stt, build_tts
 from voice_infra.tool_handling import ASYNC_TOOL_HANDLING
 from voice_infra.turn_handling import MIN_CONSECUTIVE_SPEECH_DELAY, build_turn_handling_options
 
+from .notices import wire_time_warnings
 from .tools import build_tools
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ class LiveKitInteractionAdapter:
         ConversationLatencyTracker(label=self._label, room=self._ctx.room.name).attach(session)
         self._wire_transcript(session, on_message)
         self._wire_end_signals()
+        wire_time_warnings(self._ctx, session, self._candidate_identity)
 
         await session.start(
             room=self._ctx.room,
