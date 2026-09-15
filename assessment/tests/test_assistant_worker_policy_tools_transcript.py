@@ -85,6 +85,24 @@ def test_completion_is_posted_to_the_dispatching_backend(monkeypatch) -> None:
     assert serialize_usage(None) == {} and serialize_usage("x") == {"value": "x"}
 
 
+def test_serialize_usage_handles_livekits_dataclass_of_pydantic_records() -> None:
+    """Seen in production: AgentSessionUsage.model_usage holds pydantic LLMModelUsage
+    objects, which asdict() left unconverted and json.dumps then rejected."""
+    import json
+
+    from livekit.agents.metrics import AgentSessionUsage, LLMModelUsage
+
+    usage = AgentSessionUsage(
+        model_usage=[LLMModelUsage(provider="openai", model="gpt-4o-mini", input_tokens=12, output_tokens=3)]
+    )
+
+    payload = serialize_usage(usage)
+
+    json.dumps(payload)
+    record = payload["model_usage"][0]
+    assert record["provider"] == "openai" and record["input_tokens"] == 12 and record["output_tokens"] == 3
+
+
 def test_search_help_faqs_calls_update_and_filler() -> None:
     async def run() -> None:
         ctx = MagicMock()
