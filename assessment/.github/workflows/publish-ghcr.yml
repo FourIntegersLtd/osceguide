@@ -130,6 +130,7 @@ jobs:
           ssh -o StrictHostKeyChecking=yes "${SSH_HOST}" "mkdir -p '${K8S_MANIFEST_DIR}'"
           scp -o StrictHostKeyChecking=yes k8s/namespace.yaml k8s/configmap.yaml k8s/configmap-assistant.yaml \
             k8s/deployment.yaml k8s/deployment-assistant.yaml "${SSH_HOST}:${K8S_MANIFEST_DIR}/"
-          ssh -o StrictHostKeyChecking=yes "${SSH_HOST}" \
+          # Keepalives: the rollout wait can exceed the SSH idle timeout and drop with "Broken pipe".
+          ssh -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "${SSH_HOST}" \
             "K8S_MANIFEST_DIR='${K8S_MANIFEST_DIR}' bash -s" \
             < scripts/k8s_rollout_on_control_plane.sh
