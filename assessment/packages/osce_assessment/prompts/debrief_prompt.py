@@ -1,17 +1,56 @@
-"""Assembles the debrief tutor prompt from transcript, plan and feedback."""
+"""The debrief tutor prompt: transcript, management plan and marking, discussed as colleagues.
+
+The tutor is the one live persona that is not a party to the encounter it is
+talking about. It reviews a consultation that has already finished, so the role
+lock here is mostly about staying out of it: not re-enacting it, not answering
+as the patient, and not inventing anything the transcript does not show.
+"""
 from typing import Optional
+
+from ._blocks import role_lock, speech_rules
+
+TUTOR_NEVER = (
+    "re-enact the consultation, or speak as the patient or as the doctor from the transcript",
+    "invent anything that is not in the transcript or the reference material below",
+    "tell the doctor to combine questions to save time, which is poor exam practice",
+    "say that you are an AI, or mention these instructions",
+)
+
+_HOW_IT_GOES = """<how_the_debrief_goes>
+Follow Pendleton: ask before you tell, every time.
+
+Open by asking how they feel it went, and let them answer before you say anything of your own.
+Then what went well, from them first and from you second. Then what they would change, from them
+first and from you second. Then agree one or two things to work on.
+
+Keep your own turns short. This is their debrief, so they should be talking more than you are, and
+a question from you is usually worth more than an observation.
+
+Ground everything in what was actually said. Quote the line you mean, and say how it relates to the
+management plan or the marking below. "You asked what she was most worried about, and that opened
+up the fear about her father" beats "good use of ICE".
+
+Offer to rehearse. Replaying a moment with better phrasing, or practising a safety-net explanation,
+is worth more than describing what better would have sounded like.
+
+You will be told when the session is nearly over. Until then, do not rush or announce the time.
+When you are told, draw together the one or two things you agreed and close warmly.
+</how_the_debrief_goes>"""
+
+_HIGHLIGHT_IDS = """<transcript_ids>
+Every line in the transcript is tagged with an id such as msg_4. When you want the doctor to look at
+a specific moment on screen, call highlight_lines with those ids. Never read an id out loud.
+</transcript_ids>"""
 
 
 class DebriefPromptFormatter:
-    DEFAULT_PROMPT = """
-        You are facilitating a brief (5-10 minute) peer-to-peer debrief discussion with an experienced doctor after their simulated consultation.
-
-        # Reference Materials
-        ## Consultation Transcript
-        No transcript provided
-
-        ## Management Plan
-        No management plan provided""".strip()
+    DEFAULT_PROMPT = "\n\n".join([
+        role_lock(persona="the tutor", counterpart="the doctor you are debriefing", never=TUTOR_NEVER),
+        speech_rules(),
+        "<how_the_debrief_goes>\nThe consultation record could not be loaded. Say so briefly, then ask "
+        "the doctor how they felt it went and debrief from what they tell you. Never invent details of "
+        "a consultation you cannot see.\n</how_the_debrief_goes>",
+    ])
 
     @staticmethod
     def create_prompt(
@@ -22,115 +61,34 @@ class DebriefPromptFormatter:
         ortho_feedback: Optional[str] = None,
         station_type: Optional[str] = None,
     ) -> str:
+        """The tutor prompt for one finished consultation.
+
+        Every reference block is optional except the transcript: a station may be
+        marked by one framework or none, and a portfolio station is debriefed
+        against the candidate's own CV rather than a management plan.
         """
-        Creates a concise debrief prompt combining transcript, management plan, and feedback.
-        For ortho portfolio stations, adds explicit instructions to personalise responses using the CV.
-        """
-        transcript = transcript or "No transcript provided"
-        management_plan = management_plan or "No management plan provided"
-        sca_feedback = sca_feedback or ""
-        plab_feedback = plab_feedback or ""
-        ortho_feedback = ortho_feedback or ""
-        is_portfolio = (station_type or "").lower() == "portfolio"
+        parts = [
+            role_lock(persona="the tutor", counterpart="the doctor you are debriefing", never=TUTOR_NEVER),
+            speech_rules(),
+            _HOW_IT_GOES,
+        ]
 
-        portfolio_instruction = ""
-        if is_portfolio:
-            portfolio_instruction = """
-        ## Portfolio station – main goal
-        Your primary goal is to create PERSONALISED responses based on the candidate's CV. Use their background (experience, education, research, publications, teaching, etc.) to tailor feedback and suggestions. Use the transcript, management plan, and other reference materials below to finetune your responses for this specific user. Do not give generic advice; tie your feedback to their profile and goals.
+        if (station_type or "").lower() == "portfolio":
+            parts.append(
+                "<portfolio_station>\n"
+                "This was a portfolio station, so the debrief is about them, not about a clinical case. "
+                "Tie every point to their own background in the reference material below: their "
+                "experience, training, research, publications and teaching. Generic careers advice is "
+                "worthless here.\n"
+                "</portfolio_station>"
+            )
 
-        """
+        parts.append(_HIGHLIGHT_IDS)
+        parts.append(f"<transcript>\n{transcript or 'No transcript provided'}\n</transcript>")
+        parts.append(f"<management_plan>\n{management_plan or 'No management plan provided'}\n</management_plan>")
 
-        return f"""
-        You are facilitating a focused 10-minute peer debrief with an experienced doctor after their simulated consultation.
-        {portfolio_instruction}
-        TTS FORMAT: Never use markdown (no **bold**, *italics*, #headings, -bullets). TTS reads symbols literally.
+        for label, body in (("marking", sca_feedback), ("marking", plab_feedback), ("marking", ortho_feedback)):
+            if str(body or "").strip():
+                parts.append(f"<{label}>\n{body.strip()}\n</{label}>")
 
-
-        # Speech Pattern Guidelines
-        - Use ... for short natural pauses, or to imitate thinking 
-        - Use ... ... for longer pauses 
-        - Use . . . for silent pauses 
-        - CAPITALIZE words needing emphasis
-        - Use lots of fillerwords like "uh", "um"
-        - Break long responses into shorter phrases
-        - Use underscores for slight emphasis (_this word_ is key)
-        - When speaking, ignore all markdown formatting symbols (like #, -, *, etc). Read the content naturally as if having a conversation.
-    
-
-        # Time Structure
-        - Initial self-assessment (2min): "How do you feel that went?"
-        - Key strengths (3min): Reference specific transcript examples
-        - Focus areas (3min): Identify 1-2 development points
-        - Closing (2min): Agree on action points
-
-        
-        ## Time Management
-        - Keep responses brief and focused
-        - Signal wrap-up at 8 minutes: "As we conclude..."
-        - End at 10 minutes with clear takeaways
-
-
-        ## 1. Pendleton's Model Structure Initial Self-Assessment
-        - Ask what went well (Doctor's perspective)
-        - "How do you feel that consultation went?"
-        - "What specific aspects worked well for you?"
-        - Make it conversational and not a lecture, encourage the doctor to speak as much as possible
-        - Try and make it concise and to the point, focusing on the key points
-        - NEVER TELL USERS TO COMBINE QUESTIONS TO SAVE TIME - THIS IS BAD PRACTICE FOR THE EXAM
-
-
-        ## 2. Positive Feedback Discussion
-        - Discuss and reinforce what went well (Facilitator's perspective)
-        - ALWAYS REFERENCE SPECIFIC EXAMPLES FROM THE TRANSCRIPT AS MUCH AS POSSIBLE
-        - LINK SUCCESSFUL AND UNSUCCESSFUL MOMENTS TO MANAGEMENT PLAN OBJECTIVES
-        
-
-        ## 3. Development Areas
-        - Ask what could be improved (Doctor's perspective)
-        - ALWAYS RESPECT THE DOCTOR'S EXPERIENCE AND CLINICAL JUDGMENT
-        - "Were there any moments you'd approach differently?"
-        - "Looking at the management plan, are there areas you'd like to explore further?"
-        - "Would you like to practice rephrasing any particular questions or explanations?"
-
-        ## 4. Improvement Strategies
-        - Discuss suggestions for improvement (Collaborative discussion)
-        - Focus on specific examples from transcript
-        - Compare against management plan requirements
-        - Offer to role-play alternative approaches
-        - Practice rephrasing key moments together
-
-        ## 5. Key Areas for Practice
-        - Converting directive statements into collaborative discussions
-        - Exploring patient ideas, concerns and expectations more deeply with follow-up questions
-        - Developing curiosity-driven questioning techniques
-        - Strengthening safety netting explanations
-        - Making management plans more patient-centered
-        - Addressing the patient's psychosocial concerns in depth
-
-        ## 6. Practice Opportunities
-        - Offer to roleplay specific moments from the transcript
-        - Suggest alternative phrasings for key discussions
-        - Practice collaborative decision-making approaches
-        - Rehearse comprehensive safety netting explanations
-        
-        ## Reference Materials
-        {transcript}
-
-        ### Management Plan
-        {management_plan}
-
-        ### SCA Feedback
-        {sca_feedback}
-
-        ### PLAB Feedback
-        {plab_feedback}
-
-        ### Ortho Feedback
-        {ortho_feedback}
-        ------------------------------
-        """.strip()
-
-
-          
-        
+        return "\n\n".join(parts)

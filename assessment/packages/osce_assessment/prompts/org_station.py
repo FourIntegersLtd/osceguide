@@ -5,11 +5,17 @@ Organisation stations are structured (template-driven), unlike library stations
 rendered by ConversationPromptFormatter. This formatter walks the known content
 blocks, sweeps any unrecognised block into a titled section so an organisation's
 own template shape still renders, and assembles a persona plus consultation
-instructions in the same style as the library prompt.
+instructions from the same shared blocks as the library prompt.
+
+An unrecognised block is treated as material the patient holds back until
+asked. An organisation can put anything in its own template, and for a patient
+persona volunteering it unprompted is the worse failure.
 """
 from __future__ import annotations
 
 from typing import Any
+
+from ._blocks import PATIENT_NEVER, hidden_section, role_lock, speech_rules
 
 
 # Block ids recognised from common station templates; anything else becomes an extra section.
@@ -136,65 +142,47 @@ class OrgStationPromptFormatter:
                 continue
             text = _text_from_value(val)
             if text:
-                label = key.replace("_", " ").replace("-", " ").title()
-                extra_sections.append(f"**{label}:**\n{text}")
+                label = key.replace("_", " ").replace("-", " ").lower()
+                extra_sections.append(hidden_section(label, text))
 
         # --- compose prompt ---
-        lines: list[str] = [
-            "You are playing the role of a patient in an OSCE (Objective Structured Clinical Examination).",
-            f"Station: {title}",
-            "",
-            "## Your role",
-            "You are the patient. Stay in character throughout. Do not break character or reveal you are an AI.",
-            "Respond naturally as a real patient would — use everyday language, not medical jargon.",
-            "Answer questions honestly based on the information provided below.",
-            "You may express emotions (worry, pain, confusion) appropriate to the scenario.",
-            "",
+        parts = [
+            role_lock(persona="the patient", counterpart="the doctor", never=PATIENT_NEVER),
+            speech_rules(),
         ]
 
-        if patient_desc:
-            lines += ["## Who you are", patient_desc, ""]
+        who = "\n\n".join(block for block in (patient_desc, complaint) if block)
+        if who:
+            parts.append(f"<you>\n{who}\n</you>")
 
-        if complaint:
-            lines += ["## Why you are here (presenting complaint)", complaint, ""]
+        parts.append(
+            "<how_to_answer>\n"
+            "Wait for the doctor to greet you or ask you something before you speak.\n"
+            "Answer what you are actually asked, in everyday words rather than medical ones, and let "
+            "the doctor draw your story out of you instead of telling it all at once.\n"
+            "Show what you feel where it fits: worry, pain, confusion.\n"
+            "If you are asked something the notes below do not cover, answer the way a real person "
+            'would: "I\'m not sure", "I don\'t remember", or something brief and plausible.\n'
+            "</how_to_answer>"
+        )
 
-        if history:
-            lines += ["## Relevant medical history", history, ""]
-
-        if medications:
-            lines += ["## Medications", medications, ""]
-
-        if social:
-            lines += ["## Social history", social, ""]
-
-        if examination:
-            lines += [
-                "## Examination findings",
-                "(Only reveal these if the doctor specifically asks or examines you.)",
+        parts.append(hidden_section("your medical history", history))
+        parts.append(hidden_section("your medications", medications))
+        parts.append(hidden_section("your social history", social))
+        parts.append(
+            hidden_section(
+                "examination findings",
                 examination,
-                "",
-            ]
-
-        for sec in extra_sections:
-            lines += [sec, ""]
+                rule="Only say this if the doctor examines you or asks for it directly.",
+            )
+        )
+        parts.extend(extra_sections)
 
         if instructions:
-            lines += [
-                "## Special instructions for this station",
-                instructions,
-                "",
-            ]
+            parts.append(f"<special_instructions>\n{instructions}\n</special_instructions>")
 
-        lines += [
-            "## Behaviour guidelines",
-            "- Wait for the candidate to greet you or ask a question before speaking.",
-            "- Do not volunteer every piece of information at once; let the candidate draw it out.",
-            "- If asked something not covered above, respond as a real patient would (e.g. 'I'm not sure', "
-            "'I don't remember', or give a plausible but brief answer).",
-            "- Do not perform clinical actions or give diagnoses; you are the patient, not the doctor.",
-        ]
-
-        return "\n".join(lines)
+        parts.append(f"<station>\n{title}\n</station>")
+        return "\n\n".join(part for part in parts if part)
 
 
 def create_org_station_prompt(station: dict[str, Any]) -> str:

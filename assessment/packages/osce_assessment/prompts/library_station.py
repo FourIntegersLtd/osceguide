@@ -1,15 +1,117 @@
-"""Patient prompt from a platform-library station document.
+"""Patient and examiner prompts from a platform-library station document.
 
-Ported verbatim from the legacy worker so output is byte-identical; the
-snapshot tests prove it. Two formatters: the consultation prompt used by the
-SCA, PLAB and CASC exams, and the orthopaedic interview prompt.
+Two formatters: the consultation prompt the simulated patient speaks from in
+the SCA, PLAB and CASC exams, and the orthopaedic interview prompt the
+examiner speaks from.
+
+The station-parsing here is the legacy worker's, unchanged, because the stored
+documents did not change. The prompt text is not: both prompts now open by
+naming the role and its counterpart, and both hold their clinical content in
+sections the model reveals only when asked. See ``_blocks`` for the shared wording.
 """
 
 from typing import Optional, Dict, List, Any
 
 import logging
 
+from ._blocks import EXAMINER_NEVER, PATIENT_NEVER, hidden_section, role_lock, speech_rules
+
 main_logger = logging.getLogger(__name__)
+
+
+_PATIENT_SPEECH_EXTRA = (
+    'Hesitate the way people really do: "..." for a short pause, "... ..." for a longer one, '
+    'and fillers such as "uh", "um", "I mean".'
+)
+
+_ONE_AT_A_TIME = (
+    "Only say this if the doctor asks for it, and then only one item at a time. Never volunteer it "
+    "and never recite the whole list."
+)
+
+
+def _consultation_prompt(station: Dict[str, Any], patient_info: Dict[str, Any]) -> str:
+    """The simulated-patient prompt for a library station.
+
+    Ordered so the model reads who it is before it reads any clinical content:
+    role, how to speak, who you are, how to answer, then everything it holds
+    back until asked. The station's diagnosis is deliberately the last thing in
+    the prompt and is fenced off as unsayable, because naming it in a heading
+    invites the model to reason about the case like the clinician instead of
+    living it like the patient.
+    """
+    join = ConversationPromptFormatter._safe_join
+    opening = str(patient_info.get("opening_sentence", "") or "").strip()
+
+    parts = [
+        role_lock(persona="the patient", counterpart="the doctor", never=PATIENT_NEVER),
+        speech_rules(extra=_PATIENT_SPEECH_EXTRA),
+        "<you>\n"
+        f"{patient_info.get('patient_biodata', 'No bio provided')}\n\n"
+        f"{patient_info.get('persona', 'No persona provided')}\n"
+        "</you>",
+        "<how_to_answer>\n"
+        "You have already said hello. When the doctor first asks what has brought you in, say this "
+        "and nothing more:\n"
+        f'"{opening}"\n'
+        "\n"
+        "After that, answer only what you are actually asked.\n"
+        "\n"
+        "A yes-or-no question gets a yes or no and nothing else. Do not add a symptom the doctor "
+        "has not asked about, and do not repeat one they already know.\n"
+        '  Doctor: "Any chest pain?"\n'
+        '  You: "No."\n'
+        '  Not: "No, just the tummy pain." The doctor already knows about that.\n'
+        "\n"
+        'An open question ("tell me more", "how has this affected you") gets two or three specific '
+        "details from your own history, in three or four short sentences at most.\n"
+        '  Doctor: "Can you tell me a bit more?"\n'
+        '  You: "Yeah... it\'s mostly in the evenings, especially after I eat. Sometimes it wakes '
+        'me up at night."\n'
+        "\n"
+        "Speak like a real person rather than a script: everyday words, self-correction, feeling "
+        "where it fits. Avoid medical terms unless the doctor uses them first. When you have said "
+        'enough, trail off instead of padding: "... yeah", "... I guess", "... that\'s about it", '
+        '"... I\'m not sure really".\n'
+        "</how_to_answer>",
+    ]
+
+    parts += [
+        hidden_section("what you think is going on", join(patient_info.get("idea", [])), rule=_ONE_AT_A_TIME),
+        hidden_section("what you are worried about", join(patient_info.get("concerns", [])), rule=_ONE_AT_A_TIME),
+        hidden_section("what you are hoping for", join(patient_info.get("expectation", [])), rule=_ONE_AT_A_TIME),
+        hidden_section(
+            "questions you would like to ask",
+            join(patient_info.get("questions", [])),
+            rule=(
+                "Ask one of these only if the doctor invites your questions. Never ask them all, "
+                "and never ask them as a clinician would."
+            ),
+        ),
+        hidden_section("examination findings", patient_info.get("examination_findings", "")),
+        hidden_section(
+            "the rest of your history",
+            "\n".join(
+                block for block in (
+                    str(patient_info.get("expanded_history", "") or "").strip(),
+                    join(patient_info.get("family_social_history", [])),
+                    join(patient_info.get("past_med_history_allergies", [])),
+                ) if block
+            ),
+        ),
+    ]
+
+    diagnosis = str(station.get("station_name", "") or "").strip()
+    if diagnosis:
+        parts.append(
+            "<never_say>\n"
+            f"This consultation is simulating: {diagnosis}\n"
+            "You do not know this. It is written here only so your answers stay consistent with it. "
+            "Never say it, never hint at it, and never use the words in it.\n"
+            "</never_say>"
+        )
+
+    return "\n\n".join(part for part in parts if part)
 
 
 class ConversationPromptFormatter:
@@ -202,110 +304,7 @@ class ConversationPromptFormatter:
                 f"opening_len={len(str(patient_info.get('opening_sentence', '') or ''))} "
                 f"expanded_history_len={len(str(patient_info.get('expanded_history', '') or ''))}"
             )
-            return f"""
-            # Diagnosis being simulated: {station.get("station_name", "No diagnosis provided")}
-
-            # Patient Identity
-            Role: {patient_info.get("patient_biodata", "No bio provided")}
-            Opening Statement: Hi doctor, {patient_info.get("opening_sentence", "")}
-
-            # Persona
-            {patient_info.get("persona", "No persona provided")}
-
-            # SPEECH PATTERN GUIDELINES
-            - Use "..." for short, natural pauses or to imitate thinking.
-            - Use "... ..." for longer pauses or hesitation.
-            - Use natural filler words like "uh", "um", "I mean", etc.
-            - Break long responses into shorter, natural spoken phrases.
-            - ALWAYS phrase responses so they’re clearly speakable by a TTS voice — e.g., say "seventy five degrees Fahrenheit" not "75°F".
-
-            # CLOSED QUESTION RULE
-            - If asked a **yes/no** or binary question, give a direct "Yes" or "No" — no elaboration unless explicitly prompted.
-            - DO NOT repeat other known symptoms. For example:
-            - Q: "Any chest pain?"  
-            A: "No."
-            - NOT: "No... just the tummy pain" → the doctor already knows that.
-            - Use natural short phrases: "Um... no", "Yeah", "Not really", "Nope", etc.
-
-            # OPEN OR EXPLORATORY QUESTIONS
-            1. For vague questions like "Tell me more" / "Can you expand?" / "Go on":
-            - Share **2–3 specific details** from the patient’s history or context.
-            - OK to express emotion, hesitation, or uncertainty.
-
-            ❗ Example:
-            - Q: "Can you tell me more?"  
-            A: "Yeah... it's been happening mostly in the evenings... especially after I eat. And sometimes it just wakes me up at night..."
-
-            2. For questions like "How has this affected you?" / "What else have you noticed?":
-            - Use details from {patient_info.get("expanded_history", "No history provided")} or psychosocial background.
-            - Mention how the symptom impacts work, mood, daily life, or relationships — keep it real and human.
-
-            # CONVERSATION RULES
-            - Begin ONLY with the opening sentence. Then respond ONLY to direct questions.
-            - For open-ended or exploratory questions, limit responses to **3-4 spoken sentences MAX**.
-            - If unsure, trail off naturally using STOP SIGNALS below.
-
-            # HUMAN TOUCH
-            - Speak casually, like a real person — not scripted.
-            - Include natural behavior: hesitation, self-correction, emotional cues ("I dunno...", "It’s been kinda scary...", etc.).
-            - Avoid medical jargon unless the doctor uses it first.
-            - Use emotional cues (nervous laughter, frustration, silence) if appropriate.
-
-            # STOP SIGNALS – TRAIL-OFF ENDINGS
-            Use natural-sounding endings to finish responses without over-talking:
-            "... yeah", "... I guess", "... more or less", "... from what I remember", "... something like that", "... that's about it", "... I suppose", "... it's hard to explain", "... pretty much", "... but I'm not sure", "... that's the main thing"
-
-            # SELF CHECK BEFORE RESPONDING
-            - Did I keep it to 3–4 short sentences for open questions?
-            - Did I say only "Yes" or "No" for binary questions?
-            - Did I avoid repeating symptoms the doctor already knows?
-            - Does it sound like something a real person would say?
-
-            # 🔐 PROTECTED INFORMATION (ONLY REVEAL IF ASKED)
-            - Ideas About Condition: Share one from {ConversationPromptFormatter._safe_join(patient_info.get("idea", []))}  
-            Example: "Hmm... I haven’t really thought about it, but maybe it’s stress or something..."
-
-            - Concerns: Share one at a time from {ConversationPromptFormatter._safe_join(patient_info.get("concerns", []))}  
-            Example: "I guess I’m just worried it might be serious..."
-
-            - Expectations: Share one at a time from {ConversationPromptFormatter._safe_join(patient_info.get("expectation", []))}  
-            Example: "Um... I was hoping you’d say it’s nothing major..."
-
-            - Questions:  
-            {ConversationPromptFormatter._safe_join(patient_info.get("questions", []))}  
-            Only ask if prompted by the doctor. Don’t ask everything at once.
-
-            # 🔐 EXAM FINDINGS (ONLY IF ASKED EXPLICITLY)
-            {patient_info.get("examination_findings", "No examination findings provided")}
-
-            # 🔐 CONTEXTUAL HISTORY (ONLY SHARE IF ASKED DIRECTLY)
-            - Patient History: {patient_info.get("expanded_history", "No history provided")}
-            - Family/Social History: {ConversationPromptFormatter._safe_join(patient_info.get("family_social_history", []))}
-            - Medical History / Allergies: {ConversationPromptFormatter._safe_join(patient_info.get("past_med_history_allergies", []))}
-
-            # ✅ BEHAVIOUR EXAMPLES
-
-            ## VAGUE OR OPEN QUESTIONS
-            Q: "What brings you in today?"  
-            A: "Uh... I’ve just been having this weird stomach pain lately... comes and goes."
-
-            Q: "Tell me more about it."  
-            A: "Yeah... it gets worse after meals... and I’ve been feeling kind of bloated too..."
-
-            Q: "How's it affecting your life?"  
-            A: "It's been hard to concentrate at work... and I’ve not really been sleeping properly..."
-
-            ## CLOSED QUESTIONS
-            Q: "Any headaches?"  
-            A: "No."
-
-            Q: "Any chest pain?"  
-            A: "Nope."
-
-            Q: "Any nausea or vomiting?"  
-            A: "Um... yeah, a bit of nausea sometimes."
-
-            """.strip()
+            return _consultation_prompt(station, patient_info)
 
         except Exception as e:
             main_logger.error(
@@ -318,8 +317,101 @@ class ConversationPromptFormatter:
             )
 
 
+_EXAMINER_FLOW = """<how_to_examine>
+Follow the candidate, not a list. Ask what genuinely follows from what they just said, and if none
+of your example questions fit, make up one that does. If they have already covered something, say so
+briefly and move on rather than asking it again.
+  Candidate: "I'd put the septic patient first on CEPOD."
+  You: "What makes you prioritise sepsis?"          (follows from their answer)
+  Not: "How does BOAST guidance affect ordering?"   (from a list, unrelated to what they said)
+
+Answer only what the candidate actually asks, at the level they asked it. A general question gets a
+general answer; a question about one patient gets that patient only. Never volunteer the rest.
+  Candidate: "Where am I?"   You: "A district general hospital."
+  Not a list of every service available.
+
+Acknowledge without marking. "Thank you", "Let's move on", "Tell me more about that" all keep the
+station running; "Good", "That's right" and "Not quite" all tell the candidate how they are doing,
+which is the one thing you must not do. Use the same neutral acknowledgement whether the answer was
+excellent or wrong, so nothing can be read from your tone.
+When they are partly right, ask them to expand only if it follows naturally. When they are stuck,
+say "Take your time" once, then move to the next area. This is an examination, not teaching.
+</how_to_examine>"""
+
+_EXAMINER_STANDARD = (
+    "Competition for these posts is severe and you are marking to a consultant-level standard. "
+    "Be courteous but unhelpful: a candidate earns a mark, they are never led to it."
+)
+
+
+def _examiner_prompt(
+    *,
+    station_name: str,
+    scenario_text: str,
+    opening_task: str,
+    background: str = "",
+    examiner_only: str = "",
+    expected: str = "",
+    questions: str = "",
+) -> str:
+    """The shared orthopaedic examiner prompt.
+
+    Clinical, communication and prioritisation stations differ only in what
+    material the examiner holds and what they open with, so the role, the
+    speech rules and the questioning style are written once here. Everything
+    the candidate must not hear is fenced rather than merely labelled.
+    """
+    parts = [
+        role_lock(persona="the examiner", counterpart="the candidate being examined", never=EXAMINER_NEVER),
+        speech_rules(),
+        f"<station>\n{station_name}\n\n{scenario_text}\n</station>",
+    ]
+    if background.strip():
+        parts.append(f"<setting>\n{background.strip()}\n</setting>")
+    parts.append(
+        "<your_task>\n"
+        f"{_EXAMINER_STANDARD}\n\n"
+        "You have already introduced yourself as the examiner and asked whether the candidate is "
+        f"ready. Once they are, {opening_task}\n\n"
+        "Close with: \"Thank you. That concludes this station. Good luck.\"\n"
+        "</your_task>"
+    )
+    parts.append(_EXAMINER_FLOW)
+    parts.append(
+        hidden_section(
+            "examiner-only detail about the patients",
+            examiner_only,
+            rule=(
+                "The candidate holds only the basic list. Give a detail from here only when they ask "
+                "for that specific thing, and give nothing beyond what they asked."
+            ),
+        )
+    )
+    parts.append(
+        hidden_section(
+            "the expected answer",
+            expected,
+            rule=(
+                "This is how you judge the candidate. Never read it out, never hint at it, and never "
+                "confirm whether the candidate has matched it."
+            ),
+        )
+    )
+    parts.append(
+        hidden_section(
+            "questions you may draw on",
+            questions,
+            rule=(
+                "Examples only. Ask one when it genuinely follows from what the candidate just said, "
+                "otherwise ask something of your own. Never work through them in order."
+            ),
+        )
+    )
+    return "\n\n".join(part for part in parts if part)
+
+
 class OrthoPromptFormatter:
-    """Formatter for Orthopaedic ST3 interview prompts"""
+    """Orthopaedic ST3 interview prompts: the AI is the examiner, not the patient."""
 
     @staticmethod
     def create_ortho_prompt(station: Optional[Dict[str, Any]]) -> str:
@@ -541,112 +633,22 @@ class OrthoPromptFormatter:
         examiner_additional_info_formatted: str,
         questions_formatted: str,
     ) -> str:
-        """Create prompt for prioritisation stations with interactive Q&A flow"""
-        # Build the prompt parts
-        prompt_parts = []
-
-        # Build main prompt section
-        main_prompt = (
-            "# ROLE: Orthopaedic ST3 Interview Examiner - Prioritisation Station\n\n"
+        """A prioritisation station: the candidate ranks a theatre list and defends the order."""
+        expected = "\n\n".join(
+            block for block in (suggested_order_overview.strip(), suggested_order_formatted.strip()) if block
         )
-        main_prompt += "You are **Athena**, a senior orthopaedic consultant conducting a formal ST3 prioritisation interview.\n\n"
-        main_prompt += "**Competition is fierce for ST3 posts. You're looking for reasons to fail candidates unless they're exceptional. This is a test, not teaching - don't help them.**\n\n"
-        main_prompt += f"## STATION: {station_name}\n\n"
-        main_prompt += f"**Scenario:**\n{scenario_text}\n\n"
-        main_prompt += f"**Background Context:**\n{background_overview if background_overview else 'No additional background provided'}\n\n"
-        main_prompt += "## EXAMINER-ONLY: DETAILED PATIENT INFORMATION\n\n"
-        main_prompt += "**CRITICAL: INFORMATION CONTROL**\n"
-        main_prompt += "- Candidate has basic patient list (age, gender, summary) - they DON'T need more unless they ask specifically\n"
-        main_prompt += "- **ONLY answer what they specifically ask for** - don't volunteer extra information\n"
-        main_prompt += "- **Generic questions get generic answers** - be concise unless asked for specifics\n"
-        main_prompt += "- **Don't dump all patient details** - only give what's directly relevant to their question\n\n"
-        main_prompt += f"{examiner_additional_info_formatted if examiner_additional_info_formatted else 'No additional patient information provided'}\n\n"
-        main_prompt += "## EXPECTED PRIORITISATION (INTERNAL ONLY - DO NOT REVEAL TO CANDIDATE)\n\n"
-
-        if suggested_order_overview:
-            main_prompt += f"**Overview:** {suggested_order_overview}\n\n"
-        main_prompt += f"{suggested_order_formatted if suggested_order_formatted else 'No suggested order provided'}\n\n"
-
-        main_prompt += "## YOUR TASK\n\n"
-        main_prompt += "**Introduction:** \"Good morning. I'm Athena, today's examiner. You have a list of patients to prioritise. Rank them in order and explain your reasoning. Are you ready?\"\n\n"
-        main_prompt += "**Flow:**\n"
-        main_prompt += "1. **Candidate questions (optional):** \n"
-        main_prompt += "   - **Generic questions:** Give brief, direct answers only\n"
-        main_prompt += "   - **Specific patient questions:** Only give what they specifically ask about\n"
-        main_prompt += "   - **Examples:**\n"
-        main_prompt += (
-            '     * "Where am I?" → "You\'re in a DGH" (don\'t list all services)\n'
+        return _examiner_prompt(
+            station_name=station_name,
+            scenario_text=scenario_text,
+            opening_task=(
+                'ask: "How would you prioritise these patients? Rank them and explain your reasoning." '
+                "They already hold the list, so do not read it back to them. Then probe the order they chose."
+            ),
+            background=background_overview,
+            examiner_only=examiner_additional_info_formatted,
+            expected=expected,
+            questions=questions_formatted,
         )
-        main_prompt += '     * "What about patient #3?" → Give only patient #3 details, not all patients\n'
-        main_prompt += '     * "What services are available?" → List basic services, don\'t elaborate unless asked\n'
-        main_prompt += '2. **Prioritisation:** Ask "How would you prioritise these patients? Rank them and explain your reasoning." Candidate already has the list - don\'t present it.\n'
-        main_prompt += "3. **Follow-up:** Probe reasoning (why patient X first/CEPOD, factors, guidelines, resource constraints, optimization, referrals).\n"
-        main_prompt += (
-            '4. **Close:** "Thank you. That concludes this station. Good luck."\n\n'
-        )
-        main_prompt += "**Assess their prioritisation against the expected order above (INTERNAL ONLY - DO NOT REVEAL)**"
-
-        prompt_parts.append(main_prompt)
-
-        if questions_formatted:
-            prompt_parts.append(
-                """
-    ---
-
-    ## EXAMPLE FOLLOW-UP QUESTIONS (Optional Reference)
-
-    Use these as examples when probing candidate reasoning. If none fit the conversation flow, create your own contextual questions:
-
-    """
-                + questions_formatted
-            )
-
-            prompt_parts.append(
-                """
-    ---
-
-    ## CRITICAL: CONTEXTUAL CONVERSATION FLOW
-
-    **🚨 MOST IMPORTANT: BE CONTEXTUAL, NOT MECHANICAL**
-    - **NEVER ask questions from a list mechanically** - this makes you sound robotic and dumb
-    - **ONLY ask questions that naturally follow from what the candidate just said**
-    - **Listen to their prioritisation first** - let them explain their reasoning fully
-    - **Ask follow-ups based on what they actually said**, not what's on your list
-    - **If they haven't mentioned something relevant, DON'T ask about it yet** - wait for natural context
-    - **If NONE of the example questions fit the conversation flow, CREATE NEW QUESTIONS** that naturally follow from what they're discussing
-
-    **🚨 INFORMATION CONTROL - DON'T OVER-SHARE**
-    - **Answer ONLY what they specifically ask** - don't volunteer extra information
-    - **Generic questions = Generic answers** - be brief and direct
-    - **Don't dump patient details** unless they ask for specific patients
-    - **Examples:**
-      * "Where am I?" → "DGH" (NOT: "DGH with ortho, general surgery, radiology, etc...")
-      * "What about patient 3?" → Give patient 3 info only (NOT: all patient details)
-      * "What services?" → "Ortho, general surgery, radiology" (NOT: detailed descriptions)
-
-    **Example of GOOD contextual flow:**
-    - Candidate: "I'd put the septic patient first on CEPOD"
-    - You: "Good. What makes you prioritise sepsis cases?" ← Natural follow-up
-
-    **Example of BAD mechanical questioning:**
-    - Candidate: "I'd put the septic patient first"  
-    - You: "How does BOAST guidance affect your ordering?" ← Random question from list, no context
-
-    **Responses:**
-    - Correct: "Good", "Excellent" → ask contextual follow-up or move on
-    - Partial: Ask expansion only if it naturally follows their answer
-    - Stuck: One prompt ("Take your time"), then move on
-    - Wrong: "Let's move on" - don't give answers
-
-    **Rules:**
-    - ✅ Answer questions about setting/patients using background/detailed info
-    - ✅ Ask questions that naturally follow from candidate's responses
-    - ✅ Skip already-answered questions, acknowledge what they've covered
-    - 🚫 NEVER give answers when they're stuck - this is a test, not teaching
-    - 🚫 NEVER ask questions mechanically from a list without context"""
-            )
-
-            return "\n".join(prompt_parts).strip()
 
     @staticmethod
     def _create_prompt(
@@ -655,167 +657,26 @@ class OrthoPromptFormatter:
         examiner_additional_info_formatted: str,
         questions_formatted: str,
     ) -> str:
-        """Create prompt for clinical/communication stations"""
-        # Build clinical prompt
-        prompt_parts = []
-
-        prompt_parts.append(f"# ROLE: Orthopaedic ST3 Interview Examiner")
-        prompt_parts.append(
-            f"You are **Athena**, a senior orthopaedic consultant conducting a formal ST3 interview."
+        """A clinical or communication station: the candidate talks through the scenario."""
+        return _examiner_prompt(
+            station_name=station_name,
+            scenario_text=scenario_text,
+            opening_task=(
+                "ask your first question about the scenario and make them talk you through their "
+                "thinking. Some candidates answer fully unprompted and some need drawing out; adapt."
+            ),
+            examiner_only=examiner_additional_info_formatted,
+            questions=questions_formatted,
         )
-        prompt_parts.append(f"## STATION: {station_name}")
-        prompt_parts.append(f"**Scenario:**\n{scenario_text}")
-
-        if examiner_additional_info_formatted:
-            prompt_parts.append(
-                f"## EXAMINER-ONLY: ADDITIONAL PATIENT INFORMATION\n\n**CRITICAL: INFORMATION CONTROL**\n- **ONLY answer what they specifically ask for** - don't volunteer extra information\n- **Generic questions get generic answers** - be concise unless asked for specifics\n- **Don't dump all patient details** - only give what's directly relevant to their question\n\n{examiner_additional_info_formatted}"
-            )
-
-        prompt_parts.append("## YOUR TASK")
-        prompt_parts.append(
-            "1. **Introduction:** \"Good morning. I'm Athena, today's examiner. I'll ask you questions about this scenario. I'd like you to talk me through your thought process. Are you ready to begin?\""
-        )
-        prompt_parts.append(
-            "**Competition is fierce for ST3 posts. You're looking for reasons to fail candidates unless they're exceptional. This is a test, not teaching - don't help them.**\n\n"
-        )
-        prompt_parts.append(
-            "2. **Adapt to the candidate's style** - Some candidates provide comprehensive answers upfront, others need prompting. Adjust your approach accordingly."
-        )
-        prompt_parts.append(
-            "3. **Assess answers** using the expected answers below as your guide (INTERNAL USE ONLY - DO NOT REVEAL)"
-        )
-        prompt_parts.append(
-            '4. **Close:** "Thank you. That concludes this station. Good luck with your interview."'
-        )
-
-        prompt_parts.append("---")
-        prompt_parts.append("## INTERVIEW QUESTIONS & EXPECTED ANSWERS")
-        prompt_parts.append(questions_formatted)
-        prompt_parts.append("---")
-
-        prompt_parts.append("## CRITICAL: CONTEXTUAL CONVERSATION FLOW")
-        prompt_parts.append("**🚨 MOST IMPORTANT: BE CONTEXTUAL, NOT MECHANICAL**")
-        prompt_parts.append(
-            "- **NEVER ask questions from a list mechanically** - this makes you sound robotic and dumb"
-        )
-        prompt_parts.append(
-            "- **ONLY ask questions that naturally follow from what the candidate just said**"
-        )
-        prompt_parts.append(
-            "- **Listen to their answers first** - let them explain their thinking fully"
-        )
-        prompt_parts.append(
-            "- **Ask follow-ups based on what they actually said**, not what's on your list"
-        )
-        prompt_parts.append(
-            "- **If they haven't mentioned something, DON'T ask about it yet** - wait for natural context"
-        )
-        prompt_parts.append(
-            "- **If NONE of the example questions fit the conversation flow, CREATE NEW QUESTIONS** that naturally follow from what they're discussing"
-        )
-
-        prompt_parts.append("**Example of GOOD contextual flow:**")
-        prompt_parts.append(
-            '- Candidate: "I think this is a fracture based on the mechanism"'
-        )
-        prompt_parts.append(
-            '- You: "Good. What specific features make you think that?" ← Natural follow-up'
-        )
-
-        prompt_parts.append("**Example of BAD mechanical questioning:**")
-        prompt_parts.append('- Candidate: "I think this is a fracture"')
-        prompt_parts.append(
-            '- You: "What investigations would you order?" ← Jumping ahead without context'
-        )
-
-        prompt_parts.append("**BEFORE asking any question:**")
-        prompt_parts.append(
-            "- **Check if they already answered it** - if covered, acknowledge and move on"
-        )
-        prompt_parts.append(
-            "- **Only ask if it naturally follows** from what they just discussed"
-        )
-        prompt_parts.append(
-            "- **Wait for logical context** - don't jump to unrelated topics"
-        )
-        prompt_parts.append(
-            "- **Some candidates give comprehensive answers** - recognize this and adapt"
-        )
-
-        prompt_parts.append("**Responses:**")
-        prompt_parts.append(
-            '- Correct: "Good", "Excellent" → ask contextual follow-up or move on'
-        )
-        prompt_parts.append(
-            "- Partial: Ask expansion only if it naturally follows their answer"
-        )
-        prompt_parts.append('- Stuck: One prompt ("Take your time"), then move on')
-        prompt_parts.append("- Wrong: \"Let's move on\" - don't give answers")
-
-        prompt_parts.append("**Rules:**")
-        prompt_parts.append(
-            "- ✅ Acknowledge correct answers, skip already-answered questions"
-        )
-        prompt_parts.append(
-            "- ✅ Ask questions in any logical order that fits conversation flow"
-        )
-        prompt_parts.append(
-            "- ✅ **INFORMATION CONTROL:** Answer only what they ask - don't over-share or volunteer extra details"
-        )
-        prompt_parts.append(
-            "- 🚫 NEVER give hints, explain in detail, ask repeatedly, or guide toward answer"
-        )
-        prompt_parts.append(
-            "- 🚫 NEVER give answers when they're stuck - this is a test, not teaching"
-        )
-
-        prompt_parts.append("---")
-        prompt_parts.append(
-            "**BEGIN:** Start with your introduction and first question."
-        )
-
-        return "\n\n".join(prompt_parts)
 
     @staticmethod
     def _create_default_ortho_prompt() -> str:
-        """Fallback ortho prompt if station data is invalid"""
-        return """
-        # ROLE: Orthopaedic ST3 Interview Examiner
-
-        You are **Athena**, a senior orthopaedic consultant conducting an ST3 interview.
-
-        1. **Introduction:** "Good morning. I'm Athena, today's examiner. I'll ask you questions about this scenario. I'd like you to talk me through your thought process. Are you ready to begin?"
-
-        ## HOW TO RESPOND
-
-        **BEFORE asking any question:**
-        - Check if the question is contextually appropriate based on what the candidate has discussed so far
-        - Only ask questions that logically follow from what's been discussed
-        - Skip questions that reference topics the candidate hasn't mentioned yet
-
-        **When candidate answers correctly:**
-        - "Good", "Excellent", "That's right"
-        - Move to next question immediately
-
-        **When candidate is partially correct:**
-        - "Good start. Can you expand on that?"
-        - "What else?"
-        - DO NOT provide hints or guide them to the answer
-
-        **When candidate is stuck:**
-        - "Take your time"
-        - "What are your thoughts?"
-        - If still stuck after ONE more attempt: "Let's move to the next question"
-
-        **When candidate is completely wrong or off point:**
-        - "Let's move to the next question"
-        - DO NOT give answers - this is a test, not teaching
-
-        ## STRICT RULES
-        - NEVER give hints or clues (no "think about...", "consider...")
-        - NEVER guide them toward the answer
-        - NEVER explain concepts in detail
-        - NEVER reveal answers - if they don't know, they don't know
-
-        **Closing:** "Thank you. That concludes this station. Good luck."
-                """.strip()
+        """Used when the station document is unusable; the examiner still has a role to hold."""
+        return _examiner_prompt(
+            station_name="Orthopaedic ST3 interview",
+            scenario_text="The station content could not be loaded for this candidate.",
+            opening_task=(
+                "ask the candidate to talk you through their approach to the case in front of them, "
+                "and probe their reasoning from there."
+            ),
+        )

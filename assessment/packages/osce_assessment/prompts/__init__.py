@@ -5,8 +5,11 @@ which text applies to whom. A consumer picks a prompt id through its
 ``EvaluationPolicy`` or its own configuration, and the formatters turn a
 scenario or a stored document into finished instructions.
 
-The formatters were ported verbatim from the legacy workers; the snapshot tests
-prove they render byte-identical output.
+Every live persona is built from the shared blocks in ``_blocks`` so the role
+wording cannot drift apart between them, and opens by naming the role it is
+cast in. A per-turn reminder was tried on top of that and measured on two
+personas: it bought nothing on the simulated patient and made the consulting
+doctor worse, so the role lives in the prompt alone.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ from .debrief_feedback import (
 from .debrief_management_plan import ManagementPlanFormatter
 from .debrief_prompt import DebriefPromptFormatter
 from .debrief_transcript import TranscriptFormatter
+from .greetings import DEBRIEF_GREETING, EXAMINER_GREETINGS, PATIENT_GREETINGS
 from .library_station import ConversationPromptFormatter, OrthoPromptFormatter
 from .org_station import OrgStationPromptFormatter, create_org_station_prompt
 
@@ -84,6 +88,9 @@ def render_user_prompt(*, station_name: str, transcript: str) -> str:
 
 
 __all__ = [
+    "DEBRIEF_GREETING",
+    "EXAMINER_GREETINGS",
+    "PATIENT_GREETINGS",
     "USER_PROMPT_TEMPLATE_ID",
     "AthenaDoctorFormatter",
     "DashboardFeedbackPromptFormatter",
