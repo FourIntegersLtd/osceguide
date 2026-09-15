@@ -14,6 +14,16 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
+# Cloudflare in front of a backend rejects urllib's default "Python-urllib/x.y"
+# User-Agent outright (error 1010), so every worker request identifies itself.
+USER_AGENT = "osceguide-voice-worker/1"
+
+
+def request_headers(headers: dict[str, str] | None = None) -> dict[str, str]:
+    merged = {"User-Agent": USER_AGENT}
+    merged.update(headers or {})
+    return merged
+
 
 class WorkerApiAuthError(RuntimeError):
     """Worker route rejected credentials (401/403)."""
@@ -38,7 +48,7 @@ def sync_get_json(
 ) -> SyncGetResult:
     qs = f"?{urllib.parse.urlencode(query)}" if query else ""
     url = f"{base_url.rstrip('/')}{path}{qs}"
-    req = urllib.request.Request(url, headers=dict(headers or {}), method="GET")
+    req = urllib.request.Request(url, headers=request_headers(headers), method="GET")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
@@ -59,7 +69,7 @@ async def post_json(
     headers: dict[str, str] | None = None,
     timeout: float = 5.0,
 ) -> int:
-    req_headers = {"Content-Type": "application/json", **(headers or {})}
+    req_headers = request_headers({"Content-Type": "application/json", **(headers or {})})
     async with aiohttp.ClientSession() as session:
         async with session.post(
             url,
@@ -84,7 +94,9 @@ def sync_post_json(
     """POST and read a JSON object back; callers keep it off the audio loop with ``asyncio.to_thread``."""
     url = f"{base_url.rstrip('/')}{path}"
     body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+    req = urllib.request.Request(
+        url, data=body, headers=request_headers({"Content-Type": "application/json", **(headers or {})}), method="POST"
+    )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
