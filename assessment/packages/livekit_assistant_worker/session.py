@@ -24,7 +24,6 @@ from .gpt_live_policy import register_gpt_live_session_policy
 from .metadata import MetadataError, parse_dispatch_metadata
 from .runtime_policy import VoiceRuntime, select_voice_runtime
 from .speech import build_assistant_llm, build_assistant_tts
-from .tools.help_search import build_search_help_faqs_tool
 from .tools.navigation_mode import build_offer_navigation_modes_tool
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
 from .ui_guidance import NavigationModeState, build_anthropic_computer_tool, is_ui_guidance_enabled
@@ -100,8 +99,6 @@ class AssistantVoiceSession:
 
     def _tools_for(self, ctx: Any, session: AssistantSession) -> list:
         tools: list = []
-        if session.help_corpus is not None:
-            tools.append(build_search_help_faqs_tool(session.help_corpus))
         if session.mode.ui_guidance and session.extras.screen_ui_guidance:
             tools.append(build_offer_navigation_modes_tool(ctx))
             if is_ui_guidance_enabled():

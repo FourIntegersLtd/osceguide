@@ -27,13 +27,13 @@ def test_metadata_accepts_both_spellings_and_requires_session_and_backend() -> N
 
 def test_bootstrap_parses_every_mode_and_ignores_unknown_keys() -> None:
     session = parse_bootstrap({"session": {"session_id": "s", "worker_type": "help", "candidate_ref": "u1", "instructions": "Help.", "extras": {"screen_ui_guidance": True, "voice_help_intent": "guide", "app_type": "sca"}, "app_type": "sca",
-                                           "help_corpus": {"entries": [{"section": "A", "question": "Q?", "answer": "A."}], "no_match_message": "Say no."},
+                                           "help_corpus": {"entries": []},  # older backends still send this; it is ignored
                                            "gpt_live": {"voice": "v", "backend": "b", "opening": "o"}}})
     assert isinstance(session, AssistantSession)
     assert session.extras.screen_ui_guidance is True and session.extras.voice_help_intent == "guide"
-    assert session.greeting is None and session.help_corpus.entries[0].question == "Q?" and session.gpt_live.opening == "o"
+    assert session.greeting is None and session.gpt_live.opening == "o" and not hasattr(session, "help_corpus")
     dashboard = parse_bootstrap({"session": {"session_id": "s", "worker_type": "dashboard", "instructions": "Rendered by the backend."}})
-    assert dashboard.instructions == "Rendered by the backend." and dashboard.help_corpus is None and dashboard.gpt_live is None
+    assert dashboard.instructions == "Rendered by the backend." and dashboard.gpt_live is None
 
 
 @pytest.mark.parametrize("bad", [

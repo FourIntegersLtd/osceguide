@@ -53,13 +53,13 @@ persona maps that name at its own boundary). It never imports the engine's runti
 Dispatch metadata is `{"session_id", "backend", "candidate_ref"}`. The worker
 fetches `GET /api/worker/assistant-sessions/{session_id}` →
 `{"session": {session_id, worker_type, candidate_ref, instructions, greeting?,
-help_corpus?, gpt_live?, extras}}`. Every text the model is given arrives
-rendered from the backend: `instructions` is required for every mode,
-`greeting` is the opening line (without one the model opens by itself),
-`help_corpus` (`{entries: [{section, question, answer}], no_match_message}`)
-enables the FAQ search tool over that content, and `gpt_live`
-(`{voice, backend, opening}`) makes speech-to-speech possible. The worker
-holds no FAQ content and no session prompt of its own. Which content the
+gpt_live?, extras}}`. Every text the model is given arrives rendered from the
+backend: `instructions` is required for every mode and, for help sessions,
+already contains the full FAQ (the model reads every entry itself; there is no
+search tool), `greeting` is the opening line (without one the model opens by
+itself), and `gpt_live` (`{voice, backend, opening}`) makes speech-to-speech
+possible, its `backend` text carrying the same FAQ. The worker holds no FAQ
+content and no session prompt of its own. Which content the
 backend renders is the backend's decision from the client profile the
 frontend declared when it asked for the session (surface, exam, current
 route, navigation catalog); the worker sees only the result. Onboarding scene
@@ -266,7 +266,8 @@ Differences from the legacy workers to keep in mind:
   candidate who refreshes mid-session starts a new session (B2B re-dispatches on
   every turn switch already).
 - Only assessment sessions stream per-turn chunks; help posts its transcript
-  once at the end. `search_help_faqs` exists only on help sessions.
+  once at the end. Help answers come from the FAQ rendered into the
+  instructions; there is no FAQ search tool.
 - The assessment worker waits up to 120s for the candidate
   (`LIVEKIT_ASSESSMENT_CANDIDATE_TIMEOUT_S`); the assistant worker 30s.
 - B2C assessment sessions default to the self-hosted agent

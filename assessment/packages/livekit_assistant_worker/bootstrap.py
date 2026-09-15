@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from voice_infra import BackendEndpoints
 from voice_infra.backend_http import sync_get_json, sync_post_json
 
-from .help_corpus import HelpCorpus
 from .metadata import SCENE_PATH_TEMPLATE, DispatchMetadata
 from .modes import ModeProfile, WorkerType, mode_profile
 
@@ -41,9 +40,10 @@ class GPTLiveInstructions(BaseModel):
 class AssistantSession(BaseModel):
     """What the worker needs to run one assistant session; every text arrives rendered.
 
-    ``instructions`` is required. ``greeting`` is the backend's opening line;
-    without one the model generates its own opening. ``help_corpus`` enables
-    the FAQ search tool; ``gpt_live`` makes speech-to-speech possible.
+    ``instructions`` is required and, for help sessions, already carries the
+    FAQ answers. ``greeting`` is the backend's opening line; without one the
+    model generates its own opening. ``gpt_live`` makes speech-to-speech
+    possible.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -53,7 +53,6 @@ class AssistantSession(BaseModel):
     candidate_ref: str = ""
     instructions: str = Field(min_length=1)
     greeting: str | None = None
-    help_corpus: HelpCorpus | None = None
     gpt_live: GPTLiveInstructions | None = None
     extras: AssistantExtras = Field(default_factory=AssistantExtras)
 
