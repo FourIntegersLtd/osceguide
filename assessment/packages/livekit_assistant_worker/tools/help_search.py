@@ -23,7 +23,7 @@ async def run_search_help_faqs(context: RunContext, corpus: HelpCorpus, query: s
     agent_tool_log(f"TOOL_CALL tool={TOOL_NAME} phase=start query_chars={len(query or '')}")
     try:
         async with context.with_filler(filler_line, **filler_kwargs()):
-            formatted, match_count = search(corpus, query, limit=3)
+            formatted, match_count = search(corpus, query)
         agent_tool_log(f"TOOL_CALL tool={TOOL_NAME} phase=done match_count={match_count} payload_chars={len(formatted)}")
         return formatted
     except Exception as e:

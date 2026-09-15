@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 _STOPWORDS = frozenset({
     "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "how", "do", "i", "is", "are", "my", "me",
     "can", "where", "what", "when", "this", "that", "it", "be", "there", "here", "get", "find",
+    "who", "why", "which",
 })
 
 EMPTY_QUERY_MESSAGE = "No search query provided. Ask the user to repeat their question."
@@ -31,6 +32,12 @@ class HelpCorpus(BaseModel):
 
     entries: tuple[FaqEntry, ...] = ()
     no_match_message: str = Field(default="Tell the user you cannot answer from the FAQ list.")
+    # Names the backend knows are boilerplate in questions (its product, its persona):
+    # the model tends to append them to queries, and they must not outrank the subject.
+    boilerplate: tuple[str, ...] = ()
+
+    def boilerplate_tokens(self) -> frozenset[str]:
+        return frozenset(t for phrase in self.boilerplate for t in _tokenize(phrase))
 
 
 def _tokenize(text: str) -> set[str]:
@@ -42,7 +49,7 @@ def _tokenize(text: str) -> set[str]:
     return tokens
 
 
-def score(query: str, entry: FaqEntry) -> float:
+def score(query: str, entry: FaqEntry, *, ignore: frozenset[str] = frozenset()) -> float:
     query_norm = query.strip().lower()
     if not query_norm:
         return 0.0
@@ -56,6 +63,8 @@ def score(query: str, entry: FaqEntry) -> float:
         total += 6.0
 
     query_tokens = _tokenize(query_norm)
+    # Drop boilerplate only when something else is left: "what is <product>" must still match.
+    query_tokens = (query_tokens - ignore) or query_tokens
     if not query_tokens:
         return total
     total += len(query_tokens & _tokenize(question_norm)) * 4.0
@@ -69,12 +78,14 @@ def score(query: str, entry: FaqEntry) -> float:
     return total
 
 
-def search(corpus: HelpCorpus, query: str, *, limit: int = 3) -> tuple[str, int]:
+def search(corpus: HelpCorpus, query: str, *, limit: int = 5) -> tuple[str, int]:
     """Up to ``limit`` best entries formatted for the model, and how many matched."""
     cleaned = (query or "").strip()
     if not cleaned:
         return EMPTY_QUERY_MESSAGE, 0
-    ranked = sorted(((score(cleaned, e), e) for e in corpus.entries if score(cleaned, e) > 0), key=lambda item: item[0], reverse=True)
+    ignore = corpus.boilerplate_tokens()
+    scored = ((score(cleaned, e, ignore=ignore), e) for e in corpus.entries)
+    ranked = sorted((item for item in scored if item[0] > 0), key=lambda item: item[0], reverse=True)
     top = ranked[: max(1, limit)]
     if not top:
         return f"{NO_MATCH_PREFIX} {corpus.no_match_message}".strip(), 0
