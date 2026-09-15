@@ -8,7 +8,7 @@ import pytest
 
 from livekit_assistant_worker import agent_factory
 from livekit_assistant_worker.agent_factory import build_assistant_agent
-from livekit_assistant_worker.prompts.gpt_live import GPTLiveInstructions
+from livekit_assistant_worker.bootstrap import GPTLiveInstructions
 from livekit_assistant_worker.runtime_policy import VoiceRuntime, select_voice_runtime
 
 
@@ -18,6 +18,7 @@ def test_gpt_live_only_for_faq_help_with_credentials(monkeypatch) -> None:
     assert select_voice_runtime(worker_type="onboarding", voice_help_intent=None, screen_ui_guidance=False) is VoiceRuntime.PIPELINE
     for intent, screen in (("guide", True), ("guide", False), ("faq", True)):
         assert select_voice_runtime(worker_type="help", voice_help_intent=intent, screen_ui_guidance=screen) is VoiceRuntime.PIPELINE
+    assert select_voice_runtime(worker_type="help", voice_help_intent="faq", screen_ui_guidance=False, gpt_live_offered=False) is VoiceRuntime.PIPELINE
     monkeypatch.delenv("OPENAI_API_KEY")
     assert select_voice_runtime(worker_type="help", voice_help_intent="faq", screen_ui_guidance=False) is VoiceRuntime.PIPELINE
 
@@ -60,25 +61,17 @@ def test_gpt_live_build_requires_instructions() -> None:
         build_assistant_agent(runtime=VoiceRuntime.GPT_LIVE, pipeline_instructions="", pipeline_tools=[], pipeline_llm=MagicMock(), pipeline_tts=MagicMock(), max_tool_steps=1, userdata=None, gpt_live_instructions=None)
 
 
-def test_speech_choices_by_session_type(monkeypatch) -> None:
+def test_speech_choices_come_from_the_mode_table(monkeypatch) -> None:
     from livekit_assistant_worker import speech
+    from livekit_assistant_worker.modes import WorkerType, mode_profile
 
-    anthropic_llm, openai_llm = MagicMock(name="anthropic.LLM"), MagicMock(name="openai.LLM")
-    monkeypatch.setattr(speech.anthropic, "LLM", anthropic_llm)
-    monkeypatch.setattr(speech.openai, "LLM", openai_llm)
-    monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: ("fallback", models))
-    speech.build_assistant_llm("help")
-    anthropic_llm.assert_called_with(model="claude-haiku-4-5")
-    speech.build_assistant_llm("athena-doctor")
-    openai_llm.assert_called_with(model="gpt-4o")
-    speech.build_assistant_llm("dashboard")
-    openai_llm.assert_called_with(model="gpt-4o-mini")
-
-    openai_tts, deepgram, cartesia = MagicMock(return_value="openai"), MagicMock(return_value="deepgram"), MagicMock(return_value="cartesia")
-    monkeypatch.setattr(speech.openai, "TTS", openai_tts)
-    monkeypatch.setattr(speech.deepgram_tts, "TTS", deepgram)
-    monkeypatch.setattr(speech.cartesia, "TTS", cartesia)
-    monkeypatch.setattr(speech.tts, "FallbackAdapter", lambda providers: providers)
-    assert speech.build_assistant_tts("help", voice_help_intent="faq") == ["openai", "deepgram", "cartesia"]
-    assert speech.build_assistant_tts("help", voice_help_intent="guide") == ["deepgram", "openai", "cartesia"]
-    assert speech.build_assistant_tts("dashboard") == ["deepgram", "openai", "cartesia"]
+    monkeypatch.setattr(speech, "build_vision_llm", lambda: "vision")
+    monkeypatch.setattr(speech, "build_llm", lambda role: f"llm:{role}")
+    monkeypatch.setattr(speech, "build_tts", lambda role, **kw: (role, kw["primary"]))
+    assert speech.build_assistant_llm(mode_profile(WorkerType.HELP)) == "vision"
+    assert speech.build_assistant_llm(mode_profile(WorkerType.ONBOARDING)) == "vision"
+    assert speech.build_assistant_llm(mode_profile(WorkerType.CONSULTING_DOCTOR)) == "llm:tutor"
+    assert speech.build_assistant_llm(mode_profile(WorkerType.DASHBOARD)) == "llm:patient"
+    assert speech.build_assistant_tts(mode_profile(WorkerType.HELP), voice_help_intent="faq") == ("tutor", "openai")
+    assert speech.build_assistant_tts(mode_profile(WorkerType.HELP), voice_help_intent="guide") == ("tutor", "deepgram")
+    assert speech.build_assistant_tts(mode_profile(WorkerType.DASHBOARD)) == ("tutor", "deepgram")

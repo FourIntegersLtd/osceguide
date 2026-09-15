@@ -1,4 +1,4 @@
-"""What a dispatching backend must put in the job metadata."""
+"""What a dispatching backend must put in the job metadata, and the routes it must serve."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 BOOTSTRAP_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}"
+SCENE_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/scene"
 TRANSCRIPT_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/transcript"
 COMPLETION_PATH_TEMPLATE = "/api/worker/sessions/{session_id}/complete"
 

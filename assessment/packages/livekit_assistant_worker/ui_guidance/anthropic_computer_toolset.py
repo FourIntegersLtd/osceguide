@@ -14,6 +14,7 @@ import json
 from livekit.agents import JobContext
 
 from livekit_assistant_worker.ui_guidance.base_computer_toolset import BaseComputerTool
+from livekit_assistant_worker.ui_guidance.navigation import NavigationModeState
 
 
 class AnthropicComputerTool(BaseComputerTool):
@@ -35,6 +36,6 @@ class AnthropicComputerTool(BaseComputerTool):
         }])
 
 
-def build_anthropic_computer_tool(ctx: JobContext, worker_type: str):
+def build_anthropic_computer_tool(ctx: JobContext, worker_type: str, navigation: NavigationModeState | None = None):
     """Creates an AnthropicComputerTool and returns the function_tool-decorated callable."""
-    return AnthropicComputerTool(ctx, worker_type).as_function_tool()
+    return AnthropicComputerTool(ctx, worker_type, navigation).as_function_tool()

@@ -6,8 +6,6 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-BOOTSTRAP_PATH_TEMPLATE = "/api/worker/attempts/{attempt_id}"
-
 
 class MetadataError(ValueError):
     """Job metadata is missing or malformed."""
@@ -17,11 +15,7 @@ class MetadataError(ValueError):
 class DispatchMetadata:
     attempt_id: str
     backend: str
-    candidate_ref: str = ""
-
-    @property
-    def bootstrap_path(self) -> str:
-        return BOOTSTRAP_PATH_TEMPLATE.format(attempt_id=self.attempt_id)
+    candidate_ref: str
 
 
 def _pick(data: dict[str, Any], *keys: str) -> str:
@@ -33,20 +27,24 @@ def _pick(data: dict[str, Any], *keys: str) -> str:
 
 
 def parse_dispatch_metadata(raw: str | None) -> DispatchMetadata:
-    """Accepts snake_case and camelCase keys; attempt id and backend are required."""
+    """Accepts snake_case and camelCase keys; all three fields are required.
+
+    ``candidate_ref`` is the LiveKit identity (or its prefix) of the one
+    participant the AI listens to. Rooms may hold other humans, so a job
+    without it cannot safely pick anyone.
+    """
     try:
         data = json.loads(raw or "{}")
     except json.JSONDecodeError as exc:
         raise MetadataError(f"job metadata is not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
         raise MetadataError("job metadata must be a JSON object")
-    attempt_id = _pick(data, "attempt_id", "attemptId")
-    backend = _pick(data, "backend")
-    missing = [name for name, value in (("attempt_id", attempt_id), ("backend", backend)) if not value]
+    fields = {
+        "attempt_id": _pick(data, "attempt_id", "attemptId"),
+        "backend": _pick(data, "backend"),
+        "candidate_ref": _pick(data, "candidate_ref", "candidateRef"),
+    }
+    missing = [name for name, value in fields.items() if not value]
     if missing:
         raise MetadataError(f"job metadata is missing {missing}")
-    return DispatchMetadata(
-        attempt_id=attempt_id,
-        backend=backend,
-        candidate_ref=_pick(data, "candidate_ref", "candidateRef"),
-    )
+    return DispatchMetadata(**fields)

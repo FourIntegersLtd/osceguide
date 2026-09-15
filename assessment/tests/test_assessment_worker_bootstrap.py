@@ -16,6 +16,11 @@ ENDPOINTS = BackendEndpoints(
     label="practice", base_url_env="PRACTICE_URL", secret_env="PRACTICE_SECRET", secret_header="X-Practice-Secret",
     slot_release_path="/r", slot_extend_path="/e", slot_payload_key="room_name",
 )
+PREFIXED = BackendEndpoints(
+    label="institution", base_url_env="PRACTICE_URL", secret_env="PRACTICE_SECRET", secret_header="X-Practice-Secret",
+    slot_release_path="/r", slot_extend_path="/e", slot_payload_key="roomName",
+    attempt_path="/api/org/worker/attempts/{attempt_id}",
+)
 METADATA = DispatchMetadata(attempt_id="attempt-1", backend="practice", candidate_ref="candidate-42")
 
 
@@ -60,6 +65,14 @@ def test_fetch_uses_the_backend_url_secret_and_attempt_path(monkeypatch, payload
     args, kwargs = get.call_args
     assert args == ("https://api.test", "/api/worker/attempts/attempt-1")
     assert kwargs["headers"] == {"X-Practice-Secret": "s3cret"}
+
+
+def test_fetch_uses_the_backend_configured_attempt_path(monkeypatch, payload) -> None:
+    """A backend mounted under a prefix declares its own route; the worker holds no path."""
+    monkeypatch.setenv("PRACTICE_URL", "https://api.test")
+    with _get(SyncGetResult(ok=True, status=200, data=payload)) as get:
+        fetch_bootstrap(PREFIXED, METADATA)
+    assert get.call_args.args == ("https://api.test", "/api/org/worker/attempts/attempt-1")
 
 
 def test_auth_failure_is_reported_as_such(monkeypatch) -> None:

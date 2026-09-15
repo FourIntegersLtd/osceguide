@@ -87,7 +87,12 @@ class AIInteractionProfile(Frozen):
     mode: InteractionMode
     instructions: str = ""
     voice: str | None = None
+    # Names of the tools the interaction exposes to the model. The transport
+    # maps each name to an implementation it owns; ``tool_context`` carries the
+    # rendered data those tools need (say, a mapping of the short line ids
+    # used in the instructions to message ids), opaque to the engine.
     tools: tuple[str, ...] = ()
+    tool_context: dict[str, Any] = Field(default_factory=dict)
     greeting: str | None = None
     max_tool_steps: int = Field(default=5, ge=0)
     runtime_hint: RuntimeHint = RuntimeHint.PIPELINE
@@ -117,12 +122,20 @@ class EvaluationPolicy(Frozen):
 
 
 class AssessmentDefinition(Frozen):
+    """What should be assessed.
+
+    ``evaluation_policy`` is what scores the attempt and is required wherever
+    an evaluator runs. A deployment that only runs the interaction (a worker)
+    is handed a definition without it, so the transport never learns how the
+    transcript will be marked.
+    """
+
     id: str
     version: str
     framework_id: str
     scenario_ref: ScenarioRef
     interaction_profile: AIInteractionProfile
-    evaluation_policy: EvaluationPolicy
+    evaluation_policy: EvaluationPolicy | None = None
     snapshot_at: datetime
 
 

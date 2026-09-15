@@ -15,9 +15,17 @@ Configuration is a JSON object in ``VOICE_BACKENDS_JSON``::
         "secret_header": "X-B2C-Worker-Secret",
         "slot_release_path": "/api/worker/livekit-cloud-slot/release",
         "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
-        "slot_payload_key": "room_name"
+        "slot_payload_key": "room_name",
+        "attempt_path": "/api/worker/attempts/{attempt_id}",
+        "transcript_chunks_path": "/api/worker/attempts/{attempt_id}/transcript-chunks",
+        "transcript_path": "/api/worker/attempts/{attempt_id}/transcript"
       }
     }
+
+The three ``*_path`` keys for the assessment routes are optional and default
+to the values shown; a backend that mounts its worker routes under a prefix
+(say ``/api/org/worker/attempts/{attempt_id}``) declares its own. Each must
+contain the ``{attempt_id}`` placeholder.
 
 URLs and secrets are read from the named environment variables at call time,
 so the JSON itself carries no secrets.
@@ -30,6 +38,11 @@ import os
 from dataclasses import dataclass
 
 BACKENDS_ENV = "VOICE_BACKENDS_JSON"
+
+ATTEMPT_ID_PLACEHOLDER = "{attempt_id}"
+DEFAULT_ATTEMPT_PATH = "/api/worker/attempts/{attempt_id}"
+DEFAULT_TRANSCRIPT_CHUNKS_PATH = "/api/worker/attempts/{attempt_id}/transcript-chunks"
+DEFAULT_TRANSCRIPT_PATH = "/api/worker/attempts/{attempt_id}/transcript"
 
 
 class BackendRegistryError(RuntimeError):
@@ -45,6 +58,14 @@ class BackendEndpoints:
     slot_release_path: str
     slot_extend_path: str
     slot_payload_key: str
+    attempt_path: str = DEFAULT_ATTEMPT_PATH
+    transcript_chunks_path: str = DEFAULT_TRANSCRIPT_CHUNKS_PATH
+    transcript_path: str = DEFAULT_TRANSCRIPT_PATH
+
+    def __post_init__(self) -> None:
+        for name in _PATH_TEMPLATE_KEYS:
+            if ATTEMPT_ID_PLACEHOLDER not in getattr(self, name):
+                raise BackendRegistryError(f"backend {self.label!r}: {name} must contain {ATTEMPT_ID_PLACEHOLDER}")
 
     def base_url(self) -> str | None:
         url = (os.getenv(self.base_url_env) or "").strip().rstrip("/")
@@ -73,6 +94,17 @@ class BackendEndpoints:
     def url(self, path: str) -> str:
         return f"{self.required_base_url()}{path}"
 
+    # -- assessment worker routes, keyed by attempt --------------------------
+
+    def attempt_url(self, attempt_id: str) -> str:
+        return self.url(self.attempt_path.format(attempt_id=attempt_id))
+
+    def transcript_chunks_url(self, attempt_id: str) -> str:
+        return self.url(self.transcript_chunks_path.format(attempt_id=attempt_id))
+
+    def transcript_url(self, attempt_id: str) -> str:
+        return self.url(self.transcript_path.format(attempt_id=attempt_id))
+
 
 _REQUIRED_KEYS = (
     "base_url_env",
@@ -82,6 +114,7 @@ _REQUIRED_KEYS = (
     "slot_extend_path",
     "slot_payload_key",
 )
+_PATH_TEMPLATE_KEYS = ("attempt_path", "transcript_chunks_path", "transcript_path")
 
 
 class BackendRegistry:
@@ -103,7 +136,10 @@ class BackendRegistry:
             missing = [key for key in _REQUIRED_KEYS if not str(spec.get(key, "")).strip()]
             if missing:
                 raise BackendRegistryError(f"backend {label!r} is missing {missing}")
-            backends[label] = BackendEndpoints(label=label, **{key: str(spec[key]).strip() for key in _REQUIRED_KEYS})
+            fields = {key: str(spec[key]).strip() for key in _REQUIRED_KEYS}
+            # Optional route templates: an absent or blank key keeps the default.
+            fields.update({key: str(spec[key]).strip() for key in _PATH_TEMPLATE_KEYS if str(spec.get(key, "")).strip()})
+            backends[label] = BackendEndpoints(label=label, **fields)
         return cls(backends)
 
     @classmethod

@@ -16,7 +16,7 @@ data:
       "practice": {
         "base_url_env": "PRACTICE_API_URL",
         "secret_env": "PRACTICE_WORKER_SECRET",
-        "secret_header": "X-Worker-Secret",
+        "secret_header": "X-B2C-Worker-Secret",
         "slot_release_path": "/api/worker/livekit-cloud-slot/release",
         "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
         "slot_payload_key": "room_name"

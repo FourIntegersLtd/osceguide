@@ -33,7 +33,9 @@ def parse_bootstrap(payload: Any) -> Bootstrap:
     """``{"attempt": <AssessmentAttempt>, "scenario": <Scenario>}``.
 
     The attempt's interaction profile must already carry rendered instructions:
-    this worker holds no templates and no knowledge of scenario shapes.
+    this worker holds no templates and no knowledge of scenario shapes. The
+    definition arrives without its evaluation policy; scoring is not this
+    worker's concern and it is never told how the transcript will be marked.
     """
     if not isinstance(payload, dict):
         raise BootstrapError("bootstrap payload must be an object")
@@ -51,7 +53,7 @@ def fetch_bootstrap(endpoints: BackendEndpoints, metadata: DispatchMetadata) -> 
     """Synchronous; callers keep it off the audio loop with ``asyncio.to_thread``."""
     result = sync_get_json(
         endpoints.required_base_url(),
-        metadata.bootstrap_path,
+        endpoints.attempt_path.format(attempt_id=metadata.attempt_id),
         headers=endpoints.secret_headers(),
         log_prefix="bootstrap",
     )

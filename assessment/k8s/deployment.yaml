@@ -13,9 +13,12 @@ spec:
       labels:
         app: assessment-worker
     spec:
+      # Private GHCR image (published by .github/workflows/publish-ghcr.yml).
+      imagePullSecrets:
+        - name: ghcr-pull-credentials
       containers:
         - name: worker
-          image: ghcr.io/OWNER/assessment-platform:latest
+          image: ghcr.io/fourintegersltd/osceguide-assessment-platform:production
           envFrom:
             - configMapRef:
                 name: assessment-worker-config

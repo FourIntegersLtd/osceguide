@@ -57,3 +57,32 @@ def test_llm_primary_by_role_with_shared_fallback(monkeypatch) -> None:
     assert speech.build_llm("patient") == ["openai:gpt-4o-mini", "anthropic:claude-haiku-4-5"]
     assert speech.build_llm("tutor") == ["openai:gpt-4o", "anthropic:claude-haiku-4-5"]
     assert anthropic_llm.call_args.kwargs["temperature"] == 0.8
+
+
+def test_faq_style_sessions_can_put_openai_first(monkeypatch) -> None:
+    _, _, _, fallback = _patch_tts(monkeypatch)
+    speech.build_tts("tutor", primary="openai")
+    assert fallback.call_args.args[0] == ["openai", "deepgram", "cartesia"]
+
+
+def test_vision_llm_is_the_image_capable_model_alone(monkeypatch) -> None:
+    anthropic_llm = MagicMock(side_effect=lambda **kw: f"anthropic:{kw['model']}")
+    monkeypatch.setattr(speech.anthropic, "LLM", anthropic_llm)
+    assert speech.build_vision_llm() == "anthropic:claude-haiku-4-5"
+
+
+def test_models_voices_and_style_are_deployment_settings(monkeypatch) -> None:
+    assert speech.SpeechSettings.from_env() == speech.SpeechSettings()
+    monkeypatch.setenv("VOICE_TUTOR_LLM", "gpt-5")
+    monkeypatch.setenv("VOICE_TTS_STYLE", "Speak as Athena.")
+    monkeypatch.setenv("VOICE_FALLBACK_TEMPERATURE", "0.2")
+    settings = speech.SpeechSettings.from_env()
+    assert settings.tutor_llm == "gpt-5" and settings.tts_style == "Speak as Athena." and settings.fallback_temperature == 0.2
+    openai_tts, _, _, _ = _patch_tts(monkeypatch)
+    openai_llm = MagicMock(side_effect=lambda **kw: f"openai:{kw['model']}")
+    monkeypatch.setattr(speech.openai, "LLM", openai_llm)
+    monkeypatch.setattr(speech.anthropic, "LLM", MagicMock())
+    monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
+    assert speech.build_llm("tutor")[0] == "openai:gpt-5"
+    speech.build_tts("tutor")
+    assert openai_tts.call_args.kwargs["instructions"] == "Speak as Athena."

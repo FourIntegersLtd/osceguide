@@ -10,13 +10,15 @@ data:
   LIVEKIT_ASSESSMENT_WORKER_PORT: "8087"
   # Backends the worker may be dispatched for, keyed by the opaque label the
   # dispatching backend puts in job metadata. URLs and secrets come from env
-  # variables named here (see secret.example.yaml).
+  # variables named here (see secret.example.yaml). The secret header and
+  # every route path are what that backend actually serves; the attempt
+  # routes default to /api/worker/attempts/{attempt_id}[...] when omitted.
   VOICE_BACKENDS_JSON: |
     {
       "practice": {
         "base_url_env": "PRACTICE_API_URL",
         "secret_env": "PRACTICE_WORKER_SECRET",
-        "secret_header": "X-Worker-Secret",
+        "secret_header": "X-B2C-Worker-Secret",
         "slot_release_path": "/api/worker/livekit-cloud-slot/release",
         "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
         "slot_payload_key": "room_name"
@@ -27,7 +29,10 @@ data:
         "secret_header": "X-B2B-Worker-Secret",
         "slot_release_path": "/api/b2b/worker/livekit-cloud-slot/release",
         "slot_extend_path": "/api/b2b/worker/livekit-cloud-slot/extend",
-        "slot_payload_key": "roomName"
+        "slot_payload_key": "roomName",
+        "attempt_path": "/api/b2b/worker/attempts/{attempt_id}",
+        "transcript_chunks_path": "/api/b2b/worker/attempts/{attempt_id}/transcript-chunks",
+        "transcript_path": "/api/b2b/worker/attempts/{attempt_id}/transcript"
       }
     }
   SENTRY_ENVIRONMENT: "production"

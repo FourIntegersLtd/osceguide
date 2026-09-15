@@ -1,0 +1,135 @@
+name: Publish GHCR
+
+# Builds the single worker image (OSCE_LIVEKIT_WORKER selects assessment or
+# assistant at run time) after CI passes on main, then optionally rolls both
+# deployments out on the K3s control plane. Ported from livekit/.github/workflows.
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-ghcr-main
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/fourintegersltd/osceguide-assessment-platform
+
+jobs:
+  publish:
+    name: publish-ghcr
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      sha: ${{ steps.publish.outputs.sha }}
+    steps:
+      - name: Resolve publish commit SHA
+        id: publish
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "sha=${{ github.sha }}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ steps.publish.outputs.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.publish.outputs.sha }}
+            ${{ env.IMAGE_NAME }}:production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-k8s:
+    name: deploy-k8s
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: publish
+    if: >-
+      needs.publish.result == 'success' &&
+      vars.K8S_AUTO_DEPLOY == 'true'
+    env:
+      IMAGE: ghcr.io/fourintegersltd/osceguide-assessment-platform
+    steps:
+      - name: Checkout published commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.publish.outputs.sha }}
+
+      - name: Validate deploy secrets
+        run: |
+          if [[ -z "${{ secrets.K8S_CONTROL_PLANE_HOST }}" || "${{ secrets.K8S_CONTROL_PLANE_HOST }}" != *"@"* ]]; then
+            echo "Set repository secret K8S_CONTROL_PLANE_HOST as user@host." >&2
+            exit 1
+          fi
+          if [[ "${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}" != *"BEGIN"* ]]; then
+            echo "Set repository secret K8S_CONTROL_PLANE_SSH_KEY to an OpenSSH private key." >&2
+            exit 1
+          fi
+
+      - name: Pin image digest in both deployments
+        env:
+          DIGEST: ${{ needs.publish.outputs.digest }}
+        run: |
+          if [[ -z "${DIGEST}" ]]; then
+            echo "Build did not produce an image digest." >&2
+            exit 1
+          fi
+          for DEPLOYMENT in k8s/deployment.yaml k8s/deployment-assistant.yaml; do
+            sed -i -E "s|image: ${IMAGE}(:[A-Za-z0-9._-]+\|@sha256:[a-f0-9]+)|image: ${IMAGE}@${DIGEST}|" "$DEPLOYMENT"
+            grep "image: ${IMAGE}@${DIGEST}" "$DEPLOYMENT"
+          done
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@b504c19775343714e11b8c754e4fe1f02dc7b8e7 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}
+
+      - name: Roll out on control plane
+        env:
+          SSH_HOST: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+          K8S_MANIFEST_DIR: ${{ vars.K8S_MANIFEST_DIR || '/root/k8s/assessment-platform' }}
+        run: |
+          HOST="${SSH_HOST#*@}"
+          ssh-keyscan -H "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh -o StrictHostKeyChecking=yes "${SSH_HOST}" "mkdir -p '${K8S_MANIFEST_DIR}'"
+          scp -o StrictHostKeyChecking=yes k8s/namespace.yaml k8s/configmap.yaml k8s/configmap-assistant.yaml \
+            k8s/deployment.yaml k8s/deployment-assistant.yaml "${SSH_HOST}:${K8S_MANIFEST_DIR}/"
+          ssh -o StrictHostKeyChecking=yes "${SSH_HOST}" \
+            "K8S_MANIFEST_DIR='${K8S_MANIFEST_DIR}' bash -s" \
+            < scripts/k8s_rollout_on_control_plane.sh

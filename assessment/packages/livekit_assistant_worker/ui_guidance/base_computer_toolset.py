@@ -37,6 +37,7 @@ from typing import Any
 from livekit.agents import JobContext, RunContext
 from livekit.agents.llm import function_tool
 
+from livekit_assistant_worker.ui_guidance.navigation import NavigationModeState
 from livekit_assistant_worker.ui_guidance.contracts import (
     POINTER_MESSAGE_TYPE,
     RPC_METHOD_PERFORM_CLICK,
@@ -46,7 +47,7 @@ from livekit_assistant_worker.ui_guidance.contracts import (
     UI_GUIDANCE_SCHEMA_VERSION,
 )
 from voice_infra.tool_log import agent_tool_log, log_llm_tool_use_shape
-from voice_infra.tool_progress import filler_kwargs as athena_filler_kwargs, filler_line as athena_filler_line
+from voice_infra.tool_progress import filler_kwargs, filler_line
 import logging
 
 main_logger = logging.getLogger(__name__)
@@ -98,7 +99,7 @@ COMPUTER_TOOL_SCHEMA = {
             "label": {
                 "type": "string",
                 "description": (
-                    "Short name of the element (e.g. 'AI Practice', 'Marketplace'). "
+                    "Short name of the on-screen element, as the FAQ names it. "
                     "Optional metadata for logs."
                 ),
             },
@@ -132,9 +133,10 @@ class BaseComputerTool(ABC):
     # Subclasses can override for log prefixes (e.g. "ANTHROPIC", "OPENAI").
     _LOG_PREFIX: str = "COMPUTER_TOOL"
 
-    def __init__(self, ctx: JobContext, worker_type: str) -> None:
+    def __init__(self, ctx: JobContext, worker_type: str, navigation: NavigationModeState | None = None) -> None:
         self._ctx = ctx
         self._worker_type = worker_type
+        self._navigation = navigation or NavigationModeState()
 
         self._last_vw: int = DISPLAY_W
         self._last_vh: int = DISPLAY_H
@@ -149,13 +151,7 @@ class BaseComputerTool(ABC):
         ctx.room.on("data_received", self._on_data_received)
 
     def _get_navigation_mode(self) -> str:
-        try:
-            ud = self._ctx.proc.userdata
-            if isinstance(ud, dict):
-                return str(ud.get("navigation_mode", "guide"))
-        except Exception:
-            pass
-        return "guide"
+        return self._navigation.mode
 
     # ── Rate limiting ─────────────────────────────────────────────────────────
 
@@ -470,7 +466,7 @@ class BaseComputerTool(ABC):
             await ctx.update("I'm looking at your screen now.")
             await self._set_tool_running(True)
             try:
-                async with ctx.with_filler(athena_filler_line, **athena_filler_kwargs()):
+                async with ctx.with_filler(filler_line, **filler_kwargs()):
                     result = await self._capture_screenshot()
                     if result is None:
                         return json.dumps(
@@ -491,17 +487,17 @@ class BaseComputerTool(ABC):
 
         if action == "show_pointer" and coordinate:
             await ctx.update("I'll highlight that on your screen.")
-            async with ctx.with_filler(athena_filler_line, **athena_filler_kwargs()):
+            async with ctx.with_filler(filler_line, **filler_kwargs()):
                 return await self._show_pointer(coordinate, label)
 
         if action == "perform_click" and coordinate:
             await ctx.update("I'll click that for you.")
-            async with ctx.with_filler(athena_filler_line, **athena_filler_kwargs()):
+            async with ctx.with_filler(filler_line, **filler_kwargs()):
                 return await self._perform_click(coordinate, label)
 
         if action == "scroll":
             await ctx.update("I'll scroll the page.")
-            async with ctx.with_filler(athena_filler_line, **athena_filler_kwargs()):
+            async with ctx.with_filler(filler_line, **filler_kwargs()):
                 return await self._perform_scroll(raw_arguments)
 
         agent_tool_log(f"{self._LOG_PREFIX} unsupported_action action={action!r}")

@@ -72,13 +72,28 @@ covers the patient and debrief interactions and must not import
 nor name a product, station field or storage system (guarded by
 `tests/test_assessment_worker_boundaries.py`). It receives rendered
 instructions from the backend's bootstrap route and delivers transcripts back;
-scoring happens backend-side. `livekit_assistant_worker` covers help,
-onboarding, dashboard and athena-doctor and must not import
+scoring happens backend-side. Tools it may expose are named in the profile
+(`tools`) with their rendered data in `tool_context`; implementations live in
+its `tools.py` and must stay about transcripts and the room, never products. `livekit_assistant_worker` covers help,
+onboarding, dashboard and consulting-doctor and must not import
 `osce_assessment.runtime`, `.evaluation`, `.schemas`, `.catalog` or
 `.compat`, nor the assessment worker (guarded by
-`tests/test_assistant_worker_boundaries.py`). Its FAQ data and UI-guidance
-toolset are ports of the legacy worker's; keep them in step with the frontend
-`livekit-ui-guidance` package.
+`tests/test_assistant_worker_boundaries.py`). Per-session-type decisions live
+only in its `modes.py` table (`tests/test_assistant_worker_modes.py` fails on
+a string comparison against a session type anywhere else, and on any FAQ or
+session-prompt module reappearing). Instructions, greetings, the FAQ corpus
+and speech-to-speech instructions all arrive rendered in the bootstrap; the
+templates live in `backend/b2c-api/b2c/shared/services/assistant_prompts/`
+and the content they render (FAQ packs per exam and surface, greetings,
+persona, onboarding scenes) in `.../assistant_content/`, selected by the
+client profile the frontend declares (surface, current route, navigation
+catalog). The worker never sees a navigation label, a product name or an
+exam id (`tests/test_assistant_worker_no_product_vocabulary.py`).
+The UI-guidance toolset is a port of the legacy worker's; keep it in step
+with the frontend `livekit-ui-guidance` package.
+
+Model ids, voices and spoken style are `voice_infra.speech.SpeechSettings`
+(`VOICE_<FIELD>` env). Do not hardcode a model or a persona name in a worker.
 
 `hosting/` runs one worker per process, selected by `OSCE_LIVEKIT_WORKER`;
 add a worker to `hosting/workers.py` when it lands.

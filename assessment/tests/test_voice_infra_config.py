@@ -25,6 +25,9 @@ SPEC = {
         "slot_release_path": "/api/org/worker/livekit-cloud-slot/release",
         "slot_extend_path": "/api/org/worker/livekit-cloud-slot/extend",
         "slot_payload_key": "roomName",
+        "attempt_path": "/api/org/worker/attempts/{attempt_id}",
+        "transcript_chunks_path": "/api/org/worker/attempts/{attempt_id}/transcript-chunks",
+        "transcript_path": "/api/org/worker/attempts/{attempt_id}/transcript",
     },
 }
 
@@ -67,6 +70,26 @@ def test_urls_and_secrets_are_read_from_env_at_call_time(registry: BackendRegist
 def test_payload_key_is_per_backend(registry: BackendRegistry) -> None:
     assert registry.get("practice").slot_payload("r") == {"room_name": "r"}
     assert registry.get("institution").slot_payload("r") == {"roomName": "r"}
+
+
+def test_attempt_routes_default_when_absent_and_are_per_backend_when_declared(registry: BackendRegistry, monkeypatch) -> None:
+    """A backend mounted under a prefix declares its own worker routes; one without keeps the defaults."""
+    monkeypatch.setenv("PRACTICE_URL", "https://practice.test")
+    monkeypatch.setenv("INSTITUTION_URL", "https://org.test/")
+    practice, institution = registry.get("practice"), registry.get("institution")
+    assert practice.attempt_url("a-1") == "https://practice.test/api/worker/attempts/a-1"
+    assert practice.transcript_chunks_url("a-1") == "https://practice.test/api/worker/attempts/a-1/transcript-chunks"
+    assert practice.transcript_url("a-1") == "https://practice.test/api/worker/attempts/a-1/transcript"
+    assert institution.attempt_url("s-1") == "https://org.test/api/org/worker/attempts/s-1"
+    assert institution.transcript_chunks_url("s-1") == "https://org.test/api/org/worker/attempts/s-1/transcript-chunks"
+    assert institution.transcript_url("s-1") == "https://org.test/api/org/worker/attempts/s-1/transcript"
+
+
+def test_a_route_without_the_attempt_placeholder_is_rejected(monkeypatch) -> None:
+    spec = {"practice": {**SPEC["practice"], "transcript_path": "/api/worker/transcript"}}
+    monkeypatch.setenv(BACKENDS_ENV, json.dumps(spec))
+    with pytest.raises(BackendRegistryError, match="transcript_path must contain {attempt_id}"):
+        BackendRegistry.from_env()
 
 
 def test_required_base_url_names_the_variable(registry: BackendRegistry) -> None:

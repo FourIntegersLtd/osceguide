@@ -15,11 +15,16 @@ def test_snake_case_and_camel_case_parse_identically() -> None:
     assert snake == camel == DispatchMetadata(attempt_id="a-1", backend="practice", candidate_ref="user-9")
 
 
-def test_candidate_ref_is_optional() -> None:
-    assert parse_dispatch_metadata('{"attempt_id": "a", "backend": "b"}').candidate_ref == ""
+def test_candidate_ref_is_required() -> None:
+    """A room may hold other humans; without a reference nobody can be chosen safely."""
+    with pytest.raises(MetadataError, match="missing \\['candidate_ref'\\]"):
+        parse_dispatch_metadata('{"attempt_id": "a", "backend": "b"}')
 
 
-@pytest.mark.parametrize("raw", [None, "", "{}", '{"backend": "b"}', '{"attempt_id": "a"}', '{"attempt_id": "  ", "backend": "b"}'])
+@pytest.mark.parametrize(
+    "raw",
+    [None, "", "{}", '{"backend": "b"}', '{"attempt_id": "a"}', '{"attempt_id": "  ", "backend": "b", "candidate_ref": "c"}'],
+)
 def test_missing_required_fields_are_rejected(raw) -> None:
     with pytest.raises(MetadataError, match="missing"):
         parse_dispatch_metadata(raw)
@@ -31,11 +36,10 @@ def test_malformed_metadata_is_rejected(raw) -> None:
         parse_dispatch_metadata(raw)
 
 
-def test_bootstrap_path_is_keyed_by_attempt_id() -> None:
-    assert parse_dispatch_metadata('{"attempt_id": "a-1", "backend": "b"}').bootstrap_path == "/api/worker/attempts/a-1"
+def test_metadata_carries_no_route_product_or_scenario_knowledge() -> None:
+    """Extra keys are ignored: the worker never reads app types, org slugs or station fields.
 
-
-def test_metadata_carries_no_product_or_scenario_knowledge() -> None:
-    """Extra keys are ignored: the worker never reads app types, org slugs or station fields."""
-    md = parse_dispatch_metadata(json.dumps({"attempt_id": "a", "backend": "b", "station_id": "s", "org_slug": "x"}))
+    Routes are not on the metadata either; the backend's endpoints own them.
+    """
+    md = parse_dispatch_metadata(json.dumps({"attempt_id": "a", "backend": "b", "candidate_ref": "c", "station_id": "s", "org_slug": "x"}))
     assert set(md.__dataclass_fields__) == {"attempt_id", "backend", "candidate_ref"}

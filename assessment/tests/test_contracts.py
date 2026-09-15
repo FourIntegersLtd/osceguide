@@ -79,6 +79,7 @@ def test_profile_defaults_to_the_pipeline_runtime() -> None:
     assert profile.runtime_hint is RuntimeHint.PIPELINE
     assert profile.instructions == ""
     assert profile.tools == ()
+    assert profile.tool_context == {}
 
 
 def test_policy_keeps_model_choice_as_data() -> None:
@@ -142,3 +143,16 @@ def _minimal_definition() -> AssessmentDefinition:
         evaluation_policy=EvaluationPolicy(framework_id="sca-rcgp-v1", primary_model="m"),
         snapshot_at=FIXED_TIME,
     )
+
+
+def test_a_definition_needs_no_evaluation_policy_until_something_scores_it() -> None:
+    from datetime import datetime, timezone
+
+    from osce_assessment.contracts import AIInteractionProfile, AssessmentDefinition, InteractionMode, ScenarioRef, ScenarioSource
+
+    definition = AssessmentDefinition(
+        id="d", version="1", framework_id="sca-rcgp-v1", scenario_ref=ScenarioRef(source=ScenarioSource.LIBRARY, scenario_id="s"),
+        interaction_profile=AIInteractionProfile(mode=InteractionMode.PATIENT, instructions="x"), snapshot_at=datetime.now(timezone.utc),
+    )
+    assert definition.evaluation_policy is None
+    assert "evaluation_policy" not in definition.model_dump(exclude_none=True)

@@ -1,6 +1,9 @@
 # LiveKit Cloud agent config for the assessment worker.
 # Fill in after `lk agent create --config livekit.assessment.toml --secrets-file <secrets>`;
 # `lk agent deploy --config livekit.assessment.toml` afterwards.
+# The secrets file must set OSCE_LIVEKIT_HOSTING=cloud and
+# LIVEKIT_ASSESSMENT_AGENT_NAME=assessment-livekit-cloud (the name b2c-api
+# dispatches to when LIVEKIT_B2C_ASSESSMENT_ROUTING_MODE=livekit-cloud).
 [project]
   subdomain = ""
 
