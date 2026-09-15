@@ -4,7 +4,7 @@ metadata:
   name: assistant-worker
   namespace: assessment-platform
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: assistant-worker
@@ -52,8 +52,9 @@ spec:
             initialDelaySeconds: 60
             periodSeconds: 30
           resources:
+            # Idles at ~1.1 GiB (VAD model + UI guidance); leave room for concurrent help sessions.
             requests:
               cpu: "500m"
-              memory: "1Gi"
+              memory: "1.5Gi"
             limits:
-              memory: "2Gi"
+              memory: "3Gi"

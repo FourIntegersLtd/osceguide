@@ -4,7 +4,7 @@ metadata:
   name: assessment-worker
   namespace: assessment-platform
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: assessment-worker
