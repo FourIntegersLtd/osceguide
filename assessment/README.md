@@ -269,11 +269,16 @@ Differences from the legacy workers to keep in mind:
   once at the end. `search_help_faqs` exists only on help sessions.
 - The assessment worker waits up to 120s for the candidate
   (`LIVEKIT_ASSESSMENT_CANDIDATE_TIMEOUT_S`); the assistant worker 30s.
-- The new B2C routes always dispatch to the self-hosted agent names and never
-  use the Cloud overflow pool. Capacity is `replicas` ×
-  `LIVEKIT_*_MAX_CONCURRENT_JOBS` (default 8). To run on LiveKit Cloud instead,
-  `lk agent create --config livekit.assessment.toml` (and `.assistant.toml`)
-  with `OSCE_LIVEKIT_HOSTING=cloud` in the secrets file, then fill in the tomls.
+- B2C assessment sessions default to the self-hosted agent
+  (`LIVEKIT_B2C_ASSESSMENT_ROUTING_MODE=self-hosted`); self-hosted capacity is
+  `replicas` × `LIVEKIT_*_MAX_CONCURRENT_JOBS` (default 8). To get the legacy
+  Cloud-first behaviour, deploy this worker to LiveKit Cloud as
+  `assessment-livekit-cloud` (`lk agent create --config livekit.assessment.toml`
+  with `OSCE_LIVEKIT_HOSTING=cloud` and that agent name in the secrets file,
+  then fill in the toml) and set the mode to `livekit-cloud`: b2c-api then
+  reserves a slot in the shared `LIVEKIT_CLOUD_MAX_CONCURRENT` pool and, when it
+  is full, overflows to `assessment-self-hosted`. The assistant worker still
+  dispatches only to `assistant-self-hosted`.
 - The `recommendation` and `vision` session types were removed from the product
   rather than ported.
 
