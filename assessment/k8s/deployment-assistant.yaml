@@ -33,7 +33,7 @@ spec:
             - configMapRef:
                 name: assistant-worker-config
             - secretRef:
-                name: assistant-worker-secrets
+                name: assessment-worker-secrets
           env:
             - name: PORT
               value: "8080"
