@@ -13,6 +13,16 @@ spec:
       labels:
         app: assistant-worker
     spec:
+      # Same node rule as the legacy worker: only labelled worker nodes, never the control plane.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: osceguide.io/livekit-worker
+                    operator: In
+                    values:
+                      - "true"
       # Private GHCR image (published by .github/workflows/publish-ghcr.yml).
       imagePullSecrets:
         - name: ghcr-pull-credentials

@@ -43,3 +43,11 @@ def test_deployments_reference_a_published_image(deployment) -> None:
     text = (K8S / deployment).read_text()
     assert "OWNER" not in text
     assert re.search(r"image: ghcr\.io/fourintegersltd/osceguide-assessment-platform[:@]", text)
+
+
+@pytest.mark.parametrize("deployment", ("deployment.yaml", "deployment-assistant.yaml"))
+def test_deployments_schedule_only_onto_labelled_worker_nodes(deployment) -> None:
+    """Never the control plane: the same node affinity the legacy worker uses."""
+    text = (K8S / deployment).read_text()
+    assert "requiredDuringSchedulingIgnoredDuringExecution" in text
+    assert "key: osceguide.io/livekit-worker" in text
