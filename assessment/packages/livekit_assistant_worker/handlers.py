@@ -7,7 +7,6 @@ session orchestrator decides which apply to the mode it is running.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -17,6 +16,7 @@ from osce_assessment.contracts import MessageRole
 from .prompts import navigation_mode_prompt
 from .transcript import TranscriptRecorder
 from .ui_guidance import NavigationModeState
+from voice_infra.data_packets import json_packet
 
 logger = logging.getLogger(__name__)
 
@@ -93,12 +93,3 @@ async def _reply(agent: Any, *, what: str, **kwargs: Any) -> None:
         logger.warning("%s reply failed: %s", what, exc)
 
 
-def json_packet(data_packet: Any) -> dict[str, Any] | None:
-    raw = getattr(data_packet, "data", data_packet)
-    if not isinstance(raw, (bytes, bytearray)):
-        return None
-    try:
-        msg = json.loads(raw)
-    except (ValueError, TypeError):
-        return None
-    return msg if isinstance(msg, dict) else None
