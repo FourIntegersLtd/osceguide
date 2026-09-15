@@ -14,3 +14,6 @@ build/
 logs/
 .coverage
 htmlcov/
+
+# Model benchmark output: full transcripts per run, regenerated on demand.
+runs/
