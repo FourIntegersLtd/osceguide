@@ -81,8 +81,9 @@ onboarding, dashboard and consulting-doctor and must not import
 `tests/test_assistant_worker_boundaries.py`). Per-session-type decisions live
 only in its `modes.py` table (`tests/test_assistant_worker_modes.py` fails on
 a string comparison against a session type anywhere else, and on any FAQ or
-session-prompt module reappearing). Instructions, greetings, the FAQ corpus
-and speech-to-speech instructions all arrive rendered in the bootstrap; the
+session-prompt module reappearing). Instructions (with the full FAQ rendered
+in for help sessions; there is no FAQ search tool), greetings and
+speech-to-speech instructions all arrive rendered in the bootstrap; the
 templates live in `backend/b2c-api/b2c/shared/services/assistant_prompts/`
 and the content they render (FAQ packs per exam and surface, greetings,
 persona, onboarding scenes) in `.../assistant_content/`, selected by the

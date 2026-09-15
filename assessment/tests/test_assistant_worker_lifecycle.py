@@ -20,7 +20,6 @@ from _worker_fakes import FakeAgentSession, FakeJobContext, FakeRoom, conversati
 
 SPEC = {"practice": {"base_url_env": "PRACTICE_URL", "secret_env": "PRACTICE_SECRET", "secret_header": "X-S", "slot_release_path": "/r", "slot_extend_path": "/e", "slot_payload_key": "room_name"}}
 METADATA = json.dumps({"session_id": "unified_1", "backend": "practice", "candidate_ref": "user-1"})
-CORPUS = {"entries": [{"section": "Nav", "question": "Where is AI Practice?", "answer": "In the left navigation."}], "no_match_message": "Say you cannot help."}
 GPT_LIVE = GPTLiveInstructions(voice="You are the voice.", backend="You are the delegate.", opening="Introduce yourself.")
 
 
@@ -64,7 +63,6 @@ def fake_agent(monkeypatch):
     monkeypatch.setattr(session_module, "build_room_options", lambda **kw: kw)
     monkeypatch.setattr(session_module, "build_anthropic_computer_tool", lambda ctx, wt, navigation: ("computer-tool", navigation))
     monkeypatch.setattr(session_module, "build_offer_navigation_modes_tool", lambda ctx: "nav-mode-tool")
-    monkeypatch.setattr(session_module, "build_search_help_faqs_tool", lambda corpus: ("faq-tool", corpus))
     return builds
 
 
@@ -82,13 +80,13 @@ def _run(bootstrap: AssistantSession, *, joined: str = "user-1"):
 
 
 def test_help_session_on_the_pipeline_with_screen_guidance(fake_agent) -> None:
-    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Rendered help prompt.", greeting="Hi, I'm the help assistant.", help_corpus=CORPUS, extras={"screen_ui_guidance": True, "voice_help_intent": "guide"})
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="help", candidate_ref="user-1", instructions="Rendered help prompt, FAQ included.", greeting="Hi, I'm the help assistant.", extras={"screen_ui_guidance": True, "voice_help_intent": "guide"})
     voice, ctx, result = _run(bootstrap)
     assert result is bootstrap and voice.runtime is VoiceRuntime.PIPELINE
     build = fake_agent[0]
-    assert build["pipeline_tools"][0] == ("faq-tool", bootstrap.help_corpus)  # the tool searches the corpus the backend sent
-    assert build["pipeline_tools"][1:] == ["nav-mode-tool", ("computer-tool", voice.navigation)]  # the tool reads the session's own state
-    assert build["pipeline_instructions"] == "Rendered help prompt."
+    # No FAQ tool: the answers arrive inside the instructions. The computer tool reads the session's own state.
+    assert build["pipeline_tools"] == ["nav-mode-tool", ("computer-tool", voice.navigation)]
+    assert build["pipeline_instructions"] == "Rendered help prompt, FAQ included."
     assert build["max_tool_steps"] == 10 and build["pipeline_llm"] == "llm:help" and build["pipeline_tts"] == "tts:help:guide"
     agent = FakeAgentSession.instances[-1]
     assert agent.said[0][0] == "Hi, I'm the help assistant."
@@ -146,7 +144,7 @@ def test_a_help_session_without_a_backend_greeting_lets_the_model_open(fake_agen
     assert agent.said == [] and agent.replies[0] == {"allow_interruptions": True}
 
 
-def test_a_session_without_a_corpus_gets_no_faq_tool(fake_agent) -> None:
+def test_a_mode_without_screen_guidance_gets_no_tools(fake_agent) -> None:
     bootstrap = AssistantSession(session_id="unified_1", worker_type="dashboard", candidate_ref="user-1", instructions="Coach.")
     _run(bootstrap)
     assert fake_agent[0]["pipeline_tools"] == []

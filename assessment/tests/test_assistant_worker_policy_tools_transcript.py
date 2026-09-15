@@ -10,8 +10,6 @@ from livekit_assistant_worker.gpt_live_policy import (
     HARD_WARNING_SECONDS, IDLE_GRACE_SECONDS, IDLE_WARNING_SECONDS, MAX_SECONDS,
     GptLiveSessionController, GptLiveSessionPolicyConfig, SessionEndReason, serialize_usage,
 )
-from livekit_assistant_worker.help_corpus import HelpCorpus
-from livekit_assistant_worker.tools.help_search import run_search_help_faqs
 from livekit_assistant_worker.transcript import TranscriptDelivery, TranscriptRecorder
 from livekit_assistant_worker.ui_guidance.base_computer_toolset import BaseComputerTool
 from osce_assessment.contracts import MessageRole
@@ -85,21 +83,22 @@ def test_completion_is_posted_to_the_dispatching_backend(monkeypatch) -> None:
     assert serialize_usage(None) == {} and serialize_usage("x") == {"value": "x"}
 
 
-def test_search_help_faqs_calls_update_and_filler() -> None:
-    async def run() -> None:
-        ctx = MagicMock()
-        ctx.update = AsyncMock()
-        filler_cm = AsyncMock()
-        filler_cm.__aenter__ = AsyncMock(return_value=None)
-        filler_cm.__aexit__ = AsyncMock(return_value=None)
-        ctx.with_filler = MagicMock(return_value=filler_cm)
-        corpus = HelpCorpus.model_validate({"entries": [{"section": "Nav", "question": "Where is AI Practice?", "answer": "Left navigation."}]})
-        result = await run_search_help_faqs(ctx, corpus, "Where is AI Practice?")
-        ctx.update.assert_awaited_once_with("Let me check the help articles for your question.")
-        assert ctx.with_filler.call_args.kwargs["max_steps"] is None
-        assert "AI Practice" in result
+def test_serialize_usage_handles_livekits_dataclass_of_pydantic_records() -> None:
+    """Seen in production: AgentSessionUsage.model_usage holds pydantic LLMModelUsage
+    objects, which asdict() left unconverted and json.dumps then rejected."""
+    import json
 
-    asyncio.run(run())
+    from livekit.agents.metrics import AgentSessionUsage, LLMModelUsage
+
+    usage = AgentSessionUsage(
+        model_usage=[LLMModelUsage(provider="openai", model="gpt-4o-mini", input_tokens=12, output_tokens=3)]
+    )
+
+    payload = serialize_usage(usage)
+
+    json.dumps(payload)
+    record = payload["model_usage"][0]
+    assert record["provider"] == "openai" and record["input_tokens"] == 12 and record["output_tokens"] == 3
 
 
 class _StubComputerTool(BaseComputerTool):

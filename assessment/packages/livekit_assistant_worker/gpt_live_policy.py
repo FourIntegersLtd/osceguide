@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import asdict, dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -261,19 +261,26 @@ class GptLiveSessionController:
 def serialize_usage(usage: Any) -> dict[str, Any]:
     if usage is None:
         return {}
-    if is_dataclass(usage):
-        return asdict(usage)
-    if hasattr(usage, "model_usage"):
-        model_usage = []
-        for item in usage.model_usage:
-            if is_dataclass(item):
-                model_usage.append(asdict(item))
-            elif hasattr(item, "__dict__"):
-                model_usage.append(dict(item.__dict__))
-        return {"model_usage": model_usage}
-    if hasattr(usage, "__dict__"):
-        return dict(usage.__dict__)
-    return {"value": str(usage)}
+    value = _jsonable(usage)
+    return value if isinstance(value, dict) else {"value": value}
+
+
+def _jsonable(value: Any) -> Any:
+    """JSON-safe copy. LiveKit's AgentSessionUsage is a dataclass holding pydantic
+    per-model usage records, which ``dataclasses.asdict`` leaves as objects."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    if is_dataclass(value) and not isinstance(value, type):
+        return {f.name: _jsonable(getattr(value, f.name)) for f in fields(value)}
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_jsonable(v) for v in value]
+    if hasattr(value, "__dict__"):
+        return {k: _jsonable(v) for k, v in vars(value).items() if not k.startswith("_")}
+    return str(value)
 
 
 def register_gpt_live_session_policy(
