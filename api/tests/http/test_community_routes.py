@@ -83,9 +83,7 @@ async def test_a_like_can_be_undone(client: AsyncClient, make_actor) -> None:  #
 async def test_an_author_may_remove_their_own_post(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("c6@example.com")
     question = await ask(client, token)
-    removed = await client.delete(
-        f"/api/v1/community/posts/{question['id']}", headers=bearer(token)
-    )
+    removed = await client.delete(f"/api/v1/community/posts/{question['id']}", headers=bearer(token))
     assert removed.status_code == 204
 
     listed = await client.get("/api/v1/community/questions", headers=bearer(token))
@@ -98,9 +96,7 @@ async def test_someone_else_may_not_remove_it(client: AsyncClient, make_actor) -
     question = await ask(client, author)
     stranger = await make_actor("c7-b@example.com")
 
-    response = await client.delete(
-        f"/api/v1/community/posts/{question['id']}", headers=bearer(stranger)
-    )
+    response = await client.delete(f"/api/v1/community/posts/{question['id']}", headers=bearer(stranger))
     assert response.status_code == 403
     assert response.json()["code"] == "post_not_yours"
 
@@ -110,9 +106,7 @@ async def test_a_platform_admin_may_remove_anything(client: AsyncClient, make_ac
     question = await ask(client, author)
     admin = await make_actor("c8-admin@osceguide.com", platform_admin=True)
 
-    response = await client.delete(
-        f"/api/v1/community/posts/{question['id']}", headers=bearer(admin)
-    )
+    response = await client.delete(f"/api/v1/community/posts/{question['id']}", headers=bearer(admin))
     assert response.status_code == 204
 
 
