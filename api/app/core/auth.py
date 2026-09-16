@@ -26,7 +26,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.errors import Unauthenticated
 from app.core.settings import Settings, get_settings
 
-ACCESS_TOKEN_TYPE = "access"  # noqa: S105 - a token kind, not a secret
+ACCESS_TOKEN_TYPE = "access"  # noqa: S105 — the token's type claim, not a secret
 
 
 @dataclass(frozen=True)

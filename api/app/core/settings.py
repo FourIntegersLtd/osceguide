@@ -63,7 +63,7 @@ class Settings(BaseSettings):
 
     # --- LiveKit workers calling back into this API ---
     worker_secret: str = ""
-    worker_secret_header: str = "X-Worker-Secret"  # noqa: S105 - header name, not a secret
+    worker_secret_header: str = "X-Worker-Secret"  # noqa: S105 — a header name, not a secret
 
     # LiveKit. `voice_backend_label` is the key the worker looks this API up by
     # in its own VOICE_BACKENDS_JSON, so all three deployments can coexist
@@ -135,7 +135,8 @@ class Settings(BaseSettings):
     def _require_secrets_when_deployed(self) -> Settings:
         if self.app_env == AppEnv.local or self.app_env == AppEnv.test:
             if not self.jwt_secret:
-                self.jwt_secret = "dev-only-jwt-secret-change-me"  # noqa: S105 - local dev only
+                # noqa justified: local and test only, and the branch above is what keeps it there.
+                self.jwt_secret = "dev-only-jwt-secret-change-me"  # noqa: S105
             return self
         missing = [
             name
