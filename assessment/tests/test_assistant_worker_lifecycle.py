@@ -36,13 +36,21 @@ class _FakeAgent(FakeAgentSession):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.replies: list[dict] = []
+        self.interrupts = 0
         self.current_agent = MagicMock()
 
-    def generate_reply(self, **kwargs):
-        self.replies.append(kwargs)
+    def _done(self):
         fut = asyncio.get_event_loop().create_future()
         fut.set_result(None)
         return fut
+
+    def generate_reply(self, **kwargs):
+        self.replies.append(kwargs)
+        return self._done()
+
+    def interrupt(self, **_kwargs):
+        self.interrupts += 1
+        return self._done()
 
 
 @pytest.fixture
@@ -170,6 +178,43 @@ def test_onboarding_opens_with_a_generated_reply_and_asks_the_backend_for_each_s
     assert (endpoints.label, session_id) == ("practice", "unified_1")
     assert scene == {"phase": "demo", "question": "How would you respond?", "patientLine": "I'm scared."}
     assert agent.replies[-1] == {"instructions": "Demo scene, rendered by the backend.", "user_input": session_module.handlers.SCENE_STARTED_INPUT}
+
+
+def test_a_new_scene_cuts_off_whatever_athena_is_still_saying(fake_agent) -> None:
+    """Clicking through mid-intro must stop the intro, not queue the scene behind it."""
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    async def scenario():
+        with patch.object(session_module, "fetch_scene_instructions", MagicMock(return_value="Demo scene.")):
+            ctx.room.emit("data_received", MagicMock(data=json.dumps({"type": "scene_change", "phase": "demo", "patientLine": "I'm scared."}).encode()))
+            await asyncio.sleep(0.05)
+
+    asyncio.run(scenario())
+    assert agent.interrupts == 1
+    assert agent.replies[-1]["instructions"] == "Demo scene."
+
+
+def test_the_same_scene_announced_twice_is_only_read_once(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+    rendered = MagicMock(return_value="Demo scene.")
+    scene = json.dumps({"type": "scene_change", "phase": "demo", "question": "How would you respond?", "patientLine": "I'm scared."}).encode()
+
+    async def scenario():
+        with patch.object(session_module, "fetch_scene_instructions", rendered):
+            ctx.room.emit("data_received", MagicMock(data=scene))
+            ctx.room.emit("data_received", MagicMock(data=scene))
+            await asyncio.sleep(0.05)
+            # A genuinely different scene still gets through.
+            ctx.room.emit("data_received", MagicMock(data=json.dumps({"type": "scene_change", "phase": "demo", "question": "And now?", "patientLine": "I feel worse."}).encode()))
+            await asyncio.sleep(0.05)
+
+    asyncio.run(scenario())
+    assert rendered.call_count == 2
+    assert len(agent.replies) == 3  # the opening, plus one per distinct scene
 
 
 def test_a_scene_the_backend_cannot_render_leaves_the_current_scene_running(fake_agent) -> None:
