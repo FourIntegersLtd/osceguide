@@ -9,7 +9,13 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity.domain import normalize_email
-from app.features.identity.models import PasswordResetToken, RefreshChain, User, UserIdentity
+from app.features.identity.models import (
+    PasswordResetToken,
+    RefreshChain,
+    RefreshToken,
+    User,
+    UserIdentity,
+)
 
 
 async def create_user(
@@ -29,6 +35,9 @@ async def create_user(
         must_change_password=must_change_password,
     )
     session.add(user)
+    # Flushed here so the caller gets a row with its generated id, rather than
+    # reaching into the session itself to make one appear.
+    await session.flush()
     return user
 
 
@@ -82,22 +91,29 @@ async def create_refresh_chain(
     expires_at: datetime,
     user_agent: str | None = None,
 ) -> RefreshChain:
-    chain = RefreshChain(
-        user_id=user_id, current_token_hash=token_hash, expires_at=expires_at, user_agent=user_agent
-    )
+    chain = RefreshChain(user_id=user_id, expires_at=expires_at, user_agent=user_agent)
     session.add(chain)
+    await session.flush()
+    session.add(RefreshToken(chain_id=chain.id, token_hash=token_hash))
     return chain
 
 
-async def refresh_chain_by_token_hash(session: AsyncSession, token_hash: str) -> RefreshChain | None:
-    stmt = select(RefreshChain).where(RefreshChain.current_token_hash == token_hash)
+async def refresh_token_by_hash(session: AsyncSession, token_hash: str) -> RefreshToken | None:
+    stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def rotate_refresh_chain(session: AsyncSession, *, chain_id: uuid.UUID, token_hash: str) -> None:
-    await session.execute(
-        update(RefreshChain).where(RefreshChain.id == chain_id).values(current_token_hash=token_hash)
-    )
+async def refresh_chain_by_id(session: AsyncSession, chain_id: uuid.UUID) -> RefreshChain | None:
+    stmt = select(RefreshChain).where(RefreshChain.id == chain_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def spend_and_issue(
+    session: AsyncSession, *, token_id: uuid.UUID, chain_id: uuid.UUID, token_hash: str, at: datetime
+) -> None:
+    """Mark the presented token spent and add its successor, in one step."""
+    await session.execute(update(RefreshToken).where(RefreshToken.id == token_id).values(used_at=at))
+    session.add(RefreshToken(chain_id=chain_id, token_hash=token_hash))
 
 
 async def revoke_refresh_chain(

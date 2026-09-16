@@ -119,10 +119,30 @@ async def dispose_engine() -> None:
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
-    """Request-scoped unit of work: commit on success, roll back on error."""
+    """Request-scoped unit of work: commit on success, roll back on error.
+
+    The exception is an `AppError` marked `persist_effects`, which commits and
+    then still fails the request. That exists for security effects which must
+    outlive the rejection that triggered them — see `AppError.persist_effects`.
+    """
+    from app.core.errors import AppError  # noqa: PLC0415 - avoids an import cycle
+
     factory = get_session_factory()
-    async with factory() as session, session.begin():
-        yield session
+    async with factory() as session:
+        transaction = await session.begin()
+        try:
+            yield session
+        except AppError as exc:
+            if exc.persist_effects:
+                await transaction.commit()
+            else:
+                await transaction.rollback()
+            raise
+        except BaseException:
+            await transaction.rollback()
+            raise
+        else:
+            await transaction.commit()
 
 
 def import_all_models() -> None:

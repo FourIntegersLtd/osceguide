@@ -73,11 +73,19 @@ async def test_a_refresh_chain_rotates_in_place(db_session: AsyncSession) -> Non
         db_session, user_id=user.id, token_hash="hash-1", expires_at=NOW + timedelta(days=30)
     )
     await db_session.flush()
-    await repository.rotate_refresh_chain(db_session, chain_id=chain.id, token_hash="hash-2")
+    spent = await repository.refresh_token_by_hash(db_session, "hash-1")
+    assert spent is not None
+    await repository.spend_and_issue(
+        db_session, token_id=spent.id, chain_id=chain.id, token_hash="hash-2", at=NOW
+    )
     await db_session.flush()
-    assert await repository.refresh_chain_by_token_hash(db_session, "hash-1") is None
-    rotated = await repository.refresh_chain_by_token_hash(db_session, "hash-2")
-    assert rotated is not None and rotated.id == chain.id
+
+    # The old token is kept and marked spent, which is what makes replay
+    # detectable; a rotation that deleted it would look like a forgery.
+    old = await repository.refresh_token_by_hash(db_session, "hash-1")
+    assert old is not None and old.used_at is not None
+    new = await repository.refresh_token_by_hash(db_session, "hash-2")
+    assert new is not None and new.used_at is None
 
 
 async def test_deleting_a_user_takes_their_sessions(db_session: AsyncSession) -> None:
@@ -89,4 +97,4 @@ async def test_deleting_a_user_takes_their_sessions(db_session: AsyncSession) ->
     await db_session.flush()
     await repository.delete_user(db_session, user.id)
     await db_session.flush()
-    assert await repository.refresh_chain_by_token_hash(db_session, "hash-x") is None
+    assert await repository.refresh_token_by_hash(db_session, "hash-x") is None

@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
@@ -53,7 +53,16 @@ def test_every_worker_route_requires_the_worker_secret(app: FastAPI) -> None:
 
 
 def test_every_route_declares_a_response_model(app: FastAPI) -> None:
-    missing = [f"{sorted(r.methods)} {r.path}" for r in api_routes(app) if r.response_model is None]
+    """A route returns a declared shape, so the generated client has a type.
+
+    204 is exempt: it means "no content", and declaring a body model for one
+    would put a lie in the OpenAPI document.
+    """
+    missing = [
+        f"{sorted(r.methods)} {r.path}"
+        for r in api_routes(app)
+        if r.response_model is None and r.status_code != status.HTTP_204_NO_CONTENT
+    ]
     assert not missing, f"routes without response_model: {missing}"
 
 

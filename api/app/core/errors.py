@@ -33,6 +33,14 @@ class AppError(Exception):
     code: str = "internal_error"
     default_message: str = "Something went wrong"
 
+    # Normally a failed request leaves no trace: the transaction rolls back.
+    # A few failures must record something anyway — revoking a refresh chain
+    # that has just been proven to have leaked, while still answering 401. Such
+    # an error sets this, and `core.db.get_session` commits instead of rolling
+    # back. Keep the list short and obvious; it is an exception to the rule
+    # that a rejected request changes nothing.
+    persist_effects: bool = False
+
     def __init__(self, message: str | None = None, *, details: dict[str, Any] | None = None) -> None:
         self.message = message or self.default_message
         self.details = details

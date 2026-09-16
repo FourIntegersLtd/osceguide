@@ -18,10 +18,13 @@ from app import __version__
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
+from app.core.memberships import bind_membership_lookup
 from app.core.openapi import TAGS, operation_id
 from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.features import health
+from app.features.identity.router import router as identity_router
+from app.features.tenancy.service import memberships_for_token
 
 API_V1_PREFIX = "/api/v1"
 WORKER_PREFIX = "/api/worker"
@@ -39,6 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def api_v1_router() -> APIRouter:
     """Public, versioned API. Add each slice's router here."""
     router = APIRouter()
+    router.include_router(identity_router)
     return router
 
 
@@ -70,6 +74,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_error_handlers(app)
+
+    # `identity` needs a user's memberships to stamp a token but sits below
+    # `tenancy`, which owns them. The seam is bound here, in the one place
+    # allowed to know about both.
+    bind_membership_lookup(memberships_for_token)
 
     app.include_router(health.router)
     app.include_router(api_v1_router(), prefix=API_V1_PREFIX)

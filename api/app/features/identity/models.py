@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,21 +39,35 @@ class UserIdentity(Base, UUIDPrimaryKey, Timestamps):
 
 
 class RefreshChain(Base, UUIDPrimaryKey, Timestamps):
-    """One sign-in. Rotating a token replaces `current_token_hash` in place.
-
-    Storing the chain rather than every issued token keeps reuse detection to
-    one row per session: a token that is not the current one is either spent or
-    forged, and both mean the chain is compromised.
-    """
+    """One sign-in, from which a series of refresh tokens is issued."""
 
     __tablename__ = "refresh_chains"
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    current_token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_reason: Mapped[str | None] = mapped_column(String(32))
     user_agent: Mapped[str | None] = mapped_column(String(255))
+
+
+class RefreshToken(Base, UUIDPrimaryKey, Timestamps):
+    """One issued refresh token.
+
+    Every token is kept, spent or not, because that is the only way reuse can
+    be told from forgery. Overwriting a single `current_token_hash` on rotation
+    loses the evidence: a replayed token simply is not found, which is
+    indistinguishable from a token that never existed, so the leaked chain
+    would stay alive.
+    """
+
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (Index("ix_refresh_tokens_chain_id", "chain_id"),)
+
+    chain_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("refresh_chains.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PasswordResetToken(Base, UUIDPrimaryKey, Timestamps):

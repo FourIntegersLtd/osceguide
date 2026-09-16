@@ -107,12 +107,23 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     app = create_app()
 
     async def override_get_session() -> AsyncIterator[AsyncSession]:
+        # Mirrors `core.db.get_session`, including the `persist_effects` rule:
+        # if this diverged, a test could prove behaviour production does not have.
+        from app.core.errors import AppError
+
         try:
             yield db_session
-            await db_session.commit()  # releases the savepoint only; the outer transaction stays open
+        except AppError as exc:
+            if exc.persist_effects:
+                await db_session.commit()
+            else:
+                await db_session.rollback()
+            raise
         except Exception:
             await db_session.rollback()
             raise
+        else:
+            await db_session.commit()  # releases the savepoint; the outer transaction stays open
 
     app.dependency_overrides[get_session] = override_get_session
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
