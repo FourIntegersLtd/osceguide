@@ -30,10 +30,15 @@ def test_build_gpt_live_vad_uses_the_interruption_preset(monkeypatch) -> None:
     assert load.call_args.kwargs["min_silence_duration"] == 0.45
 
 
-def test_filler_repeats_until_the_tool_ends() -> None:
+def test_filler_lands_inside_the_wait_rather_than_after_it() -> None:
     kwargs = filler_kwargs()
-    assert (kwargs["max_steps"], kwargs["interval"], kwargs["delay"]) == (None, 10.0, 4.0)
-    assert filler_line(0) != filler_line(1) and filler_line(4) == filler_line(0)
+    # A filler only fires once the session has been idle this long, so a delay
+    # longer than the tool it covers never fires at all.
+    assert kwargs["delay"] < 2.0 and kwargs["interval"] < 5.0
+    # Capped: a tool still running after three fillers is stuck, and the on-screen
+    # panel is already saying so.
+    assert kwargs["max_steps"] == 3
+    assert filler_line(0) != filler_line(1) and filler_line(3) == filler_line(0)
 
 
 def test_tool_use_log_shape(caplog) -> None:

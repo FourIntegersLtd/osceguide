@@ -16,7 +16,9 @@ main_logger = logging.getLogger(__name__)
 
 def build_offer_navigation_modes_tool(ctx: JobContext):
     async def _offer_navigation_modes_impl(run_ctx: RunContext) -> str:
-        await run_ctx.update("I'll put those options on your screen.")
+        # No ctx.update here: publishing a data packet takes milliseconds, and the
+        # first update would make the tool non-blocking, deferring the line that
+        # tells the user to choose to whenever the session next falls idle.
         payload = {
             "type": DATA_TYPE_NAV_MODE_PROMPT,
             "schemaVersion": UI_GUIDANCE_SCHEMA_VERSION,

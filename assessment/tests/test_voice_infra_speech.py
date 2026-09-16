@@ -65,10 +65,16 @@ def test_faq_style_sessions_can_put_openai_first(monkeypatch) -> None:
     assert fallback.call_args.args[0] == ["openai", "deepgram", "cartesia"]
 
 
-def test_vision_llm_is_the_image_capable_model_alone(monkeypatch) -> None:
+def test_vision_llm_has_a_fallback_like_every_other_role(monkeypatch) -> None:
     anthropic_llm = MagicMock(side_effect=lambda **kw: f"anthropic:{kw['model']}")
     monkeypatch.setattr(speech.anthropic, "LLM", anthropic_llm)
-    assert speech.build_vision_llm() == "anthropic:claude-haiku-4-5"
+    fallback = MagicMock(side_effect=lambda models: {"fallback": models})
+    monkeypatch.setattr(speech.llm, "FallbackAdapter", fallback)
+
+    built = speech.build_vision_llm()
+
+    # A model blip is most visible mid-navigation; the shared fallback reads images too.
+    assert built == {"fallback": ["anthropic:claude-haiku-4-5", "anthropic:claude-haiku-4-5"]}
 
 
 def test_models_voices_and_style_are_deployment_settings(monkeypatch) -> None:

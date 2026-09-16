@@ -15,7 +15,7 @@ from osce_assessment.contracts import MessageRole
 
 from .prompts import navigation_mode_prompt
 from .transcript import TranscriptRecorder
-from .ui_guidance import NavigationModeState
+from .ui_guidance import GuidanceProgress, NavigationModeState
 from voice_infra.data_packets import json_packet
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,21 @@ def wire_navigation_mode_choice(ctx: Any, agent: Any, navigation: NavigationMode
         if not msg or msg.get("type") != DATA_TYPE_NAV_MODE_CHOICE or not navigation.set(str(msg.get("mode"))):
             return
         asyncio.create_task(_reply(agent, user_input=navigation_mode_prompt(navigation.mode), what="navigation mode"))
+
+
+def wire_guidance_progress(agent: Any, progress: GuidanceProgress) -> None:
+    """Lower the on-screen progress panel as soon as the agent speaks.
+
+    The panel has to outlive the tool that raised it: the longest wait in a
+    guidance turn is the model reading the screenshot, which happens after the
+    tool has already returned. Nothing inside the tool can see the end of that,
+    but the first word spoken afterwards marks it exactly.
+    """
+
+    @agent.on("agent_state_changed")
+    def _on_agent_state(ev: Any) -> None:
+        if getattr(ev, "new_state", None) == "speaking":
+            asyncio.create_task(progress.done())
 
 
 def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from typing import Any, Callable
 
@@ -27,12 +28,43 @@ class FakeEmitter:
             fn(*args)
 
 
+class FakeLocalParticipant:
+    """Records what the worker publishes and the RPCs it makes to the browser."""
+
+    def __init__(self, identity: str) -> None:
+        self.identity = identity
+        self.published: list[dict[str, Any]] = []
+        self.rpc_calls: list[dict[str, Any]] = []
+        self.rpc_responses: dict[str, Any] = {}
+
+    async def publish_data(self, payload: bytes, **_kwargs: Any) -> None:
+        self.published.append(json.loads(payload))
+
+    async def perform_rpc(self, *, destination_identity: str, method: str, payload: str, response_timeout: float) -> str:
+        self.rpc_calls.append(
+            {"to": destination_identity, "method": method, "payload": json.loads(payload), "timeout": response_timeout}
+        )
+        response = self.rpc_responses.get(method, {})
+        if isinstance(response, Exception):
+            raise response
+        if callable(response):
+            response = response(json.loads(payload))
+        return json.dumps(response)
+
+    def messages(self, message_type: str) -> list[dict[str, Any]]:
+        return [m for m in self.published if m.get("type") == message_type]
+
+
 class FakeRoom(FakeEmitter):
     def __init__(self, *, name: str = "room-1", local_identity: str = "agent-local") -> None:
         super().__init__()
         self.name = name
         self.remote_participants: dict[str, Any] = {}
-        self.local_participant = SimpleNamespace(identity=local_identity)
+        self.local_participant = FakeLocalParticipant(local_identity)
+
+    def receive(self, message: dict[str, Any], *, identity: str = "user-1") -> None:
+        """Deliver a data-channel message as if the browser had published it."""
+        self.emit("data_received", SimpleNamespace(data=json.dumps(message).encode(), participant=participant(identity)))
 
     def join(self, identity: str) -> SimpleNamespace:
         p = participant(identity)

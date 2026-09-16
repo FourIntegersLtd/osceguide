@@ -7,9 +7,10 @@ land it will arrive through a provider, exactly as org-owned scenarios do,
 and this catalogue becomes one implementation among two.
 
 Every entry carries its result schema as data (see ``schemas/``), which is the
-shape the language model is asked to fill. The SCA entry also names the domains
-and global skills the platform marks; the other exams carry their schema only
-until their competencies are lifted out of it.
+shape the language model is asked to fill. The SCA entry also names all three
+domains and the twenty-nine competencies the platform marks, so they can be
+addressed by id rather than only filled in as schema properties; the other exams
+carry their schema only until their competencies are lifted out of it too.
 """
 
 from __future__ import annotations
@@ -48,6 +49,14 @@ def _global(id_: str, label: str) -> Competency:
     return Competency(id=id_, label=label, domain_id=_GLOBAL_SKILLS.id)
 
 
+def _task(id_: str, label: str) -> Competency:
+    return Competency(id=id_, label=label, domain_id=_TASKS.id)
+
+
+def _relating(id_: str, label: str) -> Competency:
+    return Competency(id=id_, label=label, domain_id=_RELATING.id)
+
+
 SCA_RCGP_V1 = CompetencyFramework(
     id="sca-rcgp-v1",
     result_schema=load_schema("sca-rcgp-v1"),
@@ -62,6 +71,28 @@ SCA_RCGP_V1 = CompetencyFramework(
         _global("finishes_data_gathering", "Finishes data gathering"),
         _global("uses_clear_language", "Uses clear language"),
         _global("remains_responsive_to_patient", "Remains responsive to the patient"),
+        _task("opens_consultation", "Opens the consultation"),
+        _task("discovers_psychosocial_context", "Discovers the psychosocial context"),
+        _task("identifies_cues", "Identifies cues"),
+        _task("discovers_ice", "Discovers ideas, concerns and expectations"),
+        _task("interprets_tests", "Interprets tests"),
+        _task("generates_hypotheses", "Generates hypotheses"),
+        _task("rules_in_out_disease", "Rules disease in and out"),
+        _task("reaches_diagnosis", "Reaches a diagnosis"),
+        _task("offers_management_plan", "Offers a management plan"),
+        _task("manages_comorbidity", "Manages comorbidity"),
+        _task("provides_safety_net", "Provides a safety net"),
+        _relating("clarifies_cues", "Clarifies cues"),
+        _relating("listens_curiosity", "Listens with curiosity"),
+        _relating("generates_rapport", "Generates rapport"),
+        _relating("uses_open_questions", "Uses open questions"),
+        _relating("uses_closed_questions", "Uses closed questions well"),
+        _relating("explains_rationale", "Explains the rationale"),
+        _relating("verbalises_diagnosis", "Verbalises the diagnosis"),
+        _relating("shares_ice_plan", "Shares ideas, concerns and expectations in the plan"),
+        _relating("negotiates_psychosocial_plan", "Negotiates a psychosocial plan"),
+        _relating("shares_risks", "Shares risks"),
+        _relating("supports_decision_making", "Supports decision making"),
     ),
     scale=RAG_SCALE,
 )

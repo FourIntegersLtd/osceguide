@@ -90,8 +90,18 @@ persona, onboarding scenes) in `.../assistant_content/`, selected by the
 client profile the frontend declares (surface, current route, navigation
 catalog). The worker never sees a navigation label, a product name or an
 exam id (`tests/test_assistant_worker_no_product_vocabulary.py`).
-The UI-guidance toolset is a port of the legacy worker's; keep it in step
-with the frontend `livekit-ui-guidance` package.
+The UI-guidance toolset began as a port of the legacy worker's and has since
+diverged: one module per concern under `ui_guidance/`, pointers written inline in
+the model's reply as `[POINT:x,y:Label]` and stripped in `GuidanceAgent`'s
+`tts_node`, and a progress panel driven from `progress.py`. Keep
+`ui_guidance/contracts.py` in step with the frontend `livekit-ui-guidance`
+package — `tests/test_ui_guidance_contract_drift.py` reads the TypeScript and
+fails when they disagree.
+
+Only announce a tool with `ctx.update` when it is genuinely slow. The first
+update makes the call non-blocking, so its result is deferred to the next idle
+moment; on a millisecond-long action that delays the sentence the user is waiting
+for. The policy table in `ui_guidance/progress.py` is where that decision lives.
 
 Model ids, voices and spoken style are `voice_infra.speech.SpeechSettings`
 (`VOICE_<FIELD>` env). Do not hardcode a model or a persona name in a worker.

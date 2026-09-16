@@ -1,4 +1,6 @@
-"""GPT-Live limits, tool progress, the computer tool, and transcript delivery."""
+"""GPT-Live limits and transcript delivery.
+
+The computer tool moved to ``test_ui_guidance_toolset.py`` when it was split up."""
 
 from __future__ import annotations
 
@@ -11,7 +13,6 @@ from livekit_assistant_worker.gpt_live_policy import (
     GptLiveSessionController, GptLiveSessionPolicyConfig, SessionEndReason, serialize_usage,
 )
 from livekit_assistant_worker.transcript import TranscriptDelivery, TranscriptRecorder
-from livekit_assistant_worker.ui_guidance.base_computer_toolset import BaseComputerTool
 from osce_assessment.contracts import MessageRole
 from voice_infra import BackendEndpoints
 
@@ -99,34 +100,6 @@ def test_serialize_usage_handles_livekits_dataclass_of_pydantic_records() -> Non
     json.dumps(payload)
     record = payload["model_usage"][0]
     assert record["provider"] == "openai" and record["input_tokens"] == 12 and record["output_tokens"] == 3
-
-
-class _StubComputerTool(BaseComputerTool):
-    async def _analyse_screenshot(self, jpeg_b64: str, media_type: str) -> str:
-        return "[]"
-
-
-def test_computer_screenshot_uses_update_and_unlimited_filler() -> None:
-    async def run() -> None:
-        tool = _StubComputerTool.__new__(_StubComputerTool)
-        tool._LOG_PREFIX = "TEST"
-        tool._worker_type = "help"
-        tool._is_rate_limited = lambda: False  # type: ignore[method-assign]
-        tool._set_tool_running = AsyncMock()  # type: ignore[method-assign]
-        tool._capture_screenshot = AsyncMock(return_value=("b64", "image/jpeg"))  # type: ignore[method-assign]
-        tool._analyse_screenshot = AsyncMock(return_value='[{"type": "text", "text": "ok"}]')  # type: ignore[method-assign]
-        run_ctx = MagicMock()
-        run_ctx.update = AsyncMock()
-        filler_cm = AsyncMock()
-        filler_cm.__aenter__ = AsyncMock(return_value=None)
-        filler_cm.__aexit__ = AsyncMock(return_value=None)
-        run_ctx.with_filler = MagicMock(return_value=filler_cm)
-        await BaseComputerTool.handle(tool, {"action": "screenshot"}, run_ctx)
-        assert run_ctx.update.await_count == 2
-        assert run_ctx.with_filler.call_args.kwargs["max_steps"] is None
-        tool._capture_screenshot.assert_awaited_once()
-
-    asyncio.run(run())
 
 
 def test_transcript_is_delivered_once_with_retries(monkeypatch) -> None:
