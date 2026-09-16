@@ -531,6 +531,38 @@
         "title": "CircuitReviewRead",
         "type": "object"
       },
+      "CloudSlotPost": {
+        "description": "What the worker posts. `room_name` is fixed by `slot_payload_key` in its\nown configuration, so the field name is part of the contract.",
+        "properties": {
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_name"
+        ],
+        "title": "CloudSlotPost",
+        "type": "object"
+      },
+      "CloudSlotResult": {
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_name",
+          "changed"
+        ],
+        "title": "CloudSlotResult",
+        "type": "object"
+      },
       "CohortRead": {
         "properties": {
           "academic_year": {
@@ -12788,6 +12820,116 @@
           }
         },
         "summary": "Accept Chunk",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/worker/livekit-cloud-slot/extend": {
+      "post": {
+        "description": "A worker has connected, so hold the slot for a whole session.\n\nOnly lengthens a room that already holds one: a self-hosted session in a\nroom nobody reserved must not start being counted against the Cloud cap.",
+        "operationId": "worker_extend_cloud_slot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloudSlotPost"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudSlotResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Extend Cloud Slot",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/worker/livekit-cloud-slot/release": {
+      "post": {
+        "description": "The session is over. Give the slot back before its expiry would.",
+        "operationId": "worker_release_cloud_slot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloudSlotPost"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudSlotResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Release Cloud Slot",
         "tags": [
           "worker"
         ]

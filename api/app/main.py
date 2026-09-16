@@ -59,6 +59,7 @@ from app.features.tenancy.service import (
     org_ref_by_slug,
 )
 from app.features.voice.router import router as voice_router
+from app.features.voice.router_worker import router as voice_worker_router
 
 API_V1_PREFIX = "/api/v1"
 WORKER_PREFIX = "/api/worker"
@@ -104,6 +105,7 @@ def worker_router() -> APIRouter:
     router = APIRouter()
     router.include_router(attempts_worker_router)
     router.include_router(assistant_worker_router)
+    router.include_router(voice_worker_router)
     return router
 
 

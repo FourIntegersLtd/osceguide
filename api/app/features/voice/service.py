@@ -12,7 +12,7 @@ from app.core.settings import Settings
 from app.features.attempts import repository as attempts_repo
 from app.features.attempts.domain import Status
 from app.features.attempts.errors import AttemptNotFound, AttemptNotYours
-from app.features.voice import domain, errors
+from app.features.voice import capacity, domain, errors
 from app.features.voice.schemas import VoiceGrant
 
 log = get_logger(__name__)
@@ -36,7 +36,6 @@ async def grant_for_attempt(
     requester_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
-    cloud_slots_free: bool = True,
 ) -> VoiceGrant:
     attempt = await attempts_repo.attempt_by_id(session, attempt_id)
     if attempt is None:
@@ -51,8 +50,18 @@ async def grant_for_attempt(
     session_type = _SESSION_TYPE_BY_KIND.get(attempt.kind, "conversation")
     family = domain.family_for(session_type)
     configured = domain.normalize_mode(settings.livekit_routing_mode)
-    mode = domain.resolve_mode(configured, cloud_slots_free=cloud_slots_free)
     room = attempt.room_name or domain.room_name_for(str(attempt.id))
+
+    # Asked only when the answer can change the outcome. `slots_free` reserves
+    # a slot as it answers — asking and then taking would race — so calling it
+    # for a session already routed self-hosted would hold a Cloud slot nobody
+    # is going to use until it expired.
+    cloud_slots_free = (
+        await capacity.slots_free(settings, room) if configured is domain.Mode.LIVEKIT_CLOUD else False
+    )
+    mode = domain.resolve_mode(configured, cloud_slots_free=cloud_slots_free)
+    if mode is not configured:
+        log.info("cloud is full; serving from our own workers", room=room, attempt_id=str(attempt.id))
 
     # The three strings the worker is given. Everything else it needs it
     # fetches from the bootstrap route, which is what keeps the dispatch

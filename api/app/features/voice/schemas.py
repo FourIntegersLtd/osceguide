@@ -17,3 +17,17 @@ class VoiceGrant(BaseModel):
     server_url: str
     room: str
     attempt_id: uuid.UUID
+
+
+class CloudSlotPost(BaseModel):
+    """What the worker posts. `room_name` is fixed by `slot_payload_key` in its
+    own configuration, so the field name is part of the contract."""
+
+    room_name: str
+
+
+class CloudSlotResult(BaseModel):
+    room_name: str
+    # Whether anything actually changed: a release of a room that held no slot,
+    # or an extend of one, is a no-op rather than an error.
+    changed: bool

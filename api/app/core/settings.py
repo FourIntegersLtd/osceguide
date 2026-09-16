@@ -75,6 +75,15 @@ class Settings(BaseSettings):
     livekit_token_ttl_seconds: int = 60 * 60
     voice_backend_label: str = "platform"
 
+    # LiveKit Cloud concurrency is metered and shared across every product, so
+    # past the cap sessions are served from our own workers rather than
+    # refused. Defaults match the legacy backends exactly: the key is shared
+    # with them during coexistence, so the numbers have to agree.
+    livekit_cloud_overflow_enabled: bool = False
+    livekit_cloud_max_concurrent: int = 20
+    livekit_cloud_slot_pending_ttl_seconds: int = 300
+    livekit_cloud_slot_ttl_seconds: int = 2100
+
     # Email. Resend is the only provider b2c uses, and the key is the only
     # configuration it needs.
     resend_api_key: str = ""
