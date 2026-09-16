@@ -338,6 +338,106 @@
         "title": "ChunkPost",
         "type": "object"
       },
+      "CircuitRead": {
+        "properties": {
+          "active_slot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Slot Id"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/SlotRead"
+            },
+            "title": "Slots",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "supervisor_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor User Id"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/TimingRead"
+          }
+        },
+        "required": [
+          "id",
+          "sitting_id",
+          "name",
+          "supervisor_user_id",
+          "timing",
+          "active_slot_id",
+          "room_name",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "CircuitRead",
+        "type": "object"
+      },
       "CreateAttempt": {
         "properties": {
           "exam_code": {
@@ -430,6 +530,54 @@
         "title": "CreateAttempt",
         "type": "object"
       },
+      "CreateCircuit": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "station_version_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Station Version Ids",
+            "type": "array"
+          },
+          "supervisor_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor User Id"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/TimingIn"
+          },
+          "trainee_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Trainee Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "trainee_ids",
+          "station_version_ids"
+        ],
+        "title": "CreateCircuit",
+        "type": "object"
+      },
       "CreateOrganization": {
         "properties": {
           "name": {
@@ -472,6 +620,63 @@
           "exam_code"
         ],
         "title": "CreateProgramme",
+        "type": "object"
+      },
+      "CreateSitting": {
+        "properties": {
+          "feedback_template_version_id": {
+            "format": "uuid",
+            "title": "Feedback Template Version Id",
+            "type": "string"
+          },
+          "mode": {
+            "default": "training",
+            "pattern": "^(training|exam)$",
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "programme_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programme Id"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "sitting_type": {
+            "default": "group_training",
+            "maxLength": 32,
+            "title": "Sitting Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "feedback_template_version_id"
+        ],
+        "title": "CreateSitting",
         "type": "object"
       },
       "CreateStation": {
@@ -926,6 +1131,33 @@
         "title": "Page[ProgrammeRead]",
         "type": "object"
       },
+      "Page_SittingRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SittingRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[SittingRead]",
+        "type": "object"
+      },
       "Page_StationRead_": {
         "properties": {
           "items": {
@@ -1068,6 +1300,137 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "SittingRead": {
+        "properties": {
+          "circuits": {
+            "items": {
+              "$ref": "#/components/schemas/CircuitRead"
+            },
+            "title": "Circuits",
+            "type": "array"
+          },
+          "feedback_template_version_id": {
+            "format": "uuid",
+            "title": "Feedback Template Version Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "sitting_type": {
+            "title": "Sitting Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "mode",
+          "sitting_type",
+          "status",
+          "scheduled_for",
+          "feedback_template_version_id"
+        ],
+        "title": "SittingRead",
+        "type": "object"
+      },
+      "SlotRead": {
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "slot_index": {
+            "title": "Slot Index",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slot_index",
+          "trainee_id",
+          "station_version_id",
+          "status"
+        ],
+        "title": "SlotRead",
+        "type": "object"
+      },
       "StationRead": {
         "properties": {
           "content": {
@@ -1179,6 +1542,20 @@
         "title": "StationVersionRead",
         "type": "object"
       },
+      "SwitchTurn": {
+        "properties": {
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot_id"
+        ],
+        "title": "SwitchTurn",
+        "type": "object"
+      },
       "SwitchWorkspace": {
         "properties": {
           "org_slug": {
@@ -1190,6 +1567,66 @@
           "org_slug"
         ],
         "title": "SwitchWorkspace",
+        "type": "object"
+      },
+      "TimingIn": {
+        "properties": {
+          "breaks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Breaks",
+            "type": "array"
+          },
+          "reading_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reading Minutes"
+          },
+          "simulation_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Minutes"
+          }
+        },
+        "title": "TimingIn",
+        "type": "object"
+      },
+      "TimingRead": {
+        "properties": {
+          "breaks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Breaks",
+            "type": "array"
+          },
+          "reading_minutes": {
+            "title": "Reading Minutes",
+            "type": "integer"
+          },
+          "simulation_minutes": {
+            "title": "Simulation Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reading_minutes",
+          "simulation_minutes"
+        ],
+        "title": "TimingRead",
         "type": "object"
       },
       "TokenPair": {
@@ -2917,6 +3354,299 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/end": {
+      "post": {
+        "operationId": "sittings_end_circuit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "End Circuit",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/start": {
+      "post": {
+        "description": "A supervisor runs the circuit they were assigned, so org membership is\nthe gate rather than admin rights.",
+        "operationId": "sittings_start_circuit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_already_ended",
+            "x-codes": [
+              "circuit_already_ended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Circuit",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/switch-turn": {
+      "post": {
+        "operationId": "sittings_switch_turn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTurn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_permitted_in_mode",
+            "x-codes": [
+              "not_permitted_in_mode"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Switch Turn",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/memberships": {
       "get": {
         "operationId": "tenancy_list_memberships",
@@ -3289,6 +4019,375 @@
         "summary": "Update Programme",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings": {
+      "get": {
+        "operationId": "sittings_list_sittings",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SittingRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sittings",
+        "tags": [
+          "sittings"
+        ]
+      },
+      "post": {
+        "operationId": "sittings_create_sitting",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSitting"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SittingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_not_published",
+            "x-codes": [
+              "template_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Sitting",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}": {
+      "get": {
+        "description": "Circuits and slots embedded, because every screen that opens a sitting\nneeds all three and would otherwise fetch them one by one.",
+        "operationId": "sittings_read_sitting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SittingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Sitting",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/circuits": {
+      "post": {
+        "operationId": "sittings_add_circuit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCircuit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_circuit",
+            "x-codes": [
+              "invalid_circuit"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Circuit",
+        "tags": [
+          "sittings"
         ]
       }
     },

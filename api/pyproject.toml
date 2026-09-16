@@ -93,6 +93,15 @@ forbidden_modules = ["app.features"]
 name = "feature slices depend downward only"
 type = "layers"
 layers = [
+    # Highest first. A slice may call anything below it, never above.
+    "app.features.sittings",
+    "app.features.voice",
+    "app.features.attempts",
+    "app.features.stations",
+    "app.features.entitlements",
+    "app.features.catalog",
+    "app.features.tenancy",
+    "app.features.identity",
     "app.features.health",
 ]
 

@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+from app.core.errors import Conflict, NotFound
+
+
+class SittingNotFound(NotFound):
+    code = "sitting_not_found"
+    default_message = "No such sitting"
+
+
+class CircuitNotFound(NotFound):
+    code = "circuit_not_found"
+    default_message = "No such circuit"
+
+
+class SlotNotFound(NotFound):
+    code = "slot_not_found"
+    default_message = "No such slot"
+
+
+class InvalidCircuitError(Conflict):
+    code = "invalid_circuit"
+    default_message = "That circuit cannot be built as described"
+
+
+class CircuitLockedError(Conflict):
+    code = "circuit_locked"
+    default_message = "A station is in progress or feedback exists; the circuit cannot be changed"
+
+
+class CircuitAlreadyEndedError(Conflict):
+    code = "circuit_already_ended"
+    default_message = "That circuit has already finished"
+
+
+class NotPermittedInModeError(Conflict):
+    code = "not_permitted_in_mode"
+    default_message = "That action does not apply to this kind of circuit"
+
+
+class TemplateNotPublished(Conflict):
+    code = "template_not_published"
+    default_message = "A sitting needs a published feedback template"

@@ -1,0 +1,197 @@
+"""Storage for sittings, circuits and slots. Org-scoped methods take org_id first."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.pagination import encode_cursor
+from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee, Sitting, Slot
+
+
+async def create_sitting(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    name: str,
+    feedback_template_version_id: uuid.UUID,
+    mode: str,
+    sitting_type: str,
+    scheduled_for: datetime | None,
+    programme_id: uuid.UUID | None,
+) -> Sitting:
+    row = Sitting(
+        org_id=org_id,
+        name=name,
+        feedback_template_version_id=feedback_template_version_id,
+        mode=mode,
+        sitting_type=sitting_type,
+        scheduled_for=scheduled_for,
+        programme_id=programme_id,
+    )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def sitting_by_id(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting | None:
+    stmt = select(Sitting).where(Sitting.org_id == org_id, Sitting.id == sitting_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def list_sittings(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+) -> tuple[list[Sitting], str | None]:
+    stmt = select(Sitting).where(Sitting.org_id == org_id)
+    if cursor:
+        stmt = stmt.where(Sitting.created_at < datetime.fromisoformat(cursor["t"]))
+    rows = list(
+        (
+            await session.execute(
+                stmt.order_by(Sitting.created_at.desc(), Sitting.id.desc()).limit(limit + 1)
+            )
+        ).scalars()
+    )
+    if len(rows) <= limit:
+        return rows, None
+    page = rows[:limit]
+    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
+
+
+async def set_sitting_status(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, *, status: str
+) -> None:
+    await session.execute(
+        update(Sitting).where(Sitting.org_id == org_id, Sitting.id == sitting_id).values(status=status)
+    )
+
+
+# --- circuits --------------------------------------------------------------
+
+
+async def create_circuit(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    sitting_id: uuid.UUID,
+    name: str,
+    supervisor_user_id: uuid.UUID | None,
+    timing: dict[str, Any],
+) -> Circuit:
+    row = Circuit(
+        org_id=org_id,
+        sitting_id=sitting_id,
+        name=name,
+        supervisor_user_id=supervisor_user_id,
+        timing=timing,
+    )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def circuit_by_id(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> Circuit | None:
+    stmt = select(Circuit).where(Circuit.org_id == org_id, Circuit.id == circuit_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def circuits_for_sitting(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
+) -> list[Circuit]:
+    stmt = (
+        select(Circuit)
+        .where(Circuit.org_id == org_id, Circuit.sitting_id == sitting_id)
+        .order_by(Circuit.created_at)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def update_circuit(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, **values: Any
+) -> None:
+    await session.execute(
+        update(Circuit).where(Circuit.org_id == org_id, Circuit.id == circuit_id).values(**values)
+    )
+
+
+async def add_circuit_members(
+    session: AsyncSession,
+    circuit_id: uuid.UUID,
+    *,
+    trainees: list[uuid.UUID],
+    stations: list[uuid.UUID],
+) -> None:
+    for position, trainee_id in enumerate(trainees):
+        session.add(CircuitTrainee(circuit_id=circuit_id, trainee_id=trainee_id, position=position))
+    for position, station_version_id in enumerate(stations):
+        session.add(
+            CircuitStation(circuit_id=circuit_id, position=position, station_version_id=station_version_id)
+        )
+    await session.flush()
+
+
+async def clear_circuit_members(session: AsyncSession, circuit_id: uuid.UUID) -> None:
+    await session.execute(delete(CircuitTrainee).where(CircuitTrainee.circuit_id == circuit_id))
+    await session.execute(delete(CircuitStation).where(CircuitStation.circuit_id == circuit_id))
+
+
+# --- slots -----------------------------------------------------------------
+
+
+async def create_slots(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    circuit_id: uuid.UUID,
+    *,
+    planned: list[tuple[int, uuid.UUID, uuid.UUID]],
+) -> list[Slot]:
+    rows = [
+        Slot(
+            org_id=org_id,
+            circuit_id=circuit_id,
+            slot_index=index,
+            trainee_id=trainee_id,
+            station_version_id=station_version_id,
+        )
+        for index, trainee_id, station_version_id in planned
+    ]
+    session.add_all(rows)
+    await session.flush()
+    for row in rows:
+        await session.refresh(row)
+    return rows
+
+
+async def slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> list[Slot]:
+    stmt = select(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id).order_by(Slot.slot_index)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def slot_by_id(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> Slot | None:
+    stmt = select(Slot).where(Slot.org_id == org_id, Slot.id == slot_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def update_slots_for_circuit(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, **values: Any
+) -> None:
+    await session.execute(
+        update(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id).values(**values)
+    )
+
+
+async def delete_slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> None:
+    await session.execute(delete(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id))
+
+
+async def slots_for_trainee(session: AsyncSession, trainee_id: uuid.UUID) -> list[Slot]:
+    """Not org-scoped: a trainee may belong to more than one organisation, and
+    this answers "what am I rostered onto?" across all of them."""
+    stmt = select(Slot).where(Slot.trainee_id == trainee_id).order_by(Slot.created_at.desc())
+    return list((await session.execute(stmt)).scalars())

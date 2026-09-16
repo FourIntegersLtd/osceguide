@@ -77,9 +77,7 @@ class Timing:
     breaks: tuple[Break, ...] = ()
 
 
-def build_slots(
-    mode: Mode, *, trainees: Sequence[str], stations: Sequence[str]
-) -> list[PlannedSlot]:
+def build_slots(mode: Mode, *, trainees: Sequence[str], stations: Sequence[str]) -> list[PlannedSlot]:
     """The slots a circuit starts with.
 
     Exam and training compose differently because they mean different things: a
@@ -147,9 +145,7 @@ def _clamp(value: int, bounds: tuple[int, int]) -> int:
     return max(low, min(high, value))
 
 
-def normalise_timing(
-    raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, station_count: int = 0
-) -> Timing:
+def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, station_count: int = 0) -> Timing:
     """Read a timing blob, clamping it into what a station can actually run.
 
     The legacy `station_minutes` spelling is still accepted because existing
@@ -160,9 +156,7 @@ def normalise_timing(
     # minimum", and treating it as missing would quietly hand back the default
     # instead — a three-minute reading period where one was asked for.
     reading_raw = raw.get("reading_minutes")
-    reading = _clamp(
-        int(DEFAULT_READING_MINUTES if reading_raw is None else reading_raw), READING_BOUNDS
-    )
+    reading = _clamp(int(DEFAULT_READING_MINUTES if reading_raw is None else reading_raw), READING_BOUNDS)
 
     simulation_raw = raw.get("simulation_minutes")
     if simulation_raw is None:
@@ -179,9 +173,7 @@ def normalise_timing(
         seen: set[int] = set()
         for entry in raw.get("breaks") or []:
             raw_after = entry.get("after_station")
-            after = (
-                _clamp(int(0 if raw_after is None else raw_after), (1, highest)) if highest else 0
-            )
+            after = _clamp(int(0 if raw_after is None else raw_after), (1, highest)) if highest else 0
             if after and after not in seen:
                 seen.add(after)
         breaks = tuple(Break(after) for after in sorted(seen))

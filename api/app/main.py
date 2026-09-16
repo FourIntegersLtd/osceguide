@@ -29,6 +29,7 @@ from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.catalog.router import router as catalog_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.identity.router import router as identity_router
+from app.features.sittings.router import router as sittings_router
 from app.features.stations.router import router as stations_router
 from app.features.tenancy.router import router as tenancy_router
 from app.features.tenancy.service import (
@@ -63,6 +64,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(attempts_router)
     router.include_router(entitlements_router)
     router.include_router(voice_router)
+    router.include_router(sittings_router)
     return router
 
 

@@ -13,7 +13,6 @@ import pytest
 from app.features.sittings import domain
 from app.features.sittings.domain import Mode
 
-
 # --------------------------------------------------------------------------
 # Building slots
 # --------------------------------------------------------------------------
@@ -82,9 +81,7 @@ def test_a_circuit_with_feedback_is_locked() -> None:
 def test_force_overrides_the_lock() -> None:
     """Kept because b2b has it and supervisors rely on it when a session goes
     wrong mid-circuit."""
-    domain.ensure_editable(
-        domain.CircuitState(active_slot_id="slot-1", has_feedback=True), force=True
-    )
+    domain.ensure_editable(domain.CircuitState(active_slot_id="slot-1", has_feedback=True), force=True)
 
 
 # --------------------------------------------------------------------------
@@ -110,9 +107,7 @@ def test_appending_trainees_is_training_only() -> None:
 def test_a_circuit_can_only_start_once() -> None:
     domain.ensure_startable(domain.CircuitState(active_slot_id=None, has_feedback=False))
     with pytest.raises(domain.CircuitAlreadyEnded):
-        domain.ensure_startable(
-            domain.CircuitState(active_slot_id=None, has_feedback=False, ended=True)
-        )
+        domain.ensure_startable(domain.CircuitState(active_slot_id=None, has_feedback=False, ended=True))
 
 
 def test_only_one_slot_is_active_at_a_time() -> None:

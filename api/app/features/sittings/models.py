@@ -58,9 +58,7 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps):
         ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    supervisor_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL")
-    )
+    supervisor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     # A closed shape with a handful of fields, kept as JSON because the break
     # list is variable-length and read as a unit.
     timing: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
