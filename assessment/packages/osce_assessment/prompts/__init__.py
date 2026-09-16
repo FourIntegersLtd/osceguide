@@ -18,6 +18,11 @@ from functools import lru_cache
 from importlib import resources
 
 from .athena_doctor import AthenaDoctorFormatter
+from .consultation_pacing import (
+    ConsultationPacing,
+    consultation_pacing_payload,
+    pacing_for_framework,
+)
 from .cv import format_structured_cv_for_llm
 from .dashboard_feedback import DashboardFeedbackPromptFormatter
 from .debrief_feedback import (
@@ -93,6 +98,9 @@ __all__ = [
     "PATIENT_GREETINGS",
     "USER_PROMPT_TEMPLATE_ID",
     "AthenaDoctorFormatter",
+    "ConsultationPacing",
+    "consultation_pacing_payload",
+    "pacing_for_framework",
     "DashboardFeedbackPromptFormatter",
     "ConversationPromptFormatter",
     "DebriefPromptFormatter",

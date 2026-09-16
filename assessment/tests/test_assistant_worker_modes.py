@@ -31,6 +31,13 @@ def test_data_driven_modes_keep_no_transcript_and_run_no_screen_tools() -> None:
     assert mode_profile(WorkerType.ONBOARDING).opens_with_generated_reply and mode_profile(WorkerType.ONBOARDING).scene_updates
 
 
+def test_only_the_consulting_doctor_runs_against_a_clock() -> None:
+    """The one interaction with a station length to keep to; the rest end when the user leaves."""
+    assert mode_profile(WorkerType.CONSULTING_DOCTOR).paced
+    for worker_type in (WorkerType.HELP, WorkerType.ONBOARDING, WorkerType.DASHBOARD):
+        assert not mode_profile(worker_type).paced
+
+
 def test_the_worker_holds_no_session_prompt_or_faq_content() -> None:
     names = {p.name for p in PACKAGE.rglob("*.py")}
     assert not names & {"faq.py", "help.py", "onboarding.py", "gpt_live.py"}

@@ -39,13 +39,15 @@ class ModeProfile:
     """The browser announces scene changes; the backend re-renders the instructions."""
     opens_with_generated_reply: bool = False
     """Open with a model-generated line instead of a fixed greeting."""
+    paced: bool = False
+    """The interaction runs against a clock the backend sent: time notices and a time tool apply."""
 
 
 MODE_PROFILES: dict[WorkerType, ModeProfile] = {
     WorkerType.HELP: ModeProfile(WorkerType.HELP, llm="vision", max_tool_steps=10, keeps_transcript=True, gpt_live_eligible=True, ui_guidance=True),
     WorkerType.ONBOARDING: ModeProfile(WorkerType.ONBOARDING, llm="vision", max_tool_steps=10, scene_updates=True, opens_with_generated_reply=True),
     WorkerType.DASHBOARD: ModeProfile(WorkerType.DASHBOARD, llm="patient", max_tool_steps=5),
-    WorkerType.CONSULTING_DOCTOR: ModeProfile(WorkerType.CONSULTING_DOCTOR, llm="tutor", max_tool_steps=5),
+    WorkerType.CONSULTING_DOCTOR: ModeProfile(WorkerType.CONSULTING_DOCTOR, llm="tutor", max_tool_steps=5, paced=True),
 }
 
 

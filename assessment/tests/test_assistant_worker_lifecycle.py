@@ -71,6 +71,7 @@ def fake_agent(monkeypatch):
     monkeypatch.setattr(session_module, "build_room_options", lambda **kw: kw)
     monkeypatch.setattr(session_module, "build_anthropic_computer_tool", lambda ctx, wt, navigation: ("computer-tool", navigation))
     monkeypatch.setattr(session_module, "build_offer_navigation_modes_tool", lambda ctx: "nav-mode-tool")
+    monkeypatch.setattr(session_module, "build_check_time_tool", lambda clock: "check-time-tool")
     return builds
 
 
@@ -236,6 +237,32 @@ def test_dashboard_and_doctor_use_backend_rendered_instructions(fake_agent) -> N
     _, _, _ = _run(bootstrap)
     assert fake_agent[-1]["pipeline_instructions"] == "Rendered dashboard prompt." and fake_agent[-1]["max_tool_steps"] == 5
     assert FakeAgentSession.instances[-1].said[0][0] == "Custom greeting."
+
+
+PACING = {
+    "total_seconds": 720,
+    "marks": [{"at_seconds": 360, "note": "[Notice: half the time has gone.]"}],
+    "phases": [{"until_seconds": 360, "label": "history taking"}, {"until_seconds": 720, "label": "the close"}],
+}
+
+
+def test_a_paced_session_gets_the_time_tool_and_a_clock_that_stops_on_shutdown(fake_agent) -> None:
+    bootstrap = AssistantSession(
+        session_id="unified_1", worker_type="consulting-doctor", candidate_ref="user-1",
+        instructions="Rendered consultation prompt.", extras={"pacing": PACING},
+    )
+    voice, ctx, _ = _run(bootstrap)
+    assert fake_agent[-1]["pipeline_tools"] == ["check-time-tool"]
+    assert voice.clock is not None and voice.clock.elapsed() is not None, "the clock starts when the consultation opens"
+    assert voice.clock.cancel in ctx.shutdown_callbacks, "and it is torn down with the job"
+
+
+def test_a_backend_that_sends_no_clock_gets_the_behaviour_it_had_before(fake_agent) -> None:
+    """The worker may deploy ahead of the backend; a missing plan is not an error."""
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="consulting-doctor", candidate_ref="user-1", instructions="Rendered consultation prompt.")
+    voice, _, _ = _run(bootstrap)
+    assert fake_agent[-1]["pipeline_tools"] == []
+    assert voice.clock is None
 
 
 def test_faq_help_with_credentials_runs_on_gpt_live(fake_agent, monkeypatch) -> None:

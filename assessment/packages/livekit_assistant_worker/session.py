@@ -22,8 +22,10 @@ from .agent_factory import AgentBuild, build_assistant_agent
 from .bootstrap import AssistantSession, BootstrapError, fetch_bootstrap, fetch_scene_instructions
 from .gpt_live_policy import register_gpt_live_session_policy
 from .metadata import MetadataError, parse_dispatch_metadata
+from .pacing import ConsultationClock
 from .runtime_policy import VoiceRuntime, select_voice_runtime
 from .speech import build_assistant_llm, build_assistant_tts
+from .tools.check_time import build_check_time_tool
 from .tools.navigation_mode import build_offer_navigation_modes_tool
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
 from .ui_guidance import NavigationModeState, build_anthropic_computer_tool, is_ui_guidance_enabled
@@ -46,6 +48,7 @@ class AssistantVoiceSession:
         self.delivery: TranscriptDelivery | None = None
         self._agent: Any = None
         self._endpoints: BackendEndpoints | None = None
+        self.clock: ConsultationClock | None = None
 
     # -- lifecycle ---------------------------------------------------------------
 
@@ -92,6 +95,9 @@ class AssistantVoiceSession:
             register_gpt_live_session_policy(ctx=ctx, agent=build.session, session_id=session.session_id, worker_type=session.worker_type.value, endpoints=endpoints)
 
         self._wire_handlers(ctx, build.session, session)
+        if self.clock is not None:
+            self.clock.start(build.session)
+            ctx.add_shutdown_callback(self.clock.cancel)
         await self._open(build.session, session, build.opening_instruction)
         return session
 
@@ -106,6 +112,12 @@ class AssistantVoiceSession:
                     tools.append(build_anthropic_computer_tool(ctx, session.worker_type.value, self.navigation))
                 except Exception as exc:  # noqa: BLE001 — guidance is optional
                     logger.warning("[ui_guidance] computer tool failed to load: %s", exc, exc_info=True)
+        # Built here because the tool needs it, started later: time zero is when the
+        # interaction opens, not when the tool list is assembled. A backend that sends
+        # no plan gets no clock and no tool, which is the old behaviour exactly.
+        if session.mode.paced and session.extras.pacing is not None:
+            self.clock = ConsultationClock(session.extras.pacing)
+            tools.append(build_check_time_tool(self.clock))
         return tools
 
     def _build(self, ctx: Any, session: AssistantSession, instructions: str, tools: list, runtime: VoiceRuntime) -> AgentBuild:

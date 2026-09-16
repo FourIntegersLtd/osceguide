@@ -18,13 +18,46 @@ class BootstrapError(RuntimeError):
         self.auth_failed = auth_failed
 
 
+class PacingMark(BaseModel):
+    """One moment in an interaction, and the note to push in when it passes."""
+
+    model_config = ConfigDict(frozen=True)
+
+    at_seconds: float = Field(gt=0)
+    note: str = Field(min_length=1)
+
+
+class PacingPhase(BaseModel):
+    """A stretch of the interaction, named, ending at ``until_seconds``."""
+
+    model_config = ConfigDict(frozen=True)
+
+    until_seconds: float = Field(gt=0)
+    label: str = Field(min_length=1)
+
+
+class PacingPlan(BaseModel):
+    """A clock the backend chose: when to nudge, what each nudge says, what to call each stretch.
+
+    The worker runs it without knowing what kind of interaction this is; every
+    word the model will read was written by whoever rendered the instructions.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    total_seconds: float = Field(gt=0)
+    marks: tuple[PacingMark, ...] = ()
+    phases: tuple[PacingPhase, ...] = ()
+
+
 class AssistantExtras(BaseModel):
-    """The two facts the worker itself decides on: which tools to load and which runtime to use."""
+    """What the worker itself decides on: which tools to load, which runtime, and the clock."""
 
     model_config = ConfigDict(extra="ignore")
 
     screen_ui_guidance: bool = False
     voice_help_intent: str | None = None
+    pacing: PacingPlan | None = None
 
 
 class GPTLiveInstructions(BaseModel):

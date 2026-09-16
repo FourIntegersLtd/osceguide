@@ -14,6 +14,7 @@ import logging
 from typing import Any
 
 from voice_infra.data_packets import json_packet, packet_sender_identity
+from voice_infra.notices import apply_notice
 
 logger = logging.getLogger(__name__)
 
@@ -35,20 +36,6 @@ def seconds_left_from(msg: dict[str, Any]) -> int | None:
     except (TypeError, ValueError):
         return None
     return value if value > 0 else None
-
-
-async def apply_notice(session: Any, text: str) -> None:
-    """Append a system line to the active agent's chat context; never raises."""
-    try:
-        agent = getattr(session, "current_agent", None)
-        if agent is None:
-            logger.warning("notice dropped: no active agent")
-            return
-        chat_ctx = agent.chat_ctx.copy()
-        chat_ctx.add_message(role="system", content=text)
-        await agent.update_chat_ctx(chat_ctx)
-    except Exception as exc:  # noqa: BLE001 — a lost notice must not end the interaction
-        logger.warning("notice not applied: %s", exc)
 
 
 def wire_time_warnings(ctx: Any, session: Any, candidate_identity: str) -> None:
