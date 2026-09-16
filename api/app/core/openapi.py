@@ -18,6 +18,10 @@ from fastapi.routing import APIRoute
 
 from app.core.errors import error_codes
 
+# Raised by `require_org`, so it applies to every org-scoped route rather than
+# to any one slice's service.
+ORG_SUSPENDED = "organization_suspended"
+
 TAGS: list[dict[str, str]] = [
     {"name": "health", "description": "Liveness and dependency checks"},
     {"name": "identity", "description": "Accounts, sessions and passwords"},
@@ -58,6 +62,52 @@ def operation_id(route: APIRoute) -> str:
     # Hyphens are fine in a tag and awkward in a generated method name, so
     # `peer-practice` becomes `peer_practice_join_queue`.
     return f"{tag.replace('-', '_')}_{route.name}"
+
+
+def _org_scoped(route: APIRoute) -> bool:
+    """Whether this route resolves an organisation from its slug.
+
+    Read from the resolved dependency graph, not from the endpoint's
+    annotations: `from __future__ import annotations` makes those strings, so
+    comparing them against `Workspace` matches nothing and silently reports
+    every route as unscoped.
+
+    `require_org` returns a closure, so the marker is its qualified name.
+    """
+    seen = []
+    stack = list(route.dependant.dependencies)
+    while stack:
+        dep = stack.pop()
+        call = getattr(dep, "call", None)
+        if call is not None:
+            seen.append(getattr(call, "__qualname__", ""))
+        stack.extend(getattr(dep, "dependencies", ()))
+    return any(name.startswith("require_org.") for name in seen)
+
+
+def document_shared_auth_errors(app: FastAPI) -> None:
+    """Declare the codes that shared auth dependencies raise, on the routes that use them.
+
+    `organization_suspended` comes from `require_org`, not from any slice's
+    service, so no route lists it in its own `error_responses(...)`. Adding it
+    by hand to fifty org-scoped routes would drift the first time somebody
+    wrote a new one; deriving it from the dependency each route actually uses
+    means a new org route is covered the day it is written.
+
+    Written onto `route.responses` rather than into the finished document, so
+    the OpenAPI schema and `tests/support/declared_codes.py` — which reads the
+    route — agree. They disagreed when this lived in the document alone.
+    """
+    from app.core.errors import ErrorResponse  # noqa: PLC0415 - avoids an import cycle
+
+    for route in app.routes:
+        if not isinstance(route, APIRoute) or not _org_scoped(route):
+            continue
+        entry = route.responses.setdefault(403, {"model": ErrorResponse, "description": ""})
+        codes = entry.setdefault("x-codes", [])
+        if ORG_SUSPENDED not in codes:
+            codes.append(ORG_SUSPENDED)
+            entry["description"] = ", ".join(codes)
 
 
 def install_error_catalogue(app: FastAPI) -> None:

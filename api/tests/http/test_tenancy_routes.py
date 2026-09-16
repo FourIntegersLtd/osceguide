@@ -215,3 +215,43 @@ async def test_an_admin_has_the_team_capability(client: AsyncClient, make_actor)
         "/api/v1/me/capabilities", headers=bearer(await member_token(make_actor, org_id, "kings", "owner"))
     )
     assert response.json()["can"]["manage_team"] is True
+
+
+# --------------------------------------------------------------------------
+# Suspension
+# --------------------------------------------------------------------------
+
+
+async def test_suspending_an_organisation_stops_its_members_working(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Suspension was write-only: it set a status nothing ever read.
+
+    `org_permits_access` existed, with a unit test, and had no caller — so a
+    platform admin could suspend an organisation, see it marked suspended, and
+    every one of its members would carry on exactly as before.
+    """
+    root = await make_actor("root-susp@osceguide.com", platform_admin=True)
+    org_id = await seed_org(client, make_actor, "suspendable")
+    admin = await member_token(make_actor, org_id, "suspendable", "owner")
+
+    before = await client.get("/api/v1/orgs/suspendable/memberships", headers=bearer(admin))
+    assert before.status_code == 200, "the member should be working normally first"
+
+    suspended = await client.post("/api/v1/platform/organizations/suspendable/suspend", headers=bearer(root))
+    assert suspended.status_code == 200, suspended.text
+
+    after = await client.get("/api/v1/orgs/suspendable/memberships", headers=bearer(admin))
+    assert after.status_code == 403, after.text
+    assert after.json()["code"] == "organization_suspended"
+
+
+async def test_a_platform_admin_can_still_reach_a_suspended_organisation(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Support has to be able to look at the thing it just suspended."""
+    root = await make_actor("root-susp2@osceguide.com", platform_admin=True)
+    await seed_org(client, make_actor, "lookable")
+    await client.post("/api/v1/platform/organizations/lookable/suspend", headers=bearer(root))
+
+    response = await client.get("/api/v1/orgs/lookable", headers=bearer(root))
+
+    assert response.status_code == 200, response.text

@@ -19,10 +19,15 @@ from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
 from app.core.memberships import bind_membership_lookup
-from app.core.openapi import TAGS, install_error_catalogue, operation_id
+from app.core.openapi import (
+    TAGS,
+    document_shared_auth_errors,
+    install_error_catalogue,
+    operation_id,
+)
 from app.core.redis import close_redis
 from app.core.settings import get_settings
-from app.core.tenancy import bind_org_lookup, bind_role_policy
+from app.core.tenancy import bind_org_access_policy, bind_org_lookup, bind_role_policy
 from app.features import health
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
@@ -50,6 +55,7 @@ from app.features.tenancy.service import (
     is_org_admin,
     may_read_org,
     memberships_for_token,
+    org_permits_access,
     org_ref_by_slug,
 )
 from app.features.voice.router import router as voice_router
@@ -129,6 +135,7 @@ def create_app() -> FastAPI:
     # allowed to know about both.
     bind_membership_lookup(memberships_for_token)
     bind_org_lookup(org_ref_by_slug)
+    bind_org_access_policy(org_permits_access)
     bind_role_policy(
         may_read_org=may_read_org,
         is_org_admin=is_org_admin,
@@ -141,6 +148,7 @@ def create_app() -> FastAPI:
 
     # After the routers, so every slice's `errors.py` has been imported and the
     # catalogue walk sees the whole hierarchy.
+    document_shared_auth_errors(app)
     install_error_catalogue(app)
     return app
 

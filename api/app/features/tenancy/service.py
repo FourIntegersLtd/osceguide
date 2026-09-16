@@ -33,6 +33,7 @@ is_org_admin = domain.is_org_admin
 is_institution_admin = domain.is_institution_admin
 is_assigned_staff = domain.is_assigned_staff
 may_read_org = domain.may_read_org
+org_permits_access = domain.org_permits_access
 
 
 async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgRef | None:

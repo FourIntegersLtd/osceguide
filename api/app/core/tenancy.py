@@ -31,6 +31,18 @@ class OrgMissing(NotFound):
     default_message = "No such organisation"
 
 
+class OrgSuspended(Forbidden):
+    """The organisation is suspended, so its members may not act in it.
+
+    Its own code, not a bare 403: the client should say "your institution's
+    access has been suspended", which is a different conversation from "you do
+    not have permission".
+    """
+
+    code = "organization_suspended"
+    default_message = "This organisation's access has been suspended"
+
+
 @dataclass(frozen=True)
 class OrgRef:
     """The little a guard needs to know about an organisation."""
@@ -109,6 +121,17 @@ def require_org(
 
         if not predicate(membership.role):
             raise Forbidden()
+
+        # The status is read here rather than carried in the token. A token
+        # lives 15 minutes, and a suspension that takes a quarter of an hour to
+        # bite is not a suspension. One indexed read per org-scoped request is
+        # the price of it taking effect now.
+        org = await _lookup()(session, org_slug)
+        if org is None:
+            raise OrgMissing()
+        if not _org_permits_access(org.status) and not principal.is_platform_admin:
+            raise OrgSuspended()
+
         return Workspace(
             org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal
         )
@@ -124,6 +147,25 @@ _policies: dict[str, RolePredicate] = {}
 
 def bind_role_policy(**predicates: RolePredicate) -> None:
     _policies.update(predicates)
+
+
+# Whether an org's status still permits its members to act. Bound by `main.py`
+# from `tenancy.domain`, like the role predicates above: the rule belongs to
+# the slice, the enforcement point belongs to core.
+_access_policy: list[Callable[[str | None], bool]] = []
+
+
+def bind_org_access_policy(predicate: Callable[[str | None], bool]) -> None:
+    _access_policy.clear()
+    _access_policy.append(predicate)
+
+
+def _org_permits_access(status: str | None) -> bool:
+    if not _access_policy:
+        raise RuntimeError(
+            "No org access policy bound. app.main.create_app must call bind_org_access_policy."
+        )
+    return _access_policy[0](status)
 
 
 def _policy(name: str) -> RolePredicate:

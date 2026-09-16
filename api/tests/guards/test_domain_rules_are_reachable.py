@@ -45,7 +45,6 @@ KNOWN_UNWIRED: dict[tuple[str, str], str] = {
     ("stations", "ensure_brief_editable"): "Phase D: T5, no brief-edit route",
     ("stations", "ensure_deletable"): "Phase D: no delete-version route",
     ("stations", "ensure_usable_in_circuit"): "Phase D: T4, a circuit may reference a draft station",
-    ("tenancy", "org_permits_access"): "Phase C: suspending an org currently restricts nobody",
     ("tenancy", "pick_default_workspace"): "Phase C: login uses memberships[0] instead",
 }
 
@@ -58,13 +57,29 @@ def _public_functions(tree: ast.Module) -> list[str]:
     ]
 
 
-def _called_names(node: ast.AST) -> set[str]:
+def _used_names(node: ast.AST) -> set[str]:
+    """Every name this code uses, called or merely referred to.
+
+    References count, not just calls: a predicate handed to
+    `bind_org_access_policy(org_permits_access)` is wired even though no call
+    site names it. Counting calls alone reported that rule as dead the moment
+    it was fixed, which would have taught people to ignore this guard.
+
+    An import that goes nowhere would also count, but ruff's F401 catches those
+    first.
+    """
     found: set[str] = set()
     for child in ast.walk(node):
         if isinstance(child, ast.Call):
             name = getattr(child.func, "attr", None) or getattr(child.func, "id", None)
             if name:
                 found.add(name)
+        elif isinstance(child, ast.Attribute):
+            found.add(child.attr)
+        elif isinstance(child, ast.Name):
+            found.add(child.id)
+        elif isinstance(child, ast.alias):
+            found.add(child.asname or child.name.rsplit(".", 1)[-1])
     return found
 
 
@@ -88,7 +103,7 @@ def unreachable_rules(features_root: Path | None = None) -> dict[tuple[str, str]
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 edges[(slice_name, node.name)] = {
                     (slice_name, called)
-                    for called in _called_names(node)
+                    for called in _used_names(node)
                     if (slice_name, called) in defined or called in _public_functions(tree)
                 }
 
@@ -98,7 +113,7 @@ def unreachable_rules(features_root: Path | None = None) -> dict[tuple[str, str]
             continue
         slice_name = path.parent.name
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        for called in _called_names(tree):
+        for called in _used_names(tree):
             if (slice_name, called) in defined:
                 entry.add((slice_name, called))
 

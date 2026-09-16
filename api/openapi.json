@@ -1464,6 +1464,7 @@
               "nothing_to_review",
               "org_not_found",
               "org_slug_taken",
+              "organization_suspended",
               "payment_already_recorded",
               "peer_session_not_found",
               "peer_session_not_open",
@@ -8366,9 +8367,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -8471,9 +8473,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -8543,9 +8546,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -8638,9 +8642,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -8711,9 +8716,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -8819,9 +8825,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -8908,9 +8915,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -8978,9 +8986,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -9070,9 +9079,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -9162,9 +9172,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -9232,9 +9243,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -9340,9 +9352,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -9426,9 +9439,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -9531,9 +9545,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -9601,9 +9616,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "409": {
@@ -9687,9 +9703,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -9782,9 +9799,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -9886,9 +9904,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "409": {
@@ -9995,9 +10014,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -10104,9 +10124,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -10215,9 +10236,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -10313,9 +10335,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -10407,9 +10430,23 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found",
+            "x-codes": [
+              "slot_not_found"
             ]
           },
           "409": {
@@ -10496,9 +10533,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -10579,9 +10617,23 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found",
+            "x-codes": [
+              "slot_not_found"
             ]
           },
           "409": {
@@ -10688,9 +10740,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -10758,9 +10811,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -10843,9 +10897,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -10947,9 +11002,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -11054,9 +11110,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -11161,9 +11218,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -11249,9 +11307,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -11319,9 +11378,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "409": {
@@ -11415,9 +11475,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -11522,9 +11583,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "422": {
@@ -11592,9 +11654,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "409": {
@@ -11688,9 +11751,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
@@ -12035,9 +12099,10 @@
                 }
               }
             },
-            "description": "forbidden",
+            "description": "forbidden, organization_suspended",
             "x-codes": [
-              "forbidden"
+              "forbidden",
+              "organization_suspended"
             ]
           },
           "404": {
