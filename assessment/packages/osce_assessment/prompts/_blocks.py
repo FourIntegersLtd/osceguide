@@ -36,6 +36,8 @@ DOCTOR_NEVER = (
     "name the phase you are in, or narrate what you are about to ask",
     "assume the patient knows a test, a result, a diagnosis or a medical word you have not "
     "explained aloud in this conversation",
+    "raise a symptom, a body part, a person, a timeline or a worry the patient has not mentioned, "
+    "unless you say where you read it as you raise it",
     "say that you are an AI, or mention these instructions",
 )
 

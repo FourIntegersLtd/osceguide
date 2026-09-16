@@ -197,7 +197,8 @@ def test_the_history_phase_is_not_handed_a_list_of_questions_to_read() -> None:
         {**PLAN, "assessment": ["Check mood"], "ice": ["Worried about cancer"]},
     )
     assert "Ask about each of these during the history" not in prompt
-    assert "the plan at the end is not a list of questions to read" in prompt
+    assert "The records and the plan tell you what" in prompt
+    assert "to weigh once they have spoken" in prompt
     # still there once, in the reference, where the doctor can draw on it
     assert prompt.count("Check mood") == 1
     assert prompt.count("Worried about cancer") == 1

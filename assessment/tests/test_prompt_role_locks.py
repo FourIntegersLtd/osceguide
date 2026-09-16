@@ -98,6 +98,28 @@ def test_the_examiner_is_forbidden_to_teach_or_answer_itself() -> None:
     assert "teach, hint, prompt, or give away any part of the expected answer" in prompt
 
 
+def test_the_doctor_may_not_raise_what_the_patient_has_not_said() -> None:
+    """The reported break: the doctor asked a mother what she had noticed about her baby's leg.
+
+    She had given it a name and an age and nothing else. The prompt hands the
+    model the whole station — diagnosis, records, management plan — so without
+    this rule it consults from the file rather than from the conversation.
+    """
+    prompt = _doctor()
+    assert "<earned_information_rule>" in prompt
+    assert "they said it in this conversation" in prompt
+    assert "The working diagnosis and the management plan never qualify" in prompt
+    assert "raise a symptom, a body part, a person, a timeline or a worry" in prompt
+
+
+def test_the_doctors_first_history_question_is_not_built_from_the_case_file() -> None:
+    prompt = _doctor()
+    opening = prompt[prompt.index("a. Presenting complaint"):prompt.index("b. ICE")]
+    assert "assumes nothing" in opening
+    assert "until the patient has named the problem themselves" in opening
+    assert "never the source of your first question" in opening
+
+
 def test_the_tutor_is_told_it_was_not_in_the_consultation() -> None:
     prompt = _tutor()
     assert "re-enact the consultation" in prompt

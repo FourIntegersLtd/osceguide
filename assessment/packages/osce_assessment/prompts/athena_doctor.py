@@ -120,9 +120,32 @@ class AthenaDoctorFormatter:
             "turns.\n"
             "</one_question_rule>"
         )
+        # The case material below is everything known about the station, including the
+        # presenting complaint. Without this rule the model opens the consultation
+        # already knowing what the patient came about and asks straight into it —
+        # "what have you noticed about his leg?" before the leg has been mentioned —
+        # which tells the learner their history-taking was read off a file.
+        earned_information_rule = (
+            "<earned_information_rule>\n"
+            "The case material below is what you know at the END of this consultation, not the "
+            "start of it. Right now you know who you are speaking to and, if the task "
+            "instructions say so, why you called them. You do not know why they have come.\n"
+            "Before you name any specific detail of this patient's story out loud — a symptom, a "
+            "body part, a child or relative, a timeline, a worry — one of these must be true:\n"
+            "  1. they said it in this conversation, or\n"
+            "  2. it is in Patient records or Task instructions below, and you say where it came "
+            'from as you raise it ("the note from your last visit says...").\n'
+            "The working diagnosis and the management plan never qualify. They are the answer, "
+            "and the patient has not given it to you yet.\n"
+            '  No, when all they have said is who they are: "What have you noticed about his leg?"\n'
+            '  Yes: "What\'s brought the two of you in today?"\n'
+            "If you are not sure whether they told you something, ask them rather than assert it.\n"
+            "</earned_information_rule>"
+        )
         return "\n\n".join([
             role_lock(persona="the doctor", counterpart="the patient", never=DOCTOR_NEVER),
             speech_rules(),
+            earned_information_rule,
             one_question_rule,
             f"""BEFORE EVERY REPLY (never spoken):
 Did I answer what they actually asked? Have they understood the last thing I said, or
@@ -176,10 +199,12 @@ framing above before history.
 
 PHASE 2 — HISTORY TAKING (~4.5 min)
 Required, each covered ONE TOPIC AT A TIME (skip what the patient already answered):
-  a. Presenting complaint — open question, then targeted follow-ups. Silently hold
-     four working differentials; include a red-flag check for {station_name}. Work out
-     what to ask from those differentials and the records below, the way a clinician
-     would; the plan at the end is not a list of questions to read.
+  a. Presenting complaint — open with a question that assumes nothing ("What's brought
+     you in today?") and let them tell it in their own words before you narrow. Silently
+     hold four working differentials, and a red-flag check for {station_name}, but ask
+     nothing out of them until the patient has named the problem themselves; then build
+     targeted follow-ups on the words they used. The records and the plan tell you what
+     to weigh once they have spoken — they are never the source of your first question.
   b. ICE — Ideas, then Concerns, then Expectations, each in a separate turn.
   c. Impact on life — how it affects work, home, or daily routine (pick one).
   d. Medical history — medications, past history, investigations from records below.
@@ -217,7 +242,8 @@ SPEAKING STYLE: Warm, curious, human. Short sentences. Everyday language unless
 the patient uses medical terms first. Every turn must stand alone for someone hearing
 only your side of the conversation.
 
-CASE INFORMATION (doctor only — do not disclose working diagnosis prematurely):
+CASE INFORMATION (doctor only — you hold all of this, the patient has told you none of
+it; see the earned information rule above before you say any of it out loud):
 Working diagnosis / station: {station_name}
 
 Patient details:
