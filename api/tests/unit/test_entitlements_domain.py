@@ -1,0 +1,129 @@
+"""May this person attempt this exam now?
+
+One predicate with several sources. The free-trial rule is ported verbatim from
+`b2c auth_service.check_subscription`; if it changes, somebody's trial changes,
+so it changes deliberately or not at all.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
+from app.features.entitlements import domain
+
+NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
+
+
+def grant(source: str = "purchase", *, ends_at: datetime | None = None, revoked: bool = False):  # type: ignore[no-untyped-def]
+    return domain.Grant(
+        source=source,
+        starts_at=NOW - timedelta(days=1),
+        ends_at=ends_at,
+        revoked_at=NOW if revoked else None,
+    )
+
+
+# --------------------------------------------------------------------------
+# Grants
+# --------------------------------------------------------------------------
+
+
+def test_an_unexpired_purchase_permits_an_attempt() -> None:
+    assert domain.decide([grant(ends_at=NOW + timedelta(days=30))], now=NOW).allowed
+
+
+def test_a_perpetual_grant_has_no_end() -> None:
+    assert domain.decide([grant(ends_at=None)], now=NOW).allowed
+
+
+def test_an_expired_grant_does_not() -> None:
+    decision = domain.decide([grant(ends_at=NOW - timedelta(days=1))], now=NOW)
+    assert not decision.allowed
+    assert decision.reason == "expired"
+
+
+def test_a_revoked_grant_does_not_count_even_if_unexpired() -> None:
+    decision = domain.decide([grant(ends_at=NOW + timedelta(days=30), revoked=True)], now=NOW)
+    assert not decision.allowed
+
+
+def test_a_grant_that_has_not_started_does_not_count() -> None:
+    future = domain.Grant(source="org_grant", starts_at=NOW + timedelta(days=1), ends_at=None)
+    assert not domain.decide([future], now=NOW).allowed
+
+
+@pytest.mark.parametrize("source", ["purchase", "org_grant", "trial", "sso_tenant", "admin"])
+def test_every_source_resolves_through_the_same_predicate(source: str) -> None:
+    """A consumer who bought access and a trainee an institution granted it to
+    reach the same answer by the same route."""
+    assert domain.decide([grant(source, ends_at=NOW + timedelta(days=1))], now=NOW).allowed
+
+
+def test_one_live_grant_is_enough() -> None:
+    grants = [grant(ends_at=NOW - timedelta(days=5)), grant("org_grant", ends_at=NOW + timedelta(days=5))]
+    assert domain.decide(grants, now=NOW).allowed
+
+
+def test_with_no_grants_the_reason_says_so() -> None:
+    decision = domain.decide([], now=NOW)
+    assert not decision.allowed
+    assert decision.reason == "no_entitlement"
+
+
+# --------------------------------------------------------------------------
+# The free trial, ported verbatim
+# --------------------------------------------------------------------------
+
+
+def trial(*, set_stations: int = 0, completed: int = 0, age_days: int = 0):  # type: ignore[no-untyped-def]
+    return domain.TrialState(
+        set_station_count=set_stations,
+        completed_attempt_count=completed,
+        account_created_at=NOW - timedelta(days=age_days),
+    )
+
+
+def test_a_new_account_with_no_activity_is_inside_the_trial() -> None:
+    assert domain.trial_available(trial(), now=NOW)
+
+
+@pytest.mark.parametrize("count", [3, 4, 10])
+def test_three_set_stations_exhausts_the_trial(count: int) -> None:
+    """Oracle: `total_mock_stations >= ALLOWED_STATION_ATTEMPTS`, which is 3."""
+    assert not domain.trial_available(trial(set_stations=count), now=NOW)
+
+
+@pytest.mark.parametrize("count", [3, 4, 10])
+def test_three_completed_attempts_exhausts_the_trial(count: int) -> None:
+    """Oracle: `completed_station_count >= ALLOWED_STATION_ATTEMPTS`."""
+    assert not domain.trial_available(trial(completed=count), now=NOW)
+
+
+def test_two_of_each_does_not_exhaust_it() -> None:
+    """The legacy rule compares each count separately rather than their sum."""
+    assert domain.trial_available(trial(set_stations=2, completed=2), now=NOW)
+
+
+def test_an_account_older_than_fourteen_days_has_no_trial_left() -> None:
+    """Oracle: `created_at < now - timedelta(days=14)`."""
+    assert not domain.trial_available(trial(age_days=15), now=NOW)
+
+
+def test_exactly_fourteen_days_is_still_inside_the_trial() -> None:
+    """Strictly older than, per the legacy comparison — the boundary matters
+    because it decides whether someone can practise today."""
+    assert domain.trial_available(trial(age_days=14), now=NOW)
+
+
+def test_the_trial_is_only_consulted_when_nothing_is_granted() -> None:
+    decision = domain.decide([], now=NOW, trial=trial(), exam_code="sca")
+    assert decision.allowed
+    assert decision.source == "trial"
+
+
+def test_an_exhausted_trial_with_no_grant_is_refused_with_an_upgrade_hint() -> None:
+    decision = domain.decide([], now=NOW, trial=trial(age_days=30))
+    assert not decision.allowed
+    assert decision.reason == "trial_exhausted"
