@@ -38,7 +38,6 @@ KNOWN_UNWIRED: dict[tuple[str, str], str] = {
     ("reviews", "combine_rag"): "Phase D: the server should own RAG aggregation, not the browser",
     ("roster", "ensure_rosterable"): "Phase D",
     ("roster", "memberships_from_labels"): "import helper for the migration; move to app/migration",
-    ("sittings", "ensure_can_append_trainees"): "Phase B: append-trainees route still to come (C8)",
     (
         "sittings",
         "ensure_editable",

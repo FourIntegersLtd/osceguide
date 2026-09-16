@@ -113,3 +113,7 @@ class EditLock(BaseModel):
     editable: bool
     # A stable code the client switches on, never a sentence.
     reason: str | None
+
+
+class AppendTrainees(BaseModel):
+    trainee_ids: list[uuid.UUID] = Field(min_length=1)

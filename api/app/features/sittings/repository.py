@@ -165,7 +165,14 @@ async def create_slots(
     circuit_id: uuid.UUID,
     *,
     planned: list[tuple[int, uuid.UUID, uuid.UUID]],
+    room_name: str | None = None,
 ) -> list[Slot]:
+    """Build slots, optionally already in a room.
+
+    `room_name` is for appending to a circuit that is already running (C8): a
+    slot with no room is one the trainee portal cannot offer, so a latecomer
+    would sit outside a session in progress.
+    """
     rows = [
         Slot(
             org_id=org_id,
@@ -173,6 +180,7 @@ async def create_slots(
             slot_index=index,
             trainee_id=trainee_id,
             station_version_id=station_version_id,
+            room_name=room_name,
         )
         for index, trainee_id, station_version_id in planned
     ]

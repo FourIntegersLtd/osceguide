@@ -513,3 +513,70 @@ async def test_the_edit_lock_reports_why_a_circuit_cannot_be_edited(
 
     assert locked.json()["editable"] is False
     assert locked.json()["reason"] == "consultation_in_progress"
+
+
+async def test_appending_a_trainee_gives_them_the_live_room(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C8. Somebody arriving late to a training session joins the one in progress.
+
+    Inheriting the room is the whole point: a slot with no room is a slot the
+    trainee portal cannot offer, so they would sit outside a session that is
+    already running.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, first_slot = await a_started_circuit(client, db_session, org_id, admin)
+    latecomer = await a_trainee(db_session, "late@example.com")
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/append-trainees",
+        json={"trainee_ids": [str(latecomer)]},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 200, response.text
+    slots = response.json()["slots"]
+    assert len(slots) == 2
+    added = next(s for s in slots if s["id"] != first_slot)
+    assert added["room_name"], "the new slot must carry the room the circuit is already using"
+    assert added["room_name"] == next(s for s in slots if s["id"] == first_slot)["room_name"]
+
+
+async def test_trainees_cannot_be_appended_to_an_exam_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """An exam circuit is one candidate by construction (C1)."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    template_version = await a_template_version(db_session, org_id)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={
+                "name": "Finals",
+                "feedback_template_version_id": str(template_version),
+                "mode": "exam",
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    station = await published_station(client, admin, "kings", "Solo")
+    circuit = (
+        await client.post(
+            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+            json={
+                "name": "Candidate A",
+                "trainee_ids": [str(await a_trainee(db_session, "solo@example.com"))],
+                "station_version_ids": [station],
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}/append-trainees",
+        json={"trainee_ids": [str(await a_trainee(db_session, "extra@example.com"))]},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "not_permitted_in_mode"

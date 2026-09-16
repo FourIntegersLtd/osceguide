@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "AppendTrainees": {
+        "properties": {
+          "trainee_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Trainee Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trainee_ids"
+        ],
+        "title": "AppendTrainees",
+        "type": "object"
+      },
       "ArrivalRecorded": {
         "properties": {
           "exam_code": {
@@ -8645,6 +8663,118 @@
         "summary": "List Audit",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/append-trainees": {
+      "post": {
+        "description": "Add people to a training circuit, into the room it is already using.",
+        "operationId": "sittings_append_trainees",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendTrainees"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit",
+            "x-codes": [
+              "circuit_already_ended",
+              "not_permitted_in_mode",
+              "invalid_circuit"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Append Trainees",
+        "tags": [
+          "sittings"
         ]
       }
     },

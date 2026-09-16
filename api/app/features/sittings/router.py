@@ -182,3 +182,26 @@ async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgReader, session: S
     edit, not after somebody has typed one.
     """
     return await service_circuit.read_edit_lock(session, workspace.org_id, circuit_id)
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/append-trainees",
+    response_model=schemas.CircuitRead,
+    responses=error_responses(
+        Forbidden,
+        errors.CircuitNotFound,
+        errors.CircuitAlreadyEndedError,
+        errors.NotPermittedInModeError,
+        errors.InvalidCircuitError,
+    ),
+)
+async def append_trainees(
+    circuit_id: uuid.UUID,
+    body: schemas.AppendTrainees,
+    workspace: OrgReader,
+    session: Session,
+) -> schemas.CircuitRead:
+    """Add people to a training circuit, into the room it is already using."""
+    return await service_circuit.append_trainees(
+        session, workspace.org_id, circuit_id, trainee_ids=body.trainee_ids
+    )
