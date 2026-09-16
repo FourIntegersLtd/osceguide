@@ -14,7 +14,9 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health", response_model=HealthResponse, responses={503: {"model": HealthResponse}})
-async def get_health(response: Response, session: Annotated[AsyncSession, Depends(get_session)]) -> HealthResponse:
+async def get_health(
+    response: Response, session: Annotated[AsyncSession, Depends(get_session)]
+) -> HealthResponse:
     report = await service.health_report(session, get_redis())
     if report.status == "down":
         response.status_code = 503

@@ -1,5 +1,4 @@
 import pytest
-
 from app.core.errors import InvalidInput
 from app.core.pagination import decode_cursor, encode_cursor
 

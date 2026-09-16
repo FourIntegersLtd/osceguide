@@ -1,8 +1,7 @@
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
-
 from app.core.errors import Conflict, NotFound, error_responses, register_error_handlers
 from app.core.logging import RequestContextMiddleware
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 
 class SlotLocked(Conflict):
@@ -53,7 +52,9 @@ async def test_subclass_carries_its_own_code() -> None:
 
 
 async def test_unhandled_exception_never_leaks_detail() -> None:
-    async with AsyncClient(transport=ASGITransport(app=_app(), raise_app_exceptions=False), base_url="http://t") as c:
+    async with AsyncClient(
+        transport=ASGITransport(app=_app(), raise_app_exceptions=False), base_url="http://t"
+    ) as c:
         r = await c.get("/boom")
     assert r.status_code == 500
     assert "secret" not in r.text

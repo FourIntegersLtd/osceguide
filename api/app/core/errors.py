@@ -104,12 +104,18 @@ def _json(request: Request, status: int, body: ErrorResponse) -> JSONResponse:
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error(request: Request, exc: AppError) -> JSONResponse:
-        return _json(request, exc.status, ErrorResponse(code=exc.code, message=exc.message, details=exc.details))
+        return _json(
+            request, exc.status, ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
         details = {"errors": [dict(e, ctx=None) for e in exc.errors()]}
-        return _json(request, 422, ErrorResponse(code="invalid_input", message="The request was not valid", details=details))
+        return _json(
+            request,
+            422,
+            ErrorResponse(code="invalid_input", message="The request was not valid", details=details),
+        )
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:

@@ -3,9 +3,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import pytest
-from fastapi import Depends, FastAPI
-from httpx import ASGITransport, AsyncClient
-
 from app.core.auth import (
     CurrentPrincipal,
     Membership,
@@ -16,6 +13,9 @@ from app.core.auth import (
 )
 from app.core.errors import Unauthenticated, register_error_handlers
 from app.core.settings import Settings, get_settings
+from fastapi import Depends, FastAPI
+from httpx import ASGITransport, AsyncClient
+
 from tests.support.tokens import bearer, mint_token
 
 

@@ -62,6 +62,10 @@ ignore = ["S101"]  # assert is fine in tests
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]  # literal test secrets
+# The error classes are named for the HTTP conditions they carry, which is how
+# they read at the raise site and in the handler that maps them to a status.
+# An `Error` suffix on each buys nothing there; they all subclass `AppError`.
+"app/core/errors.py" = ["N818"]
 
 [tool.mypy]
 python_version = "3.11"

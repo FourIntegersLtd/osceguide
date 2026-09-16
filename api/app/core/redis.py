@@ -8,7 +8,7 @@ Short timeouts keep a Redis outage from stalling requests; callers must treat
 
 from __future__ import annotations
 
-from redis.asyncio import Redis, from_url
+from redis.asyncio import Redis
 
 from app.core.settings import get_settings
 
@@ -21,7 +21,7 @@ def get_redis() -> Redis | None:
     if settings.redis_disabled or not settings.redis_url:
         return None
     if _client is None:
-        _client = from_url(
+        _client = Redis.from_url(
             settings.redis_url,
             socket_connect_timeout=1.5,
             socket_timeout=2.0,

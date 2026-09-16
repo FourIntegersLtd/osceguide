@@ -10,11 +10,10 @@ import asyncio
 import threading
 
 from alembic import context
-from sqlalchemy import Connection, pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from app.core.db import Base, import_all_models, sqlalchemy_url
 from app.core.settings import get_settings
+from sqlalchemy import Connection, pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 config = context.config
 config.set_main_option("sqlalchemy.url", sqlalchemy_url(get_settings().database_url))

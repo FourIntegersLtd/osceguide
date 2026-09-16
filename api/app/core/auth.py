@@ -26,7 +26,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.errors import Unauthenticated
 from app.core.settings import Settings, get_settings
 
-ACCESS_TOKEN_TYPE = "access"
+ACCESS_TOKEN_TYPE = "access"  # noqa: S105 — the token's type claim, not a secret
 
 
 @dataclass(frozen=True)
@@ -118,7 +118,9 @@ async def get_principal(
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 
 
-async def require_worker_secret(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> None:
+async def require_worker_secret(
+    request: Request, settings: Annotated[Settings, Depends(get_settings)]
+) -> None:
     """Guard for `/api/worker/*` routes. Fails closed: no configured secret means no access."""
     expected = settings.worker_secret.strip()
     presented = (request.headers.get(settings.worker_secret_header) or "").strip()
