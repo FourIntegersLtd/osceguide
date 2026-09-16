@@ -114,10 +114,12 @@ def test_the_doctor_may_not_raise_what_the_patient_has_not_said() -> None:
 
 def test_the_doctors_first_history_question_is_not_built_from_the_case_file() -> None:
     prompt = _doctor()
-    opening = prompt[prompt.index("a. Presenting complaint"):prompt.index("b. ICE")]
+    opening = prompt[prompt.index("a. Presenting complaint"):prompt.index("b. Red flags")]
     assert "assumes nothing" in opening
     assert "until the patient has named the problem themselves" in opening
     assert "never the source of your first question" in opening
+    # the complaint is explored before it is left, not sampled with four questions
+    assert "fewer than eight" in opening
 
 
 def test_the_tutor_is_told_it_was_not_in_the_consultation() -> None:
