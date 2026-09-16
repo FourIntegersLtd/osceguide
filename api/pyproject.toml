@@ -98,6 +98,7 @@ layers = [
     "app.features.billing",
     "app.features.station_sets",
     "app.features.sittings",
+    "app.features.roster",
     "app.features.voice",
     "app.features.attempts",
     "app.features.stations",
