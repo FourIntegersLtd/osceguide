@@ -33,6 +33,7 @@ from app.features.catalog.router import router as catalog_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.identity.router import router as identity_router
+from app.features.marketplace.router import router as marketplace_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
 from app.features.roster.router import router as roster_router
@@ -80,6 +81,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(station_sets_router)
     router.include_router(dashboard_router)
     router.include_router(assistant_router)
+    router.include_router(marketplace_router)
     return router
 
 

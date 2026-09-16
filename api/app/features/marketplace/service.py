@@ -1,0 +1,170 @@
+"""Offering, claiming and joining peer practice slots."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.catalog import repository as catalog_repo
+from app.features.catalog.service import resolve_exam
+from app.features.marketplace import domain, errors, repository
+from app.features.marketplace.models import AvailabilityPost, PeerSession
+from app.features.marketplace.schemas import PeerSessionRead, PostRead
+
+_REFUSALS: dict[type[Exception], type[Exception]] = {
+    domain.PostUnavailable: errors.PostUnavailableError,
+    domain.CannotClaimOwnPost: errors.CannotClaimOwnPostError,
+    domain.NotYours: errors.NotYoursError,
+}
+
+
+def _raise(exc: Exception) -> None:
+    raise _REFUSALS.get(type(exc), errors.PostUnavailableError)(str(exc)) from exc
+
+
+def _state(post: AvailabilityPost) -> domain.PostState:
+    return domain.PostState(status=post.status, owner_id=str(post.owner_user_id), starts_at=post.starts_at)
+
+
+async def offer_slot(
+    session: AsyncSession,
+    *,
+    owner_user_id: uuid.UUID,
+    exam_code: str,
+    starts_at: datetime,
+    duration_minutes: int,
+    note: str | None,
+) -> PostRead:
+    exam = await resolve_exam(session, exam_code)
+    row = await repository.create_post(
+        session,
+        owner_user_id=owner_user_id,
+        exam_id=exam.id,
+        starts_at=starts_at,
+        duration_minutes=duration_minutes,
+        note=note,
+    )
+    return _post_read(row, exam.code, viewer_id=owner_user_id)
+
+
+async def claim_slot(
+    session: AsyncSession, post_id: uuid.UUID, *, claimer_user_id: uuid.UUID, now: datetime
+) -> PeerSessionRead:
+    """Take a peer's offered slot, once.
+
+    The row is locked before it is examined, so two people pressing the button
+    at the same moment serialise here: the second waits, then reads the status
+    the first wrote and is told the slot is gone. Checking without the lock
+    means both see `available` and both believe they won.
+    """
+    post = await repository.lock_post(session, post_id)
+    if post is None:
+        raise errors.PostNotFound()
+
+    try:
+        domain.ensure_claimable(_state(post), claimer_id=str(claimer_user_id), now=now)
+    except Exception as exc:  # noqa: BLE001 - mapped above
+        _raise(exc)
+
+    await repository.mark_claimed(session, post_id, claimer_user_id=claimer_user_id, at=now)
+    peer_session = await repository.create_peer_session(
+        session,
+        post_id=post.id,
+        owner_user_id=post.owner_user_id,
+        claimer_user_id=claimer_user_id,
+        exam_id=post.exam_id,
+        starts_at=post.starts_at,
+    )
+    # Derived from the session id, so a stray room says what it belongs to.
+    await repository.set_room(session, peer_session.id, room_name=f"peer_{peer_session.id}")
+    refreshed = await repository.peer_session_by_id(session, peer_session.id)
+    exam = await catalog_repo.exam_by_id(session, post.exam_id)
+    return _session_read(refreshed, exam.code if exam else "", viewer_id=claimer_user_id)  # type: ignore[arg-type]
+
+
+async def withdraw_slot(
+    session: AsyncSession, post_id: uuid.UUID, *, actor_id: uuid.UUID, now: datetime
+) -> None:
+    post = await repository.lock_post(session, post_id)
+    if post is None:
+        raise errors.PostNotFound()
+    try:
+        domain.ensure_cancellable(_state(post), actor_id=str(actor_id))
+    except Exception as exc:  # noqa: BLE001 - mapped above
+        _raise(exc)
+    await repository.mark_cancelled(session, post_id, at=now)
+
+
+async def list_open_slots(
+    session: AsyncSession,
+    *,
+    viewer_id: uuid.UUID,
+    now: datetime,
+    limit: int,
+    cursor: dict[str, Any] | None,
+) -> tuple[list[PostRead], str | None]:
+    rows, next_cursor = await repository.list_open(session, now=now, limit=limit, cursor=cursor)
+    out = []
+    for row in rows:
+        exam = await catalog_repo.exam_by_id(session, row.exam_id)
+        out.append(_post_read(row, exam.code if exam else "", viewer_id=viewer_id))
+    return out, next_cursor
+
+
+async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PeerSessionRead]:
+    out = []
+    for row in await repository.sessions_for_user(session, user_id):
+        exam = await catalog_repo.exam_by_id(session, row.exam_id)
+        out.append(_session_read(row, exam.code if exam else "", viewer_id=user_id))
+    return out
+
+
+async def join_session(
+    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
+) -> PeerSessionRead:
+    row = await repository.peer_session_by_id(session, session_id)
+    if row is None:
+        raise errors.SessionNotFound()
+
+    state = domain.SessionState(
+        owner_id=str(row.owner_user_id),
+        claimer_id=str(row.claimer_user_id),
+        starts_at=row.starts_at,
+    )
+    if not domain.may_join(state, user_id=str(user_id)):
+        # 404 rather than 403: a session id is not something a stranger should
+        # be able to confirm exists.
+        raise errors.SessionNotFound()
+    if not domain.is_open(state, now=now):
+        raise errors.SessionNotOpen()
+
+    exam = await catalog_repo.exam_by_id(session, row.exam_id)
+    return _session_read(row, exam.code if exam else "", viewer_id=user_id)
+
+
+def _post_read(row: AvailabilityPost, exam_code: str, *, viewer_id: uuid.UUID) -> PostRead:
+    return PostRead(
+        id=row.id,
+        owner_user_id=row.owner_user_id,
+        exam_code=exam_code,
+        starts_at=row.starts_at,
+        duration_minutes=row.duration_minutes,
+        note=row.note,
+        status=row.status,
+        is_mine=row.owner_user_id == viewer_id,
+    )
+
+
+def _session_read(row: PeerSession, exam_code: str, *, viewer_id: uuid.UUID) -> PeerSessionRead:
+    partner = row.claimer_user_id if row.owner_user_id == viewer_id else row.owner_user_id
+    return PeerSessionRead(
+        id=row.id,
+        exam_code=exam_code,
+        starts_at=row.starts_at,
+        status=row.status,
+        room_name=row.room_name,
+        partner_user_id=partner,
+    )
