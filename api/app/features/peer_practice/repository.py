@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func, literal, or_, select, tuple_, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.peer_practice.models import PracticeHistory, PracticeSession, QueueEntry
@@ -50,7 +50,7 @@ async def claim_waiting(session: AsyncSession, exam_id: uuid.UUID, *, limit: int
     stmt = (
         select(QueueEntry)
         .where(QueueEntry.exam_id == exam_id, QueueEntry.status == "waiting")
-        .order_by(QueueEntry.created_at, QueueEntry.id)
+        .order_by(QueueEntry.seq)
         .limit(limit)
         .with_for_update(skip_locked=True)
     )
@@ -67,14 +67,14 @@ async def waiting_count(session: AsyncSession, exam_id: uuid.UUID) -> int:
 async def position_of(session: AsyncSession, entry: QueueEntry) -> int:
     """How many people are ahead. One-based, so "position 1" means next.
 
-    Ties break on id, as the ordering everywhere else does: two people joining
-    in the same transaction share a `now()`, and without the tie-break they
-    would both be told they are next.
+    Counted on `seq`, not on `created_at`: everyone joining in one transaction
+    shares a timestamp, and a random-uuid tie-break gives a stable order that is
+    not the order they arrived in — two people would each be told they were next.
     """
     stmt = select(func.count(QueueEntry.id)).where(
         QueueEntry.exam_id == entry.exam_id,
         QueueEntry.status == "waiting",
-        tuple_(QueueEntry.created_at, QueueEntry.id) < tuple_(literal(entry.created_at), literal(entry.id)),
+        QueueEntry.seq < entry.seq,
     )
     return int((await session.execute(stmt)).scalar_one()) + 1
 

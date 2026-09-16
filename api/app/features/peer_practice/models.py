@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Identity, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, Timestamps, UUIDPrimaryKey
@@ -28,11 +28,17 @@ class QueueEntry(Base, UUIDPrimaryKey, Timestamps):
         Index(
             "ix_practice_queue_waiting",
             "exam_id",
-            "created_at",
+            "seq",
             postgresql_where=text("status = 'waiting'"),
         ),
     )
 
+    # A queue is ordered by arrival, and `created_at` cannot express that:
+    # everyone who joins in one transaction shares a `now()`, and breaking the
+    # tie on a random uuid gives a stable order that is not the order they
+    # arrived in. A sequence is monotonic, which is what "first come, first
+    # served" actually requires.
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(), nullable=False, unique=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     exam_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("exams.id", ondelete="RESTRICT"), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'waiting'"))
