@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**1,652 tests. 64 endpoints. 17 slices. 13 migrations.**
+**1,888 tests. 79 endpoints. 20 slices. 17 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -27,12 +27,14 @@ domain, then storage, then the service and router. Every commit green.
 | `dashboard` | complete | read model replacing the seven-call home screen |
 | `notifications` | complete | one outbox, backoff, abandon-after-six; identity and results write to it |
 | `assistant` | routes done | both LiveKit workers can now target this backend; **content packs not ported** |
+| `marketplace` | complete | offered slots, claimed once under a row lock |
+| `community` | complete | questions, replies, station comments, real likes, real authorisation |
+| `peer_practice` | complete | queue, fair role assignment, matching job |
 
 ## Not built
 
 From the plan's phases, in rough priority order:
 
-- **`community`, `peer_practice`, `marketplace`** — b2c social.
 - **`growth`, `media`** — partner attribution/BMJ, slides, podcasts, blogs,
   summaries, vector search.
 - **Phase 8, the data migration.** Needs a Firestore export and the b2b database.
