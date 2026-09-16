@@ -18,7 +18,7 @@ MAX_RATIONALE = 4000
 
 
 class Assessment(StrEnum):
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105 - an exam outcome, not a credential
     FAIL = "fail"
     INCONCLUSIVE = "inconclusive"
     WITHHELD = "withheld"
