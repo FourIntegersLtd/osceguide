@@ -7,15 +7,16 @@ worker-facing reads take an attempt id because that is all a worker is given.
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import encode_cursor
-from app.features.attempts.models import AssessmentResult, Attempt, Transcript, TranscriptMessage
+from app.features.attempts.models import Attempt
 
 
 async def create_attempt(
@@ -99,109 +100,6 @@ async def delete_attempt(session: AsyncSession, attempt_id: uuid.UUID) -> None:
     await session.execute(delete(Attempt).where(Attempt.id == attempt_id))
 
 
-# --- transcript ------------------------------------------------------------
-
-
-async def add_chunk(
-    session: AsyncSession,
-    attempt_id: uuid.UUID,
-    *,
-    message_id: str,
-    seq: int,
-    role: str,
-    message: str,
-    spoken_at: datetime,
-) -> TranscriptMessage:
-    row = TranscriptMessage(
-        attempt_id=attempt_id,
-        message_id=message_id,
-        seq=seq,
-        role=role,
-        message=message,
-        spoken_at=spoken_at,
-    )
-    session.add(row)
-    await session.flush()
-    return row
-
-
-async def chunks_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[TranscriptMessage]:
-    stmt = (
-        select(TranscriptMessage)
-        .where(TranscriptMessage.attempt_id == attempt_id)
-        .order_by(TranscriptMessage.seq)
-    )
-    return list((await session.execute(stmt)).scalars())
-
-
-async def seen_message_ids(session: AsyncSession, attempt_id: uuid.UUID) -> set[str]:
-    stmt = select(TranscriptMessage.message_id).where(TranscriptMessage.attempt_id == attempt_id)
-    return set((await session.execute(stmt)).scalars())
-
-
-async def transcript_for(session: AsyncSession, attempt_id: uuid.UUID) -> Transcript | None:
-    stmt = select(Transcript).where(Transcript.attempt_id == attempt_id)
-    return (await session.execute(stmt)).scalar_one_or_none()
-
-
-async def mark_transcript_complete(
-    session: AsyncSession, attempt_id: uuid.UUID, *, runtime_label: str | None, at: datetime
-) -> Transcript:
-    existing = await transcript_for(session, attempt_id)
-    if existing is None:
-        row = Transcript(attempt_id=attempt_id, complete=True, runtime_label=runtime_label, delivered_at=at)
-        session.add(row)
-        await session.flush()
-        await session.refresh(row)
-        return row
-    await session.execute(
-        update(Transcript)
-        .where(Transcript.attempt_id == attempt_id)
-        .values(complete=True, runtime_label=runtime_label, delivered_at=at)
-    )
-    return existing
-
-
-# --- results ---------------------------------------------------------------
-
-
-async def save_result(
-    session: AsyncSession,
-    attempt_id: uuid.UUID,
-    *,
-    framework_id: str,
-    policy_version: str,
-    payload: dict[str, Any],
-    model_used: str | None,
-    at: datetime,
-) -> AssessmentResult:
-    row = AssessmentResult(
-        attempt_id=attempt_id,
-        framework_id=framework_id,
-        policy_version=policy_version,
-        payload=payload,
-        model_used=model_used,
-        scored_at=at,
-    )
-    session.add(row)
-    await session.flush()
-    return row
-
-
-async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[AssessmentResult]:
-    stmt = (
-        select(AssessmentResult)
-        .where(AssessmentResult.attempt_id == attempt_id)
-        .order_by(AssessmentResult.scored_at)
-    )
-    return list((await session.execute(stmt)).scalars())
-
-
-async def scored_policy_versions(session: AsyncSession, attempt_id: uuid.UUID) -> set[str]:
-    stmt = select(AssessmentResult.policy_version).where(AssessmentResult.attempt_id == attempt_id)
-    return set((await session.execute(stmt)).scalars())
-
-
 async def list_for_user(
     session: AsyncSession, user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Attempt], str | None]:
@@ -219,3 +117,35 @@ async def list_for_user(
         return rows, None
     page = rows[:limit]
     return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
+
+
+async def defer_job(
+    session: AsyncSession,
+    *,
+    queue: str,
+    task: str,
+    args: dict[str, Any],
+    queueing_lock: str,
+) -> None:
+    """Write a queue row in the caller's transaction.
+
+    procrastinate's own connector holds a separate pool, so deferring through it
+    would commit the job on another connection — and the guarantee in ADR 0006
+    that a job and the data justifying it land together would quietly not hold.
+    Calling its SQL function on our session keeps one transaction; the queueing
+    lock makes a redelivered message idempotent.
+    """
+    await session.execute(
+        text(
+            "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("
+            ":queue, :task, :priority, NULL, :queueing_lock, CAST(:args AS jsonb), NULL"
+            ")]::procrastinate_job_to_defer_v1[])"
+        ),
+        {
+            "queue": queue,
+            "task": task,
+            "priority": 0,
+            "queueing_lock": queueing_lock,
+            "args": json.dumps(args),
+        },
+    )

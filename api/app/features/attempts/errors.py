@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from app.core.errors import Conflict, Forbidden, NotFound
+from app.features.entitlements.errors import NotEntitled
+
+# Re-exported so the router can document the refusal without reaching into
+# another slice. Deliberately the same class, not a copy: the code is the
+# contract and two definitions of it would be free to drift.
+__all__ = ["NotEntitled"]
 
 
 class AttemptNotFound(NotFound):
@@ -32,3 +38,10 @@ class AttemptNotYours(Forbidden):
 class InvalidAttemptState(Conflict):
     code = "invalid_attempt_state"
     default_message = "The attempt is not in a state that allows this"
+
+
+class UnknownExamError(NotFound):
+    """Mirrors `catalog.errors.UnknownExamError`; the code is the shared contract."""
+
+    code = "unknown_exam"
+    default_message = "No such exam"

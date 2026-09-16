@@ -19,7 +19,8 @@ from app.core.auth import require_worker_secret
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.features.attempts import errors, schemas, service
+from app.features.attempts import errors, schemas
+from app.features.attempts import service_worker as service
 
 router = APIRouter(
     tags=["worker"],
@@ -34,8 +35,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     response_model=schemas.WorkerBootstrap,
     responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptNotReady),
 )
-async def bootstrap(attempt_id: uuid.UUID, session: Session) -> schemas.WorkerBootstrap:
-    return await service.bootstrap(session, attempt_id)
+async def bootstrap(attempt_id: uuid.UUID, session: Session, clock: ClockDep) -> schemas.WorkerBootstrap:
+    return await service.bootstrap(session, attempt_id, now=clock.now())
 
 
 @router.post(

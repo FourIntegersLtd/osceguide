@@ -46,3 +46,42 @@ class RecordingEmailSender:
             raise EmailDeliveryFailed(f"fake provider refused message to {to}")
         self.sent.append(SentEmail(to=to, subject=subject, html=html, reply_to=reply_to))
         return f"fake-msg-{len(self.sent)}"
+
+
+class FakeEvaluator:
+    """An evaluator that records what it was asked to mark.
+
+    Failure is a constructor argument rather than a patched attribute, so a
+    test that exercises the failure path reads as a configuration of the fake.
+    """
+
+    def __init__(
+        self,
+        *,
+        payload: dict[str, object] | None = None,
+        fail_times: int = 0,
+    ) -> None:
+        self.payload = payload or {"overall": "G", "model_used": "fake-model"}
+        self.fail_times = fail_times
+        self.calls: list[dict[str, object]] = []
+
+    async def evaluate(
+        self,
+        *,
+        framework_id: str,
+        policy_version: str,
+        transcript: list[dict[str, object]],
+    ) -> dict[str, object]:
+        from app.core.ports import EvaluationFailed
+
+        self.calls.append(
+            {
+                "framework_id": framework_id,
+                "policy_version": policy_version,
+                "turns": len(transcript),
+            }
+        )
+        if self.fail_times > 0:
+            self.fail_times -= 1
+            raise EvaluationFailed("fake failure")
+        return dict(self.payload)

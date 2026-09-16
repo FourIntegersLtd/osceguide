@@ -24,8 +24,10 @@ from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.core.tenancy import bind_org_lookup, bind_role_policy
 from app.features import health
+from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.catalog.router import router as catalog_router
+from app.features.entitlements.router import router as entitlements_router
 from app.features.identity.router import router as identity_router
 from app.features.stations.router import router as stations_router
 from app.features.tenancy.router import router as tenancy_router
@@ -57,6 +59,8 @@ def api_v1_router() -> APIRouter:
     router.include_router(tenancy_router)
     router.include_router(catalog_router)
     router.include_router(stations_router)
+    router.include_router(attempts_router)
+    router.include_router(entitlements_router)
     return router
 
 

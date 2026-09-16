@@ -13,6 +13,7 @@ import importlib
 import pkgutil
 import uuid
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 from sqlalchemy import DateTime, MetaData, Uuid, func
@@ -143,6 +144,19 @@ async def get_session() -> AsyncIterator[AsyncSession]:
             raise
         else:
             await transaction.commit()
+
+
+@asynccontextmanager
+async def job_session() -> AsyncIterator[AsyncSession]:
+    """A unit of work for background tasks.
+
+    The request dependency cannot serve here: a task has no request. Same rule
+    though — commit on success, roll back on error — and it lives in this module
+    so transaction control stays in one place.
+    """
+    factory = get_session_factory()
+    async with factory() as session, session.begin():
+        yield session
 
 
 def import_all_models() -> None:

@@ -56,3 +56,35 @@ def get_clock() -> Clock:
 
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
+
+
+class EvaluationFailed(Exception):
+    """The evaluator could not produce a valid result."""
+
+
+@runtime_checkable
+class Evaluator(Protocol):
+    """Marks a transcript against a framework.
+
+    The backend evaluates, always. The LiveKit worker delivers a transcript and
+    stops: it cannot import an evaluator, and it is never told the evaluation
+    policy, so marking cannot be influenced by whatever ran the conversation.
+
+    The real adapter wraps `osce_assessment.evaluation.LLMEvaluator` once the
+    engine is a versioned dependency; until then this port is what the job
+    depends on, so the boundary is fixed even though the implementation is not.
+    """
+
+    async def evaluate(
+        self,
+        *,
+        framework_id: str,
+        policy_version: str,
+        transcript: list[dict[str, object]],
+    ) -> dict[str, object]:
+        """Return the engine's result payload, already schema-valid.
+
+        Raises EvaluationFailed rather than returning a partial result: a
+        half-marked attempt shown to a candidate is worse than one not yet marked.
+        """
+        ...

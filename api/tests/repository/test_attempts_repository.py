@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import repository
+from app.features.attempts import repository_transcript as transcripts
 from app.features.catalog import repository as catalog_repo
 from app.features.identity import repository as identity_repo
 
@@ -73,11 +74,11 @@ async def test_a_failed_attempt_frees_the_slot_for_a_new_one(db_session: AsyncSe
 async def test_a_repeated_chunk_is_rejected_by_the_database(db_session: AsyncSession) -> None:
     user, exam = await a_user(db_session), await sca(db_session)
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
-    await repository.add_chunk(
+    await transcripts.add_chunk(
         db_session, attempt.id, message_id="m1", seq=0, role="user", message="hello", spoken_at=NOW
     )
     with pytest.raises(IntegrityError):
-        await repository.add_chunk(
+        await transcripts.add_chunk(
             db_session, attempt.id, message_id="m1", seq=0, role="user", message="hello", spoken_at=NOW
         )
 
@@ -85,7 +86,7 @@ async def test_a_repeated_chunk_is_rejected_by_the_database(db_session: AsyncSes
 async def test_one_result_per_policy_version(db_session: AsyncSession) -> None:
     user, exam = await a_user(db_session), await sca(db_session)
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
-    await repository.save_result(
+    await transcripts.save_result(
         db_session,
         attempt.id,
         framework_id="sca-rcgp-v1",
@@ -95,7 +96,7 @@ async def test_one_result_per_policy_version(db_session: AsyncSession) -> None:
         at=NOW,
     )
     with pytest.raises(IntegrityError):
-        await repository.save_result(
+        await transcripts.save_result(
             db_session,
             attempt.id,
             framework_id="sca-rcgp-v1",
@@ -110,7 +111,7 @@ async def test_a_second_policy_scores_beside_the_first(db_session: AsyncSession)
     user, exam = await a_user(db_session), await sca(db_session)
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
     for policy in ("platform-default@1", "kings-rubric@3"):
-        await repository.save_result(
+        await transcripts.save_result(
             db_session,
             attempt.id,
             framework_id="sca-rcgp-v1",
@@ -120,17 +121,17 @@ async def test_a_second_policy_scores_beside_the_first(db_session: AsyncSession)
             at=NOW,
         )
     await db_session.flush()
-    results = await repository.results_for(db_session, attempt.id)
+    results = await transcripts.results_for(db_session, attempt.id)
     assert {r.policy_version for r in results} == {"platform-default@1", "kings-rubric@3"}
 
 
 async def test_deleting_an_attempt_takes_its_transcript(db_session: AsyncSession) -> None:
     user, exam = await a_user(db_session), await sca(db_session)
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
-    await repository.add_chunk(
+    await transcripts.add_chunk(
         db_session, attempt.id, message_id="m1", seq=0, role="user", message="hi", spoken_at=NOW
     )
     await db_session.flush()
     await repository.delete_attempt(db_session, attempt.id)
     await db_session.flush()
-    assert await repository.chunks_for(db_session, attempt.id) == []
+    assert await transcripts.chunks_for(db_session, attempt.id) == []

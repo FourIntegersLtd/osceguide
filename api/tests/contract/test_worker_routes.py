@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
 from app.features.attempts import repository
+from app.features.attempts import repository_transcript as transcripts
 from app.features.catalog import repository as catalog_repo
 from app.features.identity import repository as identity_repo
 
@@ -178,7 +179,7 @@ async def test_the_same_chunk_twice_is_accepted_and_stored_once(
     assert (await client.post(url, json=body, headers=worker_headers())).status_code == 202
     assert (await client.post(url, json=body, headers=worker_headers())).status_code == 202
 
-    stored = await repository.chunks_for(db_session, attempt_id)
+    stored = await transcripts.chunks_for(db_session, attempt_id)
     assert len(stored) == 1
 
 
@@ -231,7 +232,7 @@ async def test_delivering_twice_is_accepted_and_changes_nothing(
     assert (await client.post(url, json=body, headers=worker_headers())).status_code == 202
     assert (await client.post(url, json=body, headers=worker_headers())).status_code == 202
 
-    stored = await repository.chunks_for(db_session, attempt_id)
+    stored = await transcripts.chunks_for(db_session, attempt_id)
     assert len(stored) == 2
 
 
@@ -250,7 +251,7 @@ async def test_delivery_fills_in_turns_the_chunks_missed(
         json={"attempt_id": str(attempt_id), "transcript": transcript(attempt_id, turns=4)},
         headers=worker_headers(),
     )
-    stored = await repository.chunks_for(db_session, attempt_id)
+    stored = await transcripts.chunks_for(db_session, attempt_id)
     assert [m.seq for m in stored] == [0, 1, 2, 3]
 
 
@@ -265,3 +266,93 @@ async def test_a_transcript_for_a_different_attempt_is_refused(
         headers=worker_headers(),
     )
     assert response.status_code == 409
+
+
+async def test_delivering_a_transcript_queues_the_marking(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The job is written by the same transaction as the transcript.
+
+    This is the whole reason for a Postgres-backed queue (ADR 0006), and it is
+    asserted rather than assumed: procrastinate's own connector holds a separate
+    pool, so deferring through it would commit the job on another connection and
+    a rolled-back transcript could still leave marking queued.
+    """
+    from sqlalchemy import text
+
+    attempt_id = await an_attempt(db_session)
+    # Bootstrap first: that is what starts the attempt, and the sequence a real
+    # worker follows.
+    await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+    await client.post(
+        f"/api/worker/attempts/{attempt_id}/transcript",
+        json={"attempt_id": str(attempt_id), "transcript": transcript(attempt_id)},
+        headers=worker_headers(),
+    )
+
+    queued = (
+        (
+            await db_session.execute(
+                text(
+                    "SELECT args FROM procrastinate_jobs "
+                    "WHERE task_name = 'score_attempt' AND args->>'attempt_id' = :id"
+                ),
+                {"id": str(attempt_id)},
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(queued) == 1
+    assert queued[0]["framework_id"] == "sca-rcgp-v1"
+
+
+async def test_a_redelivered_transcript_does_not_queue_a_second_marking(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from sqlalchemy import text
+
+    attempt_id = await an_attempt(db_session)
+    await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+    body = {"attempt_id": str(attempt_id), "transcript": transcript(attempt_id)}
+    url = f"/api/worker/attempts/{attempt_id}/transcript"
+    await client.post(url, json=body, headers=worker_headers())
+    await client.post(url, json=body, headers=worker_headers())
+
+    count = (
+        await db_session.execute(
+            text(
+                "SELECT count(*) FROM procrastinate_jobs "
+                "WHERE task_name = 'score_attempt' AND args->>'attempt_id' = :id"
+            ),
+            {"id": str(attempt_id)},
+        )
+    ).scalar_one()
+    assert count == 1
+
+
+async def test_bootstrapping_marks_the_attempt_running(client: AsyncClient, db_session: AsyncSession) -> None:
+    """The only signal that a session began. Without it the completed transcript
+    cannot move the attempt on, and the marking is never queued."""
+    attempt_id = await an_attempt(db_session)
+    await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    assert attempt.status == "running"
+    assert attempt.started_at is not None
+
+
+async def test_a_second_bootstrap_does_not_restart_the_attempt(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A worker re-reads its bootstrap after a reconnect."""
+    attempt_id = await an_attempt(db_session)
+    url = f"/api/worker/attempts/{attempt_id}"
+    await client.get(url, headers=worker_headers())
+    first = await repository.attempt_by_id(db_session, attempt_id)
+    assert first is not None
+    started = first.started_at
+
+    assert (await client.get(url, headers=worker_headers())).status_code == 200
+    again = await repository.attempt_by_id(db_session, attempt_id)
+    assert again is not None and again.started_at == started

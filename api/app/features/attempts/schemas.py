@@ -88,3 +88,14 @@ class AttemptRead(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+
+
+class CreateAttempt(BaseModel):
+    kind: str = Field(pattern="^(practice|set_station|debrief|self_practice|exam_slot|peer)$")
+    exam_code: str = Field(min_length=1, max_length=32)
+    station_version_id: uuid.UUID | None = None
+    slot_id: uuid.UUID | None = None
+    set_entry_id: uuid.UUID | None = None
+    peer_session_id: uuid.UUID | None = None
+    source_attempt_id: uuid.UUID | None = None
+    room_name: str | None = None
