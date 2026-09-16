@@ -1,0 +1,179 @@
+"""Storage for the three kinds of human review."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.reviews.models import CircuitReview, GpLeadReview, SlotReview
+
+
+async def slot_review_for(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, submitted_by: uuid.UUID
+) -> SlotReview | None:
+    stmt = select(SlotReview).where(
+        SlotReview.org_id == org_id,
+        SlotReview.slot_id == slot_id,
+        SlotReview.submitted_by == submitted_by,
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> list[SlotReview]:
+    stmt = (
+        select(SlotReview)
+        .where(SlotReview.org_id == org_id, SlotReview.slot_id == slot_id)
+        .order_by(SlotReview.created_at)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def upsert_slot_review(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    slot_id: uuid.UUID,
+    submitted_by: uuid.UUID,
+    observer_trainee_id: uuid.UUID | None,
+    field_values: dict[str, Any],
+    notes: str | None,
+    status: str,
+    completed_at: datetime | None,
+) -> SlotReview:
+    existing = await slot_review_for(session, org_id, slot_id, submitted_by)
+    if existing is None:
+        row = SlotReview(
+            org_id=org_id,
+            slot_id=slot_id,
+            submitted_by=submitted_by,
+            observer_trainee_id=observer_trainee_id,
+            field_values=field_values,
+            notes=notes,
+            status=status,
+            completed_at=completed_at,
+        )
+        session.add(row)
+        await session.flush()
+        await session.refresh(row)
+        return row
+
+    await session.execute(
+        update(SlotReview)
+        .where(SlotReview.id == existing.id)
+        .values(
+            field_values=field_values,
+            notes=notes,
+            status=status,
+            completed_at=completed_at,
+            observer_trainee_id=observer_trainee_id,
+        )
+    )
+    refreshed = await slot_review_for(session, org_id, slot_id, submitted_by)
+    return refreshed  # type: ignore[return-value]
+
+
+async def gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> GpLeadReview | None:
+    stmt = select(GpLeadReview).where(GpLeadReview.org_id == org_id, GpLeadReview.slot_id == slot_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def save_gp_lead_review(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    slot_id: uuid.UUID,
+    revision: int,
+    field_values: dict[str, Any],
+    notes: str | None,
+    overall_rag: str | None,
+    status: str,
+    reviewed_by: uuid.UUID,
+    completed_at: datetime | None,
+) -> GpLeadReview:
+    existing = await gp_lead_review(session, org_id, slot_id)
+    if existing is None:
+        row = GpLeadReview(
+            org_id=org_id,
+            slot_id=slot_id,
+            revision=revision,
+            field_values=field_values,
+            notes=notes,
+            overall_rag=overall_rag,
+            status=status,
+            reviewed_by=reviewed_by,
+            completed_at=completed_at,
+        )
+        session.add(row)
+        await session.flush()
+        await session.refresh(row)
+        return row
+
+    await session.execute(
+        update(GpLeadReview)
+        .where(GpLeadReview.id == existing.id)
+        .values(
+            revision=revision,
+            field_values=field_values,
+            notes=notes,
+            overall_rag=overall_rag,
+            status=status,
+            reviewed_by=reviewed_by,
+            completed_at=completed_at,
+        )
+    )
+    return await gp_lead_review(session, org_id, slot_id)  # type: ignore[return-value]
+
+
+async def circuit_review(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
+) -> CircuitReview | None:
+    stmt = select(CircuitReview).where(CircuitReview.org_id == org_id, CircuitReview.circuit_id == circuit_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def finalize_circuit_review(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    circuit_id: uuid.UUID,
+    merged_notes: str | None,
+    contributions: dict[str, Any] | None,
+    finalized_by: uuid.UUID,
+    at: datetime,
+) -> CircuitReview:
+    existing = await circuit_review(session, org_id, circuit_id)
+    if existing is None:
+        row = CircuitReview(
+            org_id=org_id,
+            circuit_id=circuit_id,
+            merged_notes=merged_notes,
+            contributions=contributions,
+            finalized_by=finalized_by,
+            finalized_at=at,
+        )
+        session.add(row)
+        await session.flush()
+        await session.refresh(row)
+        return row
+
+    await session.execute(
+        update(CircuitReview)
+        .where(CircuitReview.id == existing.id)
+        .values(
+            merged_notes=merged_notes,
+            contributions=contributions,
+            finalized_by=finalized_by,
+            finalized_at=at,
+        )
+    )
+    return await circuit_review(session, org_id, circuit_id)  # type: ignore[return-value]
+
+
+async def slot_has_any_review(session: AsyncSession, slot_id: uuid.UUID) -> bool:
+    """Used by `sittings` to decide whether a circuit is still editable."""
+    stmt = select(SlotReview.id).where(SlotReview.slot_id == slot_id).limit(1)
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
