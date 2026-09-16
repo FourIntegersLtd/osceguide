@@ -92,3 +92,24 @@ def test_the_phases_cover_the_whole_clock_in_order(framework_id) -> None:
 def test_the_clock_survives_the_trip_to_the_worker() -> None:
     payload = consultation_pacing_payload("sca-rcgp-v1")
     assert json.loads(json.dumps(payload)) == payload
+
+
+@pytest.mark.parametrize("framework_id", FRAMEWORKS)
+def test_a_mark_lands_early_enough_to_rescue_a_racing_consultation(framework_id) -> None:
+    """A real station reached its management plan at 3:22 and closed at 5:20.
+
+    The first mark used to be at 40% of the clock, by which time everything had
+    already gone wrong, and it only said what the 50% mark said moments later.
+    """
+    pacing = pacing_for_framework(framework_id)
+    first = consultation_pacing_payload(framework_id)["marks"][0]
+    assert first["at_seconds"] <= pacing.total_seconds * 0.3
+    assert "There is no credit for finishing early" in first["note"]
+
+
+@pytest.mark.parametrize("framework_id", FRAMEWORKS)
+def test_the_clock_speaks_to_a_doctor_who_is_ahead_as_well_as_behind(framework_id) -> None:
+    """Every note used to tell the doctor to trim, including the ones a fast doctor hits."""
+    notes = [m["note"] for m in consultation_pacing_payload(framework_id)["marks"]]
+    assert all("or go further into" in n for n in notes), "the wrapper is two-directional"
+    assert any("you are ahead: do not close" in n for n in notes)

@@ -97,12 +97,16 @@ def human_duration(seconds: int) -> str:
 def _note(body: str) -> str:
     """A note the model reads and never repeats.
 
-    The closing clause is the whole defence against a clock being read as
-    permission to rush: falling behind means dropping items, never talking
-    faster. The bracketed shape matches the notices the assessment worker
-    already sends, which the personas are used to seeing and not speaking.
+    The closing clause is the whole defence against a clock being read as a
+    reason to change pace: being behind means dropping items, being ahead means
+    going further into them, and neither ever means changing the speed you
+    speak at. It was one-directional once --- every mark told the doctor to
+    trim --- and a consultation that was running early got told to hurry.
+
+    The bracketed shape matches the notices the assessment worker already
+    sends, which the personas are used to seeing and not speaking.
     """
-    return f"[Notice: {body} Adjust by leaving things out, never by speaking faster or bundling turns together. Do not speak about the time, and do not mention this note.]"
+    return f"[Notice: {body} Adjust by what you leave out or go further into, never by speaking faster or slower. Do not speak about the time, and do not mention this note.]"
 
 
 def _marks(pacing: ConsultationPacing) -> list[dict[str, Any]]:
@@ -113,12 +117,20 @@ def _marks(pacing: ConsultationPacing) -> list[dict[str, Any]]:
     """
     remaining = human_duration(pacing.total_seconds - pacing.history_seconds)
     return [
+        # A quarter in, not forty percent: the mark at forty only repeated the one
+        # at half a minute or so later, and a consultation that raced was already
+        # into its management plan before either arrived. This is the only mark
+        # early enough to send a doctor back into a history it left too soon.
         {
-            "at_seconds": round(pacing.total_seconds * 0.4),
+            "at_seconds": round(pacing.total_seconds * 0.25),
             "note": _note(
-                f"About {human_duration(round(pacing.total_seconds * 0.4))} of this consultation have gone and "
-                f"about {human_duration(pacing.total_seconds - round(pacing.total_seconds * 0.4))} remain. "
-                "If the presenting complaint is still wide open, start bringing the history towards a close."
+                f"About {human_duration(round(pacing.total_seconds * 0.25))} have gone, a quarter of this "
+                f"consultation, and about {human_duration(pacing.total_seconds - round(pacing.total_seconds * 0.25))} remain. "
+                "You should still be inside the presenting complaint rather than finished with it. "
+                "If you are already explaining or planning, you are a long way ahead and the history is thin: "
+                "before you go any further into the plan, go back and ask what you have not asked yet --- what "
+                "else they take, what else they have been treated for, who else in the family has had this, "
+                "what this stops them doing, what they are afraid it is. There is no credit for finishing early."
             ),
         },
         {
@@ -126,7 +138,10 @@ def _marks(pacing: ConsultationPacing) -> list[dict[str, Any]]:
             "note": _note(
                 f"Half the consultation has gone; the time for history taking is up, with about {remaining} left. "
                 "Summarise what you have heard and move into explaining what is going on. "
-                "Anything still unasked is now a question you do without."
+                "Anything still unasked is now a question you do without. "
+                "If you are already well into the plan, you have room rather than a problem: take it one piece "
+                "at a time, check after each, and spend what is left going back over the part they were least "
+                "sure about."
             ),
         },
         {
@@ -134,7 +149,10 @@ def _marks(pacing: ConsultationPacing) -> list[dict[str, Any]]:
             "note": _note(
                 f"About {human_duration(pacing.total_seconds - round(pacing.total_seconds * 0.75))} remain. "
                 "You should be past what is wrong and into the plan by now. "
-                "If you are behind, leave the optional items out and keep the core ones properly explained."
+                "If you are behind, leave the optional items out and keep the core ones properly explained. "
+                "If you are already at the safety netting, you are ahead: do not close. Ask what they have not "
+                "had the chance to say, and go back over the part of the plan they were least sure about, in "
+                "different words."
             ),
         },
         {

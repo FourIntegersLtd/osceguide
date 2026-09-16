@@ -202,3 +202,34 @@ def test_the_history_phase_is_not_handed_a_list_of_questions_to_read() -> None:
     # still there once, in the reference, where the doctor can draw on it
     assert prompt.count("Check mood") == 1
     assert prompt.count("Worried about cancer") == 1
+
+
+def test_the_management_ladder_fits_a_station_with_no_drug_to_prescribe() -> None:
+    """A Parkinson's station is exam, bloods and referral. The ladder used to have a
+    rung that only a prescription could climb, so the model skipped the ladder and
+    read the investigation list out in one turn."""
+    prompt = AthenaDoctorFormatter.create_prompt("Hypothyroidism", {"patient_biodata": "Jane, 44"}, PLAN)
+    assert "the name of the treatment and what it is for" not in prompt
+    assert "a tablet, a test, a referral" in prompt
+    assert "Never open this phase with what you are going to do" in prompt
+    assert "six trips through 3 and 4" in prompt
+
+
+def test_a_condition_the_patient_names_has_to_be_answered_in_their_word() -> None:
+    """She said "Parkinson's", her father had it, and the doctor talked around the word
+    for three turns. The ban it obeyed lived in the red-flag step, not the earned rule."""
+    prompt = AthenaDoctorFormatter.create_prompt("Hypothyroidism", {"patient_biodata": "Jane, 44"}, PLAN)
+    assert "Never name the disease you are screening for unless" not in prompt
+    assert "once the patient" in prompt and "has named it themselves, it lets you, in their word" in prompt
+    assert "Reaching the end without ever having said their word back to them is a breach" in prompt
+    # and it is answered where the diagnosis belongs, not handed out mid-history
+    assert "In the history, do not answer it yet" in prompt
+
+
+def test_the_doctor_is_told_that_finishing_the_list_is_not_finishing() -> None:
+    prompt = AthenaDoctorFormatter.create_prompt("Hypothyroidism", {"patient_biodata": "Jane, 44"}, PLAN)
+    assert "Finishing the list is not finishing the consultation" in prompt
+    assert "Closing early is a failure here, not efficiency" in prompt
+    # no hard number: a rendered duration here would vary by framework and would
+    # also invite padding to reach it
+    assert "do not close before" not in prompt.lower()

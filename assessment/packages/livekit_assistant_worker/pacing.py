@@ -115,5 +115,9 @@ class ConsultationClock:
         where = ""
         if phase is not None:
             label, until = phase
-            where = f" You should be in: {label}, until about {_spoken_duration(until)}."
+            where = (
+                f" You should be in: {label}, until about {_spoken_duration(until)}."
+                " If you are already past that, you are ahead of the clock: go further into what"
+                " you have rather than closing early."
+            )
         return f"About {gone} gone of {_spoken_duration(total)}; about {left} left.{where}"
