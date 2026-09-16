@@ -64,6 +64,22 @@ would otherwise report its own mistake as success.
 Each check in `tests/migration/test_verify.py` runs against a database damaged
 on purpose, because a verifier nobody has seen fail is not a verifier.
 
+## Running it
+
+```bash
+python scripts/migrate_legacy.py --export ./export --dry-run     # default
+python scripts/migrate_legacy.py --export ./export --no-dry-run  # commits
+python scripts/migrate_legacy.py --export ./export --verify-only
+```
+
+`--dry-run` is the default and has to be turned off deliberately. Exit status
+is non-zero if a single record was a problem or a single check failed, so it
+is safe in a pipeline.
+
+The export is a directory of JSON arrays: `users.json` (the four `*_users`
+collections concatenated, each document keeping its `app_type` and its `id`),
+optionally `b2b_users.json`, `transcripts.json` and `feedbacks.json`.
+
 ## What is missing
 
 Station sets, sittings and org data. The consumer path — people, entitlements,

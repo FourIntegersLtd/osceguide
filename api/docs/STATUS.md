@@ -37,10 +37,13 @@ domain, then storage, then the service and router. Every commit green.
 
 From the plan's phases, in rough priority order:
 
-- **Phase 8's loader and verify step.** The *transforms* are written and tested
-  as pure functions on realistic fixtures (`app/migration/`), including the
-  five-record consumer merge. Loading and verification need a real export to be
-  worth writing against.
+- **Phase 8 is built for the consumer path.** Transforms, loader, verify and
+  `scripts/migrate_legacy.py`, exercised end to end against the local database:
+  a dry run, a real run, a second run that creates nothing, and a verify that
+  fails when a transcript is tampered with. Station sets, sittings and org data
+  are not transformed yet, and a real export is still needed to size the run
+  and catch shapes the fixtures do not have.
+
 - **Phase 9, frontend switchover.** The client layer is built and committed on
   branch `feat/platform-api-client` in `frontend/` — `src/platform/` with the
   generated types, `PlatformError`, and a per-domain flag that is empty by

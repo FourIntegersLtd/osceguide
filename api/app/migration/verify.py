@@ -135,8 +135,12 @@ async def spot_check(session: AsyncSession, sample: Sequence[MigratedAttempt]) -
         stored = transcript_fingerprint([(r[0], r[1], r[2]) for r in rows])
         source = transcript_fingerprint([(m.seq, m.role, m.message) for m in migrated.messages])
         if stored != source:
+
+            def turns(n: int) -> str:
+                return f"{n} turn" if n == 1 else f"{n} turns"
+
             problems.append(
                 f"{ref}: the stored transcript does not match the export "
-                f"({len(rows)} turns stored, {len(migrated.messages)} in the export)."
+                f"({turns(len(rows))} stored, {turns(len(migrated.messages))} in the export)."
             )
     return problems
