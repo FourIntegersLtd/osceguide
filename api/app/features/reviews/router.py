@@ -34,7 +34,11 @@ async def list_slot_reviews(
     "/orgs/{org_slug}/slots/{slot_id}/reviews/mine",
     response_model=schemas.SlotReviewRead,
     responses=error_responses(
-        Forbidden, errors.InvalidRagError, errors.ReviewIncompleteError, errors.NothingToReviewError
+        Forbidden,
+        errors.SlotNotFound,
+        errors.InvalidRagError,
+        errors.ReviewIncompleteError,
+        errors.NothingToReviewError,
     ),
 )
 async def submit_my_review(
@@ -80,7 +84,11 @@ async def read_gp_lead_review(
     "/orgs/{org_slug}/slots/{slot_id}/gp-lead-review",
     response_model=schemas.GpLeadReviewRead,
     responses=error_responses(
-        Forbidden, errors.ReviewConflictError, errors.InvalidRagError, errors.ReviewIncompleteError
+        Forbidden,
+        errors.SlotNotFound,
+        errors.ReviewConflictError,
+        errors.InvalidRagError,
+        errors.ReviewIncompleteError,
     ),
 )
 async def save_gp_lead_review(

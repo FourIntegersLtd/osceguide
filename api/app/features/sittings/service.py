@@ -203,3 +203,14 @@ async def _require_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id:
     if row is None:
         raise errors.CircuitNotFound()
     return row
+
+
+async def slot_is_in_org(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> bool:
+    """Whether this slot belongs to this organisation.
+
+    Exposed for `reviews`, whose routes are addressed by slot id. A slot id in
+    a URL says nothing about who owns it, and taking the org from the path
+    while trusting the id is how a review came to be storable against another
+    tenant's slot (P4).
+    """
+    return await repository.slot_by_id(session, org_id, slot_id) is not None

@@ -196,3 +196,53 @@ async def test_another_orgs_slot_reviews_are_invisible(
     )
     response = await client.get(f"/api/v1/orgs/guys/slots/{slot_id}/reviews", headers=bearer(guys_admin))
     assert response.json()["items"] == []
+
+
+async def test_an_org_cannot_write_a_review_against_another_orgs_slot(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The write side of the isolation, which nothing checked.
+
+    `test_another_orgs_slot_reviews_are_invisible` asserts only that the read
+    comes back empty — and it does, because reads filter on `org_id`. The write
+    took `org_id` from the path slug and the slot id from the URL and never
+    compared them, so an admin of any org could attach a review to any slot in
+    the system. It stayed invisible to the slot's real owner, which is what
+    made it look contained.
+    """
+    from sqlalchemy import func, select
+
+    from app.features.reviews.models import SlotReview
+
+    kings_id, _ = await org_with_admin(client, make_actor, "kings")
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    kings_slot = await a_slot(db_session, kings_id)
+
+    response = await client.put(
+        f"/api/v1/orgs/guys/slots/{kings_slot}/reviews/mine",
+        json={"field_values": {"communication.score": "r"}, "notes": "Not mine to write"},
+        headers=bearer(guys_admin),
+    )
+
+    assert response.status_code == 404, response.text
+    assert response.json()["code"] == "slot_not_found"
+    written = await db_session.scalar(
+        select(func.count()).select_from(SlotReview).where(SlotReview.slot_id == kings_slot)
+    )
+    assert written == 0, "a review was stored against another org's slot"
+
+
+async def test_an_org_cannot_write_a_gp_lead_review_against_another_orgs_slot(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    kings_id, _ = await org_with_admin(client, make_actor, "kings")
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    kings_slot = await a_slot(db_session, kings_id)
+
+    response = await client.put(
+        f"/api/v1/orgs/guys/slots/{kings_slot}/gp-lead-review",
+        json={"revision": 0},
+        headers=bearer(guys_admin),
+    )
+
+    assert response.status_code == 404, response.text

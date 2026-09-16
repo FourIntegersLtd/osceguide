@@ -15,6 +15,7 @@ from app.features.reviews.schemas import (
     GpLeadReviewRead,
     SlotReviewRead,
 )
+from app.features.sittings import service as sittings
 
 _REFUSALS: dict[type[Exception], type[Exception]] = {
     domain.InvalidRag: errors.InvalidRagError,
@@ -37,6 +38,19 @@ def _scored_domains(field_values: dict[str, Any]) -> set[str]:
     return {key.split(".", 1)[0] for key in field_values if key.endswith(".score")}
 
 
+async def _require_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:
+    """Every slot-addressed use case resolves the slot against the caller's org.
+
+    The org comes from the path and the slot from the URL, and until this
+    existed nothing compared them (P4). Reads happened to be safe because they
+    filter on `org_id`; writes stored the caller's org beside another tenant's
+    slot id, which kept it invisible to the slot's real owner and so looked
+    contained.
+    """
+    if not await sittings.slot_is_in_org(session, org_id, slot_id):
+        raise errors.SlotNotFound()
+
+
 async def submit_slot_review(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -50,6 +64,7 @@ async def submit_slot_review(
     required_domains: set[str],
     now: datetime,
 ) -> SlotReviewRead:
+    await _require_slot(session, org_id, slot_id)
     try:
         normalized = domain.normalize_status(status)
         for key, value in field_values.items():
@@ -95,6 +110,7 @@ async def save_gp_lead_review(
     required_domains: set[str],
     now: datetime,
 ) -> GpLeadReviewRead:
+    await _require_slot(session, org_id, slot_id)
     existing = await repository.gp_lead_review(session, org_id, slot_id)
     try:
         domain.ensure_current(stored=existing.revision if existing else None, presented=presented_revision)

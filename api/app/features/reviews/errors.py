@@ -37,3 +37,15 @@ class ReviewConflictError(Conflict):
 
     code = "review_conflict"
     default_message = "Someone else has changed this review since you opened it"
+
+
+class SlotNotFound(NotFound):
+    """No such slot in this organisation.
+
+    Deliberately indistinguishable from a slot that does not exist at all: a
+    different answer would confirm to one tenant that another's slot id is
+    real.
+    """
+
+    code = "slot_not_found"
+    default_message = "No such slot"
