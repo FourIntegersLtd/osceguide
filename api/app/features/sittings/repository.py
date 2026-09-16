@@ -101,6 +101,21 @@ async def circuit_by_id(session: AsyncSession, org_id: uuid.UUID, circuit_id: uu
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def circuit_for_update(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
+) -> Circuit | None:
+    """The circuit row, locked until the transaction ends (C4).
+
+    Every operation that reads the circuit's state and then writes it takes
+    this. Without it two supervisors on a live exam interleave: the damage is
+    not two active slots, it is `end_circuit` clearing the active slot while
+    `switch_turn` sets one, leaving a circuit that is over and still showing
+    somebody consulting in a room that has been torn down.
+    """
+    stmt = select(Circuit).where(Circuit.org_id == org_id, Circuit.id == circuit_id).with_for_update()
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def circuits_for_sitting(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> list[Circuit]:

@@ -139,7 +139,7 @@ async def add_circuit(
 async def start_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, now: datetime
 ) -> CircuitRead:
-    circuit = await _require_circuit(session, org_id, circuit_id)
+    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     try:
         domain.ensure_startable(_state(circuit, has_feedback=False))
     except domain.CircuitAlreadyEnded as exc:
@@ -157,11 +157,14 @@ async def start_circuit(
 async def switch_turn(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, slot_id: uuid.UUID
 ) -> CircuitRead:
-    circuit = await _require_circuit(session, org_id, circuit_id)
+    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
     try:
+        # Order matters: the circuit being over is the more fundamental
+        # refusal, and it is the one a racing `end_circuit` creates.
+        domain.ensure_live(_state(circuit, has_feedback=False))
         domain.ensure_can_switch_turn(domain.Mode(sitting.mode))
-    except domain.NotPermittedInMode as exc:
+    except (domain.CircuitAlreadyEnded, domain.NotPermittedInMode) as exc:
         _raise(exc)
 
     slot = await repository.slot_by_id(session, org_id, slot_id)
@@ -174,7 +177,7 @@ async def switch_turn(
 async def end_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, now: datetime
 ) -> CircuitRead:
-    await _require_circuit(session, org_id, circuit_id)
+    await _require_circuit(session, org_id, circuit_id, lock=True)
     await repository.update_circuit(
         session,
         org_id,
@@ -203,8 +206,17 @@ async def _require_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id:
     return row
 
 
-async def _require_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> Circuit:
-    row = await repository.circuit_by_id(session, org_id, circuit_id)
+async def _require_circuit(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, lock: bool = False
+) -> Circuit:
+    """Load a circuit, optionally holding it for the rest of the transaction.
+
+    `lock=True` for anything that reads the circuit's state and then writes it
+    (C4): start, switch, end. Reads leave it unlocked, so a supervisor console
+    polling the state does not queue behind a write.
+    """
+    fetch = repository.circuit_for_update if lock else repository.circuit_by_id
+    row = await fetch(session, org_id, circuit_id)
     if row is None:
         raise errors.CircuitNotFound()
     return row

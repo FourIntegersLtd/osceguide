@@ -123,6 +123,19 @@ def ensure_startable(state: CircuitState) -> None:
         raise CircuitAlreadyEnded("That circuit has already finished.")
 
 
+def ensure_live(state: CircuitState) -> None:
+    """Nothing may act on a circuit that is over.
+
+    Separate from `ensure_startable` because it guards a different moment: not
+    "may this begin" but "is this still running". A switch that lands on an
+    ended circuit leaves it showing a candidate consulting in a room that has
+    already been torn down, and the trainee portal then offers a slot nobody
+    can join.
+    """
+    if state.ended:
+        raise CircuitAlreadyEnded("That circuit has already finished.")
+
+
 def ensure_can_switch_turn(mode: Mode) -> None:
     if mode is not Mode.TRAINING:
         raise NotPermittedInMode(

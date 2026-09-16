@@ -156,3 +156,17 @@ def test_breaks_are_clamped_to_the_station_count_and_deduplicated() -> None:
         station_count=3,
     )
     assert [b.after_station for b in timing.breaks] == [1, 2]
+
+
+def test_a_circuit_that_has_ended_is_no_longer_live() -> None:
+    """Guards the moment after starting: is this still running?
+
+    A switch that lands on an ended circuit leaves it showing a candidate
+    consulting in a room already torn down.
+    """
+    with pytest.raises(domain.CircuitAlreadyEnded):
+        domain.ensure_live(domain.CircuitState(active_slot_id=None, has_feedback=False, ended=True))
+
+
+def test_a_running_circuit_is_live() -> None:
+    domain.ensure_live(domain.CircuitState(active_slot_id="slot-1", has_feedback=False))
