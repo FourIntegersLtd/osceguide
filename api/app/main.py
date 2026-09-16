@@ -19,7 +19,7 @@ from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
 from app.core.memberships import bind_membership_lookup
-from app.core.openapi import TAGS, operation_id
+from app.core.openapi import TAGS, install_error_catalogue, operation_id
 from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.core.tenancy import bind_org_lookup, bind_role_policy
@@ -138,6 +138,10 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(api_v1_router(), prefix=API_V1_PREFIX)
     app.include_router(worker_router(), prefix=WORKER_PREFIX)
+
+    # After the routers, so every slice's `errors.py` has been imported and the
+    # catalogue walk sees the whole hierarchy.
+    install_error_catalogue(app)
     return app
 
 

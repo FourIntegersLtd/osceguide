@@ -67,6 +67,7 @@ async def read_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Sess
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
         Unauthenticated,
+        errors.NotEntitled,
         errors.SetNotFound,
         errors.EntryNotFound,
         errors.AttemptLimitReachedError,

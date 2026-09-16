@@ -2,6 +2,14 @@ from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
 
+# Starting an attempt runs the entitlement check, so `not_entitled` is part of
+# this slice's error vocabulary even though the class belongs to `entitlements`.
+# Re-exported rather than redefined: two classes with one code would drift, and
+# the router documents what it can actually return.
+from app.features.entitlements.errors import NotEntitled
+
+__all__ = ["NotEntitled"]
+
 
 class SetNotFound(NotFound):
     code = "set_not_found"

@@ -89,6 +89,31 @@ class Unavailable(AppError):
     default_message = "A dependency is unavailable"
 
 
+def error_codes() -> list[str]:
+    """Every `code` any `AppError` in the app can carry, sorted.
+
+    Published as the enum of `ErrorResponse.code` so the generated TypeScript
+    is a closed union rather than `string`. The frontend is meant to switch on
+    this — b2b decides control flow today by substring-matching English prose
+    (`message.includes("another user")`), which reworded messages break
+    silently. A union makes a typo a compile error instead.
+
+    Walked from the class hierarchy rather than kept as a list, because a list
+    is a second place to forget. Every feature module is imported by the time
+    the document is built, so the walk sees all of them.
+    """
+    found: set[str] = set()
+
+    def walk(cls: type[AppError]) -> None:
+        for sub in cls.__subclasses__():
+            found.add(sub.code)
+            walk(sub)
+
+    found.add(AppError.code)
+    walk(AppError)
+    return sorted(found)
+
+
 def error_responses(*errors: type[AppError]) -> dict[int | str, dict[str, Any]]:
     """Build the `responses=` mapping for a route so OpenAPI documents its errors."""
     out: dict[int | str, dict[str, Any]] = {}

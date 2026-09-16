@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.core.db import dispose_engine, get_engine, get_session, sqlalchemy_url  # noqa: E402
 from app.core.settings import get_settings  # noqa: E402
+from tests.support.declared_codes import install as install_declared_code_check  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -107,6 +108,7 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     from app.main import create_app
 
     app = create_app()
+    install_declared_code_check(app)
 
     async def override_get_session() -> AsyncIterator[AsyncSession]:
         # Mirrors `core.db.get_session`, including the `persist_effects` rule:
