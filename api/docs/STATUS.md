@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**1,499 tests. 59 endpoints. 15 slices. 11 migrations.**
+**1,652 tests. 64 endpoints. 17 slices. 13 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -25,14 +25,16 @@ domain, then storage, then the service and router. Every commit green.
 | `billing` | routes done | Stripe webhook with idempotency ledger; **signature verification not wired** |
 | `station_sets` | complete | consumer practice sets with attempt limits |
 | `dashboard` | complete | read model replacing the seven-call home screen |
+| `notifications` | complete | one outbox, backoff, abandon-after-six; identity and results write to it |
+| `assistant` | routes done | both LiveKit workers can now target this backend; **content packs not ported** |
 
 ## Not built
 
 From the plan's phases, in rough priority order:
 
 - **`community`, `peer_practice`, `marketplace`** — b2c social.
-- **`growth`, `media`, `assistant`, `notifications`** — partner attribution/BMJ,
-  slides and podcasts, the assistant worker routes, Resend email.
+- **`growth`, `media`** — partner attribution/BMJ, slides, podcasts, blogs,
+  summaries, vector search.
 - **Phase 8, the data migration.** Needs a Firestore export and the b2b database.
 - **Phase 9, frontend switchover.** Needs the backend domains it replaces.
 
