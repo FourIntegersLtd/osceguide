@@ -1,0 +1,163 @@
+"""Circuit rules, ported from b2b as the oracle.
+
+Sources: `slot_builder.py` (C1, C2), `integrity.py:153-168` (C3),
+`circuit_timing.py` (C9), `circuit_control.py:173` (C7), `:321` (C8).
+These decide what a supervisor can do mid-examination, so they are ported
+rather than reinvented.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from app.features.sittings import domain
+from app.features.sittings.domain import Mode
+
+
+# --------------------------------------------------------------------------
+# Building slots
+# --------------------------------------------------------------------------
+
+
+def test_an_exam_circuit_is_one_trainee_through_every_station() -> None:
+    slots = domain.build_slots(Mode.EXAM, trainees=["t1"], stations=["s1", "s2", "s3"])
+    assert [s.station for s in slots] == ["s1", "s2", "s3"]
+    assert {s.trainee for s in slots} == {"t1"}
+
+
+def test_an_exam_circuit_refuses_more_than_one_trainee() -> None:
+    """Oracle: slot_builder. An exam is one candidate's sitting."""
+    with pytest.raises(domain.InvalidCircuit):
+        domain.build_slots(Mode.EXAM, trainees=["t1", "t2"], stations=["s1"])
+
+
+def test_an_exam_circuit_is_capped_at_twelve_stations() -> None:
+    """Oracle: `EXAM_MAX_STATIONS = 12`."""
+    with pytest.raises(domain.InvalidCircuit):
+        domain.build_slots(Mode.EXAM, trainees=["t1"], stations=[f"s{i}" for i in range(13)])
+
+
+def test_a_training_circuit_pairs_each_trainee_with_one_station() -> None:
+    """Oracle: the positional zip. Trainee i takes station i, and they rotate."""
+    slots = domain.build_slots(Mode.TRAINING, trainees=["a", "b"], stations=["s1", "s2"])
+    assert [(s.trainee, s.station) for s in slots] == [("a", "s1"), ("b", "s2")]
+
+
+def test_a_training_circuit_needs_matching_counts() -> None:
+    with pytest.raises(domain.InvalidCircuit):
+        domain.build_slots(Mode.TRAINING, trainees=["a", "b"], stations=["s1"])
+
+
+def test_a_circuit_with_no_stations_is_refused() -> None:
+    with pytest.raises(domain.InvalidCircuit):
+        domain.build_slots(Mode.TRAINING, trainees=[], stations=[])
+
+
+def test_slots_are_numbered_from_zero_in_order() -> None:
+    slots = domain.build_slots(Mode.EXAM, trainees=["t1"], stations=["s1", "s2"])
+    assert [s.index for s in slots] == [0, 1]
+
+
+# --------------------------------------------------------------------------
+# Editing a live circuit
+# --------------------------------------------------------------------------
+
+
+def test_a_circuit_may_be_edited_before_it_starts() -> None:
+    domain.ensure_editable(domain.CircuitState(active_slot_id=None, has_feedback=False))
+
+
+def test_a_circuit_with_a_live_slot_is_locked() -> None:
+    """Oracle: integrity.py. Rebuilding slots mid-station would delete the one
+    somebody is sitting."""
+    with pytest.raises(domain.CircuitLocked):
+        domain.ensure_editable(domain.CircuitState(active_slot_id="slot-1", has_feedback=False))
+
+
+def test_a_circuit_with_feedback_is_locked() -> None:
+    with pytest.raises(domain.CircuitLocked):
+        domain.ensure_editable(domain.CircuitState(active_slot_id=None, has_feedback=True))
+
+
+def test_force_overrides_the_lock() -> None:
+    """Kept because b2b has it and supervisors rely on it when a session goes
+    wrong mid-circuit."""
+    domain.ensure_editable(
+        domain.CircuitState(active_slot_id="slot-1", has_feedback=True), force=True
+    )
+
+
+# --------------------------------------------------------------------------
+# Running a circuit
+# --------------------------------------------------------------------------
+
+
+def test_switching_turn_is_training_only() -> None:
+    """Oracle: circuit_control.py:173. In an exam each candidate runs their own
+    circuit, so there is no turn to switch."""
+    domain.ensure_can_switch_turn(Mode.TRAINING)
+    with pytest.raises(domain.NotPermittedInMode):
+        domain.ensure_can_switch_turn(Mode.EXAM)
+
+
+def test_appending_trainees_is_training_only() -> None:
+    """Oracle: circuit_service.py:321."""
+    domain.ensure_can_append_trainees(Mode.TRAINING)
+    with pytest.raises(domain.NotPermittedInMode):
+        domain.ensure_can_append_trainees(Mode.EXAM)
+
+
+def test_a_circuit_can_only_start_once() -> None:
+    domain.ensure_startable(domain.CircuitState(active_slot_id=None, has_feedback=False))
+    with pytest.raises(domain.CircuitAlreadyEnded):
+        domain.ensure_startable(
+            domain.CircuitState(active_slot_id=None, has_feedback=False, ended=True)
+        )
+
+
+def test_only_one_slot_is_active_at_a_time() -> None:
+    state = domain.CircuitState(active_slot_id="slot-1", has_feedback=False)
+    assert domain.next_active_slot(state, "slot-2") == "slot-2"
+    assert domain.next_active_slot(state, "slot-1") == "slot-1"
+
+
+# --------------------------------------------------------------------------
+# Timing
+# --------------------------------------------------------------------------
+
+
+def test_timing_defaults_match_the_legacy_values() -> None:
+    """Oracle: circuit_timing.py — 3 minutes reading, 10 simulation."""
+    timing = domain.normalise_timing({})
+    assert timing.reading_minutes == 3
+    assert timing.simulation_minutes == 10
+
+
+@pytest.mark.parametrize(("given", "expected"), [(0, 1), (31, 30), (15, 15)])
+def test_reading_minutes_are_clamped(given: int, expected: int) -> None:
+    assert domain.normalise_timing({"reading_minutes": given}).reading_minutes == expected
+
+
+@pytest.mark.parametrize(("given", "expected"), [(0, 1), (181, 180), (20, 20)])
+def test_simulation_minutes_are_clamped(given: int, expected: int) -> None:
+    assert domain.normalise_timing({"simulation_minutes": given}).simulation_minutes == expected
+
+
+def test_the_legacy_station_minutes_key_is_still_accepted() -> None:
+    """Oracle: circuit_timing.py:40. Existing circuits carry this spelling."""
+    assert domain.normalise_timing({"station_minutes": 12}).simulation_minutes == 12
+
+
+def test_breaks_are_exam_only() -> None:
+    """Oracle: circuit_timing.py:64."""
+    timing = domain.normalise_timing({"breaks": [{"after_station": 1}]}, mode=Mode.TRAINING)
+    assert timing.breaks == ()
+
+
+def test_breaks_are_clamped_to_the_station_count_and_deduplicated() -> None:
+    timing = domain.normalise_timing(
+        {"breaks": [{"after_station": 5}, {"after_station": 1}, {"after_station": 1}, {"after_station": 0}]},
+        mode=Mode.EXAM,
+        station_count=3,
+    )
+    assert [b.after_station for b in timing.breaks] == [1, 2]
