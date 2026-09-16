@@ -1104,6 +1104,33 @@
         "title": "Page[MembershipRead]",
         "type": "object"
       },
+      "Page_PlanRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[PlanRead]",
+        "type": "object"
+      },
       "Page_ProgrammeRead_": {
         "properties": {
           "items": {
@@ -1217,6 +1244,46 @@
           "email"
         ],
         "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "PlanRead": {
+        "properties": {
+          "amount_pence": {
+            "title": "Amount Pence",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "duration_days": {
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          }
+        },
+        "required": [
+          "code",
+          "amount_pence",
+          "currency",
+          "duration_days",
+          "exam_code"
+        ],
+        "title": "PlanRead",
         "type": "object"
       },
       "ProgrammeRead": {
@@ -1963,6 +2030,19 @@
           "attempt_id"
         ],
         "title": "VoiceGrant",
+        "type": "object"
+      },
+      "WebhookResult": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "WebhookResult",
         "type": "object"
       },
       "WorkerAccepted": {
@@ -3026,6 +3106,114 @@
         "summary": "Switch Workspace",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/billing/plans": {
+      "get": {
+        "description": "Public: the pricing page reads this rather than hardcoding amounts, which\nis how b2c's client and server came to disagree about what a plan costs.",
+        "operationId": "billing_list_plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PlanRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_input",
+            "x-codes": [
+              "invalid_input"
+            ]
+          }
+        },
+        "summary": "List Plans",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/billing/webhooks/stripe": {
+      "post": {
+        "description": "Apply one delivery, at most once.\n\nSignature verification belongs in front of this and is not yet wired; see\ndocs/OPEN-QUESTIONS.md. The idempotency ledger is here regardless, because\nStripe retries until it gets a 2xx and b2c has no record of what it applied.",
+        "operationId": "billing_stripe_webhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Event",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_signature",
+            "x-codes": [
+              "invalid_signature"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_plan",
+            "x-codes": [
+              "unknown_plan"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_webhook",
+            "x-codes": [
+              "invalid_webhook"
+            ]
+          }
+        },
+        "summary": "Stripe Webhook",
+        "tags": [
+          "billing"
         ]
       }
     },

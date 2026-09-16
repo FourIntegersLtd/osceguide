@@ -26,6 +26,7 @@ from app.core.tenancy import bind_org_lookup, bind_role_policy
 from app.features import health
 from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
+from app.features.billing.router import router as billing_router
 from app.features.catalog.router import router as catalog_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.identity.router import router as identity_router
@@ -65,6 +66,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(entitlements_router)
     router.include_router(voice_router)
     router.include_router(sittings_router)
+    router.include_router(billing_router)
     return router
 
 
