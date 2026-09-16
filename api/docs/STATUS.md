@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**1,888 tests. 79 endpoints. 20 slices. 17 migrations.**
+**1,976 tests. 83 endpoints. 21 slices. 19 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -30,13 +30,13 @@ domain, then storage, then the service and router. Every commit green.
 | `marketplace` | complete | offered slots, claimed once under a row lock |
 | `community` | complete | questions, replies, station comments, real likes, real authorisation |
 | `peer_practice` | complete | queue, fair role assignment, matching job |
+| `growth` | complete | partner attribution, funnel, referrals; **Mixpanel reconciliation not ported** |
 
 ## Not built
 
 From the plan's phases, in rough priority order:
 
-- **`growth`, `media`** — partner attribution/BMJ, slides, podcasts, blogs,
-  summaries, vector search.
+- **`media`** — slides, podcasts, blogs, summaries, vector search.
 - **Phase 8, the data migration.** Needs a Firestore export and the b2b database.
 - **Phase 9, frontend switchover.** Needs the backend domains it replaces.
 
@@ -47,6 +47,12 @@ From the plan's phases, in rough priority order:
   versioned dependency rather than a vendored subtree (see OPEN-QUESTIONS E-1).
 - **Stripe signature verification.** One middleware in front of an otherwise
   complete path (B-1). **Blocking for launch.**
+
+## A habit worth keeping
+
+`poetry run pytest -q | tail -2` reports the last two lines and **not** the exit
+code, so a red suite can look green in a terminal. Twice during this work that
+led to a commit with a failing test. Check `$?`, or use `make test`, which does.
 
 ## Running it
 
