@@ -50,3 +50,14 @@ class UnknownExamError(NotFound):
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+class TemplateVersionNotFound(NotFound):
+    """No such feedback template version in this organisation.
+
+    Indistinguishable from one that does not exist, so a template id cannot be
+    probed across tenants.
+    """
+
+    code = "feedback_template_version_not_found"
+    default_message = "No such feedback template version"

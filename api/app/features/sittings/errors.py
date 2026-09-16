@@ -38,6 +38,13 @@ class NotPermittedInModeError(Conflict):
     default_message = "That action does not apply to this kind of circuit"
 
 
-class TemplateNotPublished(Conflict):
-    code = "template_not_published"
-    default_message = "A sitting needs a published feedback template"
+# Binding a rubric is `stations`' rule, so its errors are this slice's
+# vocabulary too. Re-exported rather than redefined: the previous local class
+# was never raised, so the route advertised a code that could not happen while
+# the invariant it named went unenforced.
+from app.features.stations.errors import (  # noqa: E402
+    TemplateNotPublishedError,
+    TemplateVersionNotFound,
+)
+
+__all__ = ["TemplateNotPublishedError", "TemplateVersionNotFound"]

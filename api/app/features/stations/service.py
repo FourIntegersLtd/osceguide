@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.stations import domain, errors, repository
-from app.features.stations.models import Station, StationVersion
+from app.features.stations.models import FeedbackTemplateVersion, Station, StationVersion
 from app.features.stations.schemas import StationRead, StationVersionRead
 
 # One place mapping a domain refusal to its API code, so a new rule does not
@@ -219,3 +219,21 @@ async def runnable_station(
         content=dict(version.content or {}),
         published=version.status == "published",
     )
+
+
+async def published_feedback_template(
+    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID
+) -> FeedbackTemplateVersion:
+    """The feedback template version a sitting may bind (S1).
+
+    Raises if it is missing, belongs to another org, or is still a draft. The
+    NOT NULL foreign key on `sittings` made this look enforced, but a foreign
+    key only says the row exists — a sitting could bind a rubric somebody was
+    still editing, and candidates would be marked against it.
+    """
+    row = await repository.feedback_template_version(session, org_id, version_id)
+    if row is None:
+        raise errors.TemplateVersionNotFound()
+    if row.status != "published":
+        raise errors.TemplateNotPublishedError("A sitting needs a published feedback template version.")
+    return row

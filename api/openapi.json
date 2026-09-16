@@ -1428,6 +1428,7 @@
               "empty_query",
               "evidence_changed",
               "exam_not_in_pilot",
+              "feedback_template_version_not_found",
               "forbidden",
               "gone",
               "group_exists",
@@ -9620,6 +9621,19 @@
             "x-codes": [
               "forbidden",
               "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "feedback_template_version_not_found",
+            "x-codes": [
+              "feedback_template_version_not_found"
             ]
           },
           "409": {

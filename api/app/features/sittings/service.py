@@ -23,6 +23,7 @@ from app.features.sittings.reads import (
     timing_json as _timing_json,
 )
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
+from app.features.stations import service as stations
 
 # One place mapping a domain refusal to its API code.
 _REFUSALS: dict[type[Exception], type[Exception]] = {
@@ -49,6 +50,10 @@ async def create_sitting(
     scheduled_for: datetime | None,
     programme_id: uuid.UUID | None,
 ) -> SittingRead:
+    # S1: the rubric must exist, belong to this org, and be published. The
+    # NOT NULL foreign key only guarantees the first of those.
+    await stations.published_feedback_template(session, org_id, feedback_template_version_id)
+
     row = await repository.create_sitting(
         session,
         org_id,

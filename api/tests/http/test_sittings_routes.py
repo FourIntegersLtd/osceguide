@@ -270,3 +270,66 @@ async def test_another_orgs_sittings_are_invisible(
     )
     response = await client.get("/api/v1/orgs/guys/sittings", headers=bearer(guys_admin))
     assert response.json()["items"] == []
+
+
+async def test_a_sitting_cannot_be_created_against_a_draft_template(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S1. The route advertised this error and nothing raised it.
+
+    `feedback_template_version_id` is NOT NULL, which made the invariant look
+    enforced — but a foreign key only says the row exists, not that it is
+    published. A sitting bound to a draft rubric means candidates are marked
+    against a form somebody was still editing.
+    """
+    from app.features.stations.models import FeedbackTemplate, FeedbackTemplateVersion
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    template = FeedbackTemplate(org_id=org_id, title="Half-written")
+    db_session.add(template)
+    await db_session.flush()
+    draft = FeedbackTemplateVersion(
+        org_id=org_id,
+        template_id=template.id,
+        version=1,
+        field_selection={"paths": []},
+        status="draft",
+    )
+    db_session.add(draft)
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/v1/orgs/kings/sittings",
+        json={
+            "name": "Too early",
+            "feedback_template_version_id": str(draft.id),
+            "mode": "exam",
+            "sitting_type": "mock",
+        },
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "template_not_published"
+
+
+async def test_a_sitting_cannot_be_created_against_another_orgs_template(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Resolving the template by id alone would be a global lookup."""
+    kings_id, _ = await org_with_admin(client, make_actor, "kings")
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    kings_template = await a_template_version(db_session, kings_id)
+
+    response = await client.post(
+        "/api/v1/orgs/guys/sittings",
+        json={
+            "name": "Not mine",
+            "feedback_template_version_id": str(kings_template),
+            "mode": "exam",
+            "sitting_type": "mock",
+        },
+        headers=bearer(guys_admin),
+    )
+
+    assert response.status_code in (404, 409), response.text

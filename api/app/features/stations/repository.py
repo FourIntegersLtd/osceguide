@@ -15,7 +15,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import encode_cursor
-from app.features.stations.models import Station, StationVersion
+from app.features.stations.models import FeedbackTemplateVersion, Station, StationVersion
 
 
 async def create_station(
@@ -182,3 +182,14 @@ async def version_for_attempt(
     )
     row = (await session.execute(stmt)).first()
     return (row[0], row[1]) if row else None
+
+
+async def feedback_template_version(
+    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID
+) -> FeedbackTemplateVersion | None:
+    """One of this org's feedback template versions, scoped to it."""
+    stmt = select(FeedbackTemplateVersion).where(
+        FeedbackTemplateVersion.org_id == org_id,
+        FeedbackTemplateVersion.id == version_id,
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()

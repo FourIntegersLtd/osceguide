@@ -36,7 +36,7 @@ async def list_sittings(
     "/orgs/{org_slug}/sittings",
     response_model=schemas.SittingRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.TemplateNotPublished),
+    responses=error_responses(Forbidden, errors.TemplateVersionNotFound, errors.TemplateNotPublishedError),
 )
 async def create_sitting(
     body: schemas.CreateSitting, workspace: OrgAdmin, session: Session
