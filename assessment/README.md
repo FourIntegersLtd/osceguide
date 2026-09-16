@@ -259,23 +259,23 @@ End-to-end tests are marked `e2e` and excluded by default; they run only when
 ## Consuming the engine from the backends
 
 `b2c-api` and `b2b-api` deploy from their own directories, so they vendor the
-engine rather than depend on a sibling path. The `engine` branch of this repo
-is the contents of `packages/osce_assessment` as a standalone history; refresh
-it with `make engine-branch` after any engine change consumers should see.
+engine rather than depend on a sibling path.
 
-First time, in a consumer with a clean working tree:
-
-```bash
-git subtree add --prefix vendor/osce-assessment/osce_assessment \
-    ../assessment-platform engine --squash
-```
-
-Later updates:
+To pick up an engine change, run this in the consumer, with a clean working
+tree and this repo checked out alongside it:
 
 ```bash
-git subtree pull --prefix vendor/osce-assessment/osce_assessment \
-    ../assessment-platform engine --squash
+make engine-sync
 ```
+
+That is the whole procedure. Nothing needs doing in this repo first.
+
+Under the hood `git subtree` can only pull from a branch whose root *is* the
+engine folder, so `engine-sync` generates one from `packages/osce_assessment`,
+pulls it, and deletes it again. That branch is a machine-made view: it is never
+pushed, reviewed or merged. Merging it would be refused as unrelated history,
+and forcing it through would empty the package contents into the repository
+root.
 
 The consumer adds `vendor/osce-assessment` to its import path, so
 `import osce_assessment` resolves to the vendored copy. Each consumer's CI
@@ -350,4 +350,4 @@ with the `K8S_AUTO_DEPLOY` repository variable set, pins the digest into both
 `k8s/deployment*.yaml` and rolls them out through
 `scripts/k8s_rollout_on_control_plane.sh`. Both backends must vendor an engine
 that carries `AIInteractionProfile.tool_context` (refresh with `make
-engine-branch` + `git subtree pull`).
+engine-sync` in the consumer).
