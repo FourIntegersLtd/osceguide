@@ -1663,6 +1663,42 @@
         "title": "SlotRead",
         "type": "object"
       },
+      "StartedAttempt": {
+        "description": "What starting a set entry returns.\n\nDeliberately this slice's own shape rather than `attempts`' response model.\nThey would look alike today and diverge the moment either contract moves,\nand a client of one should not break because the other added a field.",
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "attempts_used": {
+            "title": "Attempts Used",
+            "type": "integer"
+          },
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "kind",
+          "status",
+          "entry_id",
+          "attempts_used"
+        ],
+        "title": "StartedAttempt",
+        "type": "object"
+      },
       "StationRead": {
         "properties": {
           "content": {
@@ -3783,7 +3819,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AttemptRead"
+                  "$ref": "#/components/schemas/StartedAttempt"
                 }
               }
             },

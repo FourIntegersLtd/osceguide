@@ -9,12 +9,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service as attempts
-from app.features.attempts.schemas import AttemptRead
 from app.features.catalog import repository as catalog_repo
 from app.features.catalog.service import resolve_exam
 from app.features.station_sets import domain, errors, repository
 from app.features.station_sets.models import StationSet, StationSetEntry
-from app.features.station_sets.schemas import EntryRead, SetRead
+from app.features.station_sets.schemas import EntryRead, SetRead, StartedAttempt
 
 _REFUSALS: dict[type[Exception], type[Exception]] = {
     domain.AttemptLimitReached: errors.AttemptLimitReachedError,
@@ -68,7 +67,7 @@ async def start_entry_attempt(
     *,
     now: datetime,
     debrief: bool = False,
-) -> AttemptRead:
+) -> StartedAttempt:
     """Start an attempt at one station in a set.
 
     The counter moves in the same transaction as the attempt is created, so a
@@ -110,7 +109,15 @@ async def start_entry_attempt(
         [domain.EntryState(attempts=e.attempts, debrief_attempts=e.debrief_attempts) for e in entries]
     ):
         await repository.mark_complete(session, set_id, at=now)
-    return attempt
+
+    used = next((e.attempts for e in entries if e.id == entry.id), entry.attempts + 1)
+    return StartedAttempt(
+        attempt_id=attempt.id,
+        kind=attempt.kind,
+        status=attempt.status,
+        entry_id=entry.id,
+        attempts_used=used,
+    )
 
 
 async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:

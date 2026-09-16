@@ -86,6 +86,7 @@ async def test_attempting_an_entry_creates_an_attempt_and_counts_it(
     )
     assert attempt.status_code == 201
     assert attempt.json()["kind"] == "set_station"
+    assert attempt.json()["attempts_used"] == 1
 
     refreshed = await client.get(f"/api/v1/me/station-sets/{created['id']}", headers=bearer(token))
     assert refreshed.json()["entries"][0]["attempts"] == 1

@@ -11,7 +11,6 @@ from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
-from app.features.attempts.schemas import AttemptRead
 from app.features.station_sets import errors, schemas, service
 
 router = APIRouter(tags=["station-sets"])
@@ -64,7 +63,7 @@ async def read_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Sess
 
 @router.post(
     "/me/station-sets/{set_id}/entries/{entry_id}/attempts",
-    response_model=AttemptRead,
+    response_model=schemas.StartedAttempt,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
         Unauthenticated,
@@ -80,5 +79,5 @@ async def start_attempt(
     principal: CurrentPrincipal,
     session: Session,
     clock: ClockDep,
-) -> AttemptRead:
+) -> schemas.StartedAttempt:
     return await service.start_entry_attempt(session, principal.user_id, set_id, entry_id, now=clock.now())
