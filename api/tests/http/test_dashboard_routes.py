@@ -1,0 +1,107 @@
+"""One request for a screen that currently makes seven."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.catalog import repository as catalog_repo
+from app.features.entitlements import repository as ent_repo
+from app.features.identity import repository as identity_repo
+from tests.support.tokens import bearer
+
+pytestmark = pytest.mark.db
+
+
+async def a_learner(db_session: AsyncSession, make_actor, email: str) -> str:  # type: ignore[no-untyped-def]
+    token = await make_actor(email)
+    user = await identity_repo.user_by_email(db_session, email)
+    assert user is not None
+    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    assert exam is not None
+    await ent_repo.grant(
+        session=db_session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source="purchase",
+        ends_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    await db_session.flush()
+    return token
+
+
+async def a_station_version(db_session: AsyncSession) -> uuid.UUID:
+    from app.features.stations.models import Station, StationVersion
+
+    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    assert exam is not None
+    station = Station(owner_kind="platform", org_id=None, exam_id=exam.id, title="S")
+    db_session.add(station)
+    await db_session.flush()
+    version = StationVersion(station_id=station.id, org_id=None, version=1, content={}, status="published")
+    db_session.add(version)
+    await db_session.flush()
+    return version.id
+
+
+async def test_an_empty_dashboard_is_still_a_dashboard(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A new account gets a shape it can render, not a 404."""
+    token = await make_actor("d0@example.com")
+    response = await client.get("/api/v1/me/dashboard", headers=bearer(token))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["entitlements"] == []
+    assert body["progress"] == []
+    assert body["recent_attempts"] == []
+
+
+async def test_the_dashboard_shows_access_progress_and_sets(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await a_learner(db_session, make_actor, "d1@example.com")
+    version = await a_station_version(db_session)
+
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "Week one", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    await client.post(
+        f"/api/v1/me/station-sets/{created['id']}/entries/{created['entries'][0]['id']}/attempts",
+        headers=bearer(token),
+    )
+
+    response = await client.get("/api/v1/me/dashboard", headers=bearer(token))
+    body = response.json()
+
+    assert [e["exam_code"] for e in body["entitlements"]] == ["sca"]
+    assert body["entitlements"][0]["live"] is True
+    assert body["progress"][0] == {
+        "exam_code": "sca",
+        "attempts": 1,
+        "evaluated": 0,
+        "last_attempt_at": body["progress"][0]["last_attempt_at"],
+    }
+    assert body["recent_attempts"][0]["kind"] == "set_station"
+    assert body["recent_attempts"][0]["has_result"] is False
+    assert body["sets"][0]["attempted_entries"] == 1
+
+
+async def test_the_dashboard_is_only_your_own(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    await a_learner(db_session, make_actor, "d2@example.com")
+    other = await make_actor("d2-other@example.com")
+    response = await client.get("/api/v1/me/dashboard", headers=bearer(other))
+    assert response.json()["entitlements"] == []
+
+
+async def test_the_dashboard_needs_a_token(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/me/dashboard")
+    assert response.status_code == 401

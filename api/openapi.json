@@ -739,6 +739,49 @@
         "title": "CreateStation",
         "type": "object"
       },
+      "Dashboard": {
+        "description": "Replaces seven calls on the SCA dashboard alone.\n\nThe legacy screen fans out to four RAG endpoints, a weekly trend and two\nmarketplace lists, then joins them in the browser.",
+        "properties": {
+          "entitlements": {
+            "items": {
+              "$ref": "#/components/schemas/EntitlementSummary"
+            },
+            "title": "Entitlements",
+            "type": "array"
+          },
+          "progress": {
+            "items": {
+              "$ref": "#/components/schemas/ExamProgress"
+            },
+            "title": "Progress",
+            "type": "array"
+          },
+          "recent_attempts": {
+            "items": {
+              "$ref": "#/components/schemas/RecentAttempt"
+            },
+            "title": "Recent Attempts",
+            "type": "array"
+          },
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/SetSummary"
+            },
+            "title": "Sets",
+            "type": "array"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "Dashboard",
+        "type": "object"
+      },
       "EntitlementRead": {
         "properties": {
           "ends_at": {
@@ -804,6 +847,42 @@
           "live"
         ],
         "title": "EntitlementRead",
+        "type": "object"
+      },
+      "EntitlementSummary": {
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "live": {
+            "title": "Live",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exam_code",
+          "source",
+          "ends_at",
+          "live"
+        ],
+        "title": "EntitlementSummary",
         "type": "object"
       },
       "EntryRead": {
@@ -892,6 +971,41 @@
           "message"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExamProgress": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "evaluated": {
+            "title": "Evaluated",
+            "type": "integer"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          }
+        },
+        "required": [
+          "exam_code",
+          "attempts",
+          "evaluated"
+        ],
+        "title": "ExamProgress",
         "type": "object"
       },
       "ExamRead": {
@@ -1432,6 +1546,46 @@
         "title": "ProgrammeRead",
         "type": "object"
       },
+      "RecentAttempt": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "has_result": {
+            "title": "Has Result",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "exam_code",
+          "created_at",
+          "has_result"
+        ],
+        "title": "RecentAttempt",
+        "type": "object"
+      },
       "RefreshRequest": {
         "properties": {
           "refresh_token": {
@@ -1530,6 +1684,45 @@
           "total_entries"
         ],
         "title": "SetRead",
+        "type": "object"
+      },
+      "SetSummary": {
+        "properties": {
+          "attempted_entries": {
+            "title": "Attempted Entries",
+            "type": "integer"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "total_entries": {
+            "title": "Total Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "exam_code",
+          "attempted_entries",
+          "total_entries",
+          "locked"
+        ],
+        "title": "SetSummary",
         "type": "object"
       },
       "SittingRead": {
@@ -3533,6 +3726,46 @@
         "summary": "Read Capabilities",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/me/dashboard": {
+      "get": {
+        "description": "One call for a screen that currently makes seven.\n\nA read model over several aggregates. \"Dashboard\" is not a domain concept \u2014\nnothing owns one and no rule is enforced about it \u2014 which is why this slice\nhas no tables and no domain module.",
+        "operationId": "dashboard_read_dashboard",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Dashboard",
+        "tags": [
+          "dashboard"
         ]
       }
     },
