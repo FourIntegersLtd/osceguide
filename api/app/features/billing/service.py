@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.features.billing import domain, errors, repository
+from app.features.billing import domain, errors, repository, signature
 from app.features.billing.models import Plan
 from app.features.entitlements import service as entitlements
 from app.features.identity import repository as identity_repo
@@ -26,6 +27,29 @@ def _as_plans(rows: list[Plan]) -> list[domain.Plan]:
         )
         for r in rows
     ]
+
+
+def verified_event(raw: bytes, header: str, *, secret: str, now: int) -> dict[str, Any]:
+    """Check the signature, then parse.
+
+    In that order: the signature covers the exact bytes Stripe sent, so parsing
+    first and re-serialising would compare a different payload and never match.
+    """
+    try:
+        signature.verify(raw, header, secret=secret, now=now)
+    except signature.SigningSecretMissing as exc:
+        # Fails closed. An unset secret must not mean "accept anything".
+        raise errors.InvalidSignature(str(exc)) from exc
+    except signature.InvalidSignature as exc:
+        raise errors.InvalidSignature(str(exc)) from exc
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise errors.InvalidWebhook("That webhook body was not JSON.") from exc
+    if not isinstance(parsed, dict):
+        raise errors.InvalidWebhook("A webhook body must be an object.")
+    return parsed
 
 
 async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> dict[str, str]:

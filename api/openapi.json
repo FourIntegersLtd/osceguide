@@ -5666,20 +5666,8 @@
     },
     "/api/v1/billing/webhooks/stripe": {
       "post": {
-        "description": "Apply one delivery, at most once.\n\nSignature verification belongs in front of this and is not yet wired; see\ndocs/OPEN-QUESTIONS.md. The idempotency ledger is here regardless, because\nStripe retries until it gets a 2xx and b2c has no record of what it applied.",
+        "description": "Apply one delivery, at most once, and only if Stripe sent it.\n\nThe **raw body** is what the signature covers, so it is read and verified\nbefore being parsed. Declaring a parsed body parameter instead would hand\nFastAPI the bytes first and leave the signature checking something else.",
         "operationId": "billing_stripe_webhook",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "title": "Event",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {

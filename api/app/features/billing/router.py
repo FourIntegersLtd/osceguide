@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import InvalidInput, error_responses
 from app.core.pagination import Page
 from app.core.ports import ClockDep
+from app.core.settings import SettingsDep
 from app.features.billing import errors, schemas, service
 
 router = APIRouter(tags=["billing"])
@@ -34,12 +35,24 @@ async def list_plans(session: Session) -> Page[schemas.PlanRead]:
     response_model=schemas.WebhookResult,
     responses=error_responses(errors.InvalidWebhook, errors.InvalidSignature, errors.UnknownPlanError),
 )
-async def stripe_webhook(event: dict[str, Any], session: Session, clock: ClockDep) -> schemas.WebhookResult:
-    """Apply one delivery, at most once.
+async def stripe_webhook(
+    request: Request,
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.WebhookResult:
+    """Apply one delivery, at most once, and only if Stripe sent it.
 
-    Signature verification belongs in front of this and is not yet wired; see
-    docs/OPEN-QUESTIONS.md. The idempotency ledger is here regardless, because
-    Stripe retries until it gets a 2xx and b2c has no record of what it applied.
+    The **raw body** is what the signature covers, so it is read and verified
+    before being parsed. Declaring a parsed body parameter instead would hand
+    FastAPI the bytes first and leave the signature checking something else.
     """
+    raw = await request.body()
+    event = service.verified_event(
+        raw,
+        request.headers.get("Stripe-Signature", ""),
+        secret=settings.stripe_webhook_secret,
+        now=int(clock.now().timestamp()),
+    )
     result = await service.handle_event(session, event=event, now=clock.now())
     return schemas.WebhookResult(**result)

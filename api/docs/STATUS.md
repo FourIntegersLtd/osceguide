@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**2,110 tests. 88 endpoints. 22 slices. 20 migrations.**
+**2,133 tests. 88 endpoints. 22 slices. 20 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -22,7 +22,7 @@ domain, then storage, then the service and router. Every commit green.
 | `roster` | complete | trainees, cohorts, groups **with a real membership table** |
 | `reviews` | complete | slot rubric, GP-lead revisions, circuit aggregate — b2b's one table split three ways |
 | `results` | complete | append-only revisions, sign-off, release, outbox; trigger-enforced |
-| `billing` | routes done | Stripe webhook with idempotency ledger; **signature verification not wired** |
+| `billing` | complete | Stripe webhook, signed and verified, with an idempotency ledger |
 | `station_sets` | complete | consumer practice sets with attempt limits |
 | `dashboard` | complete | read model replacing the seven-call home screen |
 | `notifications` | complete | one outbox, backoff, abandon-after-six; identity and results write to it |
@@ -48,8 +48,6 @@ From the plan's phases, in rough priority order:
 - **The evaluator.** `core.ports.Evaluator` fixes the boundary and a fake proves
   the scoring job against it. The real adapter needs `osce_assessment` as a
   versioned dependency rather than a vendored subtree (see OPEN-QUESTIONS E-1).
-- **Stripe signature verification.** One middleware in front of an otherwise
-  complete path (B-1). **Blocking for launch.**
 
 ## A habit worth keeping
 

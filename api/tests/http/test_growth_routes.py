@@ -14,7 +14,12 @@ from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
-NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
+
+def now() -> datetime:
+    """Read at call time. `landed_at` is a Postgres transaction timestamp, and
+    attribution only runs forwards, so a clock fixed at import is behind every
+    arrival it is asked about and credits nobody."""
+    return datetime.now(UTC)
 
 
 async def arrive(client: AsyncClient, visitor: str, ref_id: str = "bmj-sca") -> dict:
@@ -56,7 +61,7 @@ async def test_a_signup_is_credited_to_the_partner(client: AsyncClient, db_sessi
     )
     await db_session.flush()
 
-    acquired = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_4", now=NOW)
+    acquired = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_4", now=now())
     assert acquired is not None
     assert acquired.partner == "bmj"
 
@@ -72,9 +77,9 @@ async def test_a_second_attribution_does_not_overwrite_the_first(
     )
     await db_session.flush()
 
-    first = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_5", now=NOW)
+    first = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_5", now=now())
     assert first is not None
-    second = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_5", now=NOW)
+    second = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_5", now=now())
     assert second is None
 
 
@@ -86,7 +91,7 @@ async def test_an_arrival_outside_the_window_is_not_credited(
         session=db_session, email="stale@example.com", name="S", password_hash=None
     )
     await db_session.flush()
-    much_later = datetime.now(UTC) + timedelta(days=200)
+    much_later = now() + timedelta(days=200)
     assert (
         await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_6", now=much_later)
         is None
@@ -99,7 +104,7 @@ async def test_signing_up_with_no_arrival_credits_nobody(db_session: AsyncSessio
         session=db_session, email="organic@example.com", name="O", password_hash=None
     )
     await db_session.flush()
-    assert await service.attribute_signup(db_session, user_id=user.id, visitor_key=None, now=NOW) is None
+    assert await service.attribute_signup(db_session, user_id=user.id, visitor_key=None, now=now()) is None
 
 
 async def test_a_reporter_reads_their_own_partners_funnel(
@@ -138,4 +143,6 @@ async def test_you_cannot_refer_yourself(client: AsyncClient, db_session: AsyncS
     from app.features.growth.errors import ReferralNotFound
 
     with pytest.raises(ReferralNotFound):
-        await service.redeem_code(db_session, code=code, referred_user_id=user.id, earned_pence=500, now=NOW)
+        await service.redeem_code(
+            db_session, code=code, referred_user_id=user.id, earned_pence=500, now=now()
+        )

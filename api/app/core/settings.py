@@ -80,6 +80,11 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "OSCE Guide <noreply@osceguide.com>"
 
+    # Stripe. The webhook secret is per endpoint, and without it webhooks are
+    # refused rather than trusted.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+
     # --- Background jobs ---
     worker_concurrency: int = 4
 
