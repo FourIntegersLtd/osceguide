@@ -1,0 +1,145 @@
+"""Practice-set use cases, including the attempt that a set entry starts."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.attempts import service as attempts
+from app.features.attempts.schemas import AttemptRead
+from app.features.catalog import repository as catalog_repo
+from app.features.catalog.service import resolve_exam
+from app.features.station_sets import domain, errors, repository
+from app.features.station_sets.models import StationSet, StationSetEntry
+from app.features.station_sets.schemas import EntryRead, SetRead
+
+_REFUSALS: dict[type[Exception], type[Exception]] = {
+    domain.AttemptLimitReached: errors.AttemptLimitReachedError,
+    domain.SetLocked: errors.SetLockedError,
+    domain.NothingToDebrief: errors.NothingToDebriefError,
+}
+
+
+def _raise(exc: Exception) -> None:
+    raise _REFUSALS.get(type(exc), errors.AttemptLimitReachedError)(str(exc)) from exc
+
+
+async def create_set(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    *,
+    name: str,
+    exam_code: str,
+    station_version_ids: list[uuid.UUID],
+) -> SetRead:
+    exam = await resolve_exam(session, exam_code)
+    row = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
+    entries = await repository.add_entries(session, row.id, station_version_ids=station_version_ids)
+    return _set_read(row, exam.code, entries)
+
+
+async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> SetRead:
+    row = await _require(session, owner_user_id, set_id)
+    entries = await repository.entries_for(session, set_id)
+    exam = await catalog_repo.exam_by_id(session, row.exam_id)
+    return _set_read(row, exam.code if exam else "", entries)
+
+
+async def list_sets(
+    session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[SetRead], str | None]:
+    rows, next_cursor = await repository.list_for_owner(session, owner_user_id, limit=limit, cursor=cursor)
+    out = []
+    for row in rows:
+        entries = await repository.entries_for(session, row.id)
+        exam = await catalog_repo.exam_by_id(session, row.exam_id)
+        out.append(_set_read(row, exam.code if exam else "", entries))
+    return out, next_cursor
+
+
+async def start_entry_attempt(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    set_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    *,
+    now: datetime,
+    debrief: bool = False,
+) -> AttemptRead:
+    """Start an attempt at one station in a set.
+
+    The counter moves in the same transaction as the attempt is created, so a
+    limit cannot be exceeded by two requests arriving together — which is what
+    b2c's read-modify-write on an array allows.
+    """
+    row = await _require(session, owner_user_id, set_id)
+    entry = await repository.entry_by_id(session, set_id, entry_id)
+    if entry is None:
+        raise errors.EntryNotFound()
+
+    exam = await catalog_repo.exam_by_id(session, row.exam_id)
+    if exam is None:
+        raise errors.SetNotFound()
+
+    state = domain.EntryState(attempts=entry.attempts, debrief_attempts=entry.debrief_attempts)
+    try:
+        if debrief:
+            domain.ensure_debriefable(state, limit=exam.station_attempt_limit)
+        else:
+            domain.ensure_attemptable(state, limit=exam.station_attempt_limit, locked=row.locked)
+    except Exception as exc:  # noqa: BLE001 - mapped below
+        _raise(exc)
+
+    attempt = await attempts.start_attempt(
+        session,
+        user_id=owner_user_id,
+        kind="debrief" if debrief else "set_station",
+        exam_code=exam.code,
+        now=now,
+        station_version_id=entry.station_version_id,
+        set_entry_id=None if debrief else entry.id,
+        source_attempt_id=None,
+    )
+    await repository.record_attempt(session, entry.id, at=now, debrief=debrief)
+
+    entries = await repository.entries_for(session, set_id)
+    if domain.set_complete(
+        [domain.EntryState(attempts=e.attempts, debrief_attempts=e.debrief_attempts) for e in entries]
+    ):
+        await repository.mark_complete(session, set_id, at=now)
+    return attempt
+
+
+async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:
+    row = await repository.set_by_id(session, owner_user_id, set_id)
+    if row is None:
+        raise errors.SetNotFound()
+    return row
+
+
+def _set_read(row: StationSet, exam_code: str, entries: list[StationSetEntry]) -> SetRead:
+    states = [domain.EntryState(attempts=e.attempts, debrief_attempts=e.debrief_attempts) for e in entries]
+    attempted, total = domain.progress(states)
+    return SetRead(
+        id=row.id,
+        name=row.name,
+        exam_code=exam_code,
+        locked=row.locked,
+        completed_at=row.completed_at,
+        attempted_entries=attempted,
+        total_entries=total,
+        entries=[
+            EntryRead(
+                id=e.id,
+                position=e.position,
+                station_version_id=e.station_version_id,
+                attempts=e.attempts,
+                debrief_attempts=e.debrief_attempts,
+                last_attempt_at=e.last_attempt_at,
+            )
+            for e in entries
+        ],
+    )

@@ -95,6 +95,7 @@ type = "layers"
 layers = [
     # Highest first. A slice may call anything below it, never above.
     "app.features.billing",
+    "app.features.station_sets",
     "app.features.sittings",
     "app.features.voice",
     "app.features.attempts",

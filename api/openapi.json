@@ -622,6 +622,38 @@
         "title": "CreateProgramme",
         "type": "object"
       },
+      "CreateSet": {
+        "properties": {
+          "exam_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "station_version_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Station Version Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "exam_code",
+          "station_version_ids"
+        ],
+        "title": "CreateSet",
+        "type": "object"
+      },
       "CreateSitting": {
         "properties": {
           "feedback_template_version_id": {
@@ -772,6 +804,53 @@
           "live"
         ],
         "title": "EntitlementRead",
+        "type": "object"
+      },
+      "EntryRead": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "debrief_attempts": {
+            "title": "Debrief Attempts",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "station_version_id",
+          "attempts",
+          "debrief_attempts"
+        ],
+        "title": "EntryRead",
         "type": "object"
       },
       "ErrorResponse": {
@@ -1158,6 +1237,33 @@
         "title": "Page[ProgrammeRead]",
         "type": "object"
       },
+      "Page_SetRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SetRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[SetRead]",
+        "type": "object"
+      },
       "Page_SittingRead_": {
         "properties": {
           "items": {
@@ -1365,6 +1471,65 @@
           "password"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "SetRead": {
+        "properties": {
+          "attempted_entries": {
+            "title": "Attempted Entries",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/EntryRead"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "total_entries": {
+            "title": "Total Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "exam_code",
+          "locked",
+          "completed_at",
+          "attempted_entries",
+          "total_entries"
+        ],
+        "title": "SetRead",
         "type": "object"
       },
       "SittingRead": {
@@ -3372,6 +3537,318 @@
         "summary": "List My Entitlements",
         "tags": [
           "entitlements"
+        ]
+      }
+    },
+    "/api/v1/me/station-sets": {
+      "get": {
+        "description": "Each set carries its own progress, so the list does not need a call per\nstation to work out how far along someone is.",
+        "operationId": "station-sets_list_sets",
+        "parameters": [
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SetRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sets",
+        "tags": [
+          "station-sets"
+        ]
+      },
+      "post": {
+        "operationId": "station-sets_create_set",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Set",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
+    "/api/v1/me/station-sets/{set_id}": {
+      "get": {
+        "operationId": "station-sets_read_set",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found",
+            "x-codes": [
+              "set_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Set",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
+    "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts": {
+      "post": {
+        "operationId": "station-sets_start_attempt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found, set_entry_not_found",
+            "x-codes": [
+              "set_not_found",
+              "set_entry_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_limit_reached, set_locked",
+            "x-codes": [
+              "attempt_limit_reached",
+              "set_locked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Attempt",
+        "tags": [
+          "station-sets"
         ]
       }
     },
