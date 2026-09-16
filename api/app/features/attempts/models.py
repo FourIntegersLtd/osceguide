@@ -26,14 +26,20 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 # Exactly one optional reference must match the kind. Written as a CHECK rather
 # than left to the service, because six code paths create attempts and only one
 # of them needs to be wrong for a slot to end up with two live attempts.
-_KIND_REFERENCE_CHECK = """
-(kind = 'practice'      AND slot_id IS NULL AND set_entry_id IS NULL AND peer_session_id IS NULL AND source_attempt_id IS NULL)
-OR (kind = 'self_practice' AND slot_id IS NULL AND set_entry_id IS NULL AND peer_session_id IS NULL AND source_attempt_id IS NULL)
-OR (kind = 'set_station'   AND set_entry_id IS NOT NULL AND slot_id IS NULL AND peer_session_id IS NULL)
-OR (kind = 'debrief'       AND source_attempt_id IS NOT NULL)
-OR (kind = 'exam_slot'     AND slot_id IS NOT NULL AND set_entry_id IS NULL AND peer_session_id IS NULL)
-OR (kind = 'peer'          AND peer_session_id IS NOT NULL AND slot_id IS NULL AND set_entry_id IS NULL)
-"""
+_NO_REFERENCES = (
+    "slot_id IS NULL AND set_entry_id IS NULL AND peer_session_id IS NULL AND source_attempt_id IS NULL"
+)
+
+_KIND_REFERENCE_CHECK = " OR ".join(
+    (
+        f"(kind = 'practice' AND {_NO_REFERENCES})",
+        f"(kind = 'self_practice' AND {_NO_REFERENCES})",
+        "(kind = 'set_station' AND set_entry_id IS NOT NULL AND slot_id IS NULL AND peer_session_id IS NULL)",
+        "(kind = 'debrief' AND source_attempt_id IS NOT NULL)",
+        "(kind = 'exam_slot' AND slot_id IS NOT NULL AND set_entry_id IS NULL AND peer_session_id IS NULL)",
+        "(kind = 'peer' AND peer_session_id IS NOT NULL AND slot_id IS NULL AND set_entry_id IS NULL)",
+    )
+)
 
 
 class Attempt(Base, UUIDPrimaryKey, Timestamps):
