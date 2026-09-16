@@ -1152,6 +1152,24 @@
         "title": "DecisionRead",
         "type": "object"
       },
+      "EndSession": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "EndSession",
+        "type": "object"
+      },
       "EntitlementRead": {
         "properties": {
           "ends_at": {
@@ -1585,6 +1603,21 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "JoinQueue": {
+        "properties": {
+          "exam_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Exam Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exam_code"
+        ],
+        "title": "JoinQueue",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1889,6 +1922,33 @@
         "title": "Page[PlanRead]",
         "type": "object"
       },
+      "Page_PracticeSessionRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeSessionRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[PracticeSessionRead]",
+        "type": "object"
+      },
       "Page_ProgrammeRead_": {
         "properties": {
           "items": {
@@ -2173,6 +2233,79 @@
         "title": "PlanRead",
         "type": "object"
       },
+      "PracticeSessionRead": {
+        "properties": {
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "my_role": {
+            "title": "My Role",
+            "type": "string"
+          },
+          "partner_user_id": {
+            "format": "uuid",
+            "title": "Partner User Id",
+            "type": "string"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "exam_code",
+          "my_role",
+          "partner_user_id",
+          "room_name",
+          "status",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "PracticeSessionRead",
+        "type": "object"
+      },
       "ProgrammeRead": {
         "properties": {
           "exam_code": {
@@ -2211,6 +2344,54 @@
           "source"
         ],
         "title": "ProgrammeRead",
+        "type": "object"
+      },
+      "QueueStatus": {
+        "description": "Where someone stands, and what to do next.\n\n`position` is why this is one call: b2c polls a status endpoint every three\nseconds, and it should be able to answer \"am I matched yet?\" in one round\ntrip.",
+        "properties": {
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "waiting_count": {
+            "default": 0,
+            "title": "Waiting Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entry_id",
+          "status"
+        ],
+        "title": "QueueStatus",
         "type": "object"
       },
       "RecentAttempt": {
@@ -6328,6 +6509,216 @@
         ]
       }
     },
+    "/api/v1/me/practice-sessions": {
+      "get": {
+        "operationId": "peer-practice_list_my_sessions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PracticeSessionRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Sessions",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}": {
+      "get": {
+        "operationId": "peer-practice_read_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Session",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/end": {
+      "post": {
+        "operationId": "peer-practice_end_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndSession"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_ended",
+            "x-codes": [
+              "practice_session_ended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "End Session",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
     "/api/v1/me/results/{sitting_id}": {
       "get": {
         "description": "Released revisions only, and narrower than the internal record.",
@@ -10109,6 +10500,206 @@
         "summary": "Set Access",
         "tags": [
           "roster"
+        ]
+      }
+    },
+    "/api/v1/peer-practice/queue": {
+      "post": {
+        "description": "Joining twice returns the place you already hold rather than a second one.",
+        "operationId": "peer-practice_join_queue",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinQueue"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Join Queue",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/peer-practice/queue/{entry_id}": {
+      "delete": {
+        "operationId": "peer-practice_leave_queue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "queue_entry_not_found",
+            "x-codes": [
+              "queue_entry_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave Queue",
+        "tags": [
+          "peer-practice"
+        ]
+      },
+      "get": {
+        "description": "Position, how many are waiting, and the session if one has been made \u2014\none call, because the client polls this every few seconds.",
+        "operationId": "peer-practice_read_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "queue_entry_not_found",
+            "x-codes": [
+              "queue_entry_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Status",
+        "tags": [
+          "peer-practice"
         ]
       }
     },
