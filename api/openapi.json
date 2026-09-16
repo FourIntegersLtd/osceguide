@@ -1,6 +1,37 @@
 {
   "components": {
     "schemas": {
+      "ArrivalRecorded": {
+        "properties": {
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partner",
+          "exam_code"
+        ],
+        "title": "ArrivalRecorded",
+        "type": "object"
+      },
       "AssessmentResultRead": {
         "properties": {
           "framework_id": {
@@ -1457,6 +1488,44 @@
         "title": "FinalizeCircuitReview",
         "type": "object"
       },
+      "FunnelRead": {
+        "properties": {
+          "arrivals": {
+            "title": "Arrivals",
+            "type": "integer"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "purchase_rate": {
+            "title": "Purchase Rate",
+            "type": "number"
+          },
+          "purchases": {
+            "title": "Purchases",
+            "type": "integer"
+          },
+          "signup_rate": {
+            "title": "Signup Rate",
+            "type": "number"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "partner",
+          "arrivals",
+          "signups",
+          "purchases",
+          "signup_rate",
+          "purchase_rate"
+        ],
+        "title": "FunnelRead",
+        "type": "object"
+      },
       "GpLeadReviewRead": {
         "properties": {
           "completed_at": {
@@ -2432,6 +2501,82 @@
           "has_result"
         ],
         "title": "RecentAttempt",
+        "type": "object"
+      },
+      "RecordArrival": {
+        "description": "Public: a visitor landing from a partner link, before any account exists.",
+        "properties": {
+          "landing_path": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landing Path"
+          },
+          "partner": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Partner",
+            "type": "string"
+          },
+          "ref_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Id"
+          },
+          "utm": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Utm",
+            "type": "object"
+          },
+          "visitor_key": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Visitor Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partner",
+          "visitor_key"
+        ],
+        "title": "RecordArrival",
+        "type": "object"
+      },
+      "ReferralRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "earned_pence": {
+            "title": "Earned Pence",
+            "type": "integer"
+          },
+          "redeemed_count": {
+            "title": "Redeemed Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "redeemed_count",
+          "earned_pence"
+        ],
+        "title": "ReferralRead",
         "type": "object"
       },
       "RefreshRequest": {
@@ -5905,6 +6050,151 @@
         ]
       }
     },
+    "/api/v1/growth/arrivals": {
+      "post": {
+        "description": "Public: a visitor arriving from a partner link, before any account exists.\n\nUnauthenticated by necessity \u2014 there is nobody to authenticate yet \u2014 which\nis why the partner must be a known one and the visitor key is opaque.",
+        "operationId": "growth_record_arrival",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordArrival"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalRecorded"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_input",
+            "x-codes": [
+              "invalid_input"
+            ]
+          }
+        },
+        "summary": "Record Arrival",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/funnel": {
+      "get": {
+        "description": "Checked against the partner in the path, so one partner's reporter\ncannot read another's numbers.",
+        "operationId": "growth_read_funnel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunnelRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_partner_reporter",
+            "x-codes": [
+              "not_a_partner_reporter"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Funnel",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/marketplace/slots": {
       "get": {
         "operationId": "marketplace_list_open_slots",
@@ -6716,6 +7006,85 @@
         "summary": "End Session",
         "tags": [
           "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/referral-code": {
+      "post": {
+        "description": "One code per person; asking again returns the one they have.",
+        "operationId": "growth_issue_code",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Issue Code",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/me/referrals": {
+      "get": {
+        "operationId": "growth_read_my_referrals",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Referrals",
+        "tags": [
+          "growth"
         ]
       }
     },

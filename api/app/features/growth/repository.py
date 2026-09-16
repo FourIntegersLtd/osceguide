@@ -1,0 +1,152 @@
+"""Storage for partner attribution and referrals."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.growth.models import Acquisition, PartnerArrival, PartnerReporter, Referral
+
+
+async def record_arrival(
+    session: AsyncSession,
+    *,
+    partner: str,
+    exam_code: str | None,
+    visitor_key: str,
+    ref_id: str | None,
+    landing_path: str | None,
+    utm: dict[str, Any] | None,
+) -> PartnerArrival:
+    row = PartnerArrival(
+        partner=partner,
+        exam_code=exam_code,
+        visitor_key=visitor_key,
+        ref_id=ref_id,
+        landing_path=landing_path,
+        utm=utm,
+    )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def latest_arrival_for_visitor(session: AsyncSession, visitor_key: str) -> PartnerArrival | None:
+    stmt = (
+        select(PartnerArrival)
+        .where(PartnerArrival.visitor_key == visitor_key)
+        .order_by(PartnerArrival.landed_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def acquisition_for(session: AsyncSession, user_id: uuid.UUID) -> Acquisition | None:
+    stmt = select(Acquisition).where(Acquisition.user_id == user_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def record_acquisition(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    partner: str,
+    exam_code: str | None,
+    arrival_id: uuid.UUID | None,
+    at: datetime,
+) -> Acquisition | None:
+    """Written once. A user already attributed is left alone.
+
+    Re-attributing somebody because they later clicked another partner's link is
+    how the numbers stop reconciling.
+    """
+    if await acquisition_for(session, user_id) is not None:
+        return None
+    row = Acquisition(
+        user_id=user_id,
+        partner=partner,
+        exam_code=exam_code,
+        arrival_id=arrival_id,
+        acquired_at=at,
+    )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def counts_for_partner(
+    session: AsyncSession, partner: str, *, since: datetime | None = None
+) -> tuple[int, int]:
+    """Arrivals and acquisitions. Purchases are counted by `billing`."""
+    arrivals_stmt = select(func.count(PartnerArrival.id)).where(PartnerArrival.partner == partner)
+    acquisitions_stmt = select(func.count(Acquisition.id)).where(Acquisition.partner == partner)
+    if since is not None:
+        arrivals_stmt = arrivals_stmt.where(PartnerArrival.landed_at >= since)
+        acquisitions_stmt = acquisitions_stmt.where(Acquisition.acquired_at >= since)
+    arrivals = int((await session.execute(arrivals_stmt)).scalar_one())
+    acquisitions = int((await session.execute(acquisitions_stmt)).scalar_one())
+    return arrivals, acquisitions
+
+
+async def acquired_user_ids(session: AsyncSession, partner: str) -> list[uuid.UUID]:
+    stmt = select(Acquisition.user_id).where(Acquisition.partner == partner)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def is_reporter(session: AsyncSession, *, partner: str, email: str) -> bool:
+    stmt = select(PartnerReporter.id).where(
+        PartnerReporter.partner == partner,
+        PartnerReporter.email == email,
+        PartnerReporter.revoked_at.is_(None),
+    )
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> PartnerReporter:
+    row = PartnerReporter(partner=partner, email=email)
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+# --- referrals -------------------------------------------------------------
+
+
+async def referral_by_code(session: AsyncSession, code: str) -> Referral | None:
+    stmt = select(Referral).where(Referral.code == code.strip().upper())
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def create_referral(session: AsyncSession, *, referrer_user_id: uuid.UUID, code: str) -> Referral:
+    row = Referral(referrer_user_id=referrer_user_id, code=code.strip().upper())
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def referrals_for(session: AsyncSession, user_id: uuid.UUID) -> list[Referral]:
+    stmt = select(Referral).where(Referral.referrer_user_id == user_id)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def redeem(
+    session: AsyncSession,
+    referral_id: uuid.UUID,
+    *,
+    referred_user_id: uuid.UUID,
+    earned_pence: int,
+    at: datetime,
+) -> None:
+    await session.execute(
+        update(Referral)
+        .where(Referral.id == referral_id, Referral.redeemed_at.is_(None))
+        .values(referred_user_id=referred_user_id, redeemed_at=at, earned_pence=earned_pence)
+    )
