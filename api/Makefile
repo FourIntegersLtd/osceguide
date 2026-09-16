@@ -1,4 +1,4 @@
-.PHONY: help install start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev
+.PHONY: help install start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev status status-check
 
 help:
 	@echo "OSCE Guide Platform API"
@@ -19,6 +19,7 @@ help:
 	@echo "  make ci          lint + typecheck + arch + test"
 	@echo "  make openapi     write openapi.json"
 	@echo "  make engine-dev  install osce_assessment from the local checkout, editable"
+	@echo "  make status      regenerate the evidence half of docs/STATUS.md"
 
 install:
 	poetry install
@@ -70,7 +71,7 @@ arch:
 	poetry run lint-imports
 	poetry run python scripts/check_slice_readmes.py
 
-ci: lint typecheck arch guards test
+ci: lint typecheck arch guards test status-check
 
 openapi:
 	poetry run python scripts/export_openapi.py
@@ -84,3 +85,12 @@ engine-dev:
 	@test -f "$(ENGINE)/pyproject.toml" || 		{ echo "No engine at $(ENGINE). Set ENGINE=<path to packages/osce_assessment>."; exit 1; }
 	poetry run pip install -e "$(ENGINE)"
 	poetry run python -c "import osce_assessment as e; print('osce_assessment', e.__version__)"
+
+# STATUS.md drifted from the code badly enough that slices were described as
+# complete while their rules had no caller. The generated half is derived, and
+# `status-check` fails when it no longer matches.
+status:
+	poetry run python scripts/status_report.py --write
+
+status-check:
+	poetry run python scripts/status_report.py --check
