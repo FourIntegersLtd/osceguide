@@ -34,6 +34,7 @@ from app.features.identity.tokens import (
     new_token,
     verify_password,
 )
+from app.features.notifications import service as notifications
 
 
 async def _principal_for(session: AsyncSession, user: object, *, memberships: list[Membership]) -> Principal:
@@ -182,6 +183,9 @@ async def begin_password_reset(
 
     The route answers 202 either way: telling a caller whether an address is
     registered is the whole of an account-enumeration attack.
+
+    The email is queued in this transaction, beside the token that makes it
+    valid, so neither can exist without the other.
     """
     user = await repository.user_by_email(session, email)
     if user is None:
@@ -189,6 +193,14 @@ async def begin_password_reset(
     raw, token_hash = new_token()
     await repository.create_reset_token(
         session, user_id=user.id, token_hash=token_hash, expires_at=now + timedelta(minutes=ttl_minutes)
+    )
+    await notifications.enqueue_email(
+        session,
+        recipient=user.email,
+        subject="Reset your password",
+        template_key="password_reset",
+        payload={"token": raw},
+        idempotency_key=f"password_reset:{token_hash}",
     )
     return raw
 

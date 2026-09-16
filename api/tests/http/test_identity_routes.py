@@ -133,3 +133,35 @@ async def test_password_reset_never_reveals_whether_an_address_exists(client: As
     unknown = await client.post("/api/v1/auth/password-reset", json={"email": "ghost@example.com"})
     assert known.status_code == unknown.status_code == 202
     assert known.json() == unknown.json()
+
+
+async def test_a_password_reset_queues_its_email(client: AsyncClient, db_session) -> None:  # type: ignore[no-untyped-def]
+    """Queued in the same transaction as the token that makes it valid, so a
+    reset that rolled back cannot leave an email promising one."""
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    await register(client)
+    await client.post("/api/v1/auth/password-reset", json={"email": "new@example.com"})
+
+    queued = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "password_reset")
+            )
+        ).scalars()
+    )
+    assert len(queued) == 1
+    assert queued[0].recipient == "new@example.com"
+
+
+async def test_an_unknown_address_queues_nothing(client: AsyncClient, db_session) -> None:  # type: ignore[no-untyped-def]
+    """Same 202 either way, but no email to an address we do not hold."""
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    await client.post("/api/v1/auth/password-reset", json={"email": "ghost@example.com"})
+    queued = list((await db_session.execute(select(OutboundMessage))).scalars())
+    assert queued == []

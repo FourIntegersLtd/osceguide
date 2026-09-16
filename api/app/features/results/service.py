@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.notifications import service as notifications
 from app.features.results import domain, errors, repository
 from app.features.results.models import CandidateResultRevision
 from app.features.results.schemas import DecisionRead, TraineeResultRead
@@ -170,16 +171,18 @@ async def release(
         actor_user_id=actor_id,
         idempotency_key=f"release:{sitting_id}:{trainee_id}",
     )
-    # Queued rather than sent inline, so a release is not lost because a mail
-    # provider was briefly down.
-    await repository.queue_notification(
+    # Queued on the shared outbox rather than sent inline, so a release is not
+    # lost because a mail provider was briefly down. Written in this
+    # transaction, so it cannot exist for a release that rolled back.
+    await notifications.enqueue_email(
         session,
-        event_id=event.id,
         recipient=recipient,
+        subject="Your result is available",
         template_key="candidate_result_released",
         payload={"sitting_id": str(sitting_id)},
-        idempotency_key=f"notify:{sitting_id}:{trainee_id}",
+        idempotency_key=f"result_released:{sitting_id}:{trainee_id}",
     )
+    _ = event
     return _read(row)
 
 

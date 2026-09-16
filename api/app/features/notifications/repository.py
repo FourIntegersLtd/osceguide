@@ -1,0 +1,103 @@
+"""Storage for the outbox."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.notifications.models import OutboundMessage
+
+
+async def enqueue(
+    session: AsyncSession,
+    *,
+    recipient: str,
+    subject: str,
+    template_key: str,
+    payload: dict[str, Any] | None,
+    idempotency_key: str,
+    channel: str = "email",
+) -> OutboundMessage | None:
+    """Queue a message, or do nothing if it is already queued.
+
+    Returns None on a repeat rather than raising: the caller asked for a message
+    to exist, and it does.
+    """
+    existing = await by_idempotency_key(session, idempotency_key)
+    if existing is not None:
+        return None
+    row = OutboundMessage(
+        recipient=recipient,
+        subject=subject,
+        template_key=template_key,
+        payload=payload,
+        idempotency_key=idempotency_key,
+        channel=channel,
+    )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def by_idempotency_key(session: AsyncSession, key: str) -> OutboundMessage | None:
+    stmt = select(OutboundMessage).where(OutboundMessage.idempotency_key == key)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def claim_due(session: AsyncSession, *, now: datetime, limit: int = 20) -> list[OutboundMessage]:
+    """Take the next due messages, locking them against other workers.
+
+    `FOR UPDATE SKIP LOCKED` so two workers never send the same email, and
+    neither waits on the other.
+    """
+    stmt = (
+        select(OutboundMessage)
+        .where(OutboundMessage.status == "pending", OutboundMessage.available_at <= now)
+        .order_by(OutboundMessage.available_at)
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    )
+    rows = list((await session.execute(stmt)).scalars())
+    if rows:
+        await session.execute(
+            update(OutboundMessage)
+            .where(OutboundMessage.id.in_([r.id for r in rows]))
+            .values(status="processing")
+        )
+    return rows
+
+
+async def mark_sent(session: AsyncSession, message_id: uuid.UUID, *, at: datetime) -> None:
+    await session.execute(
+        update(OutboundMessage)
+        .where(OutboundMessage.id == message_id)
+        .values(status="sent", delivered_at=at, last_error=None)
+    )
+
+
+async def mark_retry(
+    session: AsyncSession,
+    message_id: uuid.UUID,
+    *,
+    attempts: int,
+    available_at: datetime,
+    error: str,
+) -> None:
+    await session.execute(
+        update(OutboundMessage)
+        .where(OutboundMessage.id == message_id)
+        .values(status="pending", attempts=attempts, available_at=available_at, last_error=error)
+    )
+
+
+async def mark_failed(session: AsyncSession, message_id: uuid.UUID, *, attempts: int, error: str) -> None:
+    await session.execute(
+        update(OutboundMessage)
+        .where(OutboundMessage.id == message_id)
+        .values(status="failed", attempts=attempts, last_error=error)
+    )

@@ -36,12 +36,23 @@ class SentEmail:
 
 @dataclass
 class RecordingEmailSender:
-    """Records sends; fails every send once `fail_after` sends have succeeded."""
+    """Records sends, and can be told to fail.
+
+    Two failure shapes, because tests need both: `fail_after` stops working
+    once that many have succeeded (a provider that falls over mid-run), and
+    `fail_times` refuses the first N attempts (a provider that is briefly down
+    and then recovers, which is what a retry policy is for).
+    """
 
     fail_after: int | None = None
+    fail_times: int = 0
     sent: list[SentEmail] = field(default_factory=list)
+    refused: int = 0
 
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
+        if self.refused < self.fail_times:
+            self.refused += 1
+            raise EmailDeliveryFailed(f"fake provider refused message to {to}")
         if self.fail_after is not None and len(self.sent) >= self.fail_after:
             raise EmailDeliveryFailed(f"fake provider refused message to {to}")
         self.sent.append(SentEmail(to=to, subject=subject, html=html, reply_to=reply_to))

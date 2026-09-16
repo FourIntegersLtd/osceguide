@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     livekit_token_ttl_seconds: int = 60 * 60
     voice_backend_label: str = "platform"
 
+    # Email. Resend is the only provider b2c uses, and the key is the only
+    # configuration it needs.
+    resend_api_key: str = ""
+    email_from: str = "OSCE Guide <noreply@osceguide.com>"
+
     # --- Background jobs ---
     worker_concurrency: int = 4
 
