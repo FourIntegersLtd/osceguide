@@ -48,11 +48,18 @@ From the plan's phases, in rough priority order:
   domain over needs this backend deployed and the data migrated, so it waits
   on you.
 
-## Wired to a port but not implemented
+## The engine is a dependency now
 
-- **The evaluator adapter is written** and contract-tested against the real
-  engine. What remains is packaging it as a dependency (E-1) — the engine needs
-  a `pyproject.toml` and a tag before `build_evaluator` can import it.
+`make engine-dev` installs `osce_assessment` editable from the sibling
+checkout, and `build_evaluator()` returns a real `LLMEvaluator` rather than
+raising. The engine's own `pyproject.toml` is on branch
+`feat/package-the-engine` in `assessment-platform/`; it was verified by
+building a wheel and installing it into a clean 3.11 environment, where it
+pulls pydantic and nothing else.
+
+What is left is a tag: push `engine-v0.6.0` and uncomment the dependency line
+in `pyproject.toml`. That repo is not pushed here because pushing it deploys
+the workers.
 
 ## The error vocabulary is machine-checked
 

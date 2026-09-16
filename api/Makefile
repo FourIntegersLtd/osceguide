@@ -1,4 +1,4 @@
-.PHONY: help install start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format
+.PHONY: help install start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev
 
 help:
 	@echo "OSCE Guide Platform API"
@@ -18,6 +18,7 @@ help:
 	@echo "  make arch        import-linter architecture rules"
 	@echo "  make ci          lint + typecheck + arch + test"
 	@echo "  make openapi     write openapi.json"
+	@echo "  make engine-dev  install osce_assessment from the local checkout, editable"
 
 install:
 	poetry install
@@ -73,3 +74,13 @@ ci: lint typecheck arch guards test
 
 openapi:
 	poetry run python scripts/export_openapi.py
+
+# The engine is a dependency, not a vendored subtree (ADR 0009, E-1). For local
+# work install it from the sibling checkout so a change there is visible here
+# without a tag and a reinstall. Deployments pin the tag instead.
+ENGINE ?= ../../assessment-platform/packages/osce_assessment
+
+engine-dev:
+	@test -f "$(ENGINE)/pyproject.toml" || 		{ echo "No engine at $(ENGINE). Set ENGINE=<path to packages/osce_assessment>."; exit 1; }
+	poetry run pip install -e "$(ENGINE)"
+	poetry run python -c "import osce_assessment as e; print('osce_assessment', e.__version__)"

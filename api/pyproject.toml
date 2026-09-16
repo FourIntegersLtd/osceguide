@@ -22,6 +22,10 @@ dependencies = [
     "redis (>=5.2,<6)",
     "httpx (>=0.28,<0.29)",
     "email-validator (>=2.2,<3)",
+    # The assessment engine. `make engine-dev` installs it editable from the
+    # sibling checkout for local work; a deployment wants the tag instead.
+    # Uncomment once `engine-v0.6.0` is pushed (E-1):
+    #   "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.6.0#subdirectory=packages/osce_assessment",
     "python-multipart (>=0.0.18,<0.0.21)",
 ]
 
