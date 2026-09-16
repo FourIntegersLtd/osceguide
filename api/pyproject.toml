@@ -108,6 +108,7 @@ layers = [
     "app.features.catalog",
     "app.features.tenancy",
     "app.features.identity",
+    "app.features.media",
     "app.features.growth",
     "app.features.peer_practice",
     "app.features.community",

@@ -125,3 +125,23 @@ class FakeVoiceTokens:
             }
         )
         return f"fake-token-{len(self.issued)}"
+
+
+class FakeVectorIndex:
+    """Substring matching standing in for semantic search.
+
+    Enough to prove the slice wires a query to an index and maps ids back to
+    rows, which is all this side of the boundary owns.
+    """
+
+    def __init__(self) -> None:
+        self.documents: dict[str, str] = {}
+        self.queries: list[str] = []
+
+    async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None:
+        self.documents[doc_id] = text
+
+    async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
+        self.queries.append(query)
+        hits = [(doc_id, 1.0) for doc_id, text in self.documents.items() if query.lower() in text.lower()]
+        return hits[:limit]

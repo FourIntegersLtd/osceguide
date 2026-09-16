@@ -36,6 +36,7 @@ from app.features.entitlements.router import router as entitlements_router
 from app.features.growth.router import router as growth_router
 from app.features.identity.router import router as identity_router
 from app.features.marketplace.router import router as marketplace_router
+from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
@@ -88,6 +89,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(community_router)
     router.include_router(peer_practice_router)
     router.include_router(growth_router)
+    router.include_router(media_router)
     return router
 
 

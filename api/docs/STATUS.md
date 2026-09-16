@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**1,976 tests. 83 endpoints. 21 slices. 19 migrations.**
+**2,070 tests. 89 endpoints. 22 slices. 20 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -31,12 +31,12 @@ domain, then storage, then the service and router. Every commit green.
 | `community` | complete | questions, replies, station comments, real likes, real authorisation |
 | `peer_practice` | complete | queue, fair role assignment, matching job |
 | `growth` | complete | partner attribution, funnel, referrals; **Mixpanel reconciliation not ported** |
+| `media` | complete | slides, summaries, blogs, podcasts, search behind a port; **generation not ported** |
 
 ## Not built
 
 From the plan's phases, in rough priority order:
 
-- **`media`** — slides, podcasts, blogs, summaries, vector search.
 - **Phase 8, the data migration.** Needs a Firestore export and the b2b database.
 - **Phase 9, frontend switchover.** Needs the backend domains it replaces.
 

@@ -111,3 +111,19 @@ class VoiceTokens(Protocol):
     ) -> str:
         """Return a signed join token."""
         ...
+
+
+@runtime_checkable
+class VectorIndex(Protocol):
+    """Semantic search over study material.
+
+    A port because the provider is undecided — b2c uses Pinecone, and pgvector
+    is a candidate now that everything else is in Postgres. Whichever wins, the
+    slice depends on this and the tests use a fake.
+    """
+
+    async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None: ...
+
+    async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
+        """Return `(doc_id, score)` pairs, best first."""
+        ...
