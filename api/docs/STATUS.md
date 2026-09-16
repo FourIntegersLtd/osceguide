@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**1,236 tests. 45 endpoints. 12 slices. 7 migrations.**
+**1,499 tests. 59 endpoints. 15 slices. 11 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -19,6 +19,9 @@ domain, then storage, then the service and router. Every commit green.
 | `entitlements` | complete | one access predicate, free trial ported verbatim |
 | `voice` | complete | LiveKit token, agent routing, Cloud overflow |
 | `sittings` | complete | sittings → circuits → slots, start/switch-turn/end |
+| `roster` | complete | trainees, cohorts, groups **with a real membership table** |
+| `reviews` | complete | slot rubric, GP-lead revisions, circuit aggregate — b2b's one table split three ways |
+| `results` | complete | append-only revisions, sign-off, release, outbox; trigger-enforced |
 | `billing` | routes done | Stripe webhook with idempotency ledger; **signature verification not wired** |
 | `station_sets` | complete | consumer practice sets with attempt limits |
 | `dashboard` | complete | read model replacing the seven-call home screen |
@@ -27,12 +30,6 @@ domain, then storage, then the service and router. Every commit green.
 
 From the plan's phases, in rough priority order:
 
-- **`reviews`** — human feedback: slot rubric, peer observer, GP-lead revisions,
-  circuit aggregates. b2b's `b2b_feedback` split three ways.
-- **`results`** — candidate result revisions, sign-off, release, outbox. Port
-  `sql/017` wholesale; it is better than anything we would write.
-- **`roster`** — trainees, cohorts, groups **with a real membership table**
-  (b2b derives group membership by label-matching at circuit-build time).
 - **`community`, `peer_practice`, `marketplace`** — b2c social.
 - **`growth`, `media`, `assistant`, `notifications`** — partner attribution/BMJ,
   slides and podcasts, the assistant worker routes, Resend email.
