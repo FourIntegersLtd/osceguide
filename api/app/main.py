@@ -24,6 +24,8 @@ from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.core.tenancy import bind_org_lookup, bind_role_policy
 from app.features import health
+from app.features.assistant.router import router as assistant_router
+from app.features.assistant.router_worker import router as assistant_worker_router
 from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
@@ -77,6 +79,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(billing_router)
     router.include_router(station_sets_router)
     router.include_router(dashboard_router)
+    router.include_router(assistant_router)
     return router
 
 
@@ -84,6 +87,7 @@ def worker_router() -> APIRouter:
     """Routes the LiveKit workers call. Each is guarded by `require_worker_secret`."""
     router = APIRouter()
     router.include_router(attempts_worker_router)
+    router.include_router(assistant_worker_router)
     return router
 
 

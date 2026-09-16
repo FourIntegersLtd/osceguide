@@ -1,18 +1,6 @@
 {
   "components": {
     "schemas": {
-      "Accepted": {
-        "description": "Returned where the answer must not depend on whether a record exists.",
-        "properties": {
-          "status": {
-            "default": "accepted",
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "title": "Accepted",
-        "type": "object"
-      },
       "AssessmentResultRead": {
         "properties": {
           "framework_id": {
@@ -53,6 +41,35 @@
           "scored_at"
         ],
         "title": "AssessmentResultRead",
+        "type": "object"
+      },
+      "AssistantTranscriptPost": {
+        "properties": {
+          "candidate_ref": {
+            "default": "",
+            "title": "Candidate Ref",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "transcript": {
+            "additionalProperties": true,
+            "title": "Transcript",
+            "type": "object"
+          },
+          "worker_type": {
+            "title": "Worker Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "worker_type",
+          "transcript"
+        ],
+        "title": "AssistantTranscriptPost",
         "type": "object"
       },
       "AttemptRead": {
@@ -2274,6 +2291,122 @@
         "title": "SaveGpLeadReview",
         "type": "object"
       },
+      "SceneInstructions": {
+        "properties": {
+          "instructions": {
+            "title": "Instructions",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instructions"
+        ],
+        "title": "SceneInstructions",
+        "type": "object"
+      },
+      "SceneRequest": {
+        "properties": {
+          "patientLine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patientline"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          }
+        },
+        "title": "SceneRequest",
+        "type": "object"
+      },
+      "SessionComplete": {
+        "properties": {
+          "end_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Reason"
+          },
+          "usage": {
+            "additionalProperties": true,
+            "title": "Usage",
+            "type": "object"
+          }
+        },
+        "title": "SessionComplete",
+        "type": "object"
+      },
+      "SessionRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "session_type": {
+            "title": "Session Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_type",
+          "status",
+          "room_name",
+          "created_at"
+        ],
+        "title": "SessionRead",
+        "type": "object"
+      },
       "SetGroupMembers": {
         "properties": {
           "trainee_ids": {
@@ -2593,6 +2726,26 @@
           "completed_at"
         ],
         "title": "SlotReviewRead",
+        "type": "object"
+      },
+      "StartSession": {
+        "properties": {
+          "extras": {
+            "additionalProperties": true,
+            "title": "Extras",
+            "type": "object"
+          },
+          "session_type": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Session Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_type"
+        ],
+        "title": "StartSession",
         "type": "object"
       },
       "StartedAttempt": {
@@ -3400,6 +3553,21 @@
         "title": "WorkerBootstrap",
         "type": "object"
       },
+      "WorkerSessionPayload": {
+        "description": "`{\"session\": {...}}` \u2014 the shape `livekit_assistant_worker` validates.\n\nIts paths are hardcoded in the worker rather than configured per backend, so\nthis API must mount them exactly. Noted in the README.",
+        "properties": {
+          "session": {
+            "additionalProperties": true,
+            "title": "Session",
+            "type": "object"
+          }
+        },
+        "required": [
+          "session"
+        ],
+        "title": "WorkerSessionPayload",
+        "type": "object"
+      },
       "WorkspaceToken": {
         "properties": {
           "access_token": {
@@ -3431,6 +3599,29 @@
           "active_role"
         ],
         "title": "WorkspaceToken",
+        "type": "object"
+      },
+      "app__features__assistant__schemas__Accepted": {
+        "properties": {
+          "status": {
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "Accepted",
+        "type": "object"
+      },
+      "app__features__identity__schemas__Accepted": {
+        "description": "Returned where the answer must not depend on whether a record exists.",
+        "properties": {
+          "status": {
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "Accepted",
         "type": "object"
       },
       "app__features__identity__schemas__MembershipRead": {
@@ -3551,6 +3742,68 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/assistant/sessions": {
+      "post": {
+        "operationId": "assistant_start_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSession"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_assistant_type",
+            "x-codes": [
+              "unknown_assistant_type"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Session",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
     "/api/v1/attempts": {
       "post": {
         "operationId": "attempts_start_attempt",
@@ -4029,7 +4282,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Accepted"
+                  "$ref": "#/components/schemas/app__features__identity__schemas__Accepted"
                 }
               }
             },
@@ -4178,7 +4431,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Accepted"
+                  "$ref": "#/components/schemas/app__features__identity__schemas__Accepted"
                 }
               }
             },
@@ -4222,7 +4475,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Accepted"
+                  "$ref": "#/components/schemas/app__features__identity__schemas__Accepted"
                 }
               }
             },
@@ -8669,6 +8922,246 @@
         ]
       }
     },
+    "/api/worker/assistant-sessions/{session_id}": {
+      "get": {
+        "operationId": "worker_bootstrap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerSessionPayload"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_found",
+            "x-codes": [
+              "assistant_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_joinable",
+            "x-codes": [
+              "assistant_session_not_joinable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bootstrap",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/worker/assistant-sessions/{session_id}/scene": {
+      "post": {
+        "operationId": "worker_scene",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneInstructions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_found",
+            "x-codes": [
+              "assistant_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scene",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/worker/assistant-sessions/{session_id}/transcript": {
+      "post": {
+        "operationId": "worker_accept_transcript",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantTranscriptPost"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__assistant__schemas__Accepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_found",
+            "x-codes": [
+              "assistant_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Transcript",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
     "/api/worker/attempts/{attempt_id}": {
       "get": {
         "operationId": "worker_bootstrap",
@@ -8930,6 +9423,86 @@
           }
         },
         "summary": "Accept Chunk",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
+    "/api/worker/sessions/{session_id}/complete": {
+      "post": {
+        "description": "The GPT-Live path reports usage and why the session ended.",
+        "operationId": "worker_complete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionComplete"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__assistant__schemas__Accepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_found",
+            "x-codes": [
+              "assistant_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete",
         "tags": [
           "worker"
         ]
