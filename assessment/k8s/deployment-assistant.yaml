@@ -5,6 +5,13 @@ metadata:
   namespace: assessment-platform
 spec:
   replicas: 3
+  # Add capacity before removing any, so a rollout never evicts a pod that is
+  # still carrying help sessions to make room for its own replacement.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: assistant-worker
@@ -13,6 +20,11 @@ spec:
       labels:
         app: assistant-worker
     spec:
+      # Assistant sessions are shorter than consultations, but the same rule
+      # applies: on SIGTERM the worker drains rather than dropping callers, so the
+      # kubelet must wait it out rather than SIGKILL at the 30s default. Keep this
+      # above the worker's drain_timeout (LIVEKIT_ASSISTANT_DRAIN_TIMEOUT, 840s).
+      terminationGracePeriodSeconds: 900
       # Same node rule as the legacy worker: only labelled worker nodes, never the control plane.
       affinity:
         nodeAffinity:
@@ -23,6 +35,16 @@ spec:
                     operator: In
                     values:
                       - "true"
+      # One pod per node. This is what makes LIVEKIT_ASSISTANT_MAX_CONCURRENT_JOBS
+      # a per-node admission limit instead of a per-pod one; without it the default
+      # scheduler may co-locate replicas and admit several times the node's capacity.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: assistant-worker
       # Private GHCR image (published by .github/workflows/publish-ghcr.yml).
       imagePullSecrets:
         - name: ghcr-pull-credentials
@@ -39,18 +61,26 @@ spec:
               value: "8080"
           ports:
             - containerPort: 8080
+              name: supervisor
+            - containerPort: 8088
+              name: worker
+          # Holds readiness off until the supervisor first answers, so a slow cold
+          # boot is never mistaken for a failure. 18 x 10s matches the legacy manifest.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 18
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
-            initialDelaySeconds: 20
             periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 30
+          # Liveness intentionally omitted, as in livekit/k8s/deployment.yaml. A
+          # restart would cut every session on the pod, and the supervisor's
+          # /health reports gunicorn, not whether the agent is still registered
+          # with LiveKit -- so it cannot detect the failure it would be there for.
           resources:
             # Idles at ~1.1 GiB (VAD model + UI guidance); leave room for concurrent help sessions.
             requests:

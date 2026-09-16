@@ -8,6 +8,15 @@ data:
   OSCE_LIVEKIT_WORKER: "assessment"
   LIVEKIT_ASSESSMENT_AGENT_NAME: "assessment-self-hosted"
   LIVEKIT_ASSESSMENT_WORKER_PORT: "8087"
+  # Per-node admission limit: with one pod per node (topologySpreadConstraints in
+  # deployment.yaml) this is how many consultations a single CX33 will accept. The
+  # node measured ~8 comfortable concurrent sessions in total and also carries an
+  # assistant pod, so the budget is split 6/3 between the two. Re-measure and
+  # re-tune; see livekit/k8s/INFRASTRUCTURE.md.
+  LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS: "6"
+  # Stay under terminationGracePeriodSeconds (900s) so the worker finishes draining
+  # before the kubelet's SIGKILL. The SDK default is one hour, which would outlast it.
+  LIVEKIT_ASSESSMENT_DRAIN_TIMEOUT: "840"
   # Backends the worker may be dispatched for, keyed by the opaque label the
   # dispatching backend puts in job metadata. URLs and secrets come from env
   # variables named here (see secret.example.yaml). The secret header and

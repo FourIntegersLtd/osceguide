@@ -8,7 +8,12 @@ from livekit.plugins import deepgram, noise_cancellation  # noqa: F401 — plugi
 
 from voice_infra import BackendRegistry
 from voice_infra.sentry import init_sentry, raise_sentry_verify_error_if_requested
-from voice_infra.worker_config import required_agent_name, required_deepgram_api_key, worker_port
+from voice_infra.worker_config import (
+    optional_float,
+    required_agent_name,
+    required_deepgram_api_key,
+    worker_port,
+)
 from voice_infra.worker_load import concurrent_job_load_settings
 
 from .session import AssessmentSession
@@ -18,7 +23,12 @@ AGENT_NAME_ENV = "LIVEKIT_ASSESSMENT_AGENT_NAME"
 PORT_ENV = "LIVEKIT_ASSESSMENT_WORKER_PORT"
 MAX_JOBS_ENV = "LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS"
 LOAD_THRESHOLD_ENV = "LIVEKIT_ASSESSMENT_LOAD_THRESHOLD"
+DRAIN_TIMEOUT_ENV = "LIVEKIT_ASSESSMENT_DRAIN_TIMEOUT"
 DEFAULT_PORT = 8087
+# Seconds the worker keeps draining after SIGTERM before it stops waiting on
+# running jobs. Must stay under the pod's terminationGracePeriodSeconds (900s
+# in k8s/) or the kubelet SIGKILLs mid-session; the SDK default is one hour.
+DEFAULT_DRAIN_TIMEOUT = 840
 
 
 def validate_environment() -> BackendRegistry:
@@ -39,6 +49,7 @@ def build_worker_options() -> WorkerOptions:
         "entrypoint_fnc": _entrypoint,
         "agent_name": required_agent_name(AGENT_NAME_ENV),
         "port": worker_port(PORT_ENV, DEFAULT_PORT),
+        "drain_timeout": int(optional_float(DRAIN_TIMEOUT_ENV, DEFAULT_DRAIN_TIMEOUT)),
     }
     load_fnc, load_threshold = concurrent_job_load_settings(max_jobs_env=MAX_JOBS_ENV, threshold_env=LOAD_THRESHOLD_ENV)
     if load_fnc is not None:

@@ -78,7 +78,8 @@ jobs:
   deploy-k8s:
     name: deploy-k8s
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Draining pods can hold a rollout for many minutes; see ROLLOUT_TIMEOUT_SECS below.
+    timeout-minutes: 45
     needs: publish
     if: >-
       needs.publish.result == 'success' &&
@@ -124,6 +125,11 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
           K8S_MANIFEST_DIR: ${{ vars.K8S_MANIFEST_DIR || '/root/k8s/assessment-platform' }}
+          # A pod being replaced keeps serving its consultations until they end
+          # (terminationGracePeriodSeconds: 900), and `kubectl rollout status` waits
+          # for old pods to terminate. The 600s default would report failure on a
+          # rollout that is merely draining correctly.
+          ROLLOUT_TIMEOUT_SECS: ${{ vars.ROLLOUT_TIMEOUT_SECS || '1800' }}
         run: |
           HOST="${SSH_HOST#*@}"
           ssh-keyscan -H "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
@@ -132,5 +138,5 @@ jobs:
             k8s/deployment.yaml k8s/deployment-assistant.yaml "${SSH_HOST}:${K8S_MANIFEST_DIR}/"
           # Keepalives: the rollout wait can exceed the SSH idle timeout and drop with "Broken pipe".
           ssh -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "${SSH_HOST}" \
-            "K8S_MANIFEST_DIR='${K8S_MANIFEST_DIR}' bash -s" \
+            "K8S_MANIFEST_DIR='${K8S_MANIFEST_DIR}' ROLLOUT_TIMEOUT_SECS='${ROLLOUT_TIMEOUT_SECS}' bash -s" \
             < scripts/k8s_rollout_on_control_plane.sh
