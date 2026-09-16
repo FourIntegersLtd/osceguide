@@ -26,12 +26,47 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove everything the package's schema created.
+
+    Discovered rather than listed: procrastinate ships tables, composite types,
+    enums and functions, and the set changes between releases. A hand-written
+    list goes stale silently, and the symptom is a downgrade that appears to
+    work followed by an upgrade that fails on "already exists".
+    """
     op.execute("DROP SCHEMA IF EXISTS procrastinate CASCADE")
-    for name in (
-        "procrastinate_jobs",
-        "procrastinate_events",
-        "procrastinate_periodic_defers",
-        "procrastinate_workers",
-        "procrastinate_job_lock",
-    ):
-        op.execute(f"DROP TABLE IF EXISTS {name} CASCADE")
+    op.execute(
+        """
+        DO $$
+        DECLARE
+            obj record;
+        BEGIN
+            FOR obj IN
+                SELECT c.relname AS name
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname LIKE 'procrastinate%'
+            LOOP
+                EXECUTE format('DROP TABLE IF EXISTS public.%I CASCADE', obj.name);
+            END LOOP;
+
+            FOR obj IN
+                SELECT p.oid::regprocedure AS signature
+                FROM pg_proc p
+                JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = 'public' AND p.proname LIKE 'procrastinate%'
+            LOOP
+                EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', obj.signature);
+            END LOOP;
+
+            FOR obj IN
+                SELECT t.typname AS name
+                FROM pg_type t
+                JOIN pg_namespace n ON n.oid = t.typnamespace
+                WHERE n.nspname = 'public' AND t.typname LIKE 'procrastinate%'
+            LOOP
+                EXECUTE format('DROP TYPE IF EXISTS public.%I CASCADE', obj.name);
+            END LOOP;
+        END;
+        $$
+        """
+    )
