@@ -130,6 +130,44 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
         yield http
 
 
+@pytest_asyncio.fixture
+async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
+    """Create a real user and mint a token for them.
+
+    Tokens are self-describing, so it is tempting to mint one for an invented
+    id — but anything that writes an audit row has a foreign key to `users`,
+    and a token for a person who does not exist is not a case production can
+    reach. The fixture keeps the two in step.
+    """
+    from app.core.auth import Membership
+    from app.features.identity import repository
+    from tests.support.tokens import mint_token
+
+    async def _make(
+        email: str = "user@example.com",
+        *,
+        platform_admin: bool = False,
+        memberships: tuple[Membership, ...] = (),
+        active_org_slug: str | None = None,
+    ) -> str:
+        user = await repository.create_user(
+            db_session,
+            email=email,
+            name=email,
+            password_hash=None,
+            is_platform_admin=platform_admin,
+        )
+        return mint_token(
+            user_id=user.id,
+            email=email,
+            memberships=memberships,
+            active_org_slug=active_org_slug,
+            platform_admin=platform_admin,
+        )
+
+    return _make
+
+
 @pytest.fixture
 def settings():  # type: ignore[no-untyped-def]
     return get_settings()

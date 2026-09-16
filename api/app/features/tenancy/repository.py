@@ -24,6 +24,10 @@ async def create_organization(
 ) -> Organization:
     org = Organization(slug=slug.strip(), name=name, org_type=org_type, status=status)
     session.add(org)
+    # Flushed and refreshed so the caller gets the generated id and the
+    # server-side defaults (created_at, status) rather than None.
+    await session.flush()
+    await session.refresh(org)
     return org
 
 

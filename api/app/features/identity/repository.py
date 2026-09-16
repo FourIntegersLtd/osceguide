@@ -35,9 +35,10 @@ async def create_user(
         must_change_password=must_change_password,
     )
     session.add(user)
-    # Flushed here so the caller gets a row with its generated id, rather than
-    # reaching into the session itself to make one appear.
+    # Flushed and refreshed here so the caller gets the generated id and the
+    # server-side defaults, rather than reaching into the session itself.
     await session.flush()
+    await session.refresh(user)
     return user
 
 
