@@ -30,6 +30,7 @@ from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
 from app.features.catalog.router import router as catalog_router
+from app.features.community.router import router as community_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.identity.router import router as identity_router
@@ -82,6 +83,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(dashboard_router)
     router.include_router(assistant_router)
     router.include_router(marketplace_router)
+    router.include_router(community_router)
     return router
 
 
