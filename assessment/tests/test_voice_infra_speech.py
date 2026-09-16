@@ -38,7 +38,7 @@ def test_tutor_tts_is_deepgram_then_openai_then_cartesia(monkeypatch) -> None:
     assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
 
 
-@pytest.mark.parametrize(("gender", "model", "voice"), [("Female", "aura-2-athena-en", speech.CARTESIA_FEMALE_VOICE_ID), ("Male", "aura-2-hermes-en", speech.CARTESIA_MALE_VOICE_ID)])
+@pytest.mark.parametrize(("gender", "model", "voice"), [("Female", "aura-2-thalia-en", speech.CARTESIA_FEMALE_VOICE_ID), ("Male", "aura-2-hermes-en", speech.CARTESIA_MALE_VOICE_ID)])
 def test_patient_tts_is_gendered(monkeypatch, gender, model, voice) -> None:
     _, deepgram_tts, cartesia_tts, fallback = _patch_tts(monkeypatch)
     speech.build_tts("patient", gender)
@@ -55,7 +55,7 @@ def test_llm_primary_by_role_with_shared_fallback(monkeypatch) -> None:
     monkeypatch.setattr(speech.anthropic, "LLM", anthropic_llm)
     monkeypatch.setattr(speech.llm, "FallbackAdapter", fallback)
     assert speech.build_llm("patient") == ["openai:gpt-4o-mini", "anthropic:claude-haiku-4-5"]
-    assert speech.build_llm("tutor") == ["openai:gpt-4o", "anthropic:claude-haiku-4-5"]
+    assert speech.build_llm("tutor") == ["openai:gpt-5.4-mini", "anthropic:claude-haiku-4-5"]
     assert anthropic_llm.call_args.kwargs["temperature"] == 0.8
 
 
@@ -86,3 +86,81 @@ def test_models_voices_and_style_are_deployment_settings(monkeypatch) -> None:
     assert speech.build_llm("tutor")[0] == "openai:gpt-5"
     speech.build_tts("tutor")
     assert openai_tts.call_args.kwargs["instructions"] == "Speak as Athena."
+
+
+def test_the_patient_does_not_share_the_tutor_voice(monkeypatch) -> None:
+    """Two roles in one voice is the part of role confusion a listener notices first."""
+    _, deepgram_tts, _, _ = _patch_tts(monkeypatch)
+    speech.build_tts("tutor")
+    tutor_voice = deepgram_tts.call_args.kwargs["model"]
+    speech.build_tts("patient", "Female")
+    assert deepgram_tts.call_args.kwargs["model"] != tutor_voice
+
+
+def test_the_patient_is_not_spoken_in_the_tutor_style(monkeypatch) -> None:
+    openai_tts, _, _, _ = _patch_tts(monkeypatch)
+    speech.build_tts("tutor")
+    tutor_style = openai_tts.call_args.kwargs["instructions"]
+    speech.build_tts("patient", "Female")
+    patient_style = openai_tts.call_args.kwargs["instructions"]
+    assert patient_style != tutor_style
+    assert "clinical education assistant" not in patient_style
+
+
+def _capture_openai_llm(monkeypatch):
+    calls = []
+    monkeypatch.setattr(speech.openai, "LLM", lambda **kw: calls.append(kw) or f"openai:{kw['model']}")
+    monkeypatch.setattr(speech.anthropic, "LLM", lambda **kw: f"anthropic:{kw['model']}")
+    monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
+    return calls
+
+
+@pytest.mark.parametrize("model", ["gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.6-luna"])
+def test_reasoning_models_are_told_not_to_reason(monkeypatch, model) -> None:
+    """A reasoning model left on the provider default thinks for seconds before speaking.
+
+    The plugin only sets an effort for ids on its own allow-list, which does not
+    include every current model, so the worker sends it regardless.
+    """
+    monkeypatch.setenv("VOICE_PATIENT_LLM", model)
+    calls = _capture_openai_llm(monkeypatch)
+    speech.build_llm("patient")
+    assert calls[0] == {"model": model, "reasoning_effort": "none"}
+
+
+def test_models_that_take_no_reasoning_effort_are_not_sent_one(monkeypatch) -> None:
+    calls = _capture_openai_llm(monkeypatch)
+    speech.build_llm("patient")
+    assert calls[0] == {"model": "gpt-4o-mini"}
+
+
+def test_the_tutor_default_is_told_not_to_reason() -> None:
+    """gpt-5.4-mini is a reasoning model; left on the provider default it thinks before speaking."""
+    settings = speech.SpeechSettings()
+    assert settings.tutor_llm.startswith(speech.REASONING_MODEL_PREFIX)
+    assert settings.tutor_reasoning_effort == "none"
+
+
+def test_a_blank_effort_leaves_the_provider_default(monkeypatch) -> None:
+    """The escape hatch for a caller that wants the provider's own default.
+
+    Not reachable through the environment: ``from_env`` reads a blank variable
+    as unset, so this is for a caller building settings directly, such as a
+    model comparison sweeping effort levels.
+    """
+    calls = _capture_openai_llm(monkeypatch)
+    speech.build_llm("tutor", speech.SpeechSettings(tutor_llm="gpt-5.4-mini", tutor_reasoning_effort=""))
+    assert calls[0] == {"model": "gpt-5.4-mini"}
+
+
+def test_a_blank_effort_variable_reads_as_unset(monkeypatch) -> None:
+    monkeypatch.setenv("VOICE_TUTOR_REASONING_EFFORT", "   ")
+    assert speech.SpeechSettings.from_env().tutor_reasoning_effort == "none"
+
+
+def test_effort_is_a_deployment_setting_like_every_other_field(monkeypatch) -> None:
+    monkeypatch.setenv("VOICE_PATIENT_LLM", "gpt-5.4-nano")
+    monkeypatch.setenv("VOICE_PATIENT_REASONING_EFFORT", "low")
+    calls = _capture_openai_llm(monkeypatch)
+    speech.build_llm("patient")
+    assert calls[0] == {"model": "gpt-5.4-nano", "reasoning_effort": "low"}

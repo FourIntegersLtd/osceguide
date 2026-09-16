@@ -95,6 +95,18 @@ with the frontend `livekit-ui-guidance` package.
 
 Model ids, voices and spoken style are `voice_infra.speech.SpeechSettings`
 (`VOICE_<FIELD>` env). Do not hardcode a model or a persona name in a worker.
+Reasoning effort is a setting too, and defaults to `none`: live voice has no
+room for a model that thinks before it speaks.
+
+Every live persona opens by naming the role it is cast in, using the shared
+block from `osce_assessment.prompts._blocks`;
+`tests/test_prompt_role_locks.py` fails on a prompt that does not say whose
+lines the model speaks. Greetings come from
+`osce_assessment.prompts.greetings` so both backends speak the same ones.
+
+Re-sending a role reminder on every turn was tried and measured away: it bought
+nothing on the simulated patient and made the consulting doctor measurably
+worse. Do not reintroduce it without running `scripts/model_bench.py` first.
 
 `hosting/` runs one worker per process, selected by `OSCE_LIVEKIT_WORKER`;
 add a worker to `hosting/workers.py` when it lands.

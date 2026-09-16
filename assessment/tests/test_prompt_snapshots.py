@@ -1,7 +1,14 @@
-"""The ported formatters render byte-identical output to the legacy workers.
+"""The formatters render exactly the text checked in beside them.
 
-The snapshot files were produced by the legacy ``livekit`` formatters and
-copied here unchanged. Backend-side rendering must reproduce them exactly.
+The snapshots started as the legacy ``livekit`` workers' output, byte for byte,
+and held that parity through the cutover. The live prompts have since been
+rewritten so each persona states its role and holds its clinical material back
+until asked, so these files now pin the current prompts rather than the legacy
+ones. The feedback and transcript snapshots are still the legacy output: those
+formatters did not change.
+
+Regenerate deliberately, never to make a diff go away. A change here changes
+what a model is told during a real exam.
 """
 
 from __future__ import annotations
@@ -37,15 +44,15 @@ def _snapshot(name: str) -> str:
     return (FIXTURES / "prompts" / f"{name}.txt").read_text(encoding="utf-8")
 
 
-def test_library_station_prompt_matches_legacy() -> None:
+def test_library_station_prompt_matches_snapshot() -> None:
     assert ConversationPromptFormatter.create_prompt(_load("stations/library_station_sca.json")) == _snapshot("library_station_sca")
 
 
-def test_default_station_prompt_matches_legacy() -> None:
+def test_default_station_prompt_matches_snapshot() -> None:
     assert ConversationPromptFormatter.create_prompt(None) == _snapshot("library_station_default")
 
 
-def test_org_station_prompt_matches_legacy() -> None:
+def test_org_station_prompt_matches_snapshot() -> None:
     assert create_org_station_prompt(_load("stations/org_station_demo.json")) == _snapshot("org_station_demo")
 
 
@@ -78,7 +85,7 @@ def test_ortho_station_type_routing(station_type, formatter) -> None:
     assert OrthoFeedbackFormatter.format(feedback, station_type=station_type) == formatter.format(feedback)
 
 
-def test_debrief_prompt_matches_legacy() -> None:
+def test_debrief_prompt_matches_snapshot() -> None:
     sca = _load("feedback/sca_feedback.json")
     prompt = DebriefPromptFormatter.create_prompt(
         transcript="[1] DOCTOR: What's brought you in today?\n[2] PATIENT: This tightness in my chest.",

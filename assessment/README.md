@@ -86,6 +86,67 @@ settings in `voice_infra.speech.SpeechSettings`: any field can be overridden
 with `VOICE_<FIELD>` (for example `VOICE_TUTOR_LLM`, `VOICE_VISION_LLM`,
 `VOICE_TTS_STYLE` to name a persona). The defaults name no product.
 
+That is also what makes a model comparison runnable without a deploy, and a
+rollback a variable rather than a release: `VOICE_PATIENT_LLM=gpt-4o-mini`
+puts the previous model back.
+
+Two settings exist because live voice cannot afford a model that thinks before
+it speaks. `VOICE_PATIENT_REASONING_EFFORT` and `VOICE_TUTOR_REASONING_EFFORT`
+default to `none` and are sent to any model whose id starts with `gpt-5`. The
+plugin sets an effort itself, but only for the ids on its own allow-list, which
+does not cover every current model; one it does not recognise is left on the
+provider's default, and on a reasoning model that costs seconds before the
+first word.
+
+The patient and the tutor are deliberately given different voices and
+different spoken styles (`VOICE_DEEPGRAM_FEMALE_VOICE` against
+`VOICE_DEEPGRAM_TUTOR_VOICE`, `VOICE_PATIENT_TTS_STYLE` against
+`VOICE_TTS_STYLE`). Two roles sharing one voice is the part of role confusion
+a listener notices first.
+
+## Choosing a voice model
+
+`scripts/model_bench.py` replays a scripted consultation against several models
+and scores how well each one holds its role. It exists because the useful
+question is not which model is newest but which is the cheapest one that stays
+in character, and that is not answerable from a spec sheet.
+
+```bash
+poetry run python scripts/model_bench.py run --arms gpt-4o-mini,gpt-5.4-nano --repeats 3
+poetry run python scripts/model_bench.py run --role tutor \
+    --script scripts/bench/doctor_debrief_sca.json --arms gpt-4o,gpt-5.4-mini --baseline gpt-4o
+```
+
+Every arm gets the same prompt and the same doctor script; only the model
+changes. `--instructions-file` and `--reminder` exist for the other kind of
+question: holding the model fixed and changing what it is told, which is how
+the current prompts were shown to be worth their change. The doctor script contains turns that
+deliberately invite a breach, because that is how drift happens in a real
+consultation: a candidate asks the patient what they should do, or thinks
+aloud, or speaks in a patient's register. Each transcript is then scored by
+`claude-opus-5`, chosen from a different model family than anything under test
+so that no arm is graded by its own relatives.
+
+The table reports role breaches, time to first token, whole-response latency,
+output tokens and cost per consultation computed from the usage the API
+reported. Adopt a candidate only when it is no worse on breaches and no more
+expensive; on a tie the incumbent stays.
+
+Barge-in and recovery cannot be measured this way. Shortlist with the harness,
+then run the top two live with `make dev-assessment` and read the
+`[LATENCY:...]` lines the worker already logs.
+
+The current defaults came out of that harness rather than a spec sheet. The
+patient stayed on `gpt-4o-mini`: `gpt-5.4-nano` tied on role adherence and
+quality while costing 84% more and answering more slowly. The tutor tier moved
+from `gpt-4o` to `gpt-5.4-mini`, which held the role better for 76% less.
+
+One caveat on that second change. The tutor tier serves both the debrief and
+the consulting-doctor persona, and only the debrief was benchmarked, so the
+consulting doctor inherits the new model untested. It is worth a listen before
+you rely on it, and `VOICE_TUTOR_LLM=gpt-4o` puts the old model back without a
+deploy.
+
 ## The assessment worker
 
 `livekit_assessment_worker` runs one attempt's interaction and nothing else.
