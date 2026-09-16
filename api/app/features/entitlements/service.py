@@ -14,6 +14,10 @@ from app.features.entitlements.errors import NotEntitled
 from app.features.entitlements.models import Entitlement
 from app.features.entitlements.schemas import EntitlementRead
 
+# Re-exported so a caller above this slice can build one without reaching into
+# its domain module: `attempts` counts the attempts, this slice owns the rule.
+TrialState = domain.TrialState
+
 
 def _to_grant(row: Entitlement) -> domain.Grant:
     return domain.Grant(

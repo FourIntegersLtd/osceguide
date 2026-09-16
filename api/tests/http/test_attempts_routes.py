@@ -31,8 +31,28 @@ async def entitle(session: AsyncSession, token_user: uuid.UUID, code: str = "sca
     await session.flush()
 
 
-async def test_starting_an_attempt_needs_an_entitlement(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_starting_an_attempt_needs_an_entitlement(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """No entitlement and no trial left is a refusal.
+
+    This used to pass with a brand-new account, because the free trial was
+    never consulted — `trial=None` made `decide` skip the branch. A new account
+    is exactly the case that *should* be allowed, so the account is aged past
+    the trial window to test what this was always meant to test.
+    """
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
     token = await make_actor("nopay@example.com")
+    await db_session.execute(
+        update(User)
+        .where(User.email == "nopay@example.com")
+        .values(created_at=datetime.now(UTC) - timedelta(days=30))
+    )
+    await db_session.flush()
+
     response = await client.post(
         "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
     )
@@ -120,3 +140,78 @@ async def test_my_entitlements_are_listed(client: AsyncClient, make_actor, db_se
     assert response.status_code == 200
     assert [e["exam_code"] for e in response.json()["items"]] == ["sca"]
     assert response.json()["items"][0]["live"] is True
+
+
+# --------------------------------------------------------------------------
+# The free trial (E1/E2)
+# --------------------------------------------------------------------------
+
+
+async def test_a_new_user_gets_the_free_trial(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`trial_available` was written, unit-tested, and never given a trial to test.
+
+    `attempts.service` passed `trial=None`, and `decide` skips the trial branch
+    entirely when it is None — so a brand-new account with no entitlement was
+    refused outright and nobody could try the product.
+    """
+    token = await make_actor("trialist@example.com")
+
+    response = await client.post(
+        "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
+    )
+
+    assert response.status_code == 201, response.text
+
+
+async def test_the_trial_runs_out_after_three_attempts(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Three, counted the legacy way. Ported verbatim as the oracle."""
+    from app.features.attempts import repository as attempts_repo
+    from app.features.identity import repository as identity_repo
+
+    token = await make_actor("threeonly@example.com")
+    user = await identity_repo.user_by_email(db_session, "threeonly@example.com")
+    assert user is not None
+
+    for _ in range(3):
+        created = await client.post(
+            "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
+        )
+        assert created.status_code == 201, created.text
+        attempt_id = uuid.UUID(created.json()["id"])
+        await attempts_repo.set_status(db_session, attempt_id, status="running", at=NOW)
+        await attempts_repo.set_status(db_session, attempt_id, status="interaction_complete", at=NOW)
+    await db_session.flush()
+
+    refused = await client.post(
+        "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
+    )
+
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["code"] == "not_entitled"
+    assert refused.json()["details"]["reason"] == "trial_exhausted"
+
+
+async def test_an_old_account_has_no_trial_left(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Fourteen days, and the comparison is strict: a fifteen-day-old account is out."""
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
+    token = await make_actor("veteran@example.com")
+    await db_session.execute(
+        update(User)
+        .where(User.email == "veteran@example.com")
+        .values(created_at=datetime.now(UTC) - timedelta(days=15))
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
+    )
+
+    assert response.status_code == 403, response.text
+    assert response.json()["details"]["reason"] == "trial_exhausted"

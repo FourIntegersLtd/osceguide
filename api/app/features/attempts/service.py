@@ -19,6 +19,7 @@ from app.features.attempts.schemas import (
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
+from app.features.identity import repository as identity
 
 
 async def start_attempt(
@@ -46,7 +47,13 @@ async def start_attempt(
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
 
-    await entitlements.require(session, user_id=user_id, exam_id=exam.id, now=now)
+    await entitlements.require(
+        session,
+        user_id=user_id,
+        exam_id=exam.id,
+        now=now,
+        trial=await _trial_state(session, user_id=user_id, exam_id=exam.id),
+    )
 
     attempt = await repository.create_attempt(
         session,
@@ -62,6 +69,27 @@ async def start_attempt(
         room_name=room_name,
     )
     return _attempt_read(attempt)
+
+
+async def _trial_state(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
+) -> entitlements.TrialState | None:
+    """What the free-trial rule needs to know about this person.
+
+    Built here rather than in `entitlements`, which sits below this slice and
+    so cannot count attempts. That seam is why the rule went unwired: the
+    argument defaulted to None, `decide` skips the trial branch entirely when
+    it is None, and a brand-new account was refused outright.
+    """
+    user = await identity.user_by_id(session, user_id)
+    if user is None:
+        return None
+    set_stations, completed = await repository.trial_counts(session, user_id, exam_id)
+    return entitlements.TrialState(
+        set_station_count=set_stations,
+        completed_attempt_count=completed,
+        account_created_at=user.created_at,
+    )
 
 
 async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:

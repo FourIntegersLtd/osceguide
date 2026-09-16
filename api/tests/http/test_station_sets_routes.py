@@ -140,8 +140,23 @@ async def test_someone_elses_set_is_not_found(
 async def test_a_set_without_an_entitlement_cannot_be_attempted(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    """The set is the learner's; running a station still needs access."""
+    """The set is the learner's; running a station still needs access.
+
+    Aged past the trial window on purpose. This used to pass with a brand-new
+    account only because the free trial never ran — and a new learner trying
+    three stations is exactly who the trial is for.
+    """
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
     token = await make_actor("s5@example.com")
+    await db_session.execute(
+        update(User)
+        .where(User.email == "s5@example.com")
+        .values(created_at=datetime.now(UTC) - timedelta(days=30))
+    )
+    await db_session.flush()
     version = await a_station_version(db_session)
     created = (
         await client.post(

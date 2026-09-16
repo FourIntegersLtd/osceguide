@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import encode_cursor
@@ -149,3 +149,32 @@ async def defer_job(
             "args": json.dumps(args),
         },
     )
+
+
+async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID) -> tuple[int, int]:
+    """`(set stations used, attempts completed)` for the free-trial rule.
+
+    Counted per exam, not per account. b2c held a person as four separate user
+    documents, one per product, each with its own trial — so somebody who used
+    their SCA trial still had a PLAB one. Counting across the unified account
+    would quietly take that away from everybody mid-migration.
+    """
+    set_stations = await session.scalar(
+        select(func.count())
+        .select_from(Attempt)
+        .where(
+            Attempt.user_id == user_id,
+            Attempt.exam_id == exam_id,
+            Attempt.kind == "set_station",
+        )
+    )
+    completed = await session.scalar(
+        select(func.count())
+        .select_from(Attempt)
+        .where(
+            Attempt.user_id == user_id,
+            Attempt.exam_id == exam_id,
+            Attempt.status.in_(("interaction_complete", "evaluated")),
+        )
+    )
+    return int(set_stations or 0), int(completed or 0)
