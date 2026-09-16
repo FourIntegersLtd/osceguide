@@ -116,6 +116,28 @@ def require_org(
     return dependency
 
 
+# The role predicates belong to the tenancy slice; the dependency factory is
+# core's. They meet here, bound once by `main.py`, so every other slice can
+# write `workspace: OrgAdmin` without importing another slice's service.
+_policies: dict[str, RolePredicate] = {}
+
+
+def bind_role_policy(**predicates: RolePredicate) -> None:
+    _policies.update(predicates)
+
+
+def _policy(name: str) -> RolePredicate:
+    def predicate(role: str | None) -> bool:
+        try:
+            return _policies[name](role)
+        except KeyError as exc:
+            raise RuntimeError(
+                f"No {name!r} role policy bound. app.main.create_app must call bind_role_policy."
+            ) from exc
+
+    return predicate
+
+
 async def require_platform_admin(principal: CurrentPrincipal) -> Principal:
     if not principal.is_platform_admin:
         raise Forbidden()
@@ -123,3 +145,12 @@ async def require_platform_admin(principal: CurrentPrincipal) -> Principal:
 
 
 PlatformAdmin = Annotated[Principal, Depends(require_platform_admin)]
+
+
+# Declared after the factory so slices can depend on access without importing
+# one another: `workspace: OrgAdmin` is the whole of it.
+OrgReader = Annotated[Workspace, Depends(require_org(_policy("may_read_org")))]
+OrgAdmin = Annotated[Workspace, Depends(require_org(_policy("is_org_admin"), allow_platform_admin=False))]
+OrgInstitutionAdmin = Annotated[
+    Workspace, Depends(require_org(_policy("is_institution_admin"), allow_platform_admin=False))
+]

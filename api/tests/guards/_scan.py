@@ -107,3 +107,22 @@ def attribute_names(path: Path) -> set[str]:
 
 def offenders(tokens: Iterable[str], banned: Iterable[str]) -> list[str]:
     return sorted({b for b in banned for t in tokens if b in t})
+
+
+def names_imported_from(path: Path, package: str) -> set[str]:
+    """Names a module imports *from* a package, e.g. `select` in
+    `from sqlalchemy import select`.
+
+    Matching bare tokens instead catches `dict.update` and `dict.get`, which
+    is how a guard earns a reputation for crying wolf and gets deleted.
+    """
+    tree = parse(path)
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and (node.module == package or node.module.startswith(f"{package}."))
+        ):
+            found.update(alias.asname or alias.name for alias in node.names)
+    return found

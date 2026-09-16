@@ -11,13 +11,11 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
-from app.core.tenancy import PlatformAdmin, Workspace, require_org
+from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
 from app.features.tenancy import errors, schemas, service
 
 router = APIRouter(tags=["tenancy"])
 
-OrgReader = Annotated[Workspace, Depends(require_org(service.may_read_org))]
-OrgAdmin = Annotated[Workspace, Depends(require_org(service.is_org_admin, allow_platform_admin=False))]
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 

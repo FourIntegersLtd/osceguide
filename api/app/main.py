@@ -22,11 +22,18 @@ from app.core.memberships import bind_membership_lookup
 from app.core.openapi import TAGS, operation_id
 from app.core.redis import close_redis
 from app.core.settings import get_settings
-from app.core.tenancy import bind_org_lookup
+from app.core.tenancy import bind_org_lookup, bind_role_policy
 from app.features import health
+from app.features.catalog.router import router as catalog_router
 from app.features.identity.router import router as identity_router
 from app.features.tenancy.router import router as tenancy_router
-from app.features.tenancy.service import memberships_for_token, org_ref_by_slug
+from app.features.tenancy.service import (
+    is_institution_admin,
+    is_org_admin,
+    may_read_org,
+    memberships_for_token,
+    org_ref_by_slug,
+)
 
 API_V1_PREFIX = "/api/v1"
 WORKER_PREFIX = "/api/worker"
@@ -46,6 +53,7 @@ def api_v1_router() -> APIRouter:
     router = APIRouter()
     router.include_router(identity_router)
     router.include_router(tenancy_router)
+    router.include_router(catalog_router)
     return router
 
 
@@ -83,6 +91,11 @@ def create_app() -> FastAPI:
     # allowed to know about both.
     bind_membership_lookup(memberships_for_token)
     bind_org_lookup(org_ref_by_slug)
+    bind_role_policy(
+        may_read_org=may_read_org,
+        is_org_admin=is_org_admin,
+        is_institution_admin=is_institution_admin,
+    )
 
     app.include_router(health.router)
     app.include_router(api_v1_router(), prefix=API_V1_PREFIX)

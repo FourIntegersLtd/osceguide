@@ -22,6 +22,7 @@ from tests.guards._scan import (
     attribute_names,
     code_tokens,
     imported_modules,
+    names_imported_from,
     python_files,
     rel,
     string_literals,
@@ -60,17 +61,32 @@ def sql_literals(path: Path) -> list[str]:
 
 
 def orm_query_use(path: Path) -> list[str]:
-    """Query builders imported from sqlalchemy, or session execution calls."""
-    found: set[str] = set()
-    tree_imports = imported_modules(path)
-    if any(m == "sqlalchemy" or m.startswith("sqlalchemy.") for m in tree_imports):
-        found |= code_tokens(path) & QUERY_BUILDERS
+    """Query builders imported from sqlalchemy, or session execution calls.
+
+    The builders are detected by what the module imports, not by token: `update`
+    and `delete` are also dict and list methods, and a guard that reports those
+    is one nobody trusts.
+    """
+    found = names_imported_from(path, "sqlalchemy") & QUERY_BUILDERS
     found |= attribute_names(path) & EXECUTION_METHODS
     return sorted(found)
 
 
-def model_imports(path: Path) -> list[str]:
-    return sorted(m for m in imported_modules(path) if m.split(".")[-1] == "models" and m.startswith("app."))
+def foreign_model_imports(path: Path, slice_name: str | None) -> list[str]:
+    """Imports of *another* slice's mapped models.
+
+    A slice's own service may name its row types — it is what maps them to
+    schemas. Reaching into another slice's tables is the leak: that slice owns
+    its storage and may change it.
+    """
+    out = []
+    for module in imported_modules(path):
+        if not module.startswith("app.features") or module.split(".")[-1] != "models":
+            continue
+        parts = module.split(".")
+        if slice_name is None or len(parts) < 3 or parts[2] != slice_name:
+            out.append(module)
+    return sorted(out)
 
 
 @pytest.mark.parametrize(
@@ -95,14 +111,31 @@ def test_no_orm_queries_outside_repositories(path: Path) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "path", [p for p in python_files(APP_ROOT) if not is_allowed(p)], ids=lambda p: rel(p)
-)
-def test_mapped_models_do_not_leave_the_repository(path: Path) -> None:
-    found = model_imports(path)
+@pytest.mark.parametrize("path", python_files(APP_ROOT), ids=lambda p: rel(p))
+def test_a_slice_does_not_import_another_slices_models(path: Path) -> None:
+    parts = path.relative_to(APP_ROOT).parts
+    slice_name = parts[1] if len(parts) > 2 and parts[0] == "features" else None
+    found = foreign_model_imports(path, slice_name)
     assert not found, (
-        f"{rel(path)} imports {found}. A mapped class carries lazy relationships that can cross "
-        "a tenant boundary with no visible query; map to a schema or a domain object instead."
+        f"{rel(path)} imports {found}. Another slice owns those tables and may change them; "
+        "go through its service."
+    )
+
+
+@pytest.mark.parametrize(
+    "path", [p for p in python_files(APP_ROOT) if p.name == "models.py"], ids=lambda p: rel(p)
+)
+def test_models_declare_columns_not_relationships(path: Path) -> None:
+    """No `relationship()`, which is what makes a mapped row safe to hand to a service.
+
+    A relationship can be traversed, and a traversal issues a query nobody
+    wrote and no `org_id` filter guards — the quiet way an ORM crosses a tenant
+    boundary. Foreign keys stay; loading the other side is a repository's job,
+    written out, where the scoping is visible.
+    """
+    assert "relationship" not in code_tokens(path), (
+        f"{rel(path)} declares a relationship. Load the other side in the repository, "
+        "with org_id in the query."
     )
 
 
@@ -135,7 +168,8 @@ def test_the_guard_would_catch_an_orm_query_in_a_service(tmp_path: Path) -> None
         encoding="utf-8",
     )
     assert orm_query_use(service) == ["execute", "select"]
-    assert model_imports(service) == ["app.features.sessions.models"]
+    assert foreign_model_imports(service, "roster") == ["app.features.sessions.models"]
+    assert foreign_model_imports(service, "sessions") == []
 
 
 def test_the_guard_ignores_a_service_that_only_calls_its_repository(tmp_path: Path) -> None:
@@ -147,4 +181,4 @@ def test_the_guard_ignores_a_service_that_only_calls_its_repository(tmp_path: Pa
         encoding="utf-8",
     )
     assert orm_query_use(service) == []
-    assert model_imports(service) == []
+    assert foreign_model_imports(service, "sessions") == []
