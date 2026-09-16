@@ -85,6 +85,16 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Marking. One default for every exam, rather than b2c's gpt-5-mini and
+    # b2b's gpt-4o producing results nobody can compare (E-2). The effort is
+    # set explicitly: unset means "medium" under any gpt-5 model, which is a
+    # cost decision nobody made.
+    openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    marking_primary_model: str = "gpt-5-mini"
+    marking_primary_effort: str = "low"
+    marking_fallback_model: str = "claude-sonnet-4-5"
+
     # --- Background jobs ---
     worker_concurrency: int = 4
 

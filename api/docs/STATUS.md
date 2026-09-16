@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**2,133 tests. 88 endpoints. 22 slices. 20 migrations.**
+**2,144 tests. 88 endpoints. 22 slices. 20 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -45,9 +45,9 @@ From the plan's phases, in rough priority order:
 
 ## Wired to a port but not implemented
 
-- **The evaluator.** `core.ports.Evaluator` fixes the boundary and a fake proves
-  the scoring job against it. The real adapter needs `osce_assessment` as a
-  versioned dependency rather than a vendored subtree (see OPEN-QUESTIONS E-1).
+- **The evaluator adapter is written** and contract-tested against the real
+  engine. What remains is packaging it as a dependency (E-1) — the engine needs
+  a `pyproject.toml` and a tag before `build_evaluator` can import it.
 
 ## A habit worth keeping
 
