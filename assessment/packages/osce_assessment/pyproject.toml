@@ -1,0 +1,52 @@
+# Makes the engine installable on its own, so consumers depend on a version
+# instead of vendoring it.
+#
+# It was vendored into b2c-api and b2b-api by `git subtree` and drifted:
+# `prompts/debrief_prompt.py` differs between all three copies while all three
+# report `__version__ = "0.6.0"`, so the version pin could not detect it. A
+# real dependency makes that impossible.
+#
+# Separate from the repo root's pyproject because that one also builds the
+# LiveKit workers and pulls in livekit, openai and anthropic. A backend that
+# only needs to score a transcript should not install a realtime voice stack.
+#
+#   platform-api installs it with:
+#     osce-assessment = { git = "...", tag = "engine-v0.6.0",
+#                         subdirectory = "packages/osce_assessment" }
+#
+# This directory is itself the package, so `package-dir` maps it onto the
+# import name rather than the usual src/ layout.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "osce-assessment"
+version = "0.6.0"
+description = "Consumer-agnostic OSCE assessment engine: contracts, catalogue, prompts and evaluation"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+authors = [{ name = "Four Integers Ltd", email = "hello@fourintegers.com" }]
+# Pydantic only. LLM clients and LiveKit are injected by the consumer and are
+# never imported here — `tests/guards` in platform-api asserts that.
+dependencies = ["pydantic>=2.10,<3"]
+
+[tool.setuptools]
+package-dir = { "osce_assessment" = "." }
+# Listed rather than discovered: `find` would walk from this directory and
+# report `contracts` and `prompts` as top-level packages, because the package
+# root and the project root are the same folder.
+packages = [
+    "osce_assessment",
+    "osce_assessment.compat",
+    "osce_assessment.contracts",
+    "osce_assessment.evaluation",
+    "osce_assessment.prompts",
+    "osce_assessment.runtime",
+    "osce_assessment.schemas",
+    "osce_assessment.testing",
+]
+
+[tool.setuptools.package-data]
+osce_assessment = ["schemas/*.json", "prompts/*.txt"]
