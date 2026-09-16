@@ -260,7 +260,7 @@ def _debrief_prompt(context: dict) -> str:
     is_ortho = framework == "ortho-frcs-v1"
     feedback = json.loads((FEEDBACK / f"{context.get('feedback_fixture', 'sca_feedback')}.json").read_text())
     station = context.get("station") or {}
-    transcript, _ids = TranscriptFormatter.format(context["transcript"])
+    transcript = TranscriptFormatter.format(context["transcript"])
     station_type = station.get("station_type") or feedback.get("station_type", "") or ""
     return DebriefPromptFormatter.create_prompt(
         transcript=transcript,

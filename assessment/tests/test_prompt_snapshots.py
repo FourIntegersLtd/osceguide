@@ -98,7 +98,7 @@ def test_debrief_prompt_matches_snapshot() -> None:
     assert prompt == _snapshot("debrief_prompt_sca")
 
 
-def test_transcript_formatter_numbers_messages_and_maps_ids() -> None:
+def test_transcript_formatter_labels_speakers_and_drops_empty_turns() -> None:
     transcript = {
         "transcript_message": [
             {"role": "user", "message": "What brings you in?", "transcript_message_id": "uuid-a"},
@@ -106,10 +106,11 @@ def test_transcript_formatter_numbers_messages_and_maps_ids() -> None:
             {"role": "assistant", "message": "   ", "transcript_message_id": "uuid-c"},
         ]
     }
-    text, mapping = TranscriptFormatter.format(transcript)
-    assert text == "## Consultation Transcript\n\n## Doctor [ID:msg_0]\nWhat brings you in?\n\n## Patient [ID:msg_1]\nChest tightness."
-    assert mapping == {"msg_0": "uuid-a", "msg_1": "uuid-b", "msg_2": "uuid-c"}
-    assert TranscriptFormatter.format({"transcript_message": []}) == (TranscriptFormatter.DEFAULT_TRANSCRIPT, {})
+    text = TranscriptFormatter.format(transcript)
+    assert text == "## Consultation Transcript\n\n## Doctor\nWhat brings you in?\n\n## Patient\nChest tightness."
+    # The msg_N ids existed only for the retired highlight tool.
+    assert "msg_" not in text and "ID:" not in text
+    assert TranscriptFormatter.format({"transcript_message": []}) == TranscriptFormatter.DEFAULT_TRANSCRIPT
 
 
 def test_management_plan_renders_sections_or_interview_questions_by_flag() -> None:

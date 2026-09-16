@@ -121,12 +121,12 @@ def test_profile_named_tools_are_given_to_the_agent_with_async_tool_handling() -
     async def scenario():
         ctx = FakeJobContext()
         adapter = LiveKitInteractionAdapter(ctx, candidate_identity="candidate-42")
-        profile = PROFILE.model_copy(update={"tools": ("highlight_lines",), "tool_context": {"id_mapping": {"1": "m1"}}})
+        profile = PROFILE.model_copy(update={"tools": ("a_tool",), "tool_context": {"some": "context"}})
         task = asyncio.create_task(adapter.run(profile, lambda role, text: None))
         await asyncio.sleep(0)
         session = FakeAgentSession.instances[-1]
         await asyncio.sleep(0)
-        assert session.started["agent"]["tools"] == ["tool:highlight_lines"]
+        assert session.started["agent"]["tools"] == ["tool:a_tool"]
         assert session.kwargs["tool_handling"] == adapter_module.ASYNC_TOOL_HANDLING
         ctx.room.emit("disconnected")
         await task
