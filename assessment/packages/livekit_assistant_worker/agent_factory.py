@@ -12,6 +12,7 @@ from voice_infra.turn_handling import MIN_CONSECUTIVE_SPEECH_DELAY, build_turn_h
 
 from .bootstrap import GPTLiveInstructions
 from .runtime_policy import VoiceRuntime
+from .ui_guidance import ComputerToolset, GuidanceAgent
 
 __all__ = ["ASYNC_TOOL_HANDLING", "AgentBuild", "build_assistant_agent"]
 
@@ -22,6 +23,17 @@ class AgentBuild:
     definition: Agent
     runtime: VoiceRuntime
     opening_instruction: str | None = None
+
+
+def _definition(
+    instructions: str,
+    tools: list[llm.Tool | llm.Toolset],
+    guidance_toolset: ComputerToolset | None,
+) -> Agent:
+    """A guidance session needs the agent that strips inline pointer tags."""
+    if guidance_toolset is None:
+        return Agent(instructions=instructions, tools=tools)
+    return GuidanceAgent(toolset=guidance_toolset, instructions=instructions, tools=tools)
 
 
 def build_assistant_agent(
@@ -35,6 +47,7 @@ def build_assistant_agent(
     userdata: object | None,
     gpt_live_instructions: GPTLiveInstructions | None,
     gpt_live_vad: vad.VAD | None = None,
+    guidance_toolset: ComputerToolset | None = None,
 ) -> AgentBuild:
     if runtime is VoiceRuntime.GPT_LIVE:
         if gpt_live_instructions is None:
@@ -64,4 +77,8 @@ def build_assistant_agent(
         userdata=userdata,
         tool_handling=ASYNC_TOOL_HANDLING,
     )
-    return AgentBuild(session=session, definition=Agent(instructions=pipeline_instructions, tools=pipeline_tools), runtime=runtime)
+    return AgentBuild(
+        session=session,
+        definition=_definition(pipeline_instructions, pipeline_tools, guidance_toolset),
+        runtime=runtime,
+    )

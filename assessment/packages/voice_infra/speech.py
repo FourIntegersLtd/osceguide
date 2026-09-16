@@ -124,9 +124,14 @@ def build_llm(role: Role, settings: SpeechSettings | None = None) -> llm.LLM:
 
 
 def build_vision_llm(settings: SpeechSettings | None = None) -> llm.LLM:
-    """The image-capable model, alone: tool results carry screenshots as image blocks."""
+    """The image-capable model: tool results carry screenshots as image blocks.
+
+    Wrapped like every other role. A help session is the one place a model blip is
+    most visible — the user is mid-navigation, looking at a highlight — and the
+    shared fallback reads images too, so there is no reason to run this one bare.
+    """
     settings = settings or SpeechSettings.from_env()
-    return anthropic.LLM(model=settings.vision_llm)
+    return llm.FallbackAdapter([anthropic.LLM(model=settings.vision_llm), _fallback_llm(settings)])
 
 
 def _openai_tts(settings: SpeechSettings, style: str) -> tts.TTS:

@@ -69,7 +69,12 @@ def fake_agent(monkeypatch):
     monkeypatch.setattr(session_module, "build_assistant_tts", lambda mode, voice_help_intent=None: f"tts:{mode.worker_type.value}:{voice_help_intent}")
     monkeypatch.setattr(session_module, "ConversationLatencyTracker", lambda **kw: MagicMock())
     monkeypatch.setattr(session_module, "build_room_options", lambda **kw: kw)
-    monkeypatch.setattr(session_module, "build_anthropic_computer_tool", lambda ctx, wt, navigation: ("computer-tool", navigation))
+    def _computer_toolset(ctx, worker_type, navigation):
+        toolset = MagicMock()
+        toolset.as_function_tool.return_value = ("computer-tool", navigation)
+        return toolset
+
+    monkeypatch.setattr(session_module, "build_computer_toolset", _computer_toolset)
     monkeypatch.setattr(session_module, "build_offer_navigation_modes_tool", lambda ctx: "nav-mode-tool")
     monkeypatch.setattr(session_module, "build_check_time_tool", lambda clock: "check-time-tool")
     return builds
@@ -95,6 +100,9 @@ def test_help_session_on_the_pipeline_with_screen_guidance(fake_agent) -> None:
     build = fake_agent[0]
     # No FAQ tool: the answers arrive inside the instructions. The computer tool reads the session's own state.
     assert build["pipeline_tools"] == ["nav-mode-tool", ("computer-tool", voice.navigation)]
+    # The agent needs the toolset itself, not just its tool: inline pointer tags in
+    # the reply are published through it as the words are spoken.
+    assert build["guidance_toolset"] is voice.guidance
     assert build["pipeline_instructions"] == "Rendered help prompt, FAQ included."
     assert build["max_tool_steps"] == 10 and build["pipeline_llm"] == "llm:help" and build["pipeline_tts"] == "tts:help:guide"
     agent = FakeAgentSession.instances[-1]

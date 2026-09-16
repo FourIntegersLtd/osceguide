@@ -28,7 +28,7 @@ from .speech import build_assistant_llm, build_assistant_tts
 from .tools.check_time import build_check_time_tool
 from .tools.navigation_mode import build_offer_navigation_modes_tool
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
-from .ui_guidance import NavigationModeState, build_anthropic_computer_tool, is_ui_guidance_enabled
+from .ui_guidance import ComputerToolset, NavigationModeState, build_computer_toolset, is_ui_guidance_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class AssistantVoiceSession:
         self.session: AssistantSession | None = None
         self.runtime = VoiceRuntime.PIPELINE
         self.navigation = NavigationModeState()
+        self.guidance: ComputerToolset | None = None
         self.recorder: TranscriptRecorder | None = None
         self.delivery: TranscriptDelivery | None = None
         self._agent: Any = None
@@ -109,8 +110,10 @@ class AssistantVoiceSession:
             tools.append(build_offer_navigation_modes_tool(ctx))
             if is_ui_guidance_enabled():
                 try:
-                    tools.append(build_anthropic_computer_tool(ctx, session.worker_type.value, self.navigation))
+                    self.guidance = build_computer_toolset(ctx, session.worker_type.value, self.navigation)
+                    tools.append(self.guidance.as_function_tool())
                 except Exception as exc:  # noqa: BLE001 — guidance is optional
+                    self.guidance = None
                     logger.warning("[ui_guidance] computer tool failed to load: %s", exc, exc_info=True)
         # Built here because the tool needs it, started later: time zero is when the
         # interaction opens, not when the tool list is assembled. A backend that sends
@@ -133,6 +136,7 @@ class AssistantVoiceSession:
             userdata=None,
             gpt_live_instructions=session.gpt_live if runtime is VoiceRuntime.GPT_LIVE else None,
             gpt_live_vad=prewarmed if isinstance(prewarmed, vad.VAD) else None,
+            guidance_toolset=self.guidance if runtime is VoiceRuntime.PIPELINE else None,
         )
 
     async def _start_agent(self, ctx: Any, session: AssistantSession, instructions: str, tools: list) -> AgentBuild:
@@ -162,6 +166,8 @@ class AssistantVoiceSession:
             handlers.wire_scene_changes(ctx, agent, self._render_scene)
         if session.mode.ui_guidance:
             handlers.wire_navigation_mode_choice(ctx, agent, self.navigation)
+        if self.guidance is not None:
+            handlers.wire_guidance_progress(agent, self.guidance.progress)
 
     async def _open(self, agent: Any, session: AssistantSession, opening_instruction: str | None) -> None:
         """Speak the backend's greeting, or let the model open when the mode or the backend leaves it to the model."""
