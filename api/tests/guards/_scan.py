@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 APP_ROOT = PROJECT_ROOT / "app"
 FEATURES_ROOT = APP_ROOT / "features"
 CORE_ROOT = APP_ROOT / "core"
+MIGRATION_ROOT = APP_ROOT / "migration"
 
 
 def python_files(root: Path = APP_ROOT) -> list[Path]:
@@ -35,6 +36,23 @@ def slice_dirs() -> list[Path]:
     if not FEATURES_ROOT.exists():
         return []
     return sorted(p for p in FEATURES_ROOT.iterdir() if p.is_dir() and not p.name.startswith("_"))
+
+
+def is_migration(path: Path) -> bool:
+    """`app/migration` is the one part of `app/` that is not a slice.
+
+    Its whole job is to write legacy records across every slice's tables in FK
+    order, so the rules that keep slices apart — queries only in a repository,
+    a slice never importing another's models — are rules it exists to break.
+    Exempting it is honest; pretending it is a slice would mean inventing a
+    repository per slice that only the importer calls.
+
+    The exemption is kept from leaking by
+    `test_nothing_outside_the_migration_imports_it`: no feature, and nothing in
+    core, may import `app.migration`. The whole package is deleted once every
+    tenant is across.
+    """
+    return MIGRATION_ROOT in path.parents
 
 
 def parse(path: Path) -> ast.Module:

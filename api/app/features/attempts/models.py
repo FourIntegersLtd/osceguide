@@ -65,6 +65,15 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
             unique=True,
             postgresql_where=text("slot_id IS NOT NULL AND status <> 'failed'"),
         ),
+        # An imported attempt is identified by where it came from, so a second
+        # import run updates nothing rather than duplicating history. Partial,
+        # because every attempt created since the cutover has no legacy id.
+        Index(
+            "uq_attempts_legacy_ref",
+            "legacy_ref",
+            unique=True,
+            postgresql_where=text("legacy_ref IS NOT NULL"),
+        ),
     )
 
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -93,6 +102,10 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failed_reason: Mapped[str | None] = mapped_column(String(200))
+    # Where this row came from in Firestore or b2b, e.g.
+    # `b2c:transcript:abc123`. Null for everything created since the cutover.
+    # Dropped with the `migration` package once every tenant is across.
+    legacy_ref: Mapped[str | None] = mapped_column(String(200))
 
 
 class TranscriptMessage(Base, UUIDPrimaryKey):

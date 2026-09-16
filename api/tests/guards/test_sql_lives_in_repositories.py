@@ -22,6 +22,7 @@ from tests.guards._scan import (
     attribute_names,
     code_tokens,
     imported_modules,
+    is_migration,
     names_imported_from,
     python_files,
     rel,
@@ -90,7 +91,9 @@ def foreign_model_imports(path: Path, slice_name: str | None) -> list[str]:
 
 
 @pytest.mark.parametrize(
-    "path", [p for p in python_files(APP_ROOT) if not is_allowed(p)], ids=lambda p: rel(p)
+    "path",
+    [p for p in python_files(APP_ROOT) if not is_allowed(p) and not is_migration(p)],
+    ids=lambda p: rel(p),
 )
 def test_no_sql_outside_repositories(path: Path) -> None:
     found = sql_literals(path)
@@ -101,7 +104,9 @@ def test_no_sql_outside_repositories(path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "path", [p for p in python_files(APP_ROOT) if not is_allowed(p)], ids=lambda p: rel(p)
+    "path",
+    [p for p in python_files(APP_ROOT) if not is_allowed(p) and not is_migration(p)],
+    ids=lambda p: rel(p),
 )
 def test_no_orm_queries_outside_repositories(path: Path) -> None:
     found = orm_query_use(path)
@@ -111,7 +116,9 @@ def test_no_orm_queries_outside_repositories(path: Path) -> None:
     )
 
 
-@pytest.mark.parametrize("path", python_files(APP_ROOT), ids=lambda p: rel(p))
+@pytest.mark.parametrize(
+    "path", [p for p in python_files(APP_ROOT) if not is_migration(p)], ids=lambda p: rel(p)
+)
 def test_a_slice_does_not_import_another_slices_models(path: Path) -> None:
     parts = path.relative_to(APP_ROOT).parts
     slice_name = parts[1] if len(parts) > 2 and parts[0] == "features" else None

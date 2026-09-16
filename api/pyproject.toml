@@ -98,6 +98,12 @@ name = "feature slices depend downward only"
 type = "layers"
 layers = [
     # Highest first. A slice may call anything below it, never above.
+    #
+    # The consumer-facing slices sit above `catalog` rather than below it: they
+    # all need to know which exam something belongs to, and a marketplace post
+    # or a podcast is a higher-level idea than the exam catalogue, not a lower
+    # one. They were under `identity` here, which made every one of those calls
+    # a contract violation and left `make arch` failing.
     "app.features.dashboard",
     "app.features.billing",
     "app.features.station_sets",
@@ -105,6 +111,12 @@ layers = [
     "app.features.reviews",
     "app.features.sittings",
     "app.features.roster",
+    "app.features.assistant",
+    "app.features.marketplace",
+    "app.features.community",
+    "app.features.peer_practice",
+    "app.features.growth",
+    "app.features.media",
     "app.features.voice",
     "app.features.attempts",
     "app.features.stations",
@@ -112,12 +124,7 @@ layers = [
     "app.features.catalog",
     "app.features.tenancy",
     "app.features.identity",
-    "app.features.media",
-    "app.features.growth",
-    "app.features.peer_practice",
-    "app.features.community",
-    "app.features.marketplace",
-    "app.features.assistant",
+    # Lowest: everything writes to the outbox and it calls nothing back.
     "app.features.notifications",
     "app.features.health",
 ]

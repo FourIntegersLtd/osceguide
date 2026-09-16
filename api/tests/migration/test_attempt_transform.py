@@ -45,7 +45,10 @@ def transcript(**overrides: object) -> dict:
 def test_a_transcript_becomes_an_attempt_with_its_turns() -> None:
     attempt = transform.attempt_from_transcript(transcript(), app_type="sca")
     assert attempt.exam_code == "sca"
-    assert attempt.kind == "set_station"
+    # `practice`, not `set_station`, because no set entry was supplied. The
+    # schema requires a `set_entry_id` for `set_station`; an attempt with no
+    # entry is not one.
+    assert attempt.kind == "practice"
     assert [m.seq for m in attempt.messages] == [0, 1]
     assert attempt.messages[0].role == "user"
 
@@ -112,3 +115,9 @@ def test_the_legacy_ids_are_carried_for_reconciliation() -> None:
         "station_id": "s-1",
         "attempt_id": "a-1",
     }
+
+
+def test_a_transcript_with_an_imported_set_entry_is_a_set_station() -> None:
+    attempt = transform.attempt_from_transcript(transcript(), app_type="sca", set_entry_ref="entry-1")
+    assert attempt.kind == "set_station"
+    assert attempt.set_entry_ref == "entry-1"

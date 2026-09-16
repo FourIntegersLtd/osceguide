@@ -51,6 +51,10 @@ class MergedUser:
     password_hash: str | None = None
     must_reset_password: bool = True
     legacy_products: set[str] = field(default_factory=set)
+    # Every legacy document id that turned out to be this person. A transcript
+    # names its author by Firestore document id, not by email, so without these
+    # there is no way to attach imported attempts to the user they belong to.
+    legacy_ids: set[str] = field(default_factory=set)
 
 
 @dataclass(frozen=True)
@@ -109,9 +113,14 @@ def merge_users(
             user.name = name
 
         created = parse_timestamp(record.get("created_at"))
-        if created and (email not in merged or created < user.created_at):
-            # Their account is as old as the first one they made.
+        if created and created < user.created_at:
+            # Their account is as old as the first one they made. A new record
+            # starts at `now()`, so the first real timestamp always wins.
             user.created_at = created
+
+        legacy_id = str(record.get("id") or record.get("user_id") or "").strip()
+        if legacy_id:
+            user.legacy_ids.add(legacy_id)
 
         if email in admins:
             user.is_platform_admin = True

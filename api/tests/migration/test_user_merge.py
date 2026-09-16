@@ -146,3 +146,30 @@ def test_a_record_with_no_email_is_reported_not_imported() -> None:
     """Silently dropping somebody is worse than failing loudly."""
     with pytest.raises(transform.UnusableRecord):
         transform.merge_users([b2c("", "sca")])
+
+
+# --------------------------------------------------------------------------
+# Connecting attempts back to a person
+# --------------------------------------------------------------------------
+
+
+def test_every_legacy_document_id_is_kept_against_the_merged_user() -> None:
+    """A transcript names its author by document id, never by email.
+
+    Without these the loader cannot attach an imported attempt to anybody.
+    """
+    merged = transform.merge_users(
+        [
+            b2c("alice@example.com", "sca", id="fs-sca-1"),
+            b2c("alice@example.com", "plab", id="fs-plab-7"),
+        ],
+        b2b_users=[{"email": "ALICE@example.com", "user_id": "b2b-99"}],
+    )
+
+    assert len(merged) == 1
+    assert merged[0].legacy_ids == {"fs-sca-1", "fs-plab-7", "b2b-99"}
+
+
+def test_a_record_without_a_document_id_still_merges() -> None:
+    merged = transform.merge_users([b2c("bob@example.com", "sca")])
+    assert merged[0].legacy_ids == set()

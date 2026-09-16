@@ -11,7 +11,14 @@ from pathlib import Path
 
 import pytest
 
-from tests.guards._scan import APP_ROOT, CORE_ROOT, attribute_names, python_files, rel
+from tests.guards._scan import (
+    APP_ROOT,
+    CORE_ROOT,
+    attribute_names,
+    is_migration,
+    python_files,
+    rel,
+)
 
 # Ending or restarting the transaction is core's job alone.
 TRANSACTION_CONTROL = {"commit", "rollback", "transaction", "begin", "begin_nested"}
@@ -47,7 +54,7 @@ def test_the_guard_would_catch_a_commit(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "path",
-    [p for p in python_files(APP_ROOT) if p not in ALLOWED and not is_repository(p)],
+    [p for p in python_files(APP_ROOT) if p not in ALLOWED and not is_repository(p) and not is_migration(p)],
     ids=lambda p: rel(p),
 )
 def test_only_repositories_flush(path: Path) -> None:

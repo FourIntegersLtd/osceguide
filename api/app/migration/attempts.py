@@ -53,6 +53,9 @@ class MigratedAttempt:
     created_at: datetime
     status: str
     failed_reason: str | None = None
+    # The imported station-set entry this ran against, once the sets are
+    # migrated. Null means the attempt is loaded as plain practice.
+    set_entry_ref: str | None = None
     messages: list[MigratedMessage] = field(default_factory=list)
     result: MigratedResult | None = None
 
@@ -78,7 +81,18 @@ def attempt_from_transcript(
     app_type: str,
     feedback: dict[str, Any] | None = None,
     framework_id: str = "",
+    set_entry_ref: str | None = None,
 ) -> MigratedAttempt:
+    """Turn one legacy transcript into an attempt.
+
+    `set_entry_ref` names the imported station-set entry this ran against, if
+    the sets have been migrated. Without one the attempt is `practice`, not
+    `set_station`: the schema requires a `set_entry_id` for `set_station` —
+    an attempt with no entry is not one — and claiming the kind while leaving
+    the reference null is how b2b ended up with columns that mean nothing.
+    The legacy `mock_id` and `station_id` are kept either way, so the linkage
+    can be restored when the sets come across.
+    """
     exam_code = exam_for_product(app_type)
     attempt_ref = str(raw.get("attempt_id") or raw.get("transcript_id") or "")
 
@@ -112,10 +126,11 @@ def attempt_from_transcript(
             "transcript_id": str(raw.get("transcript_id") or ""),
             "mock_id": str(raw.get("mock_id") or ""),
             "station_id": str(raw.get("station_id") or ""),
-            "attempt_id": attempt_ref,
+            "attempt_id": str(raw.get("attempt_id") or ""),
         },
         exam_code=exam_code,
-        kind="set_station",
+        kind="set_station" if set_entry_ref else "practice",
+        set_entry_ref=set_entry_ref,
         user_ref=str(raw.get("user_id") or ""),
         created_at=parse_timestamp(raw.get("created_at")) or datetime.now(UTC),
         status=status,

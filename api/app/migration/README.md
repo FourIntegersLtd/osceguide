@@ -31,8 +31,42 @@ decisions can be argued about on paper:
 - **A record with no email is reported, never dropped.** Losing somebody quietly
   is worse than failing loudly.
 
+## Loading
+
+`loader.py` is the facade; `load_people.py` and `load_attempts.py` do the work,
+in that order, because a transcript names its author by Firestore document id
+and only the people load can resolve that.
+
+- **Nothing here commits.** The caller owns the transaction, so `--dry-run` is
+  the same code path followed by a rollback rather than a second, untested one.
+  The dry run therefore hits every constraint the real run will.
+- **Re-runnable**, guarded by the natural keys the schema already enforces:
+  `users.email`, `attempts.legacy_ref`, `(attempt_id, message_id)`,
+  `(attempt_id, policy_version)`. A second pass reports zero created.
+- **An imported attempt with no station-set entry is `practice`, not
+  `set_station`.** The schema requires a `set_entry_id` for `set_station`, and
+  claiming a kind while leaving its reference null is how b2b ended up with
+  columns that mean nothing. The legacy `mock_id` and `station_id` are kept, so
+  the linkage can be restored when the sets come across.
+- **Somebody who signed up before their import keeps their password.** Only the
+  platform-admin flag is re-asserted from the export.
+
+## Verifying
+
+`verify.py`, deliberately separate from the loader: a loader that miscounts
+would otherwise report its own mistake as success.
+
+- **Counts** catch a whole category going missing, and ignore rows made since
+  the cutover by filtering on `legacy_ref`.
+- **Spot hashes** catch what counts cannot — the right turns in the wrong
+  order, truncated text, a transcript on the wrong attempt.
+
+Each check in `tests/migration/test_verify.py` runs against a database damaged
+on purpose, because a verifier nobody has seen fail is not a verifier.
+
 ## What is missing
 
-The loader and the `verify` step. Both need a real export to be worth writing
-against — see `docs/OPEN-QUESTIONS.md` M-1. The transforms carry `legacy_ids`
-so that verification can match rows back to the source.
+Station sets, sittings and org data. The consumer path — people, entitlements,
+attempts, transcripts and legacy feedback — is end to end. A real export is
+still needed to size the run and to catch shapes the fixtures do not have; see
+`docs/OPEN-QUESTIONS.md` M-1.
