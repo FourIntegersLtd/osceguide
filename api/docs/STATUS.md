@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**2,144 tests. 88 endpoints. 22 slices. 20 migrations.**
+**2,150 tests. 88 endpoints. 22 slices. 20 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -41,13 +41,28 @@ From the plan's phases, in rough priority order:
   as pure functions on realistic fixtures (`app/migration/`), including the
   five-record consumer merge. Loading and verification need a real export to be
   worth writing against.
-- **Phase 9, frontend switchover.** Needs the backend domains it replaces.
+- **Phase 9, frontend switchover.** The client layer is built and committed on
+  branch `feat/platform-api-client` in `frontend/` — `src/platform/` with the
+  generated types, `PlatformError`, and a per-domain flag that is empty by
+  default. Nothing imports it, so it changes no behaviour. Actually moving a
+  domain over needs this backend deployed and the data migrated, so it waits
+  on you.
 
 ## Wired to a port but not implemented
 
 - **The evaluator adapter is written** and contract-tested against the real
   engine. What remains is packaging it as a dependency (E-1) — the engine needs
   a `pyproject.toml` and a tag before `build_evaluator` can import it.
+
+## The error vocabulary is machine-checked
+
+`ErrorResponse.code` is published as an enum of all 100 codes, so the
+generated TypeScript is a closed union and the frontend can stop deciding
+control flow by matching English prose. An enum is only worth having if each
+operation's declared `x-codes` is true, so `tests/support/declared_codes.py`
+fails a test the moment a route answers with a code it does not declare. It
+found one on its first run: starting a station-set attempt can return 403
+`not_entitled` — the paywall — and the route declared nothing for 403.
 
 ## A habit worth keeping
 
