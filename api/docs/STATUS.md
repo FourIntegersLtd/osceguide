@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**2,070 tests. 89 endpoints. 22 slices. 20 migrations.**
+**2,110 tests. 88 endpoints. 22 slices. 20 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
@@ -37,7 +37,10 @@ domain, then storage, then the service and router. Every commit green.
 
 From the plan's phases, in rough priority order:
 
-- **Phase 8, the data migration.** Needs a Firestore export and the b2b database.
+- **Phase 8's loader and verify step.** The *transforms* are written and tested
+  as pure functions on realistic fixtures (`app/migration/`), including the
+  five-record consumer merge. Loading and verification need a real export to be
+  worth writing against.
 - **Phase 9, frontend switchover.** Needs the backend domains it replaces.
 
 ## Wired to a port but not implemented

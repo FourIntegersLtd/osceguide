@@ -26,6 +26,12 @@ def rel(path: Path) -> str:
 
 
 def slice_dirs() -> list[Path]:
+    """Feature slices only.
+
+    `app/migration` lives outside `features/` precisely so it is not one: it has
+    no routes, no domain and no place in the layer order, and it is deleted once
+    every tenant is across.
+    """
     if not FEATURES_ROOT.exists():
         return []
     return sorted(p for p in FEATURES_ROOT.iterdir() if p.is_dir() and not p.name.startswith("_"))

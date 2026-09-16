@@ -1,0 +1,125 @@
+"""Turning legacy transcripts and feedback into attempts.
+
+The decision recorded as D-5: b2c's production scoring path is
+`feedback_generation_legacy.py`, not the engine — `FEEDBACK_ENGINE_SCORING`
+defaults off — so imported feedback is tagged `legacy-b2c` and is never
+silently compared with engine output.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+
+from app.migration.users import UnknownLegacyProduct, exam_for_product, parse_timestamp
+
+# What b2c's existing feedback was actually produced by.
+LEGACY_POLICY_VERSION = "legacy-b2c"
+
+__all__ = [
+    "LEGACY_POLICY_VERSION",
+    "MigratedAttempt",
+    "MigratedMessage",
+    "MigratedResult",
+    "UnknownLegacyProduct",
+    "attempt_from_transcript",
+]
+
+
+@dataclass(frozen=True)
+class MigratedMessage:
+    message_id: str
+    seq: int
+    role: str
+    message: str
+    spoken_at: datetime
+
+
+@dataclass(frozen=True)
+class MigratedResult:
+    framework_id: str
+    policy_version: str
+    payload: dict[str, Any]
+
+
+@dataclass
+class MigratedAttempt:
+    legacy_ids: dict[str, str]
+    exam_code: str
+    kind: str
+    user_ref: str
+    created_at: datetime
+    status: str
+    failed_reason: str | None = None
+    messages: list[MigratedMessage] = field(default_factory=list)
+    result: MigratedResult | None = None
+
+
+def _message_id(attempt_ref: str, index: int, raw: dict[str, Any]) -> str:
+    """The turn's own id, or a stable one derived from where it sits.
+
+    Older rows predate the field. Deriving it from the attempt and position
+    means re-running the import produces the same ids, so the unique constraint
+    on `(attempt_id, message_id)` makes a second run a no-op rather than a
+    duplicate.
+    """
+    existing = str(raw.get("transcript_message_id") or "").strip()
+    if existing:
+        return existing
+    digest = hashlib.sha256(f"{attempt_ref}:{index}".encode()).hexdigest()
+    return f"legacy-{digest[:16]}"
+
+
+def attempt_from_transcript(
+    raw: dict[str, Any],
+    *,
+    app_type: str,
+    feedback: dict[str, Any] | None = None,
+    framework_id: str = "",
+) -> MigratedAttempt:
+    exam_code = exam_for_product(app_type)
+    attempt_ref = str(raw.get("attempt_id") or raw.get("transcript_id") or "")
+
+    messages = [
+        MigratedMessage(
+            message_id=_message_id(attempt_ref, index, entry),
+            seq=index,
+            role=str(entry.get("role") or "user"),
+            message=str(entry.get("message") or ""),
+            spoken_at=parse_timestamp(entry.get("timestamp")) or datetime.now(UTC),
+        )
+        for index, entry in enumerate(raw.get("transcript_message") or [])
+    ]
+
+    if not messages:
+        # Nothing to mark, and importing it as complete would queue scoring for
+        # a session that never happened.
+        status, failed_reason, result = "failed", "empty_transcript", None
+    elif feedback:
+        status, failed_reason = "evaluated", None
+        result = MigratedResult(
+            framework_id=framework_id or f"{exam_code}-legacy",
+            policy_version=LEGACY_POLICY_VERSION,
+            payload=feedback,
+        )
+    else:
+        status, failed_reason, result = "interaction_complete", None, None
+
+    return MigratedAttempt(
+        legacy_ids={
+            "transcript_id": str(raw.get("transcript_id") or ""),
+            "mock_id": str(raw.get("mock_id") or ""),
+            "station_id": str(raw.get("station_id") or ""),
+            "attempt_id": attempt_ref,
+        },
+        exam_code=exam_code,
+        kind="set_station",
+        user_ref=str(raw.get("user_id") or ""),
+        created_at=parse_timestamp(raw.get("created_at")) or datetime.now(UTC),
+        status=status,
+        failed_reason=failed_reason,
+        messages=messages,
+        result=result,
+    )
