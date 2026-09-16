@@ -145,3 +145,31 @@ class FakeVectorIndex:
         self.queries.append(query)
         hits = [(doc_id, 1.0) for doc_id, text in self.documents.items() if query.lower() in text.lower()]
         return hits[:limit]
+
+
+@dataclass
+class FakeRoomAgents:
+    """Records dispatches instead of calling LiveKit.
+
+    Keeps the order of operations, because the order is the invariant: C5 says
+    stale agents are removed *before* a dispatch, and a fake that only recorded
+    the dispatch could not tell whether that happened.
+    """
+
+    calls: list[tuple[str, str]] = field(default_factory=list)
+    dispatched: list[dict[str, object]] = field(default_factory=list)
+    agents_in_room: int = 0
+    fail_dispatch: bool = False
+
+    async def remove_agents(self, room: str) -> int:
+        self.calls.append(("remove", room))
+        removed, self.agents_in_room = self.agents_in_room, 0
+        return removed
+
+    async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
+        self.calls.append(("dispatch", room))
+        if self.fail_dispatch:
+            from app.features.voice.errors import VoiceUnavailable
+
+            raise VoiceUnavailable("LiveKit is unreachable")
+        self.dispatched.append({"room": room, "agent_name": agent_name, "metadata": metadata})

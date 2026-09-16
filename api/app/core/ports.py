@@ -142,6 +142,30 @@ class VoiceTokens(Protocol):
 
 
 @runtime_checkable
+class RoomAgents(Protocol):
+    """Putting an agent into a room that already exists, and taking it out.
+
+    Distinct from `VoiceTokens`, which dispatches implicitly: a candidate
+    joining their own attempt carries the agent in their token's room
+    configuration. A supervisor running a circuit has no such moment — the room
+    is already up and the candidates are already in it — so the agent has to be
+    dispatched explicitly, into a room, on demand.
+    """
+
+    async def remove_agents(self, room: str) -> int:
+        """Remove every agent participant. Returns how many were removed."""
+        ...
+
+    async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
+        """Ask LiveKit to put `agent_name` into `room`.
+
+        Raises `VoiceUnavailable` if LiveKit cannot be reached: a supervisor
+        pressing the button needs to know it did not happen.
+        """
+        ...
+
+
+@runtime_checkable
 class VectorIndex(Protocol):
     """Semantic search over study material.
 

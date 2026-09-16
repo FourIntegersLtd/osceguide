@@ -333,3 +333,183 @@ async def test_a_sitting_cannot_be_created_against_another_orgs_template(
     )
 
     assert response.status_code in (404, 409), response.text
+
+
+async def a_started_circuit(
+    client: AsyncClient, db_session: AsyncSession, org_id: uuid.UUID, admin: str
+) -> tuple[str, str]:
+    """A training circuit that has been started, and one of its slots.
+
+    Training rather than exam, because switching turns and appending trainees
+    are training-mode operations and this fixture serves those tests too.
+    """
+    template_version = await a_template_version(db_session, org_id)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={
+                "name": "Practice afternoon",
+                "feedback_template_version_id": str(template_version),
+                "mode": "training",
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    station = await published_station(client, admin, "kings", "Chest pain")
+    trainee = await a_trainee(db_session, f"cand-{uuid.uuid4().hex[:8]}@example.com")
+    circuit = (
+        await client.post(
+            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+            json={
+                "name": "Room 1",
+                "trainee_ids": [str(trainee)],
+                "station_version_ids": [station],
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    started = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    assert started.status_code == 200, started.text
+    return circuit["id"], started.json()["slots"][0]["id"]
+
+
+# --------------------------------------------------------------------------
+# Running a circuit (C3, C5, C8)
+# --------------------------------------------------------------------------
+
+
+async def test_dispatching_an_agent_removes_stale_ones_first(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C5. Two agents in a room both answer as the patient.
+
+    The candidate then hears a duplicated, contradictory consultation, which is
+    why the removal has to happen before the dispatch rather than instead of a
+    second one.
+    """
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, slot_id = await a_started_circuit(client, db_session, org_id, admin)
+
+    agents = FakeRoomAgents(agents_in_room=1)
+    client_app = client._transport.app  # type: ignore[attr-defined]
+    client_app.dependency_overrides[get_room_agents] = lambda: agents
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/dispatch-agent",
+        json={"slot_id": str(slot_id)},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 200, response.text
+    assert [c[0] for c in agents.calls] == ["remove", "dispatch"]
+    assert len(agents.dispatched) == 1
+    metadata = agents.dispatched[0]["metadata"]
+    assert set(metadata) == {"attempt_id", "backend", "candidate_ref"}, (
+        "the worker is given three strings and fetches the rest from the bootstrap route"
+    )
+
+
+async def test_dispatching_creates_an_attempt_for_the_slot(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C6. The attempt is what the worker bootstraps, so it has to exist first."""
+    from sqlalchemy import func, select
+
+    from app.features.attempts.models import Attempt
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, slot_id = await a_started_circuit(client, db_session, org_id, admin)
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+
+    await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/dispatch-agent",
+        json={"slot_id": str(slot_id)},
+        headers=bearer(admin),
+    )
+
+    live = await db_session.scalar(
+        select(func.count())
+        .select_from(Attempt)
+        .where(Attempt.slot_id == slot_id, Attempt.status != "failed")
+    )
+    assert live == 1
+
+
+async def test_redispatching_a_slot_starts_a_new_attempt(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C6, and the b2b defect it fixes.
+
+    b2b overwrote the slot's single transcript column on re-dispatch, so the
+    first recording was simply lost. Here the old attempt is failed and a new
+    one is created beside it, and both recordings survive.
+    """
+    from sqlalchemy import func, select
+
+    from app.features.attempts.models import Attempt
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, slot_id = await a_started_circuit(client, db_session, org_id, admin)
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+
+    url = f"/api/v1/orgs/kings/circuits/{circuit_id}/dispatch-agent"
+    body = {"slot_id": str(slot_id)}
+    first = await client.post(url, json=body, headers=bearer(admin))
+    second = await client.post(url, json=body, headers=bearer(admin))
+
+    assert first.status_code == 200 and second.status_code == 200, second.text
+    assert first.json()["attempt_id"] != second.json()["attempt_id"]
+    total = await db_session.scalar(
+        select(func.count()).select_from(Attempt).where(Attempt.slot_id == slot_id)
+    )
+    assert total == 2, "the first recording must survive a re-dispatch"
+
+
+async def test_ending_a_consultation_clears_the_agents_but_not_the_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, _ = await a_started_circuit(client, db_session, org_id, admin)
+    agents = FakeRoomAgents(agents_in_room=1)
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: agents  # type: ignore[attr-defined]
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/end-consultation", headers=bearer(admin)
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["agents_removed"] == 1
+    assert response.json()["ended_at"] is None, "the circuit is still running"
+
+
+async def test_the_edit_lock_reports_why_a_circuit_cannot_be_edited(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C3. The console asks before offering an edit, rather than discovering
+    the refusal after somebody has typed one."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, slot_id = await a_started_circuit(client, db_session, org_id, admin)
+
+    free = await client.get(f"/api/v1/orgs/kings/circuits/{circuit_id}/edit-lock", headers=bearer(admin))
+    assert free.status_code == 200, free.text
+    assert free.json()["editable"] is True
+
+    await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/switch-turn",
+        json={"slot_id": str(slot_id)},
+        headers=bearer(admin),
+    )
+    locked = await client.get(f"/api/v1/orgs/kings/circuits/{circuit_id}/edit-lock", headers=bearer(admin))
+
+    assert locked.json()["editable"] is False
+    assert locked.json()["reason"] == "consultation_in_progress"

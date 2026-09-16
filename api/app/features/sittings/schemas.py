@@ -77,3 +77,39 @@ class SwitchTurn(BaseModel):
 class AppendTrainee(BaseModel):
     trainee_id: uuid.UUID
     station_version_id: uuid.UUID
+
+
+class DispatchAgent(BaseModel):
+    """Which slot the agent is being dispatched for.
+
+    Named rather than taken from `active_slot_id`, so dispatching and switching
+    are separate decisions: a supervisor can re-dispatch the current station
+    without the circuit's state having to be right first.
+    """
+
+    slot_id: uuid.UUID
+
+
+class DispatchResult(BaseModel):
+    room_name: str
+    slot_id: uuid.UUID
+    # The attempt the worker will bootstrap. A re-dispatch is a new attempt,
+    # so this changes each time (C6).
+    attempt_id: uuid.UUID
+    agent_name: str
+    stale_agents_removed: int
+
+
+class ConsultationEnded(BaseModel):
+    circuit_id: uuid.UUID
+    agents_removed: int
+    # Null while the circuit is still running: ending a consultation is not
+    # ending the circuit.
+    ended_at: datetime | None
+
+
+class EditLock(BaseModel):
+    circuit_id: uuid.UUID
+    editable: bool
+    # A stable code the client switches on, never a sentence.
+    reason: str | None

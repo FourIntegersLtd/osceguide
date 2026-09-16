@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.core.ports import VoiceTokens
+from app.core.ports import RoomAgents, VoiceTokens
 from app.core.settings import Settings
 from app.features.attempts import repository as attempts_repo
 from app.features.attempts.domain import Status
@@ -88,3 +89,69 @@ def get_voice_tokens() -> VoiceTokens:
     from app.features.voice.adapter import build_voice_tokens
 
     return build_voice_tokens()
+
+
+# LiveKit propagates a participant removal asynchronously. Dispatching
+# immediately after can hand the new agent a room the old one is still leaving,
+# and two agents then answer as the patient. b2b waits the same 0.75s.
+AGENT_REMOVAL_SETTLE_SECONDS = 0.75
+
+
+async def dispatch_agent_into_room(
+    *,
+    agents: RoomAgents,
+    settings: Settings,
+    room: str,
+    attempt_id: uuid.UUID,
+    candidate_ref: uuid.UUID,
+    session_type: str = "conversation",
+    settle_seconds: float = AGENT_REMOVAL_SETTLE_SECONDS,
+) -> tuple[str, int]:
+    """Put an agent into a room a supervisor is already running (C5).
+
+    Stale agents are removed first and exactly one is dispatched, because two
+    agents in a room both answer as the patient and the candidate hears a
+    duplicated, contradictory consultation.
+
+    Returns the agent's name and how many stale ones it displaced. The removal
+    belongs here rather than at the call site: doing both meant removing twice,
+    and the second sweep found nothing while looking like it had worked.
+
+    The metadata is the same three strings the candidate path sends. Everything
+    else the worker needs it fetches from the bootstrap route, so this does not
+    become a second, drifting copy of the attempt.
+    """
+    family = domain.family_for(session_type)
+    mode = domain.resolve_mode(domain.normalize_mode(settings.livekit_routing_mode), cloud_slots_free=False)
+    agent = domain.agent_name(family, mode)
+
+    removed = await agents.remove_agents(room)
+    if removed:
+        log.info("removed stale agents before dispatch", room=room, removed=removed)
+        await asyncio.sleep(settle_seconds)
+
+    await agents.dispatch(
+        room=room,
+        agent_name=agent,
+        metadata={
+            "attempt_id": str(attempt_id),
+            "backend": settings.voice_backend_label,
+            "candidate_ref": str(candidate_ref),
+        },
+    )
+    log.info("dispatched agent", room=room, agent=agent, attempt_id=str(attempt_id))
+    return agent, removed
+
+
+async def clear_agents_from_room(*, agents: RoomAgents, room: str) -> int:
+    """Take every agent out of the room. Ends a consultation without ending the circuit."""
+    removed = await agents.remove_agents(room)
+    log.info("cleared agents from room", room=room, removed=removed)
+    return removed
+
+
+def get_room_agents() -> RoomAgents:
+    """The dependency the router wires. Overridden in tests with a fake."""
+    from app.features.voice.adapter import build_room_agents
+
+    return build_room_agents()

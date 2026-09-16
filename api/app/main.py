@@ -45,8 +45,10 @@ from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
+from app.features.reviews.service import slot_has_review
 from app.features.roster.router import router as roster_router
 from app.features.sittings.router import router as sittings_router
+from app.features.sittings.service_circuit import bind_feedback_lookup
 from app.features.station_sets.router import router as station_sets_router
 from app.features.stations.router import router as stations_router
 from app.features.tenancy.router import router as tenancy_router
@@ -138,6 +140,8 @@ def create_app() -> FastAPI:
     bind_membership_lookup(memberships_for_token)
     bind_org_lookup(org_ref_by_slug)
     bind_org_access_policy(org_permits_access)
+    # `reviews` sits above `sittings`, so the edit lock cannot ask it directly.
+    bind_feedback_lookup(slot_has_review)
     bind_role_policy(
         may_read_org=may_read_org,
         is_org_admin=is_org_admin,

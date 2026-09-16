@@ -178,3 +178,44 @@ async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.
         )
     )
     return int(set_stations or 0), int(completed or 0)
+
+
+async def fail_live_attempt_for_slot(
+    session: AsyncSession, slot_id: uuid.UUID, *, at: datetime, reason: str
+) -> None:
+    """Fail whatever is still live on this slot, and make it visible.
+
+    Flushed here because the insert that follows has to see it: the partial
+    unique index on `(slot_id) where status <> 'failed'` would otherwise refuse
+    the new attempt.
+    """
+    live = await live_attempt_for_slot(session, slot_id)
+    if live is None:
+        return
+    await set_status(session, live.id, status="failed", at=at, reason=reason)
+    await session.flush()
+
+
+async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:
+    """The exam a previous attempt on this slot ran under.
+
+    Reused on re-dispatch so a retry is marked against the same framework as
+    the recording it replaces.
+    """
+    stmt = (
+        select(Attempt.exam_id).where(Attempt.slot_id == slot_id).order_by(Attempt.created_at.desc()).limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def exam_for_station_version(session: AsyncSession, station_version_id: uuid.UUID) -> uuid.UUID | None:
+    """The exam a station belongs to, read through its version.
+
+    A join rather than a cross-slice call: `attempts` sits above `stations` and
+    needs one column of it on a hot path.
+    """
+    stmt = text(
+        "SELECT s.exam_id FROM station_versions v "
+        "JOIN stations s ON s.id = v.station_id WHERE v.id = :version_id"
+    )
+    return (await session.execute(stmt, {"version_id": station_version_id})).scalar_one_or_none()

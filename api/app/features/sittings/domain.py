@@ -118,6 +118,23 @@ def ensure_editable(state: CircuitState, *, force: bool = False) -> None:
         raise CircuitLocked("Feedback has been recorded against these slots.")
 
 
+def edit_block(state: CircuitState) -> str | None:
+    """Why this circuit cannot be structurally edited, or None if it can.
+
+    The same rule as `ensure_editable`, asked rather than asserted: the console
+    needs to know before it offers an edit, instead of discovering the refusal
+    after somebody has typed one. A stable code, not a sentence — b2b's client
+    decides this by matching English.
+    """
+    if state.ended:
+        return "circuit_ended"
+    if state.active_slot_id is not None:
+        return "consultation_in_progress"
+    if state.has_feedback:
+        return "feedback_recorded"
+    return None
+
+
 def ensure_startable(state: CircuitState) -> None:
     if state.ended:
         raise CircuitAlreadyEnded("That circuit has already finished.")
@@ -146,11 +163,6 @@ def ensure_can_switch_turn(mode: Mode) -> None:
 def ensure_can_append_trainees(mode: Mode) -> None:
     if mode is not Mode.TRAINING:
         raise NotPermittedInMode("Candidates cannot be added to an exam circuit once it exists.")
-
-
-def next_active_slot(state: CircuitState, slot_id: str) -> str:
-    """One slot is live at a time; naming another moves the turn to it."""
-    return slot_id
 
 
 def _clamp(value: int, bounds: tuple[int, int]) -> int:

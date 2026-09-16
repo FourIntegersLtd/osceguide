@@ -111,9 +111,16 @@ def test_a_circuit_can_only_start_once() -> None:
 
 
 def test_only_one_slot_is_active_at_a_time() -> None:
+    """C4 is enforced by the row lock and `ensure_live`, not by a pure function.
+
+    There used to be a `next_active_slot(state, slot_id)` here that returned
+    its argument, and a test asserting exactly that. It read like the
+    invariant and proved nothing — the real guarantee is that the circuit row
+    is held for the read-modify-write, which
+    `tests/repository/test_circuit_switch_race.py` proves against Postgres.
+    """
     state = domain.CircuitState(active_slot_id="slot-1", has_feedback=False)
-    assert domain.next_active_slot(state, "slot-2") == "slot-2"
-    assert domain.next_active_slot(state, "slot-1") == "slot-1"
+    assert domain.edit_block(state) == "consultation_in_progress"
 
 
 # --------------------------------------------------------------------------

@@ -172,3 +172,56 @@ def _attempt_read(attempt: Attempt) -> AttemptRead:
         completed_at=attempt.completed_at,
         created_at=attempt.created_at,
     )
+
+
+async def restart_for_slot(
+    session: AsyncSession,
+    *,
+    slot_id: uuid.UUID,
+    user_id: uuid.UUID,
+    org_id: uuid.UUID,
+    station_version_id: uuid.UUID | None,
+    room_name: str,
+    now: datetime,
+) -> Attempt:
+    """The attempt a supervisor's dispatch will run (C6).
+
+    Any attempt still live on this slot is failed first, then a new one is
+    created. b2b reused the slot's single transcript column, so re-dispatching
+    a station silently overwrote the first recording; failing the old attempt
+    keeps it, its transcript and its marking, and the partial unique index on
+    `(slot_id) where status <> 'failed'` is what makes "at most one live" the
+    database's rule rather than this function's.
+
+    No entitlement check: a trainee sitting an exam their institution
+    scheduled is not buying anything.
+    """
+    live = await repository.live_attempt_for_slot(session, slot_id)
+    await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason="redispatched")
+
+    exam_id = await repository.exam_for_slot_attempt(session, slot_id) if live else None
+    return await repository.create_attempt(
+        session,
+        kind="exam_slot",
+        user_id=user_id,
+        exam_id=exam_id or await _exam_for_station(session, station_version_id),
+        org_id=org_id,
+        station_version_id=station_version_id,
+        slot_id=slot_id,
+        room_name=room_name,
+    )
+
+
+async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:
+    """Which exam this slot's station belongs to.
+
+    Read from the station rather than passed in, so a circuit cannot schedule a
+    PLAB station under an SCA sitting and have the attempt marked against the
+    wrong framework.
+    """
+    if station_version_id is None:
+        raise errors.UnknownExamError("The slot has no station, so there is nothing to run.")
+    exam_id = await repository.exam_for_station_version(session, station_version_id)
+    if exam_id is None:
+        raise errors.UnknownExamError("The slot's station is not bound to an exam.")
+    return exam_id

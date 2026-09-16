@@ -599,6 +599,38 @@
         "title": "CohortRead",
         "type": "object"
       },
+      "ConsultationEnded": {
+        "properties": {
+          "agents_removed": {
+            "title": "Agents Removed",
+            "type": "integer"
+          },
+          "circuit_id": {
+            "format": "uuid",
+            "title": "Circuit Id",
+            "type": "string"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          }
+        },
+        "required": [
+          "circuit_id",
+          "agents_removed",
+          "ended_at"
+        ],
+        "title": "ConsultationEnded",
+        "type": "object"
+      },
       "CreateAttempt": {
         "properties": {
           "exam_code": {
@@ -1264,6 +1296,87 @@
         "title": "DecisionRead",
         "type": "object"
       },
+      "DispatchAgent": {
+        "description": "Which slot the agent is being dispatched for.\n\nNamed rather than taken from `active_slot_id`, so dispatching and switching\nare separate decisions: a supervisor can re-dispatch the current station\nwithout the circuit's state having to be right first.",
+        "properties": {
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot_id"
+        ],
+        "title": "DispatchAgent",
+        "type": "object"
+      },
+      "DispatchResult": {
+        "properties": {
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "stale_agents_removed": {
+            "title": "Stale Agents Removed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "room_name",
+          "slot_id",
+          "attempt_id",
+          "agent_name",
+          "stale_agents_removed"
+        ],
+        "title": "DispatchResult",
+        "type": "object"
+      },
+      "EditLock": {
+        "properties": {
+          "circuit_id": {
+            "format": "uuid",
+            "title": "Circuit Id",
+            "type": "string"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "circuit_id",
+          "editable",
+          "reason"
+        ],
+        "title": "EditLock",
+        "type": "object"
+      },
       "EndSession": {
         "properties": {
           "reason": {
@@ -1452,6 +1565,7 @@
               "circuit_already_ended",
               "circuit_locked",
               "circuit_not_found",
+              "circuit_not_started",
               "cohort_not_found",
               "conflict",
               "content_too_long",
@@ -8534,6 +8648,205 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/dispatch-agent": {
+      "post": {
+        "description": "Put an agent into the circuit's room for one station.",
+        "operationId": "sittings_dispatch_agent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchAgent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_already_ended, circuit_not_started",
+            "x-codes": [
+              "circuit_already_ended",
+              "circuit_not_started"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dispatch Agent",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/edit-lock": {
+      "get": {
+        "description": "Whether the slots may still be rebuilt, and why not.\n\nAsked rather than discovered: the console needs this before it offers an\nedit, not after somebody has typed one.",
+        "operationId": "sittings_read_edit_lock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditLock"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Edit Lock",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/end": {
       "post": {
         "operationId": "sittings_end_circuit",
@@ -8615,6 +8928,93 @@
           }
         ],
         "summary": "End Circuit",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/end-consultation": {
+      "post": {
+        "description": "Stop the station without ending the circuit: only the agent leaves.",
+        "operationId": "sittings_end_consultation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultationEnded"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "End Consultation",
         "tags": [
           "sittings"
         ]

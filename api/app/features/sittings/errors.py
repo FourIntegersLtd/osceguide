@@ -48,3 +48,10 @@ from app.features.stations.errors import (  # noqa: E402
 )
 
 __all__ = ["TemplateNotPublishedError", "TemplateVersionNotFound"]
+
+
+class CircuitNotStarted(Conflict):
+    """No room yet, so there is nowhere to put an agent."""
+
+    code = "circuit_not_started"
+    default_message = "Start the circuit before dispatching an agent"

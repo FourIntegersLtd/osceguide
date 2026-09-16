@@ -6,6 +6,8 @@ without voice configured.
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.core.ports import VoiceTokens
 from app.core.settings import get_settings
 from app.features.voice.errors import VoiceUnavailable
@@ -66,3 +68,56 @@ class LiveKitTokens:
 
 def build_voice_tokens() -> VoiceTokens:
     return LiveKitTokens()
+
+
+class LiveKitRoomAgents:
+    """Explicit agent dispatch, for rooms a supervisor is already running."""
+
+    async def remove_agents(self, room: str) -> int:
+        api = _livekit_api()
+        settings = get_settings()
+        from livekit.protocol.room import ListParticipantsRequest, RoomParticipantIdentity
+
+        removed = 0
+        async with api.LiveKitAPI(
+            settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
+        ) as client:
+            listed = await client.room.list_participants(ListParticipantsRequest(room=room))
+            for participant in listed.participants:
+                identity = getattr(participant, "identity", "")
+                # LiveKit names agent participants `agent-*`; a candidate or a
+                # supervisor must never be removed by this.
+                if not isinstance(identity, str) or not identity.startswith("agent-"):
+                    continue
+                await client.room.remove_participant(RoomParticipantIdentity(room=room, identity=identity))
+                removed += 1
+        return removed
+
+    async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
+        import json
+
+        api = _livekit_api()
+        settings = get_settings()
+        from livekit.protocol.agent_dispatch import CreateAgentDispatchRequest
+
+        async with api.LiveKitAPI(
+            settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
+        ) as client:
+            await client.agent_dispatch.create_dispatch(
+                CreateAgentDispatchRequest(agent_name=agent_name, room=room, metadata=json.dumps(metadata))
+            )
+
+
+def _livekit_api() -> Any:
+    settings = get_settings()
+    if not (settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret):
+        raise VoiceUnavailable("LiveKit credentials are not configured")
+    try:
+        from livekit import api
+    except ImportError as exc:  # pragma: no cover - depends on deployment extras
+        raise VoiceUnavailable("The LiveKit SDK is not installed") from exc
+    return api
+
+
+def build_room_agents() -> LiveKitRoomAgents:
+    return LiveKitRoomAgents()

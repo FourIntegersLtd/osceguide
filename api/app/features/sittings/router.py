@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.ports import ClockDep
+from app.core.ports import ClockDep, RoomAgents
+from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.sittings import errors, schemas, service
+from app.features.sittings import errors, schemas, service, service_circuit
 
 router = APIRouter(tags=["sittings"])
 
@@ -120,3 +121,64 @@ async def end_circuit(
     circuit_id: uuid.UUID, workspace: OrgReader, session: Session, clock: ClockDep
 ) -> schemas.CircuitRead:
     return await service.end_circuit(session, workspace.org_id, circuit_id, now=clock.now())
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/dispatch-agent",
+    response_model=schemas.DispatchResult,
+    responses=error_responses(
+        Forbidden,
+        errors.CircuitNotFound,
+        errors.SlotNotFound,
+        errors.CircuitAlreadyEndedError,
+        errors.CircuitNotStarted,
+    ),
+)
+async def dispatch_agent(
+    circuit_id: uuid.UUID,
+    body: schemas.DispatchAgent,
+    workspace: OrgReader,
+    session: Session,
+    clock: ClockDep,
+    settings: SettingsDep,
+    agents: Annotated[RoomAgents, Depends(service_circuit.get_room_agents)],
+) -> schemas.DispatchResult:
+    """Put an agent into the circuit's room for one station."""
+    return await service_circuit.dispatch_agent(
+        session,
+        workspace.org_id,
+        circuit_id,
+        slot_id=body.slot_id,
+        agents=agents,
+        settings=settings,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/circuits/{circuit_id}/end-consultation",
+    response_model=schemas.ConsultationEnded,
+    responses=error_responses(Forbidden, errors.CircuitNotFound),
+)
+async def end_consultation(
+    circuit_id: uuid.UUID,
+    workspace: OrgReader,
+    session: Session,
+    agents: Annotated[RoomAgents, Depends(service_circuit.get_room_agents)],
+) -> schemas.ConsultationEnded:
+    """Stop the station without ending the circuit: only the agent leaves."""
+    return await service_circuit.end_consultation(session, workspace.org_id, circuit_id, agents=agents)
+
+
+@router.get(
+    "/orgs/{org_slug}/circuits/{circuit_id}/edit-lock",
+    response_model=schemas.EditLock,
+    responses=error_responses(Forbidden, errors.CircuitNotFound),
+)
+async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgReader, session: Session) -> schemas.EditLock:
+    """Whether the slots may still be rebuilt, and why not.
+
+    Asked rather than discovered: the console needs this before it offers an
+    edit, not after somebody has typed one.
+    """
+    return await service_circuit.read_edit_lock(session, workspace.org_id, circuit_id)

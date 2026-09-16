@@ -22,7 +22,11 @@ from app.features.sittings.reads import (
 from app.features.sittings.reads import (
     timing_json as _timing_json,
 )
-from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
+from app.features.sittings.schemas import (
+    CircuitRead,
+    SittingRead,
+    TimingIn,
+)
 from app.features.stations import service as stations
 
 # One place mapping a domain refusal to its API code.
