@@ -26,6 +26,7 @@ from app.core.tenancy import bind_org_lookup, bind_role_policy
 from app.features import health
 from app.features.catalog.router import router as catalog_router
 from app.features.identity.router import router as identity_router
+from app.features.stations.router import router as stations_router
 from app.features.tenancy.router import router as tenancy_router
 from app.features.tenancy.service import (
     is_institution_admin,
@@ -54,6 +55,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(identity_router)
     router.include_router(tenancy_router)
     router.include_router(catalog_router)
+    router.include_router(stations_router)
     return router
 
 

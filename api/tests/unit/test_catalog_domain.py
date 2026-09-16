@@ -90,3 +90,16 @@ def test_the_seed_migration_matches_the_published_exams() -> None:
         for e in domain.PUBLISHED_EXAMS
     }
     assert seeded == declared
+
+
+def test_the_unknown_exam_code_is_the_same_in_every_slice() -> None:
+    """Two slices raise their own type for one API contract.
+
+    Each slice owns its exception so a router never imports another's, but the
+    `code` is what clients switch on, so the two must not drift apart.
+    """
+    from app.features.catalog.errors import UnknownExamError as CatalogError
+    from app.features.stations.errors import UnknownExamError as StationsError
+
+    assert CatalogError.code == StationsError.code == "unknown_exam"
+    assert CatalogError.status == StationsError.status
