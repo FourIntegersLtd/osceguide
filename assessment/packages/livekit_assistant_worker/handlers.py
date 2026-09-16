@@ -66,6 +66,7 @@ def wire_navigation_mode_choice(ctx: Any, agent: Any, navigation: NavigationMode
 
 def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
     """The browser announces a scene; the backend renders the instructions; the model introduces it."""
+    announced: dict[str, Any] = {}
 
     @ctx.room.on("data_received")
     def _on_scene_change(data_packet: Any) -> None:
@@ -73,6 +74,11 @@ def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
         if not msg or msg.get("type") != DATA_TYPE_SCENE_CHANGE:
             return
         scene = {key: msg.get(key) for key in SCENE_KEYS if msg.get(key) is not None}
+        if scene == announced:
+            logger.debug("[assistant] scene change ignored, already announced")
+            return
+        announced.clear()
+        announced.update(scene)
         logger.info("[assistant] scene change phase=%s", scene.get("phase"))
         asyncio.create_task(_announce_scene(agent, render_scene, scene))
 
@@ -83,6 +89,11 @@ async def _announce_scene(agent: Any, render_scene: RenderScene, scene: dict[str
     except Exception as exc:  # noqa: BLE001 — the session continues on the previous scene
         logger.error("scene change not rendered: %s", exc)
         return
+    # The opening line may still be playing; without this the new scene queues behind it.
+    try:
+        await agent.interrupt()
+    except Exception as exc:  # noqa: BLE001 — nothing playing, or an uninterruptible speech
+        logger.debug("no speech to interrupt before scene change: %s", exc)
     await _reply(agent, instructions=instructions, user_input=SCENE_STARTED_INPUT, what="scene change")
 
 

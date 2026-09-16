@@ -33,10 +33,13 @@ class UnknownToolError(ValueError):
     """The profile named a tool this worker does not implement."""
 
 
-def highlight_payload(id_mapping: dict[str, str], line_ids: list[str], recommendations: list[str]) -> dict[str, Any]:
-    translated = [id_mapping[line_id] for line_id in line_ids if id_mapping.get(line_id)]
-    if len(translated) != len(line_ids):
-        logger.warning("highlight_lines: %d of %d line ids not in the mapping", len(line_ids) - len(translated), len(line_ids))
+def highlight_payload(
+    id_mapping: dict[str, str], line_ids: list[str] | None, recommendations: list[str]
+) -> dict[str, Any]:
+    ids = list(line_ids or [])
+    translated = [id_mapping[line_id] for line_id in ids if id_mapping.get(line_id)]
+    if len(translated) != len(ids):
+        logger.warning("highlight_lines: %d of %d line ids not in the mapping", len(ids) - len(translated), len(ids))
     return {"transcript_message_ids": translated, "recommendations": list(recommendations)}
 
 
@@ -48,8 +51,11 @@ def build_highlight_lines_tool(ctx: Any, tool_context: dict[str, Any]):
 
     async def _highlight_lines(
         context: RunContext,
-        line_ids: Annotated[list[str], Field(description="List of transcript line IDs to highlight")],
-        recommendations: Annotated[list[str], Field(description="List of recommendations to show")],
+        recommendations: Annotated[list[str], Field(description="One or two short written takeaways to add to the panel")],
+        line_ids: Annotated[
+            list[str] | None,
+            Field(description="Transcript line IDs this point refers to; omit when there is no transcript to anchor to"),
+        ] = None,
     ) -> str:
         payload = highlight_payload(id_mapping, line_ids, recommendations)
         try:
@@ -63,11 +69,11 @@ def build_highlight_lines_tool(ctx: Any, tool_context: dict[str, Any]):
         _highlight_lines,
         name=HIGHLIGHT_LINES,
         description=(
-            "Provides real-time feedback during the debrief by highlighting transcript lines "
-            "and showing recommendations on the user's screen. IMPORTANT: Only use for the MOST "
-            "SALIENT points; avoid unnecessary calls. Focus on key strengths, critical areas, "
-            "and specific examples. Example: the user asks about their introduction → highlight "
-            "the key lines and provide recommendations."
+            "Adds a point to the live insights panel the doctor is watching, and highlights the "
+            "transcript lines it refers to. Call this as the debrief happens — once for each "
+            "substantive point you make (a strength, something to change, something you agree to "
+            "work on), not once at the end. Pass short written takeaways in `recommendations`; "
+            "pass `line_ids` when a transcript moment anchors the point, and omit it when none does."
         ),
     )
 

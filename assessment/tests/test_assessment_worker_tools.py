@@ -54,7 +54,7 @@ def test_highlight_lines_tool_publishes_translated_ids_reliably(monkeypatch) -> 
     (tool,) = build_tools(_ctx(publisher), (HIGHLIGHT_LINES,), {"id_mapping": {"1": "uuid-1", 2: "uuid-2"}})
     assert captured["name"] == HIGHLIGHT_LINES and tool is captured["fn"]
 
-    result = asyncio.run(tool(None, ["1", "2"], ["Summarise the plan"]))
+    result = asyncio.run(tool(None, ["Summarise the plan"], ["1", "2"]))
     assert result == "Successfully sent feedback"
     assert publisher.published == [({"transcript_message_ids": ["uuid-1", "uuid-2"], "recommendations": ["Summarise the plan"]}, True)]
 
@@ -62,4 +62,23 @@ def test_highlight_lines_tool_publishes_translated_ids_reliably(monkeypatch) -> 
 def test_highlight_lines_tells_the_model_when_publishing_fails(monkeypatch) -> None:
     monkeypatch.setattr(tools_module, "function_tool", lambda fn, **_: fn)
     (tool,) = build_tools(_ctx(_Publisher(fail=True)), (HIGHLIGHT_LINES,), {"id_mapping": {"1": "uuid-1"}})
-    assert "verbally" in asyncio.run(tool(None, ["1"], []))
+    assert "verbally" in asyncio.run(tool(None, ["Summarise the plan"], ["1"]))
+
+
+def test_highlight_payload_without_line_ids_still_carries_the_recommendations() -> None:
+    """A debrief with no transcript has no ids to anchor to; the written panel must still fill."""
+    assert highlight_payload({}, None, ["Safety-net the red flags"]) == {
+        "transcript_message_ids": [],
+        "recommendations": ["Safety-net the red flags"],
+    }
+
+
+def test_highlight_lines_tool_may_be_called_with_recommendations_alone(monkeypatch) -> None:
+    monkeypatch.setattr(tools_module, "function_tool", lambda fn, **_: fn)
+    publisher = _Publisher()
+    (tool,) = build_tools(_ctx(publisher), (HIGHLIGHT_LINES,), {})
+
+    assert asyncio.run(tool(None, ["Opened with an open question"])) == "Successfully sent feedback"
+    assert publisher.published == [
+        ({"transcript_message_ids": [], "recommendations": ["Opened with an open question"]}, True)
+    ]
