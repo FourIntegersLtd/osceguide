@@ -38,6 +38,7 @@ from app.features.tenancy.service import (
     memberships_for_token,
     org_ref_by_slug,
 )
+from app.features.voice.router import router as voice_router
 
 API_V1_PREFIX = "/api/v1"
 WORKER_PREFIX = "/api/worker"
@@ -61,6 +62,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(stations_router)
     router.include_router(attempts_router)
     router.include_router(entitlements_router)
+    router.include_router(voice_router)
     return router
 
 

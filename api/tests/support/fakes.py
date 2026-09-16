@@ -85,3 +85,32 @@ class FakeEvaluator:
             self.fail_times -= 1
             raise EvaluationFailed("fake failure")
         return dict(self.payload)
+
+
+class FakeVoiceTokens:
+    """Records what each token was asked to grant."""
+
+    def __init__(self) -> None:
+        self.issued: list[dict[str, object]] = []
+
+    def issue(
+        self,
+        *,
+        identity: str,
+        room: str,
+        agent_name: str | None,
+        dispatch_metadata: dict[str, str] | None,
+        room_admin: bool = False,
+        ttl_seconds: int = 3600,
+    ) -> str:
+        self.issued.append(
+            {
+                "identity": identity,
+                "room": room,
+                "agent_name": agent_name,
+                "dispatch_metadata": dispatch_metadata,
+                "room_admin": room_admin,
+                "ttl_seconds": ttl_seconds,
+            }
+        )
+        return f"fake-token-{len(self.issued)}"

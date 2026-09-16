@@ -23,6 +23,7 @@ os.environ["APP_ENV"] = "test"
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-not-for-production")
 os.environ.setdefault("WORKER_SECRET", "test-worker-secret")
 os.environ.setdefault("REDIS_DISABLED", "1")
+os.environ.setdefault("LIVEKIT_URL", "wss://livekit.test")
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402

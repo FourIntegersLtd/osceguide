@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     worker_secret: str = ""
     worker_secret_header: str = "X-Worker-Secret"  # noqa: S105 - header name, not a secret
 
+    # LiveKit. `voice_backend_label` is the key the worker looks this API up by
+    # in its own VOICE_BACKENDS_JSON, so all three deployments can coexist
+    # under different labels during a cutover.
+    livekit_url: str = ""
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
+    livekit_routing_mode: str = "self-hosted"
+    livekit_token_ttl_seconds: int = 60 * 60
+    voice_backend_label: str = "platform"
+
     # --- Background jobs ---
     worker_concurrency: int = 4
 

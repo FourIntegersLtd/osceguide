@@ -88,3 +88,26 @@ class Evaluator(Protocol):
         half-marked attempt shown to a candidate is worse than one not yet marked.
         """
         ...
+
+
+@runtime_checkable
+class VoiceTokens(Protocol):
+    """Mints the token a browser uses to join a LiveKit room.
+
+    A port because the SDK is an implementation detail, and because a test
+    should be able to assert what a token was asked to grant without a LiveKit
+    project existing.
+    """
+
+    def issue(
+        self,
+        *,
+        identity: str,
+        room: str,
+        agent_name: str | None,
+        dispatch_metadata: dict[str, str] | None,
+        room_admin: bool = False,
+        ttl_seconds: int = 3600,
+    ) -> str:
+        """Return a signed join token."""
+        ...

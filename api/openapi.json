@@ -1498,6 +1498,36 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VoiceGrant": {
+        "description": "What the browser needs to join, and nothing more.\n\nNo agent name and no backend label: those are dispatch details the client\nhas no use for, and b2c currently hands the browser a metadata blob it\nsimply passes back.",
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "server_url": {
+            "title": "Server Url",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "server_url",
+          "room",
+          "attempt_id"
+        ],
+        "title": "VoiceGrant",
+        "type": "object"
+      },
       "WorkerAccepted": {
         "properties": {
           "status": {
@@ -2025,6 +2055,119 @@
         "summary": "Read Transcript",
         "tags": [
           "attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/voice-token": {
+      "post": {
+        "operationId": "voice_issue_voice_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_joinable",
+            "x-codes": [
+              "attempt_not_joinable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Issue Voice Token",
+        "tags": [
+          "voice"
         ]
       }
     },
