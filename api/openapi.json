@@ -7044,7 +7044,7 @@
     },
     "/api/v1/me/practice-sessions": {
       "get": {
-        "operationId": "peer-practice_list_my_sessions",
+        "operationId": "peer_practice_list_my_sessions",
         "responses": {
           "200": {
             "content": {
@@ -7083,7 +7083,7 @@
     },
     "/api/v1/me/practice-sessions/{session_id}": {
       "get": {
-        "operationId": "peer-practice_read_session",
+        "operationId": "peer_practice_read_session",
         "parameters": [
           {
             "in": "path",
@@ -7157,7 +7157,7 @@
     },
     "/api/v1/me/practice-sessions/{session_id}/end": {
       "post": {
-        "operationId": "peer-practice_end_session",
+        "operationId": "peer_practice_end_session",
         "parameters": [
           {
             "in": "path",
@@ -7409,7 +7409,7 @@
     "/api/v1/me/station-sets": {
       "get": {
         "description": "Each set carries its own progress, so the list does not need a call per\nstation to work out how far along someone is.",
-        "operationId": "station-sets_list_sets",
+        "operationId": "station_sets_list_sets",
         "parameters": [
           {
             "description": "Opaque cursor from a previous page",
@@ -7488,7 +7488,7 @@
         ]
       },
       "post": {
-        "operationId": "station-sets_create_set",
+        "operationId": "station_sets_create_set",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7547,7 +7547,7 @@
     },
     "/api/v1/me/station-sets/{set_id}": {
       "get": {
-        "operationId": "station-sets_read_set",
+        "operationId": "station_sets_read_set",
         "parameters": [
           {
             "in": "path",
@@ -7621,7 +7621,7 @@
     },
     "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts": {
       "post": {
-        "operationId": "station-sets_start_attempt",
+        "operationId": "station_sets_start_attempt",
         "parameters": [
           {
             "in": "path",
@@ -11616,7 +11616,7 @@
     "/api/v1/peer-practice/queue": {
       "post": {
         "description": "Joining twice returns the place you already hold rather than a second one.",
-        "operationId": "peer-practice_join_queue",
+        "operationId": "peer_practice_join_queue",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11675,7 +11675,7 @@
     },
     "/api/v1/peer-practice/queue/{entry_id}": {
       "delete": {
-        "operationId": "peer-practice_leave_queue",
+        "operationId": "peer_practice_leave_queue",
         "parameters": [
           {
             "in": "path",
@@ -11741,7 +11741,7 @@
       },
       "get": {
         "description": "Position, how many are waiting, and the session if one has been made \u2014\none call, because the client polls this every few seconds.",
-        "operationId": "peer-practice_read_status",
+        "operationId": "peer_practice_read_status",
         "parameters": [
           {
             "in": "path",
@@ -12095,7 +12095,7 @@
     },
     "/api/worker/assistant-sessions/{session_id}": {
       "get": {
-        "operationId": "worker_bootstrap",
+        "operationId": "worker_bootstrap_assistant_session",
         "parameters": [
           {
             "in": "path",
@@ -12169,7 +12169,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Bootstrap",
+        "summary": "Bootstrap Assistant Session",
         "tags": [
           "worker"
         ]
@@ -12177,7 +12177,7 @@
     },
     "/api/worker/assistant-sessions/{session_id}/scene": {
       "post": {
-        "operationId": "worker_scene",
+        "operationId": "worker_assistant_scene",
         "parameters": [
           {
             "in": "path",
@@ -12248,7 +12248,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Scene",
+        "summary": "Assistant Scene",
         "tags": [
           "worker"
         ]
@@ -12256,7 +12256,7 @@
     },
     "/api/worker/assistant-sessions/{session_id}/transcript": {
       "post": {
-        "operationId": "worker_accept_transcript",
+        "operationId": "worker_accept_assistant_transcript",
         "parameters": [
           {
             "in": "path",
@@ -12327,7 +12327,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Accept Transcript",
+        "summary": "Accept Assistant Transcript",
         "tags": [
           "worker"
         ]
@@ -12602,7 +12602,7 @@
     "/api/worker/sessions/{session_id}/complete": {
       "post": {
         "description": "The GPT-Live path reports usage and why the session ended.",
-        "operationId": "worker_complete",
+        "operationId": "worker_complete_assistant_session",
         "parameters": [
           {
             "in": "path",
@@ -12673,7 +12673,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Complete",
+        "summary": "Complete Assistant Session",
         "tags": [
           "worker"
         ]
@@ -12715,6 +12715,90 @@
     {
       "description": "Liveness and dependency checks",
       "name": "health"
+    },
+    {
+      "description": "Accounts, sessions and passwords",
+      "name": "identity"
+    },
+    {
+      "description": "Organisations, membership and access",
+      "name": "tenancy"
+    },
+    {
+      "description": "Exams and the programmes that offer them",
+      "name": "catalog"
+    },
+    {
+      "description": "Scenarios and the templates behind them",
+      "name": "stations"
+    },
+    {
+      "description": "A learner's own practice sets",
+      "name": "station-sets"
+    },
+    {
+      "description": "One candidate running one scenario",
+      "name": "attempts"
+    },
+    {
+      "description": "Joining a station with a LiveKit worker",
+      "name": "voice"
+    },
+    {
+      "description": "Who may attempt what, and why",
+      "name": "entitlements"
+    },
+    {
+      "description": "Plans, payment and what it grants",
+      "name": "billing"
+    },
+    {
+      "description": "Scheduled examinations and training",
+      "name": "sittings"
+    },
+    {
+      "description": "Trainees, cohorts and groups",
+      "name": "roster"
+    },
+    {
+      "description": "Human judgement about a slot",
+      "name": "reviews"
+    },
+    {
+      "description": "Candidate outcomes and their release",
+      "name": "results"
+    },
+    {
+      "description": "What a learner sees on opening the app",
+      "name": "dashboard"
+    },
+    {
+      "description": "Questions, replies and comments",
+      "name": "community"
+    },
+    {
+      "description": "Peer practice slots offered and claimed",
+      "name": "marketplace"
+    },
+    {
+      "description": "Being matched with somebody to practise",
+      "name": "peer-practice"
+    },
+    {
+      "description": "Partner attribution and referrals",
+      "name": "growth"
+    },
+    {
+      "description": "Slides, summaries, blogs and podcasts",
+      "name": "media"
+    },
+    {
+      "description": "Help, onboarding and demonstration sessions",
+      "name": "assistant"
+    },
+    {
+      "description": "Routes the LiveKit workers call",
+      "name": "worker"
     }
   ]
 }

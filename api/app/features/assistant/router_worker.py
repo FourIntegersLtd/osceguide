@@ -30,7 +30,9 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     response_model=schemas.WorkerSessionPayload,
     responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.SessionNotJoinable),
 )
-async def bootstrap(session_id: uuid.UUID, session: Session) -> schemas.WorkerSessionPayload:
+async def bootstrap_assistant_session(
+    session_id: uuid.UUID, session: Session
+) -> schemas.WorkerSessionPayload:
     return await service.bootstrap(session, session_id)
 
 
@@ -39,7 +41,7 @@ async def bootstrap(session_id: uuid.UUID, session: Session) -> schemas.WorkerSe
     response_model=schemas.SceneInstructions,
     responses=error_responses(Unauthenticated, errors.SessionNotFound),
 )
-async def scene(
+async def assistant_scene(
     session_id: uuid.UUID, body: schemas.SceneRequest, session: Session
 ) -> schemas.SceneInstructions:
     return schemas.SceneInstructions(
@@ -53,7 +55,7 @@ async def scene(
     status_code=status.HTTP_202_ACCEPTED,
     responses=error_responses(Unauthenticated, errors.SessionNotFound),
 )
-async def accept_transcript(
+async def accept_assistant_transcript(
     session_id: uuid.UUID,
     body: schemas.AssistantTranscriptPost,
     session: Session,
@@ -69,7 +71,7 @@ async def accept_transcript(
     status_code=status.HTTP_202_ACCEPTED,
     responses=error_responses(Unauthenticated, errors.SessionNotFound),
 )
-async def complete(
+async def complete_assistant_session(
     session_id: uuid.UUID,
     body: schemas.SessionComplete,
     session: Session,

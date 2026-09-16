@@ -92,3 +92,36 @@ def test_the_guard_sees_dependencies_through_nesting() -> None:
         r.path for r in api_routes(probe) if require_worker_secret in set(_dependency_callables(r.dependant))
     }
     assert guarded == {f"{WORKER_PREFIX}/closed"}
+
+
+def test_operation_ids_are_unique(app: FastAPI) -> None:
+    """The generated client names a method per operation id.
+
+    Two routes sharing one silently loses a method, which surfaces as a missing
+    function in the frontend rather than as anything resembling an error here.
+    Both worker routers had `bootstrap` and `accept_transcript` before this
+    existed.
+    """
+    import collections
+
+    # From the generated document, not from `route.operation_id`: FastAPI fills
+    # that in while building the schema, so reading it off the route compares
+    # bare function names and misses the thing being tested.
+    document = app.openapi()
+    ids = [
+        operation["operationId"]
+        for path in document["paths"].values()
+        for operation in path.values()
+        if isinstance(operation, dict) and "operationId" in operation
+    ]
+    duplicates = [oid for oid, count in collections.Counter(ids).items() if count > 1]
+    assert not duplicates, f"duplicate operation ids: {duplicates}"
+
+
+def test_every_tag_used_by_a_route_is_described(app: FastAPI) -> None:
+    """A tag with no description is an undocumented section in the client."""
+    from app.core.openapi import TAGS
+
+    described = {tag["name"] for tag in TAGS}
+    used = {tag for route in api_routes(app) for tag in (route.tags or [])}
+    assert used <= described, f"tags used but not described: {sorted(used - described)}"
