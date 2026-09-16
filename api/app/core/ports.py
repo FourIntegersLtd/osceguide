@@ -90,6 +90,34 @@ class Evaluator(Protocol):
         ...
 
 
+class RenderFailed(Exception):
+    """A station could not be rendered into instructions at all."""
+
+
+@runtime_checkable
+class ProfileRenderer(Protocol):
+    """Turns a resolved station into the instructions the AI is given.
+
+    The backend renders every prompt; the worker holds no templates and is
+    handed finished text. That is the boundary the whole assessment layer is
+    built on — a transport that had to understand a station's shape would need
+    changing every time an organisation invented a new one.
+
+    Speaks dicts rather than engine contracts for the same reason `Evaluator`
+    does: `app/core` stays free of the engine, so the API starts and the suite
+    runs without it installed.
+    """
+
+    def render(self, *, station: dict[str, object], exam_code: str, mode: str) -> dict[str, object]:
+        """Return `{"instructions": str, "greeting": str | None}`.
+
+        Raises `RenderFailed` rather than returning empty instructions: the
+        worker refuses a job with none, and it should fail here where somebody
+        can read the reason, not on connect.
+        """
+        ...
+
+
 @runtime_checkable
 class VoiceTokens(Protocol):
     """Mints the token a browser uses to join a LiveKit room.

@@ -159,3 +159,70 @@ def test_each_kind_names_the_reference_it_requires(kind: domain.Kind, field: str
 
 def test_a_free_practice_attempt_references_nothing_else() -> None:
     assert domain.required_reference(domain.Kind.PRACTICE) is None
+
+
+# --------------------------------------------------------------------------
+# Rendering a definition (A1/A2) — the rules that decide what gets frozen
+# --------------------------------------------------------------------------
+
+
+def test_a_station_with_a_patient_is_renderable() -> None:
+    assert domain.scenario_is_renderable({"patient_information": {"persona": "A worried man."}})
+    assert domain.scenario_is_renderable({"patient_info": {"name": "Ray", "history": "Smoker."}})
+
+
+def test_a_station_with_no_usable_patient_content_is_not_renderable() -> None:
+    """The engine's formatter silently substitutes DEFAULT_STATION here.
+
+    That substitution is the degradation A2 exists to catch, so it has to be
+    detected before the render rather than inferred from its output.
+    """
+    assert not domain.scenario_is_renderable({})
+    assert not domain.scenario_is_renderable({"patient_information": {}})
+    assert not domain.scenario_is_renderable({"patient_information": {"persona": "   "}})
+    assert not domain.scenario_is_renderable(None)
+
+
+def test_a_definition_carries_everything_the_worker_and_the_marker_need() -> None:
+    payload = domain.definition_payload(
+        attempt_id="a-1",
+        framework_id="sca-rcgp-v1",
+        scenario_source="library",
+        scenario_id="station-9",
+        instructions="You are the patient.",
+        greeting="Hello doctor.",
+        mode="patient",
+        policy_version="platform-default@1",
+        primary_model="gpt-5-mini",
+        at=NOW,
+    )
+
+    assert payload["framework_id"] == "sca-rcgp-v1"
+    assert payload["scenario_ref"] == {"source": "library", "scenario_id": "station-9"}
+    assert payload["interaction_profile"]["instructions"] == "You are the patient."
+    assert payload["interaction_profile"]["greeting"] == "Hello doctor."
+    assert payload["snapshot_at"] == NOW.isoformat()
+    # The marker reads this; the worker never sees it.
+    assert payload["evaluation_policy"]["version"] == "platform-default@1"
+    assert payload["evaluation_policy"]["primary_model"] == "gpt-5-mini"
+
+
+def test_a_rendered_definition_survives_the_worker_filter() -> None:
+    """The two halves have to agree, or a freshly rendered attempt is refused."""
+    payload = domain.definition_payload(
+        attempt_id="a-2",
+        framework_id="sca-rcgp-v1",
+        scenario_source="library",
+        scenario_id="s-1",
+        instructions="You are the patient.",
+        greeting=None,
+        mode="patient",
+        policy_version="platform-default@1",
+        primary_model="gpt-5-mini",
+        at=NOW,
+    )
+
+    visible = domain.bootstrap_definition(payload)
+
+    assert "evaluation_policy" not in visible
+    assert visible["interaction_profile"]["instructions"] == "You are the patient."

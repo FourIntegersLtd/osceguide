@@ -7,6 +7,7 @@ translates the domain's refusals into API error codes.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -182,4 +183,39 @@ def _version_read(row: StationVersion) -> StationVersionRead:
         status=row.status,
         content=dict(row.content),
         published_at=row.published_at,
+    )
+
+
+@dataclass(frozen=True)
+class RunnableStation:
+    """A station resolved for an attempt to run against."""
+
+    version_id: uuid.UUID
+    owner_kind: str
+    exam_code: str
+    title: str
+    content: dict[str, Any]
+    published: bool
+
+
+async def runnable_station(
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
+) -> RunnableStation | None:
+    """Resolve the station an attempt will be rendered from.
+
+    Lives here because this slice owns what a station looks like. `attempts`
+    asks for a scenario and never learns the shape of one, which is the same
+    boundary the worker sits behind.
+    """
+    found = await repository.version_for_attempt(session, org_id, version_id)
+    if found is None:
+        return None
+    version, station = found
+    return RunnableStation(
+        version_id=version.id,
+        owner_kind=station.owner_kind,
+        exam_code=await _exam_code(session, station),
+        title=station.title,
+        content=dict(version.content or {}),
+        published=version.status == "published",
     )

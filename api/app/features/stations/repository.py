@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import encode_cursor
@@ -158,3 +158,27 @@ async def list_platform_library(
         return rows, None
     page = rows[:limit]
     return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
+
+
+async def version_for_attempt(
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
+) -> tuple[StationVersion, Station] | None:
+    """A version an attempt may run, with the station that owns it.
+
+    Scoped deliberately: a platform library station (`org_id IS NULL`) is
+    available to everyone, and an org's own station only to that org. Without
+    the second half this would be a global lookup by id, which is the shape
+    that leaks across tenants elsewhere in the legacy code.
+    """
+    owner = (
+        Station.org_id.is_(None)
+        if org_id is None
+        else or_(Station.org_id.is_(None), Station.org_id == org_id)
+    )
+    stmt = (
+        select(StationVersion, Station)
+        .join(Station, Station.id == StationVersion.station_id)
+        .where(StationVersion.id == version_id, owner)
+    )
+    row = (await session.execute(stmt)).first()
+    return (row[0], row[1]) if row else None

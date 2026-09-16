@@ -83,3 +83,16 @@ def _programme_read(programme: Programme, exam: Exam) -> ProgrammeRead:
         status=programme.status,
         source=programme.source,
     )
+
+
+async def exam_for_attempt(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
+    """The exam row an attempt was created against.
+
+    Returns the row rather than a field, because rendering needs its code, its
+    framework and its marking model together and there is no reason to read it
+    three times.
+    """
+    exam = await repository.exam_by_id(session, exam_id)
+    if exam is None:
+        raise UnknownExamError(f"No exam with id {exam_id}.")
+    return exam
