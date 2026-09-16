@@ -955,6 +955,86 @@
         "title": "Dashboard",
         "type": "object"
       },
+      "DecisionRead": {
+        "properties": {
+          "assessment_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Outcome"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "recruitment_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recruitment Outcome"
+          },
+          "released_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Released At"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "signed_off_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed Off At"
+          },
+          "workflow_state": {
+            "title": "Workflow State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "workflow_state",
+          "assessment_outcome",
+          "recruitment_outcome",
+          "rationale",
+          "signed_off_at",
+          "released_at"
+        ],
+        "title": "DecisionRead",
+        "type": "object"
+      },
       "EntitlementRead": {
         "properties": {
           "ends_at": {
@@ -2089,6 +2169,64 @@
         "title": "RosterWarningRead",
         "type": "object"
       },
+      "SaveDecision": {
+        "properties": {
+          "assessment_outcome": {
+            "anyOf": [
+              {
+                "pattern": "^(pass|fail|inconclusive|withheld)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Outcome"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "moderation_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moderation Notes"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "recruitment_outcome": {
+            "anyOf": [
+              {
+                "pattern": "^(hired|reserve|not_hired|withdrawn|pending)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recruitment Outcome"
+          }
+        },
+        "title": "SaveDecision",
+        "type": "object"
+      },
       "SaveGpLeadReview": {
         "description": "`revision` is what the client last read.\n\nRequired, so a client that does not send it cannot overwrite blindly.",
         "properties": {
@@ -2855,6 +2993,58 @@
           "access_revoked"
         ],
         "title": "TraineeRead",
+        "type": "object"
+      },
+      "TraineeResultRead": {
+        "description": "What a candidate sees.\n\nDeliberately narrower than the internal record: moderation notes and the\nevidence snapshot are ours, not theirs. b2b's own schema doc says not to\nreproduce disclosure policy in frontend transforms \u2014 so it is applied here.",
+        "properties": {
+          "assessment_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Outcome"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "released_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Released At"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sitting_id",
+          "assessment_outcome",
+          "rationale",
+          "released_at"
+        ],
+        "title": "TraineeResultRead",
         "type": "object"
       },
       "TranscriptIn": {
@@ -4545,6 +4735,81 @@
         "summary": "List My Entitlements",
         "tags": [
           "entitlements"
+        ]
+      }
+    },
+    "/api/v1/me/results/{sitting_id}": {
+      "get": {
+        "description": "Released revisions only, and narrower than the internal record.",
+        "operationId": "results_read_my_result",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraineeResultRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "result_not_released",
+            "x-codes": [
+              "result_not_released"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Result",
+        "tags": [
+          "results"
         ]
       }
     },
@@ -6253,6 +6518,439 @@
         "summary": "Read Sitting",
         "tags": [
           "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision": {
+      "get": {
+        "operationId": "results_read_decision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "result_not_found",
+            "x-codes": [
+              "result_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Decision",
+        "tags": [
+          "results"
+        ]
+      },
+      "put": {
+        "description": "Each save is a new revision. The table is append-only, so what was\npreviously considered survives.",
+        "operationId": "results_save_decision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_workflow",
+            "x-codes": [
+              "invalid_workflow"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "incompatible_outcomes",
+            "x-codes": [
+              "incompatible_outcomes"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Decision",
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/release": {
+      "post": {
+        "description": "Release re-checks the evidence.\n\nA station re-marked between sign-off and release would otherwise send a\ncandidate an outcome nobody approved.",
+        "operationId": "results_release",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "result_not_found",
+            "x-codes": [
+              "result_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "evidence_changed, invalid_workflow",
+            "x-codes": [
+              "evidence_changed",
+              "invalid_workflow"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Release",
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/sign-off": {
+      "post": {
+        "operationId": "results_sign_off",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "result_not_found",
+            "x-codes": [
+              "result_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_workflow",
+            "x-codes": [
+              "invalid_workflow"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_signable",
+            "x-codes": [
+              "not_signable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sign Off",
+        "tags": [
+          "results"
         ]
       }
     },

@@ -31,6 +31,7 @@ from app.features.catalog.router import router as catalog_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.identity.router import router as identity_router
+from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
 from app.features.roster.router import router as roster_router
 from app.features.sittings.router import router as sittings_router
@@ -72,6 +73,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(sittings_router)
     router.include_router(roster_router)
     router.include_router(reviews_router)
+    router.include_router(results_router)
     router.include_router(billing_router)
     router.include_router(station_sets_router)
     router.include_router(dashboard_router)
