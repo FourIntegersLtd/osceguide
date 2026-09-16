@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from app.core.settings import AppEnv, Settings
+from pydantic import ValidationError
 
 
 def test_local_fills_a_dev_jwt_secret() -> None:

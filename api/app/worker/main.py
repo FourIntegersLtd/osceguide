@@ -16,7 +16,9 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings)
     app = get_jobs_app()
-    get_logger(__name__).info("worker starting", concurrency=settings.worker_concurrency, tasks=list(app.tasks))
+    get_logger(__name__).info(
+        "worker starting", concurrency=settings.worker_concurrency, tasks=list(app.tasks)
+    )
     app.run_worker(concurrency=settings.worker_concurrency)
 
 

@@ -26,11 +26,10 @@ os.environ.setdefault("REDIS_DISABLED", "1")
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
-from httpx import ASGITransport, AsyncClient  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
-
 from app.core.db import dispose_engine, get_engine, get_session, sqlalchemy_url  # noqa: E402
 from app.core.settings import get_settings  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -85,7 +84,9 @@ async def db_session(_engine: None) -> AsyncIterator[AsyncSession]:
     engine = get_engine()
     async with engine.connect() as connection:
         outer = await connection.begin()
-        session = AsyncSession(bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False)
+        session = AsyncSession(
+            bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False
+        )
         try:
             yield session
         finally:
