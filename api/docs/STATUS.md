@@ -6,7 +6,7 @@ domain, then storage, then the service and router. Every commit green.
 
 ## Built
 
-**2,150 tests. 88 endpoints. 22 slices. 20 migrations.**
+**2,369 tests. 104 operations across 88 paths. 22 slices. 21 migrations.**
 
 | Slice | State | Notes |
 |---|---|---|
