@@ -12,4 +12,4 @@ procrastinate, with its job tables living in the application database (migration
 ## Consequences
 - No lost jobs across deploys or Redis restarts; the queue is inspectable with SQL.
 - Job throughput is bounded by Postgres, which is ample at target scale.
-- SQLAlchemy uses the psycopg 3 driver so the API and the queue share a connection dialect.
+- The API and the queue share one driver (psycopg 3) and one database.

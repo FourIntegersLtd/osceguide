@@ -15,7 +15,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.core.db import dispose_engine
+from app.core.db import close_pool
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
 from app.core.openapi import TAGS, operation_id
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     get_logger(__name__).info("starting", env=settings.app_env.value, version=__version__)
     yield
     await close_redis()
-    await dispose_engine()
+    await close_pool()
 
 
 def api_v1_router() -> APIRouter:

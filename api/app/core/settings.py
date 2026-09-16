@@ -61,7 +61,7 @@ class Settings(BaseSettings):
 
     # --- LiveKit workers calling back into this API ---
     worker_secret: str = ""
-    worker_secret_header: str = "X-Worker-Secret"
+    worker_secret_header: str = "X-Worker-Secret"  # noqa: S105 - header name, not a secret
 
     # --- Background jobs ---
     worker_concurrency: int = 4
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     def _require_secrets_when_deployed(self) -> Settings:
         if self.app_env == AppEnv.local or self.app_env == AppEnv.test:
             if not self.jwt_secret:
-                self.jwt_secret = "dev-only-jwt-secret-change-me"
+                self.jwt_secret = "dev-only-jwt-secret-change-me"  # noqa: S105 - local dev only
             return self
         missing = [
             name
@@ -106,7 +106,9 @@ class Settings(BaseSettings):
             if not value.strip()
         ]
         if missing:
-            raise ValueError(f"{self.app_env.value} requires these environment variables: {', '.join(missing)}")
+            raise ValueError(
+                f"{self.app_env.value} requires these environment variables: {', '.join(missing)}"
+            )
         return self
 
 

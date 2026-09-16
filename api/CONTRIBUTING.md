@@ -1,6 +1,10 @@
-# Contributing: how to add a feature slice
+# Contributing: how to add a feature slice, tests first
 
-This is the whole method. Follow it in order; each step produces something the next step needs.
+This is the whole method. It is the one used to rebuild the LiveKit layer in `assessment-platform`: the guard test landed in the first commit, legacy tests were the oracle, golden fixtures froze what must not change, and no commit changed behaviour without a test beside it. Follow the steps in order; each produces something the next needs.
+
+## The rule
+
+**No behaviour change without a test in the same commit.** Guard tests first in the diff, then contract tests, then implementation. Deleting a capability deletes its test in the same commit and, where it matters, adds a guard that the file cannot return.
 
 ## 1. Write the use cases
 
@@ -9,45 +13,39 @@ Before any code, list what people do, in this form:
 > As a **supervisor**, I **start a circuit** so that trainees can join their slots.
 > As a **trainee**, I **see my results** once the org releases them.
 
-Nouns that recur become resources (`circuits`, `slots`, `results`). Verbs that are not create/read/update/delete become candidate actions (`start`). Put the list at the top of the slice README.
+Include the LiveKit worker as an actor where it calls the API. Nouns that recur become resources (`circuits`, `slots`, `results`). Verbs that are not create/read/update/delete become candidate actions (`start`). Put the list at the top of the slice README.
 
-## 2. Model the domain (`domain.py`)
+## 2. Guard tests (`tests/guards/`)
 
-Write the rules as plain Python: enums, dataclasses, state machines, policy predicates. No SQLAlchemy, no FastAPI, no I/O. Ask "what must always be true?" and encode it here (an attempt cannot go from `evaluated` back to `running`; a trainee can only view their own slot). Unit-test this file first; these tests need no database.
+Write down what this slice must never do, as a scan that fails with the file name and the offending token, plus a meta-test that plants a violation and proves the scan catches it. The platform-wide guards already cover: core never imports features, SQL only in repositories, only `core/db.py` controls transactions, routers import only their own `schemas`/`service`/`errors`, org-scoped repository methods take `org_id` first, no legacy vocabulary, worker routes guarded, every route has a response model and documented errors, README headings and a 250-line file cap. Add a slice-specific guard only when the slice has a rule of its own (for example: the assistant content resolver never branches on exam outside the overlay registry).
 
-## 3. Design the tables (`models.py` + migration)
+## 3. Contract tests (`tests/http/`, `tests/contract/`)
 
-Derive tables from the aggregates in step 2. Rules:
+Turn the use cases into HTTP tests against the schemas before any service exists: each route, its success shape, and each `ErrorResponse.code` it can return. Include a role × route access matrix for org-scoped slices. Use `mint_token(...)` from `tests/support/tokens.py`. These tests are the API design made executable; they stay red until step 7.
 
-- uuid primary keys; org-scoped tables carry `org_id` with a foreign key.
-- Real foreign keys for every relationship. Join tables instead of arrays or JSON lists of ids.
-- JSONB only for genuinely document-shaped data (a frozen engine definition, a rendered payload).
-- Extend `Base`, `UUIDPrimaryKey`, `Timestamps` from `app.core.db`.
-
-Then `make revision M="add <slice>"`, read the generated migration, and fix anything autogenerate got wrong.
-
-## 4. Write the repository (`repository.py`)
-
-One class per aggregate. Every method on an org-scoped repository takes `org_id: UUID` as its first parameter. Repositories return ORM objects or simple tuples, never Pydantic schemas. Write repository tests against the real database, including one that proves org B cannot read org A's rows.
-
-## 5. Define the API contract (`schemas.py`)
-
-Request and response models. Response models are mandatory on every route. Field names are snake_case. Do not reuse ORM models as schemas: the API is a promise to the frontend and the table is a storage detail; they change for different reasons.
-
-Naming rules:
+Naming rules the tests should encode:
 
 - Plural kebab-case resources: `/station-templates`, `/trainee-groups`.
 - Nest one level under the owner: `/orgs/{org_slug}/sessions/{id}`; deeper things get their own top-level path with a globally unique id (`/slots/{id}/feedback`).
 - Action sub-resources only for state transitions with rules: `POST /circuits/{id}/start`. Everything else is `PATCH`.
 - Lists return `Page[T]` with a cursor.
+- Errors are `AppError` subclasses; the frontend switches on `code`, never on `message`.
 
-## 6. Write the service (`service.py`)
+## 4. Oracle and golden tests
 
-Use cases as functions or a small class. The service receives a session (the request's transaction), a principal or workspace, and any ports it needs. It raises `AppError` subclasses (define slice-specific ones in `errors.py`) and never returns status codes or `(ok, result)` tuples. It never calls `commit`; the request transaction commits when the handler returns.
+Find the legacy tests that cover this domain in `backend/b2b-api/tests/` and `backend/b2c-api/b2c/tests/`. Port their assertions against the new routes and services with the product vocabulary stripped: they are the oracle for behaviour that must survive. Where output must not change (a rendered prompt, a feedback payload, a cohort score, a report total), capture it from the legacy code into `tests/fixtures/` and assert the platform reproduces it byte-for-byte.
 
-## 7. Write the router (`router.py`)
+## 5. Domain (`tests/unit/` then `domain.py`)
 
-Parse input, resolve dependencies, call one service function, return the schema. If a handler has an `if`, ask whether that rule belongs in the service. Declare error responses with `error_responses(...)` so OpenAPI documents them.
+Write unit tests for the invariants ("an attempt cannot go from `evaluated` back to `running`"), then write `domain.py` as plain Python: enums, dataclasses, state machines, policy predicates. No SQL, no FastAPI, no I/O. These tests need no database.
+
+## 6. Tables and repository (`tests/repository/` then a migration and `repository.py`)
+
+Write repository tests first: constraints that must hold, the lock that prevents a race, cursor pagination, and the mandatory test that org B cannot read org A's rows. Then `make new-migration M="add_<slice>"` and write the SQL by hand (see `supabase/README.md`), then `repository.py`: one class per aggregate, plain SQL strings, `org_id` first on every org-scoped method, returns dict rows or small dataclasses, never API schemas.
+
+## 7. Service and router to green
+
+`schemas.py`: request and response models (response models are mandatory; snake_case; never expose table rows directly). `service.py`: use cases that take the request connection, a principal or workspace, and any ports; raise `AppError` subclasses from `errors.py`; never commit. `router.py`: parse, call one service function, return the schema, declare errors with `error_responses(...)`. If a handler has an `if`, ask whether that rule belongs in the service.
 
 ## 8. Mount and document
 
@@ -56,24 +54,24 @@ Parse input, resolve dependencies, call one service function, return the schema.
 - Add a tag in `app/core/openapi.py`.
 - Fill in `README.md` with the required headings (CI checks them).
 - `make openapi` and commit `openapi.json`.
-
-## 9. Record decisions
-
-If you made a choice another engineer might question, add an ADR under `docs/adr/` (copy the template).
+- Add an ADR under `docs/adr/` if you made a choice another engineer might question.
 
 ## Cross-slice rules
 
-- Slice A may call slice B's **service**, never its repository or models directly.
+- Slice A may call slice B's **service**, never its repository or domain directly.
 - Dependencies point downward only, in the order listed in `pyproject.toml`. If you need to go upward, you have found a missing concept; discuss it before adding an import.
 - `app/core` never imports `app/features`.
+- New external dependency: add a Protocol to `app/core/ports.py` and a fake to `tests/support/fakes.py` in the same commit. Never `patch("module.attribute")`.
 
 ## Tests
 
 | Folder | What | Needs DB |
 |---|---|---|
-| `tests/unit` | `domain.py`, pure helpers | no |
-| `tests/repository` | SQL behaviour, constraints, isolation | yes |
+| `tests/guards` | architecture rules, AST scans over `app/`, run alone in CI | no |
+| `tests/unit` | `domain.py`, pure helpers, fakes | no |
+| `tests/repository` | SQL behaviour, constraints, locks, isolation | yes |
 | `tests/http` | routes through `httpx.AsyncClient` | yes |
 | `tests/contract` | worker routes vs engine contracts | yes |
+| `tests/e2e` | real LiveKit worker against this API; `-m e2e`, env-gated | yes + LiveKit |
 
-External services are faked through `app/core/ports.py` protocols. Never `patch("module.attribute")`.
+`make guards` runs the guards alone. `make test` runs everything but e2e.

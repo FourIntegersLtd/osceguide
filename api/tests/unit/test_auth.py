@@ -43,7 +43,7 @@ def test_expired_token_is_rejected(settings: Settings) -> None:
 
 
 def test_token_signed_with_other_secret_is_rejected(settings: Settings) -> None:
-    other = Settings(_env_file=None, jwt_secret="someone-else")
+    other = Settings(_env_file=None, jwt_secret="someone-else-with-a-thirty-two-byte-secret")
     token = issue_access_token(Principal(user_id=uuid.uuid4(), email="a@b.com"), settings=other)
     with pytest.raises(Unauthenticated):
         decode_access_token(token, settings=settings)

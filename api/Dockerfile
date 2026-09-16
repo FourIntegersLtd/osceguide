@@ -21,4 +21,5 @@ RUN poetry install --only main --no-root
 COPY . .
 
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Schema is migrated before deploy with `supabase db push` (see supabase/README.md).
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

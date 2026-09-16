@@ -1,7 +1,7 @@
 # 0003. Postgres through SQLAlchemy and Alembic; tenancy enforced in code, not RLS
 
 Date: 2026-09-15
-Status: accepted
+Status: superseded by 0008 (SQLAlchemy and Alembic dropped; Postgres, direct access and tenancy rules stand)
 
 ## Context
 Firestore forced client-side joins, unbounded arrays on the user document and non-transactional read-modify-write of progress. The b2b Supabase client spoke to Postgres over PostgREST, which meant no multi-statement transactions, foreign keys left unenforced, and migrations pasted into a web editor with no record of what ran where. Supabase row-level security was nominally enabled but the service-role key bypassed it.
