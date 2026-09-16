@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from app.core.db import Connection
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def ping(conn: Connection) -> None:
-    await conn.execute("select 1")
+async def ping(session: AsyncSession) -> None:
+    await session.execute(text("select 1"))

@@ -21,6 +21,7 @@ from tests.guards._scan import imported_modules, rel, slice_dirs
 # Anything that performs or describes I/O. `app.core.db` is listed explicitly
 # because importing a connection type is how the drift usually starts.
 BANNED_PREFIXES = (
+    "sqlalchemy",
     "psycopg",
     "fastapi",
     "starlette",
@@ -77,7 +78,7 @@ def test_domain_does_not_reach_another_slice(path: Path) -> None:
 def test_the_guard_would_catch_a_domain_that_queries(tmp_path: Path) -> None:
     leaky = tmp_path / "domain.py"
     leaky.write_text(
-        "import psycopg\nfrom app.core.db import Connection\nfrom app.core.pagination import Page\n",
+        "from sqlalchemy import select\nfrom app.core.db import Base\nfrom app.core.pagination import Page\n",
         encoding="utf-8",
     )
-    assert violations(leaky) == ["app.core.db", "psycopg"]
+    assert violations(leaky) == ["app.core.db", "sqlalchemy"]

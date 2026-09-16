@@ -13,8 +13,11 @@ import pytest
 
 from tests.guards._scan import APP_ROOT, CORE_ROOT, attribute_names, python_files, rel
 
-TRANSACTION_CONTROL = {"commit", "rollback", "transaction"}
-ALLOWED = {CORE_ROOT / "db.py", CORE_ROOT / "migrations.py"}
+# `flush` is included deliberately: it is the quiet way to force a write
+# early, and a service that needs an id before commit wants the repository to
+# return one, not to reach into the unit of work.
+TRANSACTION_CONTROL = {"commit", "rollback", "transaction", "begin", "begin_nested", "flush"}
+ALLOWED = {CORE_ROOT / "db.py"}
 
 
 @pytest.mark.parametrize(
@@ -24,11 +27,17 @@ def test_only_core_db_controls_transactions(path: Path) -> None:
     bad = sorted(attribute_names(path) & TRANSACTION_CONTROL)
     assert not bad, (
         f"{rel(path)} calls {bad}. The request transaction is opened and committed by "
-        "core.db.get_connection; raise an AppError to roll back."
+        "core.db.get_session; raise an AppError to roll back."
     )
 
 
 def test_the_guard_would_catch_a_commit(tmp_path: Path) -> None:
     leaky = tmp_path / "service.py"
-    leaky.write_text("async def save(conn):\n    await conn.commit()\n", encoding="utf-8")
+    leaky.write_text("async def save(session):\n    await session.commit()\n", encoding="utf-8")
     assert "commit" in attribute_names(leaky)
+
+
+def test_the_guard_would_catch_a_flush(tmp_path: Path) -> None:
+    leaky = tmp_path / "service.py"
+    leaky.write_text("async def save(session):\n    await session.flush()\n", encoding="utf-8")
+    assert TRANSACTION_CONTROL & attribute_names(leaky) == {"flush"}

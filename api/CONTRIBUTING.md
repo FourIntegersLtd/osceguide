@@ -41,7 +41,7 @@ Write unit tests for the invariants ("an attempt cannot go from `evaluated` back
 
 ## 6. Tables and repository (`tests/repository/` then a migration and `repository.py`)
 
-Write repository tests first: constraints that must hold, the lock that prevents a race, cursor pagination, and the mandatory test that org B cannot read org A's rows. Then `make new-migration M="add_<slice>"` and write the SQL by hand (see `supabase/README.md`), then `repository.py`: one class per aggregate, plain SQL strings, `org_id` first on every org-scoped method, returns dict rows or small dataclasses, never API schemas.
+Write repository tests first: constraints that must hold, the lock that prevents a race, cursor pagination, and the mandatory test that org B cannot read org A's rows. Then declare the tables in `models.py`, run `make new-migration M="add_<slice>"` and **read what autogenerate wrote** — it misses constraint and index changes often enough that review is part of the step, not a courtesy. Then `repository.py`: one class per aggregate, `org_id` first on every org-scoped method, returning mapped objects or small dataclasses, never API schemas. Mapped classes stay inside the repository; a guard enforces it, because a lazy relationship can cross a tenant boundary with no visible query.
 
 ## 7. Service and router to green
 

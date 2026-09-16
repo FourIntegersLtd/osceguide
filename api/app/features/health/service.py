@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
-from app.core.db import Connection
 from app.core.logging import get_logger
 from app.features.health import repository
 from app.features.health.schemas import CheckState, HealthResponse
@@ -14,9 +14,9 @@ log = get_logger(__name__)
 CHECK_TIMEOUT_SECONDS = 2.0
 
 
-async def check_database(conn: Connection) -> CheckState:
+async def check_database(session: AsyncSession) -> CheckState:
     try:
-        await asyncio.wait_for(repository.ping(conn), CHECK_TIMEOUT_SECONDS)
+        await asyncio.wait_for(repository.ping(session), CHECK_TIMEOUT_SECONDS)
         return "ok"
     except Exception as exc:  # noqa: BLE001 - health must never raise
         log.warning("database check failed", error=str(exc))
@@ -34,8 +34,8 @@ async def check_redis(redis: Redis | None) -> CheckState:
         return "error"
 
 
-async def health_report(conn: Connection, redis: Redis | None) -> HealthResponse:
-    checks = {"database": await check_database(conn), "redis": await check_redis(redis)}
+async def health_report(session: AsyncSession, redis: Redis | None) -> HealthResponse:
+    checks = {"database": await check_database(session), "redis": await check_redis(redis)}
     if checks["database"] == "error":
         status = "down"
     elif checks["redis"] == "error":
