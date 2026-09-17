@@ -71,7 +71,7 @@ def test_speech_choices_come_from_the_mode_table(monkeypatch) -> None:
     assert speech.build_assistant_llm(mode_profile(WorkerType.HELP)) == "vision"
     assert speech.build_assistant_llm(mode_profile(WorkerType.ONBOARDING)) == "vision"
     assert speech.build_assistant_llm(mode_profile(WorkerType.CONSULTING_DOCTOR)) == "llm:tutor"
-    assert speech.build_assistant_llm(mode_profile(WorkerType.DASHBOARD)) == "llm:patient"
+    assert speech.build_assistant_llm(mode_profile(WorkerType.DASHBOARD)) == "llm:tutor"
     assert speech.build_assistant_tts(mode_profile(WorkerType.HELP), voice_help_intent="faq") == ("tutor", "openai")
     assert speech.build_assistant_tts(mode_profile(WorkerType.HELP), voice_help_intent="guide") == ("tutor", "deepgram")
     assert speech.build_assistant_tts(mode_profile(WorkerType.DASHBOARD)) == ("tutor", "deepgram")

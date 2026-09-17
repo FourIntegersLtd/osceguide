@@ -41,6 +41,10 @@ PROGRESS_STEP_ACTING = "acting"
 PROGRESS_STEP_DONE = "done"
 PROGRESS_STEPS = (PROGRESS_STEP_CAPTURING, PROGRESS_STEP_READING, PROGRESS_STEP_ACTING, PROGRESS_STEP_DONE)
 
+# Worker → browser: something the backend asked to show alongside a tool answer.
+# The payload is the backend's, passed through unchanged; the worker never reads it.
+DATA_TYPE_ASSISTANT_CARD = "assistant_card"
+
 # Superseded by DATA_TYPE_GUIDANCE_PROGRESS; still published so a frontend from
 # before the progress panel keeps its loading indicator. Remove one release on.
 TOOL_RUNNING_MESSAGE_TYPE = "tool_running"

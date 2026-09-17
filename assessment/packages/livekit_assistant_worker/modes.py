@@ -33,6 +33,9 @@ class ModeProfile:
     llm: LlmTier
     max_tool_steps: int
     keeps_transcript: bool = False
+    """Deliver the transcript to the backend when the session ends; what it keeps is its policy."""
+    remote_tools: bool = False
+    """Load the tools the bootstrap names: their schema arrives rendered, every call is forwarded."""
     gpt_live_eligible: bool = False
     ui_guidance: bool = False
     scene_updates: bool = False
@@ -46,7 +49,7 @@ class ModeProfile:
 MODE_PROFILES: dict[WorkerType, ModeProfile] = {
     WorkerType.HELP: ModeProfile(WorkerType.HELP, llm="vision", max_tool_steps=10, keeps_transcript=True, gpt_live_eligible=True, ui_guidance=True),
     WorkerType.ONBOARDING: ModeProfile(WorkerType.ONBOARDING, llm="vision", max_tool_steps=10, scene_updates=True, opens_with_generated_reply=True),
-    WorkerType.DASHBOARD: ModeProfile(WorkerType.DASHBOARD, llm="patient", max_tool_steps=5),
+    WorkerType.DASHBOARD: ModeProfile(WorkerType.DASHBOARD, llm="tutor", max_tool_steps=5, keeps_transcript=True, remote_tools=True),
     WorkerType.CONSULTING_DOCTOR: ModeProfile(WorkerType.CONSULTING_DOCTOR, llm="tutor", max_tool_steps=5, paced=True),
 }
 
