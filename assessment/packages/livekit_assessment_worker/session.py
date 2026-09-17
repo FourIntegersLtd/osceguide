@@ -11,7 +11,7 @@ from osce_assessment.contracts import AIInteractionProfile, AssessmentDefinition
 from osce_assessment.runtime import AttemptRuntime, RuntimeOutcome
 from voice_infra import BackendRegistry
 from voice_infra.cloud_slot import register_cloud_slot_lifecycle
-from voice_infra.participants import other_agents_present, wait_for_candidate
+from voice_infra.participants import Outranked, agents_with_priority, wait_for_candidate
 from voice_infra.worker_config import optional_float
 
 from .adapter import LiveKitInteractionAdapter
@@ -65,9 +65,11 @@ class AssessmentSession:
 
         await asyncio.sleep(self._settle)
         my_identity = ctx.room.local_participant.identity
-        others = await other_agents_present(ctx.room, my_identity)
-        if others:
-            logger.warning("[assessment] other agents present %r; exiting to avoid a duplicate", others)
+        holders = await agents_with_priority(ctx.room, my_identity)
+        if holders:
+            # Only to an identity that sorts before mine, so a duplicate
+            # dispatch leaves exactly one agent rather than two or none.
+            _leave(ctx, holders[0])
             return None
 
         try:
@@ -77,7 +79,17 @@ class AssessmentSession:
             return None
 
         try:
-            candidate = await wait_for_candidate(ctx.room, metadata.candidate_ref, timeout=self._candidate_timeout)
+            candidate = await wait_for_candidate(
+                ctx.room,
+                metadata.candidate_ref,
+                timeout=self._candidate_timeout,
+                my_identity=my_identity,
+            )
+        except Outranked as holder:
+            # A duplicate dispatch that had not joined yet when the check above
+            # ran. Whoever sorts first keeps the room, so exactly one stays.
+            _leave(ctx, str(holder))
+            return None
         except asyncio.TimeoutError:
             logger.warning("[assessment] no candidate joined within %ss attempt=%s", self._candidate_timeout, metadata.attempt_id)
             return None
@@ -101,3 +113,22 @@ class AssessmentSession:
             metadata.attempt_id, outcome.attempt.status.value, outcome.delivered, outcome.error,
         )
         return outcome
+
+
+def _leave(ctx: Any, holder: str) -> None:
+    """Give up the room to ``holder``, and actually go.
+
+    Returning from the entrypoint ends this job's work but leaves the agent
+    connected, so a yielding duplicate stayed in the room as a silent second
+    participant — which is what a candidate, and the duplicate-dispatch test,
+    both see. Shutting the job down is what removes it.
+
+    Defensive about `shutdown` for the same reason the assistant worker is:
+    the outcome here is that this agent stops, and a context that cannot be
+    shut down must not turn that into an exception on the way out.
+    """
+    logger.warning("[assessment] yielding the room to %s", holder)
+    try:
+        ctx.shutdown(reason=f"duplicate_of_{holder}")
+    except Exception as exc:  # noqa: BLE001 — leaving is best-effort
+        logger.warning("[assessment] shutdown after yielding failed: %s", exc)

@@ -17,13 +17,13 @@ def stack(e2e_env):
     """A stub backend and a worker registered under a unique agent name."""
     attempt_id = f"attempt-{uuid.uuid4().hex[:8]}"
     backend = StubBackend(attempt_id=attempt_id, candidate_ref="candidate-e2e")
-    asyncio.run(backend.start())
+    backend.serve()
     worker = WorkerProcess(agent_name=f"e2e-assessment-{uuid.uuid4().hex[:6]}", backend_url=backend.base_url, env=e2e_env, candidate_timeout_s=20)
     worker.start()
     asyncio.run(asyncio.sleep(8))  # worker registration
     yield backend, worker, e2e_env
     worker.stop()
-    asyncio.run(backend.stop())
+    backend.shutdown()
 
 
 def _metadata(backend: StubBackend) -> dict:

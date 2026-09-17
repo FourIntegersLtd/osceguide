@@ -80,9 +80,13 @@ class FakeJobContext:
         self.job = SimpleNamespace(id="job-1", metadata=metadata)
         self.connect_calls: list[dict[str, Any]] = []
         self.log_context_fields: dict[str, Any] = {}
+        self.shutdowns: list[str] = []
 
     async def connect(self, **kwargs: Any) -> None:
         self.connect_calls.append(kwargs)
+
+    def shutdown(self, *, reason: str = "") -> None:
+        self.shutdowns.append(reason)
 
     def add_shutdown_callback(self, fn: Callable[..., Any]) -> None:
         self.shutdown_callbacks.append(fn)

@@ -56,7 +56,7 @@ def fake_adapter():
 def no_other_agents():
     async def none(*_, **__):
         return []
-    with patch.object(session_module, "other_agents_present", none):
+    with patch.object(session_module, "agents_with_priority", none):
         yield
 
 
@@ -117,17 +117,46 @@ def test_unknown_backend_label_fails_loudly(fake_adapter) -> None:
         asyncio.run(_session().entrypoint(ctx))
 
 
-def test_another_agent_in_the_room_makes_this_one_leave(bootstrap, fake_adapter) -> None:
+def test_an_agent_that_holds_the_room_makes_this_one_leave(bootstrap, fake_adapter) -> None:
+    """Yielding is now to an agent that outranks this one, so a duplicate
+    dispatch leaves exactly one rather than two or none."""
     room = FakeRoom(local_identity="agent-me")
-    room.join("agent-stale")
+    room.join("agent-earlier")
     ctx = FakeJobContext(room, metadata=METADATA)
 
-    async def stale(*_, **__):
-        return ["agent-stale"]
+    async def holds(*_, **__):
+        return ["agent-earlier"]
 
-    with patch.object(session_module, "other_agents_present", stale), patch.object(session_module, "fetch_bootstrap") as fetch:
+    with patch.object(session_module, "agents_with_priority", holds), patch.object(session_module, "fetch_bootstrap") as fetch:
         assert asyncio.run(_session().entrypoint(ctx)) is None
     fetch.assert_not_called()
+    assert fake_adapter.profiles == []
+    # And it leaves. Returning from the entrypoint ends the job's work but
+    # leaves the agent connected, so a yielding duplicate sat in the room as a
+    # silent second participant — which is exactly what the candidate sees.
+    assert ctx.shutdowns == ["duplicate_of_agent-earlier"]
+
+
+def test_a_duplicate_that_arrives_while_waiting_also_leaves(bootstrap, fake_adapter) -> None:
+    """The one a single up-front check cannot catch: it joins after we looked."""
+    from voice_infra.participants import Outranked
+
+    room = FakeRoom(local_identity="agent-me")
+    ctx = FakeJobContext(room, metadata=METADATA)
+
+    async def nobody_yet(*_, **__):
+        return []
+
+    async def outranked_later(*_, **__):
+        raise Outranked("agent-earlier")
+
+    with (
+        patch.object(session_module, "agents_with_priority", nobody_yet),
+        patch.object(session_module, "fetch_bootstrap", return_value=bootstrap),
+        patch.object(session_module, "wait_for_candidate", outranked_later),
+    ):
+        assert asyncio.run(_session().entrypoint(ctx)) is None
+    assert ctx.shutdowns == ["duplicate_of_agent-earlier"]
     assert fake_adapter.profiles == []
 
 
