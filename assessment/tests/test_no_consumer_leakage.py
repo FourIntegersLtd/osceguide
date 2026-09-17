@@ -76,26 +76,30 @@ BANNED_IMPORT_ROOTS = frozenset(
 )
 
 # Legacy product vocabulary is quarantined in this package, nowhere else.
-COMPAT_PACKAGE = "compat"
-
 APP_TYPE_SPELLINGS = ("app_type", "apptype")
 
 
 def python_files() -> list[Path]:
-    return sorted(PACKAGE_ROOT.rglob("*.py"))
+    """Every source file in the package, excluding build artefacts.
+
+    ``build/`` is a gitignored copy setuptools leaves behind; scanning it makes
+    the guard report on code that was deleted from the source tree.
+    """
+    return sorted(
+        path
+        for path in PACKAGE_ROOT.rglob("*.py")
+        if "build" not in path.relative_to(PACKAGE_ROOT).parts
+    )
 
 
 def engine_files() -> list[Path]:
-    """Engine modules: everything outside the migration-shim package."""
-    return [
-        path
-        for path in python_files()
-        if COMPAT_PACKAGE not in path.relative_to(PACKAGE_ROOT).parts
-    ]
+    """Every module in the package. There is no longer a quarantine to exclude.
 
-
-def compat_files() -> list[Path]:
-    return [path for path in python_files() if path not in set(engine_files())]
+    ``compat/`` held a legacy product-string translation and was the one place
+    allowed to speak that vocabulary. It has been deleted: nothing resolves an
+    exam by string any more, so the exception it needed goes with it.
+    """
+    return python_files()
 
 
 def _module_id(path: Path) -> str:
@@ -194,45 +198,21 @@ def test_engine_code_never_speaks_legacy_exam_vocabulary(path: Path) -> None:
         }
     )
     assert not offenders, (
-        f"{_module_id(path)} uses {offenders}. Translate once via "
-        "compat.framework_id_for_app_type and pass a framework id onwards."
+        f"{_module_id(path)} uses {offenders}. An exam is resolved by the caller; "
+        "the engine takes a framework id and never a product string."
     )
 
 
-def test_the_migration_shim_exists_and_is_where_it_claims_to_be() -> None:
-    """The quarantine must hold a real translation, not be a stale exception."""
-    from osce_assessment.compat import framework_id_for_app_type
-
-    assert callable(framework_id_for_app_type)
-    assert compat_files(), "compat/ is empty; remove the exception from this guard"
+def test_the_migration_shim_is_gone() -> None:
+    """It named four products, so it could only ever have described four exams."""
+    with pytest.raises(ModuleNotFoundError):
+        import osce_assessment.compat  # noqa: F401
 
 
-@pytest.mark.parametrize("path", engine_files(), ids=_module_id)
-def test_the_engine_never_imports_the_migration_shim(path: Path) -> None:
-    """Shims are for consumers to call, not for the engine to depend on."""
-    source = path.read_text(encoding="utf-8")
-    tree = ast.parse(source, filename=str(path))
-    offending: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            if module.split(".")[0] == COMPAT_PACKAGE or f".{COMPAT_PACKAGE}" in module:
-                offending.append(module)
-            # A relative "from .compat import x" carries the name in aliases.
-            if node.level and any(
-                alias.name == COMPAT_PACKAGE for alias in node.names
-            ):
-                offending.append(f"relative {COMPAT_PACKAGE}")
-        elif isinstance(node, ast.Import):
-            offending.extend(
-                alias.name
-                for alias in node.names
-                if COMPAT_PACKAGE in alias.name.split(".")
-            )
-    assert not offending, (
-        f"{_module_id(path)} imports the migration shim {sorted(set(offending))}. "
-        "Consumers call compat; the engine takes a framework id."
-    )
+def test_the_engine_ships_no_frameworks_of_its_own() -> None:
+    """A rubric is authored and stored; the package holds machinery, not content."""
+    with pytest.raises(ModuleNotFoundError):
+        import osce_assessment.catalog  # noqa: F401
 
 
 @pytest.mark.parametrize("path", python_files(), ids=lambda p: str(p.name))
@@ -242,18 +222,6 @@ def test_engine_imports_no_vendor_sdks(path: Path) -> None:
         f"{path.relative_to(PACKAGE_ROOT)} imports {offenders}. "
         "The engine depends on pydantic only; clients and adapters are injected."
     )
-
-
-def test_the_quarantine_is_the_only_place_exam_vocabulary_lives() -> None:
-    """Belt and braces: compat really does hold what the engine is denied."""
-    vocabulary = {
-        spelling
-        for path in compat_files()
-        for token in code_tokens(path)
-        for spelling in APP_TYPE_SPELLINGS
-        if spelling in token
-    }
-    assert vocabulary, "compat/ no longer mentions app_type; the shim may be dead"
 
 
 def test_the_guard_would_catch_a_real_leak(tmp_path: Path) -> None:

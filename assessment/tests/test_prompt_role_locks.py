@@ -26,10 +26,8 @@ from osce_assessment.prompts import (
     EXAMINER_GREETINGS,
     PATIENT_GREETINGS,
     AthenaDoctorFormatter,
-    ConversationPromptFormatter,
     DebriefPromptFormatter,
-    OrthoPromptFormatter,
-    create_org_station_prompt,
+    create_station_prompt,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -39,18 +37,19 @@ def _station(name: str) -> dict:
     return json.loads((FIXTURES / "stations" / f"{name}.json").read_text())
 
 
-def _library_patient() -> str:
-    return ConversationPromptFormatter.create_prompt(_station("library_station_sca"))
+def _untemplated_patient() -> str:
+    """A station with no template: block ids matched by their common spellings."""
+    return create_station_prompt(_station("untemplated_station"))
 
 
-def _org_patient() -> str:
-    return create_org_station_prompt(_station("org_station_demo"))
+def _templated_patient() -> str:
+    station = _station("templated_station")
+    return create_station_prompt(station, station["layout"])
 
 
 def _examiner() -> str:
-    return OrthoPromptFormatter.create_ortho_prompt(
-        {"station_id": "o1", "station_name": "Open tibial fracture", "clinical_scenario": "A 30 year old."}
-    )
+    station = _station("templated_station")
+    return create_station_prompt(station, station["layout"], persona="examiner")
 
 
 def _doctor() -> str:
@@ -62,8 +61,8 @@ def _tutor() -> str:
 
 
 LIVE_PROMPTS = {
-    "library patient": (_library_patient, "You are the patient", "speaking to you is the doctor"),
-    "org patient": (_org_patient, "You are the patient", "speaking to you is the doctor"),
+    "untemplated patient": (_untemplated_patient, "You are the patient", "speaking to you is the doctor"),
+    "templated patient": (_templated_patient, "You are the patient", "speaking to you is the doctor"),
     "examiner": (_examiner, "You are the examiner", "speaking to you is the candidate"),
     "consulting doctor": (_doctor, "You are the doctor", "speaking to you is the patient"),
     "debrief tutor": (_tutor, "You are the tutor", "speaking to you is the doctor"),
@@ -86,7 +85,7 @@ def test_every_live_persona_is_told_it_is_being_spoken_aloud(name, spec) -> None
 
 
 def test_the_patient_is_forbidden_the_clinician_behaviours_that_actually_happen() -> None:
-    for prompt in (_library_patient(), _org_patient()):
+    for prompt in (_untemplated_patient(), _templated_patient()):
         assert "offer a diagnosis" in prompt
         assert "examine anyone" in prompt
         assert "safety-net, summarise the consultation" in prompt
@@ -129,16 +128,26 @@ def test_the_tutor_is_told_it_was_not_in_the_consultation() -> None:
 
 
 def test_the_diagnosis_is_fenced_off_rather_than_announced() -> None:
-    """It used to be the first heading, which invites reasoning about the case instead of living it."""
-    prompt = _library_patient()
-    diagnosis = _station("library_station_sca")["station_name"]
+    """It used to be the first heading, which invites reasoning about the case instead of living it.
+
+    A station is named for its diagnosis, so the title is fenced for a patient
+    persona however the station was authored.
+    """
+    prompt = _templated_patient()
+    diagnosis = _station("templated_station")["title"]
     assert "<never_say>" in prompt
     assert prompt.index("<never_say>") < prompt.index(diagnosis)
     assert not prompt.startswith("# Diagnosis")
 
 
+def test_the_examiner_is_told_the_station_rather_than_forbidden_it() -> None:
+    """An examiner names the station; only the patient must not."""
+    prompt = _examiner()
+    assert "<station>" in prompt and "<never_say>" not in prompt
+
+
 def test_hidden_material_is_not_volunteered() -> None:
-    for prompt in (_library_patient(), _org_patient()):
+    for prompt in (_untemplated_patient(), _templated_patient()):
         assert "<hidden_until_asked" in prompt
         assert "Never volunteer it." in prompt
 

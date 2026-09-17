@@ -6,14 +6,12 @@ pushes a note into the model's context as each mark goes by. Both derive from
 the same dataclass here, so a change to a duration moves the prompt text and
 the schedule together.
 
-The numbers mirror the station lengths the consumers already use --- the
-``*_SIMULATION_TIMER_DURATION`` constants in the frontend and the timing table
-in the other backend. History gets half the station; the rest is explanation,
-management and safety netting.
+A sensible shape is history taking for about half the station, with the rest
+left for explanation, management and safety netting.
 
-Keyed by framework id, which is the engine's vocabulary for an exam. Callers
-still holding a legacy product string translate it once through
-``compat.framework_id_for_app_type`` before calling in.
+The numbers are not held here. A rubric's author sets them, they are stored
+with the rubric version, and they arrive as a payload the caller passes in ---
+this module owns the arithmetic and the wording, never the durations.
 
 Every word the model will ever read about time is authored here rather than in
 the worker, because the worker is not allowed to know which exam it is running.
@@ -22,17 +20,22 @@ It receives seconds and finished sentences.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 __all__ = [
-    "DEFAULT_FRAMEWORK_ID",
-    "PACING_BY_FRAMEWORK_ID",
+    "DEFAULT_PACING",
     "ConsultationPacing",
+    "InvalidPacingError",
     "consultation_pacing_payload",
     "human_duration",
-    "pacing_for_framework",
+    "pacing_from_payload",
 ]
+
+
+class InvalidPacingError(ValueError):
+    """A stored clock that does not describe a runnable consultation."""
 
 
 @dataclass(frozen=True)
@@ -64,24 +67,42 @@ class ConsultationPacing:
         return self.safety_net_starts_at - self.history_seconds
 
 
-PACING_BY_FRAMEWORK_ID: dict[str, ConsultationPacing] = {
-    "sca-rcgp-v1": ConsultationPacing(total_seconds=720, history_seconds=360, introduction_seconds=30, safety_net_seconds=120),
-    "plab2-gmc-v1": ConsultationPacing(total_seconds=480, history_seconds=240, introduction_seconds=20, safety_net_seconds=80),
-    "casc-rcpsych-v1": ConsultationPacing(total_seconds=480, history_seconds=240, introduction_seconds=20, safety_net_seconds=80),
-    "ortho-frcs-v1": ConsultationPacing(total_seconds=600, history_seconds=300, introduction_seconds=30, safety_net_seconds=100),
-}
+# A generic twelve-minute consultation, for a caller that has no stored clock
+# to hand. Not any particular exam's timing: the exam's own numbers live with
+# its rubric, and a caller that has them never falls back to this.
+DEFAULT_PACING = ConsultationPacing(
+    total_seconds=720,
+    history_seconds=360,
+    introduction_seconds=30,
+    safety_net_seconds=120,
+)
 
-DEFAULT_FRAMEWORK_ID = "sca-rcgp-v1"
 
+def pacing_from_payload(data: Mapping[str, Any]) -> ConsultationPacing:
+    """Build a clock from a rubric version's stored pacing.
 
-def pacing_for_framework(framework_id: str | None) -> ConsultationPacing:
-    """The clock for one framework; the longest station when the id is unknown.
-
-    An unrecognised id gets the most generous clock rather than the meanest:
-    a consultation given too much time reads as unhurried, one given too little
-    reads as the rush this module exists to fix.
+    Validated here rather than at the storage boundary, because this module is
+    the one that knows what the derived budgets mean: a mark out of order gives
+    a phase a negative length, and the model is told to do the impossible.
     """
-    return PACING_BY_FRAMEWORK_ID.get((framework_id or "").strip().lower(), PACING_BY_FRAMEWORK_ID[DEFAULT_FRAMEWORK_ID])
+    try:
+        pacing = ConsultationPacing(
+            total_seconds=int(data["total_seconds"]),
+            history_seconds=int(data["history_seconds"]),
+            introduction_seconds=int(data["introduction_seconds"]),
+            safety_net_seconds=int(data["safety_net_seconds"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise InvalidPacingError(f"pacing needs four whole numbers of seconds: {exc}") from exc
+    if pacing.total_seconds <= 0:
+        raise InvalidPacingError("a consultation with no time cannot be run")
+    if not 0 < pacing.introduction_seconds < pacing.history_seconds:
+        raise InvalidPacingError("the introduction must end before history taking does")
+    if not pacing.history_seconds < pacing.safety_net_starts_at:
+        raise InvalidPacingError("safety netting must start after history taking ends")
+    if pacing.safety_net_starts_at >= pacing.total_seconds:
+        raise InvalidPacingError("safety netting must start before the consultation ends")
+    return pacing
 
 
 def human_duration(seconds: int) -> str:
@@ -173,13 +194,12 @@ def _marks(pacing: ConsultationPacing) -> list[dict[str, Any]]:
     ]
 
 
-def consultation_pacing_payload(framework_id: str | None) -> dict[str, Any]:
+def consultation_pacing_payload(pacing: ConsultationPacing) -> dict[str, Any]:
     """The clock as data the worker can run without knowing which exam this is.
 
     Absolute marks in seconds, each with its sentence already written, and the
     phase labels the time tool reads back. JSON-able: it crosses HTTP.
     """
-    pacing = pacing_for_framework(framework_id)
     return {
         "total_seconds": pacing.total_seconds,
         "marks": _marks(pacing),

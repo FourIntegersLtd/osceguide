@@ -18,9 +18,10 @@ Three properties make it safe to put on a learner's screen mid-consultation:
   produced here; grading stays in ``evaluator.py``, which remains the single
   authority on the mark.
 
-Only competencies in ``LIVE_DOMAINS`` are considered. Whole-consultation
-judgements — "avoids repetition", "structures the consultation" — cannot be
-decided from a window of turns and are deliberately excluded.
+Only competencies in domains the framework marks ``live`` are considered.
+Whole-consultation judgements — "avoids repetition", "structures the
+consultation" — cannot be decided from a window of turns, so the rubric's
+author leaves their domain un-live.
 """
 
 from __future__ import annotations
@@ -41,10 +42,6 @@ from ..schemas.strict import inline_refs, to_strict_json_schema
 logger = logging.getLogger(__name__)
 
 ClientFactory = Callable[[], Any | None]
-
-# Domains whose competencies can be decided from a window of turns. The global
-# skills domain is excluded by design: it is global.
-LIVE_DOMAINS: tuple[str, ...] = ("tasks", "relating_to_others")
 
 # How many recent turns the detector is shown by default.
 DEFAULT_WINDOW_TURNS = 8
@@ -91,9 +88,16 @@ class LiveCoverageError(RuntimeError):
     """No provider produced a usable answer for this pass."""
 
 
-def live_competency_ids(framework: Any, domains: Sequence[str] = LIVE_DOMAINS) -> tuple[str, ...]:
-    """Competency ids the detector may report, in framework order."""
-    wanted = set(domains)
+def live_competency_ids(framework: Any, domains: Sequence[str] | None = None) -> tuple[str, ...]:
+    """Competency ids the detector may report, in framework order.
+
+    Which domains those are is the framework's own business: a domain marks
+    itself `live` when its competencies can be decided from a window of turns.
+    This was a pair of literal domain ids, which meant a rubric that did not
+    happen to call its domains `tasks` and `relating_to_others` got no live
+    coverage at all.
+    """
+    wanted = set(domains) if domains is not None else set(framework.live_domain_ids)
     return tuple(c.id for c in framework.competencies if c.domain_id in wanted)
 
 
@@ -191,13 +195,14 @@ class LiveCoverageDetector:
         framework_provider: FrameworkProvider,
         primary_client: ClientFactory,
         fallback_client: ClientFactory | None = None,
-        domains: Sequence[str] = LIVE_DOMAINS,
+        domains: Sequence[str] | None = None,
         require_grounded_quotes: bool = True,
     ) -> None:
         self._frameworks = framework_provider
         self._primary = primary_client
         self._fallback = fallback_client
-        self._domains = tuple(domains)
+        # None means "whichever domains the framework declares live".
+        self._domains = tuple(domains) if domains is not None else None
         self._require_grounded = require_grounded_quotes
 
     def detect(

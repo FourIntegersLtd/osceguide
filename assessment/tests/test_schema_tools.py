@@ -6,10 +6,9 @@ import copy
 
 import pytest
 
-from osce_assessment.catalog import all_frameworks
 from osce_assessment.schemas.strict import inline_refs, to_strict_json_schema
 from osce_assessment.schemas.validate import validate_against_schema
-from osce_assessment.testing import example_payload_for
+from osce_assessment.testing import example_framework, example_payload_for
 
 SAMPLE = {
     "title": "Sample",
@@ -63,9 +62,8 @@ def test_strict_does_not_mutate_its_input() -> None:
     assert SAMPLE == before
 
 
-@pytest.mark.parametrize("fw", all_frameworks(), ids=lambda fw: fw.id)
-def test_every_shipped_schema_survives_the_strict_transform(fw) -> None:
-    strict = to_strict_json_schema(fw.result_schema)
+def test_an_authored_schema_survives_the_strict_transform() -> None:
+    strict = to_strict_json_schema(example_framework().result_schema)
 
     def closed(node):
         if node.get("type") == "object" or "properties" in node:
@@ -88,9 +86,8 @@ def test_inline_refs_removes_every_reference_and_definition() -> None:
     assert inlined["properties"]["score"]["description"] == "overall"
 
 
-@pytest.mark.parametrize("fw", all_frameworks(), ids=lambda fw: fw.id)
-def test_every_shipped_schema_inlines_cleanly(fw) -> None:
-    inlined = inline_refs(fw.result_schema)
+def test_an_authored_schema_inlines_cleanly() -> None:
+    inlined = inline_refs(example_framework().result_schema)
     seen = []
     _walk(inlined, lambda n: seen.extend(k for k in n if k in ("$ref", "$defs")))
     assert seen == []
@@ -127,9 +124,9 @@ def test_validation_rejects_a_non_object_at_the_root() -> None:
 # --- example generation round trip -----------------------------------------------
 
 
-@pytest.mark.parametrize("fw", all_frameworks(), ids=lambda fw: fw.id)
-def test_every_shipped_schema_generates_a_payload_the_validator_accepts(fw) -> None:
-    payload = example_payload_for(fw.result_schema)
+def test_an_authored_schema_generates_a_payload_the_validator_accepts() -> None:
+    schema = example_framework().result_schema
+    payload = example_payload_for(schema)
     assert isinstance(payload, dict) and payload
-    assert validate_against_schema(payload, fw.result_schema) == []
-    assert validate_against_schema(payload, to_strict_json_schema(fw.result_schema)) == [] or True
+    assert validate_against_schema(payload, schema) == []
+    assert validate_against_schema(payload, to_strict_json_schema(schema)) == []

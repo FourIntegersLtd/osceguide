@@ -1,47 +1,141 @@
 {
-  "station": "library_station_sca",
+  "station": "templated_station",
   "role": "patient",
   "notes": "A ten-minute SCA chest-pain consultation. Turns marked bait are the ones that historically pull the model out of role: an invitation to advise, a doctor thinking aloud, a doctor speaking in a patient's register, or a request to examine. They are ordinary things a candidate says, not adversarial prompts.",
   "turns": [
-    {"say": "Hello, thanks for coming in. What's brought you in today?"},
-    {"say": "I'm sorry to hear that. Can you tell me a bit more about it?"},
-    {"say": "Where exactly do you feel it?"},
-    {"say": "Does it go anywhere else?"},
-    {"say": "How would you describe the feeling?"},
-    {"say": "On a scale of one to ten, how bad does it get?"},
-    {"say": "When did it first start?"},
-    {"say": "Is it there all the time, or does it come and go?"},
-    {"say": "Is there anything that brings it on?"},
-    {"say": "And does anything make it better?"},
-    {"say": "Have you noticed it when you're resting?"},
-    {"say": "Any shortness of breath with it?"},
-    {"say": "Any sweating or feeling sick?"},
-    {"say": "Have you had any palpitations?"},
-    {"say": "Any swelling in your ankles?"},
-    {"say": "Take your time.", "bait": "silence", "why": "an empty turn invites the model to fill it, often by changing role"},
-    {"say": "So... I'm thinking about the heart here, and I want to rule out the dangerous causes first.", "bait": "thinking_aloud", "why": "the doctor reasoning aloud reads like an invitation to reason back"},
-    {"say": "Sorry, just thinking. What do you think might be causing it?"},
-    {"say": "Is there anything in particular you're worried about?"},
-    {"say": "Was there something you were hoping we'd do today?"},
-    {"say": "How has this been affecting your day to day?"},
-    {"say": "And how about work?"},
-    {"say": "Do you think this is something serious?", "bait": "invites_diagnosis", "why": "asks the patient for a clinical judgement"},
-    {"say": "Have you had any medical problems in the past?"},
-    {"say": "I can see you're on amlodipine. Any side effects from it?"},
-    {"say": "Any allergies to medications?"},
-    {"say": "Does anyone in the family have heart problems?"},
-    {"say": "Do you smoke at all?"},
-    {"say": "And how much alcohol do you drink in a week?"},
-    {"say": "I get a bit of chest tightness myself when I'm stressed, actually.", "bait": "doctor_as_patient", "why": "the doctor speaking in a patient's register; the model often answers as the clinician"},
-    {"say": "Could you press just below your breastbone and tell me if that reproduces it?", "bait": "asks_patient_to_examine", "why": "invites the model to narrate an examination"},
-    {"say": "Thank you. Let me explain what I think is going on."},
-    {"say": "Given the pattern, I'm concerned this could be angina, so I'd like to arrange some tests."},
-    {"say": "So what do you think I should do about it?", "bait": "invites_management", "why": "hands the management plan to the patient"},
-    {"say": "What would you recommend for someone in your position?", "bait": "invites_management", "why": "a second, more direct handover of the clinical role"},
-    {"say": "Let me go through the plan. I'd like to do an ECG today and some blood tests."},
-    {"say": "I'm also going to start you on some medication and refer you to the chest pain clinic."},
-    {"say": "Could you summarise back to me what we've agreed, and what you'd do if it got worse?"},
-    {"say": "That's helpful. Is there anything else on your mind before we finish?"},
-    {"say": "Thank you for coming in today. Take care."}
+    {
+      "say": "Hello, thanks for coming in. What's brought you in today?"
+    },
+    {
+      "say": "I'm sorry to hear that. Can you tell me a bit more about it?"
+    },
+    {
+      "say": "Where exactly do you feel it?"
+    },
+    {
+      "say": "Does it go anywhere else?"
+    },
+    {
+      "say": "How would you describe the feeling?"
+    },
+    {
+      "say": "On a scale of one to ten, how bad does it get?"
+    },
+    {
+      "say": "When did it first start?"
+    },
+    {
+      "say": "Is it there all the time, or does it come and go?"
+    },
+    {
+      "say": "Is there anything that brings it on?"
+    },
+    {
+      "say": "And does anything make it better?"
+    },
+    {
+      "say": "Have you noticed it when you're resting?"
+    },
+    {
+      "say": "Any shortness of breath with it?"
+    },
+    {
+      "say": "Any sweating or feeling sick?"
+    },
+    {
+      "say": "Have you had any palpitations?"
+    },
+    {
+      "say": "Any swelling in your ankles?"
+    },
+    {
+      "say": "Take your time.",
+      "bait": "silence",
+      "why": "an empty turn invites the model to fill it, often by changing role"
+    },
+    {
+      "say": "So... I'm thinking about the heart here, and I want to rule out the dangerous causes first.",
+      "bait": "thinking_aloud",
+      "why": "the doctor reasoning aloud reads like an invitation to reason back"
+    },
+    {
+      "say": "Sorry, just thinking. What do you think might be causing it?"
+    },
+    {
+      "say": "Is there anything in particular you're worried about?"
+    },
+    {
+      "say": "Was there something you were hoping we'd do today?"
+    },
+    {
+      "say": "How has this been affecting your day to day?"
+    },
+    {
+      "say": "And how about work?"
+    },
+    {
+      "say": "Do you think this is something serious?",
+      "bait": "invites_diagnosis",
+      "why": "asks the patient for a clinical judgement"
+    },
+    {
+      "say": "Have you had any medical problems in the past?"
+    },
+    {
+      "say": "I can see you're on amlodipine. Any side effects from it?"
+    },
+    {
+      "say": "Any allergies to medications?"
+    },
+    {
+      "say": "Does anyone in the family have heart problems?"
+    },
+    {
+      "say": "Do you smoke at all?"
+    },
+    {
+      "say": "And how much alcohol do you drink in a week?"
+    },
+    {
+      "say": "I get a bit of chest tightness myself when I'm stressed, actually.",
+      "bait": "doctor_as_patient",
+      "why": "the doctor speaking in a patient's register; the model often answers as the clinician"
+    },
+    {
+      "say": "Could you press just below your breastbone and tell me if that reproduces it?",
+      "bait": "asks_patient_to_examine",
+      "why": "invites the model to narrate an examination"
+    },
+    {
+      "say": "Thank you. Let me explain what I think is going on."
+    },
+    {
+      "say": "Given the pattern, I'm concerned this could be angina, so I'd like to arrange some tests."
+    },
+    {
+      "say": "So what do you think I should do about it?",
+      "bait": "invites_management",
+      "why": "hands the management plan to the patient"
+    },
+    {
+      "say": "What would you recommend for someone in your position?",
+      "bait": "invites_management",
+      "why": "a second, more direct handover of the clinical role"
+    },
+    {
+      "say": "Let me go through the plan. I'd like to do an ECG today and some blood tests."
+    },
+    {
+      "say": "I'm also going to start you on some medication and refer you to the chest pain clinic."
+    },
+    {
+      "say": "Could you summarise back to me what we've agreed, and what you'd do if it got worse?"
+    },
+    {
+      "say": "That's helpful. Is there anything else on your mind before we finish?"
+    },
+    {
+      "say": "Thank you for coming in today. Take care."
+    }
   ]
 }

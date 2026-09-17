@@ -2,7 +2,6 @@
 
 from .evaluator import EvaluationError, LLMEvaluator, ProviderError
 from .live_coverage import (
-    LIVE_DOMAINS,
     CoverageItem,
     CoverageSnapshot,
     CoverageState,
@@ -14,7 +13,6 @@ from .live_coverage import (
 from .rendering import render_transcript_for_marking
 
 __all__ = [
-    "LIVE_DOMAINS",
     "CoverageItem",
     "CoverageSnapshot",
     "CoverageState",

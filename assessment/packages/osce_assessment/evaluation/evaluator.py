@@ -28,7 +28,7 @@ from ..contracts import (
     Scenario,
     Transcript,
 )
-from ..prompts import UnknownPromptError, default_system_prompt_id, render_user_prompt, system_prompt
+from ..prompts import render_user_prompt
 from ..schemas.strict import inline_refs, to_strict_json_schema
 from ..schemas.validate import validate_against_schema
 from .rendering import render_transcript_for_marking
@@ -69,13 +69,14 @@ class LLMEvaluator:
     def build_messages(self, transcript: Transcript, policy: EvaluationPolicy, scenario: Scenario) -> tuple[str, str]:
         """(system, user) exactly as they will be sent."""
         framework = self._frameworks.get(policy.framework_id)
-        if policy.system_prompt_override is not None:
-            system = policy.system_prompt_override
-        else:
-            try:
-                system = system_prompt(default_system_prompt_id(framework.id))
-            except UnknownPromptError as exc:
-                raise EvaluationError(f"no system prompt for framework {framework.id!r}: {exc}") from exc
+        # The policy may override, but the framework is expected to carry its
+        # own marking instructions. There is no longer a default keyed on the
+        # framework id: a rubric nobody wrote a prompt for cannot be marked.
+        system = policy.system_prompt_override or framework.system_prompt
+        if not system:
+            raise EvaluationError(
+                f"framework {framework.id!r} carries no system prompt and the policy overrides none"
+            )
         user = render_user_prompt(
             station_name=scenario.title,
             transcript=render_transcript_for_marking(transcript),

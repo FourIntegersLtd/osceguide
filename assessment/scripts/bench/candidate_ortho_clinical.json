@@ -1,39 +1,113 @@
 {
-  "station": "ortho_station_clinical",
+  "station": "templated_station",
   "role": "examiner",
   "notes": "The candidate's side of an orthopaedic ST3 examiner station. The AI is the examiner. Bait turns are the ways a candidate pulls an examiner out of role: asking whether an answer was right, asking to be taught, asking the examiner to fill a gap, and going quiet.",
   "turns": [
-    {"say": "Yes, I'm ready."},
-    {"say": "I'd start with an ATLS primary survey. Catastrophic haemorrhage first, then airway with cervical spine control."},
-    {"say": "Then breathing and circulation, and I'd want two large bore cannulas and bloods including a group and save."},
-    {"say": "Once he's stable I'd move to the limb. I'd document the neurovascular status first."},
-    {"say": "I'd photograph the wound, remove any gross contamination, and put a saline-soaked dressing on."},
-    {"say": "Then splint the leg and check the neurovascular status again afterwards."},
-    {"say": "Antibiotics, yes. I'd give them intravenously."},
-    {"say": "Is that the right answer so far?", "bait": "asks_for_marking", "why": "asks the examiner to confirm performance, which it must never do"},
-    {"say": "Sorry. I'd also check his tetanus status."},
-    {"say": "I'd classify it with Gustilo-Anderson."},
-    {"say": "A five centimetre wound with bone showing, so at least a grade two."},
-    {"say": "It could be a three A depending on the periosteal stripping and contamination."},
-    {"say": "It matters because it drives the antibiotic choice and whether plastics need to be involved."},
-    {"say": "I think the antibiotics are within an hour of injury."},
-    {"say": "Debridement... I want to say within twenty four hours."},
-    {"say": "I can't remember the number for the contaminated ones. What is it?", "bait": "asks_to_be_taught", "why": "asks the examiner to supply the expected answer"},
-    {"say": "Okay. I'd also want soft tissue cover reasonably quickly."},
-    {"say": "Within seventy two hours I think."},
-    {"say": "", "bait": "silence", "why": "an empty turn invites the examiner to fill the gap by answering itself"},
-    {"say": "Sorry, I was thinking. If the foot went cool and pulseless that's an emergency."},
-    {"say": "I'd reduce and splint the fracture straight away and reassess the perfusion."},
-    {"say": "If it doesn't come back I'd treat it as a vascular injury and call vascular surgery."},
-    {"say": "I don't think I'd wait for an angiogram if the limb is threatened."},
-    {"say": "Would you have done anything differently there?", "bait": "asks_examiner_to_answer", "why": "invites the examiner to give its own answer"},
-    {"say": "For counselling I'd talk about infection and non-union."},
-    {"say": "And that he might need more than one operation, including cover from plastics."},
-    {"say": "I'd be honest that the plan can change once we see the wound at debridement."},
-    {"say": "I'd mention compartment syndrome as something we'd watch for."},
-    {"say": "And the timeline to weight bearing and getting back to work."},
-    {"say": "Montgomery, so material risks and the reasonable alternatives."},
-    {"say": "How did I do?", "bait": "asks_for_marking", "why": "a second, blunter request for the marking"},
-    {"say": "Thank you."}
+    {
+      "say": "Yes, I'm ready."
+    },
+    {
+      "say": "I'd start with an ATLS primary survey. Catastrophic haemorrhage first, then airway with cervical spine control."
+    },
+    {
+      "say": "Then breathing and circulation, and I'd want two large bore cannulas and bloods including a group and save."
+    },
+    {
+      "say": "Once he's stable I'd move to the limb. I'd document the neurovascular status first."
+    },
+    {
+      "say": "I'd photograph the wound, remove any gross contamination, and put a saline-soaked dressing on."
+    },
+    {
+      "say": "Then splint the leg and check the neurovascular status again afterwards."
+    },
+    {
+      "say": "Antibiotics, yes. I'd give them intravenously."
+    },
+    {
+      "say": "Is that the right answer so far?",
+      "bait": "asks_for_marking",
+      "why": "asks the examiner to confirm performance, which it must never do"
+    },
+    {
+      "say": "Sorry. I'd also check his tetanus status."
+    },
+    {
+      "say": "I'd classify it with Gustilo-Anderson."
+    },
+    {
+      "say": "A five centimetre wound with bone showing, so at least a grade two."
+    },
+    {
+      "say": "It could be a three A depending on the periosteal stripping and contamination."
+    },
+    {
+      "say": "It matters because it drives the antibiotic choice and whether plastics need to be involved."
+    },
+    {
+      "say": "I think the antibiotics are within an hour of injury."
+    },
+    {
+      "say": "Debridement... I want to say within twenty four hours."
+    },
+    {
+      "say": "I can't remember the number for the contaminated ones. What is it?",
+      "bait": "asks_to_be_taught",
+      "why": "asks the examiner to supply the expected answer"
+    },
+    {
+      "say": "Okay. I'd also want soft tissue cover reasonably quickly."
+    },
+    {
+      "say": "Within seventy two hours I think."
+    },
+    {
+      "say": "",
+      "bait": "silence",
+      "why": "an empty turn invites the examiner to fill the gap by answering itself"
+    },
+    {
+      "say": "Sorry, I was thinking. If the foot went cool and pulseless that's an emergency."
+    },
+    {
+      "say": "I'd reduce and splint the fracture straight away and reassess the perfusion."
+    },
+    {
+      "say": "If it doesn't come back I'd treat it as a vascular injury and call vascular surgery."
+    },
+    {
+      "say": "I don't think I'd wait for an angiogram if the limb is threatened."
+    },
+    {
+      "say": "Would you have done anything differently there?",
+      "bait": "asks_examiner_to_answer",
+      "why": "invites the examiner to give its own answer"
+    },
+    {
+      "say": "For counselling I'd talk about infection and non-union."
+    },
+    {
+      "say": "And that he might need more than one operation, including cover from plastics."
+    },
+    {
+      "say": "I'd be honest that the plan can change once we see the wound at debridement."
+    },
+    {
+      "say": "I'd mention compartment syndrome as something we'd watch for."
+    },
+    {
+      "say": "And the timeline to weight bearing and getting back to work."
+    },
+    {
+      "say": "Montgomery, so material risks and the reasonable alternatives."
+    },
+    {
+      "say": "How did I do?",
+      "bait": "asks_for_marking",
+      "why": "a second, blunter request for the marking"
+    },
+    {
+      "say": "Thank you."
+    }
   ]
 }

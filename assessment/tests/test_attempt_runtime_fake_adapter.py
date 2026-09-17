@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from conftest import FRAMEWORK
 from osce_assessment.contracts import (
     AssessmentAttempt,
     AttemptStatus,
@@ -318,8 +319,17 @@ def test_the_result_can_be_checked_against_its_framework(
     scenario: Scenario, attempt: AssessmentAttempt
 ) -> None:
     """The runtime stays framework-agnostic; the consumer checks shape after."""
-    from osce_assessment.catalog import framework
+    from osce_assessment.contracts import Competency, CompetencyDomain, CompetencyFramework
 
+    framework = CompetencyFramework(
+        id=FRAMEWORK.id,
+        label="Checked afterwards",
+        domains=(CompetencyDomain(id="skills", label="Skills"),),
+        competencies=(
+            Competency(id="structures_consultation", label="Structures", domain_id="skills"),
+            Competency(id="uses_clear_language", label="Clear language", domain_id="skills"),
+        ),
+    )
     scores = {"structures_consultation": "A", "uses_clear_language": "G"}
     runtime, _, _, _, _ = build_runtime(
         scenario,
@@ -330,8 +340,8 @@ def test_the_result_can_be_checked_against_its_framework(
     outcome = asyncio.run(runtime.run(attempt))
 
     assert outcome.result is not None
-    assert outcome.result.framework_id == "sca-rcgp-v1"
-    framework(outcome.result.framework_id).validate_scores(outcome.result.result)
+    assert outcome.result.framework_id == FRAMEWORK.id
+    framework.validate_scores(outcome.result.result)
 
 
 @pytest.mark.parametrize("runs", [2, 3])

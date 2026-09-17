@@ -12,7 +12,7 @@ from livekit_assistant_worker import entrypoint
 from voice_infra.config import BACKENDS_ENV
 
 ROOT = Path(__file__).resolve().parents[1]
-FORBIDDEN = ("osce_assessment.runtime", "osce_assessment.evaluation", "osce_assessment.schemas", "osce_assessment.catalog", "osce_assessment.compat", "livekit_assessment_worker")
+FORBIDDEN = ("osce_assessment.runtime", "osce_assessment.evaluation", "osce_assessment.schemas", "livekit_assessment_worker")
 
 
 def test_importing_the_assistant_worker_loads_no_assessment_machinery() -> None:

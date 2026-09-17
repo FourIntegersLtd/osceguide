@@ -7,7 +7,7 @@ running a consultation", and without the lock it slides into explaining rather
 than consulting.
 """
 from ._blocks import DOCTOR_NEVER, role_lock, speech_rules
-from .consultation_pacing import DEFAULT_FRAMEWORK_ID, ConsultationPacing, human_duration, pacing_for_framework
+from .consultation_pacing import DEFAULT_PACING, ConsultationPacing, human_duration
 from .debrief_management_plan import ManagementPlanFormatter
 
 
@@ -52,7 +52,7 @@ class AthenaDoctorFormatter:
             interview_questions: format the interview Q&A block instead of a management plan
             pacing: how long this station runs; the phase budgets are rendered from it
         """
-        pacing = pacing or pacing_for_framework(DEFAULT_FRAMEWORK_ID)
+        pacing = pacing or DEFAULT_PACING
         doctor_information = doctor_information if isinstance(doctor_information, dict) else {}
         management_plan = management_plan if isinstance(management_plan, dict) else {}
 
