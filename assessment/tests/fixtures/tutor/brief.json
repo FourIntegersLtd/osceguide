@@ -1,0 +1,24 @@
+{
+  "consultations": [
+    {"title": "Hip pain in a runner", "days_ago": 2, "domains": {"clinical approach": "A", "clinical tasks": "R", "relating to the patient": "G"},
+     "strengths": ["Warm, unhurried opening"],
+     "improvements": ["No focused hip examination was offered", "Septic arthritis was not excluded before moving on", "No follow-up timeframe was set"],
+     "phrases": ["Come back if it does not improve"]},
+    {"title": "Low mood after redundancy", "days_ago": 9, "domains": {"clinical approach": "G", "clinical tasks": "A", "relating to the patient": "G"},
+     "improvements": ["Risk was asked about once and not returned to"]},
+    {"title": "Chest pain on exertion", "days_ago": 40, "domains": {"clinical approach": "R", "clinical tasks": "R", "relating to the patient": "A"},
+     "improvements": ["Red flags were not asked systematically", "The plan was not checked back"], "phrases": ["I think this is probably nothing serious"]}
+  ],
+  "debriefs": [
+    {"title": "Hip pain in a runner", "days_ago": 2, "insights": ["We agreed the history was thorough but the examination was skipped under time pressure"],
+     "agreed_steps": [{"text": "Name the examination out loud before the history ends", "done": false}, "Say one follow-up timeframe in every plan"]}
+  ],
+  "last_conversation": {"days_ago": 5, "summary": "They said English is their second language and asked for shorter phrasing to practise.", "agreed_next_steps": ["Practise one-sentence explanations of a diagnosis"]},
+  "facts": ["Their exam is in about six weeks", "They find follow-up timing hardest"],
+  "activity": [
+    {"kind": "read", "title": "Anxiety, condition summary", "days_ago": 1},
+    {"kind": "practised", "title": "Low mood after redundancy", "days_ago": 9},
+    {"kind": "listened", "title": "Safety netting, episode three", "days_ago": 12}
+  ],
+  "tool_names": {"recall": "recall_history", "search": "search_material", "suggest": "suggest_material", "remember": "remember"}
+}

@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from osce_assessment.prompts import (
+    DashboardTutorFormatter,
     DebriefPromptFormatter,
     ManagementPlanFormatter,
     OrthoClinicalSkillFeedbackFormatter,
@@ -103,6 +104,12 @@ def test_debrief_prompt_matches_snapshot() -> None:
         station_type="",
     )
     assert prompt == _snapshot("debrief_prompt_sca")
+
+
+def test_dashboard_tutor_prompt_matches_snapshot() -> None:
+    """A change here changes what a learner's tutor is allowed to claim to remember."""
+    prompt = DashboardTutorFormatter.create_prompt(_load("tutor/brief.json"), labels={"summaries": "A to Z", "slides": "Slides", "stations": "AI Practice"})
+    assert prompt == _snapshot("dashboard_tutor")
 
 
 def test_transcript_formatter_labels_speakers_and_drops_empty_turns() -> None:

@@ -26,6 +26,7 @@ from osce_assessment.prompts import (
     EXAMINER_GREETINGS,
     PATIENT_GREETINGS,
     AthenaDoctorFormatter,
+    DashboardTutorFormatter,
     DebriefPromptFormatter,
     create_station_prompt,
 )
@@ -60,12 +61,17 @@ def _tutor() -> str:
     return DebriefPromptFormatter.create_prompt(transcript="## Doctor [ID:msg_0]\nHello", management_plan="## Explanation\nx")
 
 
+def _remembering_tutor() -> str:
+    return DashboardTutorFormatter.create_prompt({"consultations": [{"title": "Hip pain", "days_ago": 2}]})
+
+
 LIVE_PROMPTS = {
     "untemplated patient": (_untemplated_patient, "You are the patient", "speaking to you is the doctor"),
     "templated patient": (_templated_patient, "You are the patient", "speaking to you is the doctor"),
     "examiner": (_examiner, "You are the examiner", "speaking to you is the candidate"),
     "consulting doctor": (_doctor, "You are the doctor", "speaking to you is the patient"),
     "debrief tutor": (_tutor, "You are the tutor", "speaking to you is the doctor"),
+    "remembering tutor": (_remembering_tutor, "You are this doctor's regular tutor", "speaking to you is the doctor"),
 }
 
 

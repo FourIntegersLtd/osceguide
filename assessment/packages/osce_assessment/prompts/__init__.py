@@ -28,6 +28,7 @@ from .consultation_pacing import (
 )
 from .cv import format_structured_cv_for_llm
 from .dashboard_feedback import DashboardFeedbackPromptFormatter
+from .dashboard_tutor import DashboardTutorFormatter
 from .debrief_feedback import (
     OrthoClinicalSkillFeedbackFormatter,
     OrthoCommunicationSkillFeedbackFormatter,
@@ -83,6 +84,7 @@ __all__ = [
     "consultation_pacing_payload",
     "pacing_from_payload",
     "DashboardFeedbackPromptFormatter",
+    "DashboardTutorFormatter",
     "DebriefPromptFormatter",
     "ManagementPlanFormatter",
     "StationPromptFormatter",
