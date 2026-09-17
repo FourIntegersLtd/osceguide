@@ -1854,6 +1854,7 @@
         "type": "object"
       },
       "CreateProgramme": {
+        "description": "The exam this programme groups sittings under.\n\nBy code, resolved in the institution's own scope first: a school that has\nwritten its own `plab` gets that one, not the platform's.",
         "properties": {
           "exam_code": {
             "maxLength": 32,
@@ -2910,6 +2911,23 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          },
+          "owner_kind": {
+            "default": "platform",
+            "title": "Owner Kind",
             "type": "string"
           },
           "partner_pilot": {
@@ -4773,6 +4791,11 @@
           },
           "exam_name": {
             "title": "Exam Name",
+            "type": "string"
+          },
+          "exam_owner_kind": {
+            "default": "platform",
+            "title": "Exam Owner Kind",
             "type": "string"
           },
           "id": {
@@ -9782,7 +9805,7 @@
     },
     "/api/v1/exams": {
       "get": {
-        "description": "The exams the platform offers. Small set, so no cursor is ever returned.\n\nA platform admin also sees drafts, because they are the person writing them.",
+        "description": "The exams the platform offers. Small set, so no cursor is ever returned.\n\nThe consumer catalogue: platform exams only. An institution's own exams are\nnot here and never are \u2014 they are that institution's, not ours to publish.\nSee `/orgs/{org_slug}/exams` for those.\n\nA platform admin sees the platform's drafts, because they are the person\nwriting them, and nobody else's.",
         "operationId": "catalog_list_exams",
         "responses": {
           "200": {
@@ -14227,6 +14250,479 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/exams": {
+      "get": {
+        "description": "This institution's own exams, plus the platform catalogue.\n\n`drafts=true` narrows to the institution's own rows, published or not: its\ndrafts are its own business. It never widens the listing to the platform's\ndrafts, which it cannot see at all.",
+        "operationId": "catalog_list_org_exams",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "drafts",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Drafts",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ExamRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Org Exams",
+        "tags": [
+          "catalog"
+        ]
+      },
+      "post": {
+        "description": "An institution's own exam, as a draft.\n\nWritten without asking the platform and without picking from a list: an\ninstitution defines the exams it assesses against. The code is unique\nwithin this organisation only, so two schools may both have a `finals`.",
+        "operationId": "catalog_create_org_exam",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExam"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_version_not_found",
+            "x-codes": [
+              "rubric_version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_code_taken",
+            "x-codes": [
+              "exam_code_taken"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_exam_code",
+            "x-codes": [
+              "invalid_exam_code"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Org Exam",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/exams/{exam_id}": {
+      "patch": {
+        "description": "Only this institution's own exams. A platform exam answers `unknown_exam`.",
+        "operationId": "catalog_update_org_exam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exam Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExam"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam, rubric_version_not_found",
+            "x-codes": [
+              "unknown_exam",
+              "rubric_version_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Org Exam",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/exams/{exam_id}/publish": {
+      "post": {
+        "description": "The institution's own call, on its own schedule. Refused without a rubric.",
+        "operationId": "catalog_publish_org_exam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exam Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_not_publishable",
+            "x-codes": [
+              "exam_not_publishable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Org Exam",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/exams/{exam_id}/retire": {
+      "post": {
+        "description": "Stop running it. Past sittings and their results are untouched.",
+        "operationId": "catalog_retire_org_exam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exam Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_not_publishable",
+            "x-codes": [
+              "exam_not_publishable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retire Org Exam",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/feedback-templates": {
       "get": {
         "operationId": "rubrics_list_feedback_templates",
@@ -15237,6 +15733,7 @@
         ]
       },
       "post": {
+        "description": "Group this institution's sittings under one exam.\n\nThe exam may be the institution's own or one the platform published; the\ncode is resolved in the institution's scope, so its own wins a clash.",
         "operationId": "catalog_add_programme",
         "parameters": [
           {
@@ -19875,7 +20372,7 @@
     },
     "/api/v1/platform/exams": {
       "post": {
-        "description": "A new exam, as a draft.\n\nThe table starts empty and stays that way until somebody writes one. There\nis no seed: four exams used to be inserted by a migration and mirrored by a\ntuple in this slice, and a fifth needed both changed and shipped.",
+        "description": "A new platform exam, as a draft \u2014 the consumer catalogue.\n\nThe table starts empty and stays that way until somebody writes one. There\nis no seed: four exams used to be inserted by a migration and mirrored by a\ntuple in this slice, and a fifth needed both changed and shipped.",
         "operationId": "catalog_create_exam",
         "requestBody": {
           "content": {

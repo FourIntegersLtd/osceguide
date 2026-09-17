@@ -20,3 +20,4 @@ One file per decision, numbered, never edited after acceptance (supersede with a
 | 0014 | Social content is addressed to an audience, not just an exam |
 | 0015 | Live screens are pushed as server-sent events, carrying whole read models |
 | 0016 | Exams and rubrics are authored data, not shipped code |
+| 0017 | An exam has an owner; an institution authors its own (extends 0011, 0016) |

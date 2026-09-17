@@ -90,3 +90,29 @@ def test_the_catalogue_no_longer_hard_codes_any_exam() -> None:
     """The regression this whole change exists to prevent."""
     assert not hasattr(domain, "PUBLISHED_EXAMS")
     assert not hasattr(domain, "exam_by_code")
+
+
+# --- ownership ---------------------------------------------------------------
+
+
+def test_the_platform_has_no_org_and_an_institution_does() -> None:
+    assert domain.owner_of(None) is domain.OwnerKind.PLATFORM
+    assert domain.owner_of(uuid.uuid4()) is domain.OwnerKind.ORG
+
+
+def test_only_an_exams_own_owner_may_change_it() -> None:
+    """Writing is narrower than reading. An institution reads our catalogue as
+    well as its own, but neither side may edit the other's exam — which is what
+    keeps the two lifecycles from dragging each other."""
+    ashford = uuid.uuid4()
+    kings = uuid.uuid4()
+
+    domain.ensure_owned_by(None, None)  # the platform, at its own exam
+    domain.ensure_owned_by(ashford, ashford)  # a school, at its own
+
+    with pytest.raises(domain.NotOwned):
+        domain.ensure_owned_by(None, ashford)  # a school at ours
+    with pytest.raises(domain.NotOwned):
+        domain.ensure_owned_by(ashford, None)  # us at a school's
+    with pytest.raises(domain.NotOwned):
+        domain.ensure_owned_by(ashford, kings)  # one school at another's

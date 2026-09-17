@@ -8,18 +8,23 @@ synonyms while naming different things — a **cohort** is not a **trainee group
 Maintained alongside `DATA-MODEL.md`. Published version:
 https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
-## The four exams
+## Exams
 
-Each is a row in `exams`, not a code branch. A fifth exam is a row.
+Each is a row in `exams`, not a code branch. A fifth exam is a row — and not
+necessarily ours: an exam has an **owner** (ADR 0017). The four below are the
+*platform* exams, the consumer catalogue. An institution writes its own
+alongside them, which the platform never sees.
 
 | Term | Meaning |
 |---|---|
-| OSCE | Objective Structured Clinical Examination — the format all four share: a candidate rotates through timed stations, each a scripted clinical encounter, marked against a rubric. |
+| OSCE | Objective Structured Clinical Examination — the format they share: a candidate rotates through timed stations, each a scripted clinical encounter, marked against a rubric. |
+| exam owner | `platform` or `org`. A platform exam is the consumer catalogue; an org exam is one institution's own, published on its own schedule and invisible outside it. A code is unique per owner, so two schools may both have a `finals`. |
+| programme | One organisation offering one exam — its own or a platform one. Carries no content: it is the label a year's sittings are grouped under. Its status (`draft`/`active`/`retired`) is the institution's and is separate from the exam's (`draft`/`published`/`retired`), which is the owner's. |
 | SCA (`sca`) | RCGP Simulated Consultation Assessment. UK GP licensing. 3 min reading, 15 min simulation — the longest of the four. |
 | PLAB 2 (`plab`) | GMC PLAB Part 2, for internationally qualified doctors seeking UK registration. 90 s reading, 10 min simulation. |
 | CASC (`casc`) | RCPsych Clinical Assessment of Skills and Competencies — psychiatry. Same timings as PLAB. |
 | ortho (`ortho`) | FRCS Trauma & Orthopaedics. 2 min reading, 11 min simulation, and the only exam with four distinct station subtypes. |
-| framework_id | The engine's identifier for an exam's marking framework, e.g. `sca-rcgp-v1`. Distinct from the exam code so the framework can be versioned without renaming the exam. |
+| framework_id | What a result is recorded under: the id of the **rubric version** the exam names, so a stored result traces back to the exact wording it was marked against. Was a string column naming one of four frameworks the engine shipped (ADR 0016). |
 
 ## Content
 

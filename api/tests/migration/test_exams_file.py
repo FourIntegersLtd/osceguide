@@ -91,7 +91,7 @@ async def test_nothing_is_written_when_the_rubric_cannot_be_marked_against(
     with pytest.raises(Exception):  # noqa: B017 - the refusal's type is the service's, not ours
         await exam_loader.load_exams(db_session, broken, now=NOW)
 
-    assert await catalog_repository.exam_by_code(db_session, "sca") is None
+    assert await catalog_repository.exam_by_code(db_session, None, "sca") is None
 
 
 def test_an_exam_the_export_needs_and_the_file_omits_is_named() -> None:

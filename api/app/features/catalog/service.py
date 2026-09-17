@@ -1,113 +1,43 @@
-"""Catalog use cases: publishing exams, and offering them as programmes."""
+"""Using an exam: resolving one, and handing another slice a reference to it.
+
+Writing one lives in `service_authoring`; offering one as a programme lives in
+`service_programmes`. Nine slices import `resolve_exam` from here, which is why
+the reading half kept the module name.
+
+An exam has an owner. The platform's exams are the consumer catalogue, visible
+to everyone. An institution's are its own, visible to it alone, which is why
+every read here takes the caller's scope: `org_id=None` means the consumer
+catalogue, and a school's private exam can never be named from outside it.
+"""
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import domain, repository
-from app.features.catalog.errors import (
-    ExamCodeTaken,
-    ExamNotPublishable,
-    InvalidExamCodeError,
-    UnknownExamError,
-)
+from app.features.catalog.errors import UnknownExamError
 from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
-from app.features.rubrics import service_marking as rubrics
-
-
-async def list_exams(session: AsyncSession, *, include_unpublished: bool = False) -> list[ExamRead]:
-    """What the platform offers. Drafts are shown only to a platform admin."""
-    statuses = None if include_unpublished else [domain.ExamStatus.PUBLISHED]
-    return [_exam_read(e) for e in await repository.list_exams(session, statuses=statuses)]
-
-
-async def create_exam(
-    session: AsyncSession,
-    *,
-    code: str,
-    name: str,
-    default_reading_seconds: int,
-    default_simulation_seconds: int,
-    station_attempt_limit: int = 3,
-    rubric_version_id: uuid.UUID | None = None,
-    partner_pilot: bool = False,
-) -> ExamRead:
-    """A new exam, as a draft. Nothing may be built on it until it is published."""
-    try:
-        normalised = domain.normalise_code(code)
-    except domain.InvalidExamCode as exc:
-        raise InvalidExamCodeError(str(exc)) from exc
-    if await repository.exam_by_code(session, normalised) is not None:
-        raise ExamCodeTaken(f"An exam with the code {normalised!r} already exists.")
-    if rubric_version_id is not None:
-        await rubrics.published_platform_version(session, rubric_version_id)
-    exam = await repository.create_exam(
-        session,
-        code=normalised,
-        name=name,
-        default_reading_seconds=default_reading_seconds,
-        default_simulation_seconds=default_simulation_seconds,
-        station_attempt_limit=station_attempt_limit,
-        rubric_version_id=rubric_version_id,
-        partner_pilot=partner_pilot,
-    )
-    return _exam_read(exam)
-
-
-async def update_exam(session: AsyncSession, exam_id: uuid.UUID, **fields: Any) -> ExamRead:
-    """Change an exam's name, timings or rubric. Its code is not editable.
-
-    A code appears in plans, ref ids and URLs that already exist, so renaming
-    one would silently strand them; a new exam is the honest way to do it.
-    """
-    exam = await _exam_row(session, exam_id)
-    changes = {k: v for k, v in fields.items() if v is not None}
-    if "rubric_version_id" in changes:
-        await rubrics.published_platform_version(session, changes["rubric_version_id"])
-    await repository.update_exam(session, exam.id, **changes)
-    return _exam_read(await _exam_row(session, exam_id))
-
-
-async def publish_exam(session: AsyncSession, exam_id: uuid.UUID) -> ExamRead:
-    exam = await _exam_row(session, exam_id)
-    try:
-        status = domain.ensure_publishable(exam.status, exam.rubric_version_id)
-    except domain.NotPublishable as exc:
-        raise ExamNotPublishable(str(exc)) from exc
-    await repository.update_exam(session, exam.id, status=status)
-    return _exam_read(await _exam_row(session, exam_id))
-
-
-async def retire_exam(session: AsyncSession, exam_id: uuid.UUID) -> ExamRead:
-    """Stop offering an exam without touching what was already attempted."""
-    exam = await _exam_row(session, exam_id)
-    try:
-        status = domain.ensure_retirable(exam.status)
-    except domain.NotRetirable as exc:
-        raise ExamNotPublishable(str(exc)) from exc
-    await repository.update_exam(session, exam.id, status=status)
-    return _exam_read(await _exam_row(session, exam_id))
 
 
 async def pilot_exam_codes(session: AsyncSession) -> frozenset[str]:
-    """Which exams a partner attribution link may name."""
+    """Which exams a partner attribution link may name. Platform-side only."""
     return frozenset(await repository.pilot_exam_codes(session))
 
 
-async def _exam_row(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
+async def exam_row(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
+    """One exam by id, or the refusal. Shared with `service_authoring`."""
     exam = await repository.exam_by_id(session, exam_id)
     if exam is None:
         raise UnknownExamError(f"No exam with id {exam_id}.")
     return exam
 
 
-async def resolve_exam(session: AsyncSession, code: str) -> Exam:
+async def resolve_exam(session: AsyncSession, code: str, *, org_id: uuid.UUID | None = None) -> Exam:
     """Look a published exam up by code, refusing anything else.
 
     Never defaulted. b2c fell back to `sca` for an unrecognised `app_type`,
@@ -116,12 +46,16 @@ async def resolve_exam(session: AsyncSession, code: str) -> Exam:
     A draft or retired exam is refused here as firmly as one that does not
     exist: this is what programmes, entitlements, stations and plans are built
     on, and none of them should be able to name an exam nobody can sit.
+
+    `org_id` is the caller's scope. An institution resolves its own exams and
+    the platform catalogue; a consumer caller (`None`) resolves the catalogue
+    only, so one school's private exam code can never be named from outside it.
     """
     try:
         normalised = domain.normalise_code(code)
     except domain.InvalidExamCode as exc:
         raise UnknownExamError(str(exc)) from exc
-    exam = await repository.exam_by_code(session, normalised)
+    exam = await repository.exam_by_code(session, org_id, normalised)
     if exam is None:
         raise UnknownExamError(f"No exam with the code {normalised!r}.")
     try:
@@ -131,9 +65,11 @@ async def resolve_exam(session: AsyncSession, code: str) -> Exam:
     return exam
 
 
-def _exam_read(exam: Exam) -> ExamRead:
+def exam_read(exam: Exam) -> ExamRead:
     return ExamRead(
         id=exam.id,
+        owner_kind=exam.owner_kind,
+        org_id=exam.org_id,
         code=exam.code,
         name=exam.name,
         status=exam.status,
@@ -200,6 +136,8 @@ class ExamRef:
     framework_id: str
     station_attempt_limit: int
     status: str = "published"
+    owner_kind: str = "platform"
+    org_id: uuid.UUID | None = None
 
 
 async def exam_ref_by_id(session: AsyncSession, exam_id: uuid.UUID) -> ExamRef | None:
@@ -215,6 +153,8 @@ def _exam_ref(exam: Exam) -> ExamRef:
         framework_id=_framework_id(exam),
         station_attempt_limit=exam.station_attempt_limit,
         status=exam.status,
+        owner_kind=exam.owner_kind,
+        org_id=exam.org_id,
     )
 
 
@@ -229,15 +169,15 @@ async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | No
     return None if exam is None else exam.code
 
 
-async def exam_codes(session: AsyncSession) -> list[str]:
-    """Every published exam's code. Small enough not to page."""
-    return [exam.code for exam in await _published(session)]
+async def exam_codes(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[str]:
+    """Every published exam's code this caller may see. Small enough not to page."""
+    return [exam.code for exam in await _published(session, org_id)]
 
 
-async def exam_refs(session: AsyncSession) -> list[ExamRef]:
-    """Every published exam. Small enough not to page."""
-    return [_exam_ref(exam) for exam in await _published(session)]
+async def exam_refs(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[ExamRef]:
+    """Every published exam this caller may see. Small enough not to page."""
+    return [_exam_ref(exam) for exam in await _published(session, org_id)]
 
 
-async def _published(session: AsyncSession) -> list[Exam]:
-    return await repository.list_exams(session, statuses=[domain.ExamStatus.PUBLISHED])
+async def _published(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[Exam]:
+    return await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])

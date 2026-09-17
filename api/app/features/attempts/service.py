@@ -40,7 +40,7 @@ async def start_attempt(
     route that can start a session goes through the same gate.
     """
     try:
-        exam = await resolve_exam(session, exam_code)
+        exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
 

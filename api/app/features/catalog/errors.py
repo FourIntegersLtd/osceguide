@@ -8,6 +8,18 @@ class UnknownExamError(NotFound):
     default_message = "No such exam"
 
 
+class ExamNotOwned(NotFound):
+    """An exam that exists, but belongs to a different owner.
+
+    Deliberately the same `unknown_exam` a missing exam gets. An institution
+    must not be able to learn what the platform is drafting by trying ids, and
+    the platform must not learn what an institution is drafting either.
+    """
+
+    code = "unknown_exam"
+    default_message = "No such exam"
+
+
 class ProgrammeExists(Conflict):
     code = "programme_exists"
     default_message = "That exam is already on this organisation's programme"

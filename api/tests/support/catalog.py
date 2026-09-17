@@ -17,7 +17,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import repository as catalog_repository
-from app.features.catalog import service as catalog
+from app.features.catalog import service_authoring as catalog
 from app.features.catalog.models import Exam
 from app.features.rubrics import service as rubrics
 from tests.support.rubrics import MINIMAL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
@@ -45,7 +45,7 @@ async def ensure_exam(
 
     Idempotent, so a fixture may call it for the same code more than once.
     """
-    existing = await catalog_repository.exam_by_code(session, code)
+    existing = await catalog_repository.exam_by_code(session, None, code)
     if existing is not None:
         return existing
 
@@ -71,7 +71,7 @@ async def ensure_exam(
     )
     if published:
         await catalog.publish_exam(session, exam.id)
-    row = await catalog_repository.exam_by_code(session, code)
+    row = await catalog_repository.exam_by_code(session, None, code)
     assert row is not None
     return row
 

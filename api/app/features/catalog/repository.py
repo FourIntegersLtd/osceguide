@@ -9,29 +9,61 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ownership import visible_to
 from app.core.pagination import keyset_page
 from app.features.catalog.models import Exam, Programme
 
 
-async def list_exams(session: AsyncSession, *, statuses: Sequence[str] | None = None) -> list[Exam]:
-    """Every exam, or only those in the given states. Unpaged: the set is small.
+async def list_exams(
+    session: AsyncSession,
+    org_id: uuid.UUID | None = None,
+    *,
+    statuses: Sequence[str] | None = None,
+    owned_only: bool = False,
+) -> list[Exam]:
+    """Exams this caller may see. Unpaged: the set is small.
 
-    `statuses=None` is the platform admin's view, which includes drafts.
+    `statuses=None` is the owner's own view, which includes drafts.
+    `owned_only` narrows to rows this caller wrote, which is what a draft
+    listing means: an institution's drafts are its own business, and so are
+    ours. Otherwise an org sees its own exams plus the platform catalogue,
+    and the platform sees only its own — the library is shared downward,
+    never an institution's content upward.
     """
     stmt = select(Exam).order_by(Exam.code)
+    stmt = stmt.where(Exam.org_id == org_id) if owned_only else stmt.where(visible_to(Exam, org_id))
     if statuses is not None:
         stmt = stmt.where(Exam.status.in_(list(statuses)))
     return list((await session.execute(stmt)).scalars())
 
 
-async def exam_by_code(session: AsyncSession, code: str) -> Exam | None:
-    stmt = select(Exam).where(Exam.code == code.strip().lower())
+async def exam_by_code(session: AsyncSession, org_id: uuid.UUID | None, code: str) -> Exam | None:
+    """One exam by code, within what this caller may see.
+
+    A code is unique per owner, so an org that has written its own `plab` gets
+    that one and not the platform's: an institution's own exam wins its own
+    namespace. Ordered so the answer does not depend on insertion order.
+    """
+    stmt = (
+        select(Exam)
+        .where(visible_to(Exam, org_id), Exam.code == code.strip().lower())
+        .order_by(Exam.org_id.is_(None))
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def owned_exam_by_code(session: AsyncSession, org_id: uuid.UUID | None, code: str) -> Exam | None:
+    """One exam by code in this owner's own namespace, for a uniqueness check."""
+    stmt = select(Exam).where(Exam.org_id == org_id, Exam.code == code.strip().lower())
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def create_exam(
     session: AsyncSession,
     *,
+    owner_kind: str,
+    org_id: uuid.UUID | None,
     code: str,
     name: str,
     default_reading_seconds: int,
@@ -41,6 +73,8 @@ async def create_exam(
     partner_pilot: bool,
 ) -> Exam:
     exam = Exam(
+        owner_kind=owner_kind,
+        org_id=org_id,
         code=code,
         name=name,
         default_reading_seconds=default_reading_seconds,
@@ -61,12 +95,22 @@ async def update_exam(session: AsyncSession, exam_id: uuid.UUID, **fields: Any) 
 
 
 async def pilot_exam_codes(session: AsyncSession) -> list[str]:
-    """Exams a partner attribution link may name. Was a tuple in `growth.domain`."""
-    stmt = select(Exam.code).where(Exam.partner_pilot.is_(True)).order_by(Exam.code)
+    """Exams a partner attribution link may name. Was a tuple in `growth.domain`.
+
+    Consumer-side, so platform exams only: a partner link is a B2C funnel and
+    can never name an institution's private exam.
+    """
+    stmt = select(Exam.code).where(Exam.partner_pilot.is_(True), Exam.org_id.is_(None)).order_by(Exam.code)
     return [row for row in (await session.execute(stmt)).scalars()]
 
 
 async def exam_by_id(session: AsyncSession, exam_id: uuid.UUID) -> Exam | None:
+    """One exam by id, with no visibility filter.
+
+    By id and unscoped deliberately: an attempt sat last year has to render
+    whoever owns the exam it named. The callers that must not cross an owner
+    boundary check ownership themselves, in the service.
+    """
     return (await session.execute(select(Exam).where(Exam.id == exam_id))).scalar_one_or_none()
 
 

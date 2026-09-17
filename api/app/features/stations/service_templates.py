@@ -41,7 +41,7 @@ async def create_template(
     code = None
     if exam_code:
         try:
-            exam = await resolve_exam(session, exam_code)
+            exam = await resolve_exam(session, exam_code, org_id=org_id)
         except CatalogUnknownExam as exc:
             raise errors.UnknownExamError(str(exc)) from exc
         exam_id, code = exam.id, exam.code

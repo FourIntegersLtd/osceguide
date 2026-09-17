@@ -7,6 +7,10 @@ from pydantic import BaseModel, Field
 
 class ExamRead(BaseModel):
     id: uuid.UUID
+    # Who wrote it: `platform` is the consumer catalogue, `org` is an
+    # institution's own. `org_id` is set only for the latter.
+    owner_kind: str = "platform"
+    org_id: uuid.UUID | None = None
     code: str
     name: str
     status: str
@@ -46,11 +50,21 @@ class ProgrammeRead(BaseModel):
     exam_id: uuid.UUID
     exam_code: str
     exam_name: str
+    # Whether the exam behind this programme is the institution's own or one
+    # the platform published. The programme's own status is separate and the
+    # institution's alone.
+    exam_owner_kind: str = "platform"
     status: str
     source: str
 
 
 class CreateProgramme(BaseModel):
+    """The exam this programme groups sittings under.
+
+    By code, resolved in the institution's own scope first: a school that has
+    written its own `plab` gets that one, not the platform's.
+    """
+
     exam_code: str = Field(min_length=1, max_length=32)
 
 

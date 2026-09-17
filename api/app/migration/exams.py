@@ -38,7 +38,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import repository as catalog_repository
-from app.features.catalog import service as catalog
+from app.features.catalog import service_authoring as catalog
 from app.features.catalog.models import Exam
 from app.features.rubrics import service as rubrics
 
@@ -61,7 +61,7 @@ async def load_exams(session: AsyncSession, spec: Mapping[str, Any], *, now: dat
         if not code:
             raise InvalidExamsFile("Each exam needs a code.")
 
-        existing = await catalog_repository.exam_by_code(session, code)
+        existing = await catalog_repository.exam_by_code(session, None, code)
         if existing is not None:
             out[code] = existing
             continue
@@ -78,7 +78,7 @@ async def load_exams(session: AsyncSession, spec: Mapping[str, Any], *, now: dat
             partner_pilot=bool(entry.get("partner_pilot", False)),
         )
         await catalog.publish_exam(session, exam.id)
-        row = await catalog_repository.exam_by_code(session, code)
+        row = await catalog_repository.exam_by_code(session, None, code)
         assert row is not None
         out[code] = row
     return out

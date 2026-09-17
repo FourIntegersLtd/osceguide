@@ -38,7 +38,7 @@ async def create_station(
     somebody is still deciding would change under it.
     """
     try:
-        exam = await resolve_exam(session, exam_code)
+        exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
         # Re-raised as this slice's type so the router documents its own errors.
         raise errors.UnknownExamError(str(exc)) from exc

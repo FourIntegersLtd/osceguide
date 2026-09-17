@@ -67,7 +67,7 @@ async def grant(
     ends_at: datetime | None = None,
     granted_by: uuid.UUID | None = None,
 ) -> EntitlementRead:
-    exam = await resolve_exam(session, exam_code)
+    exam = await resolve_exam(session, exam_code, org_id=org_id)
     row = await repository.grant(
         session,
         user_id=user_id,

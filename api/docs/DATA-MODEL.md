@@ -185,39 +185,54 @@ Indexes on `(org_id, at)` and `(actor_user_id, at)`.
 ## catalog — 2 tables
 
 ### `exams`
-**Starts empty.** An exam is written by a platform admin through
-`POST /platform/exams`, not seeded. Replaces b2c's `app_type` string and the
-4×20 `COLLECTION_MAPPING` it indexed — a fifth exam is a row here, not another
-twenty collection names, and not a release either: four rows used to be
-inserted by a migration and mirrored by a frozen tuple in `catalog.domain`,
-pinned to each other by a unit test.
+**Starts empty.** An exam is written, not seeded — by a platform admin through
+`POST /platform/exams`, or by an institution through `POST /orgs/{slug}/exams`.
+Replaces b2c's `app_type` string and the 4×20 `COLLECTION_MAPPING` it indexed —
+a fifth exam is a row here, not another twenty collection names, and not a
+release either: four rows used to be inserted by a migration and mirrored by a
+frozen tuple in `catalog.domain`, pinned to each other by a unit test.
+
+**Owned** (ADR 0017), the same way a station or a rubric is. A *platform* exam is
+the consumer catalogue. An *org* exam is an institution's own: written without
+asking us, published on its own schedule, and never in `GET /exams`.
 
 | Field | Type | Notes |
 |---|---|---|
-| `code` | `citext not null unique` | lower-case, URL-safe; appears in plans and partner ref ids, so it is never renamed |
+| `owner_kind` | `varchar(16) not null default 'platform'` | `platform` (the consumer catalogue) or `org` |
+| `org_id` | `uuid null` → `organizations.id` CASCADE | set iff `owner_kind = 'org'` |
+| `code` | `citext not null` | lower-case, URL-safe; appears in plans and partner ref ids, so it is never renamed. Unique **per owner**, not globally |
 | `name` | `varchar(200) not null` | |
-| `status` | `varchar(32) not null default 'draft'` | `draft` → `published` → `retired`; only a published exam may be built on |
-| `rubric_version_id` | `uuid null` → `rubric_versions.id` RESTRICT | what it is marked against; must be a published, platform-owned version |
+| `status` | `varchar(32) not null default 'draft'` | `draft` → `published` → `retired`, per owner; only a published exam may be built on |
+| `rubric_version_id` | `uuid null` → `rubric_versions.id` RESTRICT | what it is marked against. A platform exam's must be published and platform-owned; an org exam's may be its own or a platform one |
 | `default_reading_seconds` | `int not null` | |
 | `default_simulation_seconds` | `int not null` | |
 | `station_attempt_limit` | `int not null default 3` | |
-| `partner_pilot` | `bool not null default false` | whether a partner attribution link may name it; was `growth.domain.PILOT_EXAMS` |
+| `partner_pilot` | `bool not null default false` | whether a partner attribution link may name it; was `growth.domain.PILOT_EXAMS`. Consumer-side, so forced false on an org exam |
 
 CHECK `ck_exams_published_has_rubric`: `status <> 'published' OR rubric_version_id IS NOT NULL`
 — an exam that could be sat and then found unmarkable is the failure this prevents.
+
+CHECK `ck_exams_owner_matches_org`: `owner_kind = 'platform'` requires `org_id IS NULL`,
+`owner_kind = 'org'` requires it set.
+
+UNIQUE `uq_exams_platform_code` on `(code) WHERE org_id IS NULL` and
+`uq_exams_org_code` on `(org_id, code) WHERE org_id IS NOT NULL`. One namespace
+would let whoever registered a code first reserve it for every institution.
 
 `framework_id` is gone. What everything downstream records is the rubric
 version's own id, so a stored result traces back to the exact wording it was
 marked against; the column named one of four frameworks the engine shipped.
 
 ### `org_programmes`
-One organisation offering one exam. This is what `b2b_exams` rows were.
+One organisation offering one exam. This is what `b2b_exams` rows were. The exam
+is either the institution's own or one the platform published; the programme
+carries no content, it is the label a year's sittings are grouped under.
 
 | Field | Type | Notes |
 |---|---|---|
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | |
-| `exam_id` | `uuid not null` → `exams.id` RESTRICT | |
-| `status` | `varchar(32) not null default 'draft'` | `OFFERABLE_PROGRAMME_STATUSES = {active}` |
+| `exam_id` | `uuid not null` → `exams.id` RESTRICT | an exam this org can see |
+| `status` | `varchar(32) not null default 'draft'` | `OFFERABLE_PROGRAMME_STATUSES = {active}`. The institution's own status, separate from the exam's |
 | `source` | `varchar(32) not null default 'custom'` | |
 | `import_ref` | `jsonb null` | where an imported programme came from |
 
