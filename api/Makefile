@@ -1,4 +1,4 @@
-.PHONY: help install start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev status status-check
+.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev status status-check data-model
 
 help:
 	@echo "OSCE Guide Platform API"
@@ -19,7 +19,9 @@ help:
 	@echo "  make ci          lint + typecheck + arch + test"
 	@echo "  make openapi     write openapi.json"
 	@echo "  make engine-dev  install osce_assessment from the local checkout, editable"
+	@echo "  make bootstrap-admin EMAIL=you@example.com   make the first platform admin"
 	@echo "  make status      regenerate the evidence half of docs/STATUS.md"
+	@echo "  make data-model  check docs/DATA-MODEL.md against the schema"
 
 install:
 	poetry install
@@ -70,6 +72,7 @@ typecheck:
 arch:
 	poetry run lint-imports
 	poetry run python scripts/check_slice_readmes.py
+	poetry run python scripts/check_data_model.py
 
 ci: lint typecheck arch guards test status-check
 
@@ -80,6 +83,12 @@ openapi:
 # work install it from the sibling checkout so a change there is visible here
 # without a tag and a reinstall. Deployments pin the tag instead.
 ENGINE ?= ../../assessment-platform/packages/osce_assessment
+
+NAME ?= Platform Admin
+
+bootstrap-admin:
+	@test -n "$(EMAIL)" || { echo "Set EMAIL=you@example.com"; exit 1; }
+	poetry run python scripts/bootstrap_admin.py --email "$(EMAIL)" --name "$(NAME)"
 
 engine-dev:
 	@test -f "$(ENGINE)/pyproject.toml" || 		{ echo "No engine at $(ENGINE). Set ENGINE=<path to packages/osce_assessment>."; exit 1; }
@@ -94,3 +103,8 @@ status:
 
 status-check:
 	poetry run python scripts/status_report.py --check
+
+# The schema reference is checked like the slice READMEs are: a document
+# nothing verifies is the failure `docs/STATUS.md` exists to remember.
+data-model:
+	poetry run python scripts/check_data_model.py

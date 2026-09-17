@@ -9,6 +9,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from tests.support.catalog import create_exam, ensure_exam
+from tests.support.rubrics import published_feedback_version, rubric_with_domains
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -27,32 +29,39 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
         memberships=(Membership(org_id=org_id, org_slug=slug, role="owner"),),
         active_org_slug=slug,
     )
+    # Nothing is seeded, so the exam an org's stations name has to be written
+    # first — by a platform admin, which is exactly who is holding this token.
+    await create_exam(client, root, code="sca")
     return org_id, admin
 
 
-async def a_slot(db_session: AsyncSession, org_id: uuid.UUID) -> uuid.UUID:
-    """A slot, built directly: reviewing does not care how it was scheduled."""
-    from app.features.catalog import repository as catalog_repo
+async def a_slot(
+    db_session: AsyncSession, org_id: uuid.UUID, domains: tuple[str, ...] = ("communication",)
+) -> uuid.UUID:
+    """A slot, built directly: reviewing does not care how it was scheduled.
+
+    `domains` is what the sitting's rubric asks reviewers to score (R-1).
+    """
     from app.features.identity import repository as identity_repo
     from app.features.sittings.models import Circuit, Sitting, Slot
     from app.features.stations.models import (
-        FeedbackTemplate,
-        FeedbackTemplateVersion,
         Station,
         StationVersion,
     )
 
-    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    exam = await ensure_exam(db_session, "sca")
     assert exam is not None
 
-    template = FeedbackTemplate(org_id=org_id, title="R")
-    db_session.add(template)
-    await db_session.flush()
-    template_version = FeedbackTemplateVersion(
-        org_id=org_id, template_id=template.id, version=1, field_selection={}, status="published"
+    # A template narrows a rubric, and the selection is checked against that
+    # rubric's own domains — so the rubric has to have the ones under test.
+    template_version = await published_feedback_version(
+        db_session,
+        org_id,
+        field_selection={"domains": list(domains)},
+        structure=rubric_with_domains(*domains) if domains else None,
     )
     station = Station(owner_kind="org", org_id=org_id, exam_id=exam.id, title="S")
-    db_session.add_all([template_version, station])
+    db_session.add(station)
     await db_session.flush()
     station_version = StationVersion(
         station_id=station.id, org_id=org_id, version=1, content={}, status="published"
@@ -82,7 +91,10 @@ async def a_slot(db_session: AsyncSession, org_id: uuid.UUID) -> uuid.UUID:
         station_version_id=station_version.id,
     )
     db_session.add(slot)
-    await db_session.flush()
+    # Committed (releasing the test's savepoint) rather than flushed: a request
+    # the API refuses rolls the session back, and a flushed arrangement would
+    # go with it. The fixture's outer transaction still discards everything.
+    await db_session.commit()
     return slot.id
 
 
@@ -246,3 +258,152 @@ async def test_an_org_cannot_write_a_gp_lead_review_against_another_orgs_slot(
     )
 
     assert response.status_code == 404, response.text
+
+
+async def test_a_review_completes_once_every_domain_is_scored(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-1, wired. The router used to pass an empty required set, which
+    `ensure_completable` refuses outright — no review could ever be completed."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id, domains=("communication", "data_gathering"))
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+
+    partial = await client.put(
+        url,
+        json={"field_values": {"communication.score": "G"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert partial.status_code == 409, partial.text
+    assert partial.json()["code"] == "review_incomplete"
+    assert "data_gathering" in partial.json()["message"]
+
+    complete = await client.put(
+        url,
+        json={
+            "field_values": {"communication.score": "G", "data_gathering.score": "A"},
+            "status": "completed",
+        },
+        headers=bearer(admin),
+    )
+    assert complete.status_code == 200, complete.text
+    assert complete.json()["status"] == "completed"
+    assert complete.json()["completed_at"] is not None
+
+
+async def test_a_rubric_with_nothing_to_score_cannot_be_completed(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id, domains=())
+    response = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "nothing_to_review"
+
+
+async def test_a_gp_lead_review_needs_every_domain_too(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, _ = await org_with_admin(client, make_actor)
+    lead = await make_actor(
+        "lead-kings@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="institution_admin"),),
+        active_org_slug="kings",
+    )
+    slot_id = await a_slot(db_session, org_id, domains=("communication",))
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/gp-lead-review"
+
+    partial = await client.put(
+        url, json={"revision": 0, "field_values": {}, "status": "completed"}, headers=bearer(lead)
+    )
+    assert partial.status_code == 409, partial.text
+    assert partial.json()["code"] == "review_incomplete"
+
+    complete = await client.put(
+        url,
+        json={"revision": 0, "field_values": {"communication.score": "R"}, "status": "completed"},
+        headers=bearer(lead),
+    )
+    assert complete.status_code == 200, complete.text
+    assert complete.json()["status"] == "completed"
+
+
+async def test_two_reviewers_who_disagree_are_combined_worst_first(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """b2b's tie-break, moved off the browser.
+
+    `combine_rag` was written, unit-tested, documented and called by nothing,
+    so the console, a released result and an export could each work out a
+    candidate's rating differently.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id, domains=("communication", "management"))
+    second = await make_actor(
+        "observer@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="supervisor"),),
+        active_org_slug="kings",
+    )
+
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+    await client.put(
+        url,
+        json={
+            "field_values": {"communication.score": "G", "management.score": "G"},
+            "status": "completed",
+        },
+        headers=bearer(admin),
+    )
+    await client.put(
+        url,
+        json={
+            "field_values": {"communication.score": "A", "management.score": "G"},
+            "status": "completed",
+        },
+        headers=bearer(second),
+    )
+
+    listed = await client.get(f"/api/v1/orgs/kings/slots/{slot_id}/reviews", headers=bearer(admin))
+    summary = listed.json()["summary"]
+    assert summary["completed_reviews"] == 2
+    # The lower rating wins: it is the one that should prompt a conversation.
+    assert summary["by_domain"] == {"communication": "A", "management": "G"}
+    assert summary["overall_rag"] == "A"
+
+
+async def test_a_draft_review_does_not_count_towards_the_summary(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """Somebody part-way through marking has not said anything yet."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+
+    await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {"communication.score": "R"}, "status": "draft"},
+        headers=bearer(admin),
+    )
+
+    summary = (await client.get(f"/api/v1/orgs/kings/slots/{slot_id}/reviews", headers=bearer(admin))).json()[
+        "summary"
+    ]
+    assert summary["completed_reviews"] == 0
+    assert summary["overall_rag"] is None
+    assert summary["by_domain"] == {}
+
+
+async def test_a_slot_nobody_has_reviewed_still_has_a_summary(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """A shape the console can render, not a 404 and not a missing key."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+
+    body = (await client.get(f"/api/v1/orgs/kings/slots/{slot_id}/reviews", headers=bearer(admin))).json()
+    assert body["items"] == []
+    assert body["summary"]["slot_id"] == str(slot_id)
+    assert body["summary"]["overall_rag"] is None

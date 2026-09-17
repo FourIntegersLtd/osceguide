@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -177,3 +178,15 @@ async def slot_has_any_review(session: AsyncSession, slot_id: uuid.UUID) -> bool
     """Used by `sittings` to decide whether a circuit is still editable."""
     stmt = select(SlotReview.id).where(SlotReview.slot_id == slot_id).limit(1)
     return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+async def slots_with_any_review(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these slots have been marked, in one query.
+
+    The console asks about every slot on a circuit at once; asking per slot is
+    the probe-per-row the read models exist to delete.
+    """
+    if not slot_ids:
+        return set()
+    stmt = select(SlotReview.slot_id).where(SlotReview.slot_id.in_(list(slot_ids))).distinct()
+    return {row for row in (await session.execute(stmt)).scalars()}

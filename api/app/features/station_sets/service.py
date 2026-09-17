@@ -8,22 +8,19 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError, raise_mapped
 from app.features.attempts import service as attempts
-from app.features.catalog import repository as catalog_repo
+from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.station_sets import domain, errors, repository
 from app.features.station_sets.models import StationSet, StationSetEntry
 from app.features.station_sets.schemas import EntryRead, SetRead, StartedAttempt
 
-_REFUSALS: dict[type[Exception], type[Exception]] = {
+_REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.AttemptLimitReached: errors.AttemptLimitReachedError,
     domain.SetLocked: errors.SetLockedError,
     domain.NothingToDebrief: errors.NothingToDebriefError,
 }
-
-
-def _raise(exc: Exception) -> None:
-    raise _REFUSALS.get(type(exc), errors.AttemptLimitReachedError)(str(exc)) from exc
 
 
 async def create_set(
@@ -43,8 +40,8 @@ async def create_set(
 async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> SetRead:
     row = await _require(session, owner_user_id, set_id)
     entries = await repository.entries_for(session, set_id)
-    exam = await catalog_repo.exam_by_id(session, row.exam_id)
-    return _set_read(row, exam.code if exam else "", entries)
+    code = await catalog.exam_code_by_id(session, row.exam_id)
+    return _set_read(row, code or "", entries)
 
 
 async def list_sets(
@@ -54,8 +51,8 @@ async def list_sets(
     out = []
     for row in rows:
         entries = await repository.entries_for(session, row.id)
-        exam = await catalog_repo.exam_by_id(session, row.exam_id)
-        out.append(_set_read(row, exam.code if exam else "", entries))
+        code = await catalog.exam_code_by_id(session, row.exam_id)
+        out.append(_set_read(row, code or "", entries))
     return out, next_cursor
 
 
@@ -79,7 +76,7 @@ async def start_entry_attempt(
     if entry is None:
         raise errors.EntryNotFound()
 
-    exam = await catalog_repo.exam_by_id(session, row.exam_id)
+    exam = await catalog.exam_ref_by_id(session, row.exam_id)
     if exam is None:
         raise errors.SetNotFound()
 
@@ -90,7 +87,15 @@ async def start_entry_attempt(
         else:
             domain.ensure_attemptable(state, limit=exam.station_attempt_limit, locked=row.locked)
     except Exception as exc:  # noqa: BLE001 - mapped below
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
+
+    source_attempt_id = None
+    if debrief:
+        # A debrief is *about* an earlier attempt, and the table requires it to
+        # say which. Passing None raised an IntegrityError on every request.
+        source_attempt_id = await attempts.latest_attempt_for_set_entry(session, entry.id)
+        if source_attempt_id is None:
+            raise errors.NothingToDebriefError()
 
     attempt = await attempts.start_attempt(
         session,
@@ -100,7 +105,7 @@ async def start_entry_attempt(
         now=now,
         station_version_id=entry.station_version_id,
         set_entry_id=None if debrief else entry.id,
-        source_attempt_id=None,
+        source_attempt_id=source_attempt_id,
     )
     await repository.record_attempt(session, entry.id, at=now, debrief=debrief)
 

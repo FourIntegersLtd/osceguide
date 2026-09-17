@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.pagination import keyset_page
 from app.features.station_sets.models import StationSet, StationSetEntry
 
 
@@ -84,16 +84,6 @@ async def list_for_owner(
     session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[StationSet], str | None]:
     stmt = select(StationSet).where(StationSet.owner_user_id == owner_user_id)
-    if cursor:
-        stmt = stmt.where(StationSet.created_at < datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(
-                stmt.order_by(StationSet.created_at.desc(), StationSet.id.desc()).limit(limit + 1)
-            )
-        ).scalars()
+    return await keyset_page(
+        session, stmt, sort_col=StationSet.created_at, id_col=StationSet.id, limit=limit, cursor=cursor
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})

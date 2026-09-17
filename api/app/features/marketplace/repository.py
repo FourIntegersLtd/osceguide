@@ -9,13 +9,15 @@ from typing import Any
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.audience import Audience, ViewerAudiences, addressed_to, visible_to
+from app.core.pagination import keyset_page
 from app.features.marketplace.models import AvailabilityPost, PeerSession
 
 
 async def create_post(
     session: AsyncSession,
     *,
+    audience: Audience,
     owner_user_id: uuid.UUID,
     exam_id: uuid.UUID,
     starts_at: datetime,
@@ -23,6 +25,9 @@ async def create_post(
     note: str | None,
 ) -> AvailabilityPost:
     row = AvailabilityPost(
+        visibility=str(audience.visibility),
+        audience_org_id=audience.org_id,
+        audience_group_id=audience.group_id,
         owner_user_id=owner_user_id,
         exam_id=exam_id,
         starts_at=starts_at,
@@ -72,30 +77,33 @@ async def mark_cancelled(session: AsyncSession, post_id: uuid.UUID, *, at: datet
 async def list_open(
     session: AsyncSession,
     *,
+    viewer: ViewerAudiences,
     now: datetime,
     limit: int,
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
+    audience: Audience | None = None,
 ) -> tuple[list[AvailabilityPost], str | None]:
-    """Slots still to come and still unclaimed."""
+    """Slots still to come, still unclaimed, and offered to a room this viewer
+    is in."""
     stmt = select(AvailabilityPost).where(
-        AvailabilityPost.status == "available", AvailabilityPost.starts_at > now
+        AvailabilityPost.status == "available",
+        AvailabilityPost.starts_at > now,
+        visible_to(AvailabilityPost, viewer),
     )
     if exam_id is not None:
         stmt = stmt.where(AvailabilityPost.exam_id == exam_id)
-    if cursor:
-        stmt = stmt.where(AvailabilityPost.starts_at > datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(
-                stmt.order_by(AvailabilityPost.starts_at, AvailabilityPost.id).limit(limit + 1)
-            )
-        ).scalars()
+    if audience is not None:
+        stmt = stmt.where(addressed_to(AvailabilityPost, audience))
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=AvailabilityPost.starts_at,
+        id_col=AvailabilityPost.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].starts_at, "i": str(page[-1].id)})
 
 
 async def create_peer_session(

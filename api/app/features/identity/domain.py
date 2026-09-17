@@ -15,8 +15,19 @@ MIN_PASSWORD_LENGTH = 12
 
 # Routes a user may still reach while holding a temporary password. Reading
 # yourself is allowed so the client can show who is signed in and why it is
-# being asked to change the password.
-ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED = frozenset({"auth.change_password", "auth.logout", "me.read"})
+# being asked to change the password, and capabilities so the shell can render.
+#
+# Named by OpenAPI operation id (`<tag>_<function>`), which is what
+# `core.auth` matches a request against. They were invented names for a while,
+# which no request could ever match — and nothing called the rule anyway.
+ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED = frozenset(
+    {
+        "identity_change_password",
+        "identity_logout",
+        "identity_read_me",
+        "tenancy_read_capabilities",
+    }
+)
 
 
 class WeakPassword(Exception):

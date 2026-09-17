@@ -10,8 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents, VoiceTokens
 from app.core.settings import Settings
-from app.features.attempts import repository as attempts_repo
-from app.features.attempts.domain import Status
+from app.features.attempts import service_reads as attempts
 from app.features.attempts.errors import AttemptNotFound, AttemptNotYours
 from app.features.voice import capacity, domain, errors
 from app.features.voice.schemas import VoiceGrant
@@ -29,6 +28,11 @@ _SESSION_TYPE_BY_KIND = {
     "debrief": "debrief",
 }
 
+# An attempt whose conversation is over cannot be rejoined. Spelled as the
+# stored values rather than by importing `attempts.domain`: a slice reaches
+# another through its service, and the statuses are part of that contract.
+NOT_JOINABLE = frozenset({"interaction_complete", "evaluated", "failed"})
+
 
 async def grant_for_attempt(
     session: AsyncSession,
@@ -38,17 +42,22 @@ async def grant_for_attempt(
     tokens: VoiceTokens,
     settings: Settings,
 ) -> VoiceGrant:
-    attempt = await attempts_repo.attempt_by_id(session, attempt_id)
+    attempt = await attempts.attempt_ref(session, attempt_id)
     if attempt is None:
         raise AttemptNotFound()
     if attempt.user_id != requester_id:
         raise AttemptNotYours()
-    if Status(attempt.status) in {Status.EVALUATED, Status.FAILED, Status.INTERACTION_COMPLETE}:
+    if attempt.status in NOT_JOINABLE:
         raise errors.AttemptNotJoinable()
     if not settings.livekit_url:
         raise errors.VoiceUnavailable()
 
-    session_type = _SESSION_TYPE_BY_KIND.get(attempt.kind, "conversation")
+    # No default: `domain.family_for` raises on an unknown session type
+    # precisely so a patient simulation is never dispatched to the help
+    # worker, and defaulting here undid that one layer above it.
+    session_type = _SESSION_TYPE_BY_KIND.get(attempt.kind)
+    if session_type is None:
+        raise errors.VoiceUnavailable(f"No worker family for an attempt of kind {attempt.kind!r}.")
     family = domain.family_for(session_type)
     configured = domain.normalize_mode(settings.livekit_routing_mode)
     room = attempt.room_name or domain.room_name_for(str(attempt.id))

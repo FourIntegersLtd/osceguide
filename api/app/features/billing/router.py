@@ -33,7 +33,12 @@ async def list_plans(session: Session) -> Page[schemas.PlanRead]:
 @router.post(
     "/billing/webhooks/stripe",
     response_model=schemas.WebhookResult,
-    responses=error_responses(errors.InvalidWebhook, errors.InvalidSignature, errors.UnknownPlanError),
+    responses=error_responses(
+        errors.InvalidWebhook,
+        errors.InvalidSignature,
+        errors.UnknownPlanError,
+        errors.UnknownExamError,
+    ),
 )
 async def stripe_webhook(
     request: Request,

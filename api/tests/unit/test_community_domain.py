@@ -30,18 +30,6 @@ def test_an_admin_may_remove_anything() -> None:
     domain.ensure_removable(author_id=AUTHOR, actor_id=OTHER, actor_is_admin=True)
 
 
-def test_liking_twice_is_the_same_as_liking_once() -> None:
-    """A like is a fact about a person, not a counter to increment — which is
-    what b2c does, so a double tap counts twice."""
-    assert domain.apply_like(already_liked=False) is True
-    assert domain.apply_like(already_liked=True) is True
-
-
-def test_unliking_removes_it() -> None:
-    assert domain.apply_unlike(already_liked=True) is False
-    assert domain.apply_unlike(already_liked=False) is False
-
-
 def test_empty_content_is_refused() -> None:
     with pytest.raises(domain.EmptyContent):
         domain.ensure_postable("   ")

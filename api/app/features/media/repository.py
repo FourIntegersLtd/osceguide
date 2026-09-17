@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.pagination import keyset_page
 from app.features.media.models import MediaItem
 
 
@@ -68,16 +67,6 @@ async def list_published(
     stmt = select(MediaItem).where(MediaItem.status == "published")
     if kind:
         stmt = stmt.where(MediaItem.kind == kind)
-    if cursor:
-        stmt = stmt.where(MediaItem.created_at < datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(
-                stmt.order_by(MediaItem.created_at.desc(), MediaItem.id.desc()).limit(limit + 1)
-            )
-        ).scalars()
+    return await keyset_page(
+        session, stmt, sort_col=MediaItem.created_at, id_col=MediaItem.id, limit=limit, cursor=cursor
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})

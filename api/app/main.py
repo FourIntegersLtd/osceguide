@@ -15,6 +15,8 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.core.audience import bind_viewer_audiences
+from app.core.auth import bind_password_gate
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
@@ -34,12 +36,16 @@ from app.features.assistant.router_worker import router as assistant_worker_rout
 from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
+from app.features.billing.service import count_payments_for_users
 from app.features.catalog.router import router as catalog_router
 from app.features.community.router import router as community_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.growth.router import router as growth_router
+from app.features.growth.service import bind_purchase_counter
 from app.features.identity.router import router as identity_router
+from app.features.identity.service import bind_registration_hook, may_call_with_temporary_password
+from app.features.identity.service_sessions import bind_default_workspace
 from app.features.marketplace.router import router as marketplace_router
 from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
@@ -47,12 +53,20 @@ from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
 from app.features.reviews.service import slot_has_review
 from app.features.roster.router import router as roster_router
+from app.features.roster.service import audiences_for_viewer, claim_roster_entries
+from app.features.rubrics.router import router as rubrics_router
+from app.features.rubrics.router_feedback import router as feedback_templates_router
+from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
 from app.features.sittings.service_circuit import bind_feedback_lookup
 from app.features.station_sets.router import router as station_sets_router
 from app.features.stations.router import router as stations_router
+from app.features.stations.router_platform import router as platform_stations_router
+from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
+from app.features.tenancy.router_platform import router as platform_console_router
 from app.features.tenancy.service import (
+    default_workspace_for,
     is_institution_admin,
     is_org_admin,
     may_read_org,
@@ -81,8 +95,14 @@ def api_v1_router() -> APIRouter:
     router = APIRouter()
     router.include_router(identity_router)
     router.include_router(tenancy_router)
+    router.include_router(platform_console_router)
     router.include_router(catalog_router)
+    router.include_router(rubrics_router)
+    router.include_router(org_rubrics_router)
     router.include_router(stations_router)
+    router.include_router(feedback_templates_router)
+    router.include_router(station_templates_router)
+    router.include_router(platform_stations_router)
     router.include_router(attempts_router)
     router.include_router(entitlements_router)
     router.include_router(voice_router)
@@ -138,10 +158,26 @@ def create_app() -> FastAPI:
     # `tenancy`, which owns them. The seam is bound here, in the one place
     # allowed to know about both.
     bind_membership_lookup(memberships_for_token)
+    # Which workspace a fresh token lands in. `tenancy` owns the rule and sits
+    # above `identity`, which builds the token, so they meet here.
+    bind_default_workspace(default_workspace_for)
+    # A temporary password reaches only the routes that replace it. The rule is
+    # `identity`'s; the enforcement point is core's `get_principal`.
+    bind_password_gate(may_call_with_temporary_password)
     bind_org_lookup(org_ref_by_slug)
     bind_org_access_policy(org_permits_access)
     # `reviews` sits above `sittings`, so the edit lock cannot ask it directly.
     bind_feedback_lookup(slot_has_review)
+    # `billing` sits above `growth`, so the partner funnel cannot count
+    # purchases for itself. It reported zero until this was bound (G-2).
+    bind_purchase_counter(count_payments_for_users)
+    # Who can see an institution's or a group's posts. `community`,
+    # `marketplace` and `peer_practice` all ask; `roster` and `tenancy`, which
+    # know, both sit above them.
+    bind_viewer_audiences(audiences_for_viewer)
+    # An institution rosters somebody by email before they have an account.
+    # `roster` sits above `identity`, so registration announces itself here.
+    bind_registration_hook(claim_roster_entries)
     bind_role_policy(
         may_read_org=may_read_org,
         is_org_admin=is_org_admin,

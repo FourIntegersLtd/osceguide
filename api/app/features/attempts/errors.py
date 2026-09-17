@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from app.core.errors import Conflict, Forbidden, NotFound
 from app.features.entitlements.errors import NotEntitled
+from app.features.stations.errors import StationNotPublishedError
 
 # Re-exported so the router can document the refusal without reaching into
 # another slice. Deliberately the same class, not a copy: the code is the
 # contract and two definitions of it would be free to drift.
-__all__ = ["NotEntitled"]
+#
+# `StationNotPublishedError` is T4: bootstrapping an attempt against a station
+# still in draft is refused, and the worker route has to declare the code it
+# can answer with.
+__all__ = ["NotEntitled", "StationNotPublishedError"]
 
 
 class AttemptNotFound(NotFound):

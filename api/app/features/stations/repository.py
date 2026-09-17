@@ -1,21 +1,24 @@
 """Storage for stations and their versions.
 
-Org-scoped methods take `org_id` first. The platform library has no org, so the
-methods that reach it say so in their names rather than passing None and hoping
-the caller meant it.
+Every method takes `org_id` first, and `None` means the platform's own rows —
+the library. Which ownership predicate each uses is the tenancy decision:
+`owned_by` for a write, `visible_to` for a read that should also reach the
+library. See `app.core.ownership`.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import Select, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
-from app.features.stations.models import FeedbackTemplateVersion, Station, StationVersion
+from app.core.ownership import owned_by, owner_kind_for, visible_to
+from app.core.pagination import keyset_page
+from app.features.stations.models import Station, StationVersion
 
 
 async def create_station(
@@ -24,9 +27,8 @@ async def create_station(
     *,
     exam_id: uuid.UUID,
     title: str,
-    owner_kind: str = "org",
 ) -> Station:
-    station = Station(owner_kind=owner_kind, org_id=org_id, exam_id=exam_id, title=title)
+    station = Station(owner_kind=owner_kind_for(org_id), org_id=org_id, exam_id=exam_id, title=title)
     session.add(station)
     await session.flush()
     await session.refresh(station)
@@ -40,35 +42,44 @@ async def add_version(
     station_id: uuid.UUID,
     version: int,
     content: dict[str, Any],
+    template_version_id: uuid.UUID | None = None,
 ) -> StationVersion:
-    row = StationVersion(station_id=station_id, org_id=org_id, version=version, content=content)
+    row = StationVersion(
+        station_id=station_id,
+        org_id=org_id,
+        version=version,
+        content=content,
+        template_version_id=template_version_id,
+    )
     session.add(row)
     await session.flush()
     await session.refresh(row)
     return row
 
 
-async def station_by_id(session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID) -> Station | None:
-    stmt = select(Station).where(Station.org_id == org_id, Station.id == station_id)
+async def station_by_id(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID
+) -> Station | None:
+    stmt = select(Station).where(owned_by(Station, org_id), Station.id == station_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def versions_for_station(
-    session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID
 ) -> list[StationVersion]:
     stmt = (
         select(StationVersion)
-        .where(StationVersion.org_id == org_id, StationVersion.station_id == station_id)
+        .where(owned_by(StationVersion, org_id), StationVersion.station_id == station_id)
         .order_by(StationVersion.version)
     )
     return list((await session.execute(stmt)).scalars())
 
 
 async def version_by_number(
-    session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID, version: int
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
 ) -> StationVersion | None:
     stmt = select(StationVersion).where(
-        StationVersion.org_id == org_id,
+        owned_by(StationVersion, org_id),
         StationVersion.station_id == station_id,
         StationVersion.version == version,
     )
@@ -76,18 +87,18 @@ async def version_by_number(
 
 
 async def set_version_content(
-    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID, *, content: dict[str, Any]
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID, *, content: dict[str, Any]
 ) -> None:
     await session.execute(
         update(StationVersion)
-        .where(StationVersion.org_id == org_id, StationVersion.id == version_id)
+        .where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
         .values(content=content)
     )
 
 
 async def set_version_status(
     session: AsyncSession,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     version_id: uuid.UUID,
     *,
     status: str,
@@ -101,41 +112,33 @@ async def set_version_status(
         values |= {"archived_at": at, "archived_by": by}
     await session.execute(
         update(StationVersion)
-        .where(StationVersion.org_id == org_id, StationVersion.id == version_id)
+        .where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
         .values(**values)
     )
 
 
 async def set_current_version(
-    session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID, *, version_id: uuid.UUID
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, version_id: uuid.UUID
 ) -> None:
     await session.execute(
         update(Station)
-        .where(Station.org_id == org_id, Station.id == station_id)
+        .where(owned_by(Station, org_id), Station.id == station_id)
         .values(current_version_id=version_id, status="published")
     )
 
 
 async def list_for_org(
     session: AsyncSession,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     *,
     limit: int,
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
 ) -> tuple[list[Station], str | None]:
-    stmt = select(Station).where(Station.org_id == org_id)
+    stmt = select(Station).where(owned_by(Station, org_id))
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
-    if cursor:
-        stmt = stmt.where(Station.created_at > datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (await session.execute(stmt.order_by(Station.created_at, Station.id).limit(limit + 1))).scalars()
-    )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
+    return await _station_page(session, stmt, limit=limit, cursor=cursor)
 
 
 async def list_platform_library(
@@ -149,15 +152,21 @@ async def list_platform_library(
     stmt = select(Station).where(Station.owner_kind == "platform", Station.status == "published")
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
-    if cursor:
-        stmt = stmt.where(Station.created_at > datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (await session.execute(stmt.order_by(Station.created_at, Station.id).limit(limit + 1))).scalars()
+    return await _station_page(session, stmt, limit=limit, cursor=cursor)
+
+
+async def _station_page(
+    session: AsyncSession, stmt: Select[Any], *, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[Station], str | None]:
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Station.created_at,
+        id_col=Station.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
 
 
 async def version_for_attempt(
@@ -170,11 +179,7 @@ async def version_for_attempt(
     the second half this would be a global lookup by id, which is the shape
     that leaks across tenants elsewhere in the legacy code.
     """
-    owner = (
-        Station.org_id.is_(None)
-        if org_id is None
-        else or_(Station.org_id.is_(None), Station.org_id == org_id)
-    )
+    owner = visible_to(Station, org_id)
     stmt = (
         select(StationVersion, Station)
         .join(Station, Station.id == StationVersion.station_id)
@@ -184,12 +189,34 @@ async def version_for_attempt(
     return (row[0], row[1]) if row else None
 
 
-async def feedback_template_version(
-    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID
-) -> FeedbackTemplateVersion | None:
-    """One of this org's feedback template versions, scoped to it."""
-    stmt = select(FeedbackTemplateVersion).where(
-        FeedbackTemplateVersion.org_id == org_id,
-        FeedbackTemplateVersion.id == version_id,
+async def count_for_org(session: AsyncSession, org_id: uuid.UUID | None) -> int:
+    stmt = select(func.count()).select_from(Station).where(owned_by(Station, org_id))
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def versions_with_stations(
+    session: AsyncSession, org_id: uuid.UUID | None, version_ids: Sequence[uuid.UUID]
+) -> list[tuple[StationVersion, Station]]:
+    """Several versions and the stations that own them, in one query.
+
+    Scoped like `version_for_attempt`: the platform library is everybody's, an
+    org's own stations are only its own. A circuit mixes both, which is why a
+    console asking for its slots' station titles asks here once rather than
+    resolving each id through the station routes.
+    """
+    if not version_ids:
+        return []
+    owner = visible_to(Station, org_id)
+    stmt = (
+        select(StationVersion, Station)
+        .join(Station, Station.id == StationVersion.station_id)
+        .where(StationVersion.id.in_(list(version_ids)), owner)
     )
-    return (await session.execute(stmt)).scalar_one_or_none()
+    return [(v, s) for v, s in (await session.execute(stmt)).all()]
+
+
+async def delete_version(session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID) -> None:
+    """Remove one revision. The service refuses anything but a draft (T6)."""
+    await session.execute(
+        delete(StationVersion).where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
+    )

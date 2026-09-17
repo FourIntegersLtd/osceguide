@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import InvalidInput, Unauthenticated, error_responses
+from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
+from app.core.pagination import Page
+from app.core.ports import ClockDep
+from app.core.tenancy import PlatformAdmin
 from app.features.growth import errors, schemas, service
 
 router = APIRouter(tags=["growth"])
@@ -52,6 +55,76 @@ async def read_funnel(partner: str, principal: CurrentPrincipal, session: Sessio
         is_platform_admin=principal.is_platform_admin,
     )
     return await service.read_funnel(session, partner=partner)
+
+
+@router.post(
+    "/growth/acquisitions",
+    response_model=schemas.AcquisitionRead | None,
+    responses=error_responses(Unauthenticated),
+)
+async def credit_signup(
+    body: schemas.CreditSignup, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.AcquisitionRead | None:
+    """Credit this new account to whoever sent them, once.
+
+    Its own route rather than a step inside registering: `growth` sits above
+    `identity`, so registration cannot call it, and a partner who sent somebody
+    was credited with nothing at all until this existed. Null when there is
+    nothing to credit, which is the ordinary case.
+    """
+    return await service.attribute_signup(
+        session, user_id=principal.user_id, visitor_key=body.visitor_key, now=clock.now()
+    )
+
+
+@router.get(
+    "/growth/partners/{partner}/ref-ids",
+    response_model=Page[schemas.TrackingReference],
+    responses=error_responses(Unauthenticated, errors.NotAReporter, errors.UnknownPartnerError),
+)
+async def read_tracking_references(
+    partner: str, principal: CurrentPrincipal, session: Session
+) -> Page[schemas.TrackingReference]:
+    """The references this partner puts in its links, one per exam in the pilot.
+
+    Reporter-gated like the funnel: a reference is commercially meaningful, and
+    one partner has no business reading another's.
+    """
+    items = await service.tracking_references(
+        session,
+        partner=partner,
+        email=principal.email,
+        is_platform_admin=principal.is_platform_admin,
+    )
+    return Page(items=items, next_cursor=None)
+
+
+@router.post(
+    "/growth/partners/{partner}/reporters",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError),
+)
+async def add_reporter(
+    partner: str, body: schemas.AddReporter, admin: PlatformAdmin, session: Session
+) -> Response:
+    """Platform admin only: partners do not appoint their own reporters."""
+    _ = admin
+    await service.add_reporter(session, partner=partner, email=body.email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/me/referrals/redeem",
+    response_model=schemas.ReferralRead,
+    responses=error_responses(Unauthenticated, errors.ReferralNotFound, errors.ReferralAlreadyRedeemed),
+)
+async def redeem_referral(
+    body: schemas.RedeemReferral, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.ReferralRead:
+    """Codes could be issued and never redeemed, so a referrer earned nothing."""
+    return await service.redeem_code(
+        session, code=body.code, referred_user_id=principal.user_id, now=clock.now()
+    )
 
 
 @router.post(

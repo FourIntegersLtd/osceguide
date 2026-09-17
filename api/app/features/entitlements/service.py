@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.catalog import repository as catalog_repo
+from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.entitlements import domain, repository
 from app.features.entitlements.errors import NotEntitled
@@ -84,8 +84,8 @@ async def grant(
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
     out = []
     for row in await repository.for_user(session, user_id):
-        exam = await catalog_repo.exam_by_id(session, row.exam_id)
-        out.append(_read(row, exam.code if exam else "", now=now))
+        code = await catalog.exam_code_by_id(session, row.exam_id)
+        out.append(_read(row, code or "", now=now))
     return out
 
 

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,6 +49,10 @@ class StripeEvent(Base, UUIDPrimaryKey):
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Why a delivery was received but not applied: an address with no account,
+    # a price with no plan. Kept rather than rolled back, so it can be
+    # reconciled by hand or applied by Stripe's next retry once it is fixed.
+    failure: Mapped[str | None] = mapped_column(Text)
 
 
 class Payment(Base, UUIDPrimaryKey, Timestamps):

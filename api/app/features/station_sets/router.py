@@ -21,7 +21,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/me/station-sets",
     response_model=Page[schemas.SetRead],
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated),
 )
 async def list_sets(
     principal: CurrentPrincipal, session: Session, page: Annotated[CursorParams, Depends()]
@@ -38,7 +38,7 @@ async def list_sets(
     "/me/station-sets",
     response_model=schemas.SetRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated),
 )
 async def create_set(
     body: schemas.CreateSet, principal: CurrentPrincipal, session: Session

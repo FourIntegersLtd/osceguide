@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audience import AudienceFilter, AudienceNotYours, InvalidAudience
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
@@ -21,20 +22,24 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/marketplace/slots",
     response_model=Page[schemas.PostRead],
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated),
 )
 async def list_open_slots(
     principal: CurrentPrincipal,
     session: Session,
     clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
+    room: Annotated[AudienceFilter, Depends()],
 ) -> Page[schemas.PostRead]:
+    """Open slots this caller may take: the public pool plus every institution
+    and group they belong to, or one room of it."""
     items, next_cursor = await service.list_open_slots(
         session,
         viewer_id=principal.user_id,
         now=clock.now(),
         limit=page.limit,
         cursor=page.cursor,
+        audience=room.audience,
     )
     return Page(items=items, next_cursor=next_cursor)
 
@@ -43,7 +48,7 @@ async def list_open_slots(
     "/marketplace/slots",
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated, InvalidAudience, AudienceNotYours),
 )
 async def offer_slot(
     body: schemas.CreatePost, principal: CurrentPrincipal, session: Session
@@ -55,6 +60,7 @@ async def offer_slot(
         starts_at=body.starts_at,
         duration_minutes=body.duration_minutes,
         note=body.note,
+        audience=body.audience.to_audience(),
     )
 
 

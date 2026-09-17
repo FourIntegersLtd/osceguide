@@ -8,21 +8,18 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError, raise_mapped
 from app.features.notifications import service as notifications
 from app.features.results import domain, errors, repository
 from app.features.results.models import CandidateResultRevision
-from app.features.results.schemas import DecisionRead, TraineeResultRead
+from app.features.results.schemas import DecisionRead
 
-_REFUSALS: dict[type[Exception], type[Exception]] = {
+_REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.IncompatibleOutcomes: errors.IncompatibleOutcomesError,
     domain.NotSignable: errors.NotSignableError,
     domain.InvalidWorkflow: errors.InvalidWorkflowError,
     domain.EvidenceChanged: errors.EvidenceChangedError,
 }
-
-
-def _raise(exc: Exception) -> None:
-    raise _REFUSALS.get(type(exc), errors.InvalidWorkflowError)(str(exc)) from exc
 
 
 async def save_draft(
@@ -45,7 +42,7 @@ async def save_draft(
     """
     latest = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if latest and latest.workflow_state == "released":
-        _raise(domain.InvalidWorkflow("A released result cannot be redrafted."))
+        raise_mapped(domain.InvalidWorkflow("A released result cannot be redrafted."), _REFUSALS)
 
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
@@ -53,7 +50,7 @@ async def save_draft(
         try:
             domain.ensure_compatible(assessment, recruitment)
         except domain.IncompatibleOutcomes as exc:
-            _raise(exc)
+            raise_mapped(exc, _REFUSALS)
 
     row = await repository.append_revision(
         session,
@@ -89,7 +86,7 @@ async def sign_off(
         assessment = domain.Assessment(latest.assessment_outcome) if latest.assessment_outcome else None
         domain.ensure_signable(assessment=assessment, rationale=latest.rationale)
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     row = await repository.append_revision(
         session,
@@ -142,7 +139,7 @@ async def release(
             signed=latest.evidence_fingerprint, current=domain.fingerprint(current_evidence)
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     row = await repository.append_revision(
         session,
@@ -164,7 +161,7 @@ async def release(
         released_by=actor_id,
         released_at=now,
     )
-    event = await repository.append_event(
+    await repository.append_event(
         session,
         revision_id=row.id,
         event_type="released",
@@ -182,7 +179,6 @@ async def release(
         payload={"sitting_id": str(sitting_id)},
         idempotency_key=f"result_released:{sitting_id}:{trainee_id}",
     )
-    _ = event
     return _read(row)
 
 
@@ -190,26 +186,6 @@ async def read_decision(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
 ) -> DecisionRead:
     return _read(await _require(session, org_id, sitting_id, trainee_id))
-
-
-async def read_my_result(
-    session: AsyncSession, sitting_id: uuid.UUID, trainee_id: uuid.UUID
-) -> TraineeResultRead:
-    """What the candidate sees: released revisions only, and less of it.
-
-    Moderation notes and the evidence snapshot stay internal. b2b's own schema
-    doc says not to reproduce disclosure policy in frontend transforms, so the
-    narrowing happens here.
-    """
-    row = await repository.released_revision(session, sitting_id, trainee_id)
-    if row is None:
-        raise errors.NotReleased()
-    return TraineeResultRead(
-        sitting_id=row.sitting_id,
-        assessment_outcome=row.assessment_outcome,
-        rationale=row.rationale,
-        released_at=row.released_at,
-    )
 
 
 async def _require(

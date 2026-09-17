@@ -15,6 +15,10 @@ from app.features.growth import domain
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
+# Which exams are in the pilot is a flag on each exam row now, so the caller
+# supplies the set. These stand in for three exams an admin has flagged.
+PILOT = ("sca", "plab", "ortho")
+
 
 # --------------------------------------------------------------------------
 # Reference ids
@@ -22,35 +26,40 @@ NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
 
 def test_a_reference_id_is_partner_and_exam() -> None:
-    assert domain.format_ref_id("bmj", "sca") == "bmj-sca"
+    assert domain.format_ref_id("bmj", "sca", pilot_exams=PILOT) == "bmj-sca"
 
 
 def test_an_unknown_partner_cannot_be_formatted() -> None:
     with pytest.raises(domain.UnknownPartner):
-        domain.format_ref_id("someone-else", "sca")
+        domain.format_ref_id("someone-else", "sca", pilot_exams=PILOT)
 
 
 def test_an_exam_outside_the_pilot_cannot_be_formatted() -> None:
-    """Oracle: `PILOT_EXAMS` excludes casc."""
     with pytest.raises(domain.ExamNotInPilot):
-        domain.format_ref_id("bmj", "casc")
+        domain.format_ref_id("bmj", "casc", pilot_exams=PILOT)
+
+
+def test_the_pilot_is_whatever_the_caller_was_told_it_is() -> None:
+    """It was a tuple of three codes here, so adding one was a code change."""
+    assert domain.format_ref_id("bmj", "casc", pilot_exams=("casc",)) == "bmj-casc"
+    assert domain.parse_ref_id("bmj-sca", pilot_exams=("casc",)) is None
 
 
 @pytest.mark.parametrize(("ref_id", "exam"), [("bmj-sca", "sca"), ("bmj-plab", "plab")])
 def test_an_exam_is_parsed_back_out(ref_id: str, exam: str) -> None:
-    assert domain.parse_ref_id(ref_id) == ("bmj", exam)
+    assert domain.parse_ref_id(ref_id, pilot_exams=PILOT) == ("bmj", exam)
 
 
 @pytest.mark.parametrize("ref_id", ["", "nonsense", "bmj", "other-sca", "bmj-casc"])
 def test_anything_unrecognised_parses_to_nothing(ref_id: str) -> None:
     """Never guessed. A misattributed signup is money owed to the wrong party."""
-    assert domain.parse_ref_id(ref_id) is None
+    assert domain.parse_ref_id(ref_id, pilot_exams=PILOT) is None
 
 
 def test_a_landing_path_identifies_the_exam() -> None:
-    assert domain.exam_from_landing_path("/exams/plab") == "plab"
-    assert domain.exam_from_landing_path("/exams/casc") is None
-    assert domain.exam_from_landing_path("/pricing") is None
+    assert domain.exam_from_landing_path("/exams/plab", pilot_exams=PILOT) == "plab"
+    assert domain.exam_from_landing_path("/exams/casc", pilot_exams=PILOT) is None
+    assert domain.exam_from_landing_path("/pricing", pilot_exams=PILOT) is None
 
 
 # --------------------------------------------------------------------------

@@ -20,6 +20,19 @@ someone else claims it, and both join a room at the appointed hour.
   believe they won. b2c does this with a Firestore transaction; this is the same
   guarantee in Postgres, and a test proves it with two real connections.
 - You cannot claim your own slot.
+- A slot you cannot see is a slot you cannot claim: holding the id of one
+  offered inside an institution answers 404, not 403.
+- **Everything here is addressed to a room** — see `app/core/audience.py`.
+  A post, a slot or a queue place is `public`, addressed to one
+  `organisation`, or addressed to one `group`. It was addressed to an exam and
+  nothing else, so an institution's trainees had no way to talk among
+  themselves and a teaching group had no way to practise together. The audience
+  is **opaque**: this slice stores a group id and never learns what a group is,
+  which is what lets a teaching cohort, a circuit's candidates and a study
+  group somebody forms be the same mechanism without reaching up into `roster`
+  or `sittings`. A CHECK constraint refuses a row that names a visibility and
+  then nobody, because that reads as public to the filter.
+
 - A slot whose start time has passed cannot be claimed. **Not in the legacy
   check** — claiming a session that already started books nobody into anything.
 - Only the person who offered a slot may withdraw it, and only before it completes.

@@ -46,6 +46,7 @@ live inside it and are never addressed independently.
 | POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists |
 | POST | `/api/v1/auth/password-reset/confirm` | reset token | `invalid_reset_token` (400) |
 | POST | `/api/v1/auth/change-password` | bearer | the only route allowed while `must_change_password` |
+| POST | `/api/v1/auth/stream-ticket` | bearer | a 60-second credential for one `EventSource` (ADR 0015) |
 | GET | `/api/v1/me` | bearer | profile, memberships, active workspace |
 
 ## Jobs

@@ -38,10 +38,18 @@ def _filters_by_org(func: ast.AST) -> bool:
     Only a comparison narrows a result set, so only a comparison is looked for
     — `Model.org_id == org_id`, `filter_by(org_id=...)`, or `org_id` inside a
     `text()` fragment for the hand-written reports.
+
+    A column compared to another column is a **join** and narrows nothing:
+    `Organization.id == Membership.org_id` relates two tables and is true of
+    every organisation. Counting it reported a per-user lookup as unscoped and
+    would have been quietened by adding an `org_id` parameter nothing used.
     """
     for node in ast.walk(func):
         if isinstance(node, ast.Compare):
-            for side in (node.left, *node.comparators):
+            sides = (node.left, *node.comparators)
+            if all(isinstance(side, ast.Attribute) for side in sides):
+                continue  # column to column: a join condition
+            for side in sides:
                 if isinstance(side, ast.Attribute) and side.attr == "org_id":
                     return True
         if (
@@ -85,6 +93,27 @@ def violations(path: Path) -> list[str]:
 def test_org_scoped_methods_take_org_id_first(path: Path) -> None:
     bad = violations(path)
     assert not bad, f"{rel(path)}: {bad}. Put org_id first so no caller can omit it."
+
+
+def test_a_join_condition_is_not_mistaken_for_scoping(tmp_path: Path) -> None:
+    """The shape this codebase actually has, planted.
+
+    A join reads `Organization.id == Membership.org_id`; a narrowing reads
+    `Membership.org_id == org_id`. Only the second is scoping.
+    """
+    repo = tmp_path / "repository.py"
+    repo.write_text(
+        "import ast\n"
+        "async def joins(session, user_id):\n"
+        "    return select(Membership, Organization).join("
+        "Organization, Organization.id == Membership.org_id"
+        ").where(Membership.user_id == user_id)\n"
+        "async def narrows(session, user_id):\n"
+        "    return select(Membership).where(Membership.org_id == user_id)\n",
+        encoding="utf-8",
+    )
+    found = violations(repo)
+    assert [v.split("(")[0] for v in found] == ["narrows"], found
 
 
 def test_the_guard_would_catch_a_missing_org_id(tmp_path: Path) -> None:

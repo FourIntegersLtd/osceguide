@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, VerifyMismatchError
 
-from app.core.auth import Membership, Principal, issue_access_token
+from app.core.auth import Principal, issue_access_token
 from app.core.settings import Settings
 from app.features.identity.domain import password_for_hashing
-from app.features.identity.schemas import TokenPair
 
 _hasher = PasswordHasher()
 
@@ -48,25 +47,17 @@ def verify_password(password_hash: str | None, raw: str) -> bool:
         return False
 
 
-def principal_for(
-    *, user_id: object, email: str, is_platform_admin: bool, memberships: list[Membership]
-) -> Principal:
-    return Principal(
-        user_id=user_id,  # type: ignore[arg-type]
-        email=email,
-        memberships=tuple(memberships),
-        active_org_slug=memberships[0].org_slug if memberships else None,
-        is_platform_admin=is_platform_admin,
-    )
-
-
 def access_token_for(principal: Principal, *, settings: Settings, now: datetime) -> str:
     return issue_access_token(principal, settings=settings, now=now)
 
 
-def refresh_expiry(settings: Settings, now: datetime) -> datetime:
-    return now + timedelta(seconds=settings.jwt_refresh_ttl_seconds)
+# A hash to verify against when the address is unknown, so a miss costs the
+# same argon2 work as a hit. Without it, login answers in microseconds for an
+# address that does not exist and tens of milliseconds for one that does,
+# which is an account-enumeration oracle wearing an identical error message.
+_ABSENT_USER_HASH = _hasher.hash("password-for-an-account-that-does-not-exist")
 
 
-def token_pair(access: str, refresh: str, settings: Settings) -> TokenPair:
-    return TokenPair(access_token=access, refresh_token=refresh, expires_in=settings.jwt_access_ttl_seconds)
+def verify_absent_password(raw: str) -> bool:
+    verify_password(_ABSENT_USER_HASH, raw)
+    return False

@@ -39,7 +39,7 @@ Each kind is its own root, keyed to the slot or circuit it concerns.
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/v1/orgs/{org_slug}/slots/{id}/reviews` | org member | |
+| GET | `/api/v1/orgs/{org_slug}/slots/{id}/reviews` | org member | every review of the slot, plus the combined rating per domain (worst wins) |
 | PUT | `/api/v1/orgs/{org_slug}/slots/{id}/reviews/mine` | org member | `review_incomplete` (409) |
 | GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/gp-lead-review` | institution admin | `review_conflict` (409) |
 | POST | `/api/v1/orgs/{org_slug}/circuits/{id}/review/finalize` | org member | |

@@ -48,6 +48,17 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | GET | `/api/v1/me/capabilities` | bearer | read model; replaces the browser's copy of this policy |
 | POST | `/api/v1/platform/organizations` | platform admin | institution or partner |
 | POST | `/api/v1/platform/organizations/{slug}/suspend` | platform admin | |
+| GET | `/api/v1/platform/organizations` | platform admin | every tenant; `?status=` |
+| PATCH | `/api/v1/platform/organizations/{slug}` | platform admin | name, type, contract dates — never the slug |
+| POST | `/api/v1/platform/organizations/{slug}/restore` | platform admin | lifts a suspension |
+| GET | `/api/v1/platform/users` | platform admin | `?q=` part of an email |
+| PUT | `/api/v1/platform/users/{id}/platform-admin` | platform admin | grant or revoke the console |
+| GET | `/api/v1/platform/overview` | platform admin | counts, not lists |
+
+The console **cannot delete an organisation**, and that is a decision rather
+than an omission: its rows include candidate results, which exist to be
+defensible months later, and a cascade would take them. Suspension is the
+reversible mechanism and it now has an inverse.
 
 ## Jobs
 None yet. Membership invitation email is enqueued through `notifications`.

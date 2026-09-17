@@ -1,45 +1,53 @@
-"""The publishing lifecycle, for station templates, instances and rubrics.
+"""What a station may be bound to, and what a circuit may use.
 
-One state machine serves all three because they are the same decision: a draft
-is yours to change, a published version is what attempts were built against and
-is therefore immutable, and an archived one is retired but still referenced by
-the attempts that used it.
+The draft/published/archived machinery these rules sit on top of is shared with
+templates, rubrics and feedback templates, so it lives in `app.core.lifecycle`
+and is re-exported here: callers in this slice say `domain.publish(...)` as
+they always did. What is left below is the part that is genuinely about
+stations.
 
-Ported from the legacy content service, which is current production behaviour;
-`tests/unit/test_stations_domain.py` carries its assertions.
+`tests/unit/test_stations_domain.py` carries the assertions.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass
-from enum import StrEnum
+from app.core.lifecycle import (
+    AlreadyPublished,
+    LifecycleError,
+    NotArchivable,
+    NotDeletable,
+    NotEditable,
+    Status,
+    VersionRef,
+    archive,
+    ensure_brief_editable,
+    ensure_deletable,
+    ensure_editable,
+    next_version_number,
+    publish,
+    seed_version,
+)
 
-
-class Status(StrEnum):
-    DRAFT = "draft"
-    PUBLISHED = "published"
-    ARCHIVED = "archived"
-
-
-class LifecycleError(Exception):
-    """Base for refusals; the service maps each to an AppError."""
-
-
-class NotEditable(LifecycleError):
-    pass
-
-
-class NotDeletable(LifecycleError):
-    pass
-
-
-class AlreadyPublished(LifecycleError):
-    pass
-
-
-class NotArchivable(LifecycleError):
-    pass
+__all__ = [
+    "AlreadyPublished",
+    "LifecycleError",
+    "NotArchivable",
+    "NotDeletable",
+    "NotEditable",
+    "StationNotPublished",
+    "Status",
+    "TemplateNotPublished",
+    "VersionRef",
+    "archive",
+    "ensure_bindable",
+    "ensure_brief_editable",
+    "ensure_deletable",
+    "ensure_editable",
+    "ensure_usable_in_circuit",
+    "next_version_number",
+    "publish",
+    "seed_version",
+]
 
 
 class TemplateNotPublished(LifecycleError):
@@ -48,69 +56,6 @@ class TemplateNotPublished(LifecycleError):
 
 class StationNotPublished(LifecycleError):
     pass
-
-
-@dataclass(frozen=True)
-class VersionRef:
-    number: int
-    status: Status
-
-
-def ensure_editable(version: VersionRef) -> None:
-    if version.status is not Status.DRAFT:
-        raise NotEditable(
-            "Only a draft can be edited. Published content is what past attempts were "
-            "assessed against; create a new version instead."
-        )
-
-
-def ensure_deletable(version: VersionRef) -> None:
-    if version.status is not Status.DRAFT:
-        raise NotDeletable("Only a draft can be deleted. Archive a published version instead.")
-
-
-def ensure_brief_editable(version: VersionRef) -> None:
-    """The documented exception.
-
-    A reading brief is what a candidate is shown before the station starts. It
-    is presentation rather than assessed content, so correcting a typo in one
-    must not require a new version and a fresh publish.
-    """
-    if version.status is Status.ARCHIVED:
-        raise NotEditable("An archived version cannot be changed at all.")
-
-
-def publish(version: VersionRef) -> Status:
-    if version.status is Status.PUBLISHED:
-        raise AlreadyPublished("That version is already published.")
-    if version.status is Status.ARCHIVED:
-        raise NotEditable("An archived version cannot be republished.")
-    return Status.PUBLISHED
-
-
-def archive(version: VersionRef) -> Status:
-    if version.status is not Status.PUBLISHED:
-        raise NotArchivable(
-            "Only a published version can be archived. A draft that is not wanted is deleted."
-        )
-    return Status.ARCHIVED
-
-
-def seed_version(existing: Sequence[VersionRef]) -> VersionRef | None:
-    """Which version a new draft copies from.
-
-    The latest *published* one, not the latest overall: an abandoned draft
-    must not silently become the basis of everything after it.
-    """
-    if not existing:
-        return None
-    published = [v for v in existing if v.status is Status.PUBLISHED]
-    pool = published or list(existing)
-    return max(pool, key=lambda v: v.number)
-
-
-def next_version_number(existing: Sequence[VersionRef]) -> int:
-    return max((v.number for v in existing), default=0) + 1
 
 
 def ensure_bindable(template_version: VersionRef) -> None:

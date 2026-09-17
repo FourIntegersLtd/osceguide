@@ -33,6 +33,17 @@ class NotArchivableError(Conflict):
     default_message = "Only a published version can be archived"
 
 
+class StationNotPublishedError(Conflict):
+    """A circuit or an attempt named a station that is still a draft (T4).
+
+    Its own code rather than `not_editable`: the client's message is "publish
+    this station before scheduling it", which is a different instruction.
+    """
+
+    code = "station_not_published"
+    default_message = "A circuit can only use a published station"
+
+
 class TemplateNotPublishedError(Conflict):
     code = "template_not_published"
     default_message = "A station can only be built on a published template version"
@@ -52,12 +63,19 @@ class UnknownExamError(NotFound):
     default_message = "No such exam"
 
 
-class TemplateVersionNotFound(NotFound):
-    """No such feedback template version in this organisation.
+class StationTemplateNotFound(NotFound):
+    """No such station template in this organisation.
 
-    Indistinguishable from one that does not exist, so a template id cannot be
-    probed across tenants.
+    A different thing from a *feedback* template: this is the shape a station
+    takes, that one is the rubric it is marked with. Separate codes because the
+    client's answer differs — one sends the author back to the template list,
+    the other to the rubric list.
     """
 
-    code = "feedback_template_version_not_found"
-    default_message = "No such feedback template version"
+    code = "station_template_not_found"
+    default_message = "No such station template"
+
+
+class StationTemplateVersionNotFound(NotFound):
+    code = "station_template_version_not_found"
+    default_message = "No such station template version"

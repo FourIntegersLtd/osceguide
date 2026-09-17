@@ -76,20 +76,3 @@ def resolve_roster(
                 seen.add(trainee_id)
                 resolved.append(trainee_id)
     return resolved, warnings
-
-
-def memberships_from_labels(
-    *, trainees: Sequence[tuple[str, str]], groups: Sequence[tuple[str, str]]
-) -> list[tuple[str, str]]:
-    """Turn b2b's implicit matching into `(group_id, trainee_id)` rows.
-
-    Run once, at migration. Afterwards the table is the truth and a group's
-    label is just a name someone can change.
-    """
-    group_by_label = {normalize_label(label): group_id for group_id, label in groups}
-    pairs: list[tuple[str, str]] = []
-    for trainee_id, cohort in trainees:
-        group_id = group_by_label.get(normalize_label(cohort))
-        if group_id:
-            pairs.append((group_id, trainee_id))
-    return pairs

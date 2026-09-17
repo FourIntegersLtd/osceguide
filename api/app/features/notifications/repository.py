@@ -67,16 +67,37 @@ async def claim_due(session: AsyncSession, *, now: datetime, limit: int = 20) ->
         await session.execute(
             update(OutboundMessage)
             .where(OutboundMessage.id.in_([r.id for r in rows]))
-            .values(status="processing")
+            .values(status="processing", claimed_at=now)
         )
     return rows
+
+
+async def reclaim_stale(session: AsyncSession, *, before: datetime) -> int:
+    """Return messages claimed before `before` to the queue.
+
+    A worker that dies mid-batch leaves its claims `processing`, and the due
+    index only covers `pending`, so without this they are invisible forever
+    and nobody is told. Sending one twice is the lesser failure, and the
+    idempotency key makes it unlikely anyway.
+    """
+    reclaimed = await session.execute(
+        update(OutboundMessage)
+        .where(
+            OutboundMessage.status == "processing",
+            OutboundMessage.claimed_at.is_not(None),
+            OutboundMessage.claimed_at < before,
+        )
+        .values(status="pending", claimed_at=None)
+        .returning(OutboundMessage.id)
+    )
+    return len(list(reclaimed.scalars()))
 
 
 async def mark_sent(session: AsyncSession, message_id: uuid.UUID, *, at: datetime) -> None:
     await session.execute(
         update(OutboundMessage)
         .where(OutboundMessage.id == message_id)
-        .values(status="sent", delivered_at=at, last_error=None)
+        .values(status="sent", delivered_at=at, claimed_at=None, last_error=None)
     )
 
 
@@ -91,7 +112,13 @@ async def mark_retry(
     await session.execute(
         update(OutboundMessage)
         .where(OutboundMessage.id == message_id)
-        .values(status="pending", attempts=attempts, available_at=available_at, last_error=error)
+        .values(
+            status="pending",
+            attempts=attempts,
+            available_at=available_at,
+            claimed_at=None,
+            last_error=error,
+        )
     )
 
 
@@ -99,5 +126,5 @@ async def mark_failed(session: AsyncSession, message_id: uuid.UUID, *, attempts:
     await session.execute(
         update(OutboundMessage)
         .where(OutboundMessage.id == message_id)
-        .values(status="failed", attempts=attempts, last_error=error)
+        .values(status="failed", attempts=attempts, claimed_at=None, last_error=error)
     )

@@ -14,8 +14,11 @@ are skipped with a message rather than failing.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import os
 from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # Environment must be fixed before any app module reads settings.
@@ -31,7 +34,13 @@ import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
-from app.core.db import dispose_engine, get_engine, get_session, sqlalchemy_url  # noqa: E402
+from app.core.db import (  # noqa: E402
+    dispose_engine,
+    get_engine,
+    get_session,
+    get_session_opener,
+    sqlalchemy_url,
+)
 from app.core.settings import get_settings  # noqa: E402
 from tests.support.declared_codes import install as install_declared_code_check  # noqa: E402
 
@@ -103,23 +112,30 @@ async def db_session(_engine: None) -> AsyncIterator[AsyncSession]:
 
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
-    """HTTP client whose requests share the test's transaction."""
+async def app(db_session: AsyncSession):  # type: ignore[no-untyped-def]
+    """The real app, wired to the test's transaction.
+
+    A fixture of its own because two clients need it: the in-process one below
+    for ordinary requests, and a real server for streams.
+    """
     from app.main import create_app
 
-    app = create_app()
-    install_declared_code_check(app)
+    built = create_app()
+    install_declared_code_check(built)
 
     async def override_get_session() -> AsyncIterator[AsyncSession]:
-        # Mirrors `core.db.get_session`, including the `persist_effects` rule:
-        # if this diverged, a test could prove behaviour production does not have.
+        # Mirrors `core.db.get_session`, including the `persist_effects` rule
+        # and the after-commit publish: if this diverged, a test could prove
+        # behaviour production does not have.
         from app.core.errors import AppError
+        from app.core.events import flush_pending
 
         try:
             yield db_session
         except AppError as exc:
             if exc.persist_effects:
                 await db_session.commit()
+                await flush_pending(db_session)
             else:
                 await db_session.rollback()
             raise
@@ -128,10 +144,57 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
             raise
         else:
             await db_session.commit()  # releases the savepoint; the outer transaction stays open
+            await flush_pending(db_session)
 
-    app.dependency_overrides[get_session] = override_get_session
+    @asynccontextmanager
+    async def override_stream_session() -> AsyncIterator[AsyncSession]:
+        """Lend a stream the test's own transaction.
+
+        `core.db.stream_session` opens a connection of its own, which in a test
+        cannot see rows written inside the outer transaction that is rolled
+        back at the end. Overridden rather than patched, which is why
+        `get_session_opener` is a dependency at all.
+        """
+        yield db_session
+
+    built.dependency_overrides[get_session] = override_get_session
+    built.dependency_overrides[get_session_opener] = lambda: override_stream_session
+    return built
+
+
+@pytest_asyncio.fixture
+async def client(app) -> AsyncIterator[AsyncClient]:  # type: ignore[no-untyped-def]
+    """HTTP client whose requests share the test's transaction."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http
+
+
+@pytest_asyncio.fixture
+async def streaming_client(app) -> AsyncIterator[AsyncClient]:  # type: ignore[no-untyped-def]
+    """A client talking to a real server on a real socket.
+
+    `ASGITransport` runs the application to completion and hands back the
+    collected body, which for a `text/event-stream` route means waiting for a
+    response that is designed never to end. Nothing about a stream can be
+    tested through it — not the first frame, not a pushed one — so these tests
+    run uvicorn in this process, on an ephemeral port, against the same app
+    object and the same transaction as every other test.
+    """
+    import uvicorn
+
+    config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning", lifespan="off")
+    server = uvicorn.Server(config)
+    serving = asyncio.create_task(server.serve())
+    try:
+        while not server.started:
+            await asyncio.sleep(0.01)
+        port = server.servers[0].sockets[0].getsockname()[1]
+        async with AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=30.0) as http:
+            yield http
+    finally:
+        server.should_exit = True
+        with contextlib.suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(serving, timeout=10)
 
 
 @pytest_asyncio.fixture
@@ -145,6 +208,7 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
     """
     from app.core.auth import Membership
     from app.features.identity import repository
+    from app.features.tenancy import repository as tenancy_repository
     from tests.support.tokens import mint_token
 
     async def _make(
@@ -161,6 +225,19 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
             password_hash=None,
             is_platform_admin=platform_admin,
         )
+        # The membership rows are written, not just claimed. A token asserting
+        # a membership no table held was fine while every check read the
+        # claims; it stopped being fine when `switch-workspace` started
+        # reading the database, which is the whole point of that change.
+        for membership in memberships:
+            await tenancy_repository.add_membership(
+                db_session,
+                org_id=membership.org_id,
+                user_id=user.id,
+                role=membership.role,
+                product_surface=membership.surface,
+            )
+        await db_session.flush()
         return mint_token(
             user_id=user.id,
             email=email,

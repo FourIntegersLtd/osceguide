@@ -1,9 +1,12 @@
 """Application settings.
 
 One `Settings` object, read once from the environment (and `.env` in local
-development). Secrets have no defaults outside local/test: the validator at
-the bottom refuses to start a staging or production process with a missing
-secret, which is how the "worker guard fails open" class of bug is prevented.
+development). Secrets and deployment-specific values have no defaults outside
+local/test: the validator at the bottom refuses to start a staging or
+production process with any of them missing, which is how the "worker guard
+fails open" class of bug is prevented. Local and test get working defaults
+filled in by the same validator, so nothing here is a value that could be
+mistaken for a production one.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from typing import Annotated
 
 from fastapi import Depends
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -27,14 +30,12 @@ class AppEnv(StrEnum):
     production = "production"
 
 
-_DEFAULT_CORS_ORIGINS = (
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://staging.osceguide.com",
-    "https://osceguide.com",
-    "https://www.osceguide.com",
-    "https://app.osceguide.com",
-)
+# Local development only. Production origins are configuration, not code: a
+# deploy that forgot to set CORS_ORIGINS used to accept credentialed requests
+# from localhost, and staging accepted production's origin.
+_LOCAL_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+_LOCAL_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/osce_platform"
+_LOCAL_JWT_SECRET = "dev-only-jwt-secret-change-me"  # noqa: S105 — local and test only
 
 
 class Settings(BaseSettings):
@@ -48,7 +49,7 @@ class Settings(BaseSettings):
     app_name: str = "OSCE Guide Platform API"
 
     # --- Persistence ---
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/osce_platform"
+    database_url: str = ""
     database_pool_size: int = 10
     database_echo: bool = False
 
@@ -59,6 +60,9 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     jwt_issuer: str = "osce-guide"
     jwt_access_ttl_seconds: int = 15 * 60
+    # A stream ticket is redeemed the instant it is minted; a minute is for a
+    # slow network, not for keeping. See `core.streams`.
+    stream_ticket_ttl_seconds: int = 60
     jwt_refresh_ttl_seconds: int = 30 * 24 * 60 * 60
 
     # --- LiveKit workers calling back into this API ---
@@ -108,7 +112,10 @@ class Settings(BaseSettings):
     worker_concurrency: int = 4
 
     # --- HTTP ---
-    cors_origins: list[str] = Field(default_factory=lambda: list(_DEFAULT_CORS_ORIGINS))
+    # `NoDecode`: pydantic-settings would otherwise JSON-decode a `list[str]`
+    # from the environment before the validator below sees it, so the
+    # comma-separated form in `.env.example` failed at startup.
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     frontend_url: str = "http://localhost:3000"
 
     # --- Observability ---
@@ -134,9 +141,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _require_secrets_when_deployed(self) -> Settings:
         if self.app_env == AppEnv.local or self.app_env == AppEnv.test:
-            if not self.jwt_secret:
-                # noqa justified: local and test only, and the branch above is what keeps it there.
-                self.jwt_secret = "dev-only-jwt-secret-change-me"  # noqa: S105
+            self.jwt_secret = self.jwt_secret or _LOCAL_JWT_SECRET
+            self.database_url = self.database_url or _LOCAL_DATABASE_URL
+            self.cors_origins = self.cors_origins or list(_LOCAL_CORS_ORIGINS)
             return self
         missing = [
             name
@@ -144,6 +151,13 @@ class Settings(BaseSettings):
                 ("JWT_SECRET", self.jwt_secret),
                 ("WORKER_SECRET", self.worker_secret),
                 ("DATABASE_URL", self.database_url),
+                ("CORS_ORIGINS", ",".join(self.cors_origins)),
+                ("LIVEKIT_URL", self.livekit_url),
+                ("LIVEKIT_API_KEY", self.livekit_api_key),
+                ("LIVEKIT_API_SECRET", self.livekit_api_secret),
+                ("STRIPE_WEBHOOK_SECRET", self.stripe_webhook_secret),
+                ("RESEND_API_KEY", self.resend_api_key),
+                ("OPENAI_API_KEY", self.openai_api_key),
             )
             if not value.strip()
         ]
@@ -151,6 +165,8 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"{self.app_env.value} requires these environment variables: {', '.join(missing)}"
             )
+        if len(self.jwt_secret) < 32:
+            raise ValueError("JWT_SECRET must be at least 32 characters in a deployed environment")
         return self
 
 

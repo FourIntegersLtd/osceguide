@@ -12,7 +12,7 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, RoomAgents
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.sittings import errors, schemas, service, service_circuit
+from app.features.sittings import errors, schemas, service, service_circuit, service_structure
 
 router = APIRouter(tags=["sittings"])
 
@@ -37,7 +37,7 @@ async def list_sittings(
     "/orgs/{org_slug}/sittings",
     response_model=schemas.SittingRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.TemplateVersionNotFound, errors.TemplateNotPublishedError),
+    responses=error_responses(Forbidden, errors.TemplateVersionNotFound, errors.FeedbackTemplateNotPublished),
 )
 async def create_sitting(
     body: schemas.CreateSitting, workspace: OrgAdmin, session: Session
@@ -69,7 +69,12 @@ async def read_sitting(sitting_id: uuid.UUID, workspace: OrgReader, session: Ses
     "/orgs/{org_slug}/sittings/{sitting_id}/circuits",
     response_model=schemas.CircuitRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.SittingNotFound, errors.InvalidCircuitError),
+    responses=error_responses(
+        Forbidden,
+        errors.SittingNotFound,
+        errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
+    ),
 )
 async def add_circuit(
     sitting_id: uuid.UUID, body: schemas.CreateCircuit, workspace: OrgAdmin, session: Session
@@ -184,6 +189,40 @@ async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgReader, session: S
     return await service_circuit.read_edit_lock(session, workspace.org_id, circuit_id)
 
 
+@router.put(
+    "/orgs/{org_slug}/circuits/{circuit_id}",
+    response_model=schemas.CircuitRead,
+    responses=error_responses(
+        Forbidden,
+        errors.CircuitNotFound,
+        errors.SittingNotFound,
+        errors.CircuitAlreadyEndedError,
+        errors.CircuitLockedError,
+        errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
+    ),
+)
+async def rebuild_circuit(
+    circuit_id: uuid.UUID, body: schemas.RebuildCircuit, workspace: OrgAdmin, session: Session
+) -> schemas.CircuitRead:
+    """Change who is on a circuit and which stations they sit (C3).
+
+    A structural edit rebuilds the slots, so it is refused once one of them
+    means something: `circuit_locked` (409) if a consultation is in progress,
+    if feedback has been recorded, or if any station has already been run.
+    """
+    return await service_structure.rebuild_circuit(
+        session,
+        workspace.org_id,
+        circuit_id,
+        trainee_ids=body.trainee_ids,
+        station_version_ids=body.station_version_ids,
+        name=body.name,
+        supervisor_user_id=body.supervisor_user_id,
+        timing=body.timing,
+    )
+
+
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/append-trainees",
     response_model=schemas.CircuitRead,
@@ -193,6 +232,7 @@ async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgReader, session: S
         errors.CircuitAlreadyEndedError,
         errors.NotPermittedInModeError,
         errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
     ),
 )
 async def append_trainees(
@@ -202,6 +242,6 @@ async def append_trainees(
     session: Session,
 ) -> schemas.CircuitRead:
     """Add people to a training circuit, into the room it is already using."""
-    return await service_circuit.append_trainees(
+    return await service_structure.append_trainees(
         session, workspace.org_id, circuit_id, trainee_ids=body.trainee_ids
     )

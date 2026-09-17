@@ -110,16 +110,14 @@ def report() -> str:
         name = slice_dir.name
         app_lines = sum(_lines(f) for f in slice_dir.glob("*.py"))
         unwired = sorted(rule for (s, rule) in dead if s == name)
-        rules = 0
-        domain_file = slice_dir / "domain.py"
-        if domain_file.exists():
-            import ast
+        import ast
 
-            rules = sum(
-                1
-                for n in ast.parse(domain_file.read_text(encoding="utf-8")).body
-                if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and not n.name.startswith("_")
-            )
+        rules = sum(
+            1
+            for domain_file in slice_dir.glob("domain*.py")
+            for n in ast.parse(domain_file.read_text(encoding="utf-8")).body
+            if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and not n.name.startswith("_")
+        )
         routes = sum(1 for op in present if f"/{name.replace('_', '-')}" in op or f"/{name}" in op)
         flag = ", ".join(unwired) if unwired else "—"
         out.append(f"| `{name}` | {app_lines} | {rules} | {flag} | {routes} |")

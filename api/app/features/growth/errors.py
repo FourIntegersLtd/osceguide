@@ -32,3 +32,8 @@ class ReferralCodeTaken(Conflict):
 class ReferralNotFound(NotFound):
     code = "referral_not_found"
     default_message = "No such referral code"
+
+
+class ReferralAlreadyRedeemed(Conflict):
+    code = "referral_already_redeemed"
+    default_message = "That referral code has already been used"

@@ -8,10 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
-from app.core.pagination import Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin, OrgReader
-from app.features.reviews import errors, schemas, service
+from app.features.reviews import errors, schemas, service, service_summary
 
 router = APIRouter(tags=["reviews"])
 
@@ -20,14 +19,18 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/orgs/{org_slug}/slots/{slot_id}/reviews",
-    response_model=Page[schemas.SlotReviewRead],
+    response_model=schemas.SlotReviewsRead,
     responses=error_responses(Forbidden),
 )
 async def list_slot_reviews(
     slot_id: uuid.UUID, workspace: OrgReader, session: Session
-) -> Page[schemas.SlotReviewRead]:
-    items = await service.read_slot_reviews(session, workspace.org_id, slot_id)
-    return Page(items=items, next_cursor=None)
+) -> schemas.SlotReviewsRead:
+    """Every review of this slot, with what they add up to.
+
+    Not a `Page`: a slot has as many reviews as it has observers, and the
+    summary is about the set, so paging it would be paging half an answer.
+    """
+    return await service_summary.read_slot_reviews(session, workspace.org_id, slot_id)
 
 
 @router.put(
@@ -62,9 +65,6 @@ async def submit_my_review(
         notes=body.notes,
         status=body.status,
         observer_trainee_id=body.observer_trainee_id,
-        # Wired to the bound feedback template once templates carry their
-        # domain list; until then a draft is always completable.
-        required_domains=set(),
         now=clock.now(),
     )
 
@@ -89,6 +89,7 @@ async def read_gp_lead_review(
         errors.ReviewConflictError,
         errors.InvalidRagError,
         errors.ReviewIncompleteError,
+        errors.NothingToReviewError,
     ),
 )
 async def save_gp_lead_review(
@@ -113,7 +114,6 @@ async def save_gp_lead_review(
         overall_rag=body.overall_rag,
         status=body.status,
         reviewed_by=workspace.principal.user_id,
-        required_domains=set(),
         now=clock.now(),
     )
 

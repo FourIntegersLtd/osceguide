@@ -27,6 +27,13 @@ class OutboundMessage(Base, UUIDPrimaryKey, Timestamps):
             "available_at",
             postgresql_where=text("status = 'pending'"),
         ),
+        # The reaper's query: claims held too long, by a worker that is not
+        # coming back.
+        Index(
+            "ix_outbound_messages_claimed",
+            "claimed_at",
+            postgresql_where=text("status = 'processing'"),
+        ),
     )
 
     channel: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'email'"))
@@ -40,5 +47,9 @@ class OutboundMessage(Base, UUIDPrimaryKey, Timestamps):
     available_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
+    # When a worker took this message. A crash between claiming and sending
+    # left `processing` rows that the due index cannot see and nothing ever
+    # looked at again; a claim old enough to be dead is taken back.
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(Text)

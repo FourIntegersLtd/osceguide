@@ -21,8 +21,24 @@ cp .env.example .env
 make install
 make db-up        # Postgres on :5433, Redis on :6380
 make migrate      # alembic upgrade head
+make bootstrap-admin EMAIL=you@example.com   # the first platform admin
 make start        # http://localhost:8002/docs
 make worker       # in a second terminal
+```
+
+A migrated database is **empty**: no exams, no rubrics, no station library.
+None of it is seeded — it is written through `/api/v1/platform/...` by a
+platform admin (ADR 0016), which is why the bootstrap step exists: granting the
+right needs somebody who already has it, and a fresh database has nobody.
+
+From there the order is rubric → exam → station template → station, each
+published before the next names it:
+
+```
+POST /api/v1/platform/rubrics              → POST .../versions/1/publish
+POST /api/v1/platform/exams                → POST .../publish
+POST /api/v1/platform/station-templates    → POST .../publish
+POST /api/v1/platform/stations             → POST .../versions/1/publish
 ```
 
 ## Test it

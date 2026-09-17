@@ -9,6 +9,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from tests.support.catalog import create_exam
+from tests.support.rubrics import create_rubric, rubric_with_domains
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -29,6 +31,9 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
         memberships=(Membership(org_id=org_id, org_slug=slug, role="owner"),),
         active_org_slug=slug,
     )
+    # Nothing is seeded, so the exam an org's stations name has to be written
+    # first — by a platform admin, which is exactly who is holding this token.
+    await create_exam(client, root, code="sca")
     return org_id, admin
 
 
@@ -45,23 +50,31 @@ async def published_station(client: AsyncClient, admin: str, slug: str, title: s
     return published.json()["id"]
 
 
-async def a_template_version(db_session: AsyncSession, org_id: uuid.UUID) -> uuid.UUID:
-    """A published feedback template, which a sitting cannot exist without."""
-    from app.features.stations.models import FeedbackTemplate, FeedbackTemplateVersion
+async def a_template_version(client: AsyncClient, admin: str, slug: str = "kings") -> uuid.UUID:
+    """A published feedback template, which a sitting cannot exist without.
 
-    template = FeedbackTemplate(org_id=org_id, title="Rubric")
-    db_session.add(template)
-    await db_session.flush()
-    version = FeedbackTemplateVersion(
-        org_id=org_id,
-        template_id=template.id,
-        version=1,
-        field_selection={"paths": []},
-        status="published",
+    Created over HTTP: for a while the only way to get one was to insert the
+    row by hand, which is how nobody noticed no organisation could.
+
+    A template narrows a rubric, so there has to be one to narrow, and the
+    selection has to name domains it actually has.
+    """
+    rubric = await create_rubric(client, admin, org_slug=slug, structure=rubric_with_domains("communication"))
+    created = await client.post(
+        f"/api/v1/orgs/{slug}/feedback-templates",
+        json={
+            "title": "Rubric",
+            "rubric_version_id": rubric["version_id"],
+            "field_selection": {"domains": ["communication"]},
+        },
+        headers=bearer(admin),
     )
-    db_session.add(version)
-    await db_session.flush()
-    return version.id
+    assert created.status_code == 201, created.text
+    published = await client.post(
+        f"/api/v1/orgs/{slug}/feedback-templates/{created.json()['id']}/publish", headers=bearer(admin)
+    )
+    assert published.status_code == 200, published.text
+    return uuid.UUID(published.json()["id"])
 
 
 async def a_trainee(db_session: AsyncSession, email: str) -> uuid.UUID:
@@ -76,7 +89,7 @@ async def test_a_sitting_is_created_against_a_published_template(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     response = await client.post(
         "/api/v1/orgs/kings/sittings",
         json={
@@ -95,7 +108,7 @@ async def test_an_exam_circuit_puts_one_candidate_through_every_station(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -131,7 +144,7 @@ async def test_an_exam_circuit_refuses_two_candidates(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -165,7 +178,7 @@ async def test_timing_is_clamped_by_the_api_not_the_browser(
 ) -> None:  # type: ignore[no-untyped-def]
     """b2b clamps this client-side while the API takes any number at all."""
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -192,7 +205,7 @@ async def test_a_circuit_can_be_started_and_ended(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -228,7 +241,7 @@ async def test_switching_turn_is_refused_in_an_exam(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -262,7 +275,7 @@ async def test_another_orgs_sittings_are_invisible(
 ) -> None:  # type: ignore[no-untyped-def]
     kings_id, kings_admin = await org_with_admin(client, make_actor, "kings")
     _, guys_admin = await org_with_admin(client, make_actor, "guys")
-    template_version = await a_template_version(db_session, kings_id)
+    template_version = await a_template_version(client, kings_admin)
     await client.post(
         "/api/v1/orgs/kings/sittings",
         json={"name": "Private", "feedback_template_version_id": str(template_version)},
@@ -282,27 +295,25 @@ async def test_a_sitting_cannot_be_created_against_a_draft_template(
     published. A sitting bound to a draft rubric means candidates are marked
     against a form somebody was still editing.
     """
-    from app.features.stations.models import FeedbackTemplate, FeedbackTemplateVersion
-
-    org_id, admin = await org_with_admin(client, make_actor)
-    template = FeedbackTemplate(org_id=org_id, title="Half-written")
-    db_session.add(template)
-    await db_session.flush()
-    draft = FeedbackTemplateVersion(
-        org_id=org_id,
-        template_id=template.id,
-        version=1,
-        field_selection={"paths": []},
-        status="draft",
+    _, admin = await org_with_admin(client, make_actor)
+    rubric = await create_rubric(client, admin, org_slug="kings")
+    created = await client.post(
+        "/api/v1/orgs/kings/feedback-templates",
+        json={
+            "title": "Half-written",
+            "rubric_version_id": rubric["version_id"],
+            "field_selection": {"paths": []},
+        },
+        headers=bearer(admin),
     )
-    db_session.add(draft)
-    await db_session.flush()
+    assert created.status_code == 201, created.text
+    draft_id = created.json()["versions"][0]["id"]
 
     response = await client.post(
         "/api/v1/orgs/kings/sittings",
         json={
             "name": "Too early",
-            "feedback_template_version_id": str(draft.id),
+            "feedback_template_version_id": draft_id,
             "mode": "exam",
             "sitting_type": "mock",
         },
@@ -310,16 +321,16 @@ async def test_a_sitting_cannot_be_created_against_a_draft_template(
     )
 
     assert response.status_code == 409, response.text
-    assert response.json()["code"] == "template_not_published"
+    assert response.json()["code"] == "feedback_template_not_published"
 
 
 async def test_a_sitting_cannot_be_created_against_another_orgs_template(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """Resolving the template by id alone would be a global lookup."""
-    kings_id, _ = await org_with_admin(client, make_actor, "kings")
+    _, kings_admin = await org_with_admin(client, make_actor, "kings")
     _, guys_admin = await org_with_admin(client, make_actor, "guys")
-    kings_template = await a_template_version(db_session, kings_id)
+    kings_template = await a_template_version(client, kings_admin)
 
     response = await client.post(
         "/api/v1/orgs/guys/sittings",
@@ -343,7 +354,7 @@ async def a_started_circuit(
     Training rather than exam, because switching turns and appending trainees
     are training-mode operations and this fixture serves those tests too.
     """
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -547,7 +558,7 @@ async def test_trainees_cannot_be_appended_to_an_exam_circuit(
 ) -> None:  # type: ignore[no-untyped-def]
     """An exam circuit is one candidate by construction (C1)."""
     org_id, admin = await org_with_admin(client, make_actor)
-    template_version = await a_template_version(db_session, org_id)
+    template_version = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
@@ -580,3 +591,173 @@ async def test_trainees_cannot_be_appended_to_an_exam_circuit(
 
     assert response.status_code == 409, response.text
     assert response.json()["code"] == "not_permitted_in_mode"
+
+
+async def test_a_revoked_trainee_cannot_be_put_on_a_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R3, which was written, unit-tested and called by nothing.
+
+    Revoking access stopped somebody signing in and did not stop them being
+    scheduled — and a slot its candidate cannot reach is a candidate marked
+    absent for a station they were never able to sit.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    template_version = await a_template_version(client, admin)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            headers=bearer(admin),
+        )
+    ).json()
+    station = await published_station(client, admin, "kings", "S1")
+
+    user_id = await a_trainee(db_session, "revoked@example.com")
+    rostered = await client.post(
+        "/api/v1/orgs/kings/trainees", json={"email": "revoked@example.com"}, headers=bearer(admin)
+    )
+    assert rostered.json()["user_id"] == str(user_id)
+    revoked = await client.post(
+        f"/api/v1/orgs/kings/trainees/{rostered.json()['id']}/access",
+        json={"revoked": True},
+        headers=bearer(admin),
+    )
+    assert revoked.status_code == 200, revoked.text
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+        json={"name": "C", "trainee_ids": [str(user_id)], "station_version_ids": [station]},
+        headers=bearer(admin),
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "trainee_revoked"
+
+
+async def test_somebody_not_on_the_roster_at_all_is_still_examinable(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A slot names a user; an organisation may examine somebody it has not rostered."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    template_version = await a_template_version(client, admin)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            headers=bearer(admin),
+        )
+    ).json()
+    station = await published_station(client, admin, "kings", "S1")
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+        json={
+            "name": "C",
+            "trainee_ids": [str(await a_trainee(db_session, "unrostered@example.com"))],
+            "station_version_ids": [station],
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 201, response.text
+
+
+async def a_circuit_to_edit(client: AsyncClient, make_actor, db_session: AsyncSession):  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    template_version = await a_template_version(client, admin)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={
+                "name": "S",
+                "feedback_template_version_id": str(template_version),
+                "mode": "training",
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    stations = [
+        await published_station(client, admin, "kings", "First"),
+        await published_station(client, admin, "kings", "Second"),
+    ]
+    circuit = (
+        await client.post(
+            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+            json={
+                "name": "C",
+                "trainee_ids": [str(await a_trainee(db_session, "one@example.com"))],
+                "station_version_ids": [stations[0]],
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    return admin, circuit, stations
+
+
+async def test_a_circuit_can_be_rebuilt_while_nothing_has_happened_on_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C3, which had no route to be asserted at.
+
+    Correcting a circuit meant abandoning it and building another, which is how
+    a supervisor ends up with three half-built circuits before an examination.
+    """
+    admin, circuit, stations = await a_circuit_to_edit(client, make_actor, db_session)
+    replacement = await a_trainee(db_session, "two@example.com")
+
+    response = await client.put(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}",
+        json={
+            "name": "C (corrected)",
+            "trainee_ids": [str(replacement)],
+            "station_version_ids": [stations[1]],
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["name"] == "C (corrected)"
+    assert [s["trainee_id"] for s in body["slots"]] == [str(replacement)]
+    assert [s["station_version_id"] for s in body["slots"]] == [stations[1]]
+
+
+async def test_a_circuit_cannot_be_rebuilt_mid_consultation(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Rebuilding the slots would delete the station in progress."""
+    admin, circuit, stations = await a_circuit_to_edit(client, make_actor, db_session)
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}/switch-turn",
+        json={"slot_id": circuit["slots"][0]["id"]},
+        headers=bearer(admin),
+    )
+
+    response = await client.put(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}",
+        json={
+            "trainee_ids": [str(await a_trainee(db_session, "late@example.com"))],
+            "station_version_ids": [stations[1]],
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "circuit_locked"
+
+
+async def test_a_finished_circuit_cannot_be_rebuilt(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    admin, circuit, stations = await a_circuit_to_edit(client, make_actor, db_session)
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
+
+    response = await client.put(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}",
+        json={
+            "trainee_ids": [str(await a_trainee(db_session, "after@example.com"))],
+            "station_version_ids": [stations[1]],
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "circuit_already_ended"

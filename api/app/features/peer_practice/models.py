@@ -5,13 +5,23 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Identity, Index, String, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Identity,
+    Index,
+    String,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base, Timestamps, UUIDPrimaryKey
+from app.core.db import AUDIENCE_CHECK, Addressed, Base, Timestamps, UUIDPrimaryKey
 
 
-class QueueEntry(Base, UUIDPrimaryKey, Timestamps):
+class QueueEntry(Base, UUIDPrimaryKey, Timestamps, Addressed):
     """Someone waiting to be paired."""
 
     __tablename__ = "practice_queue_entries"
@@ -31,6 +41,7 @@ class QueueEntry(Base, UUIDPrimaryKey, Timestamps):
             "seq",
             postgresql_where=text("status = 'waiting'"),
         ),
+        CheckConstraint(AUDIENCE_CHECK, name="ck_practice_queue_entries_audience"),
     )
 
     # A queue is ordered by arrival, and `created_at` cannot express that:

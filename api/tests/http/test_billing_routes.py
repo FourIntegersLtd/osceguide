@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.billing import repository as billing_repo
 from app.features.identity import repository as identity_repo
+from tests.support.catalog import ensure_exam
 
 pytestmark = pytest.mark.db
 
@@ -35,14 +36,17 @@ async def post_event(client: AsyncClient, event: dict):  # type: ignore[no-untyp
 
 
 def checkout_event(event_id: str, email: str, price_id: str = "price_one_month") -> dict:
+    """Shaped as a real `checkout.session.completed` delivery: the price lives in
+    the session's metadata (set when checkout was created), never at the top."""
     return {
         "id": event_id,
         "type": "checkout.session.completed",
         "data": {
             "object": {
                 "id": "cs_test_1",
+                "object": "checkout.session",
                 "customer_email": email,
-                "price_id": price_id,
+                "metadata": {"price_id": price_id},
                 "payment_intent": f"pi_{event_id}",
                 "amount_total": 2499,
                 "currency": "gbp",
@@ -52,6 +56,10 @@ def checkout_event(event_id: str, email: str, price_id: str = "price_one_month")
 
 
 async def a_plan(db_session: AsyncSession) -> None:
+    # A plan names an exam by code rather than by key, so the plan can be
+    # written before the exam is — but granting the purchase resolves it, and
+    # nothing is seeded.
+    await ensure_exam(db_session, "sca")
     await billing_repo.create_plan(
         db_session,
         code="one_month",
@@ -193,3 +201,72 @@ async def test_a_tampered_body_is_refused(client: AsyncClient, db_session: Async
     response = await client.post("/api/v1/billing/webhooks/stripe", content=tampered, headers=headers)
     assert response.status_code == 400
     assert response.json()["code"] == "invalid_signature"
+
+
+async def test_the_price_is_read_from_expanded_line_items_too(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A checkout created without metadata still names its price in the line items."""
+    await a_plan(db_session)
+    await a_customer(db_session, "items@example.com")
+    event = checkout_event("evt_items", "items@example.com")
+    del event["data"]["object"]["metadata"]
+    event["data"]["object"]["line_items"] = {"data": [{"price": {"id": "price_one_month"}}]}
+    response = await post_event(client, event)
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "applied"
+
+
+async def test_a_top_level_price_id_is_not_a_stripe_shape(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The field the old handler read. No real delivery carries it."""
+    await a_plan(db_session)
+    await a_customer(db_session, "flat@example.com")
+    event = checkout_event("evt_flat", "flat@example.com")
+    event["data"]["object"] = {**event["data"]["object"], "price_id": "price_one_month"}
+    del event["data"]["object"]["metadata"]
+    response = await post_event(client, event)
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_webhook"
+
+
+async def test_a_payment_for_an_unknown_address_is_kept_and_applied_on_retry(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The README's promise, which the transaction rollback used to break.
+
+    Stripe retries a non-2xx. Once the person registers, the retry applies.
+    """
+    await a_plan(db_session)
+    event = checkout_event("evt_stranger", "stranger@example.com")
+
+    refused = await post_event(client, event)
+    assert refused.status_code == 422
+    assert refused.json()["code"] == "invalid_webhook"
+
+    recorded = await billing_repo.event_by_id(db_session, "evt_stranger")
+    assert recorded is not None, "the ledger row must survive the refusal"
+    assert recorded.processed_at is None
+    assert recorded.failure and "No account" in recorded.failure
+
+    await a_customer(db_session, "stranger@example.com")
+    retried = await post_event(client, event)
+    assert retried.status_code == 200, retried.text
+    assert retried.json()["status"] == "applied"
+    recorded = await billing_repo.event_by_id(db_session, "evt_stranger")
+    assert recorded is not None and recorded.processed_at is not None and recorded.failure is None
+
+
+async def test_a_plan_with_no_exam_grants_nothing(client: AsyncClient, db_session: AsyncSession) -> None:
+    """It used to default to SCA, which is a wrong grant, not a safe one (B-2)."""
+    await billing_repo.create_plan(
+        db_session, code="vague", stripe_price_id="price_vague", amount_pence=100, duration_days=30
+    )
+    await db_session.flush()
+    await a_customer(db_session, "vague@example.com")
+    response = await post_event(
+        client, checkout_event("evt_vague", "vague@example.com", price_id="price_vague")
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "unknown_plan"

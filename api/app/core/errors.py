@@ -11,7 +11,8 @@ Slices subclass these for their own vocabulary, for example
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, NoReturn
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -45,6 +46,21 @@ class AppError(Exception):
         self.message = message or self.default_message
         self.details = details
         super().__init__(self.message)
+
+
+def raise_mapped(exc: Exception, mapping: Mapping[type[Exception], type[AppError]]) -> NoReturn:
+    """Translate a domain refusal into the API error that carries its status.
+
+    Matched with `isinstance`, in the mapping's order, so a subclass of a mapped
+    refusal is not silently dropped. An exception the mapping does not name is
+    re-raised as it is: the slices used to fall back to some arbitrary error of
+    their own, so an unexpected failure came out as a plausible 409 with the
+    wrong code.
+    """
+    for refusal, app_error in mapping.items():
+        if isinstance(exc, refusal):
+            raise app_error(str(exc)) from exc
+    raise exc
 
 
 class InvalidInput(AppError):

@@ -9,7 +9,8 @@ from typing import Any
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.audience import Audience, ViewerAudiences, addressed_to, visible_to
+from app.core.pagination import keyset_page
 from app.features.community.models import Post, PostLike
 
 
@@ -19,6 +20,7 @@ async def create_post(
     kind: str,
     author_id: uuid.UUID,
     body: str,
+    audience: Audience,
     title: str | None = None,
     parent_id: uuid.UUID | None = None,
     exam_id: uuid.UUID | None = None,
@@ -32,6 +34,9 @@ async def create_post(
         parent_id=parent_id,
         exam_id=exam_id,
         station_id=station_id,
+        visibility=str(audience.visibility),
+        audience_org_id=audience.org_id,
+        audience_group_id=audience.group_id,
     )
     session.add(row)
     await session.flush()
@@ -52,24 +57,27 @@ async def remove_post(session: AsyncSession, post_id: uuid.UUID, *, at: datetime
 async def list_questions(
     session: AsyncSession,
     *,
+    viewer: ViewerAudiences,
     limit: int,
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
+    audience: Audience | None = None,
 ) -> tuple[list[Post], str | None]:
-    stmt = select(Post).where(Post.kind == "question", Post.removed_at.is_(None))
+    """Questions this viewer may see, newest first.
+
+    The audience filter is applied here rather than after the fetch: filtering
+    a page in Python would return short pages and, worse, page *past* content
+    the viewer cannot see.
+    """
+    stmt = select(Post).where(Post.kind == "question", Post.removed_at.is_(None), visible_to(Post, viewer))
     if exam_id is not None:
         stmt = stmt.where(Post.exam_id == exam_id)
-    if cursor:
-        stmt = stmt.where(Post.created_at < datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(stmt.order_by(Post.created_at.desc(), Post.id.desc()).limit(limit + 1))
-        ).scalars()
+    if audience is not None:
+        # Narrowing to one room, on top of everything the viewer may see.
+        stmt = stmt.where(addressed_to(Post, audience))
+    return await keyset_page(
+        session, stmt, sort_col=Post.created_at, id_col=Post.id, limit=limit, cursor=cursor
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
 
 
 async def list_children(session: AsyncSession, parent_id: uuid.UUID) -> list[Post]:
@@ -79,9 +87,13 @@ async def list_children(session: AsyncSession, parent_id: uuid.UUID) -> list[Pos
     return list((await session.execute(stmt)).scalars())
 
 
-async def list_station_comments(session: AsyncSession, station_id: uuid.UUID) -> list[Post]:
+async def list_station_comments(
+    session: AsyncSession, station_id: uuid.UUID, *, viewer: ViewerAudiences
+) -> list[Post]:
     stmt = (
-        select(Post).where(Post.station_id == station_id, Post.removed_at.is_(None)).order_by(Post.created_at)
+        select(Post)
+        .where(Post.station_id == station_id, Post.removed_at.is_(None), visible_to(Post, viewer))
+        .order_by(Post.created_at)
     )
     return list((await session.execute(stmt)).scalars())
 

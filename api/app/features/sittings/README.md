@@ -46,14 +46,21 @@ things here: a LiveKit room, an HTTP session, and a database session.
 |---|---|---|---|
 | GET/POST | `/api/v1/orgs/{org_slug}/sittings` | org admin | |
 | GET | `/api/v1/orgs/{org_slug}/sittings/{id}` | org member | includes circuits and slots |
-| POST | `/api/v1/orgs/{org_slug}/sittings/{id}/circuits` | org admin | `circuit_locked` (409) |
+| POST | `/api/v1/orgs/{org_slug}/sittings/{id}/circuits` | org admin | `circuit_locked` (409), `trainee_revoked` (409) |
+| PUT | `/api/v1/orgs/{org_slug}/circuits/{id}` | org admin | structural edit (C3); `circuit_locked` (409) once a station has been run |
 | POST | `/api/v1/circuits/{id}/start` | supervisor or admin | `circuit_already_ended` (409) |
 | POST | `/api/v1/circuits/{id}/switch-turn` | supervisor or admin | training only |
 | POST | `/api/v1/circuits/{id}/end` | supervisor or admin | |
-| GET | `/api/v1/me/sittings` | trainee | read model for the trainee portal |
+
+`GET /api/v1/me/sittings` and the supervisor's console are read models and live
+in `dashboard`; this slice answers what they ask it through `service_reads.py`.
 
 ## Jobs
 A stale-circuit reaper is still to come; b2b ends circuits left live for 12 hours.
+
+Every change to a live circuit is announced after the commit (`announcements.py`)
+to the circuit's topic and to every rostered trainee's, which is what the console
+and trainee-portal streams in `dashboard` react to. See ADR 0015.
 
 ## Cross-slice dependencies
 Calls `catalog` for programmes, `stations` to bind station versions, `attempts`

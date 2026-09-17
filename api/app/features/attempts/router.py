@@ -11,7 +11,7 @@ from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import Page
 from app.core.ports import ClockDep
-from app.features.attempts import errors, schemas, service
+from app.features.attempts import errors, schemas, service, service_reads
 
 router = APIRouter(tags=["attempts"])
 
@@ -47,6 +47,33 @@ async def start_attempt(
     )
 
 
+@router.post(
+    "/attempts/{attempt_id}/abandon",
+    response_model=schemas.AttemptRead,
+    responses=error_responses(
+        Unauthenticated,
+        errors.AttemptNotFound,
+        errors.AttemptNotYours,
+        errors.InvalidAttemptState,
+    ),
+)
+async def abandon_attempt(
+    attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.AttemptRead:
+    """The candidate walks away before finishing.
+
+    Otherwise the attempt stays `running` forever, holding the slot's one live
+    attempt and counting as in progress on every screen that reads it.
+    """
+    return await service.abandon_attempt(
+        session,
+        attempt_id,
+        requester_id=principal.user_id,
+        is_admin=principal.is_platform_admin,
+        now=clock.now(),
+    )
+
+
 @router.get(
     "/attempts/{attempt_id}",
     response_model=schemas.AttemptRead,
@@ -55,7 +82,7 @@ async def start_attempt(
 async def read_attempt(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> schemas.AttemptRead:
-    return await service.read_attempt(
+    return await service_reads.read_attempt(
         session,
         attempt_id,
         requester_id=principal.user_id,
@@ -71,7 +98,7 @@ async def read_attempt(
 async def read_transcript(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> schemas.TranscriptRead:
-    return await service.read_transcript(
+    return await service_reads.read_transcript(
         session,
         attempt_id,
         requester_id=principal.user_id,
@@ -89,7 +116,7 @@ async def read_results(
 ) -> Page[schemas.AssessmentResultRead]:
     """A page rather than one result: re-scoring under a new policy adds beside
     the old, so a candidate's history stays readable."""
-    items = await service.read_results(
+    items = await service_reads.read_results(
         session,
         attempt_id,
         requester_id=principal.user_id,

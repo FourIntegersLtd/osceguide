@@ -1,0 +1,172 @@
+"""A station's revisions: adding, editing, publishing, archiving, deleting.
+
+Split from `service.py` along the aggregate rather than the line count. That
+module is about the station — what it is called, which exam it belongs to,
+which revision is current — and this one about the immutable revisions
+underneath it, which is where the whole publishing lifecycle lives.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.errors import raise_mapped
+from app.features.stations import domain, errors, repository
+from app.features.stations.models import StationVersion
+from app.features.stations.refusals import REFUSALS as _REFUSALS
+from app.features.stations.schemas import StationVersionRead
+from app.features.stations.service import read_station
+
+# What a candidate is shown before the station starts. Presentation rather than
+# assessed content, which is why T5 lets it be corrected on a published
+# version — see `domain.ensure_brief_editable`.
+BRIEF_KEY = "reading_brief"
+
+
+async def add_version(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID
+) -> StationVersionRead:
+    """Open a new draft, seeded from the latest published version."""
+    await read_station(session, org_id, station_id)
+    existing = await repository.versions_for_station(session, org_id, station_id)
+    refs = [domain.VersionRef(number=v.version, status=domain.Status(v.status)) for v in existing]
+    seed = domain.seed_version(refs)
+    content: dict[str, Any] = {}
+    if seed is not None:
+        source = next(v for v in existing if v.version == seed.number)
+        content = dict(source.content)
+    row = await repository.add_version(
+        session,
+        org_id,
+        station_id=station_id,
+        version=domain.next_version_number(refs),
+        content=content,
+    )
+    return _version_read(row)
+
+
+async def edit_version(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    station_id: uuid.UUID,
+    version: int,
+    *,
+    content: dict[str, Any],
+) -> StationVersionRead:
+    row = await _version(session, org_id, station_id, version)
+    try:
+        domain.ensure_editable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.set_version_content(session, org_id, row.id, content=content)
+    return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def publish_version(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    station_id: uuid.UUID,
+    version: int,
+    *,
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> StationVersionRead:
+    row = await _version(session, org_id, station_id, version)
+    try:
+        new_status = domain.publish(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.set_version_status(session, org_id, row.id, status=str(new_status), at=now, by=actor_id)
+    # The station points at its newest published version, so a circuit can
+    # reference the station and still get a frozen revision.
+    await repository.set_current_version(session, org_id, station_id, version_id=row.id)
+    return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def archive_version(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    station_id: uuid.UUID,
+    version: int,
+    *,
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> StationVersionRead:
+    row = await _version(session, org_id, station_id, version)
+    try:
+        new_status = domain.archive(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.set_version_status(session, org_id, row.id, status=str(new_status), at=now, by=actor_id)
+    return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def _version(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
+) -> StationVersion:
+    await read_station(session, org_id, station_id)
+    row = await repository.version_by_number(session, org_id, station_id, version)
+    if row is None:
+        raise errors.VersionNotFound()
+    return row
+
+
+def _version_read(row: StationVersion) -> StationVersionRead:
+    return StationVersionRead(
+        id=row.id,
+        station_id=row.station_id,
+        version=row.version,
+        status=row.status,
+        content=dict(row.content),
+        published_at=row.published_at,
+    )
+
+
+async def delete_version(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
+) -> None:
+    """Throw away a draft (T6).
+
+    Only a draft: a published revision is what somebody's attempt was assessed
+    against, and an archived one is how that attempt is still readable. The
+    rule was written and had no route to refuse anything at, so the only way to
+    get rid of an unwanted draft was to leave it there.
+    """
+    row = await _version(session, org_id, station_id, version)
+    try:
+        domain.ensure_deletable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.delete_version(session, org_id, row.id)
+
+
+async def edit_brief(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    station_id: uuid.UUID,
+    version: int,
+    *,
+    brief: str,
+) -> StationVersionRead:
+    """Correct the reading brief without cutting a new version (T5).
+
+    The documented exception to "published content is immutable": the brief is
+    what a candidate is handed before the station starts, so a typo in one
+    should not require a new revision, a fresh publish, and every circuit
+    pointing at the old one. An archived version is still refused — nothing
+    about it may change.
+    """
+    row = await _version(session, org_id, station_id, version)
+    try:
+        domain.ensure_brief_editable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+
+    content = dict(row.content or {})
+    content[BRIEF_KEY] = brief
+    await repository.set_version_content(session, org_id, row.id, content=content)
+    return _version_read(await _version(session, org_id, station_id, version))

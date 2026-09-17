@@ -12,9 +12,10 @@ from app.core.ports import EvaluationFailed
 from app.features.attempts import repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY, score_attempt_now
-from app.features.catalog import repository as catalog_repo
 from app.features.identity import repository as identity_repo
+from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeEvaluator
+from tests.support.rubrics import frozen_definition
 
 pytestmark = pytest.mark.db
 
@@ -25,7 +26,7 @@ async def completed_attempt(session: AsyncSession, *, turns: int = 2) -> uuid.UU
     user = await identity_repo.create_user(
         session, email=f"s{uuid.uuid4().hex[:8]}@example.com", name="S", password_hash=None
     )
-    exam = await catalog_repo.exam_by_code(session, "sca")
+    exam = await ensure_exam(session, "sca")
     assert exam is not None
     attempt = await repository.create_attempt(session, kind="practice", user_id=user.id, exam_id=exam.id)
     for i in range(turns):
@@ -38,6 +39,12 @@ async def completed_attempt(session: AsyncSession, *, turns: int = 2) -> uuid.UU
             message=f"turn {i}",
             spoken_at=NOW,
         )
+    # An attempt is marked against the rubric frozen onto it when it was
+    # rendered; there is no framework id to look one up by any more, so an
+    # attempt with no frozen definition is deliberately unmarkable.
+    await repository.freeze_definition(
+        session, attempt.id, definition=frozen_definition(str(attempt.id)), at=NOW
+    )
     await repository.set_status(session, attempt.id, status="running", at=NOW)
     await repository.set_status(session, attempt.id, status="interaction_complete", at=NOW)
     await session.flush()
@@ -132,7 +139,7 @@ async def test_an_attempt_that_never_completed_is_not_scored(db_session: AsyncSe
     user = await identity_repo.create_user(
         session=db_session, email="ns@example.com", name="N", password_hash=None
     )
-    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
     await db_session.flush()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
+from app.features.roster.errors import TraineeRevokedError
 
 
 class SittingNotFound(NotFound):
@@ -38,16 +39,23 @@ class NotPermittedInModeError(Conflict):
     default_message = "That action does not apply to this kind of circuit"
 
 
-# Binding a rubric is `stations`' rule, so its errors are this slice's
-# vocabulary too. Re-exported rather than redefined: the previous local class
-# was never raised, so the route advertised a code that could not happen while
-# the invariant it named went unenforced.
-from app.features.stations.errors import (  # noqa: E402
-    TemplateNotPublishedError,
+# Binding a feedback template is `rubrics`' rule and binding a station is
+# `stations`', so both slices' errors are this slice's vocabulary too.
+# Re-exported rather than redefined: the previous local classes were never
+# raised, so the routes advertised codes that could not happen while the
+# invariants they named went unenforced.
+from app.features.rubrics.errors import (  # noqa: E402
+    FeedbackTemplateNotPublished,
     TemplateVersionNotFound,
 )
+from app.features.stations.errors import TemplateNotPublishedError  # noqa: E402
 
-__all__ = ["TemplateNotPublishedError", "TemplateVersionNotFound"]
+__all__ = [
+    "FeedbackTemplateNotPublished",
+    "TemplateNotPublishedError",
+    "TemplateVersionNotFound",
+    "TraineeRevokedError",
+]
 
 
 class CircuitNotStarted(Conflict):

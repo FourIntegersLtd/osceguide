@@ -33,7 +33,7 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
     programme_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("org_programmes.id", ondelete="SET NULL")
     )
-    cohort_id: Mapped[uuid.UUID | None] = mapped_column()
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="SET NULL"))
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     mode: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'training'"))

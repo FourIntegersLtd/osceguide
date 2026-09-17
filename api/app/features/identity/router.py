@@ -11,9 +11,11 @@ from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
-from app.features.identity import errors, schemas, service
+from app.features.identity import errors, schemas, service, service_passwords, service_sessions
 
 router = APIRouter(tags=["identity"])
+
+Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.post(
@@ -50,7 +52,7 @@ async def login(
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.AuthResult:
-    return await service.login_with_memberships(
+    return await service_sessions.login_with_memberships(
         session,
         email=body.email,
         password=body.password,
@@ -72,13 +74,31 @@ async def refresh(
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.TokenPair:
-    return await service.refresh(
+    return await service_sessions.refresh(
         session,
         refresh_token=body.refresh_token,
         memberships_for=memberships_for,
         settings=settings,
         now=clock.now(),
     )
+
+
+@router.post(
+    "/auth/stream-ticket",
+    response_model=schemas.StreamTicket,
+    responses=error_responses(Unauthenticated),
+)
+async def mint_stream_ticket(
+    principal: CurrentPrincipal,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.StreamTicket:
+    """A sixty-second credential a browser can put in a stream's URL.
+
+    Minted with an ordinary bearer token, spent immediately on one
+    `text/event-stream` connection, and refused by every other route.
+    """
+    return await service_sessions.mint_stream_ticket(principal, settings=settings, now=clock.now())
 
 
 @router.post(
@@ -90,8 +110,15 @@ async def logout(
     principal: CurrentPrincipal,
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
+    body: schemas.LogoutRequest | None = None,
 ) -> Response:
-    await service.logout(session, user_id=principal.user_id, now=clock.now())
+    """Ends the presented session, or every session when none is named."""
+    await service_sessions.logout(
+        session,
+        user_id=principal.user_id,
+        refresh_token=body.refresh_token if body else None,
+        now=clock.now(),
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -108,7 +135,7 @@ async def begin_password_reset(
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
 ) -> schemas.Accepted:
-    await service.begin_password_reset(session, email=body.email, now=clock.now())
+    await service_passwords.begin_password_reset(session, email=body.email, now=clock.now())
     return schemas.Accepted()
 
 
@@ -122,7 +149,9 @@ async def confirm_password_reset(
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
 ) -> schemas.Accepted:
-    await service.confirm_password_reset(session, token=body.token, password=body.password, now=clock.now())
+    await service_passwords.confirm_password_reset(
+        session, token=body.token, password=body.password, now=clock.now()
+    )
     return schemas.Accepted()
 
 
@@ -137,7 +166,7 @@ async def change_password(
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
 ) -> schemas.Accepted:
-    await service.change_password(
+    await service_passwords.change_password(
         session,
         user_id=principal.user_id,
         current=body.current_password,

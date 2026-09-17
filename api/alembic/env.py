@@ -51,12 +51,15 @@ async def _run_async() -> None:
 
 
 def run_migrations_online() -> None:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        asyncio.run(_run_async())
-        return
-    # Called from inside a running loop (e.g. an async test): run on a fresh thread.
+    """Run the migrations on a fresh thread, whatever loop the caller holds.
+
+    Always a thread, not only when a loop is running: `asyncio.run` sets the
+    calling thread's event loop to None when it finishes, so running it on the
+    main thread after pytest-asyncio has created its session loop clobbered
+    that loop, and every database test after the first unit test failed with
+    "no current event loop". A subset like `pytest tests/unit tests/http` went
+    red while the full suite, which reaches the database first, stayed green.
+    """
     error: list[BaseException] = []
 
     def runner() -> None:

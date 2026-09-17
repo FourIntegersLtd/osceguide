@@ -22,6 +22,14 @@ class ArrivalRecorded(BaseModel):
     exam_code: str | None
 
 
+class TrackingReference(BaseModel):
+    """What a partner puts in one link, and where that link points."""
+
+    exam_code: str
+    ref_id: str
+    landing_path: str
+
+
 class FunnelRead(BaseModel):
     partner: str
     arrivals: int
@@ -41,3 +49,21 @@ class AcquisitionRead(BaseModel):
     partner: str
     exam_code: str | None
     acquired_at: datetime
+
+
+class RedeemReferral(BaseModel):
+    code: str = Field(min_length=1, max_length=32)
+
+
+class AddReporter(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class CreditSignup(BaseModel):
+    """Ties the signed-in account to the visit that brought them.
+
+    Sent after registering, with the key the arrival was logged under. The
+    browser holds it; the backend never sees a partner cookie.
+    """
+
+    visitor_key: str = Field(min_length=1, max_length=64)

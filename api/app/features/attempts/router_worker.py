@@ -33,7 +33,12 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/attempts/{attempt_id}",
     response_model=schemas.WorkerBootstrap,
-    responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptNotReady),
+    responses=error_responses(
+        Unauthenticated,
+        errors.AttemptNotFound,
+        errors.AttemptNotReady,
+        errors.StationNotPublishedError,
+    ),
 )
 async def bootstrap(attempt_id: uuid.UUID, session: Session, clock: ClockDep) -> schemas.WorkerBootstrap:
     return await service.bootstrap(session, attempt_id, now=clock.now())

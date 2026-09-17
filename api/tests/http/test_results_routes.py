@@ -9,6 +9,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from tests.support.catalog import create_exam
+from tests.support.rubrics import published_feedback_version
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -29,21 +31,17 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
         memberships=(Membership(org_id=org_id, org_slug=slug, role="institution_admin"),),
         active_org_slug=slug,
     )
+    # Nothing is seeded, so the exam an org's stations name has to be written
+    # first — by a platform admin, which is exactly who is holding this token.
+    await create_exam(client, root, code="sca")
     return org_id, admin
 
 
 async def a_sitting_and_trainee(db_session: AsyncSession, org_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
     from app.features.roster.models import Trainee
     from app.features.sittings.models import Sitting
-    from app.features.stations.models import FeedbackTemplate, FeedbackTemplateVersion
 
-    template = FeedbackTemplate(org_id=org_id, title="R")
-    db_session.add(template)
-    await db_session.flush()
-    version = FeedbackTemplateVersion(
-        org_id=org_id, template_id=template.id, version=1, field_selection={}, status="published"
-    )
-    db_session.add(version)
+    version = await published_feedback_version(db_session, org_id)
     await db_session.flush()
     sitting = Sitting(org_id=org_id, name="Finals", mode="exam", feedback_template_version_id=version.id)
     trainee = Trainee(org_id=org_id, email=f"c{uuid.uuid4().hex[:8]}@example.com")
@@ -167,6 +165,63 @@ async def test_release_is_refused_if_the_evidence_moved(
     assert response.json()["code"] == "evidence_changed"
 
 
+async def test_a_candidate_reads_their_released_result(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The route could never succeed: it passed a `users.id` where the table
+    keys on `trainees.id`, so every candidate was told nothing was released."""
+    from app.features.roster import repository as roster_repo
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    candidate = await make_actor("released@example.com")
+
+    from app.features.identity import repository as identity_repo
+
+    user = await identity_repo.user_by_email(db_session, "released@example.com")
+    assert user is not None
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
+    await db_session.flush()
+
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    released = await client.post(
+        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
+    )
+    assert released.status_code == 200, released.text
+
+    mine = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(candidate))
+    assert mine.status_code == 200, mine.text
+    assert mine.json()["assessment_outcome"] == "pass"
+    assert mine.json()["rationale"] == "Met the standard."
+    # The internal record stays internal.
+    assert "moderation_notes" not in mine.json()
+    assert "evidence" not in mine.json()
+
+
+async def test_another_candidate_cannot_read_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Met.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    await client.post(url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin))
+
+    stranger = await make_actor("stranger-result@example.com")
+    response = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(stranger))
+    assert response.status_code == 404
+    assert response.json()["code"] == "result_not_released"
+
+
 async def test_a_candidate_sees_nothing_before_release(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
@@ -196,3 +251,74 @@ async def test_a_supervisor_may_not_sign_off(
     )
     response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(supervisor))
     assert response.status_code == 403
+
+
+async def a_released_result(client: AsyncClient, make_actor, db_session: AsyncSession, email: str):  # type: ignore[no-untyped-def]
+    """A released decision, and a token for the candidate it belongs to."""
+    from app.features.identity import repository as identity_repo
+    from app.features.roster import repository as roster_repo
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    candidate = await make_actor(email)
+    user = await identity_repo.user_by_email(db_session, email)
+    assert user is not None
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
+    await db_session.flush()
+
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    released = await client.post(
+        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
+    )
+    assert released.status_code == 200, released.text
+    return sitting, candidate
+
+
+async def test_a_candidate_acknowledges_their_result(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    sitting, candidate = await a_released_result(client, make_actor, db_session, "ack@example.com")
+
+    before = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(candidate))
+    assert before.json()["acknowledged_at"] is None
+
+    acknowledged = await client.post(f"/api/v1/me/results/{sitting}/acknowledge", headers=bearer(candidate))
+    assert acknowledged.status_code == 200, acknowledged.text
+    assert acknowledged.json()["acknowledged_at"] is not None
+
+    after = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(candidate))
+    assert after.json()["acknowledged_at"] == acknowledged.json()["acknowledged_at"]
+
+
+async def test_acknowledging_twice_returns_the_first_answer(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The unique index makes a repeat write an error; a repeat tap is not one."""
+    sitting, candidate = await a_released_result(client, make_actor, db_session, "ack2@example.com")
+
+    first = await client.post(f"/api/v1/me/results/{sitting}/acknowledge", headers=bearer(candidate))
+    second = await client.post(f"/api/v1/me/results/{sitting}/acknowledge", headers=bearer(candidate))
+    assert second.status_code == 200
+    assert second.json() == first.json()
+
+
+async def test_nothing_unreleased_can_be_acknowledged(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Met.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    candidate = await make_actor("unreleased-ack@example.com")
+
+    response = await client.post(f"/api/v1/me/results/{sitting}/acknowledge", headers=bearer(candidate))
+    assert response.status_code == 404
+    assert response.json()["code"] == "result_not_released"

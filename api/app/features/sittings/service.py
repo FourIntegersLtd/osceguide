@@ -8,39 +8,25 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.sittings import domain, errors, repository
+from app.core.errors import AppError, raise_mapped
+from app.features.roster import service as roster
+from app.features.rubrics import service_feedback as rubrics
+from app.features.sittings import announcements, domain, errors, repository
 from app.features.sittings.models import Circuit, Sitting
-from app.features.sittings.reads import (
-    circuit_read as _circuit_read,
-)
-from app.features.sittings.reads import (
-    sitting_read as _sitting_read,
-)
-from app.features.sittings.reads import (
-    state as _state,
-)
-from app.features.sittings.reads import (
-    timing_json as _timing_json,
-)
+from app.features.sittings.reads import circuit_read, sitting_read, state, timing_json
 from app.features.sittings.schemas import (
     CircuitRead,
     SittingRead,
     TimingIn,
 )
-from app.features.stations import service as stations
 
 # One place mapping a domain refusal to its API code.
-_REFUSALS: dict[type[Exception], type[Exception]] = {
+_REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.InvalidCircuit: errors.InvalidCircuitError,
     domain.CircuitLocked: errors.CircuitLockedError,
     domain.CircuitAlreadyEnded: errors.CircuitAlreadyEndedError,
     domain.NotPermittedInMode: errors.NotPermittedInModeError,
 }
-
-
-def _raise(exc: Exception) -> None:
-    mapped = _REFUSALS.get(type(exc), errors.InvalidCircuitError)
-    raise mapped(str(exc)) from exc
 
 
 async def create_sitting(
@@ -56,7 +42,7 @@ async def create_sitting(
 ) -> SittingRead:
     # S1: the rubric must exist, belong to this org, and be published. The
     # NOT NULL foreign key only guarantees the first of those.
-    await stations.published_feedback_template(session, org_id, feedback_template_version_id)
+    await rubrics.published_feedback_template(session, org_id, feedback_template_version_id)
 
     row = await repository.create_sitting(
         session,
@@ -68,7 +54,7 @@ async def create_sitting(
         scheduled_for=scheduled_for,
         programme_id=programme_id,
     )
-    return _sitting_read(row, [])
+    return sitting_read(row, [])
 
 
 async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRead:
@@ -76,15 +62,15 @@ async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uui
     circuits = []
     for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
         slots = await repository.slots_for_circuit(session, org_id, circuit.id)
-        circuits.append(_circuit_read(circuit, slots))
-    return _sitting_read(sitting, circuits)
+        circuits.append(circuit_read(circuit, slots))
+    return sitting_read(sitting, circuits)
 
 
 async def list_sittings(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[SittingRead], str | None]:
     rows, next_cursor = await repository.list_sittings(session, org_id, limit=limit, cursor=cursor)
-    return [_sitting_read(r, []) for r in rows], next_cursor
+    return [sitting_read(r, []) for r in rows], next_cursor
 
 
 async def add_circuit(
@@ -100,6 +86,8 @@ async def add_circuit(
 ) -> CircuitRead:
     sitting = await _require_sitting(session, org_id, sitting_id)
     mode = domain.Mode(sitting.mode)
+    # R3: a revoked trainee is not scheduled into an examination.
+    await roster.ensure_rosterable(session, org_id, trainee_ids)
 
     try:
         planned = domain.build_slots(
@@ -108,7 +96,7 @@ async def add_circuit(
             stations=[str(s) for s in station_version_ids],
         )
     except domain.InvalidCircuit as exc:
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     resolved_timing = domain.normalise_timing(
         {
@@ -126,7 +114,7 @@ async def add_circuit(
         sitting_id=sitting_id,
         name=name,
         supervisor_user_id=supervisor_user_id,
-        timing=_timing_json(resolved_timing),
+        timing=timing_json(resolved_timing),
     )
     await repository.add_circuit_members(
         session, circuit.id, trainees=trainee_ids, stations=station_version_ids
@@ -137,7 +125,7 @@ async def add_circuit(
         circuit.id,
         planned=[(p.index, uuid.UUID(p.trainee), uuid.UUID(p.station)) for p in planned],
     )
-    return _circuit_read(circuit, slots)
+    return circuit_read(circuit, slots)
 
 
 async def start_circuit(
@@ -145,9 +133,9 @@ async def start_circuit(
 ) -> CircuitRead:
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     try:
-        domain.ensure_startable(_state(circuit, has_feedback=False))
+        domain.ensure_startable(state(circuit, has_feedback=False))
     except domain.CircuitAlreadyEnded as exc:
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     room = f"circuit_{circuit.id}"
     await repository.update_circuit(
@@ -155,6 +143,7 @@ async def start_circuit(
     )
     await repository.update_slots_for_circuit(session, org_id, circuit_id, room_name=room)
     await repository.set_sitting_status(session, org_id, circuit.sitting_id, status="in_progress")
+    await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.STARTED)
     return await read_circuit(session, org_id, circuit_id)
 
 
@@ -166,15 +155,16 @@ async def switch_turn(
     try:
         # Order matters: the circuit being over is the more fundamental
         # refusal, and it is the one a racing `end_circuit` creates.
-        domain.ensure_live(_state(circuit, has_feedback=False))
+        domain.ensure_live(state(circuit, has_feedback=False))
         domain.ensure_can_switch_turn(domain.Mode(sitting.mode))
     except (domain.CircuitAlreadyEnded, domain.NotPermittedInMode) as exc:
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     slot = await repository.slot_by_id(session, org_id, slot_id)
     if slot is None or slot.circuit_id != circuit_id:
         raise errors.SlotNotFound()
     await repository.update_circuit(session, org_id, circuit_id, active_slot_id=slot_id)
+    await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.TURN_SWITCHED)
     return await read_circuit(session, org_id, circuit_id)
 
 
@@ -194,13 +184,14 @@ async def end_circuit(
     # Clearing the room on every slot is what tells a rejoining browser the
     # circuit is over; b2b does the same on end.
     await repository.update_slots_for_circuit(session, org_id, circuit_id, room_name=None)
+    await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
     return await read_circuit(session, org_id, circuit_id)
 
 
 async def read_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> CircuitRead:
     circuit = await _require_circuit(session, org_id, circuit_id)
     slots = await repository.slots_for_circuit(session, org_id, circuit_id)
-    return _circuit_read(circuit, slots)
+    return circuit_read(circuit, slots)
 
 
 async def _require_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting:
@@ -235,3 +226,10 @@ async def slot_is_in_org(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid
     tenant's slot (P4).
     """
     return await repository.slot_by_id(session, org_id, slot_id) is not None
+
+
+async def feedback_template_version_for_slot(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> uuid.UUID | None:
+    """Which rubric a slot is marked against (R-1), for `reviews`."""
+    return await repository.feedback_template_version_for_slot(session, org_id, slot_id)

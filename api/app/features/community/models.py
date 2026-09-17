@@ -13,19 +13,29 @@ from datetime import datetime
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base, Timestamps, UUIDPrimaryKey
+from app.core.db import AUDIENCE_CHECK, Addressed, Base, Timestamps, UUIDPrimaryKey
 
 
-class Post(Base, UUIDPrimaryKey, Timestamps):
+class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
     __tablename__ = "posts"
     __table_args__ = (
+        # A question starts a thread, a reply sits under a post, and a comment
+        # sits under a station. The first version of this said "anything but a
+        # question has a parent", which made every station comment a
+        # constraint violation.
         CheckConstraint(
-            "(kind = 'question' AND parent_id IS NULL) OR (kind <> 'question' AND parent_id IS NOT NULL)",
+            "(kind = 'question' AND parent_id IS NULL)"
+            " OR (kind = 'reply' AND parent_id IS NOT NULL)"
+            " OR (kind = 'comment' AND parent_id IS NULL AND station_id IS NOT NULL)",
             name="ck_posts_parent_matches_kind",
         ),
         Index("ix_posts_parent", "parent_id"),
         Index("ix_posts_exam_created", "exam_id", "created_at"),
         Index("ix_posts_station", "station_id"),
+        CheckConstraint(AUDIENCE_CHECK, name="ck_posts_audience"),
+        # The list query filters on these before anything else.
+        Index("ix_posts_audience_org_id", "audience_org_id", "created_at"),
+        Index("ix_posts_audience_group_id", "audience_group_id", "created_at"),
     )
 
     kind: Mapped[str] = mapped_column(String(16), nullable=False)

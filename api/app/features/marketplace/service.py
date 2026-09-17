@@ -8,21 +8,27 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.catalog import repository as catalog_repo
+from app.core.audience import (
+    PUBLIC,
+    Audience,
+    AudienceOut,
+    audience_of,
+    audiences_for,
+    can_see,
+    ensure_may_address,
+)
+from app.core.errors import AppError, raise_mapped
+from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.marketplace import domain, errors, repository
 from app.features.marketplace.models import AvailabilityPost, PeerSession
 from app.features.marketplace.schemas import PeerSessionRead, PostRead
 
-_REFUSALS: dict[type[Exception], type[Exception]] = {
+_REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.PostUnavailable: errors.PostUnavailableError,
     domain.CannotClaimOwnPost: errors.CannotClaimOwnPostError,
     domain.NotYours: errors.NotYoursError,
 }
-
-
-def _raise(exc: Exception) -> None:
-    raise _REFUSALS.get(type(exc), errors.PostUnavailableError)(str(exc)) from exc
 
 
 def _state(post: AvailabilityPost) -> domain.PostState:
@@ -37,10 +43,13 @@ async def offer_slot(
     starts_at: datetime,
     duration_minutes: int,
     note: str | None,
+    audience: Audience = PUBLIC,
 ) -> PostRead:
     exam = await resolve_exam(session, exam_code)
+    ensure_may_address(audience, await audiences_for(session, owner_user_id))
     row = await repository.create_post(
         session,
+        audience=audience,
         owner_user_id=owner_user_id,
         exam_id=exam.id,
         starts_at=starts_at,
@@ -63,11 +72,15 @@ async def claim_slot(
     post = await repository.lock_post(session, post_id)
     if post is None:
         raise errors.PostNotFound()
+    if not can_see(audience_of(post), await audiences_for(session, claimer_user_id)):
+        # Not found rather than forbidden: a slot offered inside an institution
+        # must not be discoverable by anyone holding its id.
+        raise errors.PostNotFound()
 
     try:
         domain.ensure_claimable(_state(post), claimer_id=str(claimer_user_id), now=now)
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     await repository.mark_claimed(session, post_id, claimer_user_id=claimer_user_id, at=now)
     peer_session = await repository.create_peer_session(
@@ -81,8 +94,8 @@ async def claim_slot(
     # Derived from the session id, so a stray room says what it belongs to.
     await repository.set_room(session, peer_session.id, room_name=f"peer_{peer_session.id}")
     refreshed = await repository.peer_session_by_id(session, peer_session.id)
-    exam = await catalog_repo.exam_by_id(session, post.exam_id)
-    return _session_read(refreshed, exam.code if exam else "", viewer_id=claimer_user_id)  # type: ignore[arg-type]
+    code = await catalog.exam_code_by_id(session, post.exam_id)
+    return _session_read(refreshed, code or "", viewer_id=claimer_user_id)  # type: ignore[arg-type]
 
 
 async def withdraw_slot(
@@ -94,7 +107,7 @@ async def withdraw_slot(
     try:
         domain.ensure_cancellable(_state(post), actor_id=str(actor_id))
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
     await repository.mark_cancelled(session, post_id, at=now)
 
 
@@ -105,21 +118,30 @@ async def list_open_slots(
     now: datetime,
     limit: int,
     cursor: dict[str, Any] | None,
+    audience: Audience | None = None,
 ) -> tuple[list[PostRead], str | None]:
-    rows, next_cursor = await repository.list_open(session, now=now, limit=limit, cursor=cursor)
-    out = []
-    for row in rows:
-        exam = await catalog_repo.exam_by_id(session, row.exam_id)
-        out.append(_post_read(row, exam.code if exam else "", viewer_id=viewer_id))
-    return out, next_cursor
+    viewer = await audiences_for(session, viewer_id)
+    rows, next_cursor = await repository.list_open(
+        session, viewer=viewer, now=now, limit=limit, cursor=cursor, audience=audience
+    )
+    exams = await _exam_codes(session, {r.exam_id for r in rows})
+    return [_post_read(row, exams.get(row.exam_id, ""), viewer_id=viewer_id) for row in rows], next_cursor
+
+
+async def _exam_codes(session: AsyncSession, exam_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """One lookup per distinct exam, not one per row."""
+    codes: dict[uuid.UUID, str] = {}
+    for exam_id in exam_ids:
+        code = await catalog.exam_code_by_id(session, exam_id)
+        if code is not None:
+            codes[exam_id] = code
+    return codes
 
 
 async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PeerSessionRead]:
-    out = []
-    for row in await repository.sessions_for_user(session, user_id):
-        exam = await catalog_repo.exam_by_id(session, row.exam_id)
-        out.append(_session_read(row, exam.code if exam else "", viewer_id=user_id))
-    return out
+    rows = await repository.sessions_for_user(session, user_id)
+    exams = await _exam_codes(session, {r.exam_id for r in rows})
+    return [_session_read(row, exams.get(row.exam_id, ""), viewer_id=user_id) for row in rows]
 
 
 async def join_session(
@@ -141,8 +163,8 @@ async def join_session(
     if not domain.is_open(state, now=now):
         raise errors.SessionNotOpen()
 
-    exam = await catalog_repo.exam_by_id(session, row.exam_id)
-    return _session_read(row, exam.code if exam else "", viewer_id=user_id)
+    code = await catalog.exam_code_by_id(session, row.exam_id)
+    return _session_read(row, code or "", viewer_id=user_id)
 
 
 def _post_read(row: AvailabilityPost, exam_code: str, *, viewer_id: uuid.UUID) -> PostRead:
@@ -155,6 +177,7 @@ def _post_read(row: AvailabilityPost, exam_code: str, *, viewer_id: uuid.UUID) -
         note=row.note,
         status=row.status,
         is_mine=row.owner_user_id == viewer_id,
+        audience=AudienceOut.of(row),
     )
 
 

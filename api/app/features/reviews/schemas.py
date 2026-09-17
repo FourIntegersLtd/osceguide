@@ -18,6 +18,28 @@ class SlotReviewRead(BaseModel):
     completed_at: datetime | None
 
 
+class SlotRagSummary(BaseModel):
+    """What several reviewers of one slot agreed, or did not.
+
+    The worst rating wins per domain, which is b2b's tie-break and worth
+    keeping: when two reviewers disagree about a candidate, the lower rating is
+    the one that should prompt a conversation. Computed here rather than in the
+    browser so a supervisor's screen, a released result and an export cannot
+    each arrive at a different answer.
+    """
+
+    slot_id: uuid.UUID
+    # Null when nothing has been completed yet: no reviews, or only drafts.
+    overall_rag: str | None = None
+    by_domain: dict[str, str] = Field(default_factory=dict)
+    completed_reviews: int = 0
+
+
+class SlotReviewsRead(BaseModel):
+    items: list[SlotReviewRead] = Field(default_factory=list)
+    summary: SlotRagSummary
+
+
 class SubmitSlotReview(BaseModel):
     field_values: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None

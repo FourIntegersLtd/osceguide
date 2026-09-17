@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.core.auth import Membership
+from tests.support.catalog import create_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -26,6 +27,9 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
         memberships=(Membership(org_id=org_id, org_slug=slug, role="owner"),),
         active_org_slug=slug,
     )
+    # Nothing is seeded, so the exam an org's stations name has to be written
+    # first — by a platform admin, which is exactly who is holding this token.
+    await create_exam(client, root, code="sca")
     return org_id, admin
 
 
@@ -183,3 +187,38 @@ async def test_another_orgs_roster_is_invisible(client: AsyncClient, make_actor)
     await add_trainee(client, kings_admin, "private@example.com")
     response = await client.get("/api/v1/orgs/guys/trainees", headers=bearer(guys_admin))
     assert response.json()["items"] == []
+
+
+async def test_rostering_somebody_who_already_has_an_account_links_them(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """`trainees.user_id` was modelled and never written by anything.
+
+    A slot names a `users.id`; a released result is keyed on `trainees.id`.
+    Without the link they are two unconnected records for one person.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    await make_actor("already@example.com")
+
+    created = await client.post(
+        "/api/v1/orgs/kings/trainees", json={"email": "already@example.com"}, headers=bearer(admin)
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["user_id"] is not None
+
+
+async def test_registering_claims_the_roster_entry_that_was_waiting(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The usual order: an institution invites by email, the person signs up later."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    trainee_id = await add_trainee(client, admin, "invited@example.com")
+
+    registered = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "invited@example.com", "name": "Invited", "password": "Str0ng-Passw0rd!"},
+    )
+    assert registered.status_code in (200, 201), registered.text
+    user_id = registered.json()["user"]["id"]
+
+    listed = (await client.get("/api/v1/orgs/kings/trainees", headers=bearer(admin))).json()
+    entry = next(row for row in listed["items"] if row["id"] == trainee_id)
+    assert entry["user_id"] == user_id

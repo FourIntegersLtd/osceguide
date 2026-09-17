@@ -7,19 +7,16 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import errors, repository
-from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts import domain, errors, repository
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
-    AssessmentResultRead,
     AttemptRead,
-    TranscriptMessageRead,
-    TranscriptRead,
 )
+from app.features.attempts.service_reads import _attempt_read, _ensure_visible, _require
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
-from app.features.identity import repository as identity
+from app.features.identity import service as identity
 
 
 async def start_attempt(
@@ -81,7 +78,7 @@ async def _trial_state(
     argument defaulted to None, `decide` skips the trial branch entirely when
     it is None, and a brand-new account was refused outright.
     """
-    user = await identity.user_by_id(session, user_id)
+    user = await identity.user_ref_by_id(session, user_id)
     if user is None:
         return None
     set_stations, completed = await repository.trial_counts(session, user_id, exam_id)
@@ -92,86 +89,31 @@ async def _trial_state(
     )
 
 
-async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
-    attempt = await repository.attempt_by_id(session, attempt_id)
-    if attempt is None:
-        raise errors.AttemptNotFound()
-    return attempt
-
-
-def _same_attempt(path_id: uuid.UUID, body_id: str) -> None:
-    """A worker holds one attempt id and is given nothing else.
-
-    A mismatch means a misrouted job or a bug, so it is refused rather than
-    reconciled — writing the body's attempt instead would let one session's
-    turns land on another's transcript.
-    """
-    if str(path_id) != body_id.strip():
-        raise errors.AttemptMismatch()
-
-
-# --- reads -----------------------------------------------------------------
-
-
-async def read_attempt(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
+async def abandon_attempt(
+    session: AsyncSession,
+    attempt_id: uuid.UUID,
+    *,
+    requester_id: uuid.UUID,
+    is_admin: bool,
+    now: datetime,
 ) -> AttemptRead:
+    """The candidate walks away.
+
+    Without this an abandoned session stays `running` forever: it holds the
+    slot's one live attempt, so a re-dispatch is the only way out, and the
+    dashboard counts it as in progress. Recorded as a failure with a reason
+    rather than a status of its own, because that is what it is to the marking
+    job — there is no transcript to score.
+    """
     attempt = await _require(session, attempt_id)
     _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
-    return _attempt_read(attempt)
+    try:
+        domain.ensure_abandonable(domain.Status(attempt.status))
+    except domain.InvalidTransition as exc:
+        raise errors.InvalidAttemptState(str(exc)) from exc
 
-
-async def read_transcript(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
-) -> TranscriptRead:
-    attempt = await _require(session, attempt_id)
-    _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
-    record = await transcripts.transcript_for(session, attempt_id)
-    rows = await transcripts.chunks_for(session, attempt_id)
-    return TranscriptRead(
-        attempt_id=attempt_id,
-        complete=bool(record and record.complete),
-        messages=[
-            TranscriptMessageRead(role=r.role, message=r.message, seq=r.seq, spoken_at=r.spoken_at)
-            for r in rows
-        ],
-    )
-
-
-async def read_results(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
-) -> list[AssessmentResultRead]:
-    attempt = await _require(session, attempt_id)
-    _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
-    return [
-        AssessmentResultRead(
-            framework_id=r.framework_id,
-            policy_version=r.policy_version,
-            model_used=r.model_used,
-            payload=dict(r.payload),
-            scored_at=r.scored_at,
-        )
-        for r in await transcripts.results_for(session, attempt_id)
-    ]
-
-
-def _ensure_visible(attempt: Attempt, *, requester_id: uuid.UUID, is_admin: bool) -> None:
-    if attempt.user_id != requester_id and not is_admin:
-        raise errors.AttemptNotYours()
-
-
-def _attempt_read(attempt: Attempt) -> AttemptRead:
-    return AttemptRead(
-        id=attempt.id,
-        kind=attempt.kind,
-        status=attempt.status,
-        exam_id=attempt.exam_id,
-        station_version_id=attempt.station_version_id,
-        room_name=attempt.room_name,
-        started_at=attempt.started_at,
-        completed_at=attempt.completed_at,
-        created_at=attempt.created_at,
-    )
+    await repository.set_status(session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned")
+    return _attempt_read(await _require(session, attempt_id))
 
 
 async def restart_for_slot(
@@ -183,6 +125,7 @@ async def restart_for_slot(
     station_version_id: uuid.UUID | None,
     room_name: str,
     now: datetime,
+    feedback_template_version_id: uuid.UUID | None = None,
 ) -> Attempt:
     """The attempt a supervisor's dispatch will run (C6).
 
@@ -209,6 +152,7 @@ async def restart_for_slot(
         station_version_id=station_version_id,
         slot_id=slot_id,
         room_name=room_name,
+        feedback_template_version_id=feedback_template_version_id,
     )
 
 
@@ -225,3 +169,14 @@ async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID
     if exam_id is None:
         raise errors.UnknownExamError("The slot's station is not bound to an exam.")
     return exam_id
+
+
+async def latest_attempt_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -> uuid.UUID | None:
+    """The attempt a debrief of this set station would be about.
+
+    A debrief has to name the attempt it discusses — the table says so with a
+    CHECK — and `station_sets` passed None, so asking for one raised an
+    IntegrityError and answered 500.
+    """
+    attempt = await repository.latest_for_set_entry(session, set_entry_id)
+    return None if attempt is None else attempt.id

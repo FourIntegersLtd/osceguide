@@ -39,26 +39,17 @@ def ensure_postable(raw: str) -> None:
         raise ContentTooLong(f"A post is at most {MAX_CONTENT} characters.")
 
 
-def ensure_removable(*, author_id: str, actor_id: str, actor_is_admin: bool) -> None:
-    """Your own, or anyone's if you moderate.
+def ensure_removable(
+    *, author_id: str, actor_id: str, actor_is_admin: bool, actor_moderates_audience: bool = False
+) -> None:
+    """Your own, anyone's if you moderate the platform, or anyone's inside an
+    institution you administer.
 
-    Two separate permissions rather than one: an author deleting their own post
-    and a moderator removing someone else's are different acts, and conflating
-    them is how the legacy routes ended up with neither.
+    Three separate permissions rather than one: an author deleting their own
+    post, a platform moderator removing someone else's, and an institution
+    keeping order in its own room are different acts, and conflating them is
+    how the legacy routes ended up with none of them.
     """
-    if actor_is_admin or author_id == actor_id:
+    if actor_is_admin or actor_moderates_audience or author_id == actor_id:
         return
     raise NotYours("You can only remove your own posts.")
-
-
-def apply_like(*, already_liked: bool) -> bool:
-    """A like is a fact about a person, not a counter.
-
-    b2c increments a number, so a double tap counts twice and there is no way to
-    undo one. Storing who liked what makes both questions answerable.
-    """
-    return True
-
-
-def apply_unlike(*, already_liked: bool) -> bool:
-    return False

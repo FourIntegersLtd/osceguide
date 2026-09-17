@@ -12,11 +12,13 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import uuid
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import datetime
+from typing import Annotated
 
-from sqlalchemy import DateTime, MetaData, Uuid, func
+from fastapi import Depends
+from sqlalchemy import DateTime, ForeignKey, MetaData, String, Uuid, func
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -127,6 +129,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     outlive the rejection that triggered them — see `AppError.persist_effects`.
     """
     from app.core.errors import AppError  # noqa: PLC0415 - avoids an import cycle
+    from app.core.events import flush_pending  # noqa: PLC0415 - avoids an import cycle
 
     factory = get_session_factory()
     async with factory() as session:
@@ -136,6 +139,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         except AppError as exc:
             if exc.persist_effects:
                 await transaction.commit()
+                await flush_pending(session)
             else:
                 await transaction.rollback()
             raise
@@ -144,6 +148,11 @@ async def get_session() -> AsyncIterator[AsyncSession]:
             raise
         else:
             await transaction.commit()
+            # Live updates go out here and nowhere else. Publishing inside a
+            # service would wake a subscriber before the rows it is about to
+            # read exist, and a rolled-back request would announce work that
+            # never happened.
+            await flush_pending(session)
 
 
 @asynccontextmanager
@@ -154,9 +163,44 @@ async def job_session() -> AsyncIterator[AsyncSession]:
     though — commit on success, roll back on error — and it lives in this module
     so transaction control stays in one place.
     """
+    from app.core.events import flush_pending  # noqa: PLC0415 - avoids an import cycle
+
     factory = get_session_factory()
     async with factory() as session, session.begin():
         yield session
+    await flush_pending(session)
+
+
+@asynccontextmanager
+async def stream_session() -> AsyncIterator[AsyncSession]:
+    """One snapshot's worth of reading, inside a stream that lives for minutes.
+
+    A server-sent event stream cannot take the request session: that
+    transaction would stay open for the life of the connection, holding a
+    connection out of the pool and a snapshot of the database open against
+    vacuum for as long as a supervisor leaves the tab open. So each snapshot
+    opens its own short transaction and closes it.
+    """
+    factory = get_session_factory()
+    async with factory() as session, session.begin():
+        yield session
+
+
+SessionOpener = Callable[[], AbstractAsyncContextManager[AsyncSession]]
+
+
+def get_session_opener() -> SessionOpener:
+    """How a stream opens each of its short transactions.
+
+    A dependency rather than a direct call so a test can hand a stream its own
+    transaction, the same way it overrides a clock or a port. Everything a
+    stream reads must be visible to it, and a test's rows live in an
+    uncommitted transaction that a separately-opened connection cannot see.
+    """
+    return stream_session
+
+
+SessionOpenerDep = Annotated[SessionOpener, Depends(get_session_opener)]
 
 
 def import_all_models() -> None:
@@ -173,3 +217,30 @@ def import_all_models() -> None:
         except ModuleNotFoundError as exc:
             if exc.name != candidate:
                 raise
+
+
+class Addressed:
+    """Columns saying who a row is addressed to. See `app.core.audience`.
+
+    A mixin rather than three copies: the check constraint is the thing that
+    stops a row claiming to be private while naming nobody, and one of the
+    three getting it wrong is how a private conversation becomes public.
+    """
+
+    # A plain DDL string rather than `text()`: this module declares tables and
+    # never builds queries, and the guard that keeps it that way reads `text`
+    # as a query builder.
+    visibility: Mapped[str] = mapped_column(String(16), nullable=False, server_default="'public'")
+    audience_org_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE")
+    )
+    audience_group_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("trainee_groups.id", ondelete="CASCADE")
+    )
+
+
+AUDIENCE_CHECK = (
+    "(visibility = 'public' AND audience_org_id IS NULL AND audience_group_id IS NULL)"
+    " OR (visibility = 'organisation' AND audience_org_id IS NOT NULL AND audience_group_id IS NULL)"
+    " OR (visibility = 'group' AND audience_org_id IS NOT NULL AND audience_group_id IS NOT NULL)"
+)

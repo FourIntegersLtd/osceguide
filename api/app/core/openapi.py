@@ -27,6 +27,7 @@ TAGS: list[dict[str, str]] = [
     {"name": "identity", "description": "Accounts, sessions and passwords"},
     {"name": "tenancy", "description": "Organisations, membership and access"},
     {"name": "catalog", "description": "Exams and the programmes that offer them"},
+    {"name": "rubrics", "description": "What a candidate is marked against, and who wrote it"},
     {"name": "stations", "description": "Scenarios and the templates behind them"},
     {"name": "station-sets", "description": "A learner's own practice sets"},
     {"name": "attempts", "description": "One candidate running one scenario"},
@@ -128,3 +129,32 @@ def install_error_catalogue(app: FastAPI) -> None:
         return spec
 
     app.openapi = openapi  # type: ignore[method-assign]
+
+
+SSE_MEDIA_TYPE = "text/event-stream"
+
+
+def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[str, Any]]:
+    """Document a server-sent event stream, including what each frame carries.
+
+    A streaming route has no `response_model` — the body is an unbounded
+    sequence of frames, not one object — so without this the generated client
+    types it as nothing at all. Naming the frame's schema here keeps the
+    contract: a `snapshot` frame's `data` is exactly the model the equivalent
+    `GET` returns, and the client can decode it with the same type.
+
+    The `$ref` resolves because every streamed model is also the response model
+    of that `GET`; a stream with no polling equivalent would need its schema
+    registered another way, and should probably not exist.
+    """
+    from app.core.errors import error_responses  # noqa: PLC0415 - avoids an import cycle
+
+    out = error_responses(*errors)
+    out[200] = {
+        "description": (
+            f"An SSE stream: `connected`, then a `snapshot` frame whose `data` is a "
+            f"`{frame.__name__}` each time the state changes, and `ping` every 25 seconds."
+        ),
+        "content": {SSE_MEDIA_TYPE: {"schema": {"$ref": f"#/components/schemas/{frame.__name__}"}}},
+    }
+    return out

@@ -9,8 +9,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.catalog import repository as catalog_repo
 from app.features.entitlements import repository as ent_repo
+from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -18,8 +18,14 @@ pytestmark = pytest.mark.db
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
 
+@pytest.fixture(autouse=True)
+async def an_exam_to_attempt(db_session: AsyncSession) -> None:
+    """Every test here names an exam, and nothing is seeded any more."""
+    await ensure_exam(db_session, "sca")
+
+
 async def entitle(session: AsyncSession, token_user: uuid.UUID, code: str = "sca") -> None:
-    exam = await catalog_repo.exam_by_code(session, code)
+    exam = await ensure_exam(session, code)
     assert exam is not None
     await ent_repo.grant(
         session,
@@ -215,3 +221,86 @@ async def test_an_old_account_has_no_trial_left(
 
     assert response.status_code == 403, response.text
     assert response.json()["details"]["reason"] == "trial_exhausted"
+
+
+# --------------------------------------------------------------------------
+# Abandoning
+# --------------------------------------------------------------------------
+
+
+async def an_attempt(
+    client: AsyncClient, make_actor, db_session: AsyncSession, email: str
+) -> tuple[str, str]:  # type: ignore[no-untyped-def]
+    from app.features.identity import repository as identity_repo
+
+    token = await make_actor(email)
+    user = await identity_repo.user_by_email(db_session, email)
+    assert user is not None
+    await entitle(db_session, user.id)
+    created = await client.post(
+        "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
+    )
+    assert created.status_code == 201, created.text
+    return token, created.json()["id"]
+
+
+async def test_a_candidate_can_walk_away_from_an_attempt(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Without this an abandoned attempt stays `running` forever.
+
+    It holds the slot's one live attempt, so a re-dispatch is the only way out,
+    and every screen that reads status counts it as in progress.
+    """
+    token, attempt_id = await an_attempt(client, make_actor, db_session, "quitter@example.com")
+
+    response = await client.post(f"/api/v1/attempts/{attempt_id}/abandon", headers=bearer(token))
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "failed"
+
+    read_back = await client.get(f"/api/v1/attempts/{attempt_id}", headers=bearer(token))
+    assert read_back.json()["status"] == "failed"
+
+
+async def test_an_attempt_already_finished_cannot_be_abandoned(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """There is a transcript being marked; throwing it away is not a candidate's to do."""
+    from app.features.attempts import repository as attempts_repo
+    from app.features.attempts.domain import Status
+
+    token, attempt_id = await an_attempt(client, make_actor, db_session, "done@example.com")
+    await attempts_repo.set_status(
+        db_session, uuid.UUID(attempt_id), status=Status.RUNNING, at=datetime.now(UTC)
+    )
+    await attempts_repo.set_status(
+        db_session,
+        uuid.UUID(attempt_id),
+        status=Status.INTERACTION_COMPLETE,
+        at=datetime.now(UTC),
+    )
+    await db_session.flush()
+
+    response = await client.post(f"/api/v1/attempts/{attempt_id}/abandon", headers=bearer(token))
+    assert response.status_code == 409
+    assert response.json()["code"] == "invalid_attempt_state"
+
+
+async def test_abandoning_twice_is_refused_rather_than_silently_accepted(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    token, attempt_id = await an_attempt(client, make_actor, db_session, "twice@example.com")
+    await client.post(f"/api/v1/attempts/{attempt_id}/abandon", headers=bearer(token))
+    again = await client.post(f"/api/v1/attempts/{attempt_id}/abandon", headers=bearer(token))
+    assert again.status_code == 409
+    assert again.json()["code"] == "invalid_attempt_state"
+
+
+async def test_abandoning_someone_elses_attempt_is_refused(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    _, attempt_id = await an_attempt(client, make_actor, db_session, "mine@example.com")
+    stranger = await make_actor("notmine@example.com")
+    response = await client.post(f"/api/v1/attempts/{attempt_id}/abandon", headers=bearer(stranger))
+    assert response.status_code == 403
+    assert response.json()["code"] == "attempt_not_yours"

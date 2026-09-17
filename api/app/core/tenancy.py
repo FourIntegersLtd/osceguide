@@ -24,8 +24,14 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, NotFound
 
 
-class OrgMissing(NotFound):
-    """A platform admin asked for an organisation that does not exist."""
+class OrgNotFound(NotFound):
+    """No such organisation.
+
+    Defined here rather than in the tenancy slice because `require_org` raises
+    it and core may not import a feature. The slice re-exports this exact
+    class: two classes sharing one error code would be free to drift, and the
+    code is the contract the frontend switches on.
+    """
 
     code = "org_not_found"
     default_message = "No such organisation"
@@ -92,6 +98,49 @@ OrgSlug = Annotated[str, Path(description="Organisation slug")]
 RolePredicate = Callable[[str | None], bool]
 
 
+async def resolve_workspace(
+    session: AsyncSession,
+    principal: Principal,
+    org_slug: str,
+    *,
+    predicate: RolePredicate,
+    allow_platform_admin: bool = True,
+) -> Workspace:
+    """The whole access rule, as a plain function.
+
+    Separated from the dependency because a `text/event-stream` route cannot
+    take the request session — it would hold that transaction open for the life
+    of the connection — and so cannot take `require_org` either. The rule has
+    one implementation and both entry points call it; a second copy for streams
+    is exactly how `b2b` ended up with a check that was almost the same.
+    """
+    membership = principal.membership_for(org_slug)
+    if membership is None:
+        if not (allow_platform_admin and principal.is_platform_admin):
+            # 403 rather than 404: the caller did authenticate, and a 404
+            # here would let membership be probed by response code.
+            raise Forbidden()
+        org = await _lookup()(session, org_slug)
+        if org is None:
+            raise OrgNotFound()
+        return Workspace(org_id=org.id, org_slug=org.slug, role=None, principal=principal)
+
+    if not predicate(membership.role):
+        raise Forbidden()
+
+    # The status is read here rather than carried in the token. A token
+    # lives 15 minutes, and a suspension that takes a quarter of an hour to
+    # bite is not a suspension. One indexed read per org-scoped request is
+    # the price of it taking effect now.
+    org = await _lookup()(session, org_slug)
+    if org is None:
+        raise OrgNotFound()
+    if not _org_permits_access(org.status) and not principal.is_platform_admin:
+        raise OrgSuspended()
+
+    return Workspace(org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal)
+
+
 def require_org(
     predicate: RolePredicate, *, allow_platform_admin: bool = True
 ) -> Callable[..., Awaitable[Workspace]]:
@@ -108,32 +157,12 @@ def require_org(
         principal: CurrentPrincipal,
         session: Annotated[AsyncSession, Depends(get_session)],
     ) -> Workspace:
-        membership = principal.membership_for(org_slug)
-        if membership is None:
-            if not (allow_platform_admin and principal.is_platform_admin):
-                # 403 rather than 404: the caller did authenticate, and a 404
-                # here would let membership be probed by response code.
-                raise Forbidden()
-            org = await _lookup()(session, org_slug)
-            if org is None:
-                raise OrgMissing()
-            return Workspace(org_id=org.id, org_slug=org.slug, role=None, principal=principal)
-
-        if not predicate(membership.role):
-            raise Forbidden()
-
-        # The status is read here rather than carried in the token. A token
-        # lives 15 minutes, and a suspension that takes a quarter of an hour to
-        # bite is not a suspension. One indexed read per org-scoped request is
-        # the price of it taking effect now.
-        org = await _lookup()(session, org_slug)
-        if org is None:
-            raise OrgMissing()
-        if not _org_permits_access(org.status) and not principal.is_platform_admin:
-            raise OrgSuspended()
-
-        return Workspace(
-            org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal
+        return await resolve_workspace(
+            session,
+            principal,
+            org_slug,
+            predicate=predicate,
+            allow_platform_admin=allow_platform_admin,
         )
 
     return dependency
@@ -180,6 +209,18 @@ def _policy(name: str) -> RolePredicate:
     return predicate
 
 
+def admin_org_ids(principal: Principal) -> frozenset[uuid.UUID]:
+    """Organisations this caller administers, read from the token's own claims.
+
+    No database round trip: the memberships are already in the token, and the
+    role predicate is the one `require_org` uses. Used where a rule is "an
+    institution may moderate what is addressed inside it" rather than "this
+    route belongs to one organisation".
+    """
+    is_admin = _policy("is_org_admin")
+    return frozenset(m.org_id for m in principal.memberships if is_admin(m.role))
+
+
 async def require_platform_admin(principal: CurrentPrincipal) -> Principal:
     if not principal.is_platform_admin:
         raise Forbidden()
@@ -191,6 +232,15 @@ PlatformAdmin = Annotated[Principal, Depends(require_platform_admin)]
 
 # Declared after the factory so slices can depend on access without importing
 # one another: `workspace: OrgAdmin` is the whole of it.
+def may_read_org_policy() -> RolePredicate:
+    """The predicate behind `OrgReader`, for a caller that cannot use a dependency.
+
+    A stream resolves its own workspace (see `resolve_workspace`) and needs the
+    same rule the annotation applies, not a second spelling of it.
+    """
+    return _policy("may_read_org")
+
+
 OrgReader = Annotated[Workspace, Depends(require_org(_policy("may_read_org")))]
 OrgAdmin = Annotated[Workspace, Depends(require_org(_policy("is_org_admin"), allow_platform_admin=False))]
 OrgInstitutionAdmin = Annotated[

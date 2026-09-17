@@ -15,18 +15,23 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import raise_mapped
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
-from app.features.attempts import service as attempts
-from app.features.sittings import domain, errors, repository, service
+from app.features.attempts import service as attempts_service
+from app.features.sittings import (
+    announcements,
+    domain,
+    errors,
+    repository,
+)
 from app.features.sittings.reads import state as _state
 from app.features.sittings.schemas import (
-    CircuitRead,
     ConsultationEnded,
     DispatchResult,
     EditLock,
 )
-from app.features.sittings.service import _raise, _require_circuit, _require_sitting
+from app.features.sittings.service import _REFUSALS, _require_circuit
 from app.features.voice import service as voice
 
 # Re-exported so the router wires the dependency without importing another
@@ -81,7 +86,7 @@ async def dispatch_agent(
     try:
         domain.ensure_live(_state(circuit, has_feedback=False))
     except domain.CircuitAlreadyEnded as exc:
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     slot = await repository.slot_by_id(session, org_id, slot_id)
     if slot is None or slot.circuit_id != circuit_id:
@@ -90,7 +95,7 @@ async def dispatch_agent(
     if not room:
         raise errors.CircuitNotStarted()
 
-    attempt = await attempts.restart_for_slot(
+    attempt = await attempts_service.restart_for_slot(
         session,
         slot_id=slot.id,
         user_id=slot.trainee_id,
@@ -98,6 +103,13 @@ async def dispatch_agent(
         station_version_id=slot.station_version_id,
         room_name=room,
         now=now,
+        # What the sitting said its reviewers mark against. Carried on the
+        # attempt because `attempts` cannot walk up to the sitting to find it,
+        # so without this the narrowing was ignored and an institution's
+        # trainees were marked on the platform's full rubric.
+        feedback_template_version_id=await repository.feedback_template_version_for_slot(
+            session, org_id, slot.id
+        ),
     )
 
     agent_name, removed_before = await voice.dispatch_agent_into_room(
@@ -111,6 +123,7 @@ async def dispatch_agent(
     await repository.update_circuit(
         session, org_id, circuit_id, active_slot_id=slot.id, agent_dispatched_at=now
     )
+    await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.AGENT_DISPATCHED)
     return DispatchResult(
         room_name=room,
         slot_id=slot.id,
@@ -140,6 +153,7 @@ async def end_consultation(
     await repository.update_circuit(
         session, org_id, circuit_id, active_slot_id=None, agent_dispatched_at=None
     )
+    await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.CONSULTATION_ENDED)
     return ConsultationEnded(circuit_id=circuit_id, agents_removed=removed, ended_at=circuit.ended_at)
 
 
@@ -151,50 +165,3 @@ async def read_edit_lock(session: AsyncSession, org_id: uuid.UUID, circuit_id: u
 
     reason = domain.edit_block(_state(circuit, has_feedback=has_feedback))
     return EditLock(circuit_id=circuit_id, editable=reason is None, reason=reason)
-
-
-async def append_trainees(
-    session: AsyncSession,
-    org_id: uuid.UUID,
-    circuit_id: uuid.UUID,
-    *,
-    trainee_ids: list[uuid.UUID],
-) -> CircuitRead:
-    """Add people to a training circuit that may already be running (C8).
-
-    Training only: an exam circuit is one candidate by construction (C1), and
-    adding a second would make the slots mean something different.
-
-    New slots inherit the circuit's live room, which is the point — without it
-    a latecomer's slot has no room, and the trainee portal has nothing to
-    offer them while a session they are in runs without them.
-    """
-    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
-    sitting = await _require_sitting(session, org_id, circuit.sitting_id)
-    try:
-        domain.ensure_live(_state(circuit, has_feedback=False))
-        domain.ensure_can_append_trainees(domain.Mode(sitting.mode))
-    except (domain.CircuitAlreadyEnded, domain.NotPermittedInMode) as exc:
-        _raise(exc)
-
-    existing = await repository.slots_for_circuit(session, org_id, circuit_id)
-    if not existing:
-        raise errors.InvalidCircuitError("A circuit with no slots has no station to assign.")
-
-    # Everyone practises the same station in a training circuit, so a new
-    # arrival takes the one already being run rather than needing a choice.
-    station_version_id = existing[0].station_version_id
-    next_index = max(slot.slot_index for slot in existing) + 1
-
-    await repository.add_circuit_members(session, circuit_id, trainees=trainee_ids, stations=[])
-    await repository.create_slots(
-        session,
-        org_id,
-        circuit_id,
-        planned=[
-            (next_index + offset, trainee_id, station_version_id)
-            for offset, trainee_id in enumerate(trainee_ids)
-        ],
-        room_name=circuit.room_name,
-    )
-    return await service.read_circuit(session, org_id, circuit_id)

@@ -27,6 +27,8 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sittings import repository, service
+from tests.support.catalog import ensure_exam
+from tests.support.rubrics import published_feedback_version
 
 pytestmark = pytest.mark.db
 
@@ -35,12 +37,9 @@ NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
 async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
     """An org, a started circuit, and one of its slots."""
-    from app.features.catalog import repository as catalog_repo
     from app.features.identity import repository as identity_repo
     from app.features.sittings.models import Circuit, Sitting, Slot
     from app.features.stations.models import (
-        FeedbackTemplate,
-        FeedbackTemplateVersion,
         Station,
         StationVersion,
     )
@@ -50,16 +49,11 @@ async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UU
     session.add(org)
     await session.flush()
 
-    exam = await catalog_repo.exam_by_code(session, "sca")
+    exam = await ensure_exam(session, "sca")
     assert exam is not None
-    template = FeedbackTemplate(org_id=org.id, title="R")
-    session.add(template)
-    await session.flush()
-    version = FeedbackTemplateVersion(
-        org_id=org.id, template_id=template.id, version=1, field_selection={}, status="published"
-    )
+    version = await published_feedback_version(session, org.id)
     station = Station(owner_kind="org", org_id=org.id, exam_id=exam.id, title="S")
-    session.add_all([version, station])
+    session.add_all([station])
     await session.flush()
     station_version = StationVersion(
         station_id=station.id, org_id=org.id, version=1, content={}, status="published"

@@ -15,11 +15,13 @@ from app.migration import loader, verify
 from app.migration.attempts import attempt_from_transcript
 from app.migration.users import merge_users
 from tests.migration.test_loader import b2c_transcript, b2c_user
+from tests.support.catalog import ensure_exam
 
 pytestmark = pytest.mark.db
 
 
 async def _loaded(session: AsyncSession, turns: int = 3):  # type: ignore[no-untyped-def]
+    await ensure_exam(session, "sca")
     _, ids = await loader.load_users(session, merge_users([b2c_user("alice@example.com", "sca", "fs-1")]))
     migrated = [attempt_from_transcript(b2c_transcript("fs-1", "t-1", turns=turns), app_type="sca")]
     await loader.load_attempts(session, migrated, user_ids=ids)

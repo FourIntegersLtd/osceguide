@@ -7,22 +7,46 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.catalog import repository as catalog_repo
+from app.core.audience import (
+    PUBLIC,
+    Audience,
+    AudienceOut,
+    audience_of,
+    audiences_for,
+    ensure_may_address,
+)
+from app.core.events import publish_after_commit, user_topic
+from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.peer_practice import domain, errors, repository
 from app.features.peer_practice.models import PracticeSession, QueueEntry
 from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus
 
+# What the queue stream reacts to. Named here because this is where it happens.
+MATCHED = "practice.matched"
 
-async def join_queue(session: AsyncSession, *, user_id: uuid.UUID, exam_code: str) -> QueueStatus:
+
+async def join_queue(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_code: str, audience: Audience = PUBLIC
+) -> QueueStatus:
     """Take a place in the queue, or keep the one you have.
 
     Joining twice is not an error worth refusing outright — it is somebody
-    tapping a button again — so it returns the place they already hold.
+    tapping a button again — so it returns the place they already hold. One
+    place per person per exam, whichever room they asked for: asking again for
+    a different room returns the place they are already in rather than putting
+    them in two queues at once.
     """
     exam = await resolve_exam(session, exam_code)
+    ensure_may_address(audience, await audiences_for(session, user_id))
     existing = await repository.live_entry(session, user_id, exam.id)
-    entry = existing or await repository.join(session, user_id=user_id, exam_id=exam.id)
+    # Re-read on a losing race rather than failing: two taps arriving together
+    # both found an empty queue, both inserted, and the loser got a 500.
+    entry = existing or await repository.join(session, user_id=user_id, exam_id=exam.id, audience=audience)
+    if entry is None:
+        entry = await repository.live_entry(session, user_id, exam.id)
+    if entry is None:
+        raise errors.QueueEntryNotFound()
     return await _status(session, entry)
 
 
@@ -39,16 +63,23 @@ async def leave_queue(
     entry = await repository.entry_by_id(session, entry_id)
     if entry is None or entry.user_id != user_id:
         raise errors.QueueEntryNotFound()
-    await repository.leave(session, entry_id, at=now)
+    if not await repository.leave(session, entry_id, at=now):
+        # Already matched, or already left. Saying "you have left" would be a
+        # lie to somebody the matcher has just put into a session.
+        raise errors.QueueEntryNotFound()
 
 
-async def match_waiting(session: AsyncSession, exam_id: uuid.UUID) -> PracticeSession | None:
-    """Pair the next two people who can practise together.
+async def match_waiting(
+    session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience = PUBLIC
+) -> PracticeSession | None:
+    """Pair the next two people who can practise together, inside one room.
 
     The queue rows are locked while this runs, so two matchers pair different
-    people rather than both pairing the same two.
+    people rather than both pairing the same two. Rooms are matched separately:
+    somebody waiting in their institution's queue is never paired with a
+    stranger from the public pool.
     """
-    entries = await repository.claim_waiting(session, exam_id)
+    entries = await repository.claim_waiting(session, exam_id, audience=audience)
     if len(entries) < 2:
         return None
 
@@ -84,6 +115,13 @@ async def match_waiting(session: AsyncSession, exam_id: uuid.UUID) -> PracticeSe
     # still does not get the same part twice running.
     await repository.record_role(session, doctor_id, role=str(domain.Role.DOCTOR))
     await repository.record_role(session, patient_id, role=str(domain.Role.PATIENT))
+
+    # Both halves of the pair are told, once the pairing has committed. The
+    # matcher is a job rather than a request, and `job_session` flushes what it
+    # queued the same way `get_session` does.
+    for waiting_user in (doctor_id, patient_id):
+        publish_after_commit(session, user_topic(waiting_user), MATCHED)
+
     return await repository.session_by_id(session, practice.id)
 
 
@@ -128,19 +166,20 @@ async def _status(session: AsyncSession, entry: QueueEntry) -> QueueStatus:
         entry_id=entry.id,
         status=entry.status,
         position=await repository.position_of(session, entry) if entry.status == "waiting" else None,
-        waiting_count=await repository.waiting_count(session, entry.exam_id),
+        waiting_count=await repository.waiting_count(session, entry.exam_id, audience=audience_of(entry)),
         session_id=entry.matched_session_id,
+        audience=AudienceOut.of(entry),
     )
 
 
 async def _session_read(
     session: AsyncSession, row: PracticeSession, *, viewer_id: uuid.UUID
 ) -> PracticeSessionRead:
-    exam = await catalog_repo.exam_by_id(session, row.exam_id)
+    code = await catalog.exam_code_by_id(session, row.exam_id)
     is_doctor = row.doctor_user_id == viewer_id
     return PracticeSessionRead(
         id=row.id,
-        exam_code=exam.code if exam else "",
+        exam_code=code or "",
         my_role=str(domain.Role.DOCTOR if is_doctor else domain.Role.PATIENT),
         partner_user_id=row.patient_user_id if is_doctor else row.doctor_user_id,
         room_name=row.room_name,

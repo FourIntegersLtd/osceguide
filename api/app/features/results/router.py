@@ -11,7 +11,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin
-from app.features.results import errors, schemas, service
+from app.features.results import errors, schemas, service, service_candidate
 
 router = APIRouter(tags=["results"])
 
@@ -125,4 +125,16 @@ async def read_my_result(
     sitting_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> schemas.TraineeResultRead:
     """Released revisions only, and narrower than the internal record."""
-    return await service.read_my_result(session, sitting_id, principal.user_id)
+    return await service_candidate.read_my_result(session, sitting_id, principal.user_id)
+
+
+@router.post(
+    "/me/results/{sitting_id}/acknowledge",
+    response_model=schemas.ResultAcknowledgement,
+    responses=error_responses(Unauthenticated, errors.NotReleased),
+)
+async def acknowledge_my_result(
+    sitting_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.ResultAcknowledgement:
+    """ "I have read this." Appended to the decision's event chain, once per revision."""
+    return await service_candidate.acknowledge_my_result(session, sitting_id, principal.user_id)

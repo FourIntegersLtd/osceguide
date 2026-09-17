@@ -79,15 +79,20 @@ class FakeEvaluator:
     async def evaluate(
         self,
         *,
-        framework_id: str,
+        rubric: dict[str, object],
         policy_version: str,
         transcript: list[dict[str, object]],
     ) -> dict[str, object]:
         from app.core.ports import EvaluationFailed
 
+        framework = rubric.get("framework") or {}
         self.calls.append(
             {
-                "framework_id": framework_id,
+                "rubric": rubric,
+                # Still recorded under its own name: what a test wants to know
+                # is which rubric version an attempt was marked against, and
+                # that is the framework's id.
+                "framework_id": str(framework.get("id") or "") if isinstance(framework, dict) else "",
                 "policy_version": policy_version,
                 "turns": len(transcript),
             }

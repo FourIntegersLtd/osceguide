@@ -70,13 +70,23 @@ class CreateCircuit(BaseModel):
     timing: TimingIn = Field(default_factory=TimingIn)
 
 
+class RebuildCircuit(BaseModel):
+    """A circuit's new shape. Everything omitted is left as it is.
+
+    The trainees and the stations are sent whole rather than as a patch: the
+    slots are rebuilt from them, and a partial edit would leave the API
+    guessing which pairing the supervisor meant.
+    """
+
+    trainee_ids: list[uuid.UUID]
+    station_version_ids: list[uuid.UUID]
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    supervisor_user_id: uuid.UUID | None = None
+    timing: TimingIn | None = None
+
+
 class SwitchTurn(BaseModel):
     slot_id: uuid.UUID
-
-
-class AppendTrainee(BaseModel):
-    trainee_id: uuid.UUID
-    station_version_id: uuid.UUID
 
 
 class DispatchAgent(BaseModel):

@@ -10,8 +10,10 @@ Protocols are added when the first slice needs them; keep this file small.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-from typing import Annotated, Protocol, runtime_checkable
+from typing import Annotated, Any, Protocol, runtime_checkable
 
 from fastapi import Depends
 
@@ -37,19 +39,6 @@ class EmailSender(Protocol):
         ...
 
 
-@runtime_checkable
-class MembershipProvider(Protocol):
-    """Which organisations a user belongs to.
-
-    `identity` needs this to stamp memberships into a token, but sits below
-    `tenancy` and may not import it. The provider is a port: `tenancy`
-    implements it and `main.py` wires it, so the dependency arrow keeps
-    pointing downward and a test can supply a list instead of a database.
-    """
-
-    async def for_user(self, session: object, user_id: object) -> list[object]: ...
-
-
 def get_clock() -> Clock:
     """Overridden in tests with a FakeClock; never patched."""
     return SystemClock()
@@ -64,21 +53,24 @@ class EvaluationFailed(Exception):
 
 @runtime_checkable
 class Evaluator(Protocol):
-    """Marks a transcript against a framework.
+    """Marks a transcript against a rubric.
 
     The backend evaluates, always. The LiveKit worker delivers a transcript and
     stops: it cannot import an evaluator, and it is never told the evaluation
     policy, so marking cannot be influenced by whatever ran the conversation.
 
-    The real adapter wraps `osce_assessment.evaluation.LLMEvaluator` once the
-    engine is a versioned dependency; until then this port is what the job
-    depends on, so the boundary is fixed even though the implementation is not.
+    `rubric` is the whole thing — the framework, its marking instructions, its
+    clock — frozen onto the attempt when it was rendered. It used to be a
+    `framework_id` the adapter looked up against the four frameworks the engine
+    shipped, which is why a rubric anyone authored could not be marked with.
+    Passing it whole also means a re-mark reproduces the original rather than
+    using whatever the rubric says by then.
     """
 
     async def evaluate(
         self,
         *,
-        framework_id: str,
+        rubric: dict[str, object],
         policy_version: str,
         transcript: list[dict[str, object]],
     ) -> dict[str, object]:
@@ -108,8 +100,21 @@ class ProfileRenderer(Protocol):
     runs without it installed.
     """
 
-    def render(self, *, station: dict[str, object], exam_code: str, mode: str) -> dict[str, object]:
-        """Return `{"instructions": str, "greeting": str | None}`.
+    def render(
+        self,
+        *,
+        station: dict[str, object],
+        layout: Sequence[Mapping[str, Any]] | None = None,
+        greeting: str | None = None,
+        mode: str,
+    ) -> dict[str, object]:
+        """Return `{"instructions", "greeting", "examiner_context"}`.
+
+        `layout` is the station template's ordered block list, which says what
+        each block of the station is for. It replaces the `exam_code` this used
+        to take: the renderer branched on that string to pick one of three
+        formatters, so a new exam could not have a document shape of its own
+        without a change here and in the engine.
 
         Raises `RenderFailed` rather than returning empty instructions: the
         worker refuses a job with none, and it should fail here where somebody
@@ -178,4 +183,39 @@ class VectorIndex(Protocol):
 
     async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
         """Return `(doc_id, score)` pairs, best first."""
+        ...
+
+
+@runtime_checkable
+class EventBus(Protocol):
+    """Fan-out for live updates, so a screen is told rather than asking.
+
+    A port because the transport is an implementation detail: Redis pub/sub in
+    a deployment with more than one API replica, an in-process bus when there
+    is one. Nothing durable goes through it — a subscriber that missed an event
+    re-reads the read model when it reconnects, which is also what makes a
+    dropped connection harmless.
+    """
+
+    async def publish(self, topic: str, name: str) -> None:
+        """Tell every subscriber to `topic` that `name` happened.
+
+        Deliberately carries no payload. A subscriber rebuilds the read model
+        from the database, so a screen cannot be updated with a shape that was
+        assembled by a writer who knew less than the reader does — and nothing
+        about anybody's data crosses the bus.
+        """
+        ...
+
+    def subscription(self, topics: Sequence[str]) -> AbstractAsyncContextManager[AsyncIterator[str]]:
+        """Watch `topics`, yielding the name of each event published to them.
+
+        A context manager rather than a bare generator because *when* the
+        subscription starts has to be something the caller can be sure of. An
+        async generator does not run a line of its body until the first
+        `__anext__`, so a caller that starts one and then reads the database
+        has a window in which an event is published to nobody — and the screen
+        it is feeding stays wrong until something else happens. Entering this
+        subscribes; the snapshot is taken inside.
+        """
         ...

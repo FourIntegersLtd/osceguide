@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audience import ViewerAudiences
+from app.features.identity import service as identity
 from app.features.roster import domain, errors, repository
 from app.features.roster.models import Cohort, Trainee, TraineeGroup
 from app.features.roster.schemas import (
@@ -17,6 +20,7 @@ from app.features.roster.schemas import (
     RosterWarningRead,
     TraineeRead,
 )
+from app.features.tenancy import service as tenancy
 
 
 async def add_trainee(
@@ -38,6 +42,14 @@ async def add_trainee(
         last_name=last_name,
         cohort_id=cohort_id,
     )
+    # An institution usually rosters people who already have an account. The
+    # link was modelled and nothing ever made it: `user_id` stayed null for
+    # every trainee ever added, so a slot (which names a `users.id`) could not
+    # be traced back to the roster entry that carries the person's name.
+    existing = await identity.user_ref_by_email(session, email)
+    if existing is not None:
+        await repository.link_trainee_to_user(session, org_id, row.id, user_id=existing.id)
+        await session.refresh(row)
     return _trainee_read(row)
 
 
@@ -153,3 +165,85 @@ def _trainee_read(row: Trainee) -> TraineeRead:
 
 def _cohort_read(row: Cohort) -> CohortRead:
     return CohortRead(id=row.id, name=row.name, academic_year=row.academic_year, status=row.status)
+
+
+async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
+    """Which roster entries this signed-in person is.
+
+    `results` addresses a candidate by `trainees.id` while a slot addresses
+    them by `users.id`; one column name, two meanings. This is the translation,
+    and it lives here because `roster` owns the trainee.
+    """
+    return await repository.trainee_ids_for_user(session, user_id)
+
+
+async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> ViewerAudiences:
+    """Which rooms this person may see into.
+
+    Bound into `core.audience` by `main.py`: `community`, `marketplace` and
+    `peer_practice` all need this and all sit below the two slices that know
+    the answer. Organisations come from membership, groups from the roster.
+    """
+    memberships = await tenancy.memberships_for_token(session, user_id)
+    groups = await repository.group_ids_for_user(session, user_id)
+    return ViewerAudiences(
+        org_ids=frozenset(m.org_id for m in memberships),
+        group_ids=frozenset(groups),
+    )
+
+
+async def count_trainees(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """How many people this organisation teaches.
+
+    A count, not a list: the org dashboard reads four of these and the legacy
+    screen fetched four whole collections to call `.length` on them.
+    """
+    return await repository.count_trainees(session, org_id)
+
+
+async def trainees_by_user_id(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, TraineeRead]:
+    """Roster entries keyed by the user id a slot names them with.
+
+    A slot's `trainee_id` is a `users.id`; the name to show beside it lives on
+    `trainees`. Keyed by user id so a caller holding slots can look straight up.
+    """
+    rows = await repository.trainees_for_users(session, org_id, list(user_ids))
+    return {row.user_id: _trainee_read(row) for row in rows if row.user_id is not None}
+
+
+async def claim_roster_entries(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
+    """Connect a new account to the roster entries already waiting for it.
+
+    Bound into `identity.register` by `main.py`: an institution adds somebody by
+    email long before they sign up, and until this ran the two records never
+    met — the person appeared on a slot with no name, and their released
+    results, which are keyed on `trainees.id`, were unreachable.
+    """
+    for row in await repository.trainees_by_email_everywhere(session, email):
+        if row.user_id is None:
+            await repository.link_trainee_to_user(session, row.org_id, row.id, user_id=user_id)
+
+
+async def ensure_rosterable(session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]) -> None:
+    """Refuse to put a revoked trainee on a circuit (R3).
+
+    Called by `sittings` when a circuit is built or somebody is appended to a
+    live one. The rule was written and unit-tested and had no caller, so
+    revoking a trainee's access stopped them signing in and did not stop them
+    being scheduled into an examination — and a slot they cannot reach is a
+    candidate marked absent.
+
+    People not on the roster at all are not refused here: a slot names a user,
+    and an organisation may examine somebody it has not rostered.
+    """
+    known = await trainees_by_user_id(session, org_id, list(user_ids))
+    for user_id in user_ids:
+        trainee = known.get(user_id)
+        if trainee is None:
+            continue
+        try:
+            domain.ensure_rosterable(domain.TraineeState(access_revoked=trainee.access_revoked))
+        except domain.TraineeRevoked as exc:
+            raise errors.TraineeRevokedError(str(exc)) from exc

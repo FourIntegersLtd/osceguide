@@ -113,23 +113,25 @@ switch turns, end a consultation, append latecomers and end the circuit.
 
 ## What is missing, in the order I would do it
 
-1. **The four read models** — `/circuits/{id}/console`,
-   `/orgs/{slug}/dashboard`, `/orgs/{slug}/supervisor/circuits`,
-   `/me/sittings`. Highest value left. The frontend currently N+1s the catalogue
-   just to read a station name and polls circuit state every 8 seconds; these
-   exist to delete that, and the frontend switchover is blocked without them.
-   §8 of the proposal lists exactly what each replaces.
-2. **Feedback template authoring.** `FeedbackTemplateVersion` has a model and
-   nothing else — no repository, no service, no routes — yet a sitting cannot
-   be created without one. Today you must insert one by hand.
-3. **The remaining 16 unwired rules.** `stations` has four (T3–T5 and version
-   deletion), which together mean a circuit can reference a *draft* station.
-4. **Five oracles never ported**: feedback model parity, engine schema parity,
+1. **The rest of the streaming.** The console and the trainee portal are pushed
+   (ADR 0015); b2c's other four SSE endpoints — the practice queue, human-practice
+   feedback, live coverage and the marketplace reminder — are not, and neither is
+   their underlying product half. Adding one is now a topic, an announcement after
+   the commit and a snapshot function.
+2. **The remaining B2B parity gaps.** Staff management beyond membership CRUD,
+   the `osce_guide` library import, practice admin, the platform console (org
+   list/patch/delete, users, admins, analytics, reprovision/reset), trainee
+   session views, the feedback-context read, and org history.
+3. **Five oracles never ported**: feedback model parity, engine schema parity,
    JWT claims and default membership pick, cohort scoring totals, Stripe
    receipt. The proposal's §14 names the legacy test for each.
-5. **The migration's org half.** Station sets, sittings and org data are not
+4. **The migration's org half.** Station sets, sittings and org data are not
    transformed. The consumer path is done and proven idempotent.
-6. **Run the e2e test.** See below.
+5. **Run the e2e test.** See below.
+
+Two domain rules remain unwired, both deliberately: `attempts.is_terminal` is a
+helper nothing needs, and `attempts.required_reference` mirrors a CHECK the
+database already enforces. Everything else the guard listed has a caller.
 
 ## Blocked on a human
 

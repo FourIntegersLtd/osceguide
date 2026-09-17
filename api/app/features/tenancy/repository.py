@@ -9,13 +9,14 @@ reached by forgetting a filter, which is how `b2b` leaked through
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, literal, select, tuple_, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.pagination import keyset_page
 from app.features.tenancy.models import AuditEntry, Membership, Organization
 
 
@@ -82,6 +83,37 @@ async def memberships_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     return list((await session.execute(stmt)).scalars())
 
 
+async def live_memberships_with_orgs(
+    session: AsyncSession, user_id: uuid.UUID
+) -> list[tuple[Membership, Organization]]:
+    """A person's memberships and the organisations they are in, in one query.
+
+    Was a query per membership, on every login and every refresh. The join also
+    drops memberships whose organisation has gone, which the two-step version
+    silently kept as a `None` org.
+    """
+    stmt = (
+        select(Membership, Organization)
+        .join(Organization, Organization.id == Membership.org_id)
+        .where(
+            Membership.user_id == user_id,
+            Membership.revoked_at.is_(None),
+            Membership.status != "revoked",
+        )
+        .order_by(Membership.created_at, Membership.id)
+    )
+    return [(row[0], row[1]) for row in (await session.execute(stmt)).all()]
+
+
+async def membership_for_user_in_org(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, role: str
+) -> Membership | None:
+    stmt = select(Membership).where(
+        Membership.org_id == org_id, Membership.user_id == user_id, Membership.role == role
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def membership_by_id(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID
 ) -> Membership | None:
@@ -93,7 +125,15 @@ async def list_memberships(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Membership], str | None]:
     stmt = select(Membership).where(Membership.org_id == org_id)
-    return await _paginate(session, stmt, Membership, limit=limit, cursor=cursor, descending=False)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Membership.created_at,
+        id_col=Membership.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
+    )
 
 
 async def set_membership_role(
@@ -151,43 +191,46 @@ async def list_audit(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[AuditEntry], str | None]:
     stmt = select(AuditEntry).where(AuditEntry.org_id == org_id)
-    return await _paginate(session, stmt, AuditEntry, limit=limit, cursor=cursor, descending=True)
-
-
-# --- shared paging ---------------------------------------------------------
-
-
-async def _paginate(
-    session: AsyncSession,
-    stmt: Select[Any],
-    model: Any,
-    *,
-    limit: int,
-    cursor: dict[str, Any] | None,
-    descending: bool,
-) -> tuple[list[Any], str | None]:
-    """Keyset paging on (timestamp, id).
-
-    The id breaks ties, because rows written in one transaction share a `now()`
-    and would otherwise page non-deterministically — repeating or skipping rows
-    across pages. Among simultaneous rows the order is stable but arbitrary;
-    they happened at the same instant, so there is no true order to preserve.
-    """
-    sort_col = model.at if model is AuditEntry else model.created_at
-    if cursor:
-        mark, mark_id = datetime.fromisoformat(cursor["t"]), uuid.UUID(cursor["i"])
-        # `tuple_()`, not a Python tuple: `(col_a, col_b) > (x, y)` compares the
-        # Column objects in Python and silently produces the wrong filter.
-        keyset = tuple_(sort_col, model.id)
-        mark_tuple = tuple_(literal(mark), literal(mark_id))
-        stmt = stmt.where(keyset < mark_tuple if descending else keyset > mark_tuple)
-    order = (sort_col.desc(), model.id.desc()) if descending else (sort_col.asc(), model.id.asc())
-    rows = list((await session.execute(stmt.order_by(*order).limit(limit + 1))).scalars())
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    last = page[-1]
-    next_cursor = encode_cursor(
-        {"t": (last.at if model is AuditEntry else last.created_at), "i": str(last.id)}
+    return await keyset_page(
+        session, stmt, sort_col=AuditEntry.at, id_col=AuditEntry.id, limit=limit, cursor=cursor
     )
-    return page, next_cursor
+
+
+async def count_memberships(
+    session: AsyncSession, org_id: uuid.UUID, *, roles: Sequence[str] | None = None
+) -> int:
+    """Live members, optionally of certain roles. Revoked people are not staff."""
+    stmt = (
+        select(func.count())
+        .select_from(Membership)
+        .where(Membership.org_id == org_id, Membership.revoked_at.is_(None))
+    )
+    if roles is not None:
+        stmt = stmt.where(Membership.role.in_(list(roles)))
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def list_organizations(
+    session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None = None, status: str | None = None
+) -> tuple[list[Organization], str | None]:
+    """Every organisation. Deliberately not org-scoped: this is the console."""
+    stmt = select(Organization)
+    if status is not None:
+        stmt = stmt.where(Organization.status == status)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Organization.created_at,
+        id_col=Organization.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
+    )
+
+
+async def count_organizations(session: AsyncSession) -> int:
+    return int((await session.execute(select(func.count()).select_from(Organization))).scalar_one())
+
+
+async def update_organization(session: AsyncSession, org_id: uuid.UUID, **values: Any) -> None:
+    await session.execute(update(Organization).where(Organization.id == org_id).values(**values))

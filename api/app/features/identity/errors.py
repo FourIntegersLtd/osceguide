@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, InvalidInput, Unauthenticated
+from app.core.errors import Conflict, InvalidInput, NotFound, Unauthenticated
 
 
 class EmailTaken(Conflict):
@@ -46,3 +46,20 @@ class InvalidResetToken(InvalidInput):
 class AccountSuspended(Unauthenticated):
     code = "account_suspended"
     default_message = "This account is not active"
+
+
+class UserNotFound(NotFound):
+    """No such account.
+
+    Answered only to a platform administrator: everywhere else, a person who
+    is not yours is `forbidden` rather than `not found`, so membership cannot
+    be probed by response code.
+
+    Mirrors `tenancy.errors.UserNotFound` rather than importing it, for the
+    same reason `UnknownExamError` is mirrored: a slice owns its exception
+    types and `tenancy` sits above this one. The *code* is deliberately shared
+    — it is the API contract — and a unit test pins the two together.
+    """
+
+    code = "user_not_found"
+    default_message = "No such user"

@@ -9,13 +9,15 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.pagination import keyset_page
+from app.features.attempts.domain import Status
 from app.features.attempts.models import Attempt
 
 
@@ -28,6 +30,7 @@ async def create_attempt(
     org_id: uuid.UUID | None = None,
     station_version_id: uuid.UUID | None = None,
     slot_id: uuid.UUID | None = None,
+    feedback_template_version_id: uuid.UUID | None = None,
     set_entry_id: uuid.UUID | None = None,
     peer_session_id: uuid.UUID | None = None,
     source_attempt_id: uuid.UUID | None = None,
@@ -40,6 +43,7 @@ async def create_attempt(
         org_id=org_id,
         station_version_id=station_version_id,
         slot_id=slot_id,
+        feedback_template_version_id=feedback_template_version_id,
         set_entry_id=set_entry_id,
         peer_session_id=peer_session_id,
         source_attempt_id=source_attempt_id,
@@ -64,16 +68,22 @@ async def set_status(
     session: AsyncSession,
     attempt_id: uuid.UUID,
     *,
-    status: str,
+    status: Status,
     at: datetime,
     reason: str | None = None,
 ) -> None:
-    values: dict[str, Any] = {"status": status}
-    if status == "running":
+    """Move an attempt's status.
+
+    Typed as the enum, not `str`: this took a bare string, so `"runnning"` was
+    a write the database accepted and nothing would ever match again. The
+    column now carries a CHECK as well, which is the belt to this brace.
+    """
+    values: dict[str, Any] = {"status": str(status)}
+    if status is Status.RUNNING:
         values["started_at"] = at
-    elif status == "interaction_complete":
+    elif status is Status.INTERACTION_COMPLETE:
         values["completed_at"] = at
-    elif status == "failed":
+    elif status is Status.FAILED:
         values["failed_reason"] = reason
     await session.execute(update(Attempt).where(Attempt.id == attempt_id).values(**values))
 
@@ -94,29 +104,24 @@ async def freeze_definition(
     )
 
 
-async def delete_attempt(session: AsyncSession, attempt_id: uuid.UUID) -> None:
-    from sqlalchemy import delete
-
-    await session.execute(delete(Attempt).where(Attempt.id == attempt_id))
+async def latest_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -> Attempt | None:
+    """The most recent attempt at one station of a practice set."""
+    stmt = (
+        select(Attempt)
+        .where(Attempt.set_entry_id == set_entry_id)
+        .order_by(Attempt.created_at.desc(), Attempt.id.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def list_for_user(
     session: AsyncSession, user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Attempt], str | None]:
     stmt = select(Attempt).where(Attempt.user_id == user_id)
-    if cursor:
-        stmt = stmt.where(Attempt.created_at < datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(
-                stmt.order_by(Attempt.created_at.desc(), Attempt.id.desc()).limit(limit + 1)
-            )
-        ).scalars()
+    return await keyset_page(
+        session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
 
 
 async def defer_job(
@@ -192,7 +197,7 @@ async def fail_live_attempt_for_slot(
     live = await live_attempt_for_slot(session, slot_id)
     if live is None:
         return
-    await set_status(session, live.id, status="failed", at=at, reason=reason)
+    await set_status(session, live.id, status=Status.FAILED, at=at, reason=reason)
     await session.flush()
 
 
@@ -219,3 +224,10 @@ async def exam_for_station_version(session: AsyncSession, station_version_id: uu
         "JOIN stations s ON s.id = v.station_id WHERE v.id = :version_id"
     )
     return (await session.execute(stmt, {"version_id": station_version_id})).scalar_one_or_none()
+
+
+async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    if not slot_ids:
+        return set()
+    stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()
+    return {row for row in (await session.execute(stmt)).scalars() if row is not None}

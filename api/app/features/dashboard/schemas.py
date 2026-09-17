@@ -56,3 +56,42 @@ class Dashboard(BaseModel):
     progress: list[ExamProgress] = Field(default_factory=list)
     recent_attempts: list[RecentAttempt] = Field(default_factory=list)
     sets: list[SetSummary] = Field(default_factory=list)
+
+
+class MySlot(BaseModel):
+    """A station this person is rostered onto, from their side of it."""
+
+    id: uuid.UUID
+    slot_index: int
+    status: str
+    room_name: str | None
+    station_title: str | None
+    started_at: datetime | None
+    ended_at: datetime | None
+    exam_completed_at: datetime | None
+    # Whether the portal should offer to join: a room exists, the circuit is
+    # running, and this station is not already finished.
+    joinable: bool
+
+
+class MySitting(BaseModel):
+    id: uuid.UUID
+    name: str
+    mode: str
+    status: str
+    scheduled_for: datetime | None
+    org_id: uuid.UUID
+    org_slug: str | None
+    circuit_id: uuid.UUID
+    circuit_name: str
+    slots: list[MySlot] = Field(default_factory=list)
+
+
+class MySittings(BaseModel):
+    """The trainee portal's whole screen, in one request.
+
+    It polls two lists every five seconds and joins them in the browser to
+    answer one question: is it my turn yet?
+    """
+
+    items: list[MySitting] = Field(default_factory=list)

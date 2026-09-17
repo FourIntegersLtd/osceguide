@@ -15,7 +15,25 @@ the patient.
 
 - One live place in the queue per person per exam — a partial unique index.
   Joining twice returns the place you already hold rather than a second one;
-  it is somebody tapping a button again, not an error worth refusing.
+  it is somebody tapping a button again, not an error worth refusing. That
+  holds **across rooms**: asking to wait in your institution's queue while
+  already waiting in the public one returns the place you have, rather than
+  putting you in two queues at once.
+- **Matching is per room, and so is the queue position.** Pairing an exam as a
+  single pool would put a trainee waiting inside their institution with a
+  stranger. Somebody in a private queue was also told how many people were
+  ahead of them in the public one, none of whom they could ever be matched with.
+- **Everything here is addressed to a room** — see `app/core/audience.py`.
+  A post, a slot or a queue place is `public`, addressed to one
+  `organisation`, or addressed to one `group`. It was addressed to an exam and
+  nothing else, so an institution's trainees had no way to talk among
+  themselves and a teaching group had no way to practise together. The audience
+  is **opaque**: this slice stores a group id and never learns what a group is,
+  which is what lets a teaching cohort, a circuit's candidates and a study
+  group somebody forms be the same mechanism without reaching up into `roster`
+  or `sittings`. A CHECK constraint refuses a row that names a visibility and
+  then nobody, because that reads as public to the filter.
+
 - Matching claims queue rows with `FOR UPDATE SKIP LOCKED`, so two matchers
   running at once pair different people rather than both pairing the same two.
 - **Role assignment is ported exactly**, because the rules are about fairness:
@@ -38,6 +56,7 @@ the patient.
 |---|---|---|---|
 | POST | `/api/v1/peer-practice/queue` | bearer | idempotent |
 | GET | `/api/v1/peer-practice/queue/{id}` | owner | position, waiting count and session in one call |
+| GET | `/api/v1/peer-practice/queue/{id}/stream` | owner (bearer or `?ticket=`) | the same payload pushed (SSE); closes as soon as the answer stops being `waiting` |
 | DELETE | `/api/v1/peer-practice/queue/{id}` | owner | |
 | GET | `/api/v1/me/practice-sessions` | bearer | |
 | GET | `/api/v1/me/practice-sessions/{id}` | participant | |
