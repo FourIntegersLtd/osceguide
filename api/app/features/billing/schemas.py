@@ -13,3 +13,30 @@ class PlanRead(BaseModel):
 
 class WebhookResult(BaseModel):
     status: str
+
+
+class ReceiptRead(BaseModel):
+    """A payment receipt, rendered.
+
+    Every field is a string already formatted for display: a receipt is read by
+    people rather than parsed by clients, and rendering money and dates in the
+    browser is how two surfaces come to show the same payment differently.
+    """
+
+    receipt_id: str
+    customer_email: str
+    customer_name: str
+    exam_code: str
+    plan_label: str
+    plan_start_date: str
+    plan_end_date: str
+    paid_at: str
+    amount_subtotal: str
+    amount_tax: str
+    amount_total: str
+    show_tax_row: bool
+    currency: str
+    stripe_reference: str
+    stripe_receipt_url: str | None = None
+    seller_name: str
+    footer_extra: str

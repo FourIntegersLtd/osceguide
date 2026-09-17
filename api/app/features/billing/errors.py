@@ -53,3 +53,14 @@ class UnknownExamError(NotFound):
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+class ReceiptNotFound(NotFound):
+    """No such receipt of yours.
+
+    Indistinguishable from one that does not exist: receipt ids are short and
+    travel on forwarded documents, so probing must tell somebody nothing.
+    """
+
+    code = "receipt_not_found"
+    default_message = "No such receipt"

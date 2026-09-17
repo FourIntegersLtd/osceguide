@@ -32,6 +32,19 @@ async def latest_revision(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def latest_revisions_for_sitting(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
+) -> list[CandidateResultRevision]:
+    """The current revision for every candidate in a sitting, one row each."""
+    stmt = (
+        select(CandidateResultRevision)
+        .where(CandidateResultRevision.org_id == org_id, CandidateResultRevision.sitting_id == sitting_id)
+        .distinct(CandidateResultRevision.trainee_id)
+        .order_by(CandidateResultRevision.trainee_id, CandidateResultRevision.revision.desc())
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def append_revision(
     session: AsyncSession,
     org_id: uuid.UUID,

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 class EntitlementRead(BaseModel):
     id: uuid.UUID
+    user_id: uuid.UUID
     exam_id: uuid.UUID
     exam_code: str
     source: str
@@ -18,6 +19,12 @@ class EntitlementRead(BaseModel):
 
 
 class GrantEntitlement(BaseModel):
+    """An institution granting one of its people access to an exam it runs.
+
+    By email, as everything an administrator does is. `ends_at` left empty is
+    open-ended; an institution usually sets it to the end of the academic year.
+    """
+
     email: str
     exam_code: str
     ends_at: datetime | None = None

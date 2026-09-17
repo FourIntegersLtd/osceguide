@@ -5,12 +5,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import InvalidInput, error_responses
+from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
-from app.features.billing import errors, schemas, service
+from app.features.billing import errors, schemas, service, service_receipts
 
 router = APIRouter(tags=["billing"])
 
@@ -61,3 +62,28 @@ async def stripe_webhook(
     )
     result = await service.handle_event(session, event=event, now=clock.now())
     return schemas.WebhookResult(**result)
+
+
+@router.get(
+    "/me/receipts",
+    response_model=Page[str],
+    responses=error_responses(Unauthenticated),
+)
+async def list_my_receipts(principal: CurrentPrincipal, session: Session) -> Page[str]:
+    """The receipt ids for this person's payments, newest first."""
+    return Page(items=await service_receipts.list_my_receipts(session, principal.user_id), next_cursor=None)
+
+
+@router.get(
+    "/me/receipts/{receipt_id}",
+    response_model=schemas.ReceiptRead,
+    responses=error_responses(Unauthenticated, errors.ReceiptNotFound),
+)
+async def read_receipt(receipt_id: str, principal: CurrentPrincipal, session: Session) -> schemas.ReceiptRead:
+    """One receipt, rendered.
+
+    Scoped to the caller. A receipt id is short and printed on a document that
+    gets forwarded to an accountant or an employer, so it must not be a key
+    anybody holding it can read.
+    """
+    return await service_receipts.read_receipt(session, principal.user_id, receipt_id)

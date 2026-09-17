@@ -1,0 +1,60 @@
+"""Bringing somebody in before they have chosen a password.
+
+An institution names people by email long before they sign in: a membership
+for a tutor, a roster row for a student. Both used to require the person to
+have registered first, on their own, unprompted — `tenancy` refused with
+`user_not_found` and `roster` left `user_id` empty, so nobody could be put on
+a circuit until they happened to sign up.
+
+An invitation creates the account now, with no password, and queues an email
+carrying a set-password token. The token is an ordinary reset token, so the
+existing `password-reset/confirm` route finishes the job and there is no
+second way to set a password. Until then the account cannot sign in at all:
+`verify_password` rejects every attempt against an absent hash.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.identity import repository
+from app.features.identity.service import UserRef, _announce_registration, _ref
+from app.features.identity.tokens import new_token
+from app.features.notifications import service as notifications
+
+INVITATION_TTL_DAYS = 7
+
+
+async def invite_user(
+    session: AsyncSession, *, email: str, name: str, invited_to: str, now: datetime
+) -> UserRef:
+    """Create an account for `email` and queue the invitation, in one transaction.
+
+    The caller has already established there is no account for this address;
+    an existing one is not re-invited, because that would mint a live
+    set-password token for somebody who did not ask for one.
+    """
+    user = await repository.create_user(
+        session, email=email, name=name, password_hash=None, must_change_password=True
+    )
+    raw, token_hash = new_token()
+    await repository.create_reset_token(
+        session,
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=now + timedelta(days=INVITATION_TTL_DAYS),
+    )
+    await notifications.enqueue_email(
+        session,
+        recipient=user.email,
+        subject=f"You have been invited to {invited_to}",
+        template_key="invitation",
+        payload={"token": raw, "invited_to": invited_to},
+        idempotency_key=f"invitation:{token_hash}",
+    )
+    # The same hook registering runs: an invited person may already be on a
+    # roster somewhere else, and those rows are waiting for this account.
+    await _announce_registration(session, user.id, user.email)
+    return _ref(user)

@@ -26,7 +26,12 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 - The **active workspace** must be an organisation the principal is a member of.
   Switching to any other is `forbidden` (403), never a silent no-op.
 - `platform_admin` is **not** an org admin and inherits no org role. Ported verbatim
-  from `b2b policy.py:27-28`, which is the current behaviour and is correct.
+  from `b2b policy.py:27-28`, which is the current behaviour and is correct. The
+  one exception is seating the first member of a freshly provisioned organisation,
+  which has no admin to do it: that is a console route, not a relaxation of `OrgAdmin`.
+- Naming somebody who has no account **invites** them: the account is created
+  without a password and they are emailed a link to choose one. Refusing with
+  `user_not_found` meant every tutor had to register unprompted first.
 - Org admin is `owner | admin | institution_admin | partner_admin`.
   Institution admin — who alone signs off candidate results — is the narrower
   `owner | admin | institution_admin`.
@@ -40,13 +45,14 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | POST | `/api/v1/auth/switch-workspace` | bearer | re-issues the token; `forbidden` (403) if not a member |
 | GET | `/api/v1/orgs/{org_slug}` | org member | |
 | GET | `/api/v1/orgs/{org_slug}/memberships` | org admin | cursor-paginated |
-| POST | `/api/v1/orgs/{org_slug}/memberships` | org admin | `membership_exists` (409) |
+| POST | `/api/v1/orgs/{org_slug}/memberships` | org admin | `membership_exists` (409); an unknown address is **invited** (`invited: true`) |
 | PATCH | `/api/v1/orgs/{org_slug}/memberships/{id}` | org admin | role change |
 | POST | `/api/v1/orgs/{org_slug}/memberships/{id}/revoke` | org admin | |
 | POST | `/api/v1/orgs/{org_slug}/memberships/{id}/restore` | org admin | |
 | GET | `/api/v1/orgs/{org_slug}/audit` | org admin | cursor-paginated |
 | GET | `/api/v1/me/capabilities` | bearer | read model; replaces the browser's copy of this policy |
 | POST | `/api/v1/platform/organizations` | platform admin | institution or partner |
+| POST | `/api/v1/platform/organizations/{slug}/memberships` | platform admin | seats the **first** owner; the only membership write outside `OrgAdmin` |
 | POST | `/api/v1/platform/organizations/{slug}/suspend` | platform admin | |
 | GET | `/api/v1/platform/organizations` | platform admin | every tenant; `?status=` |
 | PATCH | `/api/v1/platform/organizations/{slug}` | platform admin | name, type, contract dates — never the slug |
@@ -61,7 +67,14 @@ defensible months later, and a cascade would take them. Suspension is the
 reversible mechanism and it now has an inverse.
 
 ## Jobs
-None yet. Membership invitation email is enqueued through `notifications`.
+`suspend_lapsed_organizations` — hourly. Suspends every `trial`/`active`
+organisation whose `contract_ends_at` has passed and writes an
+`organization.contract_lapsed` audit row. Renewal is the existing `PATCH` of
+the end date plus `restore`. Contract dates were recorded and enforced by
+nothing before this.
+
+The invitation email is queued through `identity.service_invitations`, in the
+transaction that creates the membership.
 
 ## Cross-slice dependencies
 Calls `identity` service to read and create users. Nothing calls into this slice

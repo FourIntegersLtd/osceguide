@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 
 # Roles that may administer an organisation. `platform_admin` is deliberately
 # absent: a console admin manages organisations from the outside and inherits
@@ -56,6 +57,16 @@ def is_trainee(role: str | None) -> bool:
 def may_read_org(role: str | None) -> bool:
     """Any member role may read org context; writing is gated per resource."""
     return is_org_admin(role) or is_assigned_staff(role) or is_trainee(role)
+
+
+def contract_lapsed(contract_ends_at: datetime | None, *, now: datetime) -> bool:
+    """Whether an organisation's contract has run out.
+
+    No end date means an open-ended arrangement, not a lapsed one. The
+    comparison is not strict: a contract that ends at midnight has ended at
+    midnight.
+    """
+    return contract_ends_at is not None and now >= contract_ends_at
 
 
 def org_permits_access(status: str | None) -> bool:

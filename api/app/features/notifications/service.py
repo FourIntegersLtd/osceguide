@@ -130,7 +130,20 @@ def _result_released(data: dict[str, str]) -> str:
     )
 
 
+def _invitation(data: dict[str, str]) -> str:
+    link = f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={data.get('token', '')}"
+    return (
+        f"<h1>You have been invited to {data.get('invited_to', '')}</h1>"
+        "<p>An account has been created for this address. Choose a password to "
+        "start using it. The link expires in seven days.</p>"
+        f'<p><a href="{link}">Choose a password</a></p>'
+        "<p>If you were not expecting this, you can ignore it and the account "
+        "stays locked.</p>"
+    )
+
+
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
+    "invitation": _invitation,
     "candidate_result_released": _result_released,
 }

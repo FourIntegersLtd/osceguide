@@ -72,6 +72,14 @@ class MySlot(BaseModel):
     # Whether the portal should offer to join: a room exists, the circuit is
     # running, and this station is not already finished.
     joinable: bool
+    # The attempt the supervisor's dispatch created for this slot, once there
+    # is one. The voice token is issued per attempt, so without this a
+    # candidate had no way to ask for one.
+    attempt_id: uuid.UUID | None = None
+    # The server's clock (D-6): `reading` or `simulation`, and when it ends.
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
 
 
 class MySitting(BaseModel):

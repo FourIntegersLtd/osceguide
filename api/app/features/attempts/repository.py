@@ -59,6 +59,14 @@ async def attempt_by_id(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt
     return (await session.execute(select(Attempt).where(Attempt.id == attempt_id))).scalar_one_or_none()
 
 
+async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> list[Attempt]:
+    """The one unfailed attempt on each of these slots, for a screen that lists them."""
+    if not slot_ids:
+        return []
+    stmt = select(Attempt).where(Attempt.slot_id.in_(list(slot_ids)), Attempt.status != "failed")
+    return list((await session.execute(stmt)).scalars())
+
+
 async def live_attempt_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> Attempt | None:
     stmt = select(Attempt).where(Attempt.slot_id == slot_id, Attempt.status != "failed")
     return (await session.execute(stmt)).scalar_one_or_none()

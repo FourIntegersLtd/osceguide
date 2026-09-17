@@ -65,6 +65,19 @@ class Payment(Base, UUIDPrimaryKey, Timestamps):
     amount_total_pence: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     receipt_url: Mapped[str | None] = mapped_column(String(500))
+    # Our own receipt, as opposed to Stripe's card receipt above. Nullable for
+    # the payments taken before receipts existed.
+    receipt_id: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # Frozen at the moment of payment, not read from the user. A receipt is
+    # evidence of what happened; somebody changing their name later must not
+    # change a document their bank has already seen.
+    customer_email: Mapped[str | None] = mapped_column(String(320))
+    customer_name: Mapped[str | None] = mapped_column(String(200))
+    amount_tax_pence: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # What the payment bought, so the receipt says so without re-deriving it
+    # from an entitlement that may since have been revoked.
+    plan_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    plan_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # The entitlement this payment bought. Nullable because a refund revokes the
     # entitlement without deleting either record.

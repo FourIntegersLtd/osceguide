@@ -11,7 +11,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.roster import errors, schemas, service
+from app.features.roster import errors, schemas, service, service_bulk, service_groups
 
 router = APIRouter(tags=["roster"])
 
@@ -40,8 +40,9 @@ async def list_trainees(
     responses=error_responses(Forbidden, errors.TraineeExists),
 )
 async def add_trainee(
-    body: schemas.CreateTrainee, workspace: OrgAdmin, session: Session
+    body: schemas.CreateTrainee, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.TraineeRead:
+    """An address with no account is invited and linked in the same call."""
     return await service.add_trainee(
         session,
         workspace.org_id,
@@ -49,7 +50,21 @@ async def add_trainee(
         first_name=body.first_name,
         last_name=body.last_name,
         cohort_id=body.cohort_id,
+        now=clock.now(),
     )
+
+
+@router.post(
+    "/orgs/{org_slug}/trainees/bulk",
+    response_model=schemas.BulkTraineesResult,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Forbidden),
+)
+async def add_trainees(
+    body: schemas.BulkCreateTrainees, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkTraineesResult:
+    """A spreadsheet's worth of trainees. Duplicates are reported, not fatal."""
+    return await service_bulk.add_trainees(session, workspace.org_id, entries=body.trainees, now=clock.now())
 
 
 @router.post(
@@ -77,7 +92,7 @@ async def set_access(
     responses=error_responses(Forbidden),
 )
 async def list_cohorts(workspace: OrgReader, session: Session) -> Page[schemas.CohortRead]:
-    return Page(items=await service.list_cohorts(session, workspace.org_id), next_cursor=None)
+    return Page(items=await service_groups.list_cohorts(session, workspace.org_id), next_cursor=None)
 
 
 @router.post(
@@ -87,7 +102,7 @@ async def list_cohorts(workspace: OrgReader, session: Session) -> Page[schemas.C
     responses=error_responses(Forbidden),
 )
 async def add_cohort(body: schemas.CreateCohort, workspace: OrgAdmin, session: Session) -> schemas.CohortRead:
-    return await service.add_cohort(
+    return await service_groups.add_cohort(
         session, workspace.org_id, name=body.name, academic_year=body.academic_year
     )
 
@@ -98,7 +113,7 @@ async def add_cohort(body: schemas.CreateCohort, workspace: OrgAdmin, session: S
     responses=error_responses(Forbidden),
 )
 async def list_groups(workspace: OrgReader, session: Session) -> Page[schemas.GroupRead]:
-    return Page(items=await service.list_groups(session, workspace.org_id), next_cursor=None)
+    return Page(items=await service_groups.list_groups(session, workspace.org_id), next_cursor=None)
 
 
 @router.post(
@@ -108,7 +123,7 @@ async def list_groups(workspace: OrgReader, session: Session) -> Page[schemas.Gr
     responses=error_responses(Forbidden, errors.GroupExists),
 )
 async def add_group(body: schemas.CreateGroup, workspace: OrgAdmin, session: Session) -> schemas.GroupRead:
-    return await service.add_group(session, workspace.org_id, label=body.label)
+    return await service_groups.add_group(session, workspace.org_id, label=body.label)
 
 
 @router.put(
@@ -124,7 +139,9 @@ async def set_group_members(
 ) -> schemas.GroupRead:
     """PUT, not POST: the body states who is in the group. b2b has no
     membership table at all and matches a label instead."""
-    return await service.set_group_members(session, workspace.org_id, group_id, trainee_ids=body.trainee_ids)
+    return await service_groups.set_group_members(
+        session, workspace.org_id, group_id, trainee_ids=body.trainee_ids
+    )
 
 
 @router.post(
@@ -140,7 +157,7 @@ async def resolve_roster(
     A POST because it takes a body, not because it changes anything — the
     alternative is a query string of repeated uuids.
     """
-    return await service.resolve_roster(
+    return await service_groups.resolve_roster(
         session,
         workspace.org_id,
         trainee_ids=body.trainee_ids,

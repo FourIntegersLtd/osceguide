@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.core.logging import get_logger
-from app.features.billing import domain, errors, repository, signature
+from app.features.billing import domain, errors, receipts, repository, signature
 from app.features.billing.models import Plan
 from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
@@ -166,6 +166,15 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
         receipt_url=str(payload.get("receipt_url") or "") or None,
         paid_at=now,
         entitlement_id=granted.id,
+        # Our own receipt, minted here so it exists from the moment the payment
+        # does. A receipt created on demand later would have no stable id, and
+        # the id is what a customer quotes to support.
+        receipt_id=receipts.new_receipt_id(plan_row.exam_code),
+        customer_email=email,
+        customer_name=(payload.get("customer_details") or {}).get("name") or user.name,
+        amount_tax_pence=int((payload.get("total_details") or {}).get("amount_tax") or 0),
+        plan_starts_at=starts_at,
+        plan_ends_at=ends_at,
     )
 
 

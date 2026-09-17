@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.identity import service as identity
-from app.features.tenancy import repository
+from app.features.tenancy import domain, repository, repository_platform
 from app.features.tenancy.errors import OrgNotFound
 from app.features.tenancy.schemas import (
     OrganizationRead,
@@ -35,7 +35,7 @@ from app.features.tenancy.service import _org_read
 async def list_organizations(
     session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None, status: str | None = None
 ) -> tuple[list[OrganizationRead], str | None]:
-    rows, next_cursor = await repository.list_organizations(
+    rows, next_cursor = await repository_platform.list_organizations(
         session, limit=limit, cursor=cursor, status=status
     )
     return [_org_read(row) for row in rows], next_cursor
@@ -138,3 +138,34 @@ async def overview(session: AsyncSession) -> PlatformOverview:
         organizations=await repository.count_organizations(session),
         users=await identity.count_users(session),
     )
+
+
+async def suspend_lapsed_organizations(session: AsyncSession, *, now: datetime) -> list[str]:
+    """Suspend every organisation whose contract has ended. Returns their slugs.
+
+    Contract dates were stored and enforced by nothing, so a lapsed contract
+    needed somebody to notice. Run hourly by `jobs.py`. Suspension is the
+    existing, reversible mechanism: renewing is a `PATCH` of the end date and
+    a `restore`, both of which already exist, and the audit row says why.
+    """
+    lapsed: list[str] = []
+    candidates = await repository_platform.organizations_with_contracts(
+        session, statuses=sorted(domain.ACTIVE_ORG_STATUSES)
+    )
+    for org in candidates:
+        if not domain.contract_lapsed(org.contract_ends_at, now=now):
+            continue
+        await repository.set_organization_status(session, org.id, status="suspended", suspended_at=now)
+        await repository.write_audit(
+            session,
+            org_id=org.id,
+            actor_user_id=None,
+            actor_email=None,
+            action="organization.contract_lapsed",
+            at=now,
+            target_type="organization",
+            target_id=str(org.id),
+            summary=f"Contract ended {org.contract_ends_at:%Y-%m-%d}; suspended",
+        )
+        lapsed.append(org.slug)
+    return lapsed

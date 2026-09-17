@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -33,6 +34,21 @@ org_permits_access = domain.org_permits_access
 async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgRef | None:
     org = await repository.organization_by_slug(session, slug)
     return None if org is None else OrgRef(id=org.id, slug=org.slug, status=org.status)
+
+
+@dataclass(frozen=True)
+class OrgSummary:
+    """An organisation as another slice names it to a person: the id and a name."""
+
+    id: uuid.UUID
+    slug: str
+    name: str
+    status: str
+
+
+async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary | None:
+    org = await repository.organization_by_id(session, org_id)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, status=org.status)
 
 
 async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> list[TokenMembership]:

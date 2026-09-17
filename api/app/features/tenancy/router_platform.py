@@ -19,7 +19,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgReader, PlatformAdmin
-from app.features.tenancy import errors, schemas, service_platform
+from app.features.tenancy import errors, schemas, service_memberships, service_platform
 
 router = APIRouter(tags=["tenancy"])
 
@@ -71,6 +71,38 @@ async def restore_organization(
     one nobody dares use."""
     return await service_platform.restore_organization(
         session, org_id=workspace.org_id, actor=admin, now=clock.now()
+    )
+
+
+@router.post(
+    "/platform/organizations/{org_slug}/memberships",
+    response_model=schemas.MembershipRead,
+    status_code=201,
+    responses=error_responses(Forbidden, errors.OrgNotFound, errors.MembershipExists),
+)
+async def seat_membership(
+    body: schemas.CreateMembership,
+    workspace: OrgReader,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.MembershipRead:
+    """Put the first person into an organisation.
+
+    Every other membership is added by an org admin, and a freshly provisioned
+    organisation has none: the console could provision, rename and suspend an
+    organisation but could not seat its owner, so the first row had to be
+    inserted by hand. A platform admin holds no org role, so this is the one
+    membership write that does not go through `OrgAdmin`.
+    """
+    return await service_memberships.add_membership(
+        session,
+        workspace.org_id,
+        email=body.email,
+        role=body.role,
+        product_surface=body.product_surface,
+        actor=admin,
+        now=clock.now(),
     )
 
 

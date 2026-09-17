@@ -107,6 +107,12 @@ class ConsoleSlot(BaseModel):
     # slot for this.
     has_review: bool
     is_active: bool
+    # The live attempt, if the patient has been dispatched for this slot.
+    attempt_id: uuid.UUID | None = None
+    # The server's clock (D-6).
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
 
 
 class ConsoleTiming(BaseModel):
@@ -147,3 +153,33 @@ class CircuitConsole(BaseModel):
     sitting: ConsoleSitting
     circuit: ConsoleCircuit
     slots: list[ConsoleSlot] = Field(default_factory=list)
+
+
+class CohortCandidate(BaseModel):
+    """One candidate's standing in a sitting."""
+
+    trainee: ConsolePerson
+    rank: int
+    stations_total: int
+    stations_completed: int
+    completion_rate: float
+    # Null when nothing of theirs has been marked. Deliberately not zero: a
+    # zero would rank an unassessed candidate below a failing one.
+    assessment_score: float | None
+    # Which candidates a GP lead should look at first: urgent, high, standard
+    # or low. An unfinished examination outranks a poor score.
+    review_priority: str
+
+
+class CohortSummary(BaseModel):
+    """How a sitting's candidates compare, ranked.
+
+    Exam sittings only. A training circuit is people practising, and ranking
+    them against each other would turn practice into an assessment nobody
+    agreed to sit.
+    """
+
+    sitting_id: uuid.UUID
+    sitting_name: str
+    cohort_size: int
+    candidates: list[CohortCandidate] = Field(default_factory=list)

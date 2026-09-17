@@ -62,6 +62,9 @@ class SlotRef:
     started_at: datetime | None
     ended_at: datetime | None
     exam_completed_at: datetime | None
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -131,6 +134,9 @@ def _slot_ref(row: Slot) -> SlotRef:
         started_at=row.started_at,
         ended_at=row.ended_at,
         exam_completed_at=row.exam_completed_at,
+        phase=row.phase,
+        phase_started_at=row.phase_started_at,
+        phase_ends_at=row.phase_ends_at,
     )
 
 
@@ -183,3 +189,45 @@ async def slots_for_trainee(session: AsyncSession, trainee_user_id: uuid.UUID) -
         TraineeSlot(slot=_slot_ref(slot), circuit=_circuit_ref(circuit), sitting=_sitting_ref(sitting))
         for slot, circuit, sitting in rows
     ]
+
+
+@dataclass(frozen=True)
+class SittingDetail:
+    """A sitting with every circuit and slot, for a report over all of it."""
+
+    sitting: SittingRef
+    circuits: list[CircuitDetail] = field(default_factory=list)
+
+
+async def sitting_detail(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
+) -> SittingDetail | None:
+    sitting = await repository.sitting_by_id(session, org_id, sitting_id)
+    if sitting is None:
+        return None
+    circuits = []
+    for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
+        slots = await repository.slots_for_circuit(session, org_id, circuit.id)
+        circuits.append(
+            CircuitDetail(
+                circuit=_circuit_ref(circuit),
+                sitting=_sitting_ref(sitting),
+                slots=[_slot_ref(s) for s in slots],
+            )
+        )
+    return SittingDetail(sitting=_sitting_ref(sitting), circuits=circuits)
+
+
+async def sitting_ref(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRef | None:
+    row = await repository.sitting_by_id(session, org_id, sitting_id)
+    return None if row is None else _sitting_ref(row)
+
+
+async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> list[SlotRef]:
+    """Every slot in the sitting, across all of its circuits.
+
+    For the cohort summary, which compares candidates within a sitting rather
+    than within a circuit — an exam circuit is one candidate, so a per-circuit
+    cohort would be a cohort of one.
+    """
+    return [_slot_ref(row) for row in await repository_reads.slots_for_sitting(session, org_id, sitting_id)]

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -75,6 +76,29 @@ class Timing:
     reading_minutes: int
     simulation_minutes: int
     breaks: tuple[Break, ...] = ()
+
+
+class Phase(StrEnum):
+    """Where a slot is in its station: reading the brief, or in the consultation."""
+
+    READING = "reading"
+    SIMULATION = "simulation"
+
+
+def phase_window(
+    phase: Phase, *, reading_minutes: int, simulation_minutes: int, now: datetime
+) -> tuple[datetime, datetime]:
+    """When a phase that starts now ends (D-6).
+
+    The clock is the server's: the phase and its end are written on the slot
+    when a supervisor moves the turn or dispatches the patient, and every
+    screen reads the same deadline. It used to be the supervisor's browser,
+    lost on refresh and never shown to the candidate.
+    """
+    minutes = reading_minutes if phase is Phase.READING else simulation_minutes
+    if minutes <= 0:
+        raise InvalidCircuit("A phase needs a positive duration.")
+    return now, now + timedelta(minutes=minutes)
 
 
 def build_slots(mode: Mode, *, trainees: Sequence[str], stations: Sequence[str]) -> list[PlannedSlot]:

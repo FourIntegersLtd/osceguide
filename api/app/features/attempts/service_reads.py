@@ -142,6 +142,19 @@ def _ref(row: Attempt, *, has_result: bool = False) -> AttemptRef:
     )
 
 
+async def live_attempts_for_slots(
+    session: AsyncSession, slot_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, AttemptRef]:
+    """The live attempt on each slot, keyed by slot.
+
+    What a candidate needs to join their own station: the voice token is
+    issued per attempt, the attempt is created by the supervisor's dispatch,
+    and until this the portal never told the candidate which one was theirs.
+    """
+    rows = await repository.live_attempts_for_slots(session, list(slot_ids))
+    return {row.slot_id: _ref(row) for row in rows if row.slot_id is not None}
+
+
 async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
     """Which of these slots already have an attempt against them.
 

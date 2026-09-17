@@ -33,6 +33,27 @@ async def slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.U
     return list((await session.execute(stmt)).scalars())
 
 
+async def slot_reviews_for_slots(
+    session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[SlotReview]]:
+    """Every review of each slot, in one query, oldest first within a slot.
+
+    The per-slot read is what the console and the sitting report used to call
+    in a loop: a 20-station, 30-candidate sitting was 600 round trips per GET.
+    """
+    if not slot_ids:
+        return {}
+    stmt = (
+        select(SlotReview)
+        .where(SlotReview.org_id == org_id, SlotReview.slot_id.in_(list(slot_ids)))
+        .order_by(SlotReview.created_at)
+    )
+    out: dict[uuid.UUID, list[SlotReview]] = {slot_id: [] for slot_id in slot_ids}
+    for row in (await session.execute(stmt)).scalars():
+        out[row.slot_id].append(row)
+    return out
+
+
 async def upsert_slot_review(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -80,6 +101,15 @@ async def upsert_slot_review(
 async def gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> GpLeadReview | None:
     stmt = select(GpLeadReview).where(GpLeadReview.org_id == org_id, GpLeadReview.slot_id == slot_id)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def gp_lead_reviews_for_slots(
+    session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, GpLeadReview]:
+    if not slot_ids:
+        return {}
+    stmt = select(GpLeadReview).where(GpLeadReview.org_id == org_id, GpLeadReview.slot_id.in_(list(slot_ids)))
+    return {row.slot_id: row for row in (await session.execute(stmt)).scalars()}
 
 
 async def save_gp_lead_review(

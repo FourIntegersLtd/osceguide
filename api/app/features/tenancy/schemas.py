@@ -62,6 +62,9 @@ class MembershipRead(BaseModel):
     product_surface: str | None = None
     status: str
     revoked_at: datetime | None = None
+    # True when adding this membership created the account and queued an
+    # invitation: the person cannot sign in until they choose a password.
+    invited: bool = False
 
 
 class CreateMembership(BaseModel):

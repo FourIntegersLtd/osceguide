@@ -112,9 +112,12 @@ async def start_circuit(
     ),
 )
 async def switch_turn(
-    circuit_id: uuid.UUID, body: schemas.SwitchTurn, workspace: OrgReader, session: Session
+    circuit_id: uuid.UUID, body: schemas.SwitchTurn, workspace: OrgReader, session: Session, clock: ClockDep
 ) -> schemas.CircuitRead:
-    return await service.switch_turn(session, workspace.org_id, circuit_id, slot_id=body.slot_id)
+    """Also starts the new slot's reading clock on the server (D-6)."""
+    return await service.switch_turn(
+        session, workspace.org_id, circuit_id, slot_id=body.slot_id, now=clock.now()
+    )
 
 
 @router.post(

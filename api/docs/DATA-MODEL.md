@@ -684,15 +684,17 @@ address a slot directly; every user-facing route still resolves `org_id` from th
 | `room_name` | `varchar(200) null` | |
 | `started_at` / `ended_at` | `timestamptz null` | |
 | `exam_completed_at` | `timestamptz null` | |
-| `phase` | `varchar(16) null` | **unused until D-6 is settled** |
-| `phase_started_at` | `timestamptz null` | idem |
-| `phase_ends_at` | `timestamptz null` | idem |
+| `phase` | `varchar(16) null` | `reading` or `simulation`; null when no clock is running |
+| `phase_started_at` | `timestamptz null` | |
+| `phase_ends_at` | `timestamptz null` | |
 
 UNIQUE `(circuit_id, slot_index)`.
 
-The three `phase*` columns are nullable and unused: the exam clock currently lives in
-the supervisor's browser and is lost on refresh. They exist so server-owned timing
-needs no migration once that is decided.
+The three `phase*` columns are the exam clock (D-6), and it is the server's.
+Switching the turn starts `reading` on the new slot, dispatching the agent starts
+`simulation`, and either one takes the clock off whoever held it before; ending the
+consultation or the circuit clears it. It used to live in the supervisor's browser,
+lost on refresh and never shown to the candidate.
 
 ## roster — 4 tables
 
@@ -805,6 +807,10 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `receipt_url` | `varchar(500) null` | |
 | `paid_at` | `timestamptz not null` | |
 | `entitlement_id` | `uuid null` → `entitlements.id` SET NULL | the entitlement this payment bought; nullable because a refund revokes the entitlement without deleting either record |
+| `receipt_id` | `varchar(32) null unique` | our own receipt number, minted when the webhook records the payment. Null for payments taken before receipts existed: those stay Stripe-only until a backfill decides otherwise |
+| `customer_email` / `customer_name` | `varchar(320) null` / `varchar(200) null` | frozen at payment. A receipt shows who paid at the time, not who the account belongs to now |
+| `amount_tax_pence` | `int not null default 0` | |
+| `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |
 
 ## growth — 4 tables
 

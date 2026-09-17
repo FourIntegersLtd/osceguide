@@ -16,8 +16,8 @@ One person with one email is one row here, whatever they bought or were invited 
 - As **anyone**, I exchange a refresh token for a new access token without signing in again.
 - As **anyone**, I sign out so that my refresh token stops working.
 - As **anyone**, I request a password reset and set a new password with the emailed token.
-- As a **user provisioned by my institution**, I sign in with a temporary password and
-  am told I must change it.
+- As a **user invited by my institution**, I receive a link, choose a password, and sign
+  in. Until then the account has no password and cannot sign in at all.
 - As an **SSO user**, I sign in through my institution's provider and get the same
   platform token as everyone else.
 - As **anyone**, I read my own profile and memberships.
@@ -50,8 +50,10 @@ live inside it and are never addressed independently.
 | GET | `/api/v1/me` | bearer | profile, memberships, active workspace |
 
 ## Jobs
-`send_password_reset_email`, `send_welcome_email` — enqueued in the same transaction
-as the row they concern.
+`send_password_reset_email`, `send_welcome_email` and the invitation — enqueued in
+the same transaction as the row they concern. `service_invitations.invite_user`
+is what `tenancy` and `roster` call for an address with no account: the token it
+mails is an ordinary reset token, so `password-reset/confirm` finishes the job.
 
 ## Cross-slice dependencies
 None. `tenancy` reads users through this slice's service; this slice never reads

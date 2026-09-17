@@ -13,7 +13,14 @@ from app.features.roster import service as roster
 from app.features.rubrics import service_feedback as rubrics
 from app.features.sittings import announcements, domain, errors, repository
 from app.features.sittings.models import Circuit, Sitting
-from app.features.sittings.reads import circuit_read, sitting_read, state, timing_json
+from app.features.sittings.reads import (
+    CLEAR_PHASE,
+    circuit_read,
+    phase_values,
+    sitting_read,
+    state,
+    timing_json,
+)
 from app.features.sittings.schemas import (
     CircuitRead,
     SittingRead,
@@ -148,7 +155,7 @@ async def start_circuit(
 
 
 async def switch_turn(
-    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, slot_id: uuid.UUID
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, slot_id: uuid.UUID, now: datetime
 ) -> CircuitRead:
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
@@ -163,6 +170,11 @@ async def switch_turn(
     slot = await repository.slot_by_id(session, org_id, slot_id)
     if slot is None or slot.circuit_id != circuit_id:
         raise errors.SlotNotFound()
+    # Moving the turn starts the new candidate's reading time on the server
+    # (D-6), and takes the clock off whoever held it before.
+    if circuit.active_slot_id is not None and circuit.active_slot_id != slot_id:
+        await repository.update_slot(session, org_id, circuit.active_slot_id, **CLEAR_PHASE)
+    await repository.update_slot(session, org_id, slot_id, **phase_values(domain.Phase.READING, circuit, now))
     await repository.update_circuit(session, org_id, circuit_id, active_slot_id=slot_id)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.TURN_SWITCHED)
     return await read_circuit(session, org_id, circuit_id)
@@ -182,8 +194,8 @@ async def end_circuit(
         room_name=None,
     )
     # Clearing the room on every slot is what tells a rejoining browser the
-    # circuit is over; b2b does the same on end.
-    await repository.update_slots_for_circuit(session, org_id, circuit_id, room_name=None)
+    # circuit is over; b2b does the same on end. The clocks go with it.
+    await repository.update_slots_for_circuit(session, org_id, circuit_id, room_name=None, **CLEAR_PHASE)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
     return await read_circuit(session, org_id, circuit_id)
 

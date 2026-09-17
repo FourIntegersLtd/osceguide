@@ -92,6 +92,7 @@ async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datet
 def _read(row: Entitlement, exam_code: str, *, now: datetime) -> EntitlementRead:
     return EntitlementRead(
         id=row.id,
+        user_id=row.user_id,
         exam_id=row.exam_id,
         exam_code=exam_code,
         source=row.source,

@@ -100,6 +100,12 @@ async def record_payment(
     receipt_url: str | None,
     paid_at: datetime,
     entitlement_id: uuid.UUID | None,
+    receipt_id: str | None = None,
+    customer_email: str | None = None,
+    customer_name: str | None = None,
+    amount_tax_pence: int = 0,
+    plan_starts_at: datetime | None = None,
+    plan_ends_at: datetime | None = None,
 ) -> Payment:
     row = Payment(
         user_id=user_id,
@@ -111,6 +117,12 @@ async def record_payment(
         receipt_url=receipt_url,
         paid_at=paid_at,
         entitlement_id=entitlement_id,
+        receipt_id=receipt_id,
+        customer_email=customer_email,
+        customer_name=customer_name,
+        amount_tax_pence=amount_tax_pence,
+        plan_starts_at=plan_starts_at,
+        plan_ends_at=plan_ends_at,
     )
     session.add(row)
     await session.flush()
@@ -129,3 +141,17 @@ async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UU
         return 0
     stmt = select(func.count(Payment.id)).where(Payment.user_id.in_(user_ids))
     return int((await session.execute(stmt)).scalar_one())
+
+
+async def payment_by_receipt_id(session: AsyncSession, user_id: uuid.UUID, receipt_id: str) -> Payment | None:
+    """One of this person's receipts, scoped to them.
+
+    Scoped deliberately: a receipt id is short and printed on a document that
+    gets forwarded, so it must not be a key anybody holding it can read.
+    """
+    stmt = select(Payment).where(Payment.user_id == user_id, Payment.receipt_id == receipt_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def plan_by_id(session: AsyncSession, plan_id: uuid.UUID) -> Plan | None:
+    return (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()

@@ -11,8 +11,13 @@ import procrastinate
 
 from app.core import jobs
 
-FEATURE_TASKS = {"score_attempt", "deliver_outbound_messages", "match_practice_queue"}
-PERIODIC_TASKS = {"deliver_outbound_messages", "match_practice_queue"}
+FEATURE_TASKS = {
+    "score_attempt",
+    "deliver_outbound_messages",
+    "match_practice_queue",
+    "suspend_lapsed_organizations",
+}
+PERIODIC_TASKS = {"deliver_outbound_messages", "match_practice_queue", "suspend_lapsed_organizations"}
 
 
 def test_every_slice_task_is_registered_with_the_worker() -> None:

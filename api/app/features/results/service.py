@@ -207,3 +207,11 @@ def _read(row: CandidateResultRevision) -> DecisionRead:
         signed_off_at=row.signed_off_at,
         released_at=row.released_at,
     )
+
+
+async def decisions_for_sitting(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
+) -> dict[uuid.UUID, DecisionRead]:
+    """Every candidate's current decision, keyed by `trainees.id`. For the sitting report."""
+    rows = await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
+    return {row.trainee_id: _read(row) for row in rows}

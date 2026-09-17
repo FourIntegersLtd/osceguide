@@ -25,6 +25,7 @@ from app.features.sittings import (
     errors,
     repository,
 )
+from app.features.sittings.reads import CLEAR_PHASE, phase_values
 from app.features.sittings.reads import state as _state
 from app.features.sittings.schemas import (
     ConsultationEnded,
@@ -120,6 +121,15 @@ async def dispatch_agent(
         candidate_ref=slot.trainee_id,
     )
 
+    # The patient is in the room: the consultation clock starts now, on the
+    # server, and every screen reads the same deadline (D-6). A dispatch that
+    # skips `switch_turn` moves the turn too, so the previous holder's reading
+    # clock comes off — otherwise two screens show two deadlines.
+    if circuit.active_slot_id is not None and circuit.active_slot_id != slot.id:
+        await repository.update_slot(session, org_id, circuit.active_slot_id, **CLEAR_PHASE)
+    await repository.update_slot(
+        session, org_id, slot.id, **phase_values(domain.Phase.SIMULATION, circuit, now)
+    )
     await repository.update_circuit(
         session, org_id, circuit_id, active_slot_id=slot.id, agent_dispatched_at=now
     )
@@ -150,6 +160,8 @@ async def end_consultation(
     if circuit.room_name:
         removed = await voice.clear_agents_from_room(agents=agents, room=circuit.room_name)
 
+    if circuit.active_slot_id is not None:
+        await repository.update_slot(session, org_id, circuit.active_slot_id, **CLEAR_PHASE)
     await repository.update_circuit(
         session, org_id, circuit_id, active_slot_id=None, agent_dispatched_at=None
     )

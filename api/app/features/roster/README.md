@@ -15,10 +15,13 @@ groups a circuit can be built from.
 **TraineeGroupMember** joins the last two.
 
 - A trainee is identified within an organisation by email (`citext`, unique per
-  org), and exists before they have ever signed in. `user_id` is filled from
-  either end: rostering somebody who already has an account links them, and
-  registering claims every roster entry waiting for that address (bound into
-  `identity.register` by `main.py`, since `identity` sits below this slice).
+  org). `user_id` is always filled: rostering somebody who already has an
+  account links them, and rostering somebody who does not **invites** them —
+  the account is created and linked in the same call, and they are emailed a
+  link to choose a password. A slot names a `users.id`, so a rostered trainee
+  with no account could never be scheduled. Registering still claims any row
+  left unlinked (as the migration leaves them), bound into `identity.register`
+  by `main.py` since `identity` sits below this slice.
   It was filled by nothing at all for the whole build, which left a slot (a
   `users.id`) and a released result (a `trainees.id`) as two unconnected
   records for one person.
@@ -42,7 +45,8 @@ groups a circuit can be built from.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/orgs/{org_slug}/trainees` | org member | supervisors need names to run a circuit |
-| POST | `/api/v1/orgs/{org_slug}/trainees` | org admin | `trainee_exists` (409) |
+| POST | `/api/v1/orgs/{org_slug}/trainees` | org admin | `trainee_exists` (409); an unknown address is invited and linked |
+| POST | `/api/v1/orgs/{org_slug}/trainees/bulk` | org admin | up to 500 rows; duplicates reported in `skipped`, never fatal |
 | POST | `/api/v1/orgs/{org_slug}/trainees/{id}/access` | org admin | one route for revoke and restore |
 | GET/POST | `/api/v1/orgs/{org_slug}/cohorts` | member / admin | |
 | GET/POST | `/api/v1/orgs/{org_slug}/trainee-groups` | member / admin | `group_exists` (409) |
@@ -50,7 +54,9 @@ groups a circuit can be built from.
 | POST | `/api/v1/orgs/{org_slug}/roster/resolve` | org member | preview, changes nothing |
 
 ## Jobs
-Spreadsheet upload and invitation email are not yet ported.
+None. The invitation email is queued through `identity.service_invitations` in
+the transaction that creates the roster row; the browser parses the
+spreadsheet and posts rows to `/trainees/bulk`.
 
 ## Cross-slice dependencies
 `sittings` asks this slice whether the people a circuit names may be rostered

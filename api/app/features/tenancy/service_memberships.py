@@ -17,8 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.identity import service as identity
+from app.features.identity import service_invitations as invitations
 from app.features.tenancy import domain, repository
-from app.features.tenancy.errors import MembershipExists, MembershipNotFound, UserNotFound
+from app.features.tenancy.errors import MembershipExists, MembershipNotFound, OrgNotFound
 from app.features.tenancy.schemas import MembershipRead
 
 
@@ -37,16 +38,26 @@ async def add_membership(
     role: str,
     product_surface: str | None,
     actor: Principal,
+    now: datetime,
 ) -> MembershipRead:
     """Put somebody in an organisation.
 
     By email, because that is what an administrator knows. Nothing could create
     a membership through the API for a while: an organisation could be
     provisioned and then never given a single member.
+
+    An address with no account is invited rather than refused: the account is
+    created without a password and the person is emailed a link to choose one.
+    Refusing meant every tutor had to register unprompted before an
+    administrator could name them, and nobody tells a tutor to do that.
     """
     user = await identity.user_ref_by_email(session, email)
+    invited = user is None
     if user is None:
-        raise UserNotFound()
+        org = await repository.organization_by_id(session, org_id)
+        if org is None:
+            raise OrgNotFound()
+        user = await invitations.invite_user(session, email=email, name=email, invited_to=org.name, now=now)
     user_id = user.id
     if await repository.membership_for_user_in_org(session, org_id, user_id, role=role) is not None:
         raise MembershipExists()
@@ -61,9 +72,9 @@ async def add_membership(
         action="membership.added",
         target_type="membership",
         target_id=str(user_id),
-        summary=f"Granted {role} to {email}",
+        summary=f"Granted {role} to {email}" + (" (invited)" if invited else ""),
     )
-    return _membership_read(membership, email=user.email)
+    return _membership_read(membership, email=user.email, invited=invited)
 
 
 async def change_membership_role(
@@ -120,7 +131,7 @@ async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membersh
     return row
 
 
-def _membership_read(row: Any, *, email: str | None = None) -> MembershipRead:
+def _membership_read(row: Any, *, email: str | None = None, invited: bool = False) -> MembershipRead:
     return MembershipRead(
         id=row.id,
         user_id=row.user_id,
@@ -129,6 +140,7 @@ def _membership_read(row: Any, *, email: str | None = None) -> MembershipRead:
         product_surface=row.product_surface,
         status=row.status,
         revoked_at=row.revoked_at,
+        invited=invited,
     )
 
 

@@ -7,6 +7,7 @@ differently, a projection moves because a screen needs another field.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from app.features.sittings import domain
@@ -20,6 +21,18 @@ def state(circuit: Circuit, *, has_feedback: bool) -> domain.CircuitState:
         has_feedback=has_feedback,
         ended=circuit.ended_at is not None,
     )
+
+
+CLEAR_PHASE: dict[str, Any] = {"phase": None, "phase_started_at": None, "phase_ends_at": None}
+
+
+def phase_values(phase: domain.Phase, circuit: Circuit, now: datetime) -> dict[str, Any]:
+    """The slot columns that put `phase` on the server clock from `now`."""
+    timing = timing_read(circuit.timing)
+    started, ends = domain.phase_window(
+        phase, reading_minutes=timing.reading_minutes, simulation_minutes=timing.simulation_minutes, now=now
+    )
+    return {"phase": str(phase), "phase_started_at": started, "phase_ends_at": ends}
 
 
 def timing_json(timing: domain.Timing) -> dict[str, Any]:
@@ -49,6 +62,9 @@ def slot_read(slot: Slot) -> SlotRead:
         room_name=slot.room_name,
         started_at=slot.started_at,
         ended_at=slot.ended_at,
+        phase=slot.phase,
+        phase_started_at=slot.phase_started_at,
+        phase_ends_at=slot.phase_ends_at,
     )
 
 

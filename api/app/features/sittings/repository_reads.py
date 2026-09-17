@@ -80,3 +80,13 @@ async def delete_circuit_structure(session: AsyncSession, org_id: uuid.UUID, cir
     await session.execute(delete(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id))
     await session.execute(delete(CircuitTrainee).where(CircuitTrainee.circuit_id == circuit_id))
     await session.execute(delete(CircuitStation).where(CircuitStation.circuit_id == circuit_id))
+
+
+async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> list[Slot]:
+    stmt = (
+        select(Slot)
+        .join(Circuit, Circuit.id == Slot.circuit_id)
+        .where(Slot.org_id == org_id, Circuit.sitting_id == sitting_id)
+        .order_by(Slot.slot_index)
+    )
+    return list((await session.execute(stmt)).scalars())

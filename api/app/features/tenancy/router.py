@@ -72,12 +72,16 @@ async def list_memberships(
     "/orgs/{org_slug}/memberships",
     response_model=schemas.MembershipRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.UserNotFound, errors.MembershipExists),
+    responses=error_responses(Forbidden, errors.MembershipExists),
 )
 async def add_membership(
-    body: schemas.CreateMembership, workspace: OrgAdmin, session: Session
+    body: schemas.CreateMembership, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.MembershipRead:
-    """Put somebody in this organisation, by the address an administrator knows."""
+    """Put somebody in this organisation, by the address an administrator knows.
+
+    An address with no account is invited: the account is created and the
+    person is emailed a link to choose a password. `invited` says which.
+    """
     return await service_memberships.add_membership(
         session,
         workspace.org_id,
@@ -85,6 +89,7 @@ async def add_membership(
         role=body.role,
         product_surface=body.product_surface,
         actor=workspace.principal,
+        now=clock.now(),
     )
 
 

@@ -11,6 +11,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import service_reads as attempts
 from app.features.dashboard.errors import CircuitNotFound
 from app.features.dashboard.schemas_org import (
     CircuitConsole,
@@ -134,6 +135,7 @@ async def build_console(session: AsyncSession, org_id: uuid.UUID, circuit_id: uu
         session, org_id, [slot.station_version_id for slot in detail.slots]
     )
     reviewed = await reviews.reviewed_slot_ids(session, slot_ids)
+    live = await attempts.live_attempts_for_slots(session, slot_ids)
     lock = await service_circuit.read_edit_lock(session, org_id, circuit_id)
 
     def person(user_id: uuid.UUID) -> ConsolePerson:
@@ -191,6 +193,10 @@ async def build_console(session: AsyncSession, org_id: uuid.UUID, circuit_id: uu
                 station=_station(slot.station_version_id, station_summaries),
                 has_review=slot.id in reviewed,
                 is_active=detail.circuit.active_slot_id == slot.id,
+                attempt_id=live[slot.id].id if slot.id in live else None,
+                phase=slot.phase,
+                phase_started_at=slot.phase_started_at,
+                phase_ends_at=slot.phase_ends_at,
             )
             for slot in detail.slots
         ],

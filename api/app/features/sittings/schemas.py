@@ -15,6 +15,11 @@ class SlotRead(BaseModel):
     room_name: str | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
+    # The server's clock for this slot (D-6): `reading` from a turn switch,
+    # `simulation` from a dispatch, null between stations.
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
 
 
 class TimingRead(BaseModel):

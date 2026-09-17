@@ -15,13 +15,16 @@ from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.core.tenancy import OrgReader, may_read_org_policy, resolve_workspace
+from app.core.tenancy import OrgAdmin, OrgReader, may_read_org_policy, resolve_workspace
 from app.features.dashboard import (
     errors,
     schemas,
     schemas_org,
+    schemas_report,
     service,
+    service_cohort,
     service_org,
+    service_report,
     service_streams,
     service_trainee,
 )
@@ -103,6 +106,40 @@ async def read_circuit_console(
     feedback probe per slot — repeated every eight seconds while a circuit runs.
     """
     return await service_org.build_console(session, workspace.org_id, circuit_id)
+
+
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/report",
+    response_model=schemas_report.SittingReport,
+    responses=error_responses(Forbidden, errors.SittingNotFound),
+)
+async def read_sitting_report(
+    sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session
+) -> schemas_report.SittingReport:
+    """The whole sitting, per candidate: stations sat, marking, reviewers'
+    ratings and where the decision stands. Org admin only, because it carries
+    decisions that are not yet released."""
+    return await service_report.build_sitting_report(session, workspace.org_id, sitting_id)
+
+
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/cohort",
+    response_model=schemas_org.CohortSummary,
+    responses=error_responses(Forbidden, errors.SittingNotFound, errors.NotAnExamSitting),
+)
+async def read_cohort_summary(
+    sitting_id: uuid.UUID, workspace: OrgReader, session: Session
+) -> schemas_org.CohortSummary:
+    """How this sitting's candidates compare, ranked.
+
+    What a GP lead opens after an examination to decide who to review first.
+    Completion ranks before score: a candidate who sat three of five stations
+    has a problem nobody has looked at, while one who scored badly has at least
+    been assessed.
+
+    Exam sittings only — `not_an_exam_sitting` (422) for a training one.
+    """
+    return await service_cohort.build_cohort_summary(session, workspace.org_id, sitting_id)
 
 
 @router.get(

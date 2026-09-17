@@ -270,3 +270,84 @@ async def test_a_plan_with_no_exam_grants_nothing(client: AsyncClient, db_sessio
     )
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_plan"
+
+
+# --------------------------------------------------------------------------
+# Receipts: minted with the payment, read back by the customer alone
+# --------------------------------------------------------------------------
+
+
+async def test_a_purchase_mints_a_receipt_the_buyer_can_read(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.tokens import bearer
+
+    await a_plan(db_session)
+    buyer = await make_actor("receipt@example.com")
+    await post_event(client, checkout_event("evt_r1", "receipt@example.com"))
+
+    listed = await client.get("/api/v1/me/receipts", headers=bearer(buyer))
+    assert listed.status_code == 200, listed.text
+    assert len(listed.json()["items"]) == 1
+    receipt_id = listed.json()["items"][0]
+
+    receipt = await client.get(f"/api/v1/me/receipts/{receipt_id}", headers=bearer(buyer))
+    assert receipt.status_code == 200, receipt.text
+    body = receipt.json()
+    assert body["receipt_id"] == receipt_id
+    assert body["customer_email"] == "receipt@example.com"
+    assert body["exam_code"] == "sca"
+    assert body["amount_total"] == "£24.99"
+
+
+async def test_a_receipt_is_read_by_its_owner_only(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The id is short and printed on a document that gets forwarded, so
+    holding it must not be enough to read it."""
+    from tests.support.tokens import bearer
+
+    await a_plan(db_session)
+    buyer = await make_actor("owner@example.com")
+    stranger = await make_actor("stranger@example.com")
+    await post_event(client, checkout_event("evt_r2", "owner@example.com"))
+    receipt_id = (await client.get("/api/v1/me/receipts", headers=bearer(buyer))).json()["items"][0]
+
+    refused = await client.get(f"/api/v1/me/receipts/{receipt_id}", headers=bearer(stranger))
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "receipt_not_found"
+    assert (await client.get("/api/v1/me/receipts", headers=bearer(stranger))).json()["items"] == []
+
+    assert (await client.get("/api/v1/me/receipts")).status_code == 401
+
+
+async def test_a_payment_taken_before_receipts_existed_is_not_listed(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """`receipt_id` is nullable for payments from before the column existed.
+    Those stay Stripe-only until a backfill decides otherwise; a null must not
+    surface as an item nothing can render."""
+    from datetime import UTC, datetime
+
+    from tests.support.tokens import bearer
+
+    buyer = await make_actor("legacy@example.com")
+    user = await identity_repo.user_by_email(db_session, "legacy@example.com")
+    assert user is not None
+    await billing_repo.record_payment(
+        db_session,
+        user_id=user.id,
+        plan_id=None,
+        stripe_payment_intent_id="pi_legacy",
+        checkout_session_id=None,
+        amount_total_pence=2499,
+        currency="gbp",
+        receipt_url=None,
+        paid_at=datetime.now(UTC),
+        entitlement_id=None,
+    )
+    await db_session.flush()
+
+    listed = await client.get("/api/v1/me/receipts", headers=bearer(buyer))
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []

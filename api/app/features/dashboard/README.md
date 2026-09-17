@@ -20,8 +20,13 @@ dashboard makes five, four of which exist only to produce a count.
 - As a **supervisor**, I run an examination from one screen that knows every
   candidate's name, every station's title, which slot is live and which have
   been marked.
+- As a **course lead**, I read a whole sitting back: who sat what, what was marked,
+  what the reviewers agreed, and where each decision stands.
+- As a **trainee**, I see which attempt to ask a voice token for once the patient is dispatched.
 - As a **trainee**, I see the sittings I am rostered onto and whether it is my
   turn to join.
+- As a **GP lead**, I see how an examination's candidates compare, so I know
+  who to review first.
 
 ## Aggregates & invariants
 None, deliberately. This slice owns no tables and has no `domain.py`: a
@@ -36,10 +41,12 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/me/dashboard` | bearer | entitlements, per-exam progress, recent attempts, sets |
-| GET | `/api/v1/me/sittings` | bearer | what a trainee is rostered onto, and whether each slot is joinable |
+| GET | `/api/v1/me/sittings` | bearer | what a trainee is rostered onto, whether each slot is joinable, its `attempt_id` once dispatched, and the server clock |
 | GET | `/api/v1/orgs/{org_slug}/dashboard` | org member | counts, setup state, recent sittings |
 | GET | `/api/v1/orgs/{org_slug}/supervisor/circuits` | org member | the circuits assigned to the caller |
-| GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console` | org member | the whole live-examination screen |
+| GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console` | org member | the whole live-examination screen, with each slot's live `attempt_id` and clock |
+| GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report` | org admin | per candidate: stations sat, marking, reviewers' combined RAG, decision state; `sitting_not_found` (404) |
+| GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cohort` | org member | the sitting's candidates ranked on their effective scores, completion before score; `not_an_exam_sitting` (422) for a training sitting |
 | GET | `/api/v1/me/sittings/stream` | bearer or `?ticket=` | the same payload, pushed (SSE) |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream` | org member | the same payload, pushed (SSE) |
 

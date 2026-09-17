@@ -431,6 +431,132 @@
         "title": "AuthResult",
         "type": "object"
       },
+      "BulkCreateTrainees": {
+        "description": "A spreadsheet's worth of trainees in one request.\n\nThe browser parses the file; the API takes rows. Capped so one request\ncannot invite a whole university at once by accident.",
+        "properties": {
+          "trainees": {
+            "items": {
+              "$ref": "#/components/schemas/CreateTrainee"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Trainees",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trainees"
+        ],
+        "title": "BulkCreateTrainees",
+        "type": "object"
+      },
+      "BulkTraineesResult": {
+        "description": "Who was added and who was not, so a partial upload is not a mystery.",
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/TraineeRead"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedTrainee"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "title": "BulkTraineesResult",
+        "type": "object"
+      },
+      "CandidateReport": {
+        "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "overall_rag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Rag"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/StationReport"
+            },
+            "title": "Stations",
+            "type": "array"
+          },
+          "stations_marked": {
+            "title": "Stations Marked",
+            "type": "integer"
+          },
+          "trainee_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trainee Id"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "trainee_id",
+          "name",
+          "email",
+          "stations_marked",
+          "overall_rag",
+          "decision"
+        ],
+        "title": "CandidateReport",
+        "type": "object"
+      },
       "Capabilities": {
         "description": "What the caller may do, decided here rather than in the browser.\n\nThe B2B frontend keeps a table mirroring the backend policy and uses it to\ndecide whether to issue a request at all. Two copies of an authorisation\nrule is one too many; this is the served answer.",
         "properties": {
@@ -723,6 +849,56 @@
         "title": "CloudSlotResult",
         "type": "object"
       },
+      "CohortCandidate": {
+        "description": "One candidate's standing in a sitting.",
+        "properties": {
+          "assessment_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Score"
+          },
+          "completion_rate": {
+            "title": "Completion Rate",
+            "type": "number"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "review_priority": {
+            "title": "Review Priority",
+            "type": "string"
+          },
+          "stations_completed": {
+            "title": "Stations Completed",
+            "type": "integer"
+          },
+          "stations_total": {
+            "title": "Stations Total",
+            "type": "integer"
+          },
+          "trainee": {
+            "$ref": "#/components/schemas/ConsolePerson"
+          }
+        },
+        "required": [
+          "trainee",
+          "rank",
+          "stations_total",
+          "stations_completed",
+          "completion_rate",
+          "assessment_score",
+          "review_priority"
+        ],
+        "title": "CohortCandidate",
+        "type": "object"
+      },
       "CohortRead": {
         "properties": {
           "academic_year": {
@@ -757,6 +933,38 @@
           "status"
         ],
         "title": "CohortRead",
+        "type": "object"
+      },
+      "CohortSummary": {
+        "description": "How a sitting's candidates compare, ranked.\n\nExam sittings only. A training circuit is people practising, and ranking\nthem against each other would turn practice into an assessment nobody\nagreed to sit.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CohortCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "cohort_size": {
+            "title": "Cohort Size",
+            "type": "integer"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          },
+          "sitting_name": {
+            "title": "Sitting Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sitting_id",
+          "sitting_name",
+          "cohort_size"
+        ],
+        "title": "CohortSummary",
         "type": "object"
       },
       "ConsoleCircuit": {
@@ -969,6 +1177,18 @@
       },
       "ConsoleSlot": {
         "properties": {
+          "attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -1005,6 +1225,41 @@
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
           },
           "room_name": {
             "anyOf": [
@@ -2073,6 +2328,69 @@
         "title": "DecisionRead",
         "type": "object"
       },
+      "DecisionSummary": {
+        "properties": {
+          "assessment_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Outcome"
+          },
+          "recruitment_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recruitment Outcome"
+          },
+          "released_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Released At"
+          },
+          "signed_off_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed Off At"
+          },
+          "workflow_state": {
+            "title": "Workflow State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow_state",
+          "assessment_outcome",
+          "recruitment_outcome",
+          "signed_off_at",
+          "released_at"
+        ],
+        "title": "DecisionSummary",
+        "type": "object"
+      },
       "DispatchAgent": {
         "description": "Which slot the agent is being dispatched for.\n\nNamed rather than taken from `active_slot_id`, so dispatching and switching\nare separate decisions: a supervisor can re-dispatch the current station\nwithout the circuit's state having to be right first.",
         "properties": {
@@ -2262,10 +2580,16 @@
             "format": "date-time",
             "title": "Starts At",
             "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
           }
         },
         "required": [
           "id",
+          "user_id",
           "exam_id",
           "exam_code",
           "source",
@@ -2388,6 +2712,7 @@
               "email_taken",
               "empty_content",
               "empty_query",
+              "entitlement_not_found",
               "evidence_changed",
               "exam_code_taken",
               "exam_not_in_pilot",
@@ -2422,6 +2747,7 @@
               "membership_not_found",
               "not_a_member",
               "not_a_partner_reporter",
+              "not_an_exam_sitting",
               "not_archivable",
               "not_deletable",
               "not_editable",
@@ -2447,6 +2773,7 @@
               "programme_exists",
               "programme_not_found",
               "queue_entry_not_found",
+              "receipt_not_found",
               "referral_already_redeemed",
               "referral_code_taken",
               "referral_not_found",
@@ -2838,6 +3165,37 @@
         "title": "GpLeadReviewRead",
         "type": "object"
       },
+      "GrantEntitlement": {
+        "description": "An institution granting one of its people access to an exam it runs.\n\nBy email, as everything an administrator does is. `ends_at` left empty is\nopen-ended; an institution usually sets it to the end of the academic year.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "exam_code"
+        ],
+        "title": "GrantEntitlement",
+        "type": "object"
+      },
       "GroupRead": {
         "properties": {
           "id": {
@@ -3188,6 +3546,18 @@
       "MySlot": {
         "description": "A station this person is rostered onto, from their side of it.",
         "properties": {
+          "attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -3220,6 +3590,41 @@
           "joinable": {
             "title": "Joinable",
             "type": "boolean"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
           },
           "room_name": {
             "anyOf": [
@@ -4115,6 +4520,33 @@
         "title": "Page[UserSummary]",
         "type": "object"
       },
+      "Page_str_": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[str]",
+        "type": "object"
+      },
       "PasswordResetConfirm": {
         "properties": {
           "password": {
@@ -4482,6 +4914,106 @@
         "title": "RebuildCircuit",
         "type": "object"
       },
+      "ReceiptRead": {
+        "description": "A payment receipt, rendered.\n\nEvery field is a string already formatted for display: a receipt is read by\npeople rather than parsed by clients, and rendering money and dates in the\nbrowser is how two surfaces come to show the same payment differently.",
+        "properties": {
+          "amount_subtotal": {
+            "title": "Amount Subtotal",
+            "type": "string"
+          },
+          "amount_tax": {
+            "title": "Amount Tax",
+            "type": "string"
+          },
+          "amount_total": {
+            "title": "Amount Total",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_email": {
+            "title": "Customer Email",
+            "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "footer_extra": {
+            "title": "Footer Extra",
+            "type": "string"
+          },
+          "paid_at": {
+            "title": "Paid At",
+            "type": "string"
+          },
+          "plan_end_date": {
+            "title": "Plan End Date",
+            "type": "string"
+          },
+          "plan_label": {
+            "title": "Plan Label",
+            "type": "string"
+          },
+          "plan_start_date": {
+            "title": "Plan Start Date",
+            "type": "string"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "seller_name": {
+            "title": "Seller Name",
+            "type": "string"
+          },
+          "show_tax_row": {
+            "title": "Show Tax Row",
+            "type": "boolean"
+          },
+          "stripe_receipt_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Receipt Url"
+          },
+          "stripe_reference": {
+            "title": "Stripe Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "customer_email",
+          "customer_name",
+          "exam_code",
+          "plan_label",
+          "plan_start_date",
+          "plan_end_date",
+          "paid_at",
+          "amount_subtotal",
+          "amount_tax",
+          "amount_total",
+          "show_tax_row",
+          "currency",
+          "stripe_reference",
+          "seller_name",
+          "footer_extra"
+        ],
+        "title": "ReceiptRead",
+        "type": "object"
+      },
       "RecentAttempt": {
         "properties": {
           "created_at": {
@@ -4652,6 +5184,34 @@
           "password"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "ReportTotals": {
+        "properties": {
+          "candidates": {
+            "title": "Candidates",
+            "type": "integer"
+          },
+          "decisions_released": {
+            "title": "Decisions Released",
+            "type": "integer"
+          },
+          "stations": {
+            "title": "Stations",
+            "type": "integer"
+          },
+          "stations_marked": {
+            "title": "Stations Marked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "candidates",
+          "stations",
+          "stations_marked",
+          "decisions_released"
+        ],
+        "title": "ReportTotals",
         "type": "object"
       },
       "ResolveRosterRequest": {
@@ -5306,6 +5866,47 @@
         "title": "SittingRead",
         "type": "object"
       },
+      "SittingReport": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateReport"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "sitting": {
+            "$ref": "#/components/schemas/ConsoleSitting"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReportTotals"
+          }
+        },
+        "required": [
+          "sitting",
+          "totals"
+        ],
+        "title": "SittingReport",
+        "type": "object"
+      },
+      "SkippedTrainee": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "SkippedTrainee",
+        "type": "object"
+      },
       "SlotRagSummary": {
         "description": "What several reviewers of one slot agreed, or did not.\n\nThe worst rating wins per domain, which is b2b's tie-break and worth\nkeeping: when two reviewers disagree about a candidate, the lower rating is\nthe one that should prompt a conversation. Computed here rather than in the\nbrowser so a supervisor's screen, a released result and an export cannot\neach arrive at a different answer.",
         "properties": {
@@ -5362,6 +5963,41 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
           },
           "room_name": {
             "anyOf": [
@@ -5626,6 +6262,89 @@
           "version"
         ],
         "title": "StationRead",
+        "type": "object"
+      },
+      "StationReport": {
+        "properties": {
+          "attempt_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Status"
+          },
+          "by_domain": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "By Domain",
+            "type": "object"
+          },
+          "circuit_id": {
+            "format": "uuid",
+            "title": "Circuit Id",
+            "type": "string"
+          },
+          "circuit_name": {
+            "title": "Circuit Name",
+            "type": "string"
+          },
+          "marked": {
+            "title": "Marked",
+            "type": "boolean"
+          },
+          "overall_rag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Rag"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "slot_index": {
+            "title": "Slot Index",
+            "type": "integer"
+          },
+          "slot_status": {
+            "title": "Slot Status",
+            "type": "string"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          }
+        },
+        "required": [
+          "slot_id",
+          "circuit_id",
+          "circuit_name",
+          "slot_index",
+          "station_title",
+          "slot_status",
+          "attempt_status",
+          "marked",
+          "overall_rag"
+        ],
+        "title": "StationReport",
         "type": "object"
       },
       "StationTemplateRead": {
@@ -7165,6 +7884,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "invited": {
+            "default": false,
+            "title": "Invited",
+            "type": "boolean"
           },
           "product_surface": {
             "anyOf": [
@@ -10382,6 +11106,120 @@
         ]
       }
     },
+    "/api/v1/me/receipts": {
+      "get": {
+        "description": "The receipt ids for this person's payments, newest first.",
+        "operationId": "billing_list_my_receipts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_str_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Receipts",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/me/receipts/{receipt_id}": {
+      "get": {
+        "description": "One receipt, rendered.\n\nScoped to the caller. A receipt id is short and printed on a document that\ngets forwarded to an accountant or an employer, so it must not be a key\nanybody holding it can read.",
+        "operationId": "billing_read_receipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receipt_id",
+            "required": true,
+            "schema": {
+              "title": "Receipt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "receipt_not_found",
+            "x-codes": [
+              "receipt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Receipt",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/me/referral-code": {
       "post": {
         "description": "One code per person; asking again returns the one they have.",
@@ -12846,6 +13684,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/switch-turn": {
       "post": {
+        "description": "Also starts the new slot's reading clock on the server (D-6).",
         "operationId": "sittings_switch_turn",
         "parameters": [
           {
@@ -13149,6 +13988,242 @@
         "summary": "Read Org Dashboard",
         "tags": [
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/entitlements": {
+      "get": {
+        "description": "What this institution has granted, revoked ones included.",
+        "operationId": "entitlements_list_org_entitlements",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_EntitlementRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Org Entitlements",
+        "tags": [
+          "entitlements"
+        ]
+      },
+      "post": {
+        "description": "Grant one of this institution's people access to an exam it runs.\n\nA trainee's exam-day slot never needs this: a dispatched slot skips the\ngate. This is for practising between sittings, which otherwise runs out\nwith the consumer free trial.",
+        "operationId": "entitlements_grant_org_entitlement",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantEntitlement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found, unknown_exam",
+            "x-codes": [
+              "user_not_found",
+              "unknown_exam"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grant Org Entitlement",
+        "tags": [
+          "entitlements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/entitlements/{entitlement_id}/revoke": {
+      "post": {
+        "operationId": "entitlements_revoke_org_entitlement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entitlement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entitlement Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "entitlement_not_found",
+            "x-codes": [
+              "entitlement_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Org Entitlement",
+        "tags": [
+          "entitlements"
         ]
       }
     },
@@ -13715,7 +14790,7 @@
         ]
       },
       "post": {
-        "description": "Put somebody in this organisation, by the address an administrator knows.",
+        "description": "Put somebody in this organisation, by the address an administrator knows.\n\nAn address with no account is invited: the account is created and the\nperson is emailed a link to choose a password. `invited` says which.",
         "operationId": "tenancy_add_membership",
         "parameters": [
           {
@@ -13763,19 +14838,6 @@
             "x-codes": [
               "forbidden",
               "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "user_not_found",
-            "x-codes": [
-              "user_not_found"
             ]
           },
           "409": {
@@ -15970,6 +17032,183 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cohort": {
+      "get": {
+        "description": "How this sitting's candidates compare, ranked.\n\nWhat a GP lead opens after an examination to decide who to review first.\nCompletion ranks before score: a candidate who sat three of five stations\nhas a problem nobody has looked at, while one who scored badly has at least\nbeen assessed.\n\nExam sittings only \u2014 `not_an_exam_sitting` (422) for a training one.",
+        "operationId": "dashboard_read_cohort_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CohortSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_an_exam_sitting",
+            "x-codes": [
+              "not_an_exam_sitting"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Cohort Summary",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report": {
+      "get": {
+        "description": "The whole sitting, per candidate: stations sat, marking, reviewers'\nratings and where the decision stands. Org admin only, because it carries\ndecisions that are not yet released.",
+        "operationId": "dashboard_read_sitting_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SittingReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Sitting Report",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/slots/{slot_id}/gp-lead-review": {
       "get": {
         "operationId": "reviews_read_gp_lead_review",
@@ -18045,6 +19284,7 @@
         ]
       },
       "post": {
+        "description": "An address with no account is invited and linked in the same call.",
         "operationId": "roster_add_trainee",
         "parameters": [
           {
@@ -18124,6 +19364,80 @@
           }
         ],
         "summary": "Add Trainee",
+        "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk": {
+      "post": {
+        "description": "A spreadsheet's worth of trainees. Duplicates are reported, not fatal.",
+        "operationId": "roster_add_trainees",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateTrainees"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineesResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Trainees",
         "tags": [
           "roster"
         ]
@@ -19610,6 +20924,106 @@
           }
         ],
         "summary": "Update Organization",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{org_slug}/memberships": {
+      "post": {
+        "description": "Put the first person into an organisation.\n\nEvery other membership is added by an org admin, and a freshly provisioned\norganisation has none: the console could provision, rename and suspend an\norganisation but could not seat its owner, so the first row had to be\ninserted by hand. A platform admin holds no org role, so this is the one\nmembership write that does not go through `OrgAdmin`.",
+        "operationId": "tenancy_seat_membership",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMembership"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__tenancy__schemas__MembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "membership_exists",
+            "x-codes": [
+              "membership_exists"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Seat Membership",
         "tags": [
           "tenancy"
         ]

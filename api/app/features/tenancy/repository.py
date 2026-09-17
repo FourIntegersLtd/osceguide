@@ -69,6 +69,11 @@ async def add_membership(
 ) -> Membership:
     membership = Membership(org_id=org_id, user_id=user_id, role=role, product_surface=product_surface)
     session.add(membership)
+    # Flushed so the caller gets the id and the server-side status: returned
+    # unflushed, the row read back as `id=None` and the route serialising it
+    # failed after the insert had already been written.
+    await session.flush()
+    await session.refresh(membership)
     return membership
 
 
@@ -208,24 +213,6 @@ async def count_memberships(
     if roles is not None:
         stmt = stmt.where(Membership.role.in_(list(roles)))
     return int((await session.execute(stmt)).scalar_one())
-
-
-async def list_organizations(
-    session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None = None, status: str | None = None
-) -> tuple[list[Organization], str | None]:
-    """Every organisation. Deliberately not org-scoped: this is the console."""
-    stmt = select(Organization)
-    if status is not None:
-        stmt = stmt.where(Organization.status == status)
-    return await keyset_page(
-        session,
-        stmt,
-        sort_col=Organization.created_at,
-        id_col=Organization.id,
-        limit=limit,
-        cursor=cursor,
-        descending=False,
-    )
 
 
 async def count_organizations(session: AsyncSession) -> int:

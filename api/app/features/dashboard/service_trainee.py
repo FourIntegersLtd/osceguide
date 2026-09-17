@@ -12,6 +12,7 @@ from collections.abc import Mapping
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import service_reads as attempts
 from app.features.dashboard.schemas import MySitting, MySittings, MySlot
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
@@ -40,6 +41,7 @@ async def my_sittings(
     """
     rows = await sittings.slots_for_trainee(session, user_id)
     titles = await _titles_per_org(session, rows)
+    live = await attempts.live_attempts_for_slots(session, [row.slot.id for row in rows])
 
     grouped: dict[uuid.UUID, MySitting] = {}
     for row in rows:
@@ -77,6 +79,10 @@ async def my_sittings(
                     row.slot.exam_completed_at is not None,
                     circuit_live,
                 ),
+                attempt_id=live[row.slot.id].id if row.slot.id in live else None,
+                phase=row.slot.phase,
+                phase_started_at=row.slot.phase_started_at,
+                phase_ends_at=row.slot.phase_ends_at,
             )
         )
     return MySittings(items=list(grouped.values()))

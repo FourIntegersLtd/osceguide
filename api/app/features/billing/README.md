@@ -34,10 +34,18 @@ service and never grants access itself.
 |---|---|---|---|
 | GET | `/api/v1/billing/plans` | none | the pricing page reads this |
 | POST | `/api/v1/billing/webhooks/stripe` | signature | `already_applied` / `ignored` / `applied` |
+| GET | `/api/v1/me/receipts` | bearer | this person's receipt ids, newest first |
+| GET | `/api/v1/me/receipts/{receipt_id}` | bearer | one receipt, every field rendered for display; `receipt_not_found` (404) |
+
+A receipt is scoped to the person who paid. The id is short and printed on a
+document that gets forwarded to an accountant or an employer, so holding it is
+not enough to read it.
 
 ## Jobs
-Receipt email is queued through `notifications` once that slice exists.
+None yet. The receipt is minted and readable; nothing emails it. Rendering and
+sending belong behind the existing `EmailSender` port, with byte-level goldens
+against `b2c-api/b2c/tests/unit/test_receipt_document.py`.
 
 ## Cross-slice dependencies
 Calls `entitlements` to grant access and `identity` to resolve the payer.
-Signature verification is not yet wired — see `docs/OPEN-QUESTIONS.md`.
+Signatures are verified in `signature.py` against `STRIPE_WEBHOOK_SECRET`.
