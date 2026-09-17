@@ -28,6 +28,7 @@ is_org_admin = domain.is_org_admin
 is_institution_admin = domain.is_institution_admin
 is_assigned_staff = domain.is_assigned_staff
 may_read_org = domain.may_read_org
+may_run_circuit = domain.may_run_circuit
 org_permits_access = domain.org_permits_access
 
 

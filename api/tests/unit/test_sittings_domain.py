@@ -156,6 +156,17 @@ def test_breaks_are_exam_only() -> None:
     assert timing.breaks == ()
 
 
+def test_a_break_has_a_length_of_its_own() -> None:
+    """A break used to be a position with no duration, so nothing could count it down."""
+    assert domain.normalise_timing({}).break_minutes == 5
+    assert domain.normalise_timing({"break_minutes": 12}).break_minutes == 12
+
+
+@pytest.mark.parametrize(("given", "expected"), [(0, 1), (61, 60), (8, 8)])
+def test_break_minutes_are_clamped(given: int, expected: int) -> None:
+    assert domain.normalise_timing({"break_minutes": given}).break_minutes == expected
+
+
 def test_breaks_are_clamped_to_the_station_count_and_deduplicated() -> None:
     timing = domain.normalise_timing(
         {"breaks": [{"after_station": 5}, {"after_station": 1}, {"after_station": 1}, {"after_station": 0}]},

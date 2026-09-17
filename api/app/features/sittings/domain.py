@@ -27,8 +27,10 @@ EXAM_MAX_STATIONS = 12
 
 DEFAULT_READING_MINUTES = 3
 DEFAULT_SIMULATION_MINUTES = 10
+DEFAULT_BREAK_MINUTES = 5
 READING_BOUNDS = (1, 30)
 SIMULATION_BOUNDS = (1, 180)
+BREAK_BOUNDS = (1, 60)
 
 
 class Mode(StrEnum):
@@ -75,6 +77,9 @@ class Break:
 class Timing:
     reading_minutes: int
     simulation_minutes: int
+    # A break used to be a position with no duration, so nothing could count
+    # one down and the circuit had no way to know when it was over.
+    break_minutes: int = DEFAULT_BREAK_MINUTES
     breaks: tuple[Break, ...] = ()
 
 
@@ -215,6 +220,9 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
         SIMULATION_BOUNDS,
     )
 
+    break_raw = raw.get("break_minutes")
+    break_minutes = _clamp(int(DEFAULT_BREAK_MINUTES if break_raw is None else break_raw), BREAK_BOUNDS)
+
     breaks: tuple[Break, ...] = ()
     if mode is Mode.EXAM:
         # A break sits between stations, so it can only fall inside the circuit.
@@ -227,4 +235,9 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
                 seen.add(after)
         breaks = tuple(Break(after) for after in sorted(seen))
 
-    return Timing(reading_minutes=reading, simulation_minutes=simulation, breaks=breaks)
+    return Timing(
+        reading_minutes=reading,
+        simulation_minutes=simulation,
+        break_minutes=break_minutes,
+        breaks=breaks,
+    )

@@ -16,9 +16,14 @@ stayed green because each called the task's body directly.
 from __future__ import annotations
 
 import importlib
+import json
 import pkgutil
+from datetime import datetime
+from typing import Any
 
 import procrastinate
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import libpq_url
 from app.core.settings import get_settings
@@ -76,3 +81,55 @@ def get_jobs_app() -> procrastinate.App:
 def registered_task_names() -> set[str]:
     """Task names the worker will run, builtins excluded."""
     return {name for name in get_jobs_app().tasks if not name.startswith(("builtin:", "procrastinate."))}
+
+
+async def defer_in_transaction(
+    session: AsyncSession,
+    *,
+    queue: str,
+    task: str,
+    args: dict[str, Any],
+    queueing_lock: str,
+    lock: str | None = None,
+    priority: int = 0,
+    scheduled_at: datetime | None = None,
+) -> None:
+    """Write a queue row in the caller's transaction.
+
+    Deliberately not procrastinate's `defer_async`: its connector holds its own
+    pool, so deferring through it commits the job on a different connection, and
+    the guarantee in ADR 0006 — that a job and the data justifying it land
+    together — quietly would not hold. A transcript could roll back while the
+    marking it justified was already queued.
+
+    Calling procrastinate's own SQL function on our session keeps it to one
+    transaction, at the cost of naming the queue and the task here rather than
+    through the task object.
+
+    - `queueing_lock` makes a redelivered message idempotent: a second row with
+      the same lock is refused while the first is still waiting.
+    - `lock` serialises *execution* instead: jobs sharing one are run one at a
+      time, which is how a circuit's transitions cannot overlap.
+    - `scheduled_at` is how the circuit runs itself — a transition written now
+      and owed at the moment the phase is due to end.
+
+    This lives in core rather than in a slice because every slice defers the
+    same way, and the one that had it first had the SQL in its repository where
+    nobody else could reach it.
+    """
+    await session.execute(
+        text(
+            "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("
+            ":queue, :task, :priority, :lock, :queueing_lock, CAST(:args AS jsonb), :scheduled_at"
+            ")]::procrastinate_job_to_defer_v1[])"
+        ),
+        {
+            "queue": queue,
+            "task": task,
+            "priority": priority,
+            "lock": lock,
+            "queueing_lock": queueing_lock,
+            "args": json.dumps(args),
+            "scheduled_at": scheduled_at,
+        },
+    )

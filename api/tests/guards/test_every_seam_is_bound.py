@@ -73,7 +73,7 @@ def test_the_guard_would_catch_a_seam_nobody_tied(tmp_path: Path) -> None:
 
 def test_a_built_app_has_every_seam_filled_in() -> None:
     """The structural check above passes if the call is written but unreachable."""
-    from app.core import audience, auth, memberships, tenancy
+    from app.core import audience, auth, memberships, role_policy, tenancy
     from app.features.growth import service as growth
     from app.features.identity import service as identity
     from app.features.identity import service_sessions
@@ -85,8 +85,8 @@ def test_a_built_app_has_every_seam_filled_in() -> None:
     filled = {
         "password gate": auth._password_gate,
         "org lookup": [tenancy._org_lookup] if tenancy._org_lookup else [],
-        "org access policy": tenancy._access_policy,
-        "role policies": list(tenancy._policies),
+        "org access policy": role_policy._access_policy,
+        "role policies": list(role_policy._policies),
         "viewer audiences": audience._lookup,
         "membership lookup": [memberships._lookup] if memberships._lookup else [],
         "default workspace": service_sessions._default_workspace,

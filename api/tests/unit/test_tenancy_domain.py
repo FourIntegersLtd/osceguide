@@ -66,6 +66,22 @@ def test_non_members_may_not_read_org_context(role: str | None) -> None:
     assert not domain.may_read_org(role)
 
 
+@pytest.mark.parametrize("role", ["owner", "admin", "institution_admin", "partner_admin", "supervisor"])
+def test_staff_may_run_a_circuit(role: str) -> None:
+    """Starting, advancing and overriding an examination is a staff act."""
+    assert domain.may_run_circuit(role)
+
+
+@pytest.mark.parametrize("role", ["trainee", "practice_user", "platform_admin", "", None, "stranger"])
+def test_a_candidate_may_not_run_the_circuit_they_are_sitting(role: str | None) -> None:
+    """The rule `may_read_org` could not express: reading is broad, running is not.
+
+    Every run route used to take `may_read_org`, which includes trainees — so a
+    candidate could start, advance and end their own examination.
+    """
+    assert not domain.may_run_circuit(role)
+
+
 @pytest.mark.parametrize("raw", ["  Owner  ", "OWNER", "Owner"])
 def test_roles_are_normalised_before_comparison(raw: str) -> None:
     """Oracle: policy.py normalize_role strips and lowercases."""

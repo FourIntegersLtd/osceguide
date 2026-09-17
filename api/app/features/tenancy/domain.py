@@ -59,6 +59,18 @@ def may_read_org(role: str | None) -> bool:
     return is_org_admin(role) or is_assigned_staff(role) or is_trainee(role)
 
 
+def may_run_circuit(role: str | None) -> bool:
+    """Who may start, advance and override a live examination.
+
+    Deliberately not `may_read_org`, which is what every run route used to
+    take: that predicate includes trainees, so a candidate could start, switch
+    and end the circuit they were sitting. Running one is a staff act — an org
+    admin, or the supervisor assigned to it — and "examiner" is a label for the
+    same `supervisor` role rather than a role of its own.
+    """
+    return is_org_admin(role) or is_assigned_staff(role)
+
+
 def contract_lapsed(contract_ends_at: datetime | None, *, now: datetime) -> bool:
     """Whether an organisation's contract has run out.
 

@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal, Principal
 from app.core.db import get_session
 from app.core.errors import Forbidden, NotFound
+from app.core.role_policy import RolePredicate, org_permits_access, policy
 
 
 class OrgNotFound(NotFound):
@@ -95,8 +96,6 @@ class Workspace:
 
 OrgSlug = Annotated[str, Path(description="Organisation slug")]
 
-RolePredicate = Callable[[str | None], bool]
-
 
 async def resolve_workspace(
     session: AsyncSession,
@@ -135,7 +134,7 @@ async def resolve_workspace(
     org = await _lookup()(session, org_slug)
     if org is None:
         raise OrgNotFound()
-    if not _org_permits_access(org.status) and not principal.is_platform_admin:
+    if not org_permits_access(org.status) and not principal.is_platform_admin:
         raise OrgSuspended()
 
     return Workspace(org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal)
@@ -168,56 +167,14 @@ def require_org(
     return dependency
 
 
-# The role predicates belong to the tenancy slice; the dependency factory is
-# core's. They meet here, bound once by `main.py`, so every other slice can
-# write `workspace: OrgAdmin` without importing another slice's service.
-_policies: dict[str, RolePredicate] = {}
-
-
-def bind_role_policy(**predicates: RolePredicate) -> None:
-    _policies.update(predicates)
-
-
-# Whether an org's status still permits its members to act. Bound by `main.py`
-# from `tenancy.domain`, like the role predicates above: the rule belongs to
-# the slice, the enforcement point belongs to core.
-_access_policy: list[Callable[[str | None], bool]] = []
-
-
-def bind_org_access_policy(predicate: Callable[[str | None], bool]) -> None:
-    _access_policy.clear()
-    _access_policy.append(predicate)
-
-
-def _org_permits_access(status: str | None) -> bool:
-    if not _access_policy:
-        raise RuntimeError(
-            "No org access policy bound. app.main.create_app must call bind_org_access_policy."
-        )
-    return _access_policy[0](status)
-
-
-def _policy(name: str) -> RolePredicate:
-    def predicate(role: str | None) -> bool:
-        try:
-            return _policies[name](role)
-        except KeyError as exc:
-            raise RuntimeError(
-                f"No {name!r} role policy bound. app.main.create_app must call bind_role_policy."
-            ) from exc
-
-    return predicate
-
-
 def admin_org_ids(principal: Principal) -> frozenset[uuid.UUID]:
     """Organisations this caller administers, read from the token's own claims.
 
-    No database round trip: the memberships are already in the token, and the
-    role predicate is the one `require_org` uses. Used where a rule is "an
-    institution may moderate what is addressed inside it" rather than "this
-    route belongs to one organisation".
+    No database round trip: the memberships are already in the token. Used
+    where a rule is "an institution may moderate what is addressed inside it"
+    rather than "this route belongs to one organisation".
     """
-    is_admin = _policy("is_org_admin")
+    is_admin = policy("is_org_admin")
     return frozenset(m.org_id for m in principal.memberships if is_admin(m.role))
 
 
@@ -238,11 +195,19 @@ def may_read_org_policy() -> RolePredicate:
     A stream resolves its own workspace (see `resolve_workspace`) and needs the
     same rule the annotation applies, not a second spelling of it.
     """
-    return _policy("may_read_org")
+    return policy("may_read_org")
 
 
-OrgReader = Annotated[Workspace, Depends(require_org(_policy("may_read_org")))]
-OrgAdmin = Annotated[Workspace, Depends(require_org(_policy("is_org_admin"), allow_platform_admin=False))]
+def may_run_circuit_policy() -> RolePredicate:
+    """The predicate behind `OrgStaff`, for a stream that resolves its own workspace."""
+    return policy("may_run_circuit")
+
+
+OrgReader = Annotated[Workspace, Depends(require_org(policy("may_read_org")))]
+# Running an examination: an org admin or its assigned supervisor. Not
+# `OrgReader`, which admits the trainee sitting the circuit.
+OrgStaff = Annotated[Workspace, Depends(require_org(policy("may_run_circuit")))]
+OrgAdmin = Annotated[Workspace, Depends(require_org(policy("is_org_admin"), allow_platform_admin=False))]
 OrgInstitutionAdmin = Annotated[
-    Workspace, Depends(require_org(_policy("is_institution_admin"), allow_platform_admin=False))
+    Workspace, Depends(require_org(policy("is_institution_admin"), allow_platform_admin=False))
 ]

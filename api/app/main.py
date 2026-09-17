@@ -28,8 +28,9 @@ from app.core.openapi import (
     operation_id,
 )
 from app.core.redis import close_redis
+from app.core.role_policy import bind_org_access_policy, bind_role_policy
 from app.core.settings import get_settings
-from app.core.tenancy import bind_org_access_policy, bind_org_lookup, bind_role_policy
+from app.core.tenancy import bind_org_lookup
 from app.features import health
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
@@ -70,6 +71,7 @@ from app.features.tenancy.service import (
     is_institution_admin,
     is_org_admin,
     may_read_org,
+    may_run_circuit,
     memberships_for_token,
     org_permits_access,
     org_ref_by_slug,
@@ -180,6 +182,7 @@ def create_app() -> FastAPI:
     bind_registration_hook(claim_roster_entries)
     bind_role_policy(
         may_read_org=may_read_org,
+        may_run_circuit=may_run_circuit,
         is_org_admin=is_org_admin,
         is_institution_admin=is_institution_admin,
     )

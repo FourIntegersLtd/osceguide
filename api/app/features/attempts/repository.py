@@ -7,7 +7,6 @@ worker-facing reads take an attempt id because that is all a worker is given.
 
 from __future__ import annotations
 
-import json
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
@@ -129,38 +128,6 @@ async def list_for_user(
     stmt = select(Attempt).where(Attempt.user_id == user_id)
     return await keyset_page(
         session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
-    )
-
-
-async def defer_job(
-    session: AsyncSession,
-    *,
-    queue: str,
-    task: str,
-    args: dict[str, Any],
-    queueing_lock: str,
-) -> None:
-    """Write a queue row in the caller's transaction.
-
-    procrastinate's own connector holds a separate pool, so deferring through it
-    would commit the job on another connection — and the guarantee in ADR 0006
-    that a job and the data justifying it land together would quietly not hold.
-    Calling its SQL function on our session keeps one transaction; the queueing
-    lock makes a redelivered message idempotent.
-    """
-    await session.execute(
-        text(
-            "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("
-            ":queue, :task, :priority, NULL, :queueing_lock, CAST(:args AS jsonb), NULL"
-            ")]::procrastinate_job_to_defer_v1[])"
-        ),
-        {
-            "queue": queue,
-            "task": task,
-            "priority": 0,
-            "queueing_lock": queueing_lock,
-            "args": json.dumps(args),
-        },
     )
 
 

@@ -19,7 +19,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.jobs import get_jobs_app
+from app.core.jobs import defer_in_transaction, get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import EvaluationFailed, Evaluator
 from app.features.attempts import domain, domain_definition, repository
@@ -82,7 +82,7 @@ async def enqueue_scoring(session: AsyncSession, attempt: Attempt, *, now: datet
         )
         return
 
-    await repository.defer_job(
+    await defer_in_transaction(
         session,
         queue=SCORING_QUEUE,
         task=SCORING_TASK,
