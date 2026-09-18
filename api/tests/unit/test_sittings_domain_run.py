@@ -268,3 +268,24 @@ def test_a_reading_period_is_not_expected_to_have_a_patient() -> None:
         now=NOW + timedelta(minutes=1),
     )
     assert alerts == []
+
+
+# --- when a sitting is over (D-7) ------------------------------------------
+
+
+def test_a_sitting_is_over_once_its_last_circuit_ends() -> None:
+    assert domain_run.sitting_is_over([True, True])
+
+
+def test_a_sitting_with_a_circuit_still_running_is_not_over() -> None:
+    assert not domain_run.sitting_is_over([True, False])
+
+
+def test_a_sitting_with_a_circuit_still_to_run_is_not_over() -> None:
+    """A morning circuit finishing does not end an exam day with an afternoon one."""
+    assert not domain_run.sitting_is_over([True, False])
+
+
+def test_a_sitting_with_no_circuits_at_all_is_not_over() -> None:
+    """It never started, so there is nothing to have finished."""
+    assert not domain_run.sitting_is_over([])

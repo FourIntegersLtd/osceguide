@@ -22,6 +22,24 @@ dependencies = [
     "redis (>=5.2,<6)",
     "httpx (>=0.28,<0.29)",
     "email-validator (>=2.2,<3)",
+    # Token minting, room service and agent dispatch. Only `livekit-api` (and
+    # the `livekit-protocol` it pulls in) — not the realtime `livekit` SDK,
+    # which is the agent worker's business and lives in assessment-platform.
+    # `voice/adapter.py` imports it inside each call, so a machine without it
+    # still starts and still serves every route that is not voice; it was that
+    # tolerance that let the SDK go missing from here unnoticed.
+    "livekit-api (>=1.2,<2)",
+    # `BaseHTTPMiddleware` in `core/logging.py`. FastAPI depends on it, but a
+    # module that imports it directly declares it directly.
+    "starlette (>=0.40,<1)",
+    # The marking models. The engine deliberately injects no LLM client of its
+    # own ("LLM clients and LiveKit are injected by the consumer"), so the
+    # consumer is this package. Same versions as b2c and b2b, which mark with
+    # the same two, so a result is reproducible across the three.
+    "openai (>=2.15,<3)",
+    "anthropic (>=0.40,<1)",
+    # Transactional email. `notifications/sender.py` is the only caller.
+    "resend (>=2.4,<3)",
     # The assessment engine. `make engine-dev` installs it editable from the
     # sibling checkout for local work; a deployment wants the tag, which is
     # this (E-1, closed). 0.7.0 is the version that stopped shipping

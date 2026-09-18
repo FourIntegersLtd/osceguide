@@ -59,6 +59,12 @@ things here: a LiveKit room, an HTTP session, and a database session.
 - Slot status is real now: `scheduled` → `reading` → `in_consultation` →
   `completed`, or `skipped` where the circuit moved past it. It was written by
   nothing while four read models displayed it.
+- **A sitting is over when every circuit on it has ended** (D-7), not when the
+  last running one does: a day with a morning and an afternoon circuit is not
+  over at lunchtime. The check sits in `finish`, so all three ways a circuit can
+  end go through it. A circuit that was never started holds its sitting open,
+  because nothing can tell "not run yet" from "never will be"; ending that
+  circuit outright is what closes the sitting.
 
 ## Routes
 Scheduling (`router.py`):

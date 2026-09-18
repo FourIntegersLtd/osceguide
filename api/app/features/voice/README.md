@@ -41,7 +41,14 @@ Owns no tables. The decisions are pure and live in `domain.py`.
   second patient in the room beside the first, and both answered.
 - **`can_publish=False` is a guarantee, not a UI state.** An examiner's token
   cannot publish audio at all, so a candidate cannot be prompted and the
-  transcript stays a record of what they said to the patient.
+  transcript stays a record of what they said to the patient. It carries
+  `can_publish_data=False` with it: that grant defaults to *true*, so an
+  observer who could not speak could still type into the room's data channel.
+- The SDK is a declared dependency. `adapter.py` still imports it inside each
+  call and degrades to `voice_unavailable`, which is right for a machine with
+  no voice configured — and was also why its absence from `pyproject.toml`
+  went unnoticed for the life of the project. `tests/guards/test_imports_are_declared.py`
+  now insists every import in `app/` resolves to something declared.
 - The room is derived from the attempt id, so a stray room says which attempt
   it belongs to.
 

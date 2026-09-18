@@ -651,7 +651,7 @@ A scheduled event an organisation holds.
 | `scheduled_for` | `timestamptz null` | |
 | `mode` | `varchar(16) not null default 'training'` | `training` \| `exam` — the B2B exam arm |
 | `sitting_type` | `varchar(32) not null default 'group_training'` | |
-| `status` | `varchar(32) not null default 'scheduled'` | moves to `in_progress` when a circuit starts |
+| `status` | `varchar(32) not null default 'scheduled'` | `scheduled` → `in_progress` when a circuit starts → `completed` when every circuit on it has ended (D-7). A circuit that was never started holds it open; ending that circuit outright is what closes the sitting |
 | `feedback_template_version_id` | `uuid **not null**` → `feedback_template_versions.id` RESTRICT | b2b refuses to create a session without a published feedback template bound, and the column says so rather than a service check |
 
 ### `circuits`
