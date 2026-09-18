@@ -66,12 +66,48 @@ def test_open_action_items_accepts_a_bare_string() -> None:
     assert domain.open_action_items([["Say one follow-up timeframe"]]) == ["Say one follow-up timeframe"]
 
 
-def test_entitled_exam_ids_drops_duplicates_and_blanks() -> None:
-    class Grant:
-        def __init__(self, exam_id: object) -> None:
-            self.exam_id = exam_id
+class Grant:
+    """`entitlements.schemas.EntitlementRead`, as this rule sees one.
 
+    `live` is the field that matters: the entitlements repository returns
+    *every* row a person has ever held, revoked and expired included, and the
+    service computes `live` per row rather than filtering.
+    """
+
+    def __init__(self, exam_id: object, *, live: bool = True) -> None:
+        self.exam_id = exam_id
+        self.live = live
+
+
+def test_entitled_exam_ids_drops_duplicates_and_blanks() -> None:
     assert domain.entitled_exam_ids([Grant("a"), Grant("a"), Grant(None)]) == frozenset({"a"})
+
+
+def test_a_revoked_or_expired_entitlement_unlocks_nothing() -> None:
+    """The gate. `list_for_user` returns dead rows, so this rule has to drop them.
+
+    Revoking does not delete: `entitlements.repository.revoke` sets
+    `revoked_at` and the row stays, so a rule that reads `exam_id` off every
+    grant hands a lapsed subscriber the same set as a paying one — and this
+    frozenset becomes the `WHERE exam_id IN (...)` the material search is
+    filtered by, and the list `suggest_material` checks a station against.
+    """
+    assert domain.entitled_exam_ids([Grant("a", live=False)]) == frozenset()
+    assert domain.entitled_exam_ids([Grant("a", live=False), Grant("b", live=True)]) == frozenset({"b"})
+
+
+def test_a_grant_that_cannot_say_whether_it_is_live_is_refused() -> None:
+    """Fails closed, deliberately.
+
+    The alternative — treating a missing flag as live — means a caller who
+    passes raw `Entitlement` rows instead of the service's read model silently
+    unlocks everything, and nothing anywhere would say so.
+    """
+
+    class Row:
+        exam_id = "a"
+
+    assert domain.entitled_exam_ids([Row()]) == frozenset()
 
 
 def test_observations_read_a_marking_as_the_brief_says_it() -> None:

@@ -99,13 +99,31 @@ def should_summarise_attempt(*, kind: str, complete: bool) -> bool:
 
 
 def entitled_exam_ids(grants: Sequence[Any]) -> frozenset[Any]:
-    """The exams this person may be shown material from.
+    """The exams this person may be shown material from, right now.
 
     Suggestions are filtered through this before anything is named, so a
     refusal never mentions the title of something they cannot open — which is
-    how a locked item becomes an advertisement.
+    how a locked item becomes an advertisement. Since the material index
+    landed it is also the `WHERE exam_id IN (...)` that the tutor's search is
+    filtered by, so it is the gate on paid reading as well as on a card.
+
+    **`live` is the whole rule.** `entitlements.service.list_for_user` returns
+    every row a person has ever held — revoking sets `revoked_at` and leaves
+    the row, and an expired grant is a row with `ends_at` in the past — and
+    computes `live` per row rather than filtering. Reading `exam_id` off every
+    grant therefore hands a lapsed subscriber exactly what a paying one gets,
+    which is how this was written until it was caught.
+
+    A grant that cannot say whether it is live is refused. That is the safe
+    direction: a caller passing raw `Entitlement` rows instead of the service's
+    read model gets nothing rather than everything, and a silent full unlock is
+    the one failure nobody would notice.
     """
-    return frozenset(getattr(g, "exam_id", None) for g in grants if getattr(g, "exam_id", None))
+    return frozenset(
+        getattr(g, "exam_id", None)
+        for g in grants
+        if getattr(g, "exam_id", None) and getattr(g, "live", False)
+    )
 
 
 def open_action_items(plans: Sequence[Any]) -> list[str]:

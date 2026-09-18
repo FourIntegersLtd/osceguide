@@ -489,3 +489,56 @@ async def test_asking_for_any_kind_does_not_narrow_the_corpus(
     )
 
     assert material.searches[-1][2] is None
+
+
+async def test_a_revoked_entitlement_stops_the_tutor_reading_the_material(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,  # type: ignore[no-untyped-def]
+    tutor_renderer: FakeTutorPromptRenderer,
+    material: FakeMaterialIndex,
+) -> None:
+    """Revoking does not delete, and the gate has to notice.
+
+    `entitlements.repository.revoke` sets `revoked_at` and leaves the row, and
+    `list_for_user` returns every row a person has ever held with a computed
+    `live` flag. A gate that read `exam_id` off each grant gave a lapsed
+    subscriber the same access as a paying one — for as long as the row
+    existed, which is for ever.
+    """
+    from datetime import UTC, datetime
+
+    from app.features.entitlements import repository as ent_repo
+    from app.features.tutor_memory import service_search
+
+    token, exam_id = await entitled_actor(db_session, make_actor, "tools-revoked@example.com")
+    await material.upsert(
+        corpus="summary",
+        source_id="paid",
+        exam_id=str(exam_id),
+        title="Something they paid for",
+        chunks=[{"index": 0, "section": "management", "text": "Paid advice about asthma."}],
+    )
+    session_id = await a_dashboard_session(client, token)
+
+    # While it is live, they may be read out of it.
+    assert "Paid advice" in (await search_for(client, session_id, "asthma"))["result"]
+
+    grants = await ent_repo.for_user(db_session, (await _user_of(db_session, "tools-revoked@example.com")).id)
+    for grant in grants:
+        await ent_repo.revoke(db_session, grant.id, at=datetime.now(UTC))
+    await db_session.flush()
+
+    body = await search_for(client, session_id, "asthma")
+
+    assert body["result"] == service_search.NOTHING_IN_MATERIAL
+    assert body["display"] is None
+    assert "Something they paid for" not in body["result"]
+
+
+async def _user_of(session: AsyncSession, email: str):  # type: ignore[no-untyped-def]
+    from app.features.identity import repository as identity_repo
+
+    user = await identity_repo.user_by_email(session, email)
+    assert user is not None
+    return user
