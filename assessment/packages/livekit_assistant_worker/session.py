@@ -27,8 +27,10 @@ from .runtime_policy import VoiceRuntime, select_voice_runtime
 from .speech import build_assistant_llm, build_assistant_tts
 from .tools.check_time import build_check_time_tool
 from .tools.navigation_mode import build_offer_navigation_modes_tool
+from .tools.remote import build_remote_tools
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
 from .ui_guidance import ComputerToolset, NavigationModeState, build_computer_toolset, is_ui_guidance_enabled
+from .ui_guidance.browser import BrowserChannel
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,11 @@ class AssistantVoiceSession:
         if session.mode.paced and session.extras.pacing is not None:
             self.clock = ConsultationClock(session.extras.pacing)
             tools.append(build_check_time_tool(self.clock))
+        # The backend's own tools: schema from the bootstrap, every call forwarded
+        # back to it. A backend that names none gets none, whatever the mode.
+        if session.mode.remote_tools and session.tools:
+            assert self._endpoints is not None
+            tools.extend(build_remote_tools(self._endpoints, session.session_id, session.tools, publish=BrowserChannel(ctx.room).publish))
         return tools
 
     def _build(self, ctx: Any, session: AssistantSession, instructions: str, tools: list, runtime: VoiceRuntime) -> AgentBuild:

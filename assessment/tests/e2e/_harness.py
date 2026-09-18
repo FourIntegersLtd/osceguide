@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import uuid
 import wave
 from dataclasses import dataclass, field
@@ -53,6 +54,51 @@ class StubBackend:
     slot_calls: list[str] = field(default_factory=list)
     base_url: str = ""
     _runner: web.AppRunner | None = None
+    _loop: asyncio.AbstractEventLoop | None = None
+    _thread: threading.Thread | None = None
+
+    def serve(self) -> None:
+        """Start the server on a loop of its own, and keep that loop running.
+
+        The caller used to do `asyncio.run(backend.start())`, which closes its
+        event loop as soon as it returns. The aiohttp site is bound to that
+        loop, so the socket was left listening with nothing serving it: every
+        request the worker made connected and then hung until it timed out.
+        These tests could not have passed — the worker never got its bootstrap,
+        so no session ever ran and no transcript was ever delivered.
+
+        A thread with a loop that stays alive is the smallest fix that keeps
+        the tests synchronous, which is how they are written.
+        """
+        ready = threading.Event()
+        failure: list[BaseException] = []
+
+        def run() -> None:
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+            try:
+                self._loop.run_until_complete(self.start())
+            except BaseException as exc:  # noqa: BLE001 — reported to the caller below
+                failure.append(exc)
+                ready.set()
+                return
+            ready.set()
+            self._loop.run_forever()
+
+        self._thread = threading.Thread(target=run, name="stub-backend", daemon=True)
+        self._thread.start()
+        if not ready.wait(timeout=15):
+            raise RuntimeError("the stub backend did not start")
+        if failure:
+            raise failure[0]
+
+    def shutdown(self) -> None:
+        if self._loop is None:
+            return
+        asyncio.run_coroutine_threadsafe(self.stop(), self._loop).result(timeout=10)
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        if self._thread:
+            self._thread.join(timeout=10)
 
     async def start(self) -> None:
         app = web.Application()

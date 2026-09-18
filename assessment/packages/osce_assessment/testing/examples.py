@@ -85,3 +85,66 @@ def _string(node: dict[str, Any]) -> str:
         value += "x" * (minimum - len(value))
     maximum = node.get("maxLength")
     return value[: int(maximum)] if maximum is not None else value
+
+
+def example_framework(framework_id: str = "example-framework") -> "CompetencyFramework":
+    """A small framework with everything a real one has, for tests.
+
+    Two domains — one live, one not — four scored competencies with descriptors
+    on every point of the scale, a free-text section, and the marking prompt.
+    Nothing exam-shaped: the platform ships no frameworks, so a test that needs
+    one builds it here rather than reaching for a catalogue.
+    """
+    from ..contracts.framework import Competency, CompetencyDomain, CompetencyFramework
+
+    def scored() -> dict[str, Any]:
+        return {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["score", "supporting_phrase", "score_explanation"],
+            "properties": {
+                "score": {"type": "string", "enum": ["R", "A", "G"]},
+                "supporting_phrase": {"type": "string"},
+                "score_explanation": {"type": "string"},
+            },
+        }
+
+    descriptors = {"G": "Does all of it.", "A": "Misses one part.", "R": "Misses most of it."}
+    return CompetencyFramework(
+        id=framework_id,
+        label="Example framework",
+        version="1",
+        domains=(
+            CompetencyDomain(id="gathering", label="Gathering information", live=True),
+            CompetencyDomain(id="wrap_up", label="Closing the consultation", live=False),
+        ),
+        competencies=(
+            Competency(id="opens_well", label="Opens well", domain_id="gathering", descriptors=descriptors),
+            Competency(id="asks_openly", label="Asks open questions", domain_id="gathering", descriptors=descriptors),
+            Competency(id="explains", label="Explains clearly", domain_id="wrap_up", descriptors=descriptors),
+            Competency(id="safety_nets", label="Safety nets", domain_id="wrap_up", descriptors=descriptors),
+        ),
+        scale=("R", "A", "G"),
+        system_prompt="You are marking a consultation. Fill every field of the schema.",
+        result_schema={
+            "type": "object",
+            "title": "ExampleResult",
+            "additionalProperties": False,
+            "required": ["gathering", "wrap_up", "overall_comment"],
+            "properties": {
+                "gathering": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["opens_well", "asks_openly"],
+                    "properties": {"opens_well": scored(), "asks_openly": scored()},
+                },
+                "wrap_up": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["explains", "safety_nets"],
+                    "properties": {"explains": scored(), "safety_nets": scored()},
+                },
+                "overall_comment": {"type": "string"},
+            },
+        },
+    )

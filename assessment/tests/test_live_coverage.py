@@ -6,10 +6,15 @@ import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from osce_assessment.catalog import CatalogFrameworkProvider
-from osce_assessment.contracts import EvaluationPolicy, MessageRole, TranscriptMessage
+from osce_assessment.contracts import (
+    Competency,
+    CompetencyDomain,
+    CompetencyFramework,
+    EvaluationPolicy,
+    MessageRole,
+    TranscriptMessage,
+)
 from osce_assessment.evaluation.live_coverage import (
-    LIVE_DOMAINS,
     CoverageItem,
     CoverageSnapshot,
     CoverageState,
@@ -17,9 +22,38 @@ from osce_assessment.evaluation.live_coverage import (
     live_competency_ids,
     recent_window,
 )
+from osce_assessment.testing import StaticFrameworkProvider
 
 FIXED = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
-SCA = "sca-rcgp-v1"
+
+
+def _competency(cid: str, domain: str) -> Competency:
+    return Competency(id=cid, label=cid.replace("_", " "), domain_id=domain)
+
+
+# A rubric of the shape live coverage exists for: two domains whose competencies
+# can be judged from a window of turns, and one whose competencies cannot. Which
+# is which is the framework's own declaration, not a list in the engine.
+FRAMEWORK = CompetencyFramework(
+    id="live-rubric-v1",
+    label="Live rubric",
+    domains=(
+        CompetencyDomain(id="global_skills", label="Global skills", live=False),
+        CompetencyDomain(id="tasks", label="Tasks", live=True),
+        CompetencyDomain(id="relating_to_others", label="Relating to others", live=True),
+    ),
+    competencies=(
+        _competency("structures_consultation", "global_skills"),
+        _competency("avoids_repetition", "global_skills"),
+        _competency("discovers_ice", "tasks"),
+        _competency("provides_safety_net", "tasks"),
+        _competency("opens_consultation", "relating_to_others"),
+        _competency("identifies_cues", "relating_to_others"),
+    ),
+    system_prompt="Mark the consultation.",
+)
+FRAMEWORKS = StaticFrameworkProvider(FRAMEWORK)
+SCA = FRAMEWORK.id
 
 # What the doctor actually says in the window the tests use.
 ASKED_CONCERN = "what has been worrying you about it"
@@ -80,7 +114,7 @@ class FakeFallback:
 
 def detector(primary=None, fallback=None, **kwargs) -> LiveCoverageDetector:
     return LiveCoverageDetector(
-        framework_provider=CatalogFrameworkProvider(),
+        framework_provider=FRAMEWORKS,
         primary_client=lambda: primary,
         fallback_client=lambda: fallback,
         **kwargs,
@@ -94,14 +128,15 @@ def reported(*items: dict) -> dict:
 # --- which competencies are even eligible ---------------------------------------
 
 
-def test_only_task_and_relating_competencies_are_live() -> None:
-    ids = set(live_competency_ids(CatalogFrameworkProvider().get(SCA)))
+def test_only_competencies_in_live_domains_are_eligible() -> None:
+    """Which domains those are is the rubric author's call, not a constant here."""
+    ids = set(live_competency_ids(FRAMEWORK))
 
     assert "discovers_ice" in ids and "provides_safety_net" in ids
     # Whole-consultation judgements cannot be decided from a window of turns.
     assert "avoids_repetition" not in ids
     assert "structures_consultation" not in ids
-    assert LIVE_DOMAINS == ("tasks", "relating_to_others")
+    assert FRAMEWORK.live_domain_ids == ("tasks", "relating_to_others")
 
 
 def test_the_model_is_only_offered_competencies_that_are_still_open() -> None:
@@ -279,7 +314,7 @@ def test_detection_stops_once_every_live_competency_is_covered() -> None:
     primary = FakePrimary(payload=reported())
     everything = tuple(
         CoverageItem(competency_id=cid, state=CoverageState.COVERED, quote="q", seq=0)
-        for cid in live_competency_ids(CatalogFrameworkProvider().get(SCA))
+        for cid in live_competency_ids(FRAMEWORK)
     )
 
     detector(primary).detect(snapshot=snapshot(*everything), messages=window(), policy=policy())

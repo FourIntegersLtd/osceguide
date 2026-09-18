@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from voice_infra import BackendEndpoints
 from voice_infra.backend_http import sync_get_json, sync_post_json
 
@@ -50,6 +51,37 @@ class PacingPlan(BaseModel):
     phases: tuple[PacingPhase, ...] = ()
 
 
+TOOL_NAME = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
+
+
+class RemoteTool(BaseModel):
+    """A tool the backend defines and answers; the worker only carries its schema.
+
+    ``parameters`` is the JSON schema the model sees. What the tool does is the
+    backend's business: the worker forwards every call and reads back text.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    description: str = Field(min_length=1)
+    parameters: dict[str, Any]
+
+    @field_validator("name")
+    @classmethod
+    def _well_formed_name(cls, value: str) -> str:
+        if not TOOL_NAME.match(value):
+            raise ValueError(f"tool name {value!r} must match {TOOL_NAME.pattern}")
+        return value
+
+    @field_validator("parameters")
+    @classmethod
+    def _object_schema(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if value.get("type") != "object":
+            raise ValueError("tool parameters must be a JSON schema of type object")
+        return value
+
+
 class AssistantExtras(BaseModel):
     """What the worker itself decides on: which tools to load, which runtime, and the clock."""
 
@@ -76,7 +108,8 @@ class AssistantSession(BaseModel):
     ``instructions`` is required and, for help sessions, already carries the
     FAQ answers. ``greeting`` is the backend's opening line; without one the
     model generates its own opening. ``gpt_live`` makes speech-to-speech
-    possible.
+    possible. ``tools`` are the backend's to define; a mode that loads them
+    registers each one and forwards its calls.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -88,6 +121,16 @@ class AssistantSession(BaseModel):
     greeting: str | None = None
     gpt_live: GPTLiveInstructions | None = None
     extras: AssistantExtras = Field(default_factory=AssistantExtras)
+    tools: tuple[RemoteTool, ...] = ()
+
+    @field_validator("tools")
+    @classmethod
+    def _distinct_names(cls, value: tuple[RemoteTool, ...]) -> tuple[RemoteTool, ...]:
+        names = [tool.name for tool in value]
+        duplicates = sorted({n for n in names if names.count(n) > 1})
+        if duplicates:
+            raise ValueError(f"tools named more than once: {duplicates}")
+        return value
 
     @property
     def mode(self) -> ModeProfile:

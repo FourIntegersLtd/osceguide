@@ -1,9 +1,10 @@
 """Platform default prompts and the formatters that render them.
 
 Prompt *text* lives beside this file as data (``*.txt``); nothing here decides
-which text applies to whom. A consumer picks a prompt id through its
-``EvaluationPolicy`` or its own configuration, and the formatters turn a
-scenario or a stored document into finished instructions.
+which text applies to whom. Marking instructions are not shipped at all: they
+are written by whoever authors a rubric and travel on the framework. What is
+left here is the wording every persona shares and the formatters that turn a
+stored station document into finished instructions.
 
 Every live persona is built from the shared blocks in ``_blocks`` so the role
 wording cannot drift apart between them, and opens by naming the role it is
@@ -19,12 +20,15 @@ from importlib import resources
 
 from .athena_doctor import AthenaDoctorFormatter
 from .consultation_pacing import (
+    DEFAULT_PACING,
     ConsultationPacing,
+    InvalidPacingError,
     consultation_pacing_payload,
-    pacing_for_framework,
+    pacing_from_payload,
 )
 from .cv import format_structured_cv_for_llm
 from .dashboard_feedback import DashboardFeedbackPromptFormatter
+from .dashboard_tutor import DashboardTutorFormatter
 from .debrief_feedback import (
     OrthoClinicalSkillFeedbackFormatter,
     OrthoCommunicationSkillFeedbackFormatter,
@@ -38,22 +42,9 @@ from .debrief_management_plan import ManagementPlanFormatter
 from .debrief_prompt import DebriefPromptFormatter
 from .debrief_transcript import TranscriptFormatter
 from .greetings import DEBRIEF_GREETING, EXAMINER_GREETINGS, PATIENT_GREETINGS
-from .library_station import ConversationPromptFormatter, OrthoPromptFormatter
-from .org_station import OrgStationPromptFormatter, create_org_station_prompt
+from .station import StationPromptFormatter, create_station_prompt, station_examiner_context
 
 USER_PROMPT_TEMPLATE_ID = "feedback_evaluation_v1"
-
-# The platform's default system prompt for each framework it publishes. A
-# consumer's EvaluationPolicy may override this; the engine never picks by
-# consumer. CASC has never had a prompt of its own and is marked with the SCA
-# prompt, which is preserved here deliberately rather than silently.
-_DEFAULT_SYSTEM_PROMPT_BY_FRAMEWORK: dict[str, str] = {
-    "sca-rcgp-v1": "sca_feedback_assessment_v1",
-    "plab2-gmc-v1": "plab_feedback_assessment_v1",
-    "casc-rcpsych-v1": "sca_feedback_assessment_v1",
-    "ortho-frcs-v1": "ortho_feedback_assessment_v1",
-}
-
 
 class UnknownPromptError(LookupError):
     """Raised for a prompt id with no text file beside this module."""
@@ -76,17 +67,6 @@ def system_prompt(prompt_id: str) -> str:
     return prompt_text(prompt_id)
 
 
-def default_system_prompt_id(framework_id: str) -> str:
-    """The platform default prompt for a published framework."""
-    try:
-        return _DEFAULT_SYSTEM_PROMPT_BY_FRAMEWORK[framework_id]
-    except KeyError:
-        raise UnknownPromptError(
-            f"no platform default prompt for framework {framework_id!r}; "
-            f"known: {sorted(_DEFAULT_SYSTEM_PROMPT_BY_FRAMEWORK)}"
-        ) from None
-
-
 def render_user_prompt(*, station_name: str, transcript: str) -> str:
     """The evaluation user prompt: the station name and the tagged transcript."""
     return prompt_text(USER_PROMPT_TEMPLATE_ID).format(station_name=station_name, transcript=transcript)
@@ -99,27 +79,28 @@ __all__ = [
     "USER_PROMPT_TEMPLATE_ID",
     "AthenaDoctorFormatter",
     "ConsultationPacing",
+    "DEFAULT_PACING",
+    "InvalidPacingError",
     "consultation_pacing_payload",
-    "pacing_for_framework",
+    "pacing_from_payload",
     "DashboardFeedbackPromptFormatter",
-    "ConversationPromptFormatter",
+    "DashboardTutorFormatter",
     "DebriefPromptFormatter",
     "ManagementPlanFormatter",
-    "OrgStationPromptFormatter",
+    "StationPromptFormatter",
     "OrthoClinicalSkillFeedbackFormatter",
     "OrthoCommunicationSkillFeedbackFormatter",
     "OrthoFeedbackFormatter",
     "OrthoPortfolioSkillFeedbackFormatter",
     "OrthoPrioritisationSkillFeedbackFormatter",
-    "OrthoPromptFormatter",
     "PlabFeedbackFormatter",
     "ScaFeedbackFormatter",
     "TranscriptFormatter",
     "UnknownPromptError",
     "available_prompt_ids",
-    "create_org_station_prompt",
-    "default_system_prompt_id",
+    "create_station_prompt",
     "format_structured_cv_for_llm",
+    "station_examiner_context",
     "prompt_text",
     "render_user_prompt",
     "system_prompt",

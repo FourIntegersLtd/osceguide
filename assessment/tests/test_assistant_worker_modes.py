@@ -23,12 +23,21 @@ def test_every_worker_type_has_a_profile() -> None:
         assert mode_profile(worker_type.value) is profile
 
 
-def test_data_driven_modes_keep_no_transcript_and_run_no_screen_tools() -> None:
+def test_data_driven_modes_run_no_screen_tools_and_only_the_dashboard_delivers_its_turns() -> None:
+    """The consulting doctor keeps nothing; the dashboard hands its turns to the backend, which summarises."""
     for worker_type in (WorkerType.DASHBOARD, WorkerType.CONSULTING_DOCTOR):
         profile = mode_profile(worker_type)
-        assert not profile.keeps_transcript and not profile.ui_guidance and not profile.gpt_live_eligible and not profile.scene_updates
+        assert not profile.ui_guidance and not profile.gpt_live_eligible and not profile.scene_updates
+    assert not mode_profile(WorkerType.CONSULTING_DOCTOR).keeps_transcript
+    assert mode_profile(WorkerType.DASHBOARD).keeps_transcript and mode_profile(WorkerType.DASHBOARD).llm == "tutor"
     assert mode_profile(WorkerType.HELP).keeps_transcript and mode_profile(WorkerType.HELP).ui_guidance
     assert mode_profile(WorkerType.ONBOARDING).opens_with_generated_reply and mode_profile(WorkerType.ONBOARDING).scene_updates
+
+
+def test_only_the_dashboard_loads_the_backends_tools() -> None:
+    assert mode_profile(WorkerType.DASHBOARD).remote_tools
+    for worker_type in (WorkerType.HELP, WorkerType.ONBOARDING, WorkerType.CONSULTING_DOCTOR):
+        assert not mode_profile(worker_type).remote_tools
 
 
 def test_only_the_consulting_doctor_runs_against_a_clock() -> None:

@@ -1,6 +1,6 @@
 """Test doubles for every port, so consumers can test against the engine offline."""
 
-from .examples import example_payload_for
+from .examples import example_framework, example_payload_for
 from .doubles import (
     FakeEvaluator,
     InMemoryResultSink,
@@ -17,5 +17,6 @@ __all__ = [
     "SimpleProfileBuilder",
     "StaticFrameworkProvider",
     "StaticScenarioProvider",
+    "example_framework",
     "example_payload_for",
 ]

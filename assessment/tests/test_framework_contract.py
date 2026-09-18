@@ -119,8 +119,14 @@ def test_a_schema_only_framework_accepts_any_scores() -> None:
     fw.validate_scores({"anything_at_all": "whatever"})
 
 
-def test_the_framework_holds_shape_and_says_nothing_about_scoring() -> None:
-    """The split the design depends on: no model, prompt or threshold here."""
+def test_the_framework_holds_shape_and_says_nothing_about_which_model_runs() -> None:
+    """The split the design depends on: no model, effort or threshold here.
+
+    ``system_prompt`` is the one thing that looks like scoring and is not: the
+    marking instructions are written by whoever wrote the rubric, and a rubric
+    whose prompt lived somewhere else could not be authored through an API at
+    all. Which model reads that prompt is still entirely the policy's business.
+    """
     fields = set(CompetencyFramework.model_fields)
     assert fields == {
         "id",
@@ -130,8 +136,9 @@ def test_the_framework_holds_shape_and_says_nothing_about_scoring() -> None:
         "competencies",
         "scale",
         "result_schema",
+        "system_prompt",
     }
-    assert not fields & {"primary_model", "system_prompt_override", "timeout_s"}
+    assert not fields & {"primary_model", "primary_reasoning_effort", "timeout_s"}
 
 
 def test_the_policy_holds_scoring_and_says_nothing_about_shape() -> None:

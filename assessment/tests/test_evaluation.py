@@ -8,7 +8,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from osce_assessment.catalog import CatalogFrameworkProvider, framework
 from osce_assessment.contracts import (
     CompetencyFramework,
     EvaluationPolicy,
@@ -21,9 +20,11 @@ from osce_assessment.contracts import (
 from osce_assessment.evaluation import EvaluationError, LLMEvaluator, render_transcript_for_marking
 from osce_assessment.prompts import prompt_text, system_prompt
 from osce_assessment.schemas.strict import to_strict_json_schema
-from osce_assessment.testing import StaticFrameworkProvider, example_payload_for
+from osce_assessment.testing import StaticFrameworkProvider, example_framework, example_payload_for
 
 FIXED = datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc)
+
+AUTHORED = example_framework()
 
 SIMPLE = CompetencyFramework(
     id="simple-v1",
@@ -154,12 +155,13 @@ def test_reasoning_effort_is_forwarded_only_when_the_policy_sets_it() -> None:
     assert primary.calls[0]["reasoning_effort"] == "low"
 
 
-def test_default_system_prompt_comes_from_the_platform_when_not_overridden() -> None:
-    primary = FakePrimary(content=json.dumps(example_payload_for(framework("sca-rcgp-v1").result_schema)))
-    evaluator(primary, frameworks=CatalogFrameworkProvider()).evaluate(
-        ATTEMPT, transcript(), policy(framework_id="sca-rcgp-v1"), scenario()
+def test_the_system_prompt_comes_from_the_framework_when_not_overridden() -> None:
+    """The rubric's author wrote the marking instructions; nothing is chosen by id."""
+    primary = FakePrimary(content=json.dumps(example_payload_for(AUTHORED.result_schema)))
+    evaluator(primary, frameworks=StaticFrameworkProvider(AUTHORED)).evaluate(
+        ATTEMPT, transcript(), policy(framework_id=AUTHORED.id), scenario()
     )
-    assert primary.calls[0]["messages"][0]["content"] == system_prompt("sca_feedback_assessment_v1")
+    assert primary.calls[0]["messages"][0]["content"] == AUTHORED.system_prompt
 
 
 def test_user_prompt_is_the_platform_template_plus_examiner_context() -> None:
@@ -174,14 +176,14 @@ def test_user_prompt_is_the_platform_template_plus_examiner_context() -> None:
     assert user == expected_prefix + "\n\n=== EXPECTED ANSWERS ===\nQ1"
 
 
-def test_real_sca_schema_round_trips_through_the_primary_path() -> None:
-    payload = example_payload_for(framework("sca-rcgp-v1").result_schema)
+def test_an_authored_schema_round_trips_through_the_primary_path() -> None:
+    payload = example_payload_for(AUTHORED.result_schema)
     primary = FakePrimary(content=json.dumps(payload))
-    result = evaluator(primary, frameworks=CatalogFrameworkProvider()).evaluate(
-        ATTEMPT, transcript(), policy(framework_id="sca-rcgp-v1"), scenario()
+    result = evaluator(primary, frameworks=StaticFrameworkProvider(AUTHORED)).evaluate(
+        ATTEMPT, transcript(), policy(framework_id=AUTHORED.id), scenario()
     )
     assert result.result == payload
-    assert primary.calls[0]["response_format"]["json_schema"]["name"] == "sca-rcgp-v1"
+    assert primary.calls[0]["response_format"]["json_schema"]["name"] == AUTHORED.id
 
 
 # --- fallback path --------------------------------------------------------------
@@ -281,8 +283,9 @@ def test_framework_without_a_schema_cannot_be_scored() -> None:
         )
 
 
-def test_framework_without_a_platform_prompt_needs_an_override() -> None:
-    with pytest.raises(EvaluationError, match="no system prompt for framework 'simple-v1'"):
+def test_a_framework_with_no_prompt_and_no_override_is_refused() -> None:
+    """There is no default to fall back on: a rubric nobody wrote a prompt for cannot be marked."""
+    with pytest.raises(EvaluationError, match="carries no system prompt"):
         evaluator(FakePrimary(content=json.dumps(GOOD))).evaluate(ATTEMPT, transcript(), policy(), scenario())
 
 

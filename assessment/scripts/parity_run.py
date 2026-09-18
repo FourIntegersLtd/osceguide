@@ -9,7 +9,7 @@
 
 Examples:
     poetry run python scripts/parity_run.py play --room unified_abc --identity user-1 --wav turn.wav --linger 30
-    poetry run python scripts/parity_run.py compare legacy.json new.json --framework sca-rcgp-v1 --evaluate --model gpt-5-mini
+    poetry run python scripts/parity_run.py compare legacy.json new.json --framework rubric.json --evaluate --model gpt-5-mini
 """
 
 from __future__ import annotations
@@ -78,11 +78,13 @@ def to_engine_transcript(attempt_id: str, turns: list[tuple[str, str]]) -> Trans
     )
 
 
-def evaluate(turns: list[tuple[str, str]], *, framework_id: str, model: str, reasoning_effort: str | None, station: str) -> dict[str, Any]:
+def evaluate(turns: list[tuple[str, str]], *, framework: "CompetencyFramework", model: str, reasoning_effort: str | None, station: str) -> dict[str, Any]:
     from openai import OpenAI
 
-    from osce_assessment.catalog import CatalogFrameworkProvider
     from osce_assessment.evaluation import LLMEvaluator
+    from osce_assessment.testing import StaticFrameworkProvider
+
+    framework_id = framework.id
 
     anthropic_client = None
     if os.environ.get("ANTHROPIC_API_KEY"):
@@ -96,7 +98,7 @@ def evaluate(turns: list[tuple[str, str]], *, framework_id: str, model: str, rea
         definition=AssessmentDefinition(id="parity", version="1", framework_id=framework_id, scenario_ref=ScenarioRef(source=ScenarioSource.INLINE, scenario_id="parity"),
                                         interaction_profile=AIInteractionProfile(mode=InteractionMode.PATIENT), evaluation_policy=policy, snapshot_at=datetime.now(timezone.utc)),
     )
-    evaluator = LLMEvaluator(CatalogFrameworkProvider(), lambda: OpenAI(), lambda: anthropic_client)
+    evaluator = LLMEvaluator(framework_provider=StaticFrameworkProvider(framework), primary_client=lambda: OpenAI(), fallback_client=lambda: anthropic_client)
     result = evaluator.evaluate(attempt, to_engine_transcript("parity", turns), policy, scenario)
     return {"sections": sorted(result.result), "provider": result.provider, "model": result.model, "fallback_used": result.raw_metadata.get("fallback_used")}
 
@@ -107,7 +109,10 @@ def cmd_compare(args: argparse.Namespace) -> int:
     reports = [shape_report("legacy", legacy), shape_report("new", new)]
     verdict = {"same_turn_count": reports[0]["turns"] == reports[1]["turns"], "same_role_counts": (reports[0]["user_turns"], reports[0]["assistant_turns"]) == (reports[1]["user_turns"], reports[1]["assistant_turns"])}
     if args.evaluate:
-        scored = [evaluate(t, framework_id=args.framework, model=args.model, reasoning_effort=args.reasoning_effort, station=args.station) for t in (legacy, new)]
+        from osce_assessment.contracts import CompetencyFramework
+
+        framework = CompetencyFramework.model_validate(json.loads(Path(args.framework).read_text()))
+        scored = [evaluate(t, framework=framework, model=args.model, reasoning_effort=args.reasoning_effort, station=args.station) for t in (legacy, new)]
         verdict["same_sections"] = scored[0]["sections"] == scored[1]["sections"]
         reports[0]["evaluation"], reports[1]["evaluation"] = scored
     print(json.dumps({"reports": reports, "verdict": verdict}, indent=2))
@@ -145,7 +150,9 @@ def main(argv: list[str] | None = None) -> int:
     compare = sub.add_parser("compare", help="compare two stored transcripts")
     compare.add_argument("legacy")
     compare.add_argument("new")
-    compare.add_argument("--framework", default="sca-rcgp-v1")
+    # A framework is authored data now, so the bench is handed one as a file
+    # rather than naming one the engine used to ship.
+    compare.add_argument("--framework", help="path to a JSON CompetencyFramework (required with --evaluate)")
     compare.add_argument("--evaluate", action="store_true")
     compare.add_argument("--model", default="gpt-5-mini")
     compare.add_argument("--reasoning-effort", default="low")

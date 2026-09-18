@@ -44,14 +44,13 @@ from osce_assessment.prompts._blocks import DOCTOR_NEVER, EXAMINER_NEVER, PATIEN
 from osce_assessment.prompts.debrief_prompt import TUTOR_NEVER  # noqa: E402
 from osce_assessment.prompts import (  # noqa: E402
     AthenaDoctorFormatter,
-    ConversationPromptFormatter,
     DebriefPromptFormatter,
     ManagementPlanFormatter,
     OrthoFeedbackFormatter,
-    OrthoPromptFormatter,
     PlabFeedbackFormatter,
     ScaFeedbackFormatter,
     TranscriptFormatter,
+    create_station_prompt,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -237,14 +236,14 @@ def render_prompt(role: str, script: dict) -> tuple[str, str]:
         return _debrief_prompt(script["context"]), reminder
     if role == "examiner":
         station = json.loads((STATIONS / f"{script['station']}.json").read_text())
-        return OrthoPromptFormatter.create_ortho_prompt(station), reminder
+        return create_station_prompt(station, station.get("layout"), persona="examiner"), reminder
     if role == "doctor":
         context = script["context"]
         return AthenaDoctorFormatter.create_prompt(
             context["station_name"], context["doctor_information"], context["management_plan"]
         ), reminder
     station = json.loads((STATIONS / f"{script['station']}.json").read_text())
-    return ConversationPromptFormatter.create_prompt(station), reminder
+    return create_station_prompt(station, station.get("layout")), reminder
 
 
 def _debrief_prompt(context: dict) -> str:

@@ -9,6 +9,7 @@ from typing import Any
 BOOTSTRAP_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}"
 SCENE_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/scene"
 TRANSCRIPT_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/transcript"
+TOOL_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/tools/{tool_name}"
 COMPLETION_PATH_TEMPLATE = "/api/worker/sessions/{session_id}/complete"
 
 

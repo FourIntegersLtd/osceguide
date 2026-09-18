@@ -16,7 +16,9 @@ from osce_assessment.contracts import (
     ScenarioRef,
     ScenarioSource,
 )
-from osce_assessment.catalog import SCA_RCGP_V1
+from osce_assessment.testing import example_framework
+
+FRAMEWORK = example_framework()
 
 FIXED_TIME = datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc)
 
@@ -43,7 +45,7 @@ def definition() -> AssessmentDefinition:
     return AssessmentDefinition(
         id="def-chest-pain",
         version="3",
-        framework_id=SCA_RCGP_V1.id,
+        framework_id=FRAMEWORK.id,
         scenario_ref=ScenarioRef(source=ScenarioSource.LIBRARY, scenario_id="station-chest-pain"),
         interaction_profile=AIInteractionProfile(
             mode=InteractionMode.PATIENT,
@@ -51,7 +53,7 @@ def definition() -> AssessmentDefinition:
             tools=("search_help_faqs",),
         ),
         evaluation_policy=EvaluationPolicy(
-            framework_id=SCA_RCGP_V1.id,
+            framework_id=FRAMEWORK.id,
             primary_model="primary-model",
             primary_reasoning_effort="low",
             fallback_model="fallback-model",

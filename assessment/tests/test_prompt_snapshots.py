@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from osce_assessment.prompts import (
-    ConversationPromptFormatter,
+    DashboardTutorFormatter,
     DebriefPromptFormatter,
     ManagementPlanFormatter,
     OrthoClinicalSkillFeedbackFormatter,
@@ -29,8 +29,9 @@ from osce_assessment.prompts import (
     OrthoPrioritisationSkillFeedbackFormatter,
     PlabFeedbackFormatter,
     ScaFeedbackFormatter,
+    StationPromptFormatter,
     TranscriptFormatter,
-    create_org_station_prompt,
+    create_station_prompt,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -44,16 +45,23 @@ def _snapshot(name: str) -> str:
     return (FIXTURES / "prompts" / f"{name}.txt").read_text(encoding="utf-8")
 
 
-def test_library_station_prompt_matches_snapshot() -> None:
-    assert ConversationPromptFormatter.create_prompt(_load("stations/library_station_sca.json")) == _snapshot("library_station_sca")
+def test_untemplated_station_prompt_matches_snapshot() -> None:
+    """No layout: block ids are matched against the common spellings."""
+    assert create_station_prompt(_load("stations/untemplated_station.json")) == _snapshot("untemplated_station")
 
 
-def test_default_station_prompt_matches_snapshot() -> None:
-    assert ConversationPromptFormatter.create_prompt(None) == _snapshot("library_station_default")
+def test_templated_station_prompt_matches_snapshot() -> None:
+    """With a layout, the template's own block ids are placed by role."""
+    station = _load("stations/templated_station.json")
+    assert create_station_prompt(station, station["layout"]) == _snapshot("templated_station")
 
 
-def test_org_station_prompt_matches_snapshot() -> None:
-    assert create_org_station_prompt(_load("stations/org_station_demo.json")) == _snapshot("org_station_demo")
+def test_the_examiner_blocks_never_reach_the_patient() -> None:
+    station = _load("stations/templated_station.json")
+    prompt = create_station_prompt(station, station["layout"])
+    assert "Expected answers" not in prompt and "cessation support" not in prompt
+    context = StationPromptFormatter.examiner_context(station, station["layout"])
+    assert context is not None and "cessation support" in context
 
 
 def test_sca_feedback_rendering_matches_legacy() -> None:
@@ -96,6 +104,12 @@ def test_debrief_prompt_matches_snapshot() -> None:
         station_type="",
     )
     assert prompt == _snapshot("debrief_prompt_sca")
+
+
+def test_dashboard_tutor_prompt_matches_snapshot() -> None:
+    """A change here changes what a learner's tutor is allowed to claim to remember."""
+    prompt = DashboardTutorFormatter.create_prompt(_load("tutor/brief.json"), labels={"summaries": "A to Z", "slides": "Slides", "stations": "AI Practice"})
+    assert prompt == _snapshot("dashboard_tutor")
 
 
 def test_transcript_formatter_labels_speakers_and_drops_empty_turns() -> None:

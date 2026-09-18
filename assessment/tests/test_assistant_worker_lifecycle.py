@@ -77,6 +77,7 @@ def fake_agent(monkeypatch):
     monkeypatch.setattr(session_module, "build_computer_toolset", _computer_toolset)
     monkeypatch.setattr(session_module, "build_offer_navigation_modes_tool", lambda ctx: "nav-mode-tool")
     monkeypatch.setattr(session_module, "build_check_time_tool", lambda clock: "check-time-tool")
+    monkeypatch.setattr(session_module, "build_remote_tools", lambda endpoints, session_id, specs, publish: [f"remote:{endpoints.label}:{session_id}:{s.name}" for s in specs])
     return builds
 
 
@@ -163,6 +164,28 @@ def test_a_help_session_without_a_backend_greeting_lets_the_model_open(fake_agen
 
 def test_a_mode_without_screen_guidance_gets_no_tools(fake_agent) -> None:
     bootstrap = AssistantSession(session_id="unified_1", worker_type="dashboard", candidate_ref="user-1", instructions="Coach.")
+    _run(bootstrap)
+    assert fake_agent[0]["pipeline_tools"] == []
+
+
+TOOLS = [
+    {"name": "lookup_notes", "description": "Find a note.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}}},
+    {"name": "show_item", "description": "Show something.", "parameters": {"type": "object", "properties": {"ref": {"type": "string"}}}},
+]
+
+
+def test_a_dashboard_session_registers_the_backends_tools_and_delivers_its_turns(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="dashboard", candidate_ref="user-1", instructions="Rendered tutor prompt.", greeting="Welcome back.", tools=TOOLS)
+    voice, ctx, _ = _run(bootstrap)
+    build = fake_agent[0]
+    assert build["pipeline_tools"] == ["remote:practice:unified_1:lookup_notes", "remote:practice:unified_1:show_item"]
+    assert build["pipeline_llm"] == "llm:dashboard" and build["max_tool_steps"] == 5
+    assert voice.recorder is not None and voice.delivery is not None, "the turns go back to the backend for summarising"
+    assert len(ctx.shutdown_callbacks) >= 2  # cloud slot release + transcript delivery
+
+
+def test_a_mode_that_does_not_load_tools_ignores_any_the_backend_sends(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.", tools=TOOLS)
     _run(bootstrap)
     assert fake_agent[0]["pipeline_tools"] == []
 

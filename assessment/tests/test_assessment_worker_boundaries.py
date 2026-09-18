@@ -10,7 +10,7 @@ from pathlib import Path
 
 PACKAGE = Path(__file__).resolve().parents[1] / "packages" / "livekit_assessment_worker"
 
-FORBIDDEN_IMPORTS = ("osce_assessment.prompts", "osce_assessment.evaluation", "osce_assessment.catalog", "osce_assessment.schemas", "osce_assessment.compat")
+FORBIDDEN_IMPORTS = ("osce_assessment.prompts", "osce_assessment.evaluation", "osce_assessment.schemas")
 FORBIDDEN_WORDS = re.compile(r"\b(b2c|b2b|bmj|employer|org_slug|tenant_slug|app_type|station|firestore|supabase|exam)\b", re.IGNORECASE)
 
 
