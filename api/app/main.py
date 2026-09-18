@@ -25,6 +25,7 @@ from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
 from app.core.memberships import bind_membership_lookup
+from app.core.observability import configure_sentry
 from app.core.openapi import (
     TAGS,
     document_shared_auth_errors,
@@ -156,6 +157,8 @@ def worker_router() -> APIRouter:
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings)
+    if configure_sentry(settings):
+        get_logger(__name__).info("error reporting on", environment=settings.app_env.value)
 
     app = FastAPI(
         title=settings.app_name,

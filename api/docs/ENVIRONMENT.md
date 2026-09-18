@@ -48,7 +48,8 @@ least 32 characters.
 | `MARKING_PRIMARY_MODEL` / `_EFFORT` | gpt-5-mini / low | Effort is set *explicitly* because unset means "medium" under any gpt-5 model — a cost decision nobody made. |
 | `MARKING_FALLBACK_MODEL` / `ANTHROPIC_API_KEY` | claude-sonnet-4-5 | Fallback marking. |
 | `WORKER_CONCURRENCY` | 4 | Background job parallelism. |
-| `FRONTEND_URL` / `LOG_LEVEL` / `SENTRY_DSN` | localhost:3000 / INFO / — | Link building, logging, error reporting. Logs become JSON automatically when deployed. |
+| `FRONTEND_URL` / `LOG_LEVEL` | localhost:3000 / INFO | Link building and logging. Logs become JSON automatically when deployed. |
+| `SENTRY_DSN` | — | Error reporting, off unless set. Traces are sampled at 5% because an API the console polls would otherwise bill for its own heartbeat, and the request body is never sent — it holds passwords, legacy tokens and transcripts. |
 
 ## Local gotcha
 
