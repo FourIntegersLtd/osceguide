@@ -3020,6 +3020,7 @@
               "station_template_not_found",
               "station_template_version_not_found",
               "template_not_published",
+              "too_many_requests",
               "tool_arguments_invalid",
               "trainee_exists",
               "trainee_not_found",
@@ -9937,6 +9938,19 @@
             },
             "description": "Validation Error"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          },
           "503": {
             "content": {
               "application/json": {
@@ -10004,6 +10018,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "summary": "Login",
@@ -10107,6 +10134,19 @@
             "description": "invalid_input",
             "x-codes": [
               "invalid_input"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },

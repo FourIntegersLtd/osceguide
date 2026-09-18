@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -10,6 +10,14 @@ from app.core.db import get_session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.ports import ClockDep
+from app.core.rate_limit import (
+    LEGACY_EXCHANGE,
+    PASSWORD_RESET,
+    SIGN_IN,
+    TooManyRequests,
+    caller_key,
+    check,
+)
 from app.core.settings import SettingsDep
 from app.features.identity import (
     errors,
@@ -50,15 +58,17 @@ async def register(
 @router.post(
     "/auth/login",
     response_model=schemas.AuthResult,
-    responses=error_responses(errors.InvalidCredentials, errors.AccountSuspended),
+    responses=error_responses(errors.InvalidCredentials, errors.AccountSuspended, TooManyRequests),
 )
 async def login(
+    request: Request,
     body: schemas.LoginRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.AuthResult:
+    await check(SIGN_IN, caller_key(request))
     return await service_sessions.login_with_memberships(
         session,
         email=body.email,
@@ -98,9 +108,11 @@ async def refresh(
         errors.LegacyAccountNotImported,
         errors.AccountSuspended,
         errors.LegacyExchangeUnavailable,
+        TooManyRequests,
     ),
 )
 async def exchange_legacy(
+    request: Request,
     body: schemas.LegacyExchangeRequest,
     session: Session,
     memberships_for: MembershipsFor,
@@ -108,6 +120,7 @@ async def exchange_legacy(
     clock: ClockDep,
 ) -> schemas.AuthResult:
     """Sign in here with the session the old backend already gave you."""
+    await check(LEGACY_EXCHANGE, caller_key(request))
     return await service_legacy.exchange(
         session,
         provider=body.provider,
@@ -163,13 +176,17 @@ async def logout(
     status_code=status.HTTP_202_ACCEPTED,
     # 202 whether or not the address exists, so the only failure is a malformed
     # request. Saying more would turn this into an account-enumeration oracle.
-    responses=error_responses(InvalidInput),
+    responses=error_responses(InvalidInput, TooManyRequests),
 )
 async def begin_password_reset(
+    request: Request,
     body: schemas.PasswordResetRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
 ) -> schemas.Accepted:
+    # Tighter than sign-in: the cost of this request is an email to an inbox
+    # the caller chose, which is not theirs.
+    await check(PASSWORD_RESET, caller_key(request))
     await service_passwords.begin_password_reset(session, email=body.email, now=clock.now())
     return schemas.Accepted()
 

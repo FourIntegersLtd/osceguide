@@ -31,6 +31,11 @@ live inside it and are never addressed independently.
 - `email` is unique, case-insensitive. The migration merges b2c's four `*_users`
   collections and `b2b_users` on the lowercased address.
 - A password is stored only as an argon2id hash. No SHA-256, salted or otherwise.
+- The three routes an attacker gains something by repeating — sign-in, password
+  reset and the legacy exchange — are rate limited per caller address
+  (`core.rate_limit`). It **fails open**: an unreachable Redis allows the call,
+  because a cache outage must not become an outage of signing in. It raises the
+  cost of password spraying; it was never the only thing in the way.
 - The legacy bridge verifies, never mints: the retiring backends' signing secrets are read
   only to check a signature, an arm with no secret configured refuses every
   exchange, and an address with no row here is refused rather than created. What
@@ -48,11 +53,11 @@ live inside it and are never addressed independently.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/auth/register` | none | 201; `email_taken` (409), `weak_password` (422) |
-| POST | `/api/v1/auth/login` | none | `invalid_credentials` (401), `account_suspended` (403) |
+| POST | `/api/v1/auth/login` | none | `invalid_credentials` (401), `account_suspended` (403), `too_many_requests` (429) |
 | POST | `/api/v1/auth/refresh` | refresh token | `invalid_refresh_token` (401) on reuse or expiry |
 | POST | `/api/v1/auth/exchange-legacy` | a token from the retiring backend | `invalid_legacy_token` (401), `legacy_account_not_imported` (401), `legacy_exchange_unavailable` (503). Deleted at decommission |
 | POST | `/api/v1/auth/logout` | bearer | revokes the presented chain |
-| POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists |
+| POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists; `too_many_requests` (429) |
 | POST | `/api/v1/auth/password-reset/confirm` | reset token | `invalid_reset_token` (400) |
 | POST | `/api/v1/auth/change-password` | bearer | the only route allowed while `must_change_password` |
 | POST | `/api/v1/auth/stream-ticket` | bearer | a 60-second credential for one `EventSource` (ADR 0015) |
