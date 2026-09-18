@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.billing import repository as billing_repo
 from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
+from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
@@ -351,3 +352,94 @@ async def test_a_payment_taken_before_receipts_existed_is_not_listed(
     listed = await client.get("/api/v1/me/receipts", headers=bearer(buyer))
     assert listed.status_code == 200
     assert listed.json()["items"] == []
+
+
+async def test_starting_a_checkout_returns_somewhere_to_pay(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """There was no way to start a purchase at all: the platform could take a
+    webhook and had nothing that made one arrive."""
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    token = await make_actor("buyer@example.com")
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token)
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["checkout_url"] == fake.url
+
+    # The plan row owns the price. b2c matched the pence paid against a
+    # hardcoded table, so a price change broke purchases after the card had
+    # been charged.
+    assert fake.calls[0]["price_id"] == "price_one_month"
+    assert fake.calls[0]["customer_email"] == "buyer@example.com"
+
+
+async def test_starting_a_checkout_grants_nothing(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Access arrives when the webhook says the money did.
+
+    Somebody who abandons the Stripe page, or never finishes 3-D Secure, has
+    started a checkout and bought nothing.
+    """
+    from sqlalchemy import func, select
+
+    from app.features.billing import service_checkout
+    from app.features.entitlements.models import Entitlement
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    token = await make_actor("abandoner@example.com")
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = (  # type: ignore[attr-defined]
+        lambda: FakeCheckoutSessions()
+    )
+
+    await client.post("/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token))
+    assert await db_session.scalar(select(func.count()).select_from(Entitlement)) == 0
+
+
+async def test_a_plan_that_is_not_for_sale_is_refused(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    token = await make_actor("browser@example.com")
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "made_up"}, headers=bearer(token)
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "plan_not_available"
+    # Refused before Stripe was troubled.
+    assert not fake.calls
+
+
+async def test_a_processor_that_is_down_says_try_again(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """503, not 500: it is usually transient, and Stripe's own error text is
+    not something to put in front of a customer."""
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    token = await make_actor("unlucky@example.com")
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = (  # type: ignore[attr-defined]
+        lambda: FakeCheckoutSessions(fails=True)
+    )
+
+    response = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token)
+    )
+    assert response.status_code == 503
+    assert response.json()["code"] == "checkout_failed"
+    assert "stripe is down" not in response.text

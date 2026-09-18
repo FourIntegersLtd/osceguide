@@ -319,3 +319,42 @@ class FakeMaterialIndex:
             and self.exam_of.get((p.corpus, p.source_id)) in wanted
         ]
         return hits[:limit]
+
+
+class FakeCheckoutSessions:
+    """Records what a checkout was asked for, or refuses on demand.
+
+    A fake rather than a patched `httpx`: the port exists so that "this plan
+    is not for sale" can be proven without an internet connection or a Stripe
+    account, which is the difference between a test that runs and one that
+    gets skipped.
+    """
+
+    def __init__(self, *, url: str = "https://checkout.stripe.test/c/pay/abc", fails: bool = False) -> None:
+        self.url = url
+        self.fails = fails
+        self.calls: list[dict[str, str]] = []
+
+    async def create(
+        self,
+        *,
+        price_id: str,
+        customer_email: str,
+        success_url: str,
+        cancel_url: str,
+        client_reference: str,
+    ) -> str:
+        from app.core.ports import CheckoutUnavailable
+
+        self.calls.append(
+            {
+                "price_id": price_id,
+                "customer_email": customer_email,
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+                "client_reference": client_reference,
+            }
+        )
+        if self.fails:
+            raise CheckoutUnavailable("stripe is down")
+        return self.url

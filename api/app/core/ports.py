@@ -67,6 +67,32 @@ class EmailDeliveryFailed(Exception):
 
 
 @runtime_checkable
+class CheckoutSessions(Protocol):
+    """Starting a payment with the card processor.
+
+    A port because Stripe is the one outbound dependency this backend *initiates* a
+    call to, and a test that had to reach Stripe to prove a plan is refused
+    would not be run. The webhook that finishes the purchase needs no port:
+    it arrives as an HTTP request and is verified from its signature.
+    """
+
+    async def create(
+        self, *, price_id: str, customer_email: str, success_url: str, cancel_url: str, client_reference: str
+    ) -> str:
+        """Start a checkout and return the URL to send the customer to.
+
+        Raises `CheckoutUnavailable` when the processor cannot be reached or
+        refuses. Never returns a URL it is not sure of: sending somebody to a
+        broken checkout is worse than telling them it did not work.
+        """
+        ...
+
+
+class CheckoutUnavailable(Exception):
+    """The card processor could not start a checkout."""
+
+
+@runtime_checkable
 class EmailSender(Protocol):
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
         """Send one email and return the provider's message id. Raises EmailDeliveryFailed."""

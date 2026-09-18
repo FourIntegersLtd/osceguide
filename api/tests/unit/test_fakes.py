@@ -59,3 +59,12 @@ async def test_the_fake_material_index_filters_by_exam_like_the_real_one() -> No
 
     assert await index.search(query="asthma", exam_ids=["exam-a"], corpus=None, limit=3) == []
     assert await index.search(query="asthma", exam_ids=["exam-b"], corpus=None, limit=3) != []
+
+
+def test_the_checkout_fake_conforms_to_the_port() -> None:
+    """The port exists so "this plan is not for sale" can be proven without
+    an internet connection or a Stripe account."""
+    from app.core.ports import CheckoutSessions
+    from tests.support.fakes import FakeCheckoutSessions
+
+    assert isinstance(FakeCheckoutSessions(), CheckoutSessions)

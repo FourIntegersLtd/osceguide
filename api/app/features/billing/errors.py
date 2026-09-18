@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.errors import AppError, Conflict, InvalidInput, NotFound
+from app.core.errors import AppError, Conflict, InvalidInput, NotFound, Unavailable
 
 
 class UnknownPlanError(NotFound):
@@ -64,3 +64,26 @@ class ReceiptNotFound(NotFound):
 
     code = "receipt_not_found"
     default_message = "No such receipt"
+
+
+class PlanNotAvailable(NotFound):
+    """No such plan, or one that is no longer sold.
+
+    Not `unknown_plan`, which means a *charged* payment with nothing to grant
+    and is a different emergency. This one is a customer asking for something
+    that is not on the menu.
+    """
+
+    code = "plan_not_available"
+    default_message = "That plan is not available"
+
+
+class CheckoutFailed(Unavailable):
+    """The card processor could not start a checkout.
+
+    503 rather than 500: it is very often transient, and the client should
+    say "try again" rather than "something is broken".
+    """
+
+    code = "checkout_failed"
+    default_message = "We could not start the checkout. Try again in a moment."

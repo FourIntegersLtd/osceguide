@@ -153,5 +153,16 @@ async def payment_by_receipt_id(session: AsyncSession, user_id: uuid.UUID, recei
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def plan_by_code(session: AsyncSession, code: str) -> Plan | None:
+    """The plan a customer names when they start a checkout.
+
+    By code rather than by price id: the price id is Stripe's and changes
+    when a price does, and a client naming one would be choosing what it
+    pays.
+    """
+    stmt = select(Plan).where(Plan.code == code, Plan.active.is_(True))
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def plan_by_id(session: AsyncSession, plan_id: uuid.UUID) -> Plan | None:
     return (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()

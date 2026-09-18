@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PlanRead(BaseModel):
@@ -40,3 +40,15 @@ class ReceiptRead(BaseModel):
     stripe_receipt_url: str | None = None
     seller_name: str
     footer_extra: str
+
+
+class StartCheckout(BaseModel):
+    """Which plan to buy. A code, never a price: the plan row owns the price."""
+
+    plan_code: str = Field(min_length=1, max_length=32)
+
+
+class CheckoutStarted(BaseModel):
+    """Where to send the customer. Nothing is granted until the webhook."""
+
+    checkout_url: str

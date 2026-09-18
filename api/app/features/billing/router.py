@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,9 +11,9 @@ from app.core.db import get_session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.openapi import DOCUMENT_MEDIA_TYPE
 from app.core.pagination import Page
-from app.core.ports import ClockDep
+from app.core.ports import CheckoutSessions, ClockDep
 from app.core.settings import SettingsDep
-from app.features.billing import errors, schemas, service, service_receipts
+from app.features.billing import errors, schemas, service, service_checkout, service_receipts
 
 router = APIRouter(tags=["billing"])
 
@@ -112,3 +112,33 @@ async def read_receipt_document(
     """
     html = await service_receipts.read_receipt_document(session, principal.user_id, receipt_id)
     return HTMLResponse(content=html)
+
+
+@router.post(
+    "/billing/checkout",
+    response_model=schemas.CheckoutStarted,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Unauthenticated, errors.PlanNotAvailable, errors.CheckoutFailed),
+)
+async def start_checkout(
+    body: schemas.StartCheckout,
+    principal: CurrentPrincipal,
+    session: Session,
+    settings: SettingsDep,
+    checkout: Annotated[CheckoutSessions, Depends(service_checkout.get_checkout)],
+) -> schemas.CheckoutStarted:
+    """Begin paying for a plan.
+
+    The client names a plan code and never a price or an amount: b2c matched
+    the pence paid against a hardcoded table, so a price change broke
+    purchases after the card was charged.
+    """
+    url = await service_checkout.start_checkout(
+        session,
+        user_id=principal.user_id,
+        email=principal.email,
+        plan_code=body.plan_code,
+        checkout=checkout,
+        settings=settings,
+    )
+    return schemas.CheckoutStarted(checkout_url=url)

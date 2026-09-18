@@ -742,6 +742,20 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CheckoutStarted": {
+        "description": "Where to send the customer. Nothing is granted until the webhook.",
+        "properties": {
+          "checkout_url": {
+            "title": "Checkout Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkout_url"
+        ],
+        "title": "CheckoutStarted",
+        "type": "object"
+      },
       "ChunkPost": {
         "properties": {
           "attempt_id": {
@@ -2919,6 +2933,7 @@
               "attempt_not_yours",
               "audience_not_yours",
               "cannot_claim_own_post",
+              "checkout_failed",
               "circuit_already_ended",
               "circuit_locked",
               "circuit_not_found",
@@ -2989,6 +3004,7 @@
               "payment_already_recorded",
               "peer_session_not_found",
               "peer_session_not_open",
+              "plan_not_available",
               "post_not_found",
               "post_not_yours",
               "post_unavailable",
@@ -7038,6 +7054,22 @@
         "title": "SlotReviewsRead",
         "type": "object"
       },
+      "StartCheckout": {
+        "description": "Which plan to buy. A code, never a price: the plan row owns the price.",
+        "properties": {
+          "plan_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Plan Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_code"
+        ],
+        "title": "StartCheckout",
+        "type": "object"
+      },
       "StartSession": {
         "properties": {
           "extras": {
@@ -10421,6 +10453,92 @@
         "summary": "Switch Workspace",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/billing/checkout": {
+      "post": {
+        "description": "Begin paying for a plan.\n\nThe client names a plan code and never a price or an amount: b2c matched\nthe pence paid against a hardcoded table, so a price change broke\npurchases after the card was charged.",
+        "operationId": "billing_start_checkout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartCheckout"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "plan_not_available",
+            "x-codes": [
+              "plan_not_available"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "checkout_failed",
+            "x-codes": [
+              "checkout_failed"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Checkout",
+        "tags": [
+          "billing"
         ]
       }
     },
