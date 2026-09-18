@@ -11,7 +11,14 @@ from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
-from app.features.identity import errors, schemas, service, service_passwords, service_sessions
+from app.features.identity import (
+    errors,
+    schemas,
+    service,
+    service_legacy,
+    service_passwords,
+    service_sessions,
+)
 
 router = APIRouter(tags=["identity"])
 
@@ -77,6 +84,34 @@ async def refresh(
     return await service_sessions.refresh(
         session,
         refresh_token=body.refresh_token,
+        memberships_for=memberships_for,
+        settings=settings,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/auth/exchange-legacy",
+    response_model=schemas.AuthResult,
+    responses=error_responses(
+        errors.InvalidLegacyToken,
+        errors.LegacyAccountNotImported,
+        errors.AccountSuspended,
+        errors.LegacyExchangeUnavailable,
+    ),
+)
+async def exchange_legacy(
+    body: schemas.LegacyExchangeRequest,
+    session: Session,
+    memberships_for: MembershipsFor,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.AuthResult:
+    """Sign in here with the session the old backend already gave you."""
+    return await service_legacy.exchange(
+        session,
+        provider=body.provider,
+        token=body.token,
         memberships_for=memberships_for,
         settings=settings,
         now=clock.now(),

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, InvalidInput, NotFound, Unauthenticated
+from app.core.errors import Conflict, InvalidInput, NotFound, Unauthenticated, Unavailable
 
 
 class EmailTaken(Conflict):
@@ -63,3 +63,41 @@ class UserNotFound(NotFound):
 
     code = "user_not_found"
     default_message = "No such user"
+
+
+class InvalidLegacyToken(Unauthenticated):
+    """A legacy token that does not verify, has expired, or names no address.
+
+    One code for every one of those, for the reason `InvalidCredentials` has
+    one: the client's next move is identical — send the person back to the
+    legacy login — and distinguishing them tells an attacker which half of a
+    forged token to fix.
+    """
+
+    code = "invalid_legacy_token"  # noqa: S105 — an error code, not a secret
+    default_message = "Sign in again"
+
+
+class LegacyAccountNotImported(Unauthenticated):
+    """The token verified, but no platform account holds that address.
+
+    Deliberately its own code rather than `invalid_legacy_token`. The caller
+    proved they hold that address by presenting a signed token for it, so
+    naming the condition reveals nothing they did not already know, and the
+    frontend needs to tell those two apart: this one means "stay on the legacy
+    backend", not "sign in again".
+    """
+
+    code = "legacy_account_not_imported"
+    default_message = "This account has not been migrated yet"
+
+
+class LegacyExchangeUnavailable(Unavailable):
+    """No verifying secret is configured for that legacy backend.
+
+    Fails closed, like the worker guard: an unset secret must refuse every
+    exchange rather than accept an unverified token.
+    """
+
+    code = "legacy_exchange_unavailable"
+    default_message = "Legacy sign-in is not available here"

@@ -3010,6 +3010,7 @@
               "invalid_credentials",
               "invalid_exam_code",
               "invalid_input",
+              "invalid_legacy_token",
               "invalid_rag",
               "invalid_refresh_token",
               "invalid_reset_token",
@@ -3018,6 +3019,8 @@
               "invalid_signature",
               "invalid_webhook",
               "invalid_workflow",
+              "legacy_account_not_imported",
+              "legacy_exchange_unavailable",
               "media_already_published",
               "media_not_editable",
               "media_not_found",
@@ -3766,6 +3769,31 @@
           "exam_code"
         ],
         "title": "JoinQueue",
+        "type": "object"
+      },
+      "LegacyExchangeRequest": {
+        "description": "Trade a token one of the legacy backends issued for a platform pair.\n\n`provider` is a closed set rather than a string because it selects the\nsecret the token is verified against; an open one would let the caller\nchoose its own key.",
+        "properties": {
+          "provider": {
+            "enum": [
+              "consumer",
+              "institution"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "token"
+        ],
+        "title": "LegacyExchangeRequest",
         "type": "object"
       },
       "LibraryStationRead": {
@@ -9874,6 +9902,76 @@
           }
         ],
         "summary": "Change Password",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/auth/exchange-legacy": {
+      "post": {
+        "description": "Sign in here with the session the old backend already gave you.",
+        "operationId": "identity_exchange_legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegacyExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_legacy_token, legacy_account_not_imported, account_suspended",
+            "x-codes": [
+              "invalid_legacy_token",
+              "legacy_account_not_imported",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "legacy_exchange_unavailable",
+            "x-codes": [
+              "legacy_exchange_unavailable"
+            ]
+          }
+        },
+        "summary": "Exchange Legacy",
         "tags": [
           "identity"
         ]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -60,6 +61,18 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=512)
+
+
+class LegacyExchangeRequest(BaseModel):
+    """Trade a token one of the legacy backends issued for a platform pair.
+
+    `provider` is a closed set rather than a string because it selects the
+    secret the token is verified against; an open one would let the caller
+    choose its own key.
+    """
+
+    provider: Literal["consumer", "institution"]
+    token: str = Field(min_length=1, max_length=4096)
 
 
 class RefreshRequest(BaseModel):

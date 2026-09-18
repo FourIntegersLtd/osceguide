@@ -69,6 +69,18 @@ class Settings(BaseSettings):
     worker_secret: str = ""
     worker_secret_header: str = "X-Worker-Secret"  # noqa: S105 — a header name, not a secret
 
+    # --- The legacy login bridge (deleted at decommission) ---
+    # Nobody's password came across in the migration, so a person who already
+    # had an account has no credential here. `POST /auth/exchange-legacy`
+    # verifies the token their current login gave them and issues a platform
+    # pair in return. Named for the two arms the platform serves rather than
+    # for the backends being retired, because the vocabulary outlives them.
+    # These secrets are read only to *verify*, never to mint, and leaving one
+    # unset disables that arm's exchange rather than trusting anything — which
+    # is why neither has a default.
+    legacy_consumer_jwt_secret: str = ""
+    legacy_institution_jwt_secret: str = ""
+
     # LiveKit. `voice_backend_label` is the key the worker looks this API up by
     # in its own VOICE_BACKENDS_JSON, so all three deployments can coexist
     # under different labels during a cutover.

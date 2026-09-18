@@ -28,6 +28,11 @@ os.environ.setdefault("WORKER_SECRET", "test-worker-secret")
 os.environ.setdefault("REDIS_DISABLED", "1")
 os.environ.setdefault("LIVEKIT_URL", "wss://livekit.test")
 os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_secret")
+# The legacy login bridge. Set here so the exchange route is exercised in
+# its configured state; `test_legacy_exchange_routes` covers the unset one
+# by overriding the setting, because an unset secret must fail closed.
+os.environ.setdefault("LEGACY_CONSUMER_JWT_SECRET", "legacy-consumer-test-secret")
+os.environ.setdefault("LEGACY_INSTITUTION_JWT_SECRET", "legacy-institution-test-secret")
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
