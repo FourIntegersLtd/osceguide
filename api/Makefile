@@ -21,6 +21,7 @@ help:
 	@echo "  make engine-dev  install osce_assessment from the local checkout, editable"
 	@echo "  make bootstrap-admin EMAIL=you@example.com   make the first platform admin"
 	@echo "  make status      regenerate the evidence half of docs/STATUS.md"
+	@echo "  make seed-platform  author the four consumer exams and rubrics (dry run)"
 	@echo "  make data-model  check docs/DATA-MODEL.md against the schema"
 
 install:
@@ -98,6 +99,16 @@ engine-dev:
 # STATUS.md drifted from the code badly enough that slices were described as
 # complete while their rules had no caller. The generated half is derived, and
 # `status-check` fails when it no longer matches.
+# A migrated database has no exams and no rubrics (ADR 0016), so nothing can
+# be run in it until the platform catalogue is authored. Idempotent: an exam
+# that already exists is left exactly as it is.
+seed-platform:
+	poetry run python scripts/seed_platform.py --dry-run
+	@echo "That was a dry run. Re-run with: poetry run python scripts/seed_platform.py"
+
+generate-seed:
+	poetry run python scripts/generate_platform_seed.py
+
 status:
 	poetry run python scripts/status_report.py --write
 
