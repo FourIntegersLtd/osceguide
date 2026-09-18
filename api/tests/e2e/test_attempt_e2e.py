@@ -13,9 +13,12 @@ It reuses `assessment-platform/tests/e2e/_harness.py` for the LiveKit parts —
 token minting, dispatch, playing a WAV as the candidate — because that harness
 is already proven against the worker.
 
-**First run 2026-09-18, against a local API and a real LiveKit room.** It needs a LiveKit project, Deepgram and OpenAI keys, a
-sibling `assessment-platform` checkout and a live API; I had none of those, so
-treat the first run as part of the test rather than a formality.
+**First run 2026-09-18**, against a local API and a real LiveKit room. It was
+written months earlier and never executed, and the first run found three
+defects in the test itself — the import of the worker's harness, the
+interpreter it started the worker on, and seed data nothing creates. It needs
+a LiveKit project, Deepgram and OpenAI keys, a sibling `assessment-platform`
+checkout and a live API. It has still never run against a deployed one.
 
     make db-up && make migrate && make start        # terminal 1
 
