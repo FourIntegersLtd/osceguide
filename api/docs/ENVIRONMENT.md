@@ -57,3 +57,20 @@ A populated local `.env` has been observed breaking tests in the legacy `b2b-api
 worker-secret and LiveKit values leak into the test run and five tests fail. Those
 failures are environmental, not regressions. Check what your `.env` is injecting before
 chasing a red suite.
+
+## Building the image
+
+`ENGINE_REPO_TOKEN` is not a runtime setting: it is a **build** argument, and
+the only thing it does is let `poetry install` read the private repository the
+marking engine lives in. Pass it to `docker build --build-arg`, and set the
+same value as the `ENGINE_REPO_TOKEN` secret in GitHub Actions. Make it
+read-only, scoped to `OSCEGuide-assessment-platform`, and give it an expiry:
+a build argument is recorded in the image metadata and `docker history` will
+show it. A builder that supports BuildKit secrets should use
+`--mount=type=secret` instead, which records nothing.
+
+The build ends with `python -c "import osce_assessment"`. That line is not
+decoration. `poetry install` prints "Installing osce-assessment" and exits
+zero even when the clone produced nothing, so without the check an image with
+no marking engine builds green, starts, answers its health check, serves every
+page and refuses the one thing it exists to do.
