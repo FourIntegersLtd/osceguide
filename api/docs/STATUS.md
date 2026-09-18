@@ -85,6 +85,21 @@ platform-api, and the completed transcript came back through `GET
 /attempts/{id}/transcript`. One run, one station (`sca`), on a local API — not
 CI, and not against a deployed one.
 
+**The dashboard e2e case is written and has never been run.** `tests/e2e/
+test_dashboard_e2e.py` covers the other worker and the route the whole tutor
+hangs off: a dashboard session is opened, a browser mints a token for its room,
+the real *assistant* worker joins, and the bootstrap it is handed is asserted to
+carry the tutor's four tools with their schemas — an empty list there is the
+pre-tutor behaviour and passes every other test in the suite. A tool call and
+the summarise-then-delete promise are exercised too.
+
+What it deliberately does **not** assert is that the model chose to call a tool.
+That depends on what the candidate's audio happens to say and on the model's
+judgement that day, and a test that fails when a model judges differently is a
+test that gets deleted. The tool route is exercised directly instead, exactly as
+the worker calls it; the `assistant tool call` log line records what the model
+actually did, with the round trip in milliseconds.
+
 The first run was worth as much as the plan hoped: it found three defects in
 the test itself, all of which had been invisible.
 
