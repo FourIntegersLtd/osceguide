@@ -326,11 +326,17 @@ async def test_a_degraded_render_is_served_but_never_frozen(
     )
 
 
-async def test_a_draft_station_cannot_be_run(
+async def test_a_draft_station_is_refused_before_the_attempt_exists(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    """T4. `runnable_station` computed `published` and nothing read it, so a
-    station somebody was still drafting would render and run for a candidate."""
+    """T4, enforced at the door.
+
+    `runnable_station` computed `published` and nothing read it, so a station
+    somebody was still drafting would render and run for a candidate. The
+    bootstrap refuses it now — and so does creation, which is the difference
+    between a candidate never starting and a candidate sitting in a LiveKit
+    room waiting for a patient that will never be dispatched.
+    """
     from app.features.stations import repository as stations_repo
 
     token = await an_entitled_candidate(db_session, make_actor, "draftstation@example.com")
@@ -349,7 +355,44 @@ async def test_a_draft_station_cannot_be_run(
         json={"kind": "practice", "exam_code": "sca", "station_version_id": str(draft.id)},
         headers=bearer(token),
     )
+    assert created.status_code == 409, created.text
+    assert created.json()["code"] == "station_not_published"
+
+
+async def test_a_station_withdrawn_after_creation_is_still_refused_at_bootstrap(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The second defence, which the first does not make redundant.
+
+    Creation and bootstrap are separate requests with a candidate's attention
+    span in between, so a version can be withdrawn after an attempt is created
+    and before the worker asks for it. T4 has to hold at both ends.
+    """
+    from app.features.stations import repository as stations_repo
+
+    token = await an_entitled_candidate(db_session, make_actor, "withdrawn@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    station = await stations_repo.create_station(
+        db_session, None, exam_id=exam.id, title="Published, then pulled"
+    )
+    version = await stations_repo.add_version(
+        db_session, None, station_id=station.id, version=1, content=STATION_CONTENT
+    )
+    author = await make_actor("withdrawing-author@example.com", platform_admin=True)
+    assert author
+    await stations_repo.set_version_status(db_session, None, version.id, status="published", at=NOW, by=None)
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca", "station_version_id": str(version.id)},
+        headers=bearer(token),
+    )
     assert created.status_code == 201, created.text
+
+    await stations_repo.set_version_status(db_session, None, version.id, status="draft", at=NOW, by=None)
+    await db_session.commit()
 
     boot = await client.get(f"/api/worker/attempts/{created.json()['id']}", headers=worker_headers())
     assert boot.status_code == 409, boot.text

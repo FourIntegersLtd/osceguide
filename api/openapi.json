@@ -1670,6 +1670,7 @@
         "type": "object"
       },
       "CreateAttempt": {
+        "description": "What a client may ask for directly.\n\nDeliberately narrower than `attempts.create_attempt`. The other kinds are\n*about* something a different slice owns \u2014 a slot, a set entry, a peer\npairing, an earlier attempt \u2014 and `attempts` sits below all of them in the\nlayer order, so it cannot check that the caller owns the thing they named.\n\nThis route used to take every one of those ids straight from the body and\nstore them unverified, which let anyone attach their attempt to another\norganisation's exam slot or another person's set entry. Each of those\nkinds has its own route, on the slice that can do the checking:\n`POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set\nstation and its debrief, and the circuit itself for an exam slot (ADR\n0018). `room_name` is likewise not the client's to choose \u2014 `voice`\nderives it from the attempt.",
         "properties": {
           "exam_code": {
             "maxLength": 32,
@@ -1678,68 +1679,9 @@
             "type": "string"
           },
           "kind": {
-            "pattern": "^(practice|set_station|debrief|self_practice|exam_slot|peer)$",
+            "pattern": "^(practice|self_practice)$",
             "title": "Kind",
             "type": "string"
-          },
-          "peer_session_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Peer Session Id"
-          },
-          "room_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Room Name"
-          },
-          "set_entry_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Set Entry Id"
-          },
-          "slot_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Slot Id"
-          },
-          "source_attempt_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Attempt Id"
           },
           "station_version_id": {
             "anyOf": [
@@ -9342,9 +9284,23 @@
                 }
               }
             },
-            "description": "unknown_exam",
+            "description": "unknown_exam, station_not_found",
             "x-codes": [
-              "unknown_exam"
+              "unknown_exam",
+              "station_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_published",
+            "x-codes": [
+              "station_not_published"
             ]
           },
           "422": {

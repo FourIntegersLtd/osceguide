@@ -17,6 +17,7 @@ from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
+from app.features.stations import service as stations
 
 
 async def start_attempt(
@@ -38,7 +39,15 @@ async def start_attempt(
 
     The entitlement check happens here rather than in each caller, so every
     route that can start a session goes through the same gate.
+
+    `station_version_id` is checked against the same resolver the worker
+    bootstrap uses, so a station that is still a draft, or belongs to an
+    organisation the caller is not acting in, is refused when the attempt is
+    created rather than at the moment a candidate is already sitting in a
+    LiveKit room waiting for a patient. It was previously stored unverified.
     """
+    if station_version_id is not None:
+        await _ensure_runnable(session, org_id=org_id, station_version_id=station_version_id)
     try:
         exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
@@ -66,6 +75,20 @@ async def start_attempt(
         room_name=room_name,
     )
     return _attempt_read(attempt)
+
+
+async def _ensure_runnable(
+    session: AsyncSession, *, org_id: uuid.UUID | None, station_version_id: uuid.UUID
+) -> None:
+    """Refuse a station this caller cannot run, before the attempt exists.
+
+    `runnable_station` raises `station_not_published` for a draft itself; a
+    station that does not exist and one belonging to another organisation both
+    come back as `None`, and both answer `station_not_found` — telling them
+    apart would make this route a way to enumerate another tenant's library.
+    """
+    if await stations.runnable_station(session, org_id, station_version_id) is None:
+        raise errors.StationNotFound()
 
 
 async def _trial_state(

@@ -22,7 +22,13 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     "/attempts",
     response_model=schemas.AttemptRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.NotEntitled, errors.UnknownExamError),
+    responses=error_responses(
+        Unauthenticated,
+        errors.NotEntitled,
+        errors.UnknownExamError,
+        errors.StationNotFound,
+        errors.StationNotPublishedError,
+    ),
 )
 async def start_attempt(
     body: schemas.CreateAttempt,
@@ -39,11 +45,6 @@ async def start_attempt(
         now=clock.now(),
         org_id=active.org_id if active else None,
         station_version_id=body.station_version_id,
-        slot_id=body.slot_id,
-        set_entry_id=body.set_entry_id,
-        peer_session_id=body.peer_session_id,
-        source_attempt_id=body.source_attempt_id,
-        room_name=body.room_name,
     )
 
 
