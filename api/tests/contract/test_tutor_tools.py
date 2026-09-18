@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
 from app.features.tutor_memory import repository, tools_catalog
-from tests.support.fakes import FakeTutorPromptRenderer
+from tests.support.fakes import FakeMaterialIndex, FakeTutorPromptRenderer
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -180,11 +180,17 @@ async def test_recall_with_nothing_on_file_says_so_rather_than_guessing(
     assert response.json()["result"] == service_tools.NOTHING_FOUND
 
 
-async def test_searching_material_says_it_is_not_configured(
+async def test_searching_material_with_no_index_says_it_cannot_look_it_up(
     client: AsyncClient, make_actor, tutor_renderer: FakeTutorPromptRenderer
 ) -> None:  # type: ignore[no-untyped-def]
-    """Until the material index lands, the tutor says so plainly."""
-    from app.features.tutor_memory import service_tools
+    """A deployment with no embedding key must not claim it searched.
+
+    The test environment has no `OPENAI_API_KEY`, so this is the real path a
+    deployment without one takes. "I could not look that up" and "the material
+    does not say" are different claims, and the tutor speaks both aloud with
+    the same confidence.
+    """
+    from app.features.tutor_memory import service_search
 
     token = await make_actor("tools-search@example.com")
     session_id = await a_dashboard_session(client, token)
@@ -195,7 +201,7 @@ async def test_searching_material_says_it_is_not_configured(
         headers=worker_headers(),
     )
 
-    assert response.json()["result"] == service_tools.NOT_CONFIGURED
+    assert response.json()["result"] == service_search.NOT_CONFIGURED
 
 
 async def test_suggesting_something_they_cannot_open_names_nothing(
@@ -282,3 +288,204 @@ async def test_the_tool_route_needs_the_worker_secret(
         json={"tool": "remember", "arguments": {"fact": "x"}},
     )
     assert response.status_code == 401
+
+
+# --------------------------------------------------------------------------
+# Searching the material. The index is faked here: which passage is nearest is
+# the adapter's business and is proved against real pgvector in
+# `tests/repository/test_material_index.py`. What this file owns is that the
+# entitlement decides what may be searched, and what the worker is handed back.
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture
+def material(monkeypatch: pytest.MonkeyPatch) -> FakeMaterialIndex:
+    """Put a fake index behind `search_material`.
+
+    Through the service's own optional `index` argument, which exists for this,
+    rather than by patching the builder — the same seam the renderer fixture
+    above uses.
+    """
+    from app.features.tutor_memory import service_tools
+
+    fake = FakeMaterialIndex()
+    original = service_tools.run
+
+    async def with_fake(session, **kwargs):  # type: ignore[no-untyped-def]
+        return await original(session, index=fake, **kwargs)
+
+    monkeypatch.setattr(service_tools, "run", with_fake)
+    return fake
+
+
+async def entitled_actor(
+    session: AsyncSession,
+    make_actor,
+    email: str,
+    code: str = "sca",  # type: ignore[no-untyped-def]
+) -> tuple[str, uuid.UUID]:
+    """A signed-in doctor who holds one exam, and that exam's id."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.entitlements import repository as ent_repo
+    from app.features.identity import repository as identity_repo
+    from tests.support.catalog import ensure_exam
+
+    token = await make_actor(email)
+    user = await identity_repo.user_by_email(session, email)
+    assert user is not None
+    exam = await ensure_exam(session, code)
+    assert exam is not None
+    await ent_repo.grant(
+        session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source="purchase",
+        ends_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    await session.flush()
+    return token, exam.id
+
+
+async def search_for(client: AsyncClient, session_id: str, query: str) -> dict:  # type: ignore[type-arg]
+    response = await client.post(
+        f"/api/worker/assistant-sessions/{session_id}/tools/search_material",
+        json={"tool": "search_material", "arguments": {"query": query}},
+        headers=worker_headers(),
+    )
+    assert response.status_code == 200, response.text
+    return response.json()  # type: ignore[no-any-return]
+
+
+async def test_a_search_answers_from_the_material_and_cites_it(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,  # type: ignore[no-untyped-def]
+    tutor_renderer: FakeTutorPromptRenderer,
+    material: FakeMaterialIndex,
+) -> None:
+    token, exam_id = await entitled_actor(db_session, make_actor, "tools-hit@example.com")
+    await material.upsert(
+        corpus="summary",
+        source_id="sum-1",
+        exam_id=str(exam_id),
+        title="Chest pain",
+        chunks=[{"index": 0, "section": "red_flags", "text": "Safety net chest pain in writing."}],
+    )
+    session_id = await a_dashboard_session(client, token)
+
+    body = await search_for(client, session_id, "safety net")
+
+    # The passage travels in the spoken half so the tutor can answer from it,
+    # numbered so it can refer to one without reading a title aloud.
+    assert "[1] Safety net chest pain in writing." in body["result"]
+    card = body["display"]
+    assert card["card"] == "citations"
+    assert card["citations"] == [
+        {
+            "n": 1,
+            "title": "Chest pain",
+            "section": "red_flags",
+            "ref": {"kind": "summary", "id": "sum-1", "slug": None},
+        }
+    ]
+
+
+async def test_a_search_never_reaches_material_from_an_exam_they_do_not_hold(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,  # type: ignore[no-untyped-def]
+    tutor_renderer: FakeTutorPromptRenderer,
+    material: FakeMaterialIndex,
+) -> None:
+    """Today the A to Z and the slides are gated in the browser only.
+
+    A tutor that read out of them would be a way round that gate, so the gate
+    is server-side here: the entitled exams are worked out from the grants and
+    handed to the index as a filter.
+    """
+    from tests.support.catalog import ensure_exam
+
+    token, held = await entitled_actor(db_session, make_actor, "tools-locked@example.com")
+    other = await ensure_exam(db_session, "plab")
+    assert other is not None
+    await material.upsert(
+        corpus="summary",
+        source_id="locked",
+        exam_id=str(other.id),
+        title="Something they have not bought",
+        chunks=[{"index": 0, "section": "management", "text": "Locked advice about asthma."}],
+    )
+    session_id = await a_dashboard_session(client, token)
+
+    body = await search_for(client, session_id, "asthma")
+
+    from app.features.tutor_memory import service_search
+
+    assert body["result"] == service_search.NOTHING_IN_MATERIAL
+    assert body["display"] is None
+    # The refusal names nothing: a locked title read aloud is an advertisement.
+    assert "Something they have not bought" not in body["result"]
+    # And the index was asked only about the exam they hold.
+    assert material.searches[-1][1] == (str(held),)
+
+
+async def test_holding_no_exam_at_all_searches_nothing(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+    tutor_renderer: FakeTutorPromptRenderer,
+    material: FakeMaterialIndex,
+) -> None:
+    """No grants is not an empty filter, which would search everything."""
+    from app.features.tutor_memory import service_search
+
+    token = await make_actor("tools-nogrant@example.com")
+    session_id = await a_dashboard_session(client, token)
+
+    body = await search_for(client, session_id, "asthma")
+
+    assert body["result"] == service_search.NOTHING_IN_MATERIAL
+    assert material.searches == []
+
+
+async def test_a_search_can_be_narrowed_to_one_kind_of_material(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,  # type: ignore[no-untyped-def]
+    tutor_renderer: FakeTutorPromptRenderer,
+    material: FakeMaterialIndex,
+) -> None:
+    token, exam_id = await entitled_actor(db_session, make_actor, "tools-kind@example.com")
+    session_id = await a_dashboard_session(client, token)
+
+    response = await client.post(
+        f"/api/worker/assistant-sessions/{session_id}/tools/search_material",
+        json={
+            "tool": "search_material",
+            "arguments": {"query": "asthma", "kind": "slide_deck"},
+        },
+        headers=worker_headers(),
+    )
+
+    assert response.status_code == 200, response.text
+    assert material.searches[-1][2] == "slide_deck"
+
+
+async def test_asking_for_any_kind_does_not_narrow_the_corpus(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,  # type: ignore[no-untyped-def]
+    tutor_renderer: FakeTutorPromptRenderer,
+    material: FakeMaterialIndex,
+) -> None:
+    """`any` is the model's word for "no preference", not a corpus name."""
+    token, _ = await entitled_actor(db_session, make_actor, "tools-any@example.com")
+    session_id = await a_dashboard_session(client, token)
+
+    await client.post(
+        f"/api/worker/assistant-sessions/{session_id}/tools/search_material",
+        json={"tool": "search_material", "arguments": {"query": "asthma", "kind": "any"}},
+        headers=worker_headers(),
+    )
+
+    assert material.searches[-1][2] is None

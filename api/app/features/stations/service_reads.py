@@ -10,7 +10,7 @@ lifecycle; nothing here changes anything.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -106,3 +106,84 @@ async def browse_library(
             )
         )
     return out, next_cursor
+
+
+# What a doctor is shown *after* a consultation, and nothing else. The rest of
+# a station — the patient's persona, their hidden history, the examiner's
+# expected answers — is what the station assesses, and putting it anywhere a
+# doctor can ask for it is handing over the answers before they sit it.
+#
+# The management plan is already doctor-facing: it is the screen they read in
+# the debrief, and `learning_events.ref_kind` counts `management_plan` as a
+# thing they view. That is why this read exists here rather than in the tutor's
+# slice — which blocks of a station a doctor may read is this slice's rule, and
+# a reader that helped itself to `content` would be deciding it for itself.
+DOCTOR_FACING_KEYS = ("management_plan", "doctor_information")
+
+# A block the template marks `examiner` holds the expected answers. Templated
+# stations therefore contribute nothing here until a template can mark a block
+# as reading material; `docs/OPEN-QUESTIONS.md` T-2 is that question.
+
+
+@dataclass(frozen=True)
+class MaterialSource:
+    """A published station as indexable reading material."""
+
+    version_id: uuid.UUID
+    exam_id: uuid.UUID | None
+    title: str
+    text: str
+
+
+async def published_material(
+    session: AsyncSession, *, exam_id: uuid.UUID | None = None
+) -> list[MaterialSource]:
+    """The doctor-facing text of every published library station.
+
+    A station with no management plan contributes nothing rather than
+    contributing its patient brief.
+    """
+    out: list[MaterialSource] = []
+    for version, station in await repository.published_library_versions(session, exam_id=exam_id):
+        text = _doctor_facing_text(dict(version.content or {}))
+        if not text:
+            continue
+        out.append(
+            MaterialSource(version_id=version.id, exam_id=station.exam_id, title=station.title, text=text)
+        )
+    return out
+
+
+def _doctor_facing_text(content: Mapping[str, Any]) -> str:
+    """Flatten the doctor-facing blocks into one searchable string."""
+    parts: list[str] = []
+    for key in DOCTOR_FACING_KEYS:
+        parts.extend(_flatten(content.get(key)))
+    return " ".join(part for part in parts if part).strip()
+
+
+def _flatten(value: Any) -> list[str]:
+    """Text out of a block, whatever shape its author gave it.
+
+    The four exams' documents are genuinely different, and a management plan is
+    a dict of sections in one and a list of lines in another. Walking it is
+    what keeps this read from having a branch per exam.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value.strip()]
+    if isinstance(value, Mapping):
+        out: list[str] = []
+        for key, inner in value.items():
+            label = str(key).replace("_", " ").strip()
+            texts = _flatten(inner)
+            if texts:
+                # The key is kept as a heading: the chunker cuts at headings,
+                # and a plan flattened into one run of prose would be one
+                # passage the tutor reads out whole.
+                out.append(f"{label.capitalize()} {' '.join(texts)}")
+        return out
+    if isinstance(value, Sequence):
+        return [text for item in value for text in _flatten(item)]
+    return [str(value).strip()]

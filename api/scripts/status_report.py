@@ -66,6 +66,7 @@ PLANNED = [
     "GET /api/v1/me/tutor-memory",
     "DELETE /api/v1/me/tutor-memory",
     "DELETE /api/v1/me/tutor-memory/notes/{note_id}",
+    "POST /api/v1/admin/tutor-memory/reindex",
     "POST /api/worker/assistant-sessions/{session_id}/tools/{tool_name}",
     "GET /api/worker/assistant-sessions/{session_id}",
     "POST /api/worker/sessions/{session_id}/complete",

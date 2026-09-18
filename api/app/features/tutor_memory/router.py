@@ -10,7 +10,8 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.features.tutor_memory import errors, schemas, service
+from app.core.tenancy import PlatformAdmin
+from app.features.tutor_memory import errors, schemas, service, service_material
 
 router = APIRouter(tags=["tutor-memory"])
 
@@ -79,3 +80,20 @@ async def forget_tutor_memory(
     return await service.forget_everything(
         session, user_id=principal.user_id, include_debriefs=include_debriefs
     )
+
+
+@router.post(
+    "/admin/tutor-memory/reindex",
+    response_model=schemas.ReindexReport,
+    responses=error_responses(Unauthenticated),
+)
+async def reindex_material(admin: PlatformAdmin, session: Session) -> schemas.ReindexReport:
+    """Rebuild the material index now, rather than waiting for tonight's run.
+
+    Synchronous on purpose, unlike most admin actions here. An author who has
+    just published a correction wants to know it is searchable, and a job id to
+    go and poll answers a different question. The whole library is thousands of
+    passages, which is a request that takes a while, not one that times out.
+    """
+    run = await service_material.reindex(session)
+    return schemas.ReindexReport(sources=run.sources, passages=run.passages, retired=run.retired)

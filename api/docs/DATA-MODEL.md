@@ -38,7 +38,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-62 tables across 21 slices. Every table's classes live in `app/features/<slice>/models.py`
+63 tables across 21 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -1083,6 +1083,26 @@ What a debrief concluded and what was agreed about it.
 | `narrative` | `text null` | |
 | `model_used` | `varchar(64) null` | |
 | `created_at` | `timestamptz not null default now()` | |
+
+### `material_chunks`
+The study material cut into passages, with the vector each is retrieved by. Derived
+data entirely: every row is rebuilt from `station_versions` and `media_items` by the
+nightly `reindex_material` job, which is why dropping this table loses nothing but
+the time to run it again. Owned by `tutor_memory` rather than by the slices the text
+comes from — a rebuildable index belongs to the reader that needs it, not to the
+slice that owns the source of truth. See ADR 0019.
+
+| Field | Type | Notes |
+|---|---|---|
+| `corpus` | `varchar(24) not null` | CHECK `station` \| `summary` \| `slide_deck` \| `podcast` \| `blog` |
+| `source_id` | `varchar(120) not null` | A string, not a foreign key: the corpora live in different slices, and a key per corpus would make adding a third one a schema change. The re-index retires a deleted source's passages on its next run, which is the honest cost |
+| `exam_id` | `uuid null` → `exams.id` CASCADE | Indexed with `corpus`. CASCADE, unlike the other tutor tables' RESTRICT: those hold somebody's history and must not vanish quietly, while this holds a copy of a catalogue being deleted — and passages of an exam nobody can buy are passages nobody may be read |
+| `title` | `varchar(300) not null` | what a citation says |
+| `section` | `varchar(40) not null` | the heading the passage was found under, or `management` for the tail |
+| `chunk_index` | `integer not null` | UNIQUE with `corpus` + `source_id`, which is what `upsert` writes against so a re-index replaces rather than duplicates |
+| `text` | `text not null` | the passage the tutor quotes |
+| `embedding` | `vector(1536) not null` | `text-embedding-3-small`. IVFFlat index with `vector_cosine_ops`, `lists = 100` — the operator class must match the `<=>` the query uses or the index is not consulted. The width is DDL, so changing the model means re-embedding everything |
+| `indexed_at` | `timestamptz not null default now()` | |
 
 ## notifications — 1 table
 

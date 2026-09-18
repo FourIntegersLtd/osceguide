@@ -83,6 +83,14 @@ class ForgottenCounts(BaseModel):
     debrief_summaries: int
 
 
+class ReindexReport(BaseModel):
+    """What a re-index did, so an admin can tell "ran" from "found nothing"."""
+
+    sources: int
+    passages: int
+    retired: int
+
+
 class ToolCall(BaseModel):
     """What the worker posts for one tool call.
 

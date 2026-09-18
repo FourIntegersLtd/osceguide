@@ -29,12 +29,17 @@ FEATURE_TASKS = {
     # nothing, which is both halves of the failure at once.
     "summarise_assistant_session",
     "summarise_debrief",
+    # Unregistered, `search_material` answers out of an index that is never
+    # rebuilt — so the tutor goes on quoting material that was edited or
+    # withdrawn, with a citation to a page that no longer says it.
+    "reindex_material",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",
     "match_practice_queue",
     "suspend_lapsed_organizations",
     "sweep_circuits",
+    "reindex_material",
 }
 
 

@@ -46,6 +46,12 @@ from tests.support.declared_codes import install as install_declared_code_check 
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Pinned, and pinned to a *pgvector* image rather than stock Postgres: the
+# tutor's material index is a `vector` column, so a container without the
+# extension fails at `alembic upgrade head` and takes every database test
+# with it. Keep in step with `docker-compose.yml`.
+POSTGRES_IMAGE = "pgvector/pgvector:pg16"
+
 
 # --------------------------------------------------------------------------
 # Database lifecycle (session scope)
@@ -62,7 +68,10 @@ def database_url() -> Iterator[str]:
         except ModuleNotFoundError:  # older testcontainers
             from testcontainers.postgres import PostgresContainer
 
-        container = PostgresContainer("postgres:16-alpine", driver=None)
+        # Must carry `vector`: the tutor_memory migration creates the
+        # extension, so a stock image fails at `alembic upgrade head` and
+        # every database test with it.
+        container = PostgresContainer(POSTGRES_IMAGE, driver=None)
         container.start()
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"No Postgres for db tests (set TEST_DATABASE_URL or start Docker): {exc}")

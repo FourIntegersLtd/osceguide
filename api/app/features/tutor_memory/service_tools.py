@@ -18,19 +18,22 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ports import MaterialIndex
 from app.features.catalog import service as catalog
 from app.features.entitlements import service as entitlements
 from app.features.stations import service_reads as stations
-from app.features.tutor_memory import domain, errors, repository, tools_catalog
+from app.features.tutor_memory import (
+    domain,
+    errors,
+    repository,
+    service_recall,
+    service_search,
+    tools_catalog,
+)
+from app.features.tutor_memory.index import build_material_index
 from app.features.tutor_memory.schemas import ToolResult
 
-CARD_SCHEMA_VERSION = 2
-
 NOTHING_FOUND = "You have nothing on file about that. Say so plainly rather than guessing."
-NOT_CONFIGURED = (
-    "The material search is not available in this deployment. Say you cannot look that up "
-    "right now, and answer from what you already know or offer to come back to it."
-)
 
 
 async def tool_hook(
@@ -66,6 +69,7 @@ async def run(
     user_id: uuid.UUID,
     session_id: uuid.UUID,
     now: datetime,
+    index: MaterialIndex | None = None,
 ) -> ToolResult:
     """Dispatch one call, having first checked it against its own schema."""
     schema = tools_catalog.schema_for(tool)
@@ -77,9 +81,17 @@ async def run(
         raise errors.ToolArgumentsInvalid(str(exc)) from exc
 
     if tool == tools_catalog.RECALL_HISTORY:
-        return await _recall(session, user_id=user_id, now=now, **_recall_args(cleaned))
+        return await service_recall.recall(session, user_id=user_id, now=now, **_recall_args(cleaned))
     if tool == tools_catalog.SEARCH_MATERIAL:
-        return ToolResult(result=NOT_CONFIGURED)
+        return await service_search.answer_question(
+            session,
+            user_id=user_id,
+            now=now,
+            # `None` when nothing is configured, which the search reports as
+            # "cannot look that up" rather than as "nothing found".
+            index=index if index is not None else build_material_index(session),
+            **_search_args(cleaned),
+        )
     if tool == tools_catalog.SUGGEST_MATERIAL:
         return await _suggest(session, user_id=user_id, now=now, **_suggest_args(cleaned))
     return await _remember(session, user_id=user_id, session_id=session_id, fact=str(cleaned["fact"]))
@@ -93,51 +105,16 @@ def _recall_args(cleaned: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _search_args(cleaned: dict[str, Any]) -> dict[str, Any]:
+    kind = str(cleaned.get("kind") or tools_catalog.ANY_KIND)
+    return {
+        "query": str(cleaned.get("query") or ""),
+        "corpus": tools_catalog.corpus_for(kind),
+    }
+
+
 def _suggest_args(cleaned: dict[str, Any]) -> dict[str, Any]:
     return {"ref": str(cleaned.get("ref") or ""), "reason": str(cleaned.get("reason") or "")}
-
-
-async def _recall(
-    session: AsyncSession, *, user_id: uuid.UUID, query: str, kind: str, limit: int, now: datetime
-) -> ToolResult:
-    """Search this person's own past by the words they used.
-
-    Substring matching over their own small history rather than a search index:
-    a doctor has tens of these, not thousands, and a semantic index over
-    somebody's private record is a great deal of machinery for a list that fits
-    on a screen.
-    """
-    lines: list[str] = []
-    needle = query.lower()
-
-    if kind in {"note", "any"}:
-        for note in await repository.notes_of_kind(session, user_id, kind="stated_fact", limit=20):
-            fact = str((note.body or {}).get("fact") or "")
-            if needle in fact.lower():
-                lines.append(f"They told you: {fact}")
-
-    if kind in {"debrief", "consultation", "any"}:
-        for row in await repository.recent_debrief_summaries(session, user_id, limit=20):
-            haystack = " ".join(
-                [str(row.narrative or ""), *[str(i) for i in (row.key_insights or [])]]
-            ).lower()
-            if needle not in haystack:
-                continue
-            steps = domain.open_action_items([row.action_plan or []])
-            when = domain.days_ago(row.created_at, now)
-            agreed = f" You agreed they would: {'; '.join(steps)}." if steps else ""
-            lines.append(f"A debrief {when} days ago: {row.narrative or 'no narrative'}.{agreed}")
-
-    if kind in {"activity", "any"}:
-        for event in await repository.recent_events(session, user_id, limit=40):
-            if needle in event.title.lower():
-                lines.append(
-                    f"They {event.kind} {event.title}, {domain.days_ago(event.occurred_at, now)} days ago."
-                )
-
-    if not lines:
-        return ToolResult(result=NOTHING_FOUND)
-    return ToolResult(result=" ".join(lines[:limit]))
 
 
 async def _suggest(
@@ -170,7 +147,7 @@ async def _suggest(
         ),
         display={
             "type": "assistant_card",
-            "schemaVersion": CARD_SCHEMA_VERSION,
+            "schemaVersion": service_search.CARD_SCHEMA_VERSION,
             "card": "suggestion",
             "ref": {"kind": "station", "id": str(version_id), "slug": None},
             "title": summary.title,

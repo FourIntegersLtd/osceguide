@@ -23,7 +23,7 @@ announce their moments through `bind_*` seams tied in `app/main.py`.
   a sentence the model can say, plus an optional card for the screen.
 
 ## Aggregates & invariants
-**LearningEvent**, **TutorNote** and **DebriefSummary**.
+**LearningEvent**, **TutorNote**, **DebriefSummary** and **MaterialChunk**.
 
 - **Two sightings of the same thing inside ten minutes are one visit.** A
   doctor who opens a summary, follows a link and comes back has not read it
@@ -43,6 +43,19 @@ announce their moments through `bind_*` seams tied in `app/main.py`.
   records, because the prompt forbids the tutor from saying anything else.
 - A tool call is validated against its own advertised schema before it runs; a
   model inventing an argument gets a 422, not an answer about the wrong thing.
+- **A doctor is only ever read out of material they hold.** The entitled exams
+  are worked out from their grants and handed to the index as a filter applied
+  *before* the ranking. Today the A to Z and the slides are gated in the
+  browser only, so a tutor reading out of them would be a way round that gate.
+- **"I could not look that up" is not "the material does not say".** A
+  deployment with no embedding key has no index, and the tutor says the first
+  rather than the second — a spoken answer delivers both with equal
+  confidence, and only one of them would be true.
+- **A station offers its management plan and nothing else.** The patient's
+  persona, their hidden history and the examiner's expected answers are what
+  the station assesses; indexing them would hand a doctor the answers on
+  request. A station with no management plan contributes nothing rather than
+  contributing its patient brief.
 
 ## Routes
 | Method | Path | Auth | Notes |
@@ -51,6 +64,7 @@ announce their moments through `bind_*` seams tied in `app/main.py`.
 | GET | `/api/v1/me/tutor-memory` | bearer | everything on file |
 | DELETE | `/api/v1/me/tutor-memory/notes/{id}` | bearer | 204 |
 | DELETE | `/api/v1/me/tutor-memory?include_debriefs=` | bearer | says how much went |
+| POST | `/api/v1/admin/tutor-memory/reindex` | platform admin | rebuilds the material index now; synchronous |
 | POST | `/api/worker/assistant-sessions/{id}/tools/{tool_name}` | worker secret | one tool call |
 
 **The tool path is hardcoded in the worker**
@@ -62,9 +76,18 @@ mounted at exactly this spelling.
 |---|---|---|
 | `summarise_assistant_session` | `summaries` | a dashboard transcript arrives |
 | `summarise_debrief` | `summaries` | a debrief's interaction completes |
+| `reindex_material` | `material` | nightly at 03:17, and on the admin route |
 
-Both are deferred inside the transaction that recorded the thing they are
-about, so the work and the record of it being owed commit together.
+The two summary jobs are deferred inside the transaction that recorded the
+thing they are about, so the work and the record of it being owed commit
+together.
+
+`reindex_material` is idempotent by construction: every source is upserted by
+`(corpus, source_id, chunk_index)` and anything indexed that is no longer
+published is dropped. Running it twice costs the embeddings and changes
+nothing, and a run that failed half way is repaired by the next one rather
+than needing to be unwound. It is nightly rather than on publish because
+embedding the whole library costs minutes and money — see OPEN-QUESTIONS T-3.
 
 ## Cross-slice dependencies
 - `attempts.service_reads` — recent attempts, their results and a debrief's
@@ -78,6 +101,31 @@ about, so the work and the record of it being owed commit together.
 Seams filled in `app/main.py`: `assistant.service_seams.bind_assistant_hooks`
 and `attempts.service_worker.bind_interaction_complete_hook`.
 
-`search_material` answers "not configured": the material index is the next
-phase, and until it exists the tutor says plainly that it cannot look something
-up rather than answering from nothing.
+- `media.service` — the published summaries, slides, podcasts and posts the
+  index is built from.
+
+## The material index
+`search_material` answers clinical questions out of the study material and
+cites what it used. The index is pgvector in this same database (ADR 0019),
+behind `core.ports.MaterialIndex` with a fake for every test above it.
+
+- `chunking.py` cuts a document into passages. A byte-for-byte port of b2c's
+  `management_text_utils.py`, pinned by an oracle: where a chunker cuts decides
+  which passage answers a question, so moving a boundary changes a clinical
+  answer with no diff anywhere near it.
+- `service_material.py` builds the index: which sources go in, and which are
+  retired when they stop being published. It decides the corpora and the
+  titles, so a citation and a suggestion name the same thing in the same
+  spelling.
+- `service_search.py` answers a question out of it. Separate from the building
+  because the two fail differently and are read at different times — one is a
+  nightly walk of the whole catalogue, the other sits in a voice loop with a
+  budget of about 350ms.
+- `index.py` is the adapter; `repository_index.py` holds the one query with the
+  distance operator in it. `build_material_index` returns `None` — not an empty
+  index — where there is no key to embed with.
+- `vector_column.py` is the `vector` type. The `pgvector` Python package is
+  deliberately not a dependency: the extension does the work.
+
+The local compose file and the test container are pinned to
+`pgvector/pgvector:pg16`. A stock Postgres fails at `alembic upgrade head`.

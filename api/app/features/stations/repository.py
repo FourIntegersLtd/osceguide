@@ -220,3 +220,28 @@ async def delete_version(session: AsyncSession, org_id: uuid.UUID | None, versio
     await session.execute(
         delete(StationVersion).where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
     )
+
+
+async def published_library_versions(
+    session: AsyncSession, *, exam_id: uuid.UUID | None = None
+) -> list[tuple[StationVersion, Station]]:
+    """Every current, published platform-library version, with its station.
+
+    The whole library at once rather than a page, because the only caller is a
+    re-index that has to see all of it: a paged walk of a table being written
+    to can miss a row or read one twice, and either leaves the index quietly
+    wrong about material nobody will check.
+    """
+    stmt = (
+        select(StationVersion, Station)
+        .join(Station, Station.id == StationVersion.station_id)
+        .where(
+            Station.owner_kind == "platform",
+            Station.status == "published",
+            StationVersion.status == "published",
+            StationVersion.id == Station.current_version_id,
+        )
+    )
+    if exam_id is not None:
+        stmt = stmt.where(Station.exam_id == exam_id)
+    return [(v, s) for v, s in (await session.execute(stmt)).all()]

@@ -10,8 +10,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from app.core.ports import EmailDeliveryFailed
+from app.core.ports import EmailDeliveryFailed, Passage
 
 FIXED_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 
@@ -252,3 +253,69 @@ class FakeEmbedder:
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         self.calls.append(list(texts))
         return [[float((hash(t) >> i) % 10) for i in range(self.dimensions)] for t in texts]
+
+
+class FakeMaterialIndex:
+    """Substring matching standing in for retrieval by meaning.
+
+    The slice's own business is deciding *which exams* may be searched and
+    turning passages into something the tutor can read out; which passage is
+    nearest is the adapter's, and is proved against real pgvector in
+    `tests/repository/test_material_index.py`. So this ranks by nothing more
+    than whether the words appear, and records what it was asked.
+    """
+
+    def __init__(self) -> None:
+        self.passages: list[Passage] = []
+        self.exam_of: dict[tuple[str, str], str | None] = {}
+        self.searches: list[tuple[str, tuple[str, ...], str | None]] = []
+
+    async def upsert(
+        self,
+        *,
+        corpus: str,
+        source_id: str,
+        exam_id: str | None,
+        title: str,
+        chunks: Sequence[Mapping[str, Any]],
+    ) -> int:
+        self.passages = [p for p in self.passages if (p.corpus, p.source_id) != (corpus, source_id)]
+        self.exam_of[(corpus, source_id)] = exam_id
+        for chunk in chunks:
+            self.passages.append(
+                Passage(
+                    corpus=corpus,
+                    source_id=source_id,
+                    title=title,
+                    text=str(chunk["text"]),
+                    section=str(chunk["section"]),
+                    score=1.0,
+                )
+            )
+        return len(chunks)
+
+    async def indexed_sources(self, *, corpus: str) -> set[str]:
+        return {p.source_id for p in self.passages if p.corpus == corpus}
+
+    async def forget(self, *, corpus: str, source_id: str) -> int:
+        before = len(self.passages)
+        self.passages = [p for p in self.passages if (p.corpus, p.source_id) != (corpus, source_id)]
+        self.exam_of.pop((corpus, source_id), None)
+        return before - len(self.passages)
+
+    async def search(
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
+    ) -> list[Passage]:
+        self.searches.append((query, tuple(exam_ids), corpus))
+        wanted = set(exam_ids)
+        hits = [
+            p
+            for p in self.passages
+            if query.lower() in p.text.lower()
+            and (corpus is None or p.corpus == corpus)
+            # The filter the real adapter applies in SQL. Modelled here too,
+            # because a fake that returned material the learner does not hold
+            # would let an entitlement bug through every test that uses it.
+            and self.exam_of.get((p.corpus, p.source_id)) in wanted
+        ]
+        return hits[:limit]

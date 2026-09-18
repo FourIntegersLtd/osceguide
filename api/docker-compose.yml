@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector's own image: stock Postgres 16 plus the `vector`
+    # extension the tutor's material index needs. Same server, same data
+    # directory, so an existing volume carries over.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

@@ -142,3 +142,47 @@ def test_a_number_that_is_not_one_is_refused() -> None:
 def test_an_overlong_string_is_clipped_rather_than_refused() -> None:
     cleaned = domain.validate_tool_arguments(SCHEMA, {"query": "a" * 40})
     assert len(cleaned["query"]) == 10
+
+
+# --------------------------------------------------------------------------
+# The tool vocabulary against the corpora the index actually stores. These two
+# drifted once already: the tool advertised `management_plan` and the index
+# stored `station`, so narrowing a search to a station's management plan
+# matched nothing — and read, to the doctor, as the material not covering it.
+# --------------------------------------------------------------------------
+
+
+def test_every_kind_the_model_may_ask_for_names_a_corpus_that_is_indexed() -> None:
+    from app.features.tutor_memory import service_material, tools_catalog
+
+    indexed = {service_material.STATION_CORPUS, *service_material.MEDIA_CORPORA}
+
+    for kind in tools_catalog.CORPUS_BY_KIND:
+        assert tools_catalog.corpus_for(kind) in indexed, f"{kind} narrows to nothing"
+
+
+def test_the_advertised_enum_is_exactly_the_kinds_that_map() -> None:
+    """A kind in the schema with no mapping would be accepted and then ignored."""
+    from app.features.tutor_memory import tools_catalog
+
+    schema = tools_catalog.schema_for(tools_catalog.SEARCH_MATERIAL)
+    assert schema is not None
+    assert set(schema["properties"]["kind"]["enum"]) == {
+        *tools_catalog.CORPUS_BY_KIND,
+        tools_catalog.ANY_KIND,
+    }
+
+
+def test_any_is_not_a_corpus() -> None:
+    """Passing it through as one would filter every passage out."""
+    from app.features.tutor_memory import tools_catalog
+
+    assert tools_catalog.corpus_for(tools_catalog.ANY_KIND) is None
+
+
+def test_every_indexed_corpus_is_one_the_table_allows() -> None:
+    """The CHECK constraint is the backstop; this is the error message."""
+    from app.features.tutor_memory import service_material
+
+    allowed = {"station", "summary", "slide_deck", "podcast", "blog"}
+    assert {service_material.STATION_CORPUS, *service_material.MEDIA_CORPORA} <= allowed

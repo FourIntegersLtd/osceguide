@@ -18,10 +18,8 @@ from typing import Annotated, Protocol, runtime_checkable
 from fastapi import Depends
 
 # Re-exported so every existing caller keeps one import for "a port". The
-# model-facing half lives next door only because the file outgrew its cap.
-from app.core.ports_models import (
-    Embedder as Embedder,
-)
+# model-facing and retrieval halves live next door only because the file
+# outgrew its cap.
 from app.core.ports_models import (
     EvaluationFailed as EvaluationFailed,
 )
@@ -42,6 +40,15 @@ from app.core.ports_models import (
 )
 from app.core.ports_models import (
     TutorPromptRenderer as TutorPromptRenderer,
+)
+from app.core.ports_retrieval import (
+    Embedder as Embedder,
+)
+from app.core.ports_retrieval import (
+    MaterialIndex as MaterialIndex,
+)
+from app.core.ports_retrieval import (
+    Passage as Passage,
 )
 
 
@@ -131,11 +138,18 @@ class RoomAgents(Protocol):
 
 @runtime_checkable
 class VectorIndex(Protocol):
-    """Semantic search over study material.
+    """Semantic search over whole media items, by id.
 
-    A port because the provider is undecided — b2c uses Pinecone, and pgvector
-    is a candidate now that everything else is in Postgres. Whichever wins, the
-    slice depends on this and the tests use a fake.
+    The media slice's own search box: a query in, a ranked list of items out,
+    and the reader is shown the item. `ports_models.MaterialIndex` is the other
+    shape — passages out of material, filtered by exam — and the tutor uses
+    that one. Two ports rather than one general one because the media search
+    wants an item and the tutor wants a paragraph it can quote, and a port that
+    served both would be honest about neither.
+
+    pgvector settled the provider question for the tutor's index; whether this
+    one adopts the same adapter or stays with b2c's Pinecone is M-3 in
+    `docs/OPEN-QUESTIONS.md`.
     """
 
     async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None: ...

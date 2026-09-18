@@ -26,6 +26,15 @@ SUMMARIES_QUEUE = "summaries"
 SESSION_SUMMARY_TASK = "summarise_assistant_session"
 DEBRIEF_SUMMARY_TASK = "summarise_debrief"
 
+INDEX_QUEUE = "material"
+REINDEX_TASK = "reindex_material"
+
+# Nightly, not on every publish. Embedding the whole library takes minutes
+# and costs money, and material is edited in batches by an author rather
+# than continuously — so a fixed run is cheaper than a stampede of them,
+# and the admin route is there for when somebody cannot wait for it.
+REINDEX_CRON = "17 3 * * *"
+
 
 async def on_transcript(session: AsyncSession, session_id: uuid.UUID, session_type: str) -> bool:
     """The seam `assistant` calls when a transcript arrives. Returns whether to keep it.
@@ -79,6 +88,16 @@ def register() -> None:
             await service_summaries.summarise_assistant_session(
                 session, uuid.UUID(session_id), summariser=build_summariser()
             )
+
+    @app.periodic(cron=REINDEX_CRON)
+    @app.task(name=REINDEX_TASK, queue=INDEX_QUEUE)
+    async def reindex_material(timestamp: int = 0) -> None:
+        from app.core.db import job_session
+        from app.features.tutor_memory import service_material
+        from app.features.tutor_memory.index import build_material_index
+
+        async with job_session() as session:
+            await service_material.reindex(session, index=build_material_index(session))
 
     @app.task(name=DEBRIEF_SUMMARY_TASK, queue=SUMMARIES_QUEUE)
     async def summarise_debrief(attempt_id: str) -> None:

@@ -6071,6 +6071,30 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "ReindexReport": {
+        "description": "What a re-index did, so an admin can tell \"ran\" from \"found nothing\".",
+        "properties": {
+          "passages": {
+            "title": "Passages",
+            "type": "integer"
+          },
+          "retired": {
+            "title": "Retired",
+            "type": "integer"
+          },
+          "sources": {
+            "title": "Sources",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sources",
+          "passages",
+          "retired"
+        ],
+        "title": "ReindexReport",
+        "type": "object"
+      },
       "ReportTotals": {
         "properties": {
           "candidates": {
@@ -9016,6 +9040,46 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/tutor-memory/reindex": {
+      "post": {
+        "description": "Rebuild the material index now, rather than waiting for tonight's run.\n\nSynchronous on purpose, unlike most admin actions here. An author who has\njust published a correction wants to know it is searchable, and a job id to\ngo and poll answers a different question. The whole library is thousands of\npassages, which is a request that takes a while, not one that times out.",
+        "operationId": "tutor_memory_reindex_material",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReindexReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reindex Material",
+        "tags": [
+          "tutor-memory"
+        ]
+      }
+    },
     "/api/v1/assistant/sessions": {
       "post": {
         "operationId": "assistant_start_session",
@@ -26673,7 +26737,7 @@
     },
     "/api/worker/assistant-sessions/{session_id}/tools/{tool_name}": {
       "post": {
-        "description": "One tool call. `result` is spoken; `display` goes to the browser unchanged.",
+        "description": "One tool call. `result` is spoken; `display` goes to the browser unchanged.\n\nTimed, because this sits inside a voice loop. The model says a holding line\nand then waits on this round trip, so a slow tool is heard as a pause in\nthe conversation rather than seen as a slow request \u2014 and nothing else in\nthe system would show it. `search_material` is the one to watch: one\nembedding call plus one pgvector query, budgeted at about 350ms.",
         "operationId": "worker_run_assistant_tool",
         "parameters": [
           {

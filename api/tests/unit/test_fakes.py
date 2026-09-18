@@ -27,3 +27,35 @@ async def test_email_sender_records_and_fails_on_cue() -> None:
     with pytest.raises(EmailDeliveryFailed):
         await sender.send(to="c@d.com", subject="again", html="")
     assert len(sender.sent) == 1
+
+
+def test_the_material_index_doubles_conform_to_the_port() -> None:
+    """Both of them: the fake tests use, and the one an unconfigured deployment gets.
+
+    `NoMaterialIndex` is production code, not a stub, so it belongs in the same
+    assertion — a deployment without an embedding key runs it.
+    """
+    from app.core.ports import MaterialIndex
+    from app.features.tutor_memory.index import NoMaterialIndex
+    from tests.support.fakes import FakeMaterialIndex
+
+    assert isinstance(FakeMaterialIndex(), MaterialIndex)
+    assert isinstance(NoMaterialIndex(), MaterialIndex)
+
+
+async def test_the_fake_material_index_filters_by_exam_like_the_real_one() -> None:
+    """A fake that returned unentitled material would let an entitlement bug
+    through every test above the adapter."""
+    from tests.support.fakes import FakeMaterialIndex
+
+    index = FakeMaterialIndex()
+    await index.upsert(
+        corpus="summary",
+        source_id="locked",
+        exam_id="exam-b",
+        title="Not theirs",
+        chunks=[{"index": 0, "section": "management", "text": "asthma advice"}],
+    )
+
+    assert await index.search(query="asthma", exam_ids=["exam-a"], corpus=None, limit=3) == []
+    assert await index.search(query="asthma", exam_ids=["exam-b"], corpus=None, limit=3) != []

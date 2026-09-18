@@ -1,0 +1,161 @@
+"""The adapter behind `core.ports.MaterialIndex`: pgvector, or nothing at all.
+
+pgvector rather than Pinecone (ADR 0019). The material is already in Postgres,
+the corpus is thousands of passages, and an index in the same transaction as
+the rows it describes cannot drift from them — which a second datastore, with
+its own outage and its own bill, can and in b2c did.
+
+`NoMaterialIndex` is the other half of the decision and not a stub. A
+deployment with no embedding key has no index, and the tutor must then say it
+cannot look something up rather than answer from memory and sound just as
+certain. Returning nothing is what makes that happen, and it is why the port's
+`search` promises an ordering rather than an answer.
+"""
+
+from __future__ import annotations
+
+import uuid
+from collections.abc import Mapping, Sequence
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.logging import get_logger
+from app.core.ports import Embedder, MaterialIndex, Passage
+from app.core.settings import get_settings
+from app.features.tutor_memory import repository_index
+
+log = get_logger(__name__)
+
+
+class PgVectorMaterialIndex:
+    """Passages in Postgres, retrieved by cosine distance.
+
+    Holds the session it was built with. The index is written inside the job's
+    transaction and read inside the request's, so that a re-index that fails
+    half way leaves no half-indexed document behind — which is the whole
+    argument for keeping it in the same database.
+    """
+
+    def __init__(self, session: AsyncSession, embedder: Embedder) -> None:
+        self._session = session
+        self._embedder = embedder
+
+    async def upsert(
+        self,
+        *,
+        corpus: str,
+        source_id: str,
+        exam_id: str | None,
+        title: str,
+        chunks: Sequence[Mapping[str, Any]],
+    ) -> int:
+        if not chunks:
+            return await repository_index.forget_source(self._session, corpus=corpus, source_id=source_id)
+
+        vectors = await self._embedder.embed([str(chunk["text"]) for chunk in chunks])
+        embedded = [
+            {"index": chunk["index"], "section": chunk["section"], "text": chunk["text"], "embedding": vector}
+            for chunk, vector in zip(chunks, vectors, strict=True)
+        ]
+        return await repository_index.replace_source(
+            self._session,
+            corpus=corpus,
+            source_id=source_id,
+            exam_id=uuid.UUID(exam_id) if exam_id else None,
+            title=title,
+            chunks=embedded,
+        )
+
+    async def indexed_sources(self, *, corpus: str) -> set[str]:
+        return await repository_index.indexed_source_ids(self._session, corpus=corpus)
+
+    async def forget(self, *, corpus: str, source_id: str) -> int:
+        return await repository_index.forget_source(self._session, corpus=corpus, source_id=source_id)
+
+    async def search(
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
+    ) -> list[Passage]:
+        if not exam_ids or not query.strip():
+            return []
+
+        vectors = await self._embedder.embed([query])
+        if not vectors:
+            return []
+
+        rows = await repository_index.nearest(
+            self._session,
+            embedding=vectors[0],
+            exam_ids=[uuid.UUID(exam_id) for exam_id in exam_ids],
+            corpus=corpus,
+            limit=limit,
+        )
+        return [
+            Passage(
+                corpus=row.corpus,
+                source_id=row.source_id,
+                title=row.title,
+                text=row.text,
+                section=row.section,
+                score=score,
+            )
+            for row, score in rows
+        ]
+
+
+class NoMaterialIndex:
+    """No index configured: nothing stored, nothing found, and said so once."""
+
+    async def upsert(
+        self,
+        *,
+        corpus: str,
+        source_id: str,
+        exam_id: str | None,
+        title: str,
+        chunks: Sequence[Mapping[str, Any]],
+    ) -> int:
+        log.info("material index not configured", corpus=corpus, source_id=source_id)
+        return 0
+
+    async def indexed_sources(self, *, corpus: str) -> set[str]:
+        # Never "everything in the table": an unconfigured deployment must not
+        # retire passages a configured one wrote. Doing nothing is the only
+        # safe answer when there is no index to speak for.
+        return set()
+
+    async def forget(self, *, corpus: str, source_id: str) -> int:
+        return 0
+
+    async def search(
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
+    ) -> list[Passage]:
+        return []
+
+
+def build_material_index(session: AsyncSession) -> MaterialIndex | None:
+    """The real index, or `None` where there is no key to embed with.
+
+    `None` rather than `NoMaterialIndex` because the caller has to be able to
+    tell the two apart, and an empty result cannot. "I could not look that up"
+    and "I looked and the material does not say" are different claims, and the
+    tutor speaks them aloud with equal confidence — so an unconfigured
+    deployment answering the second would have it stating, in a clinical
+    conversation, that the reading does not cover something it never read.
+
+    `NoMaterialIndex` is still the right answer for a re-index, where doing
+    nothing quietly is exactly what an unconfigured deployment should do.
+    """
+    if not get_settings().openai_api_key:
+        return None
+    from app.features.tutor_memory.embedder import EmbeddingFailed, build_embedder  # noqa: PLC0415
+
+    try:
+        return PgVectorMaterialIndex(session, build_embedder())
+    except EmbeddingFailed as exc:
+        # A key that is set but unusable — the package missing, say. Same
+        # answer as no key at all: the tutor says it cannot look that up. A
+        # raise here would be a 500 on the worker's tool route, which the
+        # model hears as a failure mid-sentence.
+        log.warning("material index could not be built", error=str(exc))
+        return None

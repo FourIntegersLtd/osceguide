@@ -28,6 +28,31 @@ TOOL_ROLES = {
     "remember": REMEMBER,
 }
 
+# What the model may ask to narrow a material search to, and the corpus each
+# one means. The two vocabularies are deliberately different: the model is told
+# the doctor's word for a thing ("management_plan" is the screen they read
+# after a consultation), and the index stores the thing it came from (a
+# station). Mapping them here is what stops a narrowed search from matching
+# nothing at all, which is how it reads when the two drift apart.
+CORPUS_BY_KIND: dict[str, str] = {
+    "management_plan": "station",
+    "summary": "summary",
+    "slide_deck": "slide_deck",
+    "podcast": "podcast",
+    "blog": "blog",
+}
+
+# `any` is the model's way of saying "no preference". It is not a corpus, and
+# passing it through as one would filter everything out.
+ANY_KIND = "any"
+MATERIAL_KINDS = (*CORPUS_BY_KIND, ANY_KIND)
+
+
+def corpus_for(kind: str) -> str | None:
+    """The corpus a tool argument names, or `None` for no narrowing."""
+    return None if kind == ANY_KIND else CORPUS_BY_KIND.get(kind)
+
+
 CATALOG: tuple[dict[str, Any], ...] = (
     {
         "name": RECALL_HISTORY,
@@ -78,7 +103,7 @@ CATALOG: tuple[dict[str, Any], ...] = (
                 "kind": {
                     "type": "string",
                     "description": "Narrow to one kind of material.",
-                    "enum": ["management_plan", "summary", "slide_deck", "any"],
+                    "enum": list(MATERIAL_KINDS),
                 },
             },
             "required": ["query"],

@@ -11,15 +11,18 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, UUIDPrimaryKey
+from app.features.tutor_memory.vector_column import Vector
 
 
 class LearningEvent(Base, UUIDPrimaryKey):
@@ -119,4 +122,61 @@ class DebriefSummary(Base, UUIDPrimaryKey):
     model_used: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class MaterialChunk(Base, UUIDPrimaryKey):
+    """One passage of study material, and the vector it is retrieved by.
+
+    Not owned by `stations` or `media`, though the text comes from both. This
+    is a derived index rebuilt by a job, and a table that can be dropped and
+    regenerated does not belong to the slice that owns the source of truth —
+    it belongs to the reader that needs it, which is the tutor.
+
+    `source_id` is a string for the same reason `learning_events.ref_id` is:
+    the corpora live in different slices, and a foreign key per corpus would
+    make adding a third one a schema change. The re-index deletes stale rows,
+    so a deleted source's passages go on its next run rather than by cascade —
+    which is the honest cost of not having the key.
+    """
+
+    __tablename__ = "material_chunks"
+    __table_args__ = (
+        CheckConstraint("corpus IN ('station', 'summary', 'slide_deck', 'podcast', 'blog')", name="corpus"),
+        # What `upsert` writes against: one row per passage of a source, so
+        # re-indexing an edited document replaces rather than duplicates.
+        UniqueConstraint("corpus", "source_id", "chunk_index", name="uq_material_chunks_passage"),
+        # The search filters by exam before it ranks, because a doctor may only
+        # be read out of material they hold.
+        Index("ix_material_chunks_exam", "exam_id", "corpus"),
+        # The nearest-neighbour index. Declared here as well as in the
+        # migration because `test_models_and_schema_do_not_drift` compares the
+        # two: an index created only in raw SQL reads to autogenerate as one
+        # the models have dropped, and the next migration would drop it.
+        #
+        # The operator class has to match the operator the query uses (`<=>`,
+        # cosine) or the index is simply not consulted -- the query still
+        # returns the right rows, by scanning every one of them.
+        Index(
+            "ix_material_chunks_embedding",
+            "embedding",
+            postgresql_using="ivfflat",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+            postgresql_with={"lists": "100"},
+        ),
+    )
+
+    corpus: Mapped[str] = mapped_column(String(24), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    exam_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("exams.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    section: Mapped[str] = mapped_column(String(40), nullable=False)
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Named `text` because that is what it holds. It shadows SQLAlchemy's
+    # `text()` for the rest of this class body, which is why the default below
+    # is `func.now()` rather than the `text("now()")` the other tables use.
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(), nullable=False)
+    indexed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -141,17 +141,3 @@ class TutorPromptRenderer(Protocol):
     def render(self, *, brief: dict[str, object], labels: Mapping[str, str]) -> str:
         """Return the instructions. Raises `RenderFailed` if it produced none."""
         ...
-
-
-@runtime_checkable
-class Embedder(Protocol):
-    """Turns text into vectors, for searching study material by meaning.
-
-    Declared now and used when the material index lands: the tutor's
-    `search_material` tool answers "not configured" until then, and a port that
-    arrives with its first caller tends to be shaped by that one caller.
-    """
-
-    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        """One vector per text, in the order given."""
-        ...
