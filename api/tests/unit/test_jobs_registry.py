@@ -24,6 +24,11 @@ FEATURE_TASKS = {
     # which is the failure this whole file exists to make impossible.
     "advance_circuit",
     "sweep_circuits",
+    # The tutor's memory. Unregistered, a dashboard conversation is stored and
+    # never summarised — so the turns are kept forever and the tutor learns
+    # nothing, which is both halves of the failure at once.
+    "summarise_assistant_session",
+    "summarise_debrief",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",

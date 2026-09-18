@@ -32,6 +32,117 @@
         "title": "AcquisitionRead",
         "type": "object"
       },
+      "ActivityAccepted": {
+        "description": "How many were new. A repeat within the dedup window is accepted and not\nrecorded, which is a success rather than an error.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "recorded"
+        ],
+        "title": "ActivityAccepted",
+        "type": "object"
+      },
+      "ActivityBatch": {
+        "description": "A batch, because the browser sends these as it goes and a tab closing\nshould not lose the last few.",
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityIn"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "ActivityBatch",
+        "type": "object"
+      },
+      "ActivityIn": {
+        "description": "One thing the browser saw somebody do.\n\n`ref_id` is a string because the six kinds live in three slices and one is\nnot a row at all; resolving a ref into a screen is the frontend's job.",
+        "properties": {
+          "exam_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "kind": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Kind",
+            "type": "string"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "ref_id": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Ref Id",
+            "type": "string"
+          },
+          "ref_kind": {
+            "maxLength": 24,
+            "minLength": 1,
+            "title": "Ref Kind",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref_kind",
+          "ref_id",
+          "title"
+        ],
+        "title": "ActivityIn",
+        "type": "object"
+      },
       "AddReporter": {
         "properties": {
           "email": {
@@ -2375,6 +2486,56 @@
         "title": "Dashboard",
         "type": "object"
       },
+      "DebriefSummaryRead": {
+        "properties": {
+          "action_plan": {
+            "items": {},
+            "title": "Action Plan",
+            "type": "array"
+          },
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_insights": {
+            "items": {},
+            "title": "Key Insights",
+            "type": "array"
+          },
+          "narrative": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Narrative"
+          }
+        },
+        "required": [
+          "id",
+          "attempt_id",
+          "key_insights",
+          "action_plan",
+          "narrative",
+          "created_at"
+        ],
+        "title": "DebriefSummaryRead",
+        "type": "object"
+      },
       "DecisionRead": {
         "properties": {
           "assessment_outcome": {
@@ -2807,6 +2968,7 @@
               "assistant_session_not_joinable",
               "assistant_session_not_ready",
               "assistant_session_not_yours",
+              "assistant_tools_not_available",
               "attempt_limit_reached",
               "attempt_mismatch",
               "attempt_not_found",
@@ -2913,9 +3075,11 @@
               "station_template_not_found",
               "station_template_version_not_found",
               "template_not_published",
+              "tool_arguments_invalid",
               "trainee_exists",
               "trainee_not_found",
               "trainee_revoked",
+              "tutor_note_not_found",
               "unauthenticated",
               "unavailable",
               "unknown_assistant_type",
@@ -2923,6 +3087,7 @@
               "unknown_media_kind",
               "unknown_partner",
               "unknown_plan",
+              "unknown_tool",
               "unusable_title",
               "user_not_found",
               "version_not_found",
@@ -2965,6 +3130,46 @@
           "message"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EventRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "ref_id": {
+            "title": "Ref Id",
+            "type": "string"
+          },
+          "ref_kind": {
+            "title": "Ref Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ref_kind",
+          "ref_id",
+          "title",
+          "occurred_at"
+        ],
+        "title": "EventRead",
         "type": "object"
       },
       "ExamProgress": {
@@ -3213,6 +3418,29 @@
           }
         },
         "title": "FinalizeCircuitReview",
+        "type": "object"
+      },
+      "ForgottenCounts": {
+        "properties": {
+          "debrief_summaries": {
+            "title": "Debrief Summaries",
+            "type": "integer"
+          },
+          "events": {
+            "title": "Events",
+            "type": "integer"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "notes",
+          "events",
+          "debrief_summaries"
+        ],
+        "title": "ForgottenCounts",
         "type": "object"
       },
       "FunnelRead": {
@@ -4283,6 +4511,37 @@
           "joinable"
         ],
         "title": "MySlot",
+        "type": "object"
+      },
+      "NoteRead": {
+        "properties": {
+          "body": {
+            "additionalProperties": true,
+            "title": "Body",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "body",
+          "created_at"
+        ],
+        "title": "NoteRead",
         "type": "object"
       },
       "OrgCounts": {
@@ -7404,6 +7663,65 @@
         "title": "TokenPair",
         "type": "object"
       },
+      "ToolCall": {
+        "description": "What the worker posts for one tool call.\n\n`call_id` is the worker's own and is echoed nowhere; it is here because the\nworker sends it and a rejected extra field would fail the call.",
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "title": "Arguments",
+            "type": "object"
+          },
+          "call_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Id"
+          },
+          "tool": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "title": "ToolCall",
+        "type": "object"
+      },
+      "ToolResult": {
+        "description": "What the model reads, and what the browser is shown.\n\n`result` is spoken, so it is prose rather than data. `display` is passed to\nthe frontend unchanged on the data channel; the backend never composes a\nroute, because which screen a thing lives on is the frontend's business.",
+        "properties": {
+          "display": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "ToolResult",
+        "type": "object"
+      },
       "TrackingReference": {
         "description": "What a partner puts in one link, and where that link points.",
         "properties": {
@@ -7735,6 +8053,39 @@
           "messages"
         ],
         "title": "TranscriptRead",
+        "type": "object"
+      },
+      "TutorMemoryRead": {
+        "description": "Everything the tutor holds about you, in the order it would speak it.\n\nExists so \"what do you know about me\" is answerable without reading a\nprompt: a memory nobody can inspect is one nobody can correct.",
+        "properties": {
+          "debrief_summaries": {
+            "items": {
+              "$ref": "#/components/schemas/DebriefSummaryRead"
+            },
+            "title": "Debrief Summaries",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventRead"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteRead"
+            },
+            "title": "Notes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "notes",
+          "events",
+          "debrief_summaries"
+        ],
+        "title": "TutorMemoryRead",
         "type": "object"
       },
       "UpdateBrief": {
@@ -11480,6 +11831,66 @@
         ]
       }
     },
+    "/api/v1/me/activity": {
+      "post": {
+        "description": "What this person has been reading and practising.\n\nA batch, and accepted rather than created: the browser sends these as it\ngoes, often as a tab is closing, and a repeat inside the dedup window is a\nsuccess that records nothing.",
+        "operationId": "tutor_memory_record_activity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Activity",
+        "tags": [
+          "tutor-memory"
+        ]
+      }
+    },
     "/api/v1/me/capabilities": {
       "get": {
         "operationId": "tenancy_read_capabilities",
@@ -12934,6 +13345,174 @@
         "summary": "Start Attempt",
         "tags": [
           "station-sets"
+        ]
+      }
+    },
+    "/api/v1/me/tutor-memory": {
+      "delete": {
+        "description": "Forget the lot, and say how much was forgotten.\n\nDebrief summaries are opt-in: they are also this doctor's own record of\nwhat a debrief concluded, shown on their results.",
+        "operationId": "tutor_memory_forget_tutor_memory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_debriefs",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Debriefs",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgottenCounts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forget Tutor Memory",
+        "tags": [
+          "tutor-memory"
+        ]
+      },
+      "get": {
+        "description": "Everything the tutor knows about you.\n\nA memory nobody can inspect is one nobody can correct, and the tutor speaks\nfrom this every time it opens its mouth.",
+        "operationId": "tutor_memory_read_tutor_memory",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutorMemoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Tutor Memory",
+        "tags": [
+          "tutor-memory"
+        ]
+      }
+    },
+    "/api/v1/me/tutor-memory/notes/{note_id}": {
+      "delete": {
+        "description": "Forget one thing. Somebody else's note is a 404, not a 403.",
+        "operationId": "tutor_memory_forget_note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "note_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "tutor_note_not_found",
+            "x-codes": [
+              "tutor_note_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forget Note",
+        "tags": [
+          "tutor-memory"
         ]
       }
     },
@@ -26092,6 +26671,112 @@
         ]
       }
     },
+    "/api/worker/assistant-sessions/{session_id}/tools/{tool_name}": {
+      "post": {
+        "description": "One tool call. `result` is spoken; `display` goes to the browser unchanged.",
+        "operationId": "worker_run_assistant_tool",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tool_name",
+            "required": true,
+            "schema": {
+              "title": "Tool Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolCall"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_found, unknown_tool",
+            "x-codes": [
+              "assistant_session_not_found",
+              "unknown_tool"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_joinable",
+            "x-codes": [
+              "assistant_session_not_joinable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "tool_arguments_invalid",
+            "x-codes": [
+              "tool_arguments_invalid"
+            ]
+          }
+        },
+        "summary": "Run Assistant Tool",
+        "tags": [
+          "worker"
+        ]
+      }
+    },
     "/api/worker/assistant-sessions/{session_id}/transcript": {
       "post": {
         "operationId": "worker_accept_assistant_transcript",
@@ -26748,6 +27433,10 @@
     {
       "description": "Help, onboarding and demonstration sessions",
       "name": "assistant"
+    },
+    {
+      "description": "What the tutor remembers about a learner",
+      "name": "tutor-memory"
     },
     {
       "description": "Routes the LiveKit workers call",

@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
 from app.features.assistant import domain, errors, repository
+from app.features.assistant import service_seams as seams
 from app.features.assistant.models import AssistantSession
-from app.features.assistant.schemas import RoomGrant, SessionRead, WorkerSessionPayload
+from app.features.assistant.schemas import RoomGrant, SessionRead
 
 # Placeholder text until content packs are ported. Rendered here rather than in
 # the worker, which holds no templates by design.
@@ -24,19 +25,54 @@ _INSTRUCTIONS = {
 }
 
 
+async def run_tool(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    tool: str,
+    arguments: dict[str, Any],
+    now: datetime,
+) -> dict[str, Any]:
+    """Answer one tool call against a live session.
+
+    The session is looked up here rather than by whoever answers, because the
+    session's owner and its status are this slice's to know: a tool call must
+    not read one person's history on another's session, and a finished session
+    has nobody left to answer.
+    """
+    row = await require_session(session, session_id)
+    if not domain.can_join(status=row.status):
+        raise errors.SessionNotJoinable()
+    if seams._run_tool is None:
+        raise errors.ToolsNotAvailable()
+    return await seams._run_tool(
+        session,
+        tool=tool,
+        arguments=arguments,
+        user_id=row.user_id,
+        session_id=session_id,
+        now=now,
+    )
+
+
 async def start_session(
     session: AsyncSession,
     *,
     user_id: uuid.UUID,
     session_type: str,
     extras: dict[str, Any],
+    now: datetime,
 ) -> SessionRead:
     try:
         worker_type = domain.worker_type_for(session_type)
     except domain.UnknownAssistantType as exc:
         raise errors.UnknownAssistantTypeError(str(exc)) from exc
 
-    instructions = _INSTRUCTIONS[worker_type]
+    # Asked before the placeholder is used, not instead of it: a slice above
+    # this one renders the kinds it knows about and answers `None` for the rest.
+    rendered = await seams._render(session, worker_type, user_id, now) if seams._render else None
+    instructions = str(rendered["instructions"]) if rendered else _INSTRUCTIONS[worker_type]
+    greeting = str(rendered["greeting"]) if rendered and rendered.get("greeting") else None
     try:
         domain.ensure_dispatchable(instructions=instructions)
     except domain.UnrenderableSession as exc:
@@ -47,8 +83,10 @@ async def start_session(
         user_id=user_id,
         session_type=worker_type,
         instructions=instructions,
-        greeting=None,
-        extras=extras,
+        greeting=greeting,
+        # The tools the session may call travel with it, so the bootstrap the
+        # worker fetches minutes later offers exactly what was rendered for.
+        extras={**extras, **(_tool_extras(rendered) if rendered else {})},
         room_name=None,
     )
     # The room is derived from the session id, so a stray room says which
@@ -91,7 +129,7 @@ async def voice_grant(
     """
     from app.features.voice import service as voice
 
-    row = await _require(session, session_id)
+    row = await require_session(session, session_id)
     if row.user_id != requester_id:
         raise errors.SessionNotYours()
     if not domain.can_join(status=row.status):
@@ -112,81 +150,14 @@ async def voice_grant(
     return RoomGrant(token=grant.token, server_url=grant.server_url, room=grant.room)
 
 
-async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessionPayload:
-    """What the assistant worker fetches.
-
-    Mirrors `livekit_assistant_worker.bootstrap.AssistantSession`: every text
-    arrives rendered, and `extras` carries the two facts the worker decides for
-    itself.
-    """
-    row = await _require(session, session_id)
-    if not domain.can_join(status=row.status):
-        raise errors.SessionNotJoinable()
-    try:
-        domain.ensure_dispatchable(instructions=row.instructions)
-    except domain.UnrenderableSession as exc:
-        raise errors.SessionNotReady(str(exc)) from exc
-
-    return WorkerSessionPayload(
-        session={
-            "session_id": str(row.id),
-            "worker_type": row.session_type,
-            "candidate_ref": str(row.user_id),
-            "instructions": row.instructions,
-            "greeting": row.greeting,
-            "extras": row.extras or {},
-        }
-    )
+TOOLS_KEY = "tools"
 
 
-async def scene_instructions(session: AsyncSession, session_id: uuid.UUID, *, phase: str | None) -> str:
-    """Instructions for the next scene of an onboarding demo."""
-    row = await _require(session, session_id)
-    return f"{row.instructions}\n\nScene: {phase or 'next'}."
+def _tool_extras(rendered: dict[str, Any]) -> dict[str, Any]:
+    return {**(rendered.get("extras") or {}), TOOLS_KEY: rendered.get("tools") or []}
 
 
-async def accept_transcript(
-    session: AsyncSession, session_id: uuid.UUID, *, transcript: dict[str, Any], now: datetime
-) -> None:
-    """Store a help session's turns; discard everyone else's.
-
-    The other three kinds are navigation, and keeping them would collect
-    recordings of people's screens for no purpose.
-    """
-    row = await _require(session, session_id)
-    if not domain.keeps_transcript(row.session_type):
-        return
-
-    seen = await repository.seen_message_ids(session, session_id)
-    for message in transcript.get("messages") or []:
-        message_id = str(message.get("message_id") or "")
-        if not message_id or message_id in seen:
-            continue
-        seen.add(message_id)
-        await repository.add_message(
-            session,
-            session_id,
-            message_id=message_id,
-            seq=int(message.get("seq") or 0),
-            role=str(message.get("role") or "user"),
-            message=str(message.get("message") or ""),
-            spoken_at=now,
-        )
-
-
-async def complete_session(
-    session: AsyncSession,
-    session_id: uuid.UUID,
-    *,
-    end_reason: str | None,
-    usage: dict[str, Any],
-    now: datetime,
-) -> None:
-    await _require(session, session_id)
-    await repository.complete(session, session_id, at=now, end_reason=end_reason, usage=usage or None)
-
-
-async def _require(session: AsyncSession, session_id: uuid.UUID) -> AssistantSession:
+async def require_session(session: AsyncSession, session_id: uuid.UUID) -> AssistantSession:
     row = await repository.by_id(session, session_id)
     if row is None:
         raise errors.SessionNotFound()

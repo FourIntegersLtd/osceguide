@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
-from app.core.ports import VoiceTokens
+from app.core.ports import ClockDep, VoiceTokens
 from app.core.settings import SettingsDep
 from app.features.assistant import errors, schemas, service
 
@@ -25,13 +25,14 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Unauthenticated, errors.UnknownAssistantTypeError),
 )
 async def start_session(
-    body: schemas.StartSession, principal: CurrentPrincipal, session: Session
+    body: schemas.StartSession, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.SessionRead:
     return await service.start_session(
         session,
         user_id=principal.user_id,
         session_type=body.session_type,
         extras=body.extras,
+        now=clock.now(),
     )
 
 

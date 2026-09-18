@@ -8,11 +8,15 @@ exposes a `router`; this file mounts it. Nothing else may call
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
 from app.core.audience import bind_viewer_audiences
@@ -34,8 +38,10 @@ from app.core.tenancy import bind_org_lookup
 from app.features import health
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
+from app.features.assistant.service_seams import bind_assistant_hooks
 from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
+from app.features.attempts.service_worker import bind_interaction_complete_hook
 from app.features.billing.router import router as billing_router
 from app.features.billing.service import count_payments_for_users
 from app.features.catalog.router import router as catalog_router
@@ -79,6 +85,10 @@ from app.features.tenancy.service import (
     org_permits_access,
     org_ref_by_slug,
 )
+from app.features.tutor_memory import jobs as tutor_jobs
+from app.features.tutor_memory import service_session, service_tools
+from app.features.tutor_memory.router import router as tutor_memory_router
+from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
 from app.features.voice.router import router as voice_router
 from app.features.voice.router_worker import router as voice_worker_router
 
@@ -127,6 +137,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(peer_practice_router)
     router.include_router(growth_router)
     router.include_router(media_router)
+    router.include_router(tutor_memory_router)
     return router
 
 
@@ -136,6 +147,7 @@ def worker_router() -> APIRouter:
     router.include_router(attempts_worker_router)
     router.include_router(assistant_worker_router)
     router.include_router(voice_worker_router)
+    router.include_router(tutor_memory_worker_router)
     return router
 
 
@@ -186,6 +198,15 @@ def create_app() -> FastAPI:
     # An institution rosters somebody by email before they have an account.
     # `roster` sits above `identity`, so registration announces itself here.
     bind_registration_hook(claim_roster_entries)
+    # The tutor's memory sits above `assistant` and above `attempts`, so both
+    # announce their moments here: what a dashboard session should be told and
+    # what its tools mean, and that an interaction has finished.
+    bind_assistant_hooks(
+        render=_render_assistant_session,
+        run_tool=service_tools.tool_hook,
+        on_transcript=tutor_jobs.on_transcript,
+    )
+    bind_interaction_complete_hook(tutor_jobs.on_interaction_complete)
     bind_role_policy(
         may_read_org=may_read_org,
         may_run_circuit=may_run_circuit,
@@ -202,6 +223,19 @@ def create_app() -> FastAPI:
     document_shared_auth_errors(app)
     install_error_catalogue(app)
     return app
+
+
+async def _render_assistant_session(
+    session: AsyncSession, session_type: str, user_id: uuid.UUID, now: datetime
+) -> dict[str, Any] | None:
+    """Adapt the seam's positional shape to the slice's keyword one.
+
+    A lambda would do it, but this is the only place the two sides meet and a
+    named function is what appears in a traceback.
+    """
+    return await service_session.render_dashboard_session(
+        session, session_type=session_type, user_id=user_id, now=now
+    )
 
 
 app = create_app()

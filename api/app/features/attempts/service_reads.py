@@ -101,7 +101,9 @@ class AttemptRef:
 
     Not the mapped row: those stay inside this slice. `voice` needs to know
     whose attempt it is and whether it is still joinable; a dashboard needs the
-    same plus whether it has been marked.
+    same plus whether it has been marked; a tutor recalling a consultation needs
+    which station it was and when it finished, because "the hip pain one, two
+    days ago" is how it will talk about it.
     """
 
     id: uuid.UUID
@@ -111,6 +113,8 @@ class AttemptRef:
     exam_id: uuid.UUID
     room_name: str | None
     created_at: datetime
+    station_version_id: uuid.UUID | None = None
+    completed_at: datetime | None = None
     has_result: bool = False
 
 
@@ -138,6 +142,8 @@ def _ref(row: Attempt, *, has_result: bool = False) -> AttemptRef:
         exam_id=row.exam_id,
         room_name=row.room_name,
         created_at=row.created_at,
+        station_version_id=row.station_version_id,
+        completed_at=row.completed_at,
         has_result=has_result,
     )
 

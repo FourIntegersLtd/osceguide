@@ -38,7 +38,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-59 tables across 20 slices. Every table's classes live in `app/features/<slice>/models.py`
+62 tables across 21 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -1030,6 +1030,59 @@ Same shape as `transcript_messages`: `session_id` → `assistant_sessions.id` CA
 `message_id varchar(64)`, `seq int`, `role varchar(16)`, `message text`,
 `spoken_at timestamptz`, `created_at timestamptz default now()`.
 UNIQUE `(session_id, message_id)`; index `(session_id, seq)`.
+
+## tutor_memory — 3 tables
+
+What the tutor knows about one learner. Sits above `assistant` and `attempts`; both
+announce their moments through `bind_*` seams, so nothing below imports this.
+
+### `learning_events`
+One thing this person read, practised or listened to. Written by the browser as it
+happens: a summary opened in the app leaves no other trace, and the tutor asking how
+it went is the point of collecting them.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id` | `uuid not null` → `users.id` CASCADE | indexed with `occurred_at` |
+| `exam_id` | `uuid null` → `exams.id` RESTRICT | an exam outlives any learner; deleting one should fail loudly, not quietly erase everybody's history of studying for it |
+| `kind` | `varchar(16) not null` | CHECK `viewed` \| `practised` \| `listened` |
+| `ref_kind` | `varchar(24) not null` | CHECK `summary` \| `slide_deck` \| `podcast` \| `blog` \| `station` \| `management_plan` |
+| `ref_id` | `varchar(120) not null` | a string, not a foreign key: the six kinds live in three slices and one is not a row at all. Resolving a ref into a screen is the frontend's |
+| `title` | `varchar(300) not null` | what the tutor will call it out loud |
+| `occurred_at` | `timestamptz not null` | |
+| `meta` | `jsonb null` | |
+| `created_at` | `timestamptz not null default now()` | no `updated_at`: an event happened once |
+
+Index `(user_id, ref_kind, ref_id, occurred_at)` is the dedup read: two sightings of
+the same thing inside ten minutes are one visit, because somebody who opens a summary,
+follows a link and comes back has not read it twice.
+
+### `tutor_notes`
+Something the tutor wrote down: how a conversation ended, or a fact it was told. Two
+kinds in one table because they are read together and forgotten together.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id` | `uuid not null` → `users.id` CASCADE | indexed with `created_at` |
+| `exam_id` | `uuid null` → `exams.id` RESTRICT | |
+| `session_id` | `uuid null` → `assistant_sessions.id` SET NULL | **not** CASCADE: the summary is what survives the conversation, and the turns are deleted on purpose once it is written |
+| `kind` | `varchar(24) not null` | CHECK `session_summary` \| `stated_fact` |
+| `body` | `jsonb not null` | `session_summary`: `{summary, agreed_next_steps[], topics[]}`. `stated_fact`: `{fact}`, clipped to 300 characters — longer and it stops being a fact and becomes a paragraph the tutor recites |
+| `created_at` | `timestamptz not null default now()` | |
+
+### `debrief_summaries`
+What a debrief concluded and what was agreed about it.
+
+| Field | Type | Notes |
+|---|---|---|
+| `attempt_id` | `uuid not null` → `attempts.id` CASCADE | UNIQUE. Enforced here rather than by the job checking first: the queue may deliver twice, and two summaries would have the tutor agreeing two different plans |
+| `user_id` | `uuid not null` → `users.id` CASCADE | indexed with `created_at` |
+| `exam_id` | `uuid null` → `exams.id` RESTRICT | |
+| `key_insights` | `jsonb not null` | list of strings |
+| `action_plan` | `jsonb not null` | `[{text, done}]`. The flag is what lets the tutor ask about a step by name and hear whether it happened |
+| `narrative` | `text null` | |
+| `model_used` | `varchar(64) null` | |
+| `created_at` | `timestamptz not null default now()` | |
 
 ## notifications — 1 table
 

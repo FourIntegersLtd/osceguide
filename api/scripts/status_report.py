@@ -62,6 +62,11 @@ PLANNED = [
     "POST /api/worker/livekit-cloud-slot/extend",
     "POST /api/worker/livekit-cloud-slot/release",
     "POST /api/v1/assistant/sessions/{session_id}/voice-token",
+    "POST /api/v1/me/activity",
+    "GET /api/v1/me/tutor-memory",
+    "DELETE /api/v1/me/tutor-memory",
+    "DELETE /api/v1/me/tutor-memory/notes/{note_id}",
+    "POST /api/worker/assistant-sessions/{session_id}/tools/{tool_name}",
     "GET /api/worker/assistant-sessions/{session_id}",
     "POST /api/worker/sessions/{session_id}/complete",
 ]

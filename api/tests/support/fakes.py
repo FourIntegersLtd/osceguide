@@ -7,6 +7,7 @@ test can say "the third email fails" without a mock.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
@@ -188,3 +189,66 @@ class FakeRoomAgents:
 
             raise VoiceUnavailable("LiveKit is unreachable")
         self.dispatched.append({"room": room, "agent_name": agent_name, "metadata": metadata})
+
+
+class FakeTranscriptSummariser:
+    """Returns a canned payload and records what it was asked to summarise."""
+
+    def __init__(self, *, payload: dict[str, object] | None = None, fail_times: int = 0) -> None:
+        self.payload = payload or {
+            "summary": "We went over the hip consultation.",
+            "agreed_next_steps": ["Offer an examination before the history ends"],
+            "topics": ["examination"],
+        }
+        self.fail_times = fail_times
+        self.calls: list[dict[str, object]] = []
+
+    async def summarise(
+        self,
+        *,
+        kind: str,
+        transcript: list[dict[str, object]],
+        schema: dict[str, object],
+        instructions: str,
+    ) -> dict[str, object]:
+        from app.core.ports import SummaryFailed
+
+        self.calls.append({"kind": kind, "turns": len(transcript), "instructions": instructions})
+        if self.fail_times > 0:
+            self.fail_times -= 1
+            raise SummaryFailed("fake failure")
+        return dict(self.payload)
+
+
+class FakeTutorPromptRenderer:
+    """A renderer whose output is unmistakable in an assertion.
+
+    Records the brief it was handed, because what the tutor is told about
+    somebody is the thing worth asserting; the wording belongs to the engine
+    and has a golden fixture of its own there.
+    """
+
+    MARKER = "[fake tutor prompt]"
+
+    def __init__(self) -> None:
+        self.briefs: list[dict[str, object]] = []
+        self.labels: list[dict[str, str]] = []
+
+    def render(self, *, brief: dict[str, object], labels: Mapping[str, str]) -> str:
+        self.briefs.append(dict(brief))
+        self.labels.append(dict(labels))
+        consultations = brief.get("consultations")
+        count = len(consultations) if isinstance(consultations, list) else 0
+        return f"{self.MARKER} consultations={count}"
+
+
+class FakeEmbedder:
+    """A deterministic, meaningless vector per text. Enough to prove the wiring."""
+
+    def __init__(self, dimensions: int = 8) -> None:
+        self.dimensions = dimensions
+        self.calls: list[list[str]] = []
+
+    async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        self.calls.append(list(texts))
+        return [[float((hash(t) >> i) % 10) for i in range(self.dimensions)] for t in texts]

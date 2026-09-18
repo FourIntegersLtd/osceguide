@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
@@ -89,11 +90,33 @@ async def test_a_help_transcript_is_kept(client: AsyncClient, make_actor, db_ses
     assert [m.message for m in stored] == ["How do I start?"]
 
 
-async def test_other_session_types_keep_nothing(
+async def test_a_navigation_transcript_keeps_nothing(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:
     """Navigation, not conversation. Keeping it would collect recordings of
     people's screens for nothing."""
+    session_id = await a_session(client, make_actor, session_type="onboarding")
+    await client.post(
+        f"/api/worker/assistant-sessions/{session_id}/transcript",
+        json={
+            "session_id": session_id,
+            "worker_type": "onboarding",
+            "transcript": {"messages": [{"message_id": "m0", "seq": 0, "role": "user", "message": "hi"}]},
+        },
+        headers=worker_headers(),
+    )
+    assert await repository.messages_for(db_session, uuid.UUID(session_id)) == []
+
+
+async def test_a_dashboard_transcript_is_kept_until_it_has_been_summarised(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """The turns are the only record until the note exists.
+
+    So a dashboard transcript is stored and a summary is queued in the same
+    transaction; the job writes the note and deletes the turns. Discarding here
+    would lose the one thing worth keeping.
+    """
     session_id = await a_session(client, make_actor, session_type="dashboard")
     await client.post(
         f"/api/worker/assistant-sessions/{session_id}/transcript",
@@ -104,7 +127,14 @@ async def test_other_session_types_keep_nothing(
         },
         headers=worker_headers(),
     )
-    assert await repository.messages_for(db_session, uuid.UUID(session_id)) == []
+    stored = await repository.messages_for(db_session, uuid.UUID(session_id))
+    assert [m.message for m in stored] == ["hi"]
+
+    queued = await db_session.execute(
+        text("SELECT task_name FROM procrastinate_jobs WHERE args->>'session_id' = :id"),
+        {"id": session_id},
+    )
+    assert list(queued.scalars()) == ["summarise_assistant_session"]
 
 
 async def test_a_repeated_transcript_message_is_stored_once(

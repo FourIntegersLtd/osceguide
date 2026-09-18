@@ -111,6 +111,7 @@ layers = [
     # one. They were under `identity` here, which made every one of those calls
     # a contract violation and left `make arch` failing.
     "app.features.dashboard",
+    "app.features.tutor_memory",
     "app.features.billing",
     "app.features.station_sets",
     "app.features.results",

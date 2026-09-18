@@ -74,6 +74,8 @@ def test_the_guard_would_catch_a_seam_nobody_tied(tmp_path: Path) -> None:
 def test_a_built_app_has_every_seam_filled_in() -> None:
     """The structural check above passes if the call is written but unreachable."""
     from app.core import audience, auth, memberships, role_policy, tenancy
+    from app.features.assistant import service_seams
+    from app.features.attempts import service_worker
     from app.features.growth import service as growth
     from app.features.identity import service as identity
     from app.features.identity import service_sessions
@@ -93,6 +95,10 @@ def test_a_built_app_has_every_seam_filled_in() -> None:
         "registration hook": identity._on_registered,
         "purchase counter": growth._purchase_counter,
         "feedback lookup": service_circuit._slot_has_review,
+        "assistant render": service_seams._render,
+        "assistant tools": service_seams._run_tool,
+        "assistant transcript": service_seams._on_transcript,
+        "interaction complete": service_worker._on_interaction_complete,
     }
     empty = sorted(name for name, bound in filled.items() if not bound)
     assert not empty, f"seams that create_app left empty: {empty}"

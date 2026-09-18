@@ -10,12 +10,39 @@ Protocols are added when the first slice needs them; keep this file small.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Sequence
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-from typing import Annotated, Any, Protocol, runtime_checkable
+from typing import Annotated, Protocol, runtime_checkable
 
 from fastapi import Depends
+
+# Re-exported so every existing caller keeps one import for "a port". The
+# model-facing half lives next door only because the file outgrew its cap.
+from app.core.ports_models import (
+    Embedder as Embedder,
+)
+from app.core.ports_models import (
+    EvaluationFailed as EvaluationFailed,
+)
+from app.core.ports_models import (
+    Evaluator as Evaluator,
+)
+from app.core.ports_models import (
+    ProfileRenderer as ProfileRenderer,
+)
+from app.core.ports_models import (
+    RenderFailed as RenderFailed,
+)
+from app.core.ports_models import (
+    SummaryFailed as SummaryFailed,
+)
+from app.core.ports_models import (
+    TranscriptSummariser as TranscriptSummariser,
+)
+from app.core.ports_models import (
+    TutorPromptRenderer as TutorPromptRenderer,
+)
 
 
 @runtime_checkable
@@ -45,82 +72,6 @@ def get_clock() -> Clock:
 
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
-
-
-class EvaluationFailed(Exception):
-    """The evaluator could not produce a valid result."""
-
-
-@runtime_checkable
-class Evaluator(Protocol):
-    """Marks a transcript against a rubric.
-
-    The backend evaluates, always. The LiveKit worker delivers a transcript and
-    stops: it cannot import an evaluator, and it is never told the evaluation
-    policy, so marking cannot be influenced by whatever ran the conversation.
-
-    `rubric` is the whole thing — the framework, its marking instructions, its
-    clock — frozen onto the attempt when it was rendered. It used to be a
-    `framework_id` the adapter looked up against the four frameworks the engine
-    shipped, which is why a rubric anyone authored could not be marked with.
-    Passing it whole also means a re-mark reproduces the original rather than
-    using whatever the rubric says by then.
-    """
-
-    async def evaluate(
-        self,
-        *,
-        rubric: dict[str, object],
-        policy_version: str,
-        transcript: list[dict[str, object]],
-    ) -> dict[str, object]:
-        """Return the engine's result payload, already schema-valid.
-
-        Raises EvaluationFailed rather than returning a partial result: a
-        half-marked attempt shown to a candidate is worse than one not yet marked.
-        """
-        ...
-
-
-class RenderFailed(Exception):
-    """A station could not be rendered into instructions at all."""
-
-
-@runtime_checkable
-class ProfileRenderer(Protocol):
-    """Turns a resolved station into the instructions the AI is given.
-
-    The backend renders every prompt; the worker holds no templates and is
-    handed finished text. That is the boundary the whole assessment layer is
-    built on — a transport that had to understand a station's shape would need
-    changing every time an organisation invented a new one.
-
-    Speaks dicts rather than engine contracts for the same reason `Evaluator`
-    does: `app/core` stays free of the engine, so the API starts and the suite
-    runs without it installed.
-    """
-
-    def render(
-        self,
-        *,
-        station: dict[str, object],
-        layout: Sequence[Mapping[str, Any]] | None = None,
-        greeting: str | None = None,
-        mode: str,
-    ) -> dict[str, object]:
-        """Return `{"instructions", "greeting", "examiner_context"}`.
-
-        `layout` is the station template's ordered block list, which says what
-        each block of the station is for. It replaces the `exam_code` this used
-        to take: the renderer branched on that string to pick one of three
-        formatters, so a new exam could not have a document shape of its own
-        without a change here and in the engine.
-
-        Raises `RenderFailed` rather than returning empty instructions: the
-        worker refuses a job with none, and it should fail here where somebody
-        can read the reason, not on connect.
-        """
-        ...
 
 
 @runtime_checkable
