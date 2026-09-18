@@ -47,6 +47,9 @@ class LiveKitTokens:
                     room_join=True,
                     room=room,
                     can_publish=can_publish,
+                    # Defaults to true, which would let an observer type into
+                    # the room's data channel. Watch and listen means neither.
+                    can_publish_data=can_publish,
                     can_subscribe=True,
                     room_admin=room_admin,
                 )
