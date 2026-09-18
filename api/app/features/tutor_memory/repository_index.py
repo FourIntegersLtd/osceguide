@@ -95,18 +95,32 @@ async def nearest(
     session: AsyncSession,
     *,
     embedding: Sequence[float],
-    exam_ids: Sequence[uuid.UUID],
+    exam_ids: Sequence[uuid.UUID] | None,
     corpus: str | None,
     limit: int,
 ) -> list[tuple[MaterialChunk, float]]:
-    """The nearest passages within the exams given, best first.
+    """The nearest passages, best first, within the exams given.
 
     The exam filter is a `WHERE`, applied before the ordering, so a doctor can
     never be ranked against material they do not hold — a post-filter would
     have thrown away the best passages and returned worse ones from the right
     exam, or nothing at all.
+
+    Three states, and the difference between the last two is load-bearing:
+
+    - a non-empty sequence filters to those exams;
+    - **an empty sequence returns nothing**, because a caller who computed an
+      empty entitled set has just decided this person may read nothing;
+    - **`None` applies no filter at all**, which only the media search box
+      passes. It searches titles of material `GET /media` already lists to
+      every signed-in reader, so filtering it and not the list would hide in
+      search what is visible in the index.
+
+    `None` rather than a second unfiltered query, so skipping the filter is
+    something a caller has to ask for by name and cannot reach by passing an
+    empty list it did not notice was empty.
     """
-    if not exam_ids:
+    if exam_ids is not None and not exam_ids:
         return []
 
     # Bound as text and cast, because `<=>` has no `(vector, text)` form and
@@ -118,12 +132,9 @@ async def nearest(
     # default, and the distance would then come back through the vector
     # column's own result handling — a list of floats where a number belongs.
     distance = MaterialChunk.embedding.op("<=>", return_type=Float)(query_vector)
-    stmt = (
-        select(MaterialChunk, distance.label("distance"))
-        .where(MaterialChunk.exam_id.in_(list(exam_ids)))
-        .order_by(distance)
-        .limit(limit)
-    )
+    stmt = select(MaterialChunk, distance.label("distance")).order_by(distance).limit(limit)
+    if exam_ids is not None:
+        stmt = stmt.where(MaterialChunk.exam_id.in_(list(exam_ids)))
     if corpus is not None:
         stmt = stmt.where(MaterialChunk.corpus == corpus)
 

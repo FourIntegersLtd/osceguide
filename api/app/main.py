@@ -55,6 +55,7 @@ from app.features.identity.router import router as identity_router
 from app.features.identity.service import bind_registration_hook, may_call_with_temporary_password
 from app.features.identity.service_sessions import bind_default_workspace
 from app.features.marketplace.router import router as marketplace_router
+from app.features.media.index import bind_vector_index
 from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
 from app.features.results.router import router as results_router
@@ -87,6 +88,7 @@ from app.features.tenancy.service import (
 )
 from app.features.tutor_memory import jobs as tutor_jobs
 from app.features.tutor_memory import service_session, service_tools
+from app.features.tutor_memory.media_index import build_media_index
 from app.features.tutor_memory.router import router as tutor_memory_router
 from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
 from app.features.voice.router import router as voice_router
@@ -195,6 +197,11 @@ def create_app() -> FastAPI:
     # `marketplace` and `peer_practice` all ask; `roster` and `tenancy`, which
     # know, both sit above them.
     bind_viewer_audiences(audiences_for_viewer)
+    # The media search box and the tutor read one pgvector store. The
+    # adapter belongs to `tutor_memory`, which owns `material_chunks` and
+    # sits above `media`, so the two meet here. Until this was bound, the
+    # search box returned an empty list for every query, always (M-3).
+    bind_vector_index(build_media_index)
     # An institution rosters somebody by email before they have an account.
     # `roster` sits above `identity`, so registration announces itself here.
     bind_registration_hook(claim_roster_entries)

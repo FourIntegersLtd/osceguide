@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import get_session
 from app.core.errors import AppError, raise_mapped
 from app.core.ports import VectorIndex
 from app.features.catalog import service as catalog
@@ -178,8 +180,12 @@ async def _read(session: AsyncSession, row: MediaItem) -> MediaRead:
     )
 
 
-def get_vector_index() -> VectorIndex:
-    """The dependency the router wires. Overridden in tests with a fake."""
-    from app.features.media.index import build_vector_index
+def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
+    """The dependency the router wires. Overridden in tests with a fake.
 
-    return build_vector_index()
+    Takes the request's session because the index is in the same database:
+    indexing on publish belongs in the transaction that published.
+    """
+    from app.features.media.index import build_vector_index  # noqa: PLC0415
+
+    return build_vector_index(session)
