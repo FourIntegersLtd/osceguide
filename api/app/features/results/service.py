@@ -13,6 +13,7 @@ from app.features.notifications import service as notifications
 from app.features.results import domain, errors, repository
 from app.features.results.models import CandidateResultRevision
 from app.features.results.schemas import DecisionRead
+from app.features.roster import service as roster
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.IncompatibleOutcomes: errors.IncompatibleOutcomesError,
@@ -122,7 +123,6 @@ async def release(
     *,
     sitting_id: uuid.UUID,
     trainee_id: uuid.UUID,
-    recipient: str,
     current_evidence: dict[str, Any],
     actor_id: uuid.UUID,
     now: datetime,
@@ -131,6 +131,11 @@ async def release(
 
     The evidence is re-checked: a station re-marked between sign-off and release
     would otherwise send someone an outcome nobody approved.
+
+    The recipient is looked up here rather than passed in. The router used to
+    supply `principal.email`, so every release notified the administrator who
+    pressed the button and never the candidate — a bug invisible from the
+    response, because the release itself succeeded.
     """
     latest = await _require(session, org_id, sitting_id, trainee_id)
     try:
@@ -173,7 +178,7 @@ async def release(
     # transaction, so it cannot exist for a release that rolled back.
     await notifications.enqueue_email(
         session,
-        recipient=recipient,
+        recipient=await roster.trainee_email(session, org_id, trainee_id),
         subject="Your result is available",
         template_key="candidate_result_released",
         payload={"sitting_id": str(sitting_id)},

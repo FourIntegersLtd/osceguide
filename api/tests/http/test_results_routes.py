@@ -38,16 +38,28 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
 
 
 async def a_sitting_and_trainee(db_session: AsyncSession, org_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
+    sitting, trainee, _ = await a_sitting_and_named_trainee(db_session, org_id)
+    return sitting, trainee
+
+
+async def a_sitting_and_named_trainee(
+    db_session: AsyncSession, org_id: uuid.UUID
+) -> tuple[uuid.UUID, uuid.UUID, str]:
+    """The same fixture, but it tells you the candidate's address.
+
+    Needed to assert who a released result is actually written to.
+    """
     from app.features.roster.models import Trainee
     from app.features.sittings.models import Sitting
 
     version = await published_feedback_version(db_session, org_id)
     await db_session.flush()
     sitting = Sitting(org_id=org_id, name="Finals", mode="exam", feedback_template_version_id=version.id)
-    trainee = Trainee(org_id=org_id, email=f"c{uuid.uuid4().hex[:8]}@example.com")
+    email = f"c{uuid.uuid4().hex[:8]}@example.com"
+    trainee = Trainee(org_id=org_id, email=email)
     db_session.add_all([sitting, trainee])
     await db_session.flush()
-    return sitting.id, trainee.id
+    return sitting.id, trainee.id, email
 
 
 def url(sitting: uuid.UUID, trainee: uuid.UUID, suffix: str = "") -> str:
@@ -322,3 +334,44 @@ async def test_nothing_unreleased_can_be_acknowledged(
     response = await client.post(f"/api/v1/me/results/{sitting}/acknowledge", headers=bearer(candidate))
     assert response.status_code == 404
     assert response.json()["code"] == "result_not_released"
+
+
+async def test_releasing_writes_to_the_candidate_and_not_the_administrator(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The release email used to go to whoever pressed the button.
+
+    `release` took its recipient from the router, which passed
+    `principal.email`, so the one person certain to be looking at the result
+    already was the only one told about it. Nothing in the response said so,
+    which is why it survived: the release itself succeeded either way.
+    """
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee, candidate_email = await a_sitting_and_named_trainee(db_session, org_id)
+
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    released = await client.post(
+        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
+    )
+    assert released.status_code == 200
+
+    queued = (
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "candidate_result_released")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [m.recipient for m in queued] == [candidate_email]
+    assert "admin-kings@example.com" not in {m.recipient for m in queued}

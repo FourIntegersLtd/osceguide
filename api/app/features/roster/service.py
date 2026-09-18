@@ -108,6 +108,21 @@ def _trainee_read(row: Trainee) -> TraineeRead:
     )
 
 
+async def trainee_email(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> str:
+    """Where to write to this candidate.
+
+    The roster address, not the signed-in account's: an institution rosters
+    people before they have ever signed in, so `user_id` is often null and the
+    address on the roster entry is the only one there is. When both exist they
+    are the same value — registering claims the entry by email.
+
+    `results` asks for this so that releasing an outcome writes to the
+    candidate. It used to send to the administrator who pressed the button,
+    who is the one person already looking at the result.
+    """
+    return (await _require_trainee(session, org_id, trainee_id)).email
+
+
 async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
     """Which roster entries this signed-in person is.
 

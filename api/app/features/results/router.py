@@ -109,7 +109,6 @@ async def release(
         workspace.org_id,
         sitting_id=sitting_id,
         trainee_id=trainee_id,
-        recipient=workspace.principal.email,
         current_evidence=body.evidence,
         actor_id=workspace.principal.user_id,
         now=clock.now(),
