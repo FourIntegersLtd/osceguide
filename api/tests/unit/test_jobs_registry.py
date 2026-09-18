@@ -7,9 +7,13 @@ was invisible. This asks the app itself.
 
 from __future__ import annotations
 
+import pathlib
+
 import procrastinate
 
 from app.core import jobs
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 FEATURE_TASKS = {
     "score_attempt",
@@ -63,3 +67,36 @@ def test_a_jobs_module_without_register_is_refused(monkeypatch) -> None:  # type
         raise AssertionError("a jobs module with no register() was accepted")
     monkeypatch.undo()
     assert isinstance(jobs.get_jobs_app(), procrastinate.App)
+
+
+def test_the_worker_can_map_every_table_it_will_query() -> None:
+    """A job that queries `attempts` must not fail on an unimported model.
+
+    The worker imports `app/features/*/jobs.py` and nothing else, so a mapper
+    whose foreign key names a table no imported module declares cannot be
+    configured — `attempts.peer_session_id` → `practice_sessions` is one, and
+    `attempts.set_entry_id` → `station_set_entries` another. The failure is
+    order-dependent, which is worse than being reliable: it surfaced only when a
+    circuit transition ran in a real worker, and marking was one import away
+    from the same fate.
+
+    In a **subprocess**, because that is the whole point. Every test in this
+    suite runs in a process where `conftest` has already imported the app, so
+    the bug is invisible from inside it — which is exactly why it reached a
+    deployment.
+    """
+    import subprocess
+    import sys
+
+    probe = (
+        "from app.worker.main import build_worker_app;"
+        "from sqlalchemy.orm import configure_mappers;"
+        "build_worker_app();"
+        "configure_mappers();"
+        "print('mapped')"
+    )
+    result = subprocess.run(  # noqa: S603 - our own interpreter, a literal probe
+        [sys.executable, "-c", probe], capture_output=True, text=True, cwd=str(ROOT)
+    )
+    assert result.returncode == 0, result.stderr[-1500:]
+    assert "mapped" in result.stdout
