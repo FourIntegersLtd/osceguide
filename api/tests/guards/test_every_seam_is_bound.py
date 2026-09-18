@@ -21,6 +21,10 @@ from pathlib import Path
 from tests.guards._scan import APP_ROOT, parse, python_files, rel
 
 MAIN = APP_ROOT / "main.py"
+# The wiring moved out of `main.py` when it went past the file cap: the
+# router registry and the seam explanations are two different jobs. Both
+# files count as the composition root, so a seam tied in either is tied.
+COMPOSITION = APP_ROOT / "composition.py"
 
 
 def declared_seams(root: Path = APP_ROOT) -> dict[str, str]:
@@ -33,8 +37,11 @@ def declared_seams(root: Path = APP_ROOT) -> dict[str, str]:
     return found
 
 
-def unbound(root: Path = APP_ROOT, main: Path = MAIN) -> list[str]:
-    called = calls_in(main)
+def unbound(root: Path = APP_ROOT, main: Path | None = None) -> list[str]:
+    roots = [main] if main is not None else [p for p in (MAIN, COMPOSITION) if p.exists()]
+    called: set[str] = set()
+    for path in roots:
+        called |= calls_in(path)
     return sorted(
         f"{name} (declared in {where})" for name, where in declared_seams(root).items() if name not in called
     )
@@ -55,7 +62,7 @@ def test_there_are_seams_to_check() -> None:
 def test_the_composition_root_binds_every_seam() -> None:
     missing = unbound()
     assert not missing, (
-        f"seams declared but never bound in app/main.py: {missing}. "
+        f"seams declared but never bound in app/main.py or app/composition.py: {missing}. "
         "A seam nobody ties raises at runtime, on whichever route reaches it first."
     )
 

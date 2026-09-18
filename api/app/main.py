@@ -8,23 +8,17 @@ exposes a `router`; this file mounts it. Nothing else may call
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
-from app.core.audience import bind_viewer_audiences
-from app.core.auth import bind_password_gate
+from app.composition import bind_seams
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
-from app.core.memberships import bind_membership_lookup
 from app.core.observability import configure_sentry
 from app.core.openapi import (
     TAGS,
@@ -33,63 +27,38 @@ from app.core.openapi import (
     operation_id,
 )
 from app.core.redis import close_redis
-from app.core.role_policy import bind_org_access_policy, bind_role_policy
 from app.core.settings import get_settings
-from app.core.tenancy import bind_org_lookup
 from app.features import health
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
-from app.features.assistant.service_seams import bind_assistant_hooks
 from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
-from app.features.attempts.service_worker import bind_interaction_complete_hook
 from app.features.billing.router import router as billing_router
-from app.features.billing.service import count_payments_for_users
 from app.features.catalog.router import router as catalog_router
 from app.features.community.router import router as community_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.dashboard.router_live import router as live_board_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.growth.router import router as growth_router
-from app.features.growth.service import bind_purchase_counter
 from app.features.identity.router import router as identity_router
-from app.features.identity.service import bind_registration_hook, may_call_with_temporary_password
-from app.features.identity.service_sessions import bind_default_workspace
 from app.features.marketplace.router import router as marketplace_router
-from app.features.media.index import bind_vector_index
 from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
-from app.features.reviews.service import slot_has_review
 from app.features.roster.router import router as roster_router
-from app.features.roster.service import audiences_for_viewer, claim_roster_entries
 from app.features.rubrics.router import router as rubrics_router
 from app.features.rubrics.router_feedback import router as feedback_templates_router
 from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
 from app.features.sittings.router_overrides import router as circuit_overrides_router
 from app.features.sittings.router_run import router as circuit_run_router
-from app.features.sittings.service_circuit import bind_feedback_lookup
 from app.features.station_sets.router import router as station_sets_router
 from app.features.stations.router import router as stations_router
 from app.features.stations.router_platform import router as platform_stations_router
 from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
 from app.features.tenancy.router_platform import router as platform_console_router
-from app.features.tenancy.service import (
-    default_workspace_for,
-    is_institution_admin,
-    is_org_admin,
-    may_read_org,
-    may_run_circuit,
-    memberships_for_token,
-    org_permits_access,
-    org_ref_by_slug,
-)
-from app.features.tutor_memory import jobs as tutor_jobs
-from app.features.tutor_memory import service_session, service_tools
-from app.features.tutor_memory.media_index import build_media_index
 from app.features.tutor_memory.router import router as tutor_memory_router
 from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
 from app.features.voice.router import router as voice_router
@@ -179,50 +148,7 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
 
-    # `identity` needs a user's memberships to stamp a token but sits below
-    # `tenancy`, which owns them. The seam is bound here, in the one place
-    # allowed to know about both.
-    bind_membership_lookup(memberships_for_token)
-    # Which workspace a fresh token lands in. `tenancy` owns the rule and sits
-    # above `identity`, which builds the token, so they meet here.
-    bind_default_workspace(default_workspace_for)
-    # A temporary password reaches only the routes that replace it. The rule is
-    # `identity`'s; the enforcement point is core's `get_principal`.
-    bind_password_gate(may_call_with_temporary_password)
-    bind_org_lookup(org_ref_by_slug)
-    bind_org_access_policy(org_permits_access)
-    # `reviews` sits above `sittings`, so the edit lock cannot ask it directly.
-    bind_feedback_lookup(slot_has_review)
-    # `billing` sits above `growth`, so the partner funnel cannot count
-    # purchases for itself. It reported zero until this was bound (G-2).
-    bind_purchase_counter(count_payments_for_users)
-    # Who can see an institution's or a group's posts. `community`,
-    # `marketplace` and `peer_practice` all ask; `roster` and `tenancy`, which
-    # know, both sit above them.
-    bind_viewer_audiences(audiences_for_viewer)
-    # The media search box and the tutor read one pgvector store. The
-    # adapter belongs to `tutor_memory`, which owns `material_chunks` and
-    # sits above `media`, so the two meet here. Until this was bound, the
-    # search box returned an empty list for every query, always (M-3).
-    bind_vector_index(build_media_index)
-    # An institution rosters somebody by email before they have an account.
-    # `roster` sits above `identity`, so registration announces itself here.
-    bind_registration_hook(claim_roster_entries)
-    # The tutor's memory sits above `assistant` and above `attempts`, so both
-    # announce their moments here: what a dashboard session should be told and
-    # what its tools mean, and that an interaction has finished.
-    bind_assistant_hooks(
-        render=_render_assistant_session,
-        run_tool=service_tools.tool_hook,
-        on_transcript=tutor_jobs.on_transcript,
-    )
-    bind_interaction_complete_hook(tutor_jobs.on_interaction_complete)
-    bind_role_policy(
-        may_read_org=may_read_org,
-        may_run_circuit=may_run_circuit,
-        is_org_admin=is_org_admin,
-        is_institution_admin=is_institution_admin,
-    )
+    bind_seams()
 
     app.include_router(health.router)
     app.include_router(api_v1_router(), prefix=API_V1_PREFIX)
@@ -233,19 +159,6 @@ def create_app() -> FastAPI:
     document_shared_auth_errors(app)
     install_error_catalogue(app)
     return app
-
-
-async def _render_assistant_session(
-    session: AsyncSession, session_type: str, user_id: uuid.UUID, now: datetime
-) -> dict[str, Any] | None:
-    """Adapt the seam's positional shape to the slice's keyword one.
-
-    A lambda would do it, but this is the only place the two sides meet and a
-    named function is what appears in a traceback.
-    """
-    return await service_session.render_dashboard_session(
-        session, session_type=session_type, user_id=user_id, now=now
-    )
 
 
 app = create_app()
