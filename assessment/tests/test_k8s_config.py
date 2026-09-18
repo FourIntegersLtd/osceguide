@@ -12,8 +12,15 @@ from voice_infra import BackendRegistry
 
 K8S = Path(__file__).resolve().parents[1] / "k8s"
 CONFIGMAPS = ("configmap.yaml", "configmap-assistant.yaml")
-# The headers the two backends' worker guards read (b2c-api worker_guard.py, b2b-api http/worker_guard.py).
-EXPECTED_HEADERS = {"practice": "X-B2C-Worker-Secret", "institution": "X-B2B-Worker-Secret"}
+# The headers each backend's worker guard reads: b2c-api worker_guard.py,
+# b2b-api http/worker_guard.py, and platform-api core/auth.require_worker_secret.
+# All three are declared at once because they coexist for the whole cutover —
+# a session already in flight keeps talking to the backend that dispatched it.
+EXPECTED_HEADERS = {
+    "practice": "X-B2C-Worker-Secret",
+    "institution": "X-B2B-Worker-Secret",
+    "platform": "X-Worker-Secret",
+}
 
 
 def _backends_json(configmap: str) -> str:
@@ -60,3 +67,29 @@ def test_deployments_schedule_only_onto_labelled_worker_nodes(deployment) -> Non
     text = (K8S / deployment).read_text()
     assert "requiredDuringSchedulingIgnoredDuringExecution" in text
     assert "key: osceguide.io/livekit-worker" in text
+
+
+def test_the_platform_backend_serves_the_workers_default_attempt_routes() -> None:
+    """The unified backend mounts `/api/worker/attempts/...` unprefixed.
+
+    Declaring the paths anyway would be three more strings to keep in step
+    with a router; leaving them out means the worker's own defaults are the
+    contract, and this is what says that was deliberate.
+    """
+    for configmap in CONFIGMAPS:
+        platform = BackendRegistry.from_json(_backends_json(configmap)).get("platform")
+        assert platform.attempt_path == "/api/worker/attempts/{attempt_id}"
+        assert platform.transcript_path == "/api/worker/attempts/{attempt_id}/transcript"
+        assert platform.transcript_chunks_path == "/api/worker/attempts/{attempt_id}/transcript-chunks"
+
+
+def test_every_declared_backend_names_a_secret_the_example_defines() -> None:
+    """A label whose env vars are not in the secret leaves the worker unable to
+    reach that backend, and the failure only shows up on a dispatch."""
+    example = (K8S / "secret.example.yaml").read_text()
+    for configmap in CONFIGMAPS:
+        registry = BackendRegistry.from_json(_backends_json(configmap))
+        for label in registry.labels():
+            backend = registry.get(label)
+            assert f"{backend.base_url_env}:" in example, f"{configmap}: {label} base url"
+            assert f"{backend.secret_env}:" in example, f"{configmap}: {label} secret"

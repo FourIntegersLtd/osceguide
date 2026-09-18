@@ -16,10 +16,22 @@ data:
   # before the kubelet's SIGKILL. The SDK default is one hour, which would outlast it.
   LIVEKIT_ASSISTANT_DRAIN_TIMEOUT: "840"
   # Backends the worker may be dispatched for, keyed by the opaque label the
-  # dispatching backend puts in job metadata. URLs and secrets come from env
+  # dispatching backend puts in job metadata. `platform` is the unified backend
+  # that replaces the other two; all three coexist under their own labels for
+  # the whole cutover, so a session already in flight keeps talking to the
+  # backend that dispatched it and rollback is a routing change, not a deploy.
+  # It serves the worker's default attempt paths, so it declares none. URLs and secrets come from env
   # variables named here (see secret.example.yaml).
   VOICE_BACKENDS_JSON: |
     {
+      "platform": {
+        "base_url_env": "PLATFORM_API_URL",
+        "secret_env": "PLATFORM_WORKER_SECRET",
+        "secret_header": "X-Worker-Secret",
+        "slot_release_path": "/api/worker/livekit-cloud-slot/release",
+        "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
+        "slot_payload_key": "room_name"
+      },
       "practice": {
         "base_url_env": "PRACTICE_API_URL",
         "secret_env": "PRACTICE_WORKER_SECRET",
