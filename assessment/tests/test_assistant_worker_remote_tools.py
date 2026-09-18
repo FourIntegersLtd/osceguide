@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -118,3 +120,49 @@ def test_the_bootstrap_carries_tools_in_the_backends_order() -> None:
 def test_a_malformed_tool_list_is_refused_at_bootstrap(tools: list[dict]) -> None:
     with pytest.raises(BootstrapError):
         parse_bootstrap({"session": {**SESSION, "tools": tools}})
+
+
+# --------------------------------------------------------------------------
+# Round-trip timing. A tool call sits inside a voice loop: the model says a
+# holding line and then waits, so a slow tool is *heard* as a pause rather than
+# seen as a slow request, and nothing else in the system would show it.
+# --------------------------------------------------------------------------
+
+
+def test_a_normal_call_logs_how_long_the_model_waited(caplog: pytest.LogCaptureFixture) -> None:
+    tools, _ = _tools(LOOKUP)
+    answered = SyncGetResult(ok=True, status=200, data={"result": "Two notes found."})
+    with caplog.at_level(logging.INFO, logger=remote.__name__):
+        with patch.object(remote, "sync_post_json", return_value=answered):
+            assert _call(tools[0], {"query": "x"}) == "Two notes found."
+    assert any("answered in" in r.getMessage() for r in caplog.records)
+
+
+def test_a_slow_call_is_logged_loudly_enough_to_find(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The one that matters: it still answered, so nothing else complains."""
+    # The *name* `time` inside this module is replaced, not an attribute of the
+    # stdlib module: patching `time.monotonic` itself would also be patching
+    # asyncio's clock, which calls it far more often than this code does.
+    ticks = iter([0.0, 3.0])
+    monkeypatch.setattr(remote, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
+    tools, _ = _tools(LOOKUP)
+    answered = SyncGetResult(ok=True, status=200, data={"result": "Two notes found."})
+
+    with caplog.at_level(logging.INFO, logger=remote.__name__):
+        with patch.object(remote, "sync_post_json", return_value=answered):
+            assert _call(tools[0], {"query": "x"}) == "Two notes found."
+
+    slow = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert slow, "a three-second tool call was not warned about"
+    assert "3000 ms" in slow[0].getMessage()
+
+
+def test_a_failure_says_how_long_it_took_to_fail(caplog: pytest.LogCaptureFixture) -> None:
+    """A timeout and an instant refusal need different fixes, so the log separates them."""
+    tools, _ = _tools(LOOKUP)
+    with caplog.at_level(logging.WARNING, logger=remote.__name__):
+        with patch.object(remote, "sync_post_json", side_effect=OSError("down")):
+            assert _call(tools[0], {"query": "x"}) == remote.TOOL_UNAVAILABLE
+    assert any("failed after" in r.getMessage() for r in caplog.records)
