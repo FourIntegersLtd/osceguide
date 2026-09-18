@@ -28,11 +28,15 @@ the four kinds keeps a transcript.
 - Transcript messages are idempotent on `(session_id, message_id)`.
 - A completed session cannot be rejoined.
 - The room is derived from the session id, so a stray room says what it is.
+- **Only the session's owner may join it.** The token carries the dispatch, so
+  issuing one to anybody else would put a stranger in somebody's room and start
+  a worker against their history.
 
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/assistant/sessions` | bearer | |
+| POST | `/api/v1/assistant/sessions/{id}/voice-token` | bearer | owner only, dispatches the worker |
 | GET | `/api/worker/assistant-sessions/{id}` | worker secret | |
 | POST | `/api/worker/assistant-sessions/{id}/scene` | worker secret | |
 | POST | `/api/worker/assistant-sessions/{id}/transcript` | worker secret | help only |
@@ -48,5 +52,8 @@ them breaks the worker. Worth making configurable there — see
 None.
 
 ## Cross-slice dependencies
-None. Content packs and the FAQ block are not yet ported; instructions are
+- `voice.service.grant_for_agent_room` mints the browser's join token and
+  decides which deployment the worker runs on. This slice owns who may ask.
+
+Content packs and the FAQ block are not yet ported; instructions are
 placeholder text (A-2).

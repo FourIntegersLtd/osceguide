@@ -126,6 +126,46 @@ def grant_for_room(
     return RoomGrant(token=token, server_url=settings.livekit_url, room=room)
 
 
+async def grant_for_agent_room(
+    *,
+    room: str,
+    session_type: str,
+    identity: str,
+    dispatch_metadata: dict[str, str],
+    tokens: VoiceTokens,
+    settings: Settings,
+) -> RoomGrant:
+    """A token for a room the browser opens, with an agent dispatched into it.
+
+    The third shape, beside an attempt's and a circuit's: no recording behind
+    it and no supervisor to dispatch, so the agent rides in on the token the
+    way an attempt's does. `session_type` chooses the family, which is what
+    keeps an assistant session off the assessment workers.
+
+    The caller owns the metadata because it is the caller's session that the
+    worker will bootstrap; this only decides where the agent runs.
+    """
+    if not settings.livekit_url:
+        raise errors.VoiceUnavailable()
+    family = domain.family_for(session_type)
+    configured = domain.normalize_mode(settings.livekit_routing_mode)
+    cloud_slots_free = (
+        await capacity.slots_free(settings, room) if configured is domain.Mode.LIVEKIT_CLOUD else False
+    )
+    mode = domain.resolve_mode(configured, cloud_slots_free=cloud_slots_free)
+    if mode is not configured:
+        log.info("cloud is full; serving from our own workers", room=room, session_type=session_type)
+
+    token = tokens.issue(
+        identity=identity,
+        room=room,
+        agent_name=domain.agent_name(family, mode),
+        dispatch_metadata=dispatch_metadata,
+        ttl_seconds=settings.livekit_token_ttl_seconds,
+    )
+    return RoomGrant(token=token, server_url=settings.livekit_url, room=room)
+
+
 def get_voice_tokens() -> VoiceTokens:
     """The dependency the router wires. Overridden in tests with a recording
     fake, never patched."""

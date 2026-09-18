@@ -61,6 +61,7 @@ PLANNED = [
     "POST /api/worker/attempts/{attempt_id}/transcript-chunks",
     "POST /api/worker/livekit-cloud-slot/extend",
     "POST /api/worker/livekit-cloud-slot/release",
+    "POST /api/v1/assistant/sessions/{session_id}/voice-token",
     "GET /api/worker/assistant-sessions/{session_id}",
     "POST /api/worker/sessions/{session_id}/complete",
 ]

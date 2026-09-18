@@ -8,9 +8,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ports import VoiceTokens
+from app.core.settings import Settings
 from app.features.assistant import domain, errors, repository
 from app.features.assistant.models import AssistantSession
-from app.features.assistant.schemas import SessionRead, WorkerSessionPayload
+from app.features.assistant.schemas import RoomGrant, SessionRead, WorkerSessionPayload
 
 # Placeholder text until content packs are ported. Rendered here rather than in
 # the worker, which holds no templates by design.
@@ -54,6 +56,60 @@ async def start_session(
     await repository.set_room(session, row.id, room_name=f"assistant_{row.id}")
     refreshed = await repository.by_id(session, row.id)
     return _read(refreshed)  # type: ignore[arg-type]
+
+
+def get_voice_tokens() -> VoiceTokens:
+    """The dependency this slice's router wires.
+
+    Delegates rather than re-implements: minting a token is `voice`'s business,
+    and a second builder here would be a second place to configure LiveKit.
+    Declared in this slice so a test overrides one seam per router, which is
+    the convention the other routers already follow.
+    """
+    from app.features.voice.service import get_voice_tokens as build
+
+    return build()
+
+
+async def voice_grant(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    requester_id: uuid.UUID,
+    tokens: VoiceTokens,
+    settings: Settings,
+) -> RoomGrant:
+    """Let this session's owner into its room, with the worker dispatched.
+
+    Without this the assistant existed only on paper: a session could be
+    started and a worker could bootstrap it, but no browser could join the
+    room, so nothing the assistant does was reachable end to end.
+
+    The metadata is the three strings `livekit_assistant_worker/metadata.py`
+    reads. Everything else the worker needs it fetches from the bootstrap
+    route, so this does not become a second, drifting copy of the session.
+    """
+    from app.features.voice import service as voice
+
+    row = await _require(session, session_id)
+    if row.user_id != requester_id:
+        raise errors.SessionNotYours()
+    if not domain.can_join(status=row.status):
+        raise errors.SessionNotJoinable()
+
+    grant = await voice.grant_for_agent_room(
+        room=row.room_name or f"assistant_{row.id}",
+        session_type=row.session_type,
+        identity=str(row.user_id),
+        dispatch_metadata={
+            "session_id": str(row.id),
+            "backend": settings.voice_backend_label,
+            "candidate_ref": str(row.user_id),
+        },
+        tokens=tokens,
+        settings=settings,
+    )
+    return RoomGrant(token=grant.token, server_url=grant.server_url, room=grant.room)
 
 
 async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessionPayload:

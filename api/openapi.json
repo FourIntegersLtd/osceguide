@@ -2806,6 +2806,7 @@
               "assistant_session_not_found",
               "assistant_session_not_joinable",
               "assistant_session_not_ready",
+              "assistant_session_not_yours",
               "attempt_limit_reached",
               "attempt_mismatch",
               "attempt_not_found",
@@ -5908,30 +5909,6 @@
         "title": "ResultAcknowledgement",
         "type": "object"
       },
-      "RoomGrant": {
-        "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none yet\nand the examiner never will, which is what separates this from the token\nissued against an attempt.\n\nThis slice's own shape rather than `voice`'s, even though the two agree\ntoday: a wire contract belongs to the routes that serve it, and sharing one\nis how two slices come to be unable to change it separately.",
-        "properties": {
-          "room": {
-            "title": "Room",
-            "type": "string"
-          },
-          "server_url": {
-            "title": "Server Url",
-            "type": "string"
-          },
-          "token": {
-            "title": "Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token",
-          "server_url",
-          "room"
-        ],
-        "title": "RoomGrant",
-        "type": "object"
-      },
       "RosterWarningRead": {
         "properties": {
           "code": {
@@ -8357,6 +8334,30 @@
         "title": "Accepted",
         "type": "object"
       },
+      "app__features__assistant__schemas__RoomGrant": {
+        "description": "What the browser needs to join this session's room, and nothing more.\n\nThe same three fields `voice` returns for a circuit's room. Restated here\nrather than imported because a router may name only its own slice's\nschemas, and the response shape is this route's contract either way.",
+        "properties": {
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "server_url": {
+            "title": "Server Url",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "server_url",
+          "room"
+        ],
+        "title": "RoomGrant",
+        "type": "object"
+      },
       "app__features__community__schemas__PostRead": {
         "properties": {
           "audience": {
@@ -8557,6 +8558,30 @@
         "title": "PostRead",
         "type": "object"
       },
+      "app__features__sittings__schemas__RoomGrant": {
+        "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none yet\nand the examiner never will, which is what separates this from the token\nissued against an attempt.\n\nThis slice's own shape rather than `voice`'s, even though the two agree\ntoday: a wire contract belongs to the routes that serve it, and sharing one\nis how two slices come to be unable to change it separately.",
+        "properties": {
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "server_url": {
+            "title": "Server Url",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "server_url",
+          "room"
+        ],
+        "title": "RoomGrant",
+        "type": "object"
+      },
       "app__features__tenancy__schemas__MembershipRead": {
         "properties": {
           "email": {
@@ -8697,6 +8722,120 @@
           }
         ],
         "summary": "Start Session",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/assistant/sessions/{session_id}/voice-token": {
+      "post": {
+        "description": "The browser's way into an assistant session's room.",
+        "operationId": "assistant_issue_session_voice_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__assistant__schemas__RoomGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_yours",
+            "x-codes": [
+              "assistant_session_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_found",
+            "x-codes": [
+              "assistant_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "assistant_session_not_joinable",
+            "x-codes": [
+              "assistant_session_not_joinable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Issue Session Voice Token",
         "tags": [
           "assistant"
         ]
@@ -11401,7 +11540,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoomGrant"
+                  "$ref": "#/components/schemas/app__features__sittings__schemas__RoomGrant"
                 }
               }
             },
@@ -14680,7 +14819,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoomGrant"
+                  "$ref": "#/components/schemas/app__features__sittings__schemas__RoomGrant"
                 }
               }
             },
