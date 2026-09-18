@@ -6,11 +6,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audience import AudienceFilter, AudienceNotYours, InvalidAudience
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.tenancy import admin_org_ids
 from app.features.community import errors, schemas, service
 
 router = APIRouter(tags=["community"])
@@ -21,13 +23,25 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/community/questions",
     response_model=Page[schemas.PostRead],
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated),
 )
 async def list_questions(
-    principal: CurrentPrincipal, session: Session, page: Annotated[CursorParams, Depends()]
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    room: Annotated[AudienceFilter, Depends()],
 ) -> Page[schemas.PostRead]:
+    """Everything this caller may see, or one room of it.
+
+    Without a filter the answer spans the public pool and every institution and
+    group the caller belongs to, which is what a single feed should be.
+    """
     items, next_cursor = await service.list_questions(
-        session, viewer_id=principal.user_id, limit=page.limit, cursor=page.cursor
+        session,
+        viewer_id=principal.user_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        audience=room.audience,
     )
     return Page(items=items, next_cursor=next_cursor)
 
@@ -36,7 +50,9 @@ async def list_questions(
     "/community/questions",
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.EmptyContentError),
+    responses=error_responses(
+        errors.UnknownExamError, Unauthenticated, errors.EmptyContentError, InvalidAudience, AudienceNotYours
+    ),
 )
 async def ask(
     body: schemas.CreateQuestion, principal: CurrentPrincipal, session: Session
@@ -47,6 +63,7 @@ async def ask(
         title=body.title,
         body=body.body,
         exam_code=body.exam_code,
+        audience=body.audience.to_audience(),
     )
 
 
@@ -104,7 +121,8 @@ async def unlike(post_id: uuid.UUID, principal: CurrentPrincipal, session: Sessi
 async def remove(
     post_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> Response:
-    """Your own, or anyone's if you are a platform admin.
+    """Your own, anyone's if you are a platform admin, or anything addressed
+    inside an institution you administer.
 
     b2c's delete routes carry no decorator at all, so anyone can remove anyone's.
     """
@@ -113,6 +131,7 @@ async def remove(
         post_id,
         actor_id=principal.user_id,
         actor_is_admin=principal.is_platform_admin,
+        moderates_org_ids=admin_org_ids(principal),
         now=clock.now(),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -134,7 +153,7 @@ async def list_station_comments(
     "/stations/{station_id}/comments",
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.EmptyContentError),
+    responses=error_responses(Unauthenticated, errors.EmptyContentError, InvalidAudience, AudienceNotYours),
 )
 async def comment_on_station(
     station_id: uuid.UUID,
@@ -142,4 +161,10 @@ async def comment_on_station(
     principal: CurrentPrincipal,
     session: Session,
 ) -> schemas.PostRead:
-    return await service.comment_on_station(session, station_id, author_id=principal.user_id, body=body.body)
+    return await service.comment_on_station(
+        session,
+        station_id,
+        author_id=principal.user_id,
+        body=body.body,
+        audience=body.audience.to_audience(),
+    )

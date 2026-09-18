@@ -9,9 +9,9 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.catalog import repository as catalog_repo
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
+from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -21,7 +21,7 @@ async def a_learner(db_session: AsyncSession, make_actor, email: str) -> str:  #
     token = await make_actor(email)
     user = await identity_repo.user_by_email(db_session, email)
     assert user is not None
-    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     await ent_repo.grant(
         session=db_session,
@@ -37,7 +37,7 @@ async def a_learner(db_session: AsyncSession, make_actor, email: str) -> str:  #
 async def a_station_version(db_session: AsyncSession) -> uuid.UUID:
     from app.features.stations.models import Station, StationVersion
 
-    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     station = Station(owner_kind="platform", org_id=None, exam_id=exam.id, title="S")
     db_session.add(station)

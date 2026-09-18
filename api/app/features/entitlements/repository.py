@@ -55,5 +55,18 @@ async def for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Entitlemen
     return list((await session.execute(stmt)).scalars())
 
 
+async def for_org(session: AsyncSession, org_id: uuid.UUID) -> list[Entitlement]:
+    """What an institution has granted. Org-scoped: `org_id` first."""
+    stmt = select(Entitlement).where(Entitlement.org_id == org_id).order_by(Entitlement.created_at.desc())
+    return list((await session.execute(stmt)).scalars())
+
+
+async def by_id_for_org(
+    session: AsyncSession, org_id: uuid.UUID, entitlement_id: uuid.UUID
+) -> Entitlement | None:
+    stmt = select(Entitlement).where(Entitlement.org_id == org_id, Entitlement.id == entitlement_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def revoke(session: AsyncSession, entitlement_id: uuid.UUID, *, at: datetime) -> None:
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=at))

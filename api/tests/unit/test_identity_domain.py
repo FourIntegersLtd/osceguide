@@ -97,10 +97,25 @@ def test_a_revoked_chain_is_refused() -> None:
 def test_a_provisioned_user_may_only_change_their_password() -> None:
     """Institutions invite people with a temporary password; it must not be usable
     to roam the API until it has been replaced."""
-    assert domain.may_call(must_change_password=True, route="auth.change_password")
-    assert domain.may_call(must_change_password=True, route="me.read")
-    assert not domain.may_call(must_change_password=True, route="sittings.list")
+    assert domain.may_call(must_change_password=True, route="identity_change_password")
+    assert domain.may_call(must_change_password=True, route="identity_read_me")
+    assert not domain.may_call(must_change_password=True, route="sittings_list_sittings")
 
 
 def test_an_ordinary_user_may_call_anything() -> None:
-    assert domain.may_call(must_change_password=False, route="sittings.list")
+    assert domain.may_call(must_change_password=False, route="sittings_list_sittings")
+
+
+def test_the_missing_account_code_is_the_same_in_every_slice() -> None:
+    """`identity` and `tenancy` each own a class; the client sees one code.
+
+    Two spellings of "no such account" would mean a console that handles one
+    and falls through on the other, which is the kind of divergence a shared
+    vocabulary exists to prevent.
+    """
+    from app.features.identity.errors import UserNotFound as IdentityError
+    from app.features.tenancy.errors import UserNotFound as TenancyError
+
+    assert IdentityError is not TenancyError
+    assert IdentityError.code == TenancyError.code == "user_not_found"
+    assert IdentityError.status == TenancyError.status == 404

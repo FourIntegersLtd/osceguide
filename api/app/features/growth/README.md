@@ -34,6 +34,9 @@ so the rules are strict and nothing is inferred.
 |---|---|---|---|
 | POST | `/api/v1/growth/arrivals` | none | there is nobody to authenticate yet |
 | GET | `/api/v1/growth/partners/{partner}/funnel` | reporter for that partner | `not_a_partner_reporter` (403) |
+| GET | `/api/v1/growth/partners/{partner}/ref-ids` | reporter for that partner | the references to put in their links, one per pilot exam |
+| POST | `/api/v1/growth/partners/{partner}/reporters` | platform admin | |
+| POST | `/api/v1/me/referrals/redeem` | bearer | `referral_not_found` (404), `referral_already_redeemed` (409) |
 | POST | `/api/v1/me/referral-code` | bearer | idempotent |
 | GET | `/api/v1/me/referrals` | bearer | |
 

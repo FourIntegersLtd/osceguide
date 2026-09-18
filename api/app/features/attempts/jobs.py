@@ -1,9 +1,15 @@
-"""Scoring a delivered transcript.
+"""Marking a delivered transcript: deciding how, queueing it, and running it.
 
-Enqueued inside the transaction that marks the transcript complete, so the work
-and the fact that it is owed are recorded together: either both land or
-neither. b2c ran this on a thread pool and b2b on a raw daemon thread, so a
-deploy mid-generation stranded `feedback_status='generating'` forever.
+Which policy applies is a backend decision made after the interaction is over;
+the worker is never told any of it. The job is enqueued inside the transaction
+that marks the transcript complete, so the work and the fact that it is owed
+are recorded together: either both land or neither. b2c ran this on a thread
+pool and b2b on a raw daemon thread, so a deploy mid-generation stranded
+`feedback_status='generating'` forever.
+
+One module for the enqueue and the task: they were two files sharing a
+duplicated constant, and the split is how the task's registration went
+uncalled for the whole build.
 """
 
 from __future__ import annotations
@@ -13,21 +19,81 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.jobs import get_jobs_app
+from app.core.events import publish_after_commit, user_topic
+from app.core.jobs import defer_in_transaction, get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import EvaluationFailed, Evaluator
-from app.features.attempts import domain, repository
+from app.features.attempts import domain, domain_definition, repository
 from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts.models import Attempt
 
 log = get_logger(__name__)
 
 PLATFORM_DEFAULT_POLICY = "platform-default@1"
+SCORING_QUEUE = "scoring"
+SCORING_TASK = "score_attempt"
 
 # An attempt can be marked once its interaction finished, and marked again
 # afterwards under a different policy — a new org rubric, or a model change we
 # want to compare against what a candidate was actually told. The second run
 # adds a result; it does not move the attempt's status anywhere.
 MARKABLE = frozenset({domain.Status.INTERACTION_COMPLETE, domain.Status.EVALUATED})
+
+
+def policy_for(attempt: Attempt) -> tuple[str, str]:
+    """The (framework_id, policy_version) an attempt will be marked under.
+
+    Taken from the frozen definition, so re-marking a past attempt uses the
+    rubric it was actually run against rather than whatever that rubric says
+    today. Where a sitting's feedback template narrowed the marking, that is
+    already baked into the frozen snapshot.
+    """
+    definition = attempt.definition or {}
+    framework_id = str(definition.get("framework_id") or "")
+    policy = definition.get("evaluation_policy") or {}
+    version = str(policy.get("version") or PLATFORM_DEFAULT_POLICY)
+    return framework_id, version
+
+
+async def enqueue_scoring(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:
+    """Queue the marking in the caller's transaction.
+
+    Deliberately not `app.defer_async`: procrastinate's own connector holds its
+    own pool, so deferring through it commits the job on a different connection
+    and the "enqueue with the data" guarantee in ADR 0006 quietly does not hold
+    — the job could land while the transcript that justified it rolls back.
+
+    Calling procrastinate's own SQL function on our session keeps one
+    transaction, at the cost of naming the queue and task here rather than
+    through the task object. The queueing lock makes it idempotent: a redelivered
+    transcript cannot queue a second marking of the same attempt.
+    """
+    framework_id, policy_version = policy_for(attempt)
+    if not framework_id or domain_definition.rubric_for(attempt.definition) is None:
+        # No frozen definition, so the worker never bootstrapped this attempt —
+        # yet a transcript arrived for it. There is nothing to mark it against:
+        # the rubric is the wording somebody was assessed under, and it cannot
+        # be reconstructed after the fact from an id. This used to fall back to
+        # the exam's framework, which was only possible while a framework was
+        # a name the engine shipped.
+        log.warning(
+            "not queueing a marking for an attempt with no frozen rubric",
+            attempt_id=str(attempt.id),
+            reason="attempt_not_rendered",
+        )
+        return
+
+    await defer_in_transaction(
+        session,
+        queue=SCORING_QUEUE,
+        task=SCORING_TASK,
+        queueing_lock=f"score:{attempt.id}:{policy_version}",
+        args={
+            "attempt_id": str(attempt.id),
+            "policy_version": policy_version,
+            "framework_id": framework_id,
+        },
+    )
 
 
 async def score_attempt_now(
@@ -59,14 +125,28 @@ async def score_attempt_now(
         # arrive before the status settles, or after a later failure.
         return False
 
+    # The rubric travels on the attempt rather than in the job's arguments: it
+    # is the whole framework, its prompt and its clock, and reading it back
+    # from the frozen definition is what makes a re-mark reproduce the original.
+    rubric = domain_definition.rubric_for(attempt.definition)
+    if rubric is None:
+        log.warning("scoring skipped, attempt has no frozen rubric", attempt_id=str(attempt_id))
+        return False
+
     turns = await transcripts.chunks_for(session, attempt_id)
     if not turns:
-        await repository.set_status(session, attempt_id, status="failed", at=now, reason="empty_transcript")
+        await repository.set_status(
+            session, attempt_id, status=domain.Status.FAILED, at=now, reason="empty_transcript"
+        )
+        # Announced as loudly as a success: somebody is watching this attempt
+        # waiting for feedback, and a failure they are never told about is a
+        # spinner that turns for ever.
+        publish_after_commit(session, user_topic(attempt.user_id), "attempt")
         return False
 
     try:
         payload = await evaluator.evaluate(
-            framework_id=framework_id,
+            rubric=rubric,
             policy_version=policy_version,
             transcript=[{"role": t.role, "message": t.message, "seq": t.seq} for t in turns],
         )
@@ -79,14 +159,18 @@ async def score_attempt_now(
     await transcripts.save_result(
         session,
         attempt_id,
-        framework_id=framework_id,
+        framework_id=str(rubric.get("framework", {}).get("id") or framework_id),
         policy_version=policy_version,
         payload=payload,
         model_used=str(payload.get("model_used") or "") or None,
         at=now,
     )
     if status is domain.Status.INTERACTION_COMPLETE:
-        await repository.set_status(session, attempt_id, status="evaluated", at=now)
+        await repository.set_status(session, attempt_id, status=domain.Status.EVALUATED, at=now)
+    # Marking takes a minute or two of model time, so the browser has to learn
+    # it finished somehow. b2c polled; this says so once, after the commit,
+    # and the poll goes.
+    publish_after_commit(session, user_topic(attempt.user_id), "attempt")
     return True
 
 
@@ -98,7 +182,7 @@ def register() -> None:
     """
     app = get_jobs_app()
 
-    @app.task(name="score_attempt", queue="scoring")
+    @app.task(name=SCORING_TASK, queue=SCORING_QUEUE)
     async def score_attempt(attempt_id: str, policy_version: str, framework_id: str) -> None:
         from datetime import UTC
 

@@ -21,8 +21,32 @@ cp .env.example .env
 make install
 make db-up        # Postgres on :5433, Redis on :6380
 make migrate      # alembic upgrade head
+make bootstrap-admin EMAIL=you@example.com   # the first platform admin
 make start        # http://localhost:8002/docs
 make worker       # in a second terminal
+```
+
+A migrated database is **empty**: no exams, no rubrics, no station library.
+None of it is seeded — it is written through `/api/v1/platform/...` by a
+platform admin (ADR 0016), which is why the bootstrap step exists: granting the
+right needs somebody who already has it, and a fresh database has nobody.
+
+The four consumer exams are the exception, and there is a command for them:
+`make seed-platform` dry-runs `scripts/seed_platform.py`, which authors and
+publishes `sca`, `plab`, `casc` and `ortho` with the rubric b2c has been marking
+against — the domain and competency ids come from the legacy feedback models, so
+a migrated result stays comparable with one marked next week. It is idempotent:
+an exam whose code already exists is left exactly as it is, rubric included.
+Institutions still author their own (ADR 0017); nothing here is offered to them.
+
+From there the order is rubric → exam → station template → station, each
+published before the next names it:
+
+```
+POST /api/v1/platform/rubrics              → POST .../versions/1/publish
+POST /api/v1/platform/exams                → POST .../publish
+POST /api/v1/platform/station-templates    → POST .../publish
+POST /api/v1/platform/stations             → POST .../versions/1/publish
 ```
 
 ## Test it

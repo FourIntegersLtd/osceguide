@@ -14,10 +14,12 @@ One person with one email is one row here, whatever they bought or were invited 
 - As a **consumer**, I register with an email and password so that I can practise.
 - As **anyone**, I sign in and receive an access token and a refresh token.
 - As **anyone**, I exchange a refresh token for a new access token without signing in again.
+- As a **user of a retiring backend**, I trade the session I already have
+  for a platform one, without setting a new password.
 - As **anyone**, I sign out so that my refresh token stops working.
 - As **anyone**, I request a password reset and set a new password with the emailed token.
-- As a **user provisioned by my institution**, I sign in with a temporary password and
-  am told I must change it.
+- As a **user invited by my institution**, I receive a link, choose a password, and sign
+  in. Until then the account has no password and cannot sign in at all.
 - As an **SSO user**, I sign in through my institution's provider and get the same
   platform token as everyone else.
 - As **anyone**, I read my own profile and memberships.
@@ -29,6 +31,17 @@ live inside it and are never addressed independently.
 - `email` is unique, case-insensitive. The migration merges b2c's four `*_users`
   collections and `b2b_users` on the lowercased address.
 - A password is stored only as an argon2id hash. No SHA-256, salted or otherwise.
+- The three routes an attacker gains something by repeating — sign-in, password
+  reset and the legacy exchange — are rate limited per caller address
+  (`core.rate_limit`). It **fails open**: an unreachable Redis allows the call,
+  because a cache outage must not become an outage of signing in. It raises the
+  cost of password spraying; it was never the only thing in the way.
+- The legacy bridge verifies, never mints: the retiring backends' signing secrets are read
+  only to check a signature, an arm with no secret configured refuses every
+  exchange, and an address with no row here is refused rather than created. What
+  the legacy token claims about roles, payment or org membership is ignored —
+  memberships come from this database, so a thirty-day-old claim cannot widen
+  anyone's access.
 - An access token lives 15 minutes; a refresh token is single-use and rotates —
   presenting a rotated token revokes the whole chain (reuse detection).
 - `must_change_password` gates every route except reading yourself and changing it.
@@ -40,17 +53,21 @@ live inside it and are never addressed independently.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/auth/register` | none | 201; `email_taken` (409), `weak_password` (422) |
-| POST | `/api/v1/auth/login` | none | `invalid_credentials` (401), `account_suspended` (403) |
+| POST | `/api/v1/auth/login` | none | `invalid_credentials` (401), `account_suspended` (403), `too_many_requests` (429) |
 | POST | `/api/v1/auth/refresh` | refresh token | `invalid_refresh_token` (401) on reuse or expiry |
+| POST | `/api/v1/auth/exchange-legacy` | a token from the retiring backend | `invalid_legacy_token` (401), `legacy_account_not_imported` (401), `legacy_exchange_unavailable` (503). Deleted at decommission |
 | POST | `/api/v1/auth/logout` | bearer | revokes the presented chain |
-| POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists |
+| POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists; `too_many_requests` (429) |
 | POST | `/api/v1/auth/password-reset/confirm` | reset token | `invalid_reset_token` (400) |
 | POST | `/api/v1/auth/change-password` | bearer | the only route allowed while `must_change_password` |
+| POST | `/api/v1/auth/stream-ticket` | bearer | a 60-second credential for one `EventSource` (ADR 0015) |
 | GET | `/api/v1/me` | bearer | profile, memberships, active workspace |
 
 ## Jobs
-`send_password_reset_email`, `send_welcome_email` — enqueued in the same transaction
-as the row they concern.
+`send_password_reset_email`, `send_welcome_email` and the invitation — enqueued in
+the same transaction as the row they concern. `service_invitations.invite_user`
+is what `tenancy` and `roster` call for an address with no account: the token it
+mails is an ordinary reset token, so `password-reset/confirm` finishes the job.
 
 ## Cross-slice dependencies
 None. `tenancy` reads users through this slice's service; this slice never reads

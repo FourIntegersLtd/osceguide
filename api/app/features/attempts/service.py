@@ -7,19 +7,17 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import errors, repository
-from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts import domain, errors, repository
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
-    AssessmentResultRead,
     AttemptRead,
-    TranscriptMessageRead,
-    TranscriptRead,
 )
+from app.features.attempts.service_reads import _attempt_read, _ensure_visible, _require
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
-from app.features.identity import repository as identity
+from app.features.identity import service as identity
+from app.features.stations import service as stations
 
 
 async def start_attempt(
@@ -41,9 +39,17 @@ async def start_attempt(
 
     The entitlement check happens here rather than in each caller, so every
     route that can start a session goes through the same gate.
+
+    `station_version_id` is checked against the same resolver the worker
+    bootstrap uses, so a station that is still a draft, or belongs to an
+    organisation the caller is not acting in, is refused when the attempt is
+    created rather than at the moment a candidate is already sitting in a
+    LiveKit room waiting for a patient. It was previously stored unverified.
     """
+    if station_version_id is not None:
+        await _ensure_runnable(session, org_id=org_id, station_version_id=station_version_id)
     try:
-        exam = await resolve_exam(session, exam_code)
+        exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
 
@@ -71,6 +77,20 @@ async def start_attempt(
     return _attempt_read(attempt)
 
 
+async def _ensure_runnable(
+    session: AsyncSession, *, org_id: uuid.UUID | None, station_version_id: uuid.UUID
+) -> None:
+    """Refuse a station this caller cannot run, before the attempt exists.
+
+    `runnable_station` raises `station_not_published` for a draft itself; a
+    station that does not exist and one belonging to another organisation both
+    come back as `None`, and both answer `station_not_found` — telling them
+    apart would make this route a way to enumerate another tenant's library.
+    """
+    if await stations.runnable_station(session, org_id, station_version_id) is None:
+        raise errors.StationNotFound()
+
+
 async def _trial_state(
     session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> entitlements.TrialState | None:
@@ -81,7 +101,7 @@ async def _trial_state(
     argument defaulted to None, `decide` skips the trial branch entirely when
     it is None, and a brand-new account was refused outright.
     """
-    user = await identity.user_by_id(session, user_id)
+    user = await identity.user_ref_by_id(session, user_id)
     if user is None:
         return None
     set_stations, completed = await repository.trial_counts(session, user_id, exam_id)
@@ -92,86 +112,31 @@ async def _trial_state(
     )
 
 
-async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
-    attempt = await repository.attempt_by_id(session, attempt_id)
-    if attempt is None:
-        raise errors.AttemptNotFound()
-    return attempt
-
-
-def _same_attempt(path_id: uuid.UUID, body_id: str) -> None:
-    """A worker holds one attempt id and is given nothing else.
-
-    A mismatch means a misrouted job or a bug, so it is refused rather than
-    reconciled — writing the body's attempt instead would let one session's
-    turns land on another's transcript.
-    """
-    if str(path_id) != body_id.strip():
-        raise errors.AttemptMismatch()
-
-
-# --- reads -----------------------------------------------------------------
-
-
-async def read_attempt(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
+async def abandon_attempt(
+    session: AsyncSession,
+    attempt_id: uuid.UUID,
+    *,
+    requester_id: uuid.UUID,
+    is_admin: bool,
+    now: datetime,
 ) -> AttemptRead:
+    """The candidate walks away.
+
+    Without this an abandoned session stays `running` forever: it holds the
+    slot's one live attempt, so a re-dispatch is the only way out, and the
+    dashboard counts it as in progress. Recorded as a failure with a reason
+    rather than a status of its own, because that is what it is to the marking
+    job — there is no transcript to score.
+    """
     attempt = await _require(session, attempt_id)
     _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
-    return _attempt_read(attempt)
+    try:
+        domain.ensure_abandonable(domain.Status(attempt.status))
+    except domain.InvalidTransition as exc:
+        raise errors.InvalidAttemptState(str(exc)) from exc
 
-
-async def read_transcript(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
-) -> TranscriptRead:
-    attempt = await _require(session, attempt_id)
-    _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
-    record = await transcripts.transcript_for(session, attempt_id)
-    rows = await transcripts.chunks_for(session, attempt_id)
-    return TranscriptRead(
-        attempt_id=attempt_id,
-        complete=bool(record and record.complete),
-        messages=[
-            TranscriptMessageRead(role=r.role, message=r.message, seq=r.seq, spoken_at=r.spoken_at)
-            for r in rows
-        ],
-    )
-
-
-async def read_results(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
-) -> list[AssessmentResultRead]:
-    attempt = await _require(session, attempt_id)
-    _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
-    return [
-        AssessmentResultRead(
-            framework_id=r.framework_id,
-            policy_version=r.policy_version,
-            model_used=r.model_used,
-            payload=dict(r.payload),
-            scored_at=r.scored_at,
-        )
-        for r in await transcripts.results_for(session, attempt_id)
-    ]
-
-
-def _ensure_visible(attempt: Attempt, *, requester_id: uuid.UUID, is_admin: bool) -> None:
-    if attempt.user_id != requester_id and not is_admin:
-        raise errors.AttemptNotYours()
-
-
-def _attempt_read(attempt: Attempt) -> AttemptRead:
-    return AttemptRead(
-        id=attempt.id,
-        kind=attempt.kind,
-        status=attempt.status,
-        exam_id=attempt.exam_id,
-        station_version_id=attempt.station_version_id,
-        room_name=attempt.room_name,
-        started_at=attempt.started_at,
-        completed_at=attempt.completed_at,
-        created_at=attempt.created_at,
-    )
+    await repository.set_status(session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned")
+    return _attempt_read(await _require(session, attempt_id))
 
 
 async def restart_for_slot(
@@ -183,6 +148,7 @@ async def restart_for_slot(
     station_version_id: uuid.UUID | None,
     room_name: str,
     now: datetime,
+    feedback_template_version_id: uuid.UUID | None = None,
 ) -> Attempt:
     """The attempt a supervisor's dispatch will run (C6).
 
@@ -209,7 +175,20 @@ async def restart_for_slot(
         station_version_id=station_version_id,
         slot_id=slot_id,
         room_name=room_name,
+        feedback_template_version_id=feedback_template_version_id,
     )
+
+
+async def fail_live_for_slot(
+    session: AsyncSession, *, slot_id: uuid.UUID, now: datetime, reason: str
+) -> None:
+    """End whatever recording this slot has, without starting another.
+
+    For a station being given back to a candidate: the attempt that went wrong
+    is failed rather than deleted, so what happened the first time survives
+    beside the retry, and the partial unique index will accept the new one.
+    """
+    await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason=reason)
 
 
 async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:
@@ -225,3 +204,14 @@ async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID
     if exam_id is None:
         raise errors.UnknownExamError("The slot's station is not bound to an exam.")
     return exam_id
+
+
+async def latest_attempt_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -> uuid.UUID | None:
+    """The attempt a debrief of this set station would be about.
+
+    A debrief has to name the attempt it discusses — the table says so with a
+    CHECK — and `station_sets` passed None, so asking for one raised an
+    IntegrityError and answered 500.
+    """
+    attempt = await repository.latest_for_set_entry(session, set_entry_id)
+    return None if attempt is None else attempt.id

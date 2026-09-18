@@ -21,6 +21,7 @@ from app.features.identity.models import User
 from app.migration import loader
 from app.migration.attempts import LEGACY_POLICY_VERSION, attempt_from_transcript
 from app.migration.users import entitlements_for, merge_users
+from tests.support.catalog import ensure_exam
 
 pytestmark = pytest.mark.db
 
@@ -70,6 +71,10 @@ async def test_one_person_across_products_becomes_one_row_with_both_entitlements
         b2c_user("alice@example.com", "plab", "fs-2", has_paid=True),
     ]
     grants = [g for r in records for g in entitlements_for(r)]
+    # The exams the import will name have to exist first. They used to be
+    # seeded; the operator now supplies them, which is what `--exams` is for.
+    for code in ("sca", "plab"):
+        await ensure_exam(db_session, code)
 
     report, ids = await loader.load_users(db_session, merge_users(records), grants)
 
@@ -95,6 +100,7 @@ async def test_nobody_brings_a_password_across(db_session: AsyncSession) -> None
 
 async def test_an_expired_grant_still_comes_across(db_session: AsyncSession) -> None:
     """ "Your access ended in March" is a better answer than an empty list."""
+    await ensure_exam(db_session, "sca")
     record = b2c_user("carol@example.com", "sca", "fs-3", has_paid=True, plan_end_date="2025-03-01T00:00:00Z")
     await loader.load_users(db_session, merge_users([record]), entitlements_for(record))
 
@@ -107,6 +113,7 @@ async def test_an_expired_grant_still_comes_across(db_session: AsyncSession) -> 
 async def test_loading_people_twice_creates_nothing_the_second_time(
     db_session: AsyncSession,
 ) -> None:
+    await ensure_exam(db_session, "sca")
     records = [b2c_user("dan@example.com", "sca", "fs-4", has_paid=True)]
     grants = entitlements_for(records[0])
 
@@ -153,6 +160,10 @@ async def test_one_legacy_id_pointing_at_two_people_is_reported_not_guessed(
 
 
 async def _alice(session: AsyncSession) -> dict[str, object]:
+    # The exam an imported attempt names has to exist before the import runs.
+    # It used to be seeded; the operator supplies it now, which is what the
+    # importer's `--exams` file is for.
+    await ensure_exam(session, "sca")
     records = [b2c_user("alice@example.com", "sca", "fs-1")]
     _, ids = await loader.load_users(session, merge_users(records))
     return ids  # type: ignore[return-value]

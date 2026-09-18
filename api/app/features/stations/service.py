@@ -8,132 +8,63 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import raise_mapped
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
-from app.features.stations import domain, errors, repository
-from app.features.stations.models import FeedbackTemplateVersion, Station, StationVersion
-from app.features.stations.schemas import StationRead, StationVersionRead
-
-# One place mapping a domain refusal to its API code, so a new rule does not
-# need a new `except` clause in every caller.
-_REFUSALS: dict[type[domain.LifecycleError], type[Exception]] = {
-    domain.NotEditable: errors.NotEditableError,
-    domain.NotDeletable: errors.NotDeletableError,
-    domain.AlreadyPublished: errors.AlreadyPublishedError,
-    domain.NotArchivable: errors.NotArchivableError,
-    domain.TemplateNotPublished: errors.TemplateNotPublishedError,
-    domain.StationNotPublished: errors.NotEditableError,
-}
-
-
-def _raise(exc: domain.LifecycleError) -> None:
-    mapped = _REFUSALS.get(type(exc), errors.NotEditableError)
-    raise mapped(str(exc)) from exc
+from app.features.stations import domain, errors, repository, repository_templates
+from app.features.stations import service_templates as templates
+from app.features.stations.models import Station, StationVersion
+from app.features.stations.refusals import REFUSALS as _REFUSALS
+from app.features.stations.schemas import StationRead
 
 
 async def create_station(
-    session: AsyncSession, org_id: uuid.UUID, *, title: str, exam_code: str, content: dict[str, Any]
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    title: str,
+    exam_code: str,
+    content: dict[str, Any],
+    template_version_id: uuid.UUID | None = None,
 ) -> StationRead:
+    """A station and its first draft version.
+
+    `template_version_id` binds the station to the shape it was authored
+    against. T3: that shape has to be published — a station built on a template
+    somebody is still deciding would change under it.
+    """
     try:
-        exam = await resolve_exam(session, exam_code)
+        exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
         # Re-raised as this slice's type so the router documents its own errors.
         raise errors.UnknownExamError(str(exc)) from exc
+    if template_version_id is not None:
+        await templates.bindable_version(session, org_id, template_version_id)
     station = await repository.create_station(session, org_id, exam_id=exam.id, title=title)
-    version = await repository.add_version(session, org_id, station_id=station.id, version=1, content=content)
+    version = await repository.add_version(
+        session,
+        org_id,
+        station_id=station.id,
+        version=1,
+        content=content,
+        template_version_id=template_version_id,
+    )
     return _station_read(station, exam.code, version)
 
 
-async def read_station(session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID) -> Station:
+async def read_station(session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID) -> Station:
     station = await repository.station_by_id(session, org_id, station_id)
     if station is None:
         raise errors.StationNotFound()
     return station
 
 
-async def add_version(session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID) -> StationVersionRead:
-    """Open a new draft, seeded from the latest published version."""
-    await read_station(session, org_id, station_id)
-    existing = await repository.versions_for_station(session, org_id, station_id)
-    refs = [domain.VersionRef(number=v.version, status=domain.Status(v.status)) for v in existing]
-    seed = domain.seed_version(refs)
-    content: dict[str, Any] = {}
-    if seed is not None:
-        source = next(v for v in existing if v.version == seed.number)
-        content = dict(source.content)
-    row = await repository.add_version(
-        session,
-        org_id,
-        station_id=station_id,
-        version=domain.next_version_number(refs),
-        content=content,
-    )
-    return _version_read(row)
-
-
-async def edit_version(
-    session: AsyncSession,
-    org_id: uuid.UUID,
-    station_id: uuid.UUID,
-    version: int,
-    *,
-    content: dict[str, Any],
-) -> StationVersionRead:
-    row = await _version(session, org_id, station_id, version)
-    try:
-        domain.ensure_editable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
-    except domain.LifecycleError as exc:
-        _raise(exc)
-    await repository.set_version_content(session, org_id, row.id, content=content)
-    return _version_read(await _version(session, org_id, station_id, version))
-
-
-async def publish_version(
-    session: AsyncSession,
-    org_id: uuid.UUID,
-    station_id: uuid.UUID,
-    version: int,
-    *,
-    actor_id: uuid.UUID,
-    now: datetime,
-) -> StationVersionRead:
-    row = await _version(session, org_id, station_id, version)
-    try:
-        new_status = domain.publish(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
-    except domain.LifecycleError as exc:
-        _raise(exc)
-    await repository.set_version_status(session, org_id, row.id, status=str(new_status), at=now, by=actor_id)
-    # The station points at its newest published version, so a circuit can
-    # reference the station and still get a frozen revision.
-    await repository.set_current_version(session, org_id, station_id, version_id=row.id)
-    return _version_read(await _version(session, org_id, station_id, version))
-
-
-async def archive_version(
-    session: AsyncSession,
-    org_id: uuid.UUID,
-    station_id: uuid.UUID,
-    version: int,
-    *,
-    actor_id: uuid.UUID,
-    now: datetime,
-) -> StationVersionRead:
-    row = await _version(session, org_id, station_id, version)
-    try:
-        new_status = domain.archive(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
-    except domain.LifecycleError as exc:
-        _raise(exc)
-    await repository.set_version_status(session, org_id, row.id, status=str(new_status), at=now, by=actor_id)
-    return _version_read(await _version(session, org_id, station_id, version))
-
-
 async def list_stations(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[StationRead], str | None]:
     rows, next_cursor = await repository.list_for_org(session, org_id, limit=limit, cursor=cursor)
     out = []
@@ -145,21 +76,10 @@ async def list_stations(
     return out, next_cursor
 
 
-async def _version(
-    session: AsyncSession, org_id: uuid.UUID, station_id: uuid.UUID, version: int
-) -> StationVersion:
-    await read_station(session, org_id, station_id)
-    row = await repository.version_by_number(session, org_id, station_id, version)
-    if row is None:
-        raise errors.VersionNotFound()
-    return row
-
-
 async def _exam_code(session: AsyncSession, station: Station) -> str:
-    from app.features.catalog import repository as catalog_repo
+    from app.features.catalog.service import exam_code_by_id  # noqa: PLC0415 - import cycle
 
-    exam = await catalog_repo.exam_by_id(session, station.exam_id)
-    return exam.code if exam else ""
+    return await exam_code_by_id(session, station.exam_id) or ""
 
 
 def _station_read(station: Station, exam_code: str, version: StationVersion | None) -> StationRead:
@@ -175,17 +95,6 @@ def _station_read(station: Station, exam_code: str, version: StationVersion | No
     )
 
 
-def _version_read(row: StationVersion) -> StationVersionRead:
-    return StationVersionRead(
-        id=row.id,
-        station_id=row.station_id,
-        version=row.version,
-        status=row.status,
-        content=dict(row.content),
-        published_at=row.published_at,
-    )
-
-
 @dataclass(frozen=True)
 class RunnableStation:
     """A station resolved for an attempt to run against."""
@@ -196,6 +105,13 @@ class RunnableStation:
     title: str
     content: dict[str, Any]
     published: bool
+    # The template's ordered block list: what each block of `content` is for.
+    # None when the station was written without a template, which the renderer
+    # falls back to matching block ids by their common spellings.
+    layout: list[dict[str, Any]] | None = None
+    # A station whose persona is the examiner rather than the patient — a viva.
+    persona: str = "patient"
+    greeting: str | None = None
 
 
 async def runnable_station(
@@ -211,6 +127,16 @@ async def runnable_station(
     if found is None:
         return None
     version, station = found
+    # T4. The rule was written, tested and documented, and nothing called it:
+    # `published` was returned here and never read, so a station somebody was
+    # still drafting would render and run for a real candidate.
+    try:
+        domain.ensure_usable_in_circuit(
+            domain.VersionRef(number=version.version, status=domain.Status(version.status))
+        )
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    layout, persona, greeting = await _presentation(session, version.template_version_id)
     return RunnableStation(
         version_id=version.id,
         owner_kind=station.owner_kind,
@@ -218,22 +144,28 @@ async def runnable_station(
         title=station.title,
         content=dict(version.content or {}),
         published=version.status == "published",
+        layout=layout,
+        persona=persona,
+        greeting=greeting,
     )
 
 
-async def published_feedback_template(
-    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID
-) -> FeedbackTemplateVersion:
-    """The feedback template version a sitting may bind (S1).
+async def _presentation(
+    session: AsyncSession, template_version_id: uuid.UUID | None
+) -> tuple[list[dict[str, Any]] | None, str, str | None]:
+    """How the template says this station should be presented.
 
-    Raises if it is missing, belongs to another org, or is still a draft. The
-    NOT NULL foreign key on `sittings` made this look enforced, but a foreign
-    key only says the row exists — a sitting could bind a rubric somebody was
-    still editing, and candidates would be marked against it.
+    A station bound to no template renders on the block-id conventions, which
+    is what keeps stations written before templates working.
     """
-    row = await repository.feedback_template_version(session, org_id, version_id)
-    if row is None:
-        raise errors.TemplateVersionNotFound()
-    if row.status != "published":
-        raise errors.TemplateNotPublishedError("A sitting needs a published feedback template version.")
-    return row
+    if template_version_id is None:
+        return None, "patient", None
+    structure = await repository_templates.structure_for_version(session, template_version_id)
+    if not structure:
+        return None, "patient", None
+    blocks = structure.get("blocks")
+    presentation = structure.get("layout") or {}
+    layout = [dict(b) for b in blocks if isinstance(b, dict)] if isinstance(blocks, list) else None
+    persona = str(presentation.get("persona") or "patient")
+    greeting = presentation.get("greeting")
+    return layout, persona, (str(greeting) if greeting else None)

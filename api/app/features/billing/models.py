@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,6 +49,10 @@ class StripeEvent(Base, UUIDPrimaryKey):
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Why a delivery was received but not applied: an address with no account,
+    # a price with no plan. Kept rather than rolled back, so it can be
+    # reconciled by hand or applied by Stripe's next retry once it is fixed.
+    failure: Mapped[str | None] = mapped_column(Text)
 
 
 class Payment(Base, UUIDPrimaryKey, Timestamps):
@@ -61,6 +65,19 @@ class Payment(Base, UUIDPrimaryKey, Timestamps):
     amount_total_pence: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     receipt_url: Mapped[str | None] = mapped_column(String(500))
+    # Our own receipt, as opposed to Stripe's card receipt above. Nullable for
+    # the payments taken before receipts existed.
+    receipt_id: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # Frozen at the moment of payment, not read from the user. A receipt is
+    # evidence of what happened; somebody changing their name later must not
+    # change a document their bank has already seen.
+    customer_email: Mapped[str | None] = mapped_column(String(320))
+    customer_name: Mapped[str | None] = mapped_column(String(200))
+    amount_tax_pence: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # What the payment bought, so the receipt says so without re-deriving it
+    # from an entitlement that may since have been revoked.
+    plan_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    plan_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # The entitlement this payment bought. Nullable because a refund revokes the
     # entitlement without deleting either record.

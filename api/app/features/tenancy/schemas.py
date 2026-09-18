@@ -15,6 +15,39 @@ class OrganizationRead(BaseModel):
     created_at: datetime
 
 
+class UpdateOrganization(BaseModel):
+    """What a platform administrator may change about an organisation.
+
+    Not the slug: every foreign key points at `id` and the slug is the URL, so
+    renaming one is a redirect problem rather than a field edit.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    org_type: str | None = Field(default=None, max_length=32)
+    contract_starts_at: datetime | None = None
+    contract_ends_at: datetime | None = None
+
+
+class UserSummary(BaseModel):
+    """An account as the console lists it. No password state, no memberships."""
+
+    id: uuid.UUID
+    email: str
+    name: str
+    created_at: datetime
+
+
+class SetPlatformAdmin(BaseModel):
+    """Grant or revoke, spelled out rather than implied by which route was called."""
+
+    is_platform_admin: bool
+
+
+class PlatformOverview(BaseModel):
+    organizations: int
+    users: int
+
+
 class CreateOrganization(BaseModel):
     slug: str = Field(min_length=2, max_length=100, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9-]*$")
     name: str = Field(min_length=1, max_length=200)
@@ -29,6 +62,9 @@ class MembershipRead(BaseModel):
     product_surface: str | None = None
     status: str
     revoked_at: datetime | None = None
+    # True when adding this membership created the account and queued an
+    # invitation: the person cannot sign in until they choose a password.
+    invited: bool = False
 
 
 class CreateMembership(BaseModel):

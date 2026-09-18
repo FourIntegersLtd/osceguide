@@ -5,6 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.core.audience import AudienceIn, AudienceOut
+
 
 class PostRead(BaseModel):
     id: uuid.UUID
@@ -15,6 +17,7 @@ class PostRead(BaseModel):
     note: str | None
     status: str
     is_mine: bool
+    audience: AudienceOut
 
 
 class CreatePost(BaseModel):
@@ -22,6 +25,8 @@ class CreatePost(BaseModel):
     starts_at: datetime
     duration_minutes: int = Field(default=30, ge=5, le=180)
     note: str | None = Field(default=None, max_length=500)
+    # Offer it to everyone, to your institution, or to one teaching group.
+    audience: AudienceIn = Field(default_factory=AudienceIn)
 
 
 class PeerSessionRead(BaseModel):

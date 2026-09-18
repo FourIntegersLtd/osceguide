@@ -7,11 +7,13 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -33,7 +35,7 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
     programme_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("org_programmes.id", ondelete="SET NULL")
     )
-    cohort_id: Mapped[uuid.UUID | None] = mapped_column()
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="SET NULL"))
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     mode: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'training'"))
@@ -50,6 +52,15 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
 
 class Circuit(Base, UUIDPrimaryKey, Timestamps):
     __tablename__ = "circuits"
+    __table_args__ = (
+        # The exam-day board asks this of every organisation whenever anything
+        # changes, and a live circuit is a vanishing fraction of the table.
+        Index(
+            "ix_circuits_live",
+            "org_id",
+            postgresql_where=text("started_at IS NOT NULL AND ended_at IS NULL"),
+        ),
+    )
 
     sitting_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("sittings.id", ondelete="CASCADE"), nullable=False
@@ -67,6 +78,20 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps):
     agent_dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # The examination clock. It sits here rather than on the slot because a
+    # break belongs to no slot, and because pausing must rewrite one deadline
+    # rather than two (D-6).
+    phase: Mapped[str | None] = mapped_column(String(16))
+    phase_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    phase_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Bumped by every transition and every override. A scheduled transition
+    # carries the sequence it was scheduled against and does nothing if it no
+    # longer matches, which is how a human's intervention beats the clock.
+    phase_seq: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paused_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    auto_advance: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
 
 class CircuitStation(Base, UUIDPrimaryKey):
@@ -110,6 +135,9 @@ class Slot(Base, UUIDPrimaryKey, Timestamps):
 
     Carries no transcript and no feedback: those live on the attempt, which is
     what makes a re-dispatch keep the first recording instead of overwriting it.
+    Carries no clock either — that is the circuit's, because a break belongs to
+    no slot and a pause must move one deadline rather than two.
+
     The id is globally unique because the worker and several routes address a
     slot directly; every user-facing route still resolves `org_id` from the row.
     """
@@ -132,15 +160,41 @@ class Slot(Base, UUIDPrimaryKey, Timestamps):
     station_version_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("station_versions.id", ondelete="RESTRICT"), nullable=False
     )
+    # scheduled → reading → in_consultation → completed, or skipped if the
+    # circuit moved past it. Written by nothing until the orchestrator existed,
+    # while four read models displayed it.
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'scheduled'"))
     room_name: Mapped[str | None] = mapped_column(String(200))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     exam_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    # Nullable and unused until D-6 is settled. The exam clock currently lives
-    # in the supervisor's browser and is lost on refresh; these columns exist so
-    # server-owned timing needs no migration once that is decided.
-    phase: Mapped[str | None] = mapped_column(String(16))
-    phase_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    phase_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+class CircuitIntervention(Base, UUIDPrimaryKey):
+    """What a human did to a running examination, and why.
+
+    Append-only, and no `updated_at`: an intervention is a fact about a moment,
+    not a row anybody edits. When a candidate says their station went wrong,
+    the question is what was done to it and by whom — and before this the
+    answer was nowhere.
+    """
+
+    __tablename__ = "circuit_interventions"
+    __table_args__ = (Index("ix_circuit_interventions_circuit", "circuit_id", "at"),)
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    circuit_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("circuits.id", ondelete="CASCADE"), nullable=False
+    )
+    # Null for an override about the circuit rather than one station.
+    slot_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("slots.id", ondelete="SET NULL"))
+    # SET NULL, not CASCADE: removing a member must not delete the record that
+    # they extended a candidate's clock.
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    phase_seq_before: Mapped[int] = mapped_column(Integer, nullable=False)
+    phase_seq_after: Mapped[int] = mapped_column(Integer, nullable=False)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

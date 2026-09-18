@@ -22,10 +22,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
-from app.features.catalog import repository as catalog_repo
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
 from app.features.stations import repository as stations_repo
+from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -67,10 +67,10 @@ async def a_published_library_station(session: AsyncSession) -> uuid.UUID:
     author = await identity_repo.create_user(
         session, email=f"author{uuid.uuid4().hex[:8]}@example.com", name="Author", password_hash=None
     )
-    exam = await catalog_repo.exam_by_code(session, "sca")
+    exam = await ensure_exam(session, "sca")
     assert exam is not None, "the seed migration should have created the four exams"
     station = await stations_repo.create_station(
-        session, None, exam_id=exam.id, title=str(STATION_CONTENT["station_name"]), owner_kind="platform"
+        session, None, exam_id=exam.id, title=str(STATION_CONTENT["station_name"])
     )
     version = await stations_repo.add_version(
         session, None, station_id=station.id, version=1, content=STATION_CONTENT
@@ -86,7 +86,7 @@ async def an_entitled_candidate(session: AsyncSession, make_actor, email: str) -
     token = await make_actor(email)
     user = await identity_repo.user_by_email(session, email)
     assert user is not None
-    exam = await catalog_repo.exam_by_code(session, "sca")
+    exam = await ensure_exam(session, "sca")
     assert exam is not None
     await ent_repo.grant(
         session,
@@ -175,9 +175,8 @@ async def test_an_attempt_runs_from_creation_to_a_scored_result(
     the database is running the queued scoring job, because there is no worker
     process in a test.
     """
-    from app.features.attempts.jobs import score_attempt_now
+    from app.features.attempts.jobs import policy_for, score_attempt_now
     from app.features.attempts.models import Attempt
-    from app.features.attempts.scoring import policy_for
     from tests.support.fakes import FakeEvaluator
 
     token = await an_entitled_candidate(db_session, make_actor, "wholechain@example.com")
@@ -293,10 +292,10 @@ async def test_a_degraded_render_is_served_but_never_frozen(
     author = await identity_repo.create_user(
         session=db_session, email="hollow@example.com", name="A", password_hash=None
     )
-    exam = await catalog_repo.exam_by_code(db_session, "sca")
+    exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     station = await stations_repo.create_station(
-        db_session, None, exam_id=exam.id, title="Unfinished station", owner_kind="platform"
+        db_session, None, exam_id=exam.id, title="Unfinished station"
     )
     # Authored but never filled in: the shape is there, the patient is not.
     version = await stations_repo.add_version(
@@ -325,3 +324,76 @@ async def test_a_degraded_render_is_served_but_never_frozen(
     assert attempt.definition is None, (
         "a degraded render must not be frozen, or the generic prompt is pinned to this attempt forever"
     )
+
+
+async def test_a_draft_station_is_refused_before_the_attempt_exists(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """T4, enforced at the door.
+
+    `runnable_station` computed `published` and nothing read it, so a station
+    somebody was still drafting would render and run for a candidate. The
+    bootstrap refuses it now — and so does creation, which is the difference
+    between a candidate never starting and a candidate sitting in a LiveKit
+    room waiting for a patient that will never be dispatched.
+    """
+    from app.features.stations import repository as stations_repo
+
+    token = await an_entitled_candidate(db_session, make_actor, "draftstation@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    station = await stations_repo.create_station(
+        db_session, None, exam_id=exam.id, title="Still being written"
+    )
+    draft = await stations_repo.add_version(
+        db_session, None, station_id=station.id, version=1, content=STATION_CONTENT
+    )
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca", "station_version_id": str(draft.id)},
+        headers=bearer(token),
+    )
+    assert created.status_code == 409, created.text
+    assert created.json()["code"] == "station_not_published"
+
+
+async def test_a_station_withdrawn_after_creation_is_still_refused_at_bootstrap(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The second defence, which the first does not make redundant.
+
+    Creation and bootstrap are separate requests with a candidate's attention
+    span in between, so a version can be withdrawn after an attempt is created
+    and before the worker asks for it. T4 has to hold at both ends.
+    """
+    from app.features.stations import repository as stations_repo
+
+    token = await an_entitled_candidate(db_session, make_actor, "withdrawn@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    station = await stations_repo.create_station(
+        db_session, None, exam_id=exam.id, title="Published, then pulled"
+    )
+    version = await stations_repo.add_version(
+        db_session, None, station_id=station.id, version=1, content=STATION_CONTENT
+    )
+    author = await make_actor("withdrawing-author@example.com", platform_admin=True)
+    assert author
+    await stations_repo.set_version_status(db_session, None, version.id, status="published", at=NOW, by=None)
+    await db_session.commit()
+
+    created = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca", "station_version_id": str(version.id)},
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+
+    await stations_repo.set_version_status(db_session, None, version.id, status="draft", at=NOW, by=None)
+    await db_session.commit()
+
+    boot = await client.get(f"/api/worker/attempts/{created.json()['id']}", headers=worker_headers())
+    assert boot.status_code == 409, boot.text
+    assert boot.json()["code"] == "station_not_published"

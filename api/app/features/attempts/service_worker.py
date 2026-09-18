@@ -7,23 +7,39 @@ ones can each be read on their own; they change for different reasons.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.core.ports import RenderFailed
-from app.features.attempts import domain, errors, repository
+from app.features.attempts import domain, domain_definition, errors, repository
 from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts.jobs import enqueue_scoring
 from app.features.attempts.models import Attempt
-from app.features.attempts.renderer import build_renderer
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
-from app.features.attempts.scoring import PLATFORM_DEFAULT_POLICY, enqueue_scoring
-from app.features.catalog import service as catalog
-from app.features.stations import service as stations
+from app.features.attempts.service_render import render_definition
 
 log = get_logger(__name__)
+
+# --------------------------------------------------------------------------
+# The seam a slice above this one fills in.
+#
+# A finished interaction is the moment other things become owed — marking,
+# which is ours, and a debrief summary, which is not. `tutor_memory` sits above
+# this slice and cannot be imported from here, so `main.create_app` hands the
+# hook over and this slice announces the moment without knowing who is
+# listening. Unbound, nothing happens, which is exactly the old behaviour.
+# --------------------------------------------------------------------------
+InteractionCompleteHook = Callable[[AsyncSession, Attempt], Awaitable[None]]
+
+_on_interaction_complete: InteractionCompleteHook | None = None
+
+
+def bind_interaction_complete_hook(hook: InteractionCompleteHook) -> None:
+    global _on_interaction_complete
+    _on_interaction_complete = hook
+
 
 # Which side of the conversation the AI plays. A debrief is the tutor talking
 # the candidate through what happened; everything else is the patient.
@@ -58,63 +74,6 @@ def _snapshot_time(attempt: Attempt) -> datetime:
     return attempt.created_at
 
 
-async def _render_definition(session: AsyncSession, attempt: Attempt, *, now: datetime) -> dict[str, Any]:
-    """Render the attempt's definition, and freeze it if the render was real.
-
-    A1/A2. The definition is frozen once, on the first *successful* render.
-    Both legacy backends freeze unconditionally, which is why an unresolved
-    station there pins a generic patient prompt to the attempt forever — the
-    candidate then talks to nobody in particular for the whole session, and
-    every replay of it shows the same.
-
-    A degraded render is still served, so a session is never blocked by it, but
-    it is not persisted: the next bootstrap tries again, and once the station
-    is fixed the attempt gets the real thing.
-    """
-    station = None
-    if attempt.station_version_id is not None:
-        station = await stations.runnable_station(session, attempt.org_id, attempt.station_version_id)
-    if station is None:
-        raise errors.AttemptNotReady(
-            "This attempt has no station to run against, so there is nothing to render."
-        )
-
-    exam = await catalog.exam_for_attempt(session, attempt.exam_id)
-    degraded = not domain.scenario_is_renderable(station.content)
-
-    try:
-        rendered = build_renderer().render(
-            station={"owner_kind": station.owner_kind, "content": station.content},
-            exam_code=exam.code,
-            mode=_MODE_FOR_KIND.get(attempt.kind, "patient"),
-        )
-    except RenderFailed as exc:
-        raise errors.AttemptNotReady(str(exc)) from exc
-
-    payload = domain.definition_payload(
-        attempt_id=str(attempt.id),
-        framework_id=exam.framework_id,
-        scenario_source="org" if station.owner_kind == "org" else "library",
-        scenario_id=str(station.version_id),
-        instructions=str(rendered["instructions"]),
-        greeting=str(greeting) if (greeting := rendered.get("greeting")) else None,
-        mode=_MODE_FOR_KIND.get(attempt.kind, "patient"),
-        policy_version=PLATFORM_DEFAULT_POLICY,
-        primary_model=exam.feedback_model_key,
-        at=now,
-    )
-
-    if domain.should_freeze(render_degraded=degraded, already_frozen=bool(attempt.definition)):
-        await repository.freeze_definition(session, attempt.id, definition=payload, at=now)
-    else:
-        log.warning(
-            "serving a degraded render without freezing it",
-            attempt_id=str(attempt.id),
-            station_version_id=str(station.version_id),
-        )
-    return payload
-
-
 async def bootstrap(
     session: AsyncSession, attempt_id: uuid.UUID, *, now: datetime | None = None
 ) -> WorkerBootstrap:
@@ -131,20 +90,15 @@ async def bootstrap(
     payload = attempt.definition
     if not payload:
         # Nothing frozen yet, so this is the first bootstrap: render now.
-        payload = await _render_definition(session, attempt, now=now or _snapshot_time(attempt))
+        payload = await render_definition(session, attempt, now=now or _snapshot_time(attempt))
     try:
-        definition = domain.bootstrap_definition(payload)
+        definition = domain_definition.bootstrap_definition(payload)
     except domain.UnrenderableDefinition as exc:
         raise errors.AttemptNotReady(str(exc)) from exc
 
     if now is not None and domain.Status(attempt.status) is domain.Status.CREATED:
-        await repository.set_status(session, attempt_id, status=str(domain.Status.RUNNING), at=now)
+        await repository.set_status(session, attempt_id, status=domain.Status.RUNNING, at=now)
 
-    scenario = dict(payload.get("scenario") or {}) or {
-        "ref": payload.get("scenario_ref", {}),
-        "title": "",
-        "raw": {},
-    }
     return WorkerBootstrap(
         attempt={
             "attempt_id": str(attempt.id),
@@ -155,7 +109,7 @@ async def bootstrap(
             "ended_at": attempt.completed_at.isoformat() if attempt.completed_at else None,
             "status": attempt.status,
         },
-        scenario=scenario,
+        scenario=domain_definition.worker_scenario(payload),
     )
 
 
@@ -227,7 +181,7 @@ async def accept_transcript(
         await repository.set_status(
             session,
             attempt_id,
-            status=str(target),
+            status=target,
             at=now,
             reason=None if transcript.complete else "incomplete_transcript",
         )
@@ -236,3 +190,7 @@ async def accept_transcript(
             # being owed commit together. b2c spawned a thread and b2b a daemon
             # thread, so a deploy mid-generation stranded the attempt forever.
             await enqueue_scoring(session, attempt, now=now)
+            # Announced after the marking is queued, in the same transaction,
+            # so whatever else this attempt is owed lands with it or not at all.
+            if _on_interaction_complete is not None:
+                await _on_interaction_complete(session, attempt)

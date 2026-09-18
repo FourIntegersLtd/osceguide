@@ -1,0 +1,333 @@
+{
+  "$defs": {
+    "CascCommunicationModel": {
+      "properties": {
+        "consultation_structure": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Maintains organized, structured consultation\n        - Manages consultation flow effectively\n        - Shows clear progression through assessment\n        - Maintains appropriate timing\n        - Demonstrates natural, engaging approach"
+        },
+        "consultation_style": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if ALL:\n        - Demonstrates empathic and non-judgmental approach\n        - Maintains appropriate therapeutic boundaries\n        - Adapts communication to patient's mental state\n        - Shows respect for patient's experiences and beliefs"
+        },
+        "generic_domains": {
+          "$ref": "#/$defs/CascDomainFeedbackModel",
+          "description": "Communication skills feedback with specific examples.\n        Strengths should highlight effective communication techniques.\n        Improvements should focus on interview style and patient interaction.\n        Example strength: \"Excellent use of silence when discussing sensitive topics\"\n        Example improvement: \"Need to avoid medical jargon when explaining diagnosis\" "
+        },
+        "language_use": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Uses appropriate language for scenario\n        - Avoids unnecessary medical jargon\n        - Adapts language to patient's level\n        - Uses non-stigmatizing terminology\n        - Explains technical terms clearly"
+        },
+        "listening_skills": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Shows excellent listening skills\n        - Responds appropriately to verbal/non-verbal cues\n        - Demonstrates active listening consistently\n        - Picks up on important patient signals\n        - Uses appropriate silences"
+        },
+        "professional_behavior": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Shows appropriate professional attitude\n        - Maintains appropriate boundaries\n        - Displays appropriate behavior throughout\n        - Demonstrates genuine empathy\n        - Shows cultural sensitivity"
+        },
+        "questioning_technique": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Uses appropriate questioning style\n        - Balances open and closed questions\n        - Avoids leading questions\n        - Clarifies information effectively\n        - Adapts questioning approach appropriately"
+        }
+      },
+      "required": [
+        "consultation_structure",
+        "consultation_style",
+        "professional_behavior",
+        "listening_skills",
+        "questioning_technique",
+        "language_use",
+        "generic_domains"
+      ],
+      "title": "CascCommunicationModel",
+      "type": "object"
+    },
+    "CascDomainFeedbackModel": {
+      "properties": {
+        "improvements": {
+          "description": "Specific examples of areas needing improvement, at least 3 examples",
+          "items": {
+            "$ref": "#/$defs/ImprovementModel"
+          },
+          "title": "Improvements",
+          "type": "array"
+        },
+        "strengths": {
+          "description": "Specific examples of effective performance, at least 2 examples",
+          "items": {
+            "$ref": "#/$defs/StrengthsModel"
+          },
+          "title": "Strengths",
+          "type": "array"
+        },
+        "suggested_actions": {
+          "description": "Concrete steps for improvement, must be clear and actionable, at least 3 steps",
+          "items": {
+            "type": "string"
+          },
+          "title": "Suggested Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "strengths",
+        "improvements",
+        "suggested_actions"
+      ],
+      "title": "CascDomainFeedbackModel",
+      "type": "object"
+    },
+    "CascEvaluationScoreModel": {
+      "description": "Scoring system for CASC feedback",
+      "properties": {
+        "competent": {
+          "default": false,
+          "description": "Boolean indicating if competency was demonstrated. \n        True: Meets all expected standards with clear evidence\n        False: Does not meet minimum competency requirements or shows significant deficiencies",
+          "title": "Competent",
+          "type": "boolean"
+        }
+      },
+      "title": "CascEvaluationScoreModel",
+      "type": "object"
+    },
+    "CascExaminationModel": {
+      "properties": {
+        "examination_competence": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if ALL:\n        - Conducts systematic mental state examination\n        - Demonstrates appropriate use of cognitive testing\n        - Shows sensitivity in examining difficult topics\n        - Maintains professional boundaries during examination"
+        },
+        "formulates_diagnosis": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if ALL:\n        - Generates appropriate psychiatric differential diagnoses\n        - Considers biopsychosocial factors in formulation\n        - Uses diagnostic criteria correctly\n        - Identifies comorbid conditions"
+        },
+        "generic_domains": {
+          "$ref": "#/$defs/CascDomainFeedbackModel",
+          "description": "Mental state examination feedback with specific examples.\n        Strengths should highlight effective examination techniques.\n        Improvements should focus on examination thoroughness and approach.\n        Example strength: \"Systematic assessment of thought content and form\"\n        Example improvement: \"Need to document objective findings more clearly\" "
+        },
+        "identifies_findings": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if ALL:\n        - Accurately identifies abnormal mental state findings\n        - Observes and documents appearance and behavior\n        - Assesses cognitive function appropriately\n        - Notes objective signs of mental illness"
+        },
+        "recognizes_implications": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if ALL:\n        - Recognizes significance of mental state findings\n        - Links examination findings to diagnostic criteria\n        - Identifies severity indicators\n        - Recognizes signs requiring urgent intervention"
+        }
+      },
+      "required": [
+        "identifies_findings",
+        "recognizes_implications",
+        "examination_competence",
+        "formulates_diagnosis",
+        "generic_domains"
+      ],
+      "title": "CascExaminationModel",
+      "type": "object"
+    },
+    "CascHistoryModel": {
+      "description": "Assessment of psychiatric history taking skills with detailed competency criteria",
+      "properties": {
+        "assesses_risk": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Conducts thorough risk assessment\n        - Explores all relevant risk factors\n        - Establishes current risk level clearly\n        - Addresses immediate safety concerns\n        - Documents risk assessment comprehensively"
+        },
+        "explores_physical_health": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Pays appropriate attention to physical health\n        - Considers physical health implications\n        - Addresses physical health monitoring needs\n        - Explores relevant medication effects\n        - Investigates physical health concerns"
+        },
+        "explores_symptoms": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Elicits presence of key symptoms effectively\n        - Explores symptoms in appropriate detail\n        - Investigates relevant associated symptoms\n        - Maintains comprehensive history taking\n        - Gathers detailed symptom information systematically"
+        },
+        "generic_domains": {
+          "$ref": "#/$defs/CascDomainFeedbackModel",
+          "description": "History taking feedback with specific examples.\n        Strengths should highlight effective history gathering techniques.\n        Improvements should focus on history structure and content.\n        Example strength: \"Excellent systematic exploration of depressive symptoms\"\n        Example improvement: \"Need to explore impact of symptoms on daily functioning more thoroughly\" "
+        },
+        "identifies_priorities": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Identifies and prioritizes key presenting issues clearly\n        - Maintains structured and organized history taking\n        - Recognizes and responds to urgent clinical concerns\n        - Gathers critical information systematically\n        - Shows genuine engagement rather than formulaic approach"
+        },
+        "identifies_psychosocial": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Gathers appropriate psychological information\n        - Obtains relevant social information\n        - Explores important psychosocial context\n        - Assesses impact on daily functioning\n        - Investigates support systems effectively"
+        },
+        "recognizes_significance": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Recognizes clinical significance of key symptoms\n        - Makes appropriate connections between symptoms\n        - Identifies patterns suggesting mental health conditions\n        - Shows clear clinical reasoning in follow-up questions\n        - Picks up on critical aspects of history"
+        }
+      },
+      "required": [
+        "identifies_priorities",
+        "recognizes_significance",
+        "explores_symptoms",
+        "assesses_risk",
+        "explores_physical_health",
+        "identifies_psychosocial",
+        "generic_domains"
+      ],
+      "title": "CascHistoryModel",
+      "type": "object"
+    },
+    "CascManagementModel": {
+      "properties": {
+        "generic_domains": {
+          "$ref": "#/$defs/CascDomainFeedbackModel",
+          "description": "Management planning feedback with specific examples.\n        Strengths should highlight effective management decisions.\n        Improvements should focus on treatment planning and risk management.\n        Example strength: \"Comprehensive risk management plan with clear contingencies\"\n        Example improvement: \"Need to consider broader range of treatment options\" "
+        },
+        "management_plan": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Develops comprehensive management plan\n        - Reflects current best practice\n        - Considers appropriate treatment options\n        - Incorporates patient preferences\n        - Plans appropriate follow-up"
+        },
+        "problem_formulation": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Formulates problems effectively\n        - Synthesizes information clearly\n        - Integrates findings appropriately\n        - Identifies key clinical issues\n        - Shows organized approach to formulation"
+        },
+        "psychosocial_interventions": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Identifies appropriate psychological interventions\n        - Suggests relevant social interventions\n        - Addresses support needs comprehensively\n        - Includes important psychosocial aspects\n        - Takes holistic approach to care"
+        },
+        "risk_management": {
+          "$ref": "#/$defs/CascEvaluationScoreModel",
+          "description": "Competent if demonstrates ALL:\n        - Develops comprehensive risk management plan\n        - Addresses all identified risks\n        - Creates appropriate safety plan\n        - Includes effective crisis planning\n        - Implements risk mitigation strategies"
+        }
+      },
+      "required": [
+        "problem_formulation",
+        "management_plan",
+        "risk_management",
+        "psychosocial_interventions",
+        "generic_domains"
+      ],
+      "title": "CascManagementModel",
+      "type": "object"
+    },
+    "ImprovementModel": {
+      "properties": {
+        "improvement": {
+          "description": "Improvement to be made",
+          "title": "Improvement",
+          "type": "string"
+        },
+        "issue": {
+          "description": "Issue that needs to be addressed, give relevant examples from the transcript",
+          "title": "Issue",
+          "type": "string"
+        }
+      },
+      "required": [
+        "improvement",
+        "issue"
+      ],
+      "title": "ImprovementModel",
+      "type": "object"
+    },
+    "StrengthsModel": {
+      "properties": {
+        "examples": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Example of the strength, give relevant examples from the transcript",
+          "title": "Examples"
+        },
+        "strength": {
+          "description": "Strength demonstrated",
+          "title": "Strength",
+          "type": "string"
+        }
+      },
+      "required": [
+        "strength"
+      ],
+      "title": "StrengthsModel",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "attempt_id": {
+      "description": "ID of the attempt",
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "communication": {
+      "$ref": "#/$defs/CascCommunicationModel",
+      "description": "Assessment of communication skills including domain-specific feedback"
+    },
+    "created_at": {
+      "description": "Timestamp of feedback creation",
+      "title": "Created At",
+      "type": "string"
+    },
+    "evaluated_by": {
+      "description": "ID of evaluator",
+      "title": "Evaluated By",
+      "type": "string"
+    },
+    "examination": {
+      "$ref": "#/$defs/CascExaminationModel",
+      "description": "Assessment of examination skills including domain-specific feedback"
+    },
+    "feedback_id": {
+      "description": "Unique identifier for feedback",
+      "title": "Feedback Id",
+      "type": "string"
+    },
+    "history": {
+      "$ref": "#/$defs/CascHistoryModel",
+      "description": "Assessment of history taking skills including domain-specific feedback"
+    },
+    "management": {
+      "$ref": "#/$defs/CascManagementModel",
+      "description": "Assessment of management skills including domain-specific feedback"
+    },
+    "mock_id": {
+      "description": "ID of mock",
+      "title": "Mock Id",
+      "type": "string"
+    },
+    "station_id": {
+      "description": "ID of CASC station",
+      "title": "Station Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Timestamp of last update",
+      "title": "Updated At"
+    },
+    "user_id": {
+      "description": "ID of user receiving feedback",
+      "title": "User Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "history",
+    "examination",
+    "management",
+    "communication",
+    "feedback_id",
+    "user_id",
+    "mock_id",
+    "station_id",
+    "evaluated_by",
+    "created_at",
+    "attempt_id"
+  ],
+  "title": "ExtendedCascFeedbackResponseModel",
+  "type": "object"
+}

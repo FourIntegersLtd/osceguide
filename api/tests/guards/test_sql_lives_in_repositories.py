@@ -53,7 +53,19 @@ QUERY_BUILDERS = {"select", "insert", "update", "delete", "text", "exists", "uni
 ALLOWED_FILENAMES = {"repository.py", "models.py"}
 
 
+# The query builders outside a repository, all for the same reason: they are
+# one rule each, shared by every slice, and a copy per slice is a chance to get
+# it subtly wrong. Keyset paging was copied into nine repositories and nine of
+# them dropped rows; the audience filter decides who can see an institution's
+# private conversation, which is worse to get wrong in one place out of three;
+# `jobs.py` writes the queue row inside the caller's transaction, which is the
+# whole of ADR 0006 and was reachable from one slice while every slice needed it.
+CORE_QUERY_HELPERS = {"pagination.py", "audience.py", "jobs.py"}
+
+
 def is_allowed(path: Path) -> bool:
+    if path.parent.name == "core" and path.name in CORE_QUERY_HELPERS:
+        return True
     return path.name in ALLOWED_FILENAMES or path.name.startswith("repository_")
 
 

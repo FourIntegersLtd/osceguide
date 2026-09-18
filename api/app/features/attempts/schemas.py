@@ -91,11 +91,23 @@ class AttemptRead(BaseModel):
 
 
 class CreateAttempt(BaseModel):
-    kind: str = Field(pattern="^(practice|set_station|debrief|self_practice|exam_slot|peer)$")
+    """What a client may ask for directly.
+
+    Deliberately narrower than `attempts.create_attempt`. The other kinds are
+    *about* something a different slice owns — a slot, a set entry, a peer
+    pairing, an earlier attempt — and `attempts` sits below all of them in the
+    layer order, so it cannot check that the caller owns the thing they named.
+
+    This route used to take every one of those ids straight from the body and
+    store them unverified, which let anyone attach their attempt to another
+    organisation's exam slot or another person's set entry. Each of those
+    kinds has its own route, on the slice that can do the checking:
+    `POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set
+    station and its debrief, and the circuit itself for an exam slot (ADR
+    0018). `room_name` is likewise not the client's to choose — `voice`
+    derives it from the attempt.
+    """
+
+    kind: str = Field(pattern="^(practice|self_practice)$")
     exam_code: str = Field(min_length=1, max_length=32)
     station_version_id: uuid.UUID | None = None
-    slot_id: uuid.UUID | None = None
-    set_entry_id: uuid.UUID | None = None
-    peer_session_id: uuid.UUID | None = None
-    source_attempt_id: uuid.UUID | None = None
-    room_name: str | None = None

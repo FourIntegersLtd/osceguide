@@ -23,6 +23,33 @@ class CreateTrainee(BaseModel):
     cohort_id: uuid.UUID | None = None
 
 
+MAX_BULK_TRAINEES = 500
+
+
+class BulkCreateTrainees(BaseModel):
+    """A spreadsheet's worth of trainees in one request.
+
+    The browser parses the file; the API takes rows. Capped so one request
+    cannot invite a whole university at once by accident.
+    """
+
+    trainees: list[CreateTrainee] = Field(min_length=1, max_length=MAX_BULK_TRAINEES)
+
+
+class SkippedTrainee(BaseModel):
+    email: str
+    # A stable code the client switches on: `trainee_exists` for a duplicate
+    # on the roster or within the upload.
+    code: str
+
+
+class BulkTraineesResult(BaseModel):
+    """Who was added and who was not, so a partial upload is not a mystery."""
+
+    created: list[TraineeRead] = Field(default_factory=list)
+    skipped: list[SkippedTrainee] = Field(default_factory=list)
+
+
 class CohortRead(BaseModel):
     id: uuid.UUID
     name: str

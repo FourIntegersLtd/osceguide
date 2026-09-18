@@ -18,7 +18,7 @@ from app.core.auth import require_worker_secret
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.features.assistant import errors, schemas, service
+from app.features.assistant import errors, schemas, service_worker
 
 router = APIRouter(tags=["worker"], dependencies=[Depends(require_worker_secret)])
 
@@ -33,7 +33,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def bootstrap_assistant_session(
     session_id: uuid.UUID, session: Session
 ) -> schemas.WorkerSessionPayload:
-    return await service.bootstrap(session, session_id)
+    return await service_worker.bootstrap(session, session_id)
 
 
 @router.post(
@@ -45,7 +45,7 @@ async def assistant_scene(
     session_id: uuid.UUID, body: schemas.SceneRequest, session: Session
 ) -> schemas.SceneInstructions:
     return schemas.SceneInstructions(
-        instructions=await service.scene_instructions(session, session_id, phase=body.phase)
+        instructions=await service_worker.scene_instructions(session, session_id, phase=body.phase)
     )
 
 
@@ -61,7 +61,7 @@ async def accept_assistant_transcript(
     session: Session,
     clock: ClockDep,
 ) -> schemas.Accepted:
-    await service.accept_transcript(session, session_id, transcript=body.transcript, now=clock.now())
+    await service_worker.accept_transcript(session, session_id, transcript=body.transcript, now=clock.now())
     return schemas.Accepted()
 
 
@@ -78,7 +78,7 @@ async def complete_assistant_session(
     clock: ClockDep,
 ) -> schemas.Accepted:
     """The GPT-Live path reports usage and why the session ended."""
-    await service.complete_session(
+    await service_worker.complete_session(
         session,
         session_id,
         end_reason=body.end_reason,

@@ -22,17 +22,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import get_settings
 from app.features.attempts import repository
 from app.features.attempts import repository_transcript as transcripts
-from app.features.catalog import repository as catalog_repo
 from app.features.identity import repository as identity_repo
+from tests.support.catalog import ensure_exam
+from tests.support.rubrics import frozen_rubric
 
 pytestmark = pytest.mark.db
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
+# The rubric an attempt is marked against is frozen onto it at render, so a
+# definition without one is deliberately unmarkable. `FRAMEWORK_ID` is that
+# rubric version's id, which is what everything downstream records.
+RUBRIC = frozen_rubric()
+FRAMEWORK_ID = str(RUBRIC["framework"]["id"])
+
 DEFINITION = {
     "id": "def-1",
-    "version": 1,
-    "framework_id": "sca-rcgp-v1",
+    "version": "1",
+    "framework_id": FRAMEWORK_ID,
     "scenario_ref": {"source": "library", "scenario_id": "station-1"},
     "interaction_profile": {
         "mode": "patient",
@@ -44,9 +51,10 @@ DEFINITION = {
         "runtime_hint": "pipeline",
     },
     "evaluation_policy": {
-        "framework_id": "sca-rcgp-v1",
+        "framework_id": FRAMEWORK_ID,
         "primary_model": "gpt-5-mini",
         "version": "platform-default@1",
+        "rubric": RUBRIC,
     },
     "snapshot_at": NOW.isoformat(),
 }
@@ -61,7 +69,7 @@ async def an_attempt(session: AsyncSession, *, frozen: bool = True) -> uuid.UUID
     user = await identity_repo.create_user(
         session, email=f"c{uuid.uuid4().hex[:8]}@example.com", name="C", password_hash=None
     )
-    exam = await catalog_repo.exam_by_code(session, "sca")
+    exam = await ensure_exam(session, "sca")
     assert exam is not None
     attempt = await repository.create_attempt(
         session, kind="practice", user_id=user.id, exam_id=exam.id, room_name="unified_x"
@@ -304,7 +312,7 @@ async def test_delivering_a_transcript_queues_the_marking(
         .all()
     )
     assert len(queued) == 1
-    assert queued[0]["framework_id"] == "sca-rcgp-v1"
+    assert queued[0]["framework_id"] == FRAMEWORK_ID
 
 
 async def test_a_redelivered_transcript_does_not_queue_a_second_marking(

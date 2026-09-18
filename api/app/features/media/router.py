@@ -23,7 +23,7 @@ Index = Annotated[VectorIndex, Depends(service.get_vector_index)]
 @router.get(
     "/media",
     response_model=Page[schemas.MediaRead],
-    responses=error_responses(Unauthenticated, errors.UnknownMediaKindError),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated, errors.UnknownMediaKindError),
 )
 async def list_published(
     principal: CurrentPrincipal,
@@ -67,7 +67,11 @@ async def search(
     response_model=schemas.MediaRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
-        Forbidden, errors.UnknownMediaKindError, errors.SlugTaken, errors.UnusableTitleError
+        errors.UnknownExamError,
+        Forbidden,
+        errors.UnknownMediaKindError,
+        errors.SlugTaken,
+        errors.UnusableTitleError,
     ),
 )
 async def create(body: schemas.CreateMedia, admin: PlatformAdmin, session: Session) -> schemas.MediaRead:

@@ -30,23 +30,6 @@ from tests.guards._scan import APP_ROOT, FEATURES_ROOT, python_files
 KNOWN_UNWIRED: dict[tuple[str, str], str] = {
     ("attempts", "is_terminal"): "helper; status checks compare the enum directly",
     ("attempts", "required_reference"): "the CHECK constraint enforces this; the rule mirrors it",
-    ("community", "apply_like"): "likes are counted in SQL, not recomputed in Python",
-    ("community", "apply_unlike"): "as apply_like",
-    ("growth", "format_ref_id"): "referral codes are generated in the service; unify or delete",
-    ("identity", "may_call"): "rate limiting is not built yet",
-    ("notifications", "is_due"): "the SKIP LOCKED claim query does the due check in SQL",
-    ("reviews", "combine_rag"): "Phase D: the server should own RAG aggregation, not the browser",
-    ("roster", "ensure_rosterable"): "Phase D",
-    ("roster", "memberships_from_labels"): "import helper for the migration; move to app/migration",
-    (
-        "sittings",
-        "ensure_editable",
-    ): "asserts C3; no structural-edit route to assert it at yet (edit_block reports it)",
-    ("stations", "ensure_bindable"): "Phase D: T3 is not enforced",
-    ("stations", "ensure_brief_editable"): "Phase D: T5, no brief-edit route",
-    ("stations", "ensure_deletable"): "Phase D: no delete-version route",
-    ("stations", "ensure_usable_in_circuit"): "Phase D: T4, a circuit may reference a draft station",
-    ("tenancy", "pick_default_workspace"): "Phase C: login uses memberships[0] instead",
 }
 
 
@@ -95,7 +78,7 @@ def unreachable_rules(features_root: Path | None = None) -> dict[tuple[str, str]
     defined: dict[tuple[str, str], None] = {}
     edges: dict[tuple[str, str], set[tuple[str, str]]] = {}
 
-    for path in sorted(root.glob("*/domain.py")):
+    for path in sorted(root.glob("*/domain*.py")):
         slice_name = path.parent.name
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for name in _public_functions(tree):
@@ -110,7 +93,7 @@ def unreachable_rules(features_root: Path | None = None) -> dict[tuple[str, str]
 
     entry: set[tuple[str, str]] = set()
     for path in python_files(root if features_root else APP_ROOT):
-        if path.name == "domain.py":
+        if path.name.startswith("domain"):
             continue
         slice_name = path.parent.name
         tree = ast.parse(path.read_text(encoding="utf-8"))

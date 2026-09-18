@@ -34,3 +34,17 @@ class SetLockedError(Conflict):
 class NothingToDebriefError(Conflict):
     code = "nothing_to_debrief"
     default_message = "Run the station before asking for a debrief"
+
+
+class UnknownExamError(NotFound):
+    """Mirrors `catalog.errors.UnknownExamError`, and shares its code.
+
+    Declared here so this slice's routes can document the refusal without
+    importing another slice's error class into their signatures — the same
+    reason `stations` and `attempts` mirror it. It became reachable in
+    practice once exams stopped being four seeded rows: a code that names no
+    published exam is now an ordinary thing for a client to send.
+    """
+
+    code = "unknown_exam"
+    default_message = "No such exam"

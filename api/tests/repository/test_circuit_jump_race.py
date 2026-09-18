@@ -1,16 +1,16 @@
-"""Switching a candidate in while another supervisor ends the circuit.
+"""Jumping to a station while another supervisor ends the circuit.
 
 C4 says at most one slot is active per circuit, enforced with a row lock
-rather than last-write-wins. b2b reads the circuit, decides, and writes, with
+rather than last-write-wins. b2b read the circuit, decided, and wrote, with
 nothing holding the row in between — so two supervisors acting at once on a
-live exam interleave.
+live examination interleave.
 
 The damage is not two active slots; it is a circuit that is over and still
-shows somebody consulting. `end_circuit` clears the active slot and stamps
-`ended_at`; `switch_turn` sets the active slot. Interleaved, the end commits
-and the switch writes on top of it, leaving `ended_at` set and
-`active_slot_id` pointing at a candidate whose room has already been torn
-down. The trainee portal then offers a slot nobody can join.
+shows somebody consulting. Ending clears the active slot and stamps
+`ended_at`; jumping sets one. Interleaved, the end commits and the jump writes
+on top of it, leaving `ended_at` set and `active_slot_id` pointing at a
+candidate whose room has already been torn down. The trainee portal then offers
+a slot nobody can join.
 
 Two real connections, because the guarantee is the database's.
 """
@@ -26,7 +26,10 @@ import pytest
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.sittings import repository, service
+from app.features.sittings import repository, service_rescue, service_run
+from tests.support.catalog import ensure_exam
+from tests.support.fakes import FakeRoomAgents
+from tests.support.rubrics import published_feedback_version
 
 pytestmark = pytest.mark.db
 
@@ -35,12 +38,9 @@ NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
 async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
     """An org, a started circuit, and one of its slots."""
-    from app.features.catalog import repository as catalog_repo
     from app.features.identity import repository as identity_repo
     from app.features.sittings.models import Circuit, Sitting, Slot
     from app.features.stations.models import (
-        FeedbackTemplate,
-        FeedbackTemplateVersion,
         Station,
         StationVersion,
     )
@@ -50,16 +50,11 @@ async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UU
     session.add(org)
     await session.flush()
 
-    exam = await catalog_repo.exam_by_code(session, "sca")
+    exam = await ensure_exam(session, "sca")
     assert exam is not None
-    template = FeedbackTemplate(org_id=org.id, title="R")
-    session.add(template)
-    await session.flush()
-    version = FeedbackTemplateVersion(
-        org_id=org.id, template_id=template.id, version=1, field_selection={}, status="published"
-    )
+    version = await published_feedback_version(session, org.id)
     station = Station(owner_kind="org", org_id=org.id, exam_id=exam.id, title="S")
-    session.add_all([version, station])
+    session.add_all([station])
     await session.flush()
     station_version = StationVersion(
         station_id=station.id, org_id=org.id, version=1, content={}, status="published"
@@ -70,7 +65,7 @@ async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UU
     sitting = Sitting(org_id=org.id, name="S", mode="training", feedback_template_version_id=version.id)
     session.add(sitting)
     await session.flush()
-    circuit = Circuit(org_id=org.id, sitting_id=sitting.id, name="C", room_name="room-1")
+    circuit = Circuit(org_id=org.id, sitting_id=sitting.id, name="C", room_name="room-1", started_at=NOW)
     session.add(circuit)
     await session.flush()
     trainee = await identity_repo.create_user(
@@ -88,7 +83,7 @@ async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UU
     return org.id, circuit.id, slot.id
 
 
-async def test_a_switch_cannot_land_on_a_circuit_that_has_just_ended(
+async def test_a_jump_cannot_land_on_a_circuit_that_has_just_ended(
     db_session: AsyncSession,
 ) -> None:
     """`db_session` is taken for its side effect: it is what brings the test
@@ -100,19 +95,29 @@ async def test_a_switch_cannot_land_on_a_circuit_that_has_just_ended(
     async with factory() as setup, setup.begin():
         org_id, circuit_id, slot_id = await _a_training_circuit(setup)
 
+    agents = FakeRoomAgents()
+
     async def end() -> None:
         async with factory() as s, s.begin():
-            await service.end_circuit(s, org_id, circuit_id, now=NOW)
+            await service_run.end_circuit(s, org_id, circuit_id, agents=agents, now=NOW)
 
-    async def switch() -> None:
+    async def jump() -> None:
         async with factory() as s, s.begin():
             # Losing the race is a valid outcome; the assertion is about the
             # state left behind, not about which call won.
             with contextlib.suppress(Exception):
-                await service.switch_turn(s, org_id, circuit_id, slot_id=slot_id)
+                await service_rescue.jump_to(
+                    s,
+                    org_id,
+                    circuit_id,
+                    slot_id=slot_id,
+                    agents=agents,
+                    actor=service_rescue.Actor(user_id=None),
+                    now=NOW,
+                )
 
     try:
-        await asyncio.gather(end(), switch())
+        await asyncio.gather(end(), jump())
 
         async with factory() as check, check.begin():
             circuit = await repository.circuit_by_id(check, org_id, circuit_id)
@@ -120,7 +125,7 @@ async def test_a_switch_cannot_land_on_a_circuit_that_has_just_ended(
             if circuit.ended_at is not None:
                 assert circuit.active_slot_id is None, (
                     "the circuit is over but still shows a candidate consulting; "
-                    "the switch wrote on top of the end"
+                    "the jump wrote on top of the end"
                 )
     finally:
         async with factory() as cleanup, cleanup.begin():

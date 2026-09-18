@@ -15,11 +15,18 @@ class SlotRead(BaseModel):
     room_name: str | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
+    # The circuit's clock, shown against the slot it is currently on and null
+    # for every other slot. Derived, not stored: the clock is the circuit's.
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
 
 
 class TimingRead(BaseModel):
     reading_minutes: int
     simulation_minutes: int
+    break_minutes: int
+    # Which stations a break follows, 1-based, as an examiner writes it.
     breaks: list[int] = Field(default_factory=list)
 
 
@@ -33,6 +40,17 @@ class CircuitRead(BaseModel):
     room_name: str | None
     started_at: datetime | None
     ended_at: datetime | None
+    # The examination clock (D-6). One deadline, read by every screen.
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
+    # Bumped by every transition and override. A client that acts on a stale
+    # screen can be told so, and a scheduled transition that no longer matches
+    # does nothing.
+    phase_seq: int = 0
+    paused: bool = False
+    paused_at: datetime | None = None
+    auto_advance: bool = True
     slots: list[SlotRead] = Field(default_factory=list)
 
 
@@ -59,6 +77,7 @@ class CreateSitting(BaseModel):
 class TimingIn(BaseModel):
     reading_minutes: int | None = None
     simulation_minutes: int | None = None
+    break_minutes: int | None = None
     breaks: list[int] = Field(default_factory=list)
 
 
@@ -70,24 +89,61 @@ class CreateCircuit(BaseModel):
     timing: TimingIn = Field(default_factory=TimingIn)
 
 
-class SwitchTurn(BaseModel):
-    slot_id: uuid.UUID
+class RebuildCircuit(BaseModel):
+    """A circuit's new shape. Everything omitted is left as it is.
 
-
-class AppendTrainee(BaseModel):
-    trainee_id: uuid.UUID
-    station_version_id: uuid.UUID
-
-
-class DispatchAgent(BaseModel):
-    """Which slot the agent is being dispatched for.
-
-    Named rather than taken from `active_slot_id`, so dispatching and switching
-    are separate decisions: a supervisor can re-dispatch the current station
-    without the circuit's state having to be right first.
+    The trainees and the stations are sent whole rather than as a patch: the
+    slots are rebuilt from them, and a partial edit would leave the API
+    guessing which pairing the supervisor meant.
     """
 
+    trainee_ids: list[uuid.UUID]
+    station_version_ids: list[uuid.UUID]
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    supervisor_user_id: uuid.UUID | None = None
+    timing: TimingIn | None = None
+
+
+class Override(BaseModel):
+    """What every override may carry: why it was done.
+
+    Optional, and free text, because the reasons are the ones nobody predicted
+    — that is what an override is for. It is written to the record beside the
+    action, so "the clock was extended" is answerable with "because the fire
+    alarm went".
+    """
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class ExtendClock(Override):
+    # An hour is generous for a station and short enough that a mistyped value
+    # cannot strand a circuit until the reaper finds it.
+    seconds: int = Field(ge=1, le=3600)
+
+
+class StationOverride(Override):
     slot_id: uuid.UUID
+
+
+class SetAutoAdvance(BaseModel):
+    enabled: bool
+
+
+class Intervention(BaseModel):
+    id: uuid.UUID
+    circuit_id: uuid.UUID
+    slot_id: uuid.UUID | None
+    actor_user_id: uuid.UUID | None
+    action: str
+    reason: str | None
+    phase_seq_before: int
+    phase_seq_after: int
+    at: datetime
+
+
+class Interventions(BaseModel):
+    items: list[Intervention] = Field(default_factory=list)
 
 
 class DispatchResult(BaseModel):
@@ -100,14 +156,6 @@ class DispatchResult(BaseModel):
     stale_agents_removed: int
 
 
-class ConsultationEnded(BaseModel):
-    circuit_id: uuid.UUID
-    agents_removed: int
-    # Null while the circuit is still running: ending a consultation is not
-    # ending the circuit.
-    ended_at: datetime | None
-
-
 class EditLock(BaseModel):
     circuit_id: uuid.UUID
     editable: bool
@@ -117,3 +165,21 @@ class EditLock(BaseModel):
 
 class AppendTrainees(BaseModel):
     trainee_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class RoomGrant(BaseModel):
+    """What a browser needs to join a circuit's room, and nothing more.
+
+    A candidate taking their place before their station starts, or an examiner
+    stepping in to watch. Neither names a recording: the candidate has none yet
+    and the examiner never will, which is what separates this from the token
+    issued against an attempt.
+
+    This slice's own shape rather than `voice`'s, even though the two agree
+    today: a wire contract belongs to the routes that serve it, and sharing one
+    is how two slices come to be unable to change it separately.
+    """
+
+    token: str
+    server_url: str
+    room: str

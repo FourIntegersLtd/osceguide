@@ -1,98 +1,183 @@
-"""Catalog use cases."""
+"""Using an exam: resolving one, and handing another slice a reference to it.
+
+Writing one lives in `service_authoring`; offering one as a programme lives in
+`service_programmes`. Nine slices import `resolve_exam` from here, which is why
+the reading half kept the module name.
+
+An exam has an owner. The platform's exams are the consumer catalogue, visible
+to everyone. An institution's are its own, visible to it alone, which is why
+every read here takes the caller's scope: `org_id=None` means the consumer
+catalogue, and a school's private exam can never be named from outside it.
+"""
 
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import domain, repository
-from app.features.catalog.errors import ProgrammeExists, ProgrammeNotFound, UnknownExamError
-from app.features.catalog.models import Exam, Programme
-from app.features.catalog.schemas import ExamRead, ProgrammeRead
+from app.features.catalog.errors import UnknownExamError
+from app.features.catalog.models import Exam
+from app.features.catalog.schemas import ExamRead
 
 
-async def list_exams(session: AsyncSession) -> list[ExamRead]:
-    return [_exam_read(e) for e in await repository.list_exams(session)]
+async def pilot_exam_codes(session: AsyncSession) -> frozenset[str]:
+    """Which exams a partner attribution link may name. Platform-side only."""
+    return frozenset(await repository.pilot_exam_codes(session))
 
 
-async def resolve_exam(session: AsyncSession, code: str) -> Exam:
-    """Look an exam up by code, refusing anything unknown.
-
-    Never defaulted. b2c fell back to `sca` for an unrecognised `app_type`,
-    which is how CASC transcripts came to be marked with a GP rubric prompt.
-    """
-    try:
-        domain.exam_by_code(code)
-    except domain.UnknownExam as exc:
-        raise UnknownExamError(str(exc)) from exc
-    exam = await repository.exam_by_code(session, code)
+async def exam_row(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
+    """One exam by id, or the refusal. Shared with `service_authoring`."""
+    exam = await repository.exam_by_id(session, exam_id)
     if exam is None:
-        # The domain knows this exam but the table does not: the seed migration
-        # and the code have diverged, which is a deployment fault, not a client one.
-        raise UnknownExamError(f"Exam {code!r} is published but not seeded")
+        raise UnknownExamError(f"No exam with id {exam_id}.")
     return exam
 
 
-async def add_programme(session: AsyncSession, org_id: uuid.UUID, *, exam_code: str) -> ProgrammeRead:
-    exam = await resolve_exam(session, exam_code)
-    if await repository.programme_for_exam(session, org_id, exam.id) is not None:
-        raise ProgrammeExists()
-    programme = await repository.create_programme(session, org_id, exam_id=exam.id)
-    return _programme_read(programme, exam)
+async def resolve_exam(session: AsyncSession, code: str, *, org_id: uuid.UUID | None = None) -> Exam:
+    """Look a published exam up by code, refusing anything else.
+
+    Never defaulted. b2c fell back to `sca` for an unrecognised `app_type`,
+    which is how CASC transcripts came to be marked with a GP rubric prompt.
+
+    A draft or retired exam is refused here as firmly as one that does not
+    exist: this is what programmes, entitlements, stations and plans are built
+    on, and none of them should be able to name an exam nobody can sit.
+
+    `org_id` is the caller's scope. An institution resolves its own exams and
+    the platform catalogue; a consumer caller (`None`) resolves the catalogue
+    only, so one school's private exam code can never be named from outside it.
+    """
+    try:
+        normalised = domain.normalise_code(code)
+    except domain.InvalidExamCode as exc:
+        raise UnknownExamError(str(exc)) from exc
+    exam = await repository.exam_by_code(session, org_id, normalised)
+    if exam is None:
+        raise UnknownExamError(f"No exam with the code {normalised!r}.")
+    try:
+        domain.ensure_offerable(exam.status)
+    except domain.NotOfferable as exc:
+        raise UnknownExamError(str(exc)) from exc
+    return exam
 
 
-async def list_programmes(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
-) -> tuple[list[ProgrammeRead], str | None]:
-    pairs, next_cursor = await repository.list_programmes(session, org_id, limit=limit, cursor=cursor)
-    return [_programme_read(p, e) for p, e in pairs], next_cursor
-
-
-async def set_programme_status(
-    session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID, *, status: str
-) -> ProgrammeRead:
-    programme = await repository.programme_by_id(session, org_id, programme_id)
-    if programme is None:
-        raise ProgrammeNotFound()
-    await repository.set_programme_status(session, org_id, programme_id, status=status)
-    refreshed = await repository.programme_by_id(session, org_id, programme_id)
-    exam = await repository.exam_by_id(session, refreshed.exam_id)  # type: ignore[union-attr]
-    return _programme_read(refreshed, exam)  # type: ignore[arg-type]
-
-
-def _exam_read(exam: Exam) -> ExamRead:
+def exam_read(exam: Exam) -> ExamRead:
     return ExamRead(
         id=exam.id,
+        owner_kind=exam.owner_kind,
+        org_id=exam.org_id,
         code=exam.code,
         name=exam.name,
-        framework_id=exam.framework_id,
+        status=exam.status,
+        rubric_version_id=exam.rubric_version_id,
+        framework_id=_framework_id(exam),
         default_reading_seconds=exam.default_reading_seconds,
         default_simulation_seconds=exam.default_simulation_seconds,
         station_attempt_limit=exam.station_attempt_limit,
+        partner_pilot=exam.partner_pilot,
     )
 
 
-def _programme_read(programme: Programme, exam: Exam) -> ProgrammeRead:
-    return ProgrammeRead(
-        id=programme.id,
-        exam_id=exam.id,
-        exam_code=exam.code,
-        exam_name=exam.name,
-        status=programme.status,
-        source=programme.source,
-    )
+def _framework_id(exam: Exam) -> str:
+    """The id everything downstream records a result under.
+
+    It is the rubric version's own id, so a stored result traces back to the
+    exact wording it was marked against. It used to be a string column on the
+    exam (`sca-rcgp-v1`), which named a framework the engine shipped and could
+    not be changed without a release.
+    """
+    return str(exam.rubric_version_id) if exam.rubric_version_id else ""
 
 
 async def exam_for_attempt(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
     """The exam row an attempt was created against.
 
+    By id and with no status check, deliberately: an attempt sat last year
+    against an exam that has since been retired must still render and still
+    mark. `resolve_exam` is the one that refuses anything unpublished, because
+    that is the path new things are built on.
+
     Returns the row rather than a field, because rendering needs its code, its
-    framework and its marking model together and there is no reason to read it
-    three times.
+    rubric and its timings together and there is no reason to read it three
+    times.
     """
     exam = await repository.exam_by_id(session, exam_id)
     if exam is None:
         raise UnknownExamError(f"No exam with id {exam_id}.")
     return exam
+
+
+async def exam_codes_by_id(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Codes for a set of exam ids, in one query.
+
+    Every list of stations, attempts or entitlements shows an exam code beside
+    each row, and each of them resolved it one row at a time.
+    """
+    rows = await repository.exams_by_ids(session, list(exam_ids))
+    return {row.id: row.code for row in rows}
+
+
+@dataclass(frozen=True)
+class ExamRef:
+    """An exam, as another slice may see one.
+
+    Not the mapped row: those stay inside this slice, and a caller that holds
+    one can lazily load whatever it is attached to. Carries the fields other
+    slices actually use — the code they display and the limits they enforce.
+    """
+
+    id: uuid.UUID
+    code: str
+    name: str
+    framework_id: str
+    station_attempt_limit: int
+    status: str = "published"
+    owner_kind: str = "platform"
+    org_id: uuid.UUID | None = None
+
+
+async def exam_ref_by_id(session: AsyncSession, exam_id: uuid.UUID) -> ExamRef | None:
+    exam = await repository.exam_by_id(session, exam_id)
+    return None if exam is None else _exam_ref(exam)
+
+
+def _exam_ref(exam: Exam) -> ExamRef:
+    return ExamRef(
+        id=exam.id,
+        code=exam.code,
+        name=exam.name,
+        framework_id=_framework_id(exam),
+        station_attempt_limit=exam.station_attempt_limit,
+        status=exam.status,
+        owner_kind=exam.owner_kind,
+        org_id=exam.org_id,
+    )
+
+
+async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | None:
+    """The code of one exam, for a row that stores an exam id.
+
+    Nine slices needed this and each reached into this slice's repository for
+    it, which put nine callers behind a table only this slice owns. None of
+    them wanted an `Exam`; they all wanted the four letters on the screen.
+    """
+    exam = await repository.exam_by_id(session, exam_id)
+    return None if exam is None else exam.code
+
+
+async def exam_codes(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[str]:
+    """Every published exam's code this caller may see. Small enough not to page."""
+    return [exam.code for exam in await _published(session, org_id)]
+
+
+async def exam_refs(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[ExamRef]:
+    """Every published exam this caller may see. Small enough not to page."""
+    return [_exam_ref(exam) for exam in await _published(session, org_id)]
+
+
+async def _published(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[Exam]:
+    return await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])

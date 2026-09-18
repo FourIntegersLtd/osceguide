@@ -1,0 +1,100 @@
+"""Assembling the institutional screens.
+
+Reads through other slices' services, never their tables, so this stays a
+projection. Split from `service.py` because the learner's dashboard and an
+organisation's change for different reasons and share nothing but the idea.
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.dashboard.schemas_org import (
+    OrgCounts,
+    OrgDashboard,
+    OrgSetup,
+    OrgSittingRow,
+    SupervisorCircuitRow,
+    SupervisorCircuits,
+)
+from app.features.roster import service as roster
+from app.features.rubrics import service_feedback as rubrics
+from app.features.sittings import service_reads as sittings
+from app.features.stations import service_reads as stations
+from app.features.tenancy import service as tenancy
+from app.features.tenancy import service_memberships as memberships
+
+RECENT_SITTINGS = 10
+
+
+async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDashboard:
+    """The admin home screen, which currently makes five requests.
+
+    Four of those exist only to call `.length` on a list, which also means an
+    organisation with a thousand trainees downloads a thousand trainees to show
+    the number 1000.
+    """
+    org = await tenancy.read_organization(session, org_id)
+    counts = OrgCounts(
+        trainees=await roster.count_trainees(session, org_id),
+        stations=await stations.count_stations(session, org_id),
+        staff=await memberships.count_staff(session, org_id),
+        published_feedback_templates=await rubrics.count_published_versions(session, org_id),
+        sittings=await sittings.count_sittings(session, org_id),
+    )
+    setup = OrgSetup(
+        trainees_added=counts.trainees > 0,
+        stations_authored=counts.stations > 0,
+        team_invited=counts.staff > 0,
+        feedback_template_published=counts.published_feedback_templates > 0,
+        ready_to_run=(
+            counts.trainees > 0
+            and counts.stations > 0
+            and counts.staff > 0
+            and counts.published_feedback_templates > 0
+        ),
+    )
+    recent = await sittings.recent_sittings(session, org_id, limit=RECENT_SITTINGS)
+    return OrgDashboard(
+        org_id=org.id,
+        slug=org.slug,
+        name=org.name,
+        counts=counts,
+        setup=setup,
+        recent_sittings=[
+            OrgSittingRow(
+                id=row.id,
+                name=row.name,
+                mode=row.mode,
+                status=row.status,
+                scheduled_for=row.scheduled_for,
+            )
+            for row in recent
+        ],
+    )
+
+
+async def supervisor_circuits(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID
+) -> SupervisorCircuits:
+    """The circuits assigned to the caller: "your sessions", in one request."""
+    rows = await sittings.supervisor_circuits(session, org_id, user_id)
+    return SupervisorCircuits(
+        items=[
+            SupervisorCircuitRow(
+                circuit_id=row.circuit.id,
+                circuit_name=row.circuit.name,
+                sitting_id=row.sitting.id,
+                sitting_name=row.sitting.name,
+                mode=row.sitting.mode,
+                status=row.sitting.status,
+                scheduled_for=row.sitting.scheduled_for,
+                slot_count=row.slot_count,
+                in_progress=row.circuit.started_at is not None and row.circuit.ended_at is None,
+                ended=row.circuit.ended_at is not None,
+            )
+            for row in rows
+        ]
+    )

@@ -54,6 +54,13 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
     __tablename__ = "attempts"
     __table_args__ = (
         CheckConstraint(_KIND_REFERENCE_CHECK, name="ck_attempts_kind_matches_reference"),
+        # The status vocabulary, in the database rather than only in
+        # `domain.Status`. `set_status` took a bare string, so a typo wrote a
+        # status nothing would ever match and the attempt stalled in it.
+        CheckConstraint(
+            "status IN ('created', 'running', 'interaction_complete', 'evaluated', 'failed')",
+            name="ck_attempts_status",
+        ),
         Index("ix_attempts_user_created", "user_id", "created_at"),
         Index("ix_attempts_org_created", "org_id", "created_at"),
         Index("ix_attempts_station_version", "station_version_id"),
@@ -84,9 +91,30 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
         ForeignKey("station_versions.id", ondelete="RESTRICT")
     )
 
-    slot_id: Mapped[uuid.UUID | None] = mapped_column()
-    set_entry_id: Mapped[uuid.UUID | None] = mapped_column()
-    peer_session_id: Mapped[uuid.UUID | None] = mapped_column()
+    # Real foreign keys, and `RESTRICT` rather than `CASCADE` or `SET NULL`:
+    # an attempt is a recording of something that happened to a person, and
+    # deleting the slot it belonged to must not quietly take the transcript
+    # with it. `SET NULL` is not available either — the CHECK above requires
+    # an `exam_slot` attempt to name its slot.
+    slot_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("slots.id", ondelete="RESTRICT"))
+    # Which feedback template narrowed this attempt's marking, if a sitting
+    # bound one. `attempts` is below `sittings` in the layers and cannot walk
+    # up to the sitting, so the binding travels with the attempt.
+    feedback_template_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        # Named explicitly: the convention's generated name is 66 characters,
+        # over Postgres's 63-character identifier limit.
+        ForeignKey(
+            "feedback_template_versions.id",
+            ondelete="RESTRICT",
+            name="fk_attempts_feedback_template_version_id",
+        )
+    )
+    set_entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("station_set_entries.id", ondelete="RESTRICT")
+    )
+    peer_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("practice_sessions.id", ondelete="RESTRICT")
+    )
     source_attempt_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("attempts.id", ondelete="SET NULL")
     )

@@ -10,12 +10,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 MAX_ATTEMPTS = 6
+# How long a claimed message may stay claimed before another worker may take
+# it. Comfortably longer than any send should take, so a slow provider is not
+# mistaken for a dead worker.
+CLAIM_TIMEOUT_SECONDS = 600
 MAX_RETRY_SECONDS = 3600
 BASE_RETRY_SECONDS = 30
-
-
-def is_due(*, status: str, available_at: datetime, now: datetime) -> bool:
-    return status == "pending" and available_at <= now
 
 
 def retry_delay(attempt: int) -> int:
@@ -37,3 +37,8 @@ def should_retry(*, attempts: int) -> bool:
 
 def next_available(*, attempts: int, now: datetime) -> datetime:
     return now + timedelta(seconds=retry_delay(attempts))
+
+
+def stale_claim_cutoff(now: datetime) -> datetime:
+    """Claims older than this belong to a worker that is not coming back."""
+    return now - timedelta(seconds=CLAIM_TIMEOUT_SECONDS)

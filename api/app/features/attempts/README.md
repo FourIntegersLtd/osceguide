@@ -44,9 +44,11 @@ and the job that scores a delivered transcript.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/attempts` | bearer | kind-specific body; checks entitlement |
+| POST | `/api/v1/attempts/{id}/abandon` | owner | `invalid_attempt_state` (409) once the interaction is complete |
 | GET | `/api/v1/attempts/{id}` | owner or org admin | |
 | GET | `/api/v1/attempts/{id}/transcript` | owner or org admin | |
 | GET | `/api/v1/attempts/{id}/result` | owner or org admin | |
+| GET | `/api/v1/attempts/{id}/stream` | stream ticket | The attempt, pushed until it is marked. Replaces b2c's feedback-status stream and the two pollers behind it |
 | GET | `/api/worker/attempts/{id}` | worker secret | `{attempt, scenario}`, no evaluation policy |
 | POST | `/api/worker/attempts/{id}/transcript-chunks` | worker secret | idempotent |
 | POST | `/api/worker/attempts/{id}/transcript` | worker secret | exactly once; enqueues scoring |

@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError, raise_mapped
 from app.features.reviews import domain, errors, repository
 from app.features.reviews.models import GpLeadReview, SlotReview
 from app.features.reviews.schemas import (
@@ -15,19 +17,16 @@ from app.features.reviews.schemas import (
     GpLeadReviewRead,
     SlotReviewRead,
 )
+from app.features.rubrics import service_feedback as templates
 from app.features.sittings import service as sittings
 
-_REFUSALS: dict[type[Exception], type[Exception]] = {
+_REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.InvalidRag: errors.InvalidRagError,
     domain.InvalidStatus: errors.InvalidStatusError,
     domain.ReviewIncomplete: errors.ReviewIncompleteError,
     domain.NothingToReview: errors.NothingToReviewError,
     domain.ReviewConflict: errors.ReviewConflictError,
 }
-
-
-def _raise(exc: Exception) -> None:
-    raise _REFUSALS.get(type(exc), errors.InvalidStatusError)(str(exc)) from exc
 
 
 def _scored_domains(field_values: dict[str, Any]) -> set[str]:
@@ -51,6 +50,19 @@ async def _require_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.
         raise errors.SlotNotFound()
 
 
+async def _required_domains(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> set[str]:
+    """Which domains a completed review must have scored (R-1).
+
+    Read from the sitting's bound feedback template. The router used to pass
+    an empty set here, and `ensure_completable` refuses an empty set outright,
+    so no review could ever be completed.
+    """
+    version_id = await sittings.feedback_template_version_for_slot(session, org_id, slot_id)
+    if version_id is None:
+        return set()
+    return await templates.reviewable_domains_for_version(session, org_id, version_id)
+
+
 async def submit_slot_review(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -61,10 +73,10 @@ async def submit_slot_review(
     notes: str | None,
     status: str,
     observer_trainee_id: uuid.UUID | None,
-    required_domains: set[str],
     now: datetime,
 ) -> SlotReviewRead:
     await _require_slot(session, org_id, slot_id)
+    required_domains = await _required_domains(session, org_id, slot_id)
     try:
         normalized = domain.normalize_status(status)
         for key, value in field_values.items():
@@ -74,7 +86,7 @@ async def submit_slot_review(
             scored=_scored_domains(field_values), required=required_domains, status=normalized
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     row = await repository.upsert_slot_review(
         session,
@@ -90,12 +102,6 @@ async def submit_slot_review(
     return _slot_read(row)
 
 
-async def read_slot_reviews(
-    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
-) -> list[SlotReviewRead]:
-    return [_slot_read(r) for r in await repository.slot_reviews(session, org_id, slot_id)]
-
-
 async def save_gp_lead_review(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -107,10 +113,10 @@ async def save_gp_lead_review(
     overall_rag: str | None,
     status: str,
     reviewed_by: uuid.UUID,
-    required_domains: set[str],
     now: datetime,
 ) -> GpLeadReviewRead:
     await _require_slot(session, org_id, slot_id)
+    required_domains = await _required_domains(session, org_id, slot_id)
     existing = await repository.gp_lead_review(session, org_id, slot_id)
     try:
         domain.ensure_current(stored=existing.revision if existing else None, presented=presented_revision)
@@ -120,7 +126,7 @@ async def save_gp_lead_review(
             scored=_scored_domains(field_values), required=required_domains, status=normalized
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     row = await repository.save_gp_lead_review(
         session,
@@ -200,3 +206,8 @@ def _gp_read(row: GpLeadReview) -> GpLeadReviewRead:
         notes=row.notes,
         completed_at=row.completed_at,
     )
+
+
+async def reviewed_slot_ids(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these slots have been marked. For the console's slot list."""
+    return await repository.slots_with_any_review(session, list(slot_ids))

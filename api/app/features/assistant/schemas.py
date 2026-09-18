@@ -20,6 +20,19 @@ class SessionRead(BaseModel):
     created_at: datetime
 
 
+class RoomGrant(BaseModel):
+    """What the browser needs to join this session's room, and nothing more.
+
+    The same three fields `voice` returns for a circuit's room. Restated here
+    rather than imported because a router may name only its own slice's
+    schemas, and the response shape is this route's contract either way.
+    """
+
+    token: str
+    server_url: str
+    room: str
+
+
 class WorkerSessionPayload(BaseModel):
     """`{"session": {...}}` — the shape `livekit_assistant_worker` validates.
 

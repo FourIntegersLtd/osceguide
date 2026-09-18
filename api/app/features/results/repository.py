@@ -32,6 +32,19 @@ async def latest_revision(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def latest_revisions_for_sitting(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
+) -> list[CandidateResultRevision]:
+    """The current revision for every candidate in a sitting, one row each."""
+    stmt = (
+        select(CandidateResultRevision)
+        .where(CandidateResultRevision.org_id == org_id, CandidateResultRevision.sitting_id == sitting_id)
+        .distinct(CandidateResultRevision.trainee_id)
+        .order_by(CandidateResultRevision.trainee_id, CandidateResultRevision.revision.desc())
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def append_revision(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -94,6 +107,9 @@ async def append_event(
     )
     session.add(row)
     await session.flush()
+    # `at` is a server default, so without this the caller holds None and
+    # cannot tell anybody when the event happened.
+    await session.refresh(row)
     return row
 
 
@@ -119,17 +135,37 @@ async def queue_notification(
 
 
 async def released_revision(
-    session: AsyncSession, sitting_id: uuid.UUID, trainee_id: uuid.UUID
+    session: AsyncSession, sitting_id: uuid.UUID, trainee_ids: list[uuid.UUID]
 ) -> CandidateResultRevision | None:
-    """What a candidate may see: only a released revision, never a draft."""
+    """What a candidate may see: only a released revision, never a draft.
+
+    Keyed by `trainees.id`, which is not the caller's `users.id`: a trainee is
+    a roster entry with its own identity and a nullable link to an account.
+    The route passed the user id straight in, so this matched nothing and
+    every candidate was told their result was not released.
+    """
+    if not trainee_ids:
+        return None
     stmt = (
         select(CandidateResultRevision)
         .where(
             CandidateResultRevision.sitting_id == sitting_id,
-            CandidateResultRevision.trainee_id == trainee_id,
+            CandidateResultRevision.trainee_id.in_(trainee_ids),
             CandidateResultRevision.workflow_state == "released",
         )
         .order_by(CandidateResultRevision.revision.desc())
         .limit(1)
     )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def event_by_idempotency_key(
+    session: AsyncSession, idempotency_key: str
+) -> CandidateResultEvent | None:
+    """The event this key already wrote, if any.
+
+    The unique index makes a repeat write an error; this makes a repeat request
+    an answer. A candidate tapping "I have read this" twice is not a conflict.
+    """
+    stmt = select(CandidateResultEvent).where(CandidateResultEvent.idempotency_key == idempotency_key)
     return (await session.execute(stmt)).scalar_one_or_none()

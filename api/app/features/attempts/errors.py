@@ -2,11 +2,20 @@ from __future__ import annotations
 
 from app.core.errors import Conflict, Forbidden, NotFound
 from app.features.entitlements.errors import NotEntitled
+from app.features.stations.errors import StationNotFound, StationNotPublishedError
 
 # Re-exported so the router can document the refusal without reaching into
 # another slice. Deliberately the same class, not a copy: the code is the
 # contract and two definitions of it would be free to drift.
-__all__ = ["NotEntitled"]
+#
+# `StationNotPublishedError` is T4: bootstrapping an attempt against a station
+# still in draft is refused, and the worker route has to declare the code it
+# can answer with.
+# `StationNotFound` is how creation answers a station version that does not
+# exist or belongs to another organisation. The two are one refusal on
+# purpose: "no such station" and "not yours" must not be distinguishable,
+# or the route becomes a way to enumerate another tenant's library.
+__all__ = ["NotEntitled", "StationNotFound", "StationNotPublishedError"]
 
 
 class AttemptNotFound(NotFound):

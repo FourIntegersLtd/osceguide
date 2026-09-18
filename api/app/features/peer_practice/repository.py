@@ -5,9 +5,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, or_, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audience import Audience, Visibility, addressed_to, audience_of
 from app.features.peer_practice.models import PracticeHistory, PracticeSession, QueueEntry
 
 
@@ -25,31 +27,63 @@ async def entry_by_id(session: AsyncSession, entry_id: uuid.UUID) -> QueueEntry 
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def join(session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID) -> QueueEntry:
-    row = QueueEntry(user_id=user_id, exam_id=exam_id)
-    session.add(row)
-    await session.flush()
-    await session.refresh(row)
-    return row
+async def join(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, audience: Audience
+) -> QueueEntry | None:
+    """Take a place in the queue, or None if this person already holds one.
+
+    `ON CONFLICT DO NOTHING` against the partial unique index, rather than a
+    read and then an insert: two taps of the same button arriving together both
+    found an empty queue and the loser answered 500. Nothing is rolled back on
+    the conflict, so this stays inside the request's one transaction.
+    """
+    stmt = (
+        pg_insert(QueueEntry)
+        .values(
+            user_id=user_id,
+            exam_id=exam_id,
+            visibility=str(audience.visibility),
+            audience_org_id=audience.org_id,
+            audience_group_id=audience.group_id,
+        )
+        .on_conflict_do_nothing(index_elements=["user_id", "exam_id"], index_where=text("status = 'waiting'"))
+        .returning(QueueEntry)
+    )
+    return (await session.execute(stmt)).scalars().one_or_none()
 
 
-async def leave(session: AsyncSession, entry_id: uuid.UUID, *, at: datetime) -> None:
-    await session.execute(
+async def leave(session: AsyncSession, entry_id: uuid.UUID, *, at: datetime) -> bool:
+    """Leave the queue. False when there was nothing to leave.
+
+    The row count is returned rather than swallowed: the matcher may already
+    have paired this person, and answering 204 to somebody who is still in a
+    session tells them something untrue.
+    """
+    left = await session.execute(
         update(QueueEntry)
         .where(QueueEntry.id == entry_id, QueueEntry.status == "waiting")
         .values(status="left", left_at=at)
+        .returning(QueueEntry.id)
     )
+    return left.scalar_one_or_none() is not None
 
 
-async def claim_waiting(session: AsyncSession, exam_id: uuid.UUID, *, limit: int = 20) -> list[QueueEntry]:
-    """The people waiting, oldest first, locked for matching.
+async def claim_waiting(
+    session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience, limit: int = 20
+) -> list[QueueEntry]:
+    """The people waiting in one room, oldest first, locked for matching.
 
     `FOR UPDATE SKIP LOCKED` so two matchers running at once pair different
-    people rather than both pairing the same two.
+    people rather than both pairing the same two. Scoped to one room, because
+    pairing across rooms is what the audience exists to prevent.
     """
     stmt = (
         select(QueueEntry)
-        .where(QueueEntry.exam_id == exam_id, QueueEntry.status == "waiting")
+        .where(
+            QueueEntry.exam_id == exam_id,
+            QueueEntry.status == "waiting",
+            addressed_to(QueueEntry, audience),
+        )
         .order_by(QueueEntry.seq)
         .limit(limit)
         .with_for_update(skip_locked=True)
@@ -57,11 +91,32 @@ async def claim_waiting(session: AsyncSession, exam_id: uuid.UUID, *, limit: int
     return list((await session.execute(stmt)).scalars())
 
 
-async def waiting_count(session: AsyncSession, exam_id: uuid.UUID) -> int:
+async def waiting_count(session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience) -> int:
+    """How many are waiting in this room.
+
+    Per room, not per exam: somebody queueing inside their institution was
+    otherwise told twelve people were ahead of them when only two could ever
+    be matched with them.
+    """
     stmt = select(func.count(QueueEntry.id)).where(
-        QueueEntry.exam_id == exam_id, QueueEntry.status == "waiting"
+        QueueEntry.exam_id == exam_id,
+        QueueEntry.status == "waiting",
+        addressed_to(QueueEntry, audience),
     )
     return int((await session.execute(stmt)).scalar_one())
+
+
+async def waiting_audiences(session: AsyncSession, exam_id: uuid.UUID) -> list[Audience]:
+    """Every room with somebody waiting in it, for this exam."""
+    stmt = (
+        select(QueueEntry.visibility, QueueEntry.audience_org_id, QueueEntry.audience_group_id)
+        .where(QueueEntry.exam_id == exam_id, QueueEntry.status == "waiting")
+        .distinct()
+    )
+    return [
+        Audience(visibility=Visibility(row[0]), org_id=row[1], group_id=row[2])
+        for row in (await session.execute(stmt)).all()
+    ]
 
 
 async def position_of(session: AsyncSession, entry: QueueEntry) -> int:
@@ -75,6 +130,7 @@ async def position_of(session: AsyncSession, entry: QueueEntry) -> int:
         QueueEntry.exam_id == entry.exam_id,
         QueueEntry.status == "waiting",
         QueueEntry.seq < entry.seq,
+        addressed_to(QueueEntry, audience_of(entry)),
     )
     return int((await session.execute(stmt)).scalar_one()) + 1
 

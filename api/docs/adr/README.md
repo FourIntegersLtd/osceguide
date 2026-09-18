@@ -17,3 +17,9 @@ One file per decision, numbered, never edited after acceptance (supersede with a
 | 0011 | `exams` and `org_programmes` are two tables |
 | 0012 | Entitlement is a record of access, separate from payment |
 | 0013 | SQLAlchemy 2.0 and Alembic, reinstated (supersedes 0008) |
+| 0014 | Social content is addressed to an audience, not just an exam |
+| 0015 | Live screens are pushed as server-sent events, carrying whole read models |
+| 0016 | Exams and rubrics are authored data, not shipped code |
+| 0017 | An exam has an owner; an institution authors its own (extends 0011, 0016) |
+| 0018 | A circuit runs itself, and every override is recorded (extends 0006, 0015) |
+| 0019 | The tutor's material index is pgvector, in the same database (answers M-3) |

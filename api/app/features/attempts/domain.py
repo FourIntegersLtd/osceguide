@@ -11,9 +11,7 @@ Pure rules; the worker contract and the scoring job both depend on them.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
 from enum import StrEnum
-from typing import Any
 
 
 class Status(StrEnum):
@@ -74,6 +72,18 @@ def transition(current: Status, target: Status) -> Status:
     return target
 
 
+# Walking away is only possible while there is something to walk away from.
+# Once the interaction is complete the transcript exists and is being marked:
+# that attempt is finished, and "abandoning" it would throw away a recording
+# the candidate is entitled to the feedback from.
+ABANDONABLE = frozenset({Status.CREATED, Status.RUNNING})
+
+
+def ensure_abandonable(current: Status) -> None:
+    if current not in ABANDONABLE:
+        raise InvalidTransition(f"An attempt that is {current} cannot be abandoned.")
+
+
 def required_reference(kind: Kind) -> str | None:
     return _REFERENCE[kind]
 
@@ -88,90 +98,6 @@ def should_freeze(*, render_degraded: bool, already_frozen: bool) -> bool:
     empty for the whole session and every replay of it.
     """
     return not already_frozen and not render_degraded
-
-
-# Where a station's patient material can live. b2c's four products spell this
-# differently, and the engine's formatter accepts either.
-_PATIENT_KEYS = ("patient_information", "patient_info")
-
-
-def scenario_is_renderable(content: Mapping[str, Any] | None) -> bool:
-    """Whether this station has enough to render a real patient.
-
-    The engine's `ConversationPromptFormatter` substitutes `DEFAULT_STATION`
-    when it cannot find usable patient material, and says so only in a log
-    line. That substitution is the degradation A2 exists to catch, so it is
-    detected here, before the render — inferring it afterwards would mean
-    comparing rendered text against a rendering of the default, which breaks
-    the moment either changes.
-    """
-    if not content:
-        return False
-    for key in _PATIENT_KEYS:
-        patient = content.get(key)
-        if isinstance(patient, Mapping) and any(
-            str(value).strip() for value in patient.values() if not isinstance(value, (dict, list))
-        ):
-            return True
-    return False
-
-
-def definition_payload(
-    *,
-    attempt_id: str,
-    framework_id: str,
-    scenario_source: str,
-    scenario_id: str,
-    instructions: str,
-    greeting: str | None,
-    mode: str,
-    policy_version: str,
-    primary_model: str,
-    at: datetime,
-) -> dict[str, Any]:
-    """Assemble what gets frozen onto the attempt.
-
-    Shaped as `osce_assessment.contracts.AssessmentDefinition` serialises, so
-    the worker can validate it and `scoring.policy_for` can read the framework
-    and policy back out of it. Built here, as plain data, so the shape is
-    testable without the engine installed.
-    """
-    return {
-        "id": attempt_id,
-        "version": "1",
-        "framework_id": framework_id,
-        "scenario_ref": {"source": scenario_source, "scenario_id": scenario_id},
-        "interaction_profile": {
-            "mode": mode,
-            "instructions": instructions,
-            "greeting": greeting,
-            "tools": [],
-            "tool_context": {},
-            "max_tool_steps": 5,
-            "runtime_hint": "pipeline",
-        },
-        "evaluation_policy": {
-            "framework_id": framework_id,
-            "primary_model": primary_model,
-            "version": policy_version,
-        },
-        "snapshot_at": at.isoformat(),
-    }
-
-
-def bootstrap_definition(definition: Mapping[str, Any]) -> dict[str, Any]:
-    """The definition as the worker may see it.
-
-    `evaluation_policy` is removed: marking is the backend's business, the
-    worker cannot import an evaluator, and a worker that knew how it would be
-    scored could be steered by it.
-    """
-    profile = definition.get("interaction_profile") or {}
-    if not str(profile.get("instructions") or "").strip():
-        raise UnrenderableDefinition(
-            "The interaction profile has no instructions; the worker would refuse this job."
-        )
-    return {key: value for key, value in definition.items() if key != "evaluation_policy"}
 
 
 def should_store_chunk(message_id: str, seen: frozenset[str] | set[str]) -> bool:

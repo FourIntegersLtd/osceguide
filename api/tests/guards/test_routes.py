@@ -18,6 +18,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.core.auth import require_worker_secret
+from app.core.openapi import DOCUMENT_MEDIA_TYPE, SSE_MEDIA_TYPE
 from app.main import API_V1_PREFIX, WORKER_PREFIX, create_app
 
 INFRA_PATHS = {"/health"}
@@ -52,18 +53,83 @@ def test_every_worker_route_requires_the_worker_secret(app: FastAPI) -> None:
     assert not unguarded, f"worker routes without require_worker_secret: {unguarded}"
 
 
+def streams_events(route: APIRoute) -> bool:
+    """Whether this route's 200 is declared as a server-sent event stream."""
+    declared = route.responses.get(200, {})
+    return SSE_MEDIA_TYPE in declared.get("content", {})
+
+
+def serves_a_document(route: APIRoute) -> bool:
+    """Whether this route's 200 is declared as a document rather than an object.
+
+    A receipt to print or keep has no object shape to model, so requiring one
+    would mean inventing a schema that describes nothing. Exempt only where
+    the route *says so* in its `responses`, so this cannot be reached by
+    forgetting to declare anything at all — which is the case the rule exists
+    to catch.
+    """
+    declared = route.responses.get(200, {})
+    return DOCUMENT_MEDIA_TYPE in declared.get("content", {})
+
+
 def test_every_route_declares_a_response_model(app: FastAPI) -> None:
     """A route returns a declared shape, so the generated client has a type.
 
     204 is exempt: it means "no content", and declaring a body model for one
     would put a lie in the OpenAPI document.
+
+    A `text/html` document route is exempt too, and for the same reason: a
+    receipt somebody prints has no object shape, and a schema describing one
+    would describe nothing. It has to declare the media type to qualify, so
+    the exemption cannot be reached by declaring nothing at all.
+
+    A `text/event-stream` route is exempt from `response_model` for the same
+    reason and no further: its body is an unbounded sequence of frames, not one
+    object. It is not exempt from declaring a shape — the test below requires
+    it to name the schema each frame carries.
     """
     missing = [
         f"{sorted(r.methods)} {r.path}"
         for r in api_routes(app)
-        if r.response_model is None and r.status_code != status.HTTP_204_NO_CONTENT
+        if r.response_model is None
+        and r.status_code != status.HTTP_204_NO_CONTENT
+        and not streams_events(r)
+        and not serves_a_document(r)
     ]
     assert not missing, f"routes without response_model: {missing}"
+
+
+def test_every_stream_names_the_schema_its_frames_carry(app: FastAPI) -> None:
+    """A stream that documents no frame shape is an untyped client method.
+
+    The exemption above is what makes this necessary: without it a streaming
+    route could declare nothing at all and the generated TypeScript would hand
+    the caller a string to parse by hand — which is how b2c's six SSE endpoints
+    came to have six hand-written, drifting payload interfaces.
+    """
+    undeclared = [
+        f"{sorted(r.methods)} {r.path}"
+        for r in api_routes(app)
+        if streams_events(r) and "$ref" not in r.responses[200]["content"][SSE_MEDIA_TYPE].get("schema", {})
+    ]
+    assert not undeclared, f"SSE routes with no frame schema (use sse_responses): {undeclared}"
+
+
+def test_the_guard_would_catch_an_undeclared_stream() -> None:
+    """The planted violation: a stream that says nothing about its frames."""
+    from fastapi import APIRouter
+
+    probe = FastAPI()
+    router = APIRouter()
+
+    @router.get("/bare", responses={200: {"content": {SSE_MEDIA_TYPE: {}}}})
+    async def bare() -> None:  # pragma: no cover - never called
+        return None
+
+    probe.include_router(router)
+    route = next(r for r in api_routes(probe) if r.path == "/bare")
+    assert streams_events(route)
+    assert "$ref" not in route.responses[200]["content"][SSE_MEDIA_TYPE].get("schema", {})
 
 
 def test_every_public_route_documents_its_errors(app: FastAPI) -> None:

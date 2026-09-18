@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -112,3 +114,46 @@ async def test_a_platform_admin_may_remove_anything(client: AsyncClient, make_ac
 
 async def test_community_needs_a_token(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/community/questions")).status_code == 401
+
+
+async def a_library_station(db_session: AsyncSession) -> str:
+    from app.features.stations import repository as stations_repo
+
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    station = await stations_repo.create_station(db_session, None, exam_id=exam.id, title="Chest pain")
+    await db_session.flush()
+    return str(station.id)
+
+
+async def test_a_station_comment_is_posted_and_listed(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """Two of nine routes, and no test touched them: the check constraint
+    refused every comment because a comment has a station and no parent."""
+    token = await make_actor("commenter@example.com")
+    station_id = await a_library_station(db_session)
+
+    posted = await client.post(
+        f"/api/v1/stations/{station_id}/comments",
+        json={"body": "The examiner wants ICE before the plan."},
+        headers=bearer(token),
+    )
+    assert posted.status_code == 201, posted.text
+    assert posted.json()["kind"] == "comment"
+    assert posted.json()["parent_id"] is None
+
+    listed = await client.get(f"/api/v1/stations/{station_id}/comments", headers=bearer(token))
+    assert [c["body"] for c in listed.json()["items"]] == ["The examiner wants ICE before the plan."]
+
+
+async def test_an_empty_station_comment_is_refused(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    token = await make_actor("quiet@example.com")
+    station_id = await a_library_station(db_session)
+    response = await client.post(
+        f"/api/v1/stations/{station_id}/comments", json={"body": "  "}, headers=bearer(token)
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "empty_content"

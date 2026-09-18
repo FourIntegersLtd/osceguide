@@ -45,28 +45,26 @@ def _fixture(kind: str, name: str, suffix: str) -> Path:
 
 
 @pytest.mark.parametrize(
-    ("name", "exam_code", "owner_kind"),
+    ("name", "persona"),
     [
-        ("library_station_sca", "sca", "platform"),
-        ("ortho_station_clinical", "ortho", "platform"),
-        ("org_station_demo", "sca", "org"),
+        ("untemplated_station", "patient"),
+        ("templated_station", "patient"),
     ],
 )
-def test_the_backend_renders_exactly_what_the_engine_renders(
-    name: str, exam_code: str, owner_kind: str
-) -> None:
+def test_the_backend_renders_exactly_what_the_engine_renders(name: str, persona: str) -> None:
     station_file = _fixture("stations", name, ".json")
     prompt_file = _fixture("prompts", name, ".txt")
     if not station_file.exists() or not prompt_file.exists():
         pytest.skip(f"{name} has no golden pair in this checkout")
 
-    content = json.loads(station_file.read_text(encoding="utf-8"))
+    document = json.loads(station_file.read_text(encoding="utf-8"))
     expected = prompt_file.read_text(encoding="utf-8")
 
     rendered = build_renderer().render(
-        station={"owner_kind": owner_kind, "content": content},
-        exam_code=exam_code,
-        mode="patient",
+        station={"title": document.get("title", ""), "content": document.get("content", {})},
+        layout=document.get("layout"),
+        greeting=None,
+        mode=persona,
     )
 
     assert str(rendered["instructions"]).strip() == expected.strip(), (
@@ -84,7 +82,29 @@ def test_a_station_with_no_patient_content_still_renders_something() -> None:
     fallback.
     """
     rendered = build_renderer().render(
-        station={"owner_kind": "platform", "content": {}}, exam_code="sca", mode="patient"
+        station={"title": "Empty station", "content": {}}, layout=None, greeting=None, mode="patient"
     )
 
     assert str(rendered["instructions"]).strip()
+
+
+def test_examiner_material_never_reaches_the_live_persona() -> None:
+    """A station template marks its expected answers `examiner`.
+
+    The candidate hears the patient; only the marker is given these. It used to
+    be one exam's formatter's private business, so no other exam could have any.
+    """
+    station_file = _fixture("stations", "templated_station", ".json")
+    if not station_file.exists():
+        pytest.skip("no templated station fixture in this checkout")
+    document = json.loads(station_file.read_text(encoding="utf-8"))
+
+    rendered = build_renderer().render(
+        station={"title": document["title"], "content": document["content"]},
+        layout=document["layout"],
+        greeting=None,
+        mode="patient",
+    )
+
+    assert "cessation support" not in str(rendered["instructions"])
+    assert "cessation support" in str(rendered["examiner_context"])

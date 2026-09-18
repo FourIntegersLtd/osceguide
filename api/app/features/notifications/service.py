@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
+from html import escape
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.core.ports import EmailDeliveryFailed, EmailSender
+from app.core.settings import get_settings
 from app.features.notifications import domain, repository
 
 log = get_logger(__name__)
@@ -46,6 +49,10 @@ async def deliver_due(
     Each message is attempted independently: one bad address must not stop the
     rest of the queue.
     """
+    reclaimed = await repository.reclaim_stale(session, before=domain.stale_claim_cutoff(now))
+    if reclaimed:
+        log.warning("reclaimed stranded messages", count=reclaimed)
+
     sent = 0
     deferred = 0
     for message in await repository.claim_due(session, now=now, limit=limit):
@@ -78,11 +85,89 @@ async def deliver_due(
 
 
 def _render(template_key: str, payload: dict[str, Any] | None) -> str:
-    """Placeholder rendering.
+    """The email body.
 
-    Real templates come with the Resend port; the queue, its idempotency and its
-    backoff are what matter first, and they are testable without them.
+    Every value is escaped. The first version interpolated the payload straight
+    into the markup, so a name containing a tag was injected into the message —
+    and the "template" was the template's own key above a list of its
+    variables, which is what a recipient would have received.
     """
-    data = payload or {}
-    lines = "".join(f"<p>{key}: {value}</p>" for key, value in sorted(data.items()))
-    return f"<h1>{template_key}</h1>{lines}"
+    data = {key: escape(str(value)) for key, value in (payload or {}).items()}
+    template = _TEMPLATES.get(template_key)
+    if template is None:
+        # An unknown key is a programming error, not a reason to send nothing:
+        # the message still goes, and the key is visible in it.
+        log.warning("no template for message", template_key=template_key)
+        lines = "".join(f"<p>{key}: {value}</p>" for key, value in sorted(data.items()))
+        return f"{_LAYOUT_OPEN}<p>{escape(template_key)}</p>{lines}{_LAYOUT_CLOSE}"
+    return f"{_LAYOUT_OPEN}{template(data)}{_LAYOUT_CLOSE}"
+
+
+_LAYOUT_OPEN = (
+    '<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;'
+    'max-width:34rem;margin:0 auto;padding:1.5rem;color:#111">'
+)
+_LAYOUT_CLOSE = '<p style="margin-top:2rem;color:#666;font-size:.875rem">OSCE Guide</p></div>'
+
+
+def _password_reset(data: dict[str, str]) -> str:
+    link = f"{get_settings().frontend_url.rstrip('/')}/reset-password?token={data.get('token', '')}"
+    return (
+        "<h1>Reset your password</h1>"
+        "<p>Use the link below to choose a new password. It expires in an hour, "
+        "and using it signs you out everywhere else.</p>"
+        f'<p><a href="{link}">Choose a new password</a></p>'
+        "<p>If you did not ask for this, nothing has changed and you can ignore it.</p>"
+    )
+
+
+def _result_released(data: dict[str, str]) -> str:
+    link = f"{get_settings().frontend_url.rstrip('/')}/results/{data.get('sitting_id', '')}"
+    return (
+        "<h1>Your result is available</h1>"
+        "<p>Your institution has released the outcome for this sitting.</p>"
+        f'<p><a href="{link}">Read your result</a></p>'
+    )
+
+
+def _invitation(data: dict[str, str]) -> str:
+    link = f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={data.get('token', '')}"
+    return (
+        f"<h1>You have been invited to {data.get('invited_to', '')}</h1>"
+        "<p>An account has been created for this address. Choose a password to "
+        "start using it. The link expires in seven days.</p>"
+        f'<p><a href="{link}">Choose a password</a></p>'
+        "<p>If you were not expecting this, you can ignore it and the account "
+        "stays locked.</p>"
+    )
+
+
+def _payment_receipt(data: dict[str, str]) -> str:
+    """The receipt, in the body of the email rather than attached.
+
+    Attached is what the legacy backend did, and an attachment is the thing a
+    mail client hides behind a click and a spam filter treats with suspicion.
+    The full document is also at `/me/receipts/{id}/document` for anyone who
+    wants to print it.
+
+    Rendered by `billing`, which owns what a receipt says. This slice sits
+    below it and must not learn — the payload arrives already rendered into
+    fields, and the whole body is passed through as one escaped value only
+    because `_render` escapes everything it is given.
+    """
+    total = data.get("amount_total", "")
+    return (
+        "<h1>Your receipt</h1>"
+        f"<p>Thank you for your payment of {total}.</p>"
+        f"<p>Receipt {data.get('receipt_id', '')} — {data.get('plan_label', '')}, "
+        f"access until {data.get('plan_end_date', '')}.</p>"
+        "<p>You can open the full receipt in your account at any time.</p>"
+    )
+
+
+_TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
+    "password_reset": _password_reset,
+    "payment_receipt": _payment_receipt,
+    "invitation": _invitation,
+    "candidate_result_released": _result_released,
+}

@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.features.attempts import domain
+from app.features.attempts import domain, domain_definition
 from app.features.attempts.domain import Status
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
@@ -102,7 +102,7 @@ def test_the_bootstrap_payload_never_carries_the_evaluation_policy() -> None:
         "interaction_profile": {"instructions": "You are the patient."},
         "evaluation_policy": {"primary_model": "gpt-5-mini"},
     }
-    payload = domain.bootstrap_definition(definition)
+    payload = domain_definition.bootstrap_definition(definition)
     assert "evaluation_policy" not in payload
     assert payload["interaction_profile"]["instructions"]
 
@@ -111,7 +111,7 @@ def test_a_definition_without_instructions_is_not_servable() -> None:
     """The worker refuses an empty instruction set, so catching it here turns a
     failed job into a clear error at creation time."""
     with pytest.raises(domain.UnrenderableDefinition):
-        domain.bootstrap_definition({"id": "d1", "interaction_profile": {"instructions": "  "}})
+        domain_definition.bootstrap_definition({"id": "d1", "interaction_profile": {"instructions": "  "}})
 
 
 # --------------------------------------------------------------------------
@@ -167,28 +167,59 @@ def test_a_free_practice_attempt_references_nothing_else() -> None:
 
 
 def test_a_station_with_a_patient_is_renderable() -> None:
-    assert domain.scenario_is_renderable({"patient_information": {"persona": "A worried man."}})
-    assert domain.scenario_is_renderable({"patient_info": {"name": "Ray", "history": "Smoker."}})
+    assert domain_definition.scenario_is_renderable({"patient_information": {"persona": "A worried man."}})
+    assert domain_definition.scenario_is_renderable({"patient_info": {"name": "Ray", "history": "Smoker."}})
 
 
 def test_a_station_with_no_usable_patient_content_is_not_renderable() -> None:
-    """The engine's formatter silently substitutes DEFAULT_STATION here.
+    """A patient with nothing to say is the degradation A2 exists to catch.
 
-    That substitution is the degradation A2 exists to catch, so it has to be
-    detected before the render rather than inferred from its output.
+    It has to be detected before the render rather than inferred from its
+    output, which would mean comparing rendered text against a rendering of
+    the default and would break the moment either changed.
     """
-    assert not domain.scenario_is_renderable({})
-    assert not domain.scenario_is_renderable({"patient_information": {}})
-    assert not domain.scenario_is_renderable({"patient_information": {"persona": "   "}})
-    assert not domain.scenario_is_renderable(None)
+    assert not domain_definition.scenario_is_renderable({})
+    assert not domain_definition.scenario_is_renderable({"patient_information": {}})
+    assert not domain_definition.scenario_is_renderable({"patient_information": {"persona": "   "}})
+    assert not domain_definition.scenario_is_renderable(None)
+
+
+# A station written against a template: its block ids are whatever its author
+# chose, so the only thing that says what each one is for is the layout.
+LAYOUT = [
+    {"id": "who_you_are", "label": "Who you are", "role": "persona"},
+    {"id": "why_you_came", "label": "Why you came", "role": "complaint"},
+    {"id": "expected", "label": "Expected answers", "role": "examiner"},
+]
+
+
+def test_a_templated_station_is_renderable_on_its_own_block_ids() -> None:
+    """The regression: this was judged on `patient_information` alone, so every
+    station authored against a template was called degraded, never frozen, and
+    therefore ran but was never marked."""
+    assert domain_definition.scenario_is_renderable(
+        {"who_you_are": "Marek, 61, a retired bus driver."}, LAYOUT
+    )
+    assert domain_definition.scenario_is_renderable({"why_you_came": ["Short of breath."]}, LAYOUT)
+
+
+def test_a_templated_station_with_only_examiner_material_is_not_renderable() -> None:
+    """It looks full and has nothing the patient can say."""
+    assert not domain_definition.scenario_is_renderable({"expected": "Should reach COPD."}, LAYOUT)
+
+
+def test_a_templated_station_whose_patient_blocks_are_empty_is_not_renderable() -> None:
+    assert not domain_definition.scenario_is_renderable({"who_you_are": "   "}, LAYOUT)
+    assert not domain_definition.scenario_is_renderable({"unrelated": "text"}, LAYOUT)
 
 
 def test_a_definition_carries_everything_the_worker_and_the_marker_need() -> None:
-    payload = domain.definition_payload(
+    payload = domain_definition.definition_payload(
         attempt_id="a-1",
         framework_id="sca-rcgp-v1",
         scenario_source="library",
         scenario_id="station-9",
+        scenario={"id": "station-9", "source": "library", "title": "Chest pain"},
         instructions="You are the patient.",
         greeting="Hello doctor.",
         mode="patient",
@@ -209,11 +240,12 @@ def test_a_definition_carries_everything_the_worker_and_the_marker_need() -> Non
 
 def test_a_rendered_definition_survives_the_worker_filter() -> None:
     """The two halves have to agree, or a freshly rendered attempt is refused."""
-    payload = domain.definition_payload(
+    payload = domain_definition.definition_payload(
         attempt_id="a-2",
         framework_id="sca-rcgp-v1",
         scenario_source="library",
         scenario_id="s-1",
+        scenario={"id": "s-1", "source": "library", "title": "Chest pain"},
         instructions="You are the patient.",
         greeting=None,
         mode="patient",
@@ -222,7 +254,52 @@ def test_a_rendered_definition_survives_the_worker_filter() -> None:
         at=NOW,
     )
 
-    visible = domain.bootstrap_definition(payload)
+    visible = domain_definition.bootstrap_definition(payload)
 
     assert "evaluation_policy" not in visible
+    assert "scenario" not in visible, "the engine's definition forbids extra keys"
     assert visible["interaction_profile"]["instructions"] == "You are the patient."
+
+
+def test_the_scenario_is_frozen_beside_the_definition_and_handed_back() -> None:
+    scenario = domain_definition.scenario_payload(
+        scenario_id="s-1",
+        scenario_source="library",
+        title="Chest pain",
+        content={"patient_information": {"gender": "Male", "persona": "anxious"}},
+    )
+    payload = domain_definition.definition_payload(
+        attempt_id="a-3",
+        framework_id="sca-rcgp-v1",
+        scenario_source="library",
+        scenario_id="s-1",
+        scenario=scenario,
+        voice=scenario["patient_gender"],
+        instructions="You are the patient.",
+        greeting=None,
+        mode="patient",
+        policy_version="platform-default@1",
+        primary_model="gpt-5-mini",
+        at=NOW,
+    )
+
+    assert domain_definition.worker_scenario(payload) == scenario
+    assert payload["interaction_profile"]["voice"] == "male"
+    assert scenario["patient_gender"] == "male"
+    assert scenario["raw"] == {}, "marking material does not travel with the session"
+
+
+def test_a_definition_frozen_without_a_scenario_still_yields_one() -> None:
+    """Attempts frozen before scenarios were stored must still bootstrap."""
+    scenario = domain_definition.worker_scenario(
+        {"id": "d1", "scenario_ref": {"source": "org", "scenario_id": "v-9"}}
+    )
+    assert scenario == {"id": "v-9", "source": "org", "title": ""}
+
+
+def test_patient_gender_is_read_from_whichever_key_the_station_uses() -> None:
+    assert domain_definition.patient_gender({"patient_information": {"gender": "female"}}) == "female"
+    assert domain_definition.patient_gender({"patient_info": {"sex": "M"}}) == "male"
+    assert domain_definition.patient_gender({"patient_information": {"persona": "x"}}) is None
+    assert domain_definition.patient_gender({}) is None
+    assert domain_definition.patient_gender(None) is None

@@ -22,16 +22,19 @@ class ResendSender:
             raise EmailDeliveryFailed("The Resend SDK is not installed") from exc
 
         resend.api_key = settings.resend_api_key
+        # Built as a named value rather than one literal with a `**` spread in
+        # it: the spread hid the required `to` key from the SDK's own
+        # TypedDict, which is how a send could go out malformed and typecheck.
+        params: resend.Emails.SendParams = {
+            "from": settings.email_from,
+            "to": [to],
+            "subject": subject,
+            "html": html,
+        }
+        if reply_to:
+            params["reply_to"] = reply_to
         try:
-            result = resend.Emails.send(
-                {
-                    "from": settings.email_from,
-                    "to": [to],
-                    "subject": subject,
-                    "html": html,
-                    **({"reply_to": reply_to} if reply_to else {}),
-                }
-            )
+            result = resend.Emails.send(params)
         except Exception as exc:  # noqa: BLE001 - any provider error is a delivery failure
             raise EmailDeliveryFailed(str(exc)) from exc
         return str(result.get("id", ""))

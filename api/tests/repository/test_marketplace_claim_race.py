@@ -12,11 +12,14 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.catalog import repository as catalog_repo
+from app.core.audience import PUBLIC
 from app.features.identity import repository as identity_repo
 from app.features.marketplace import errors, repository, service
+from app.features.rubrics.models import RubricVersion
+from tests.support.catalog import ensure_exam
 
 pytestmark = pytest.mark.db
 
@@ -31,8 +34,14 @@ async def test_only_one_of_two_simultaneous_claims_succeeds(db_session: AsyncSes
     has to be visible to both — which means committing it, outside the
     per-test rollback the other tests rely on.
     """
+    from app.core.audience import bind_viewer_audiences
     from app.core.db import get_session_factory
+    from app.features.roster.service import audiences_for_viewer
 
+    # This test runs on its own connections rather than through the app, so
+    # nothing has wired the seams `create_app` normally wires. Claiming a slot
+    # checks the claimant's audiences, which needs this one.
+    bind_viewer_audiences(audiences_for_viewer)
     factory = get_session_factory()
 
     # Arrange, committed, on its own connection.
@@ -40,16 +49,23 @@ async def test_only_one_of_two_simultaneous_claims_succeeds(db_session: AsyncSes
         owner = await identity_repo.create_user(
             setup, email=f"o{uuid.uuid4().hex[:8]}@example.com", name="O", password_hash=None
         )
+        owner_id = owner.id
         first = await identity_repo.create_user(
             setup, email=f"a{uuid.uuid4().hex[:8]}@example.com", name="A", password_hash=None
         )
         second = await identity_repo.create_user(
             setup, email=f"b{uuid.uuid4().hex[:8]}@example.com", name="B", password_hash=None
         )
-        exam = await catalog_repo.exam_by_code(setup, "sca")
+        exam = await ensure_exam(setup, "sca")
         assert exam is not None
+        exam_id = exam.id
+        rubric_version_id = exam.rubric_version_id
+        rubric_id = await setup.scalar(
+            select(RubricVersion.rubric_id).where(RubricVersion.id == rubric_version_id)
+        )
         post = await repository.create_post(
             setup,
+            audience=PUBLIC,
             owner_user_id=owner.id,
             exam_id=exam.id,
             starts_at=LATER,
@@ -82,9 +98,17 @@ async def test_only_one_of_two_simultaneous_claims_succeeds(db_session: AsyncSes
         async with factory() as cleanup, cleanup.begin():
             from sqlalchemy import delete
 
+            from app.features.catalog.models import Exam
             from app.features.identity.models import User
             from app.features.marketplace.models import AvailabilityPost, PeerSession
+            from app.features.rubrics.models import Rubric
 
             await cleanup.execute(delete(PeerSession).where(PeerSession.post_id == post_id))
             await cleanup.execute(delete(AvailabilityPost).where(AvailabilityPost.id == post_id))
-            await cleanup.execute(delete(User).where(User.id.in_([first_id, second_id])))
+            await cleanup.execute(delete(User).where(User.id.in_([first_id, second_id, owner_id])))
+            # The exam this test had to write — nothing is seeded — and the
+            # rubric behind it. Left behind, they are visible to every other
+            # test in the run, including the one that pins the table as empty.
+            await cleanup.execute(delete(Exam).where(Exam.id == exam_id))
+            await cleanup.execute(delete(RubricVersion).where(RubricVersion.id == rubric_version_id))
+            await cleanup.execute(delete(Rubric).where(Rubric.id == rubric_id))

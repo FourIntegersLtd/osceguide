@@ -19,9 +19,23 @@ product — twelve in total — and the same handler logic copied across them.
 
 - **Removing is authorised.** In b2c, `add_comment`, `delete_comment` and every
   `community/*` route carries no auth decorator at all, so anyone reaching the
-  API can delete anyone's post. Here it is your own, or anyone's if you moderate
-  — two permissions rather than one, because conflating them is how the legacy
-  routes ended up with neither.
+  API can delete anyone's post. Here it is your own, anyone's if you moderate
+  the platform, or anything addressed inside an institution you administer —
+  three permissions rather than one, because conflating them is how the legacy
+  routes ended up with none of them.
+- **A reply inherits its question's audience** and is never given its own. One
+  public answer quoting a private question publishes it.
+- **Everything here is addressed to a room** — see `app/core/audience.py`.
+  A post, a slot or a queue place is `public`, addressed to one
+  `organisation`, or addressed to one `group`. It was addressed to an exam and
+  nothing else, so an institution's trainees had no way to talk among
+  themselves and a teaching group had no way to practise together. The audience
+  is **opaque**: this slice stores a group id and never learns what a group is,
+  which is what lets a teaching cohort, a circuit's candidates and a study
+  group somebody forms be the same mechanism without reaching up into `roster`
+  or `sittings`. A CHECK constraint refuses a row that names a visibility and
+  then nobody, because that reads as public to the filter.
+
 - **A like is a row, not a counter.** b2c increments a number, so a double tap
   counts twice and nothing can be undone. Liking is idempotent both ways.
 - A question has no parent; a reply must have one. A check constraint, not a

@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 from app.features.roster import domain
+from app.migration import roster_labels
 
 
 def test_an_email_identifies_a_trainee_within_an_organisation() -> None:
@@ -106,7 +107,7 @@ def test_the_importer_maps_cohort_labels_onto_group_membership() -> None:
 
     After that the table is the truth and renaming a group is just a rename.
     """
-    pairs = domain.memberships_from_labels(
+    pairs = roster_labels.memberships_from_labels(
         trainees=[("t1", "Cohort A"), ("t2", "cohort a"), ("t3", "Cohort B")],
         groups=[("g1", "Cohort A"), ("g2", "Cohort B")],
     )
@@ -114,5 +115,5 @@ def test_the_importer_maps_cohort_labels_onto_group_membership() -> None:
 
 
 def test_the_importer_drops_trainees_whose_cohort_matches_nothing() -> None:
-    pairs = domain.memberships_from_labels(trainees=[("t1", "Nowhere")], groups=[("g1", "Cohort A")])
+    pairs = roster_labels.memberships_from_labels(trainees=[("t1", "Nowhere")], groups=[("g1", "Cohort A")])
     assert pairs == []

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -12,7 +13,7 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
-from app.features.tenancy import errors, schemas, service
+from app.features.tenancy import errors, schemas, service, service_memberships
 
 router = APIRouter(tags=["tenancy"])
 
@@ -61,10 +62,85 @@ async def read_organization(workspace: OrgReader, session: Session) -> schemas.O
 async def list_memberships(
     workspace: OrgAdmin, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.MembershipRead]:
-    items, next_cursor = await service.list_memberships(
+    items, next_cursor = await service_memberships.list_memberships(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
     return Page(items=items, next_cursor=next_cursor)
+
+
+@router.post(
+    "/orgs/{org_slug}/memberships",
+    response_model=schemas.MembershipRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Forbidden, errors.MembershipExists),
+)
+async def add_membership(
+    body: schemas.CreateMembership, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.MembershipRead:
+    """Put somebody in this organisation, by the address an administrator knows.
+
+    An address with no account is invited: the account is created and the
+    person is emailed a link to choose a password. `invited` says which.
+    """
+    return await service_memberships.add_membership(
+        session,
+        workspace.org_id,
+        email=body.email,
+        role=body.role,
+        product_surface=body.product_surface,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
+@router.patch(
+    "/orgs/{org_slug}/memberships/{membership_id}",
+    response_model=schemas.MembershipRead,
+    responses=error_responses(Forbidden, errors.MembershipNotFound),
+)
+async def change_membership_role(
+    membership_id: uuid.UUID, body: schemas.UpdateMembership, workspace: OrgAdmin, session: Session
+) -> schemas.MembershipRead:
+    return await service_memberships.change_membership_role(
+        session, workspace.org_id, membership_id, role=body.role, actor=workspace.principal
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/memberships/{membership_id}/revoke",
+    response_model=schemas.MembershipRead,
+    responses=error_responses(Forbidden, errors.MembershipNotFound),
+)
+async def revoke_membership(
+    membership_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.MembershipRead:
+    """Revoked, not deleted: the record of who had access and when survives."""
+    return await service_memberships.set_membership_revoked(
+        session,
+        workspace.org_id,
+        membership_id,
+        revoked=True,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/memberships/{membership_id}/restore",
+    response_model=schemas.MembershipRead,
+    responses=error_responses(Forbidden, errors.MembershipNotFound),
+)
+async def restore_membership(
+    membership_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.MembershipRead:
+    return await service_memberships.set_membership_revoked(
+        session,
+        workspace.org_id,
+        membership_id,
+        revoked=False,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
 
 
 @router.get(

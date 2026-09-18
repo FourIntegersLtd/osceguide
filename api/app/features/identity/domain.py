@@ -8,15 +8,28 @@ and rules are tested here without a container.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Final
 
 MIN_PASSWORD_LENGTH = 12
 
 # Routes a user may still reach while holding a temporary password. Reading
 # yourself is allowed so the client can show who is signed in and why it is
-# being asked to change the password.
-ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED = frozenset({"auth.change_password", "auth.logout", "me.read"})
+# being asked to change the password, and capabilities so the shell can render.
+#
+# Named by OpenAPI operation id (`<tag>_<function>`), which is what
+# `core.auth` matches a request against. They were invented names for a while,
+# which no request could ever match — and nothing called the rule anyway.
+ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED = frozenset(
+    {
+        "identity_change_password",
+        "identity_logout",
+        "identity_read_me",
+        "tenancy_read_capabilities",
+    }
+)
 
 
 class WeakPassword(Exception):
@@ -25,6 +38,43 @@ class WeakPassword(Exception):
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
+
+
+# The two arms whose existing tokens this platform will accept in trade for
+# one of its own, until the backends behind them are decommissioned. Named for
+# the audience rather than for the retiring service, because that vocabulary
+# is the one that survives. A closed set, because the name selects the signing
+# secret the token is verified against: an open one would let a caller choose
+# the key it is checked with.
+LEGACY_PROVIDERS: Final[tuple[str, ...]] = ("consumer", "institution")
+
+
+class LegacyTokenUnusable(Exception):
+    """Raised by the rule; the service turns it into `invalid_legacy_token`."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+def legacy_email(claims: Mapping[str, Any]) -> str:
+    """The address a verified legacy token speaks for.
+
+    Both legacy backends put `email` at the top level of the payload — the
+    consumer one through flask-jwt-extended's `additional_claims`, the
+    institution one by spreading its claims dict into the payload — so one
+    rule reads both.
+
+    The address is the join, not `sub`: one subject is a Firestore document id
+    and the other a Supabase row id, and one person holds several of those.
+    The migration merges them on the lowercased email, so this has to
+    normalise the same way or an exchange would miss the row the import
+    created.
+    """
+    raw = claims.get("email")
+    if not isinstance(raw, str) or not raw.strip():
+        raise LegacyTokenUnusable("the token carries no email address")
+    return normalize_email(raw)
 
 
 def normalize_email(raw: str) -> str:

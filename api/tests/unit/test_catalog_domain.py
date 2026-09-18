@@ -1,105 +1,118 @@
-"""The four exams, and what an organisation offering one means.
+"""An exam is written, not shipped.
 
-`app_type` in b2c and `b2b_exams` in b2b are two different concepts that share
-a word: a published framework, and an institution's programme offering one.
-ADR 0011 splits them; these tests hold the split.
+This file used to assert that exactly four exams existed, that their codes were
+`sca`, `plab`, `casc` and `ortho`, that each bound a particular framework id,
+and that the tuple declaring all that matched a seed in a migration — which it
+loaded by literal path. Adding a fifth exam meant editing the tuple, the seed
+and these tests together.
+
+None of that is a rule about exams. What is left below is: a code has to be
+usable in a URL, an exam nobody can sit cannot be built on, and an exam cannot
+be published until it is clear what it is marked against.
 """
 
 from __future__ import annotations
+
+import uuid
 
 import pytest
 
 from app.features.catalog import domain
 
-
-def test_the_four_published_exams_are_known() -> None:
-    assert {e.code for e in domain.PUBLISHED_EXAMS} == {"sca", "plab", "casc", "ortho"}
+RUBRIC = uuid.uuid4()
 
 
-@pytest.mark.parametrize(
-    ("code", "framework_id"),
-    [
-        ("sca", "sca-rcgp-v1"),
-        ("plab", "plab2-gmc-v1"),
-        ("casc", "casc-rcpsych-v1"),
-        ("ortho", "ortho-frcs-v1"),
-    ],
-)
-def test_each_exam_binds_the_engine_framework_the_legacy_shim_mapped(code: str, framework_id: str) -> None:
-    """Oracle: `osce_assessment.compat.legacy_app_types`, which exists only to
-    map these and is deleted once the migration has run."""
-    assert domain.exam_by_code(code).framework_id == framework_id
+@pytest.mark.parametrize("raw", ["sca", " SCA ", "Sca", "frcs-ortho", "gp_sca"])
+def test_a_code_is_normalised_to_one_spelling(raw: str) -> None:
+    """Case and space are not meaningful, so they are removed once, here."""
+    assert domain.normalise_code(raw) == raw.strip().lower()
 
 
-def test_an_unknown_exam_code_is_refused_rather_than_guessed() -> None:
-    with pytest.raises(domain.UnknownExam):
-        domain.exam_by_code("mrcp")
+@pytest.mark.parametrize("raw", ["", "a", "9sca", "has space", "UPPER ONLY!", "x" * 40, "sca/plab"])
+def test_a_code_that_could_not_live_in_a_url_is_refused(raw: str) -> None:
+    """It appears in a plan's `exam_code`, in a partner ref id, and in paths."""
+    with pytest.raises(domain.InvalidExamCode):
+        domain.normalise_code(raw)
 
 
-@pytest.mark.parametrize("raw", ["  SCA ", "Sca", "SCA"])
-def test_exam_codes_are_normalised(raw: str) -> None:
-    assert domain.exam_by_code(raw).code == "sca"
+def test_any_code_is_allowed_that_could_be_one() -> None:
+    """There is no list of permitted exams. That was the whole problem."""
+    assert domain.normalise_code("mrcp-paces") == "mrcp-paces"
+    assert domain.normalise_code("mrcog-part-3") == "mrcog-part-3"
 
 
-def test_every_exam_carries_the_timings_the_station_runs_on() -> None:
-    """b2c held these in a constants table keyed by app_type; they belong to
-    the exam, so a fifth exam is a row rather than another lookup table."""
-    for exam in domain.PUBLISHED_EXAMS:
-        assert exam.default_reading_seconds > 0
-        assert exam.default_simulation_seconds > 0
+# --- lifecycle --------------------------------------------------------------
 
 
-def test_sca_and_plab_have_the_durations_the_legacy_constants_declared() -> None:
-    """Oracle: `b2c/shared/constants/shared_constants.py:225-231`."""
-    assert domain.exam_by_code("sca").default_simulation_seconds == 15 * 60
-    assert domain.exam_by_code("plab").default_simulation_seconds == 10 * 60
-    assert domain.exam_by_code("casc").default_simulation_seconds == 10 * 60
-    assert domain.exam_by_code("ortho").default_simulation_seconds == 11 * 60
+def test_an_exam_cannot_be_published_without_a_rubric() -> None:
+    """Otherwise it could be sat, and found unmarkable when the transcript arrived."""
+    with pytest.raises(domain.NotPublishable, match="marked against"):
+        domain.ensure_publishable(domain.ExamStatus.DRAFT, None)
 
 
-def test_a_programme_is_an_organisation_offering_an_exam() -> None:
-    programme = domain.ProgrammeRef(exam_code="plab", status="active")
-    assert programme.is_offerable
+def test_publishing_needs_only_a_rubric() -> None:
+    assert domain.ensure_publishable(domain.ExamStatus.DRAFT, RUBRIC) is domain.ExamStatus.PUBLISHED
 
 
-def test_a_draft_programme_is_not_yet_offerable() -> None:
-    assert not domain.ProgrammeRef(exam_code="plab", status="draft").is_offerable
+def test_a_retired_exam_is_not_brought_back() -> None:
+    """A new exam is the honest way: its past attempts stay what they were."""
+    with pytest.raises(domain.NotPublishable):
+        domain.ensure_publishable(domain.ExamStatus.RETIRED, RUBRIC)
 
 
-def test_the_seed_migration_matches_the_published_exams() -> None:
-    """The four rows are inserted by a migration and described in the domain.
-
-    Two lists that must agree: a disagreement is a foreign key pointing at an
-    exam the code does not believe exists, discovered at runtime.
-    """
-    import importlib.util
-    from pathlib import Path
-
-    path = Path(__file__).resolve().parents[2] / "alembic/versions/c691f57ba7eb_catalog_and_stations.py"
-    spec = importlib.util.spec_from_file_location("seed_migration", path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    seeded = {
-        (code, framework_id, reading, simulation)
-        for code, _name, framework_id, reading, simulation in module.SEED_EXAMS
-    }
-    declared = {
-        (e.code, e.framework_id, e.default_reading_seconds, e.default_simulation_seconds)
-        for e in domain.PUBLISHED_EXAMS
-    }
-    assert seeded == declared
+def test_only_a_published_exam_is_retired() -> None:
+    assert domain.ensure_retirable(domain.ExamStatus.PUBLISHED) is domain.ExamStatus.RETIRED
+    with pytest.raises(domain.NotRetirable):
+        domain.ensure_retirable(domain.ExamStatus.DRAFT)
 
 
-def test_the_unknown_exam_code_is_the_same_in_every_slice() -> None:
-    """Two slices raise their own type for one API contract.
+@pytest.mark.parametrize("status", [domain.ExamStatus.DRAFT, domain.ExamStatus.RETIRED])
+def test_nothing_may_be_built_on_an_exam_nobody_can_sit(status: domain.ExamStatus) -> None:
+    """Programmes, entitlements, stations and plans all go through this."""
+    with pytest.raises(domain.NotOfferable):
+        domain.ensure_offerable(status)
 
-    Each slice owns its exception so a router never imports another's, but the
-    `code` is what clients switch on, so the two must not drift apart.
-    """
-    from app.features.catalog.errors import UnknownExamError as CatalogError
-    from app.features.stations.errors import UnknownExamError as StationsError
 
-    assert CatalogError.code == StationsError.code == "unknown_exam"
-    assert CatalogError.status == StationsError.status
+def test_a_published_exam_may_be_built_on() -> None:
+    assert domain.ensure_offerable(domain.ExamStatus.PUBLISHED) is None
+
+
+# --- programmes -------------------------------------------------------------
+
+
+def test_only_an_active_programme_is_offered() -> None:
+    assert domain.ProgrammeRef(exam_code="sca", status="active").is_offerable
+    assert not domain.ProgrammeRef(exam_code="sca", status="draft").is_offerable
+    assert not domain.ProgrammeRef(exam_code="sca", status="retired").is_offerable
+
+
+def test_the_catalogue_no_longer_hard_codes_any_exam() -> None:
+    """The regression this whole change exists to prevent."""
+    assert not hasattr(domain, "PUBLISHED_EXAMS")
+    assert not hasattr(domain, "exam_by_code")
+
+
+# --- ownership ---------------------------------------------------------------
+
+
+def test_the_platform_has_no_org_and_an_institution_does() -> None:
+    assert domain.owner_of(None) is domain.OwnerKind.PLATFORM
+    assert domain.owner_of(uuid.uuid4()) is domain.OwnerKind.ORG
+
+
+def test_only_an_exams_own_owner_may_change_it() -> None:
+    """Writing is narrower than reading. An institution reads our catalogue as
+    well as its own, but neither side may edit the other's exam — which is what
+    keeps the two lifecycles from dragging each other."""
+    ashford = uuid.uuid4()
+    kings = uuid.uuid4()
+
+    domain.ensure_owned_by(None, None)  # the platform, at its own exam
+    domain.ensure_owned_by(ashford, ashford)  # a school, at its own
+
+    with pytest.raises(domain.NotOwned):
+        domain.ensure_owned_by(None, ashford)  # a school at ours
+    with pytest.raises(domain.NotOwned):
+        domain.ensure_owned_by(ashford, None)  # us at a school's
+    with pytest.raises(domain.NotOwned):
+        domain.ensure_owned_by(ashford, kings)  # one school at another's

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import keyset_page
 from app.features.identity.domain import normalize_email
 from app.features.identity.models import (
     PasswordResetToken,
@@ -155,3 +158,40 @@ async def mark_reset_token_used(session: AsyncSession, *, token_id: uuid.UUID, a
     await session.execute(
         update(PasswordResetToken).where(PasswordResetToken.id == token_id).values(used_at=at)
     )
+
+
+async def users_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> list[User]:
+    """Several people in one query.
+
+    The read models name a supervisor and a candidate per row; fetching them one
+    id at a time is the N+1 those read models exist to delete.
+    """
+    if not user_ids:
+        return []
+    stmt = select(User).where(User.id.in_(list(user_ids)))
+    return list((await session.execute(stmt)).scalars())
+
+
+async def search_users(
+    session: AsyncSession, *, query: str | None, limit: int, cursor: dict[str, Any] | None = None
+) -> tuple[list[User], str | None]:
+    """People, by a fragment of their email. For platform support only.
+
+    Not scoped to anything, which is why the only route that reaches it is
+    behind `PlatformAdmin`: this is the one place in the API that can see
+    across every tenant at once.
+    """
+    stmt = select(User)
+    if query:
+        stmt = stmt.where(User.email.ilike(f"%{query.strip()}%"))
+    return await keyset_page(
+        session, stmt, sort_col=User.created_at, id_col=User.id, limit=limit, cursor=cursor
+    )
+
+
+async def count_users(session: AsyncSession) -> int:
+    return int((await session.execute(select(func.count()).select_from(User))).scalar_one())
+
+
+async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool) -> None:
+    await session.execute(update(User).where(User.id == user_id).values(is_platform_admin=is_admin))

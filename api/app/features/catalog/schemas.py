@@ -7,12 +7,42 @@ from pydantic import BaseModel, Field
 
 class ExamRead(BaseModel):
     id: uuid.UUID
+    # Who wrote it: `platform` is the consumer catalogue, `org` is an
+    # institution's own. `org_id` is set only for the latter.
+    owner_kind: str = "platform"
+    org_id: uuid.UUID | None = None
     code: str
     name: str
+    status: str
+    rubric_version_id: uuid.UUID | None = None
+    # The rubric version's id: what a result is recorded under. Empty while the
+    # exam is a draft with no rubric named yet.
     framework_id: str
     default_reading_seconds: int
     default_simulation_seconds: int
     station_attempt_limit: int
+    partner_pilot: bool = False
+
+
+class CreateExam(BaseModel):
+    code: str = Field(min_length=2, max_length=32)
+    name: str = Field(min_length=1, max_length=200)
+    default_reading_seconds: int = Field(gt=0, le=3600)
+    default_simulation_seconds: int = Field(gt=0, le=7200)
+    station_attempt_limit: int = Field(default=3, gt=0, le=100)
+    rubric_version_id: uuid.UUID | None = None
+    partner_pilot: bool = False
+
+
+class UpdateExam(BaseModel):
+    """Everything but the code, which existing plans and ref ids depend on."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    default_reading_seconds: int | None = Field(default=None, gt=0, le=3600)
+    default_simulation_seconds: int | None = Field(default=None, gt=0, le=7200)
+    station_attempt_limit: int | None = Field(default=None, gt=0, le=100)
+    rubric_version_id: uuid.UUID | None = None
+    partner_pilot: bool | None = None
 
 
 class ProgrammeRead(BaseModel):
@@ -20,11 +50,21 @@ class ProgrammeRead(BaseModel):
     exam_id: uuid.UUID
     exam_code: str
     exam_name: str
+    # Whether the exam behind this programme is the institution's own or one
+    # the platform published. The programme's own status is separate and the
+    # institution's alone.
+    exam_owner_kind: str = "platform"
     status: str
     source: str
 
 
 class CreateProgramme(BaseModel):
+    """The exam this programme groups sittings under.
+
+    By code, resolved in the institution's own scope first: a school that has
+    written its own `plab` gets that one, not the platform's.
+    """
+
     exam_code: str = Field(min_length=1, max_length=32)
 
 

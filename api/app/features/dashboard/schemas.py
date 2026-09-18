@@ -56,3 +56,68 @@ class Dashboard(BaseModel):
     progress: list[ExamProgress] = Field(default_factory=list)
     recent_attempts: list[RecentAttempt] = Field(default_factory=list)
     sets: list[SetSummary] = Field(default_factory=list)
+
+
+class MySlot(BaseModel):
+    """A station this person is rostered onto, from their side of it."""
+
+    id: uuid.UUID
+    slot_index: int
+    status: str
+    room_name: str | None
+    station_title: str | None
+    started_at: datetime | None
+    ended_at: datetime | None
+    exam_completed_at: datetime | None
+    # Whether the portal should offer to join: a room exists, the circuit is
+    # running, and this station is not already finished.
+    joinable: bool
+    # The attempt the supervisor's dispatch created for this slot, once there
+    # is one. The voice token is issued per attempt, so without this a
+    # candidate had no way to ask for one.
+    attempt_id: uuid.UUID | None = None
+    # The circuit's clock, shown against the station it is on and null for the
+    # rest. Derived, because the clock belongs to the circuit.
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
+    # Whether this is the station the circuit is actually on.
+    is_active: bool = False
+
+
+class MySitting(BaseModel):
+    id: uuid.UUID
+    name: str
+    mode: str
+    status: str
+    scheduled_for: datetime | None
+    org_id: uuid.UUID
+    org_slug: str | None
+    circuit_id: uuid.UUID
+    circuit_name: str
+    # The circuit's own state, which is what a candidate actually watches: they
+    # are in one room for the whole examination, and what changes is the phase.
+    live: bool = False
+    # Whether to offer the room. A candidate joins once, at the start, and
+    # stays — waiting for a per-station button was the browser's idea, not an
+    # examination's.
+    can_join: bool = False
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
+    paused: bool = False
+    # Counted here against the server's clock, so a candidate with a wrong
+    # system time is not told they have four minutes when they have one.
+    remaining_seconds: int | None = None
+    active_slot_id: uuid.UUID | None = None
+    slots: list[MySlot] = Field(default_factory=list)
+
+
+class MySittings(BaseModel):
+    """The trainee portal's whole screen, in one request.
+
+    It polls two lists every five seconds and joins them in the browser to
+    answer one question: is it my turn yet?
+    """
+
+    items: list[MySitting] = Field(default_factory=list)

@@ -4,18 +4,21 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import get_session
+from app.core.errors import AppError, raise_mapped
 from app.core.ports import VectorIndex
-from app.features.catalog import repository as catalog_repo
+from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.media import domain, errors, repository
 from app.features.media.models import MediaItem
 from app.features.media.schemas import MediaRead, SearchHit
 
-_REFUSALS: dict[type[Exception], type[Exception]] = {
+_REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.UnknownMediaKind: errors.UnknownMediaKindError,
     domain.NotEditable: errors.NotEditableError,
     domain.AlreadyPublished: errors.AlreadyPublishedError,
@@ -23,10 +26,6 @@ _REFUSALS: dict[type[Exception], type[Exception]] = {
     domain.EmptyQuery: errors.EmptyQueryError,
     domain.QueryTooLong: errors.EmptyQueryError,
 }
-
-
-def _raise(exc: Exception) -> None:
-    raise _REFUSALS.get(type(exc), errors.UnknownMediaKindError)(str(exc)) from exc
 
 
 async def create(
@@ -43,7 +42,7 @@ async def create(
         media_kind = domain.normalize_kind(kind)
         slug = domain.slugify(title)
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     if await repository.by_slug(session, slug) is not None:
         raise errors.SlugTaken()
@@ -74,7 +73,7 @@ async def update(
     try:
         domain.ensure_editable(status=row.status)
     except domain.NotEditable as exc:
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     values: dict[str, Any] = {}
     if title is not None:
@@ -100,7 +99,7 @@ async def publish(
     try:
         status = domain.publish(status=row.status)
     except domain.AlreadyPublished as exc:
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     await repository.update_item(session, item_id, status=status, published_at=now)
     await index.index(
@@ -126,7 +125,7 @@ async def list_published(
         try:
             kind = domain.normalize_kind(kind)
         except domain.UnknownMediaKind as exc:
-            _raise(exc)
+            raise_mapped(exc, _REFUSALS)
     rows, next_cursor = await repository.list_published(session, kind=kind, limit=limit, cursor=cursor)
     return [await _read(session, r) for r in rows], next_cursor
 
@@ -143,7 +142,7 @@ async def search(
     try:
         cleaned = domain.clean_query(query)
     except Exception as exc:  # noqa: BLE001 - mapped above
-        _raise(exc)
+        raise_mapped(exc, _REFUSALS)
 
     hits = await index.search(query=cleaned, limit=limit)
     scores = {uuid.UUID(doc_id): score for doc_id, score in hits}
@@ -167,7 +166,7 @@ async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
 
 
 async def _read(session: AsyncSession, row: MediaItem) -> MediaRead:
-    exam = await catalog_repo.exam_by_id(session, row.exam_id) if row.exam_id else None
+    exam_code = await catalog.exam_code_by_id(session, row.exam_id) if row.exam_id else None
     return MediaRead(
         id=row.id,
         kind=row.kind,
@@ -175,14 +174,18 @@ async def _read(session: AsyncSession, row: MediaItem) -> MediaRead:
         title=row.title,
         summary=row.summary,
         content=dict(row.content or {}),
-        exam_code=exam.code if exam else None,
+        exam_code=exam_code,
         status=row.status,
         published_at=row.published_at,
     )
 
 
-def get_vector_index() -> VectorIndex:
-    """The dependency the router wires. Overridden in tests with a fake."""
-    from app.features.media.index import build_vector_index
+def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
+    """The dependency the router wires. Overridden in tests with a fake.
 
-    return build_vector_index()
+    Takes the request's session because the index is in the same database:
+    indexing on publish belongs in the transaction that published.
+    """
+    from app.features.media.index import build_vector_index  # noqa: PLC0415
+
+    return build_vector_index(session)

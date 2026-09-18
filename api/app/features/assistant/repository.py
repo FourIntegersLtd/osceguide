@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.assistant.models import AssistantSession, AssistantTranscriptMessage
@@ -99,3 +99,11 @@ async def messages_for(session: AsyncSession, session_id: uuid.UUID) -> list[Ass
         .order_by(AssistantTranscriptMessage.seq)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def delete_messages(session: AsyncSession, session_id: uuid.UUID) -> int:
+    """Delete a session's turns. Returns how many went."""
+    result = await session.execute(
+        delete(AssistantTranscriptMessage).where(AssistantTranscriptMessage.session_id == session_id)
+    )
+    return int(getattr(result, "rowcount", 0) or 0)

@@ -79,6 +79,7 @@ is safe in a pipeline.
 The export is a directory of JSON arrays: `users.json` (the four `*_users`
 collections concatenated, each document keeping its `app_type` and its `id`),
 optionally `b2b_users.json`, `transcripts.json` and `feedbacks.json`.
+- `stations.json` — optional; the four `*stations` collections concatenated, each document keeping its `app_type`. Loaded before attempts, because an attempt names the station it ran against.
 
 ## What is missing
 

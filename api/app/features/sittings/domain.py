@@ -26,13 +26,36 @@ EXAM_MAX_STATIONS = 12
 
 DEFAULT_READING_MINUTES = 3
 DEFAULT_SIMULATION_MINUTES = 10
+DEFAULT_BREAK_MINUTES = 5
 READING_BOUNDS = (1, 30)
 SIMULATION_BOUNDS = (1, 180)
+BREAK_BOUNDS = (1, 60)
 
 
 class Mode(StrEnum):
     TRAINING = "training"
     EXAM = "exam"
+
+
+class SlotStatus(StrEnum):
+    """Where one trainee's station has got to.
+
+    Written by nothing until the circuit learnt to run itself, while four read
+    models displayed it — so a finished station kept offering a join button.
+    `SKIPPED` is a station the circuit moved past: jumped over, or left unsat
+    when the examination was ended early. It is not `COMPLETED`, because
+    nothing was recorded, and it is not `SCHEDULED`, because it is not coming.
+    """
+
+    SCHEDULED = "scheduled"
+    READING = "reading"
+    IN_CONSULTATION = "in_consultation"
+    COMPLETED = "completed"
+    SKIPPED = "skipped"
+
+
+# A station that will not be sat again, whichever way it ended.
+FINISHED_SLOT_STATUSES = frozenset({SlotStatus.COMPLETED, SlotStatus.SKIPPED})
 
 
 class InvalidCircuit(Exception):
@@ -74,6 +97,9 @@ class Break:
 class Timing:
     reading_minutes: int
     simulation_minutes: int
+    # A break used to be a position with no duration, so nothing could count
+    # one down and the circuit had no way to know when it was over.
+    break_minutes: int = DEFAULT_BREAK_MINUTES
     breaks: tuple[Break, ...] = ()
 
 
@@ -153,13 +179,6 @@ def ensure_live(state: CircuitState) -> None:
         raise CircuitAlreadyEnded("That circuit has already finished.")
 
 
-def ensure_can_switch_turn(mode: Mode) -> None:
-    if mode is not Mode.TRAINING:
-        raise NotPermittedInMode(
-            "Only a training circuit has a turn to switch; in an exam each candidate runs their own."
-        )
-
-
 def ensure_can_append_trainees(mode: Mode) -> None:
     if mode is not Mode.TRAINING:
         raise NotPermittedInMode("Candidates cannot be added to an exam circuit once it exists.")
@@ -191,6 +210,9 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
         SIMULATION_BOUNDS,
     )
 
+    break_raw = raw.get("break_minutes")
+    break_minutes = _clamp(int(DEFAULT_BREAK_MINUTES if break_raw is None else break_raw), BREAK_BOUNDS)
+
     breaks: tuple[Break, ...] = ()
     if mode is Mode.EXAM:
         # A break sits between stations, so it can only fall inside the circuit.
@@ -203,4 +225,9 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
                 seen.add(after)
         breaks = tuple(Break(after) for after in sorted(seen))
 
-    return Timing(reading_minutes=reading, simulation_minutes=simulation, breaks=breaks)
+    return Timing(
+        reading_minutes=reading,
+        simulation_minutes=simulation,
+        break_minutes=break_minutes,
+        breaks=breaks,
+    )

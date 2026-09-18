@@ -6,16 +6,46 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import Forbidden, error_responses
+from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.stations import errors, schemas, service
+from app.features.stations import (
+    errors,
+    schemas,
+    service,
+    service_reads,
+    service_versions,
+)
 
 router = APIRouter(tags=["stations"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+@router.get(
+    "/stations",
+    response_model=Page[schemas.LibraryStationRead],
+    responses=error_responses(Unauthenticated, errors.UnknownExamError),
+)
+async def browse_library(
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    exam_code: str | None = None,
+) -> Page[schemas.LibraryStationRead]:
+    """The published platform library, which nothing could read before.
+
+    Every signed-in user, because the library is the product: a consumer builds
+    a practice set from it and an institution draws on it to build a circuit.
+    The rows carry no station content — see `LibraryStationRead`.
+    """
+    items, next_cursor = await service_reads.browse_library(
+        session, exam_code=exam_code, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(
@@ -36,13 +66,23 @@ async def list_stations(
     "/orgs/{org_slug}/stations",
     response_model=schemas.StationRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.UnknownExamError),
+    responses=error_responses(
+        Forbidden,
+        errors.UnknownExamError,
+        errors.StationTemplateVersionNotFound,
+        errors.TemplateNotPublishedError,
+    ),
 )
 async def create_station(
     body: schemas.CreateStation, workspace: OrgAdmin, session: Session
 ) -> schemas.StationRead:
     return await service.create_station(
-        session, workspace.org_id, title=body.title, exam_code=body.exam_code, content=body.content
+        session,
+        workspace.org_id,
+        title=body.title,
+        exam_code=body.exam_code,
+        content=body.content,
+        template_version_id=body.template_version_id,
     )
 
 
@@ -55,7 +95,7 @@ async def create_station(
 async def add_version(
     station_id: uuid.UUID, workspace: OrgAdmin, session: Session
 ) -> schemas.StationVersionRead:
-    return await service.add_version(session, workspace.org_id, station_id)
+    return await service_versions.add_version(session, workspace.org_id, station_id)
 
 
 @router.patch(
@@ -70,7 +110,9 @@ async def edit_version(
     workspace: OrgAdmin,
     session: Session,
 ) -> schemas.StationVersionRead:
-    return await service.edit_version(session, workspace.org_id, station_id, version, content=body.content)
+    return await service_versions.edit_version(
+        session, workspace.org_id, station_id, version, content=body.content
+    )
 
 
 @router.post(
@@ -81,7 +123,7 @@ async def edit_version(
 async def publish_version(
     station_id: uuid.UUID, version: int, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.StationVersionRead:
-    return await service.publish_version(
+    return await service_versions.publish_version(
         session,
         workspace.org_id,
         station_id,
@@ -99,11 +141,45 @@ async def publish_version(
 async def archive_version(
     station_id: uuid.UUID, version: int, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.StationVersionRead:
-    return await service.archive_version(
+    return await service_versions.archive_version(
         session,
         workspace.org_id,
         station_id,
         version,
         actor_id=workspace.principal.user_id,
         now=clock.now(),
+    )
+
+
+@router.delete(
+    "/orgs/{org_slug}/stations/{station_id}/versions/{version}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.VersionNotFound, errors.NotDeletableError),
+)
+async def delete_version(station_id: uuid.UUID, version: int, workspace: OrgAdmin, session: Session) -> None:
+    """Throw away a draft. A published version is what an attempt was assessed
+    against, so it is archived instead, never deleted."""
+    await service_versions.delete_version(session, workspace.org_id, station_id, version)
+
+
+@router.patch(
+    "/orgs/{org_slug}/stations/{station_id}/versions/{version}/brief",
+    response_model=schemas.StationVersionRead,
+    responses=error_responses(Forbidden, errors.VersionNotFound, errors.NotEditableError),
+)
+async def edit_brief(
+    station_id: uuid.UUID,
+    version: int,
+    body: schemas.UpdateBrief,
+    workspace: OrgAdmin,
+    session: Session,
+) -> schemas.StationVersionRead:
+    """Correct the reading brief without cutting a new version (T5).
+
+    The brief is what a candidate is handed before the station starts —
+    presentation, not assessed content — so a typo in one does not invalidate
+    what everybody else was marked against.
+    """
+    return await service_versions.edit_brief(
+        session, workspace.org_id, station_id, version, brief=body.reading_brief
     )

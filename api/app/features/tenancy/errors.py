@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from app.core.errors import Conflict, Forbidden, NotFound
+from app.core.tenancy import OrgNotFound
 
-
-class OrgNotFound(NotFound):
-    code = "org_not_found"
-    default_message = "No such organisation"
+# Re-exported, not redefined: `require_org` in core raises this and the routers
+# here document it, so both have to mean the same class.
+__all__ = ["OrgNotFound"]
 
 
 class OrgSlugTaken(Conflict):
@@ -26,3 +26,14 @@ class MembershipExists(Conflict):
 class MembershipNotFound(NotFound):
     code = "membership_not_found"
     default_message = "No such membership"
+
+
+class UserNotFound(NotFound):
+    """No account for the address an administrator named.
+
+    A membership is granted to a person who has registered; inviting somebody
+    who has not is a different use case with its own flow.
+    """
+
+    code = "user_not_found"
+    default_message = "No account for that email address"

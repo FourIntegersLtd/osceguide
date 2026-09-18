@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -11,7 +12,9 @@ from pydantic import BaseModel, EmailStr, Field
 class MembershipRead(BaseModel):
     org_id: uuid.UUID
     org_slug: str
-    org_name: str
+    # Optional because the lookup that fills it is a display concern: a
+    # membership authorises with its slug and role alone.
+    org_name: str | None = None
     role: str
     surface: str | None = None
 
@@ -38,6 +41,17 @@ class AuthResult(TokenPair):
     user: UserRead
 
 
+class StreamTicket(BaseModel):
+    """A short-lived credential for one `EventSource` connection.
+
+    `EventSource` cannot send an `Authorization` header; see `core.streams` for
+    why this exists rather than a cookie or a token in the query string.
+    """
+
+    ticket: str
+    expires_in: int
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=200)
@@ -49,8 +63,31 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=512)
 
 
+class LegacyExchangeRequest(BaseModel):
+    """Trade a token one of the legacy backends issued for a platform pair.
+
+    `provider` is a closed set rather than a string because it selects the
+    secret the token is verified against; an open one would let the caller
+    choose its own key.
+    """
+
+    provider: Literal["consumer", "institution"]
+    token: str = Field(min_length=1, max_length=4096)
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    """The session to end.
+
+    Optional: without it every session ends, which is what "sign me out
+    everywhere" means. With it only the presented chain goes, so signing out on
+    a phone leaves the laptop signed in.
+    """
+
+    refresh_token: str | None = None
 
 
 class PasswordResetRequest(BaseModel):

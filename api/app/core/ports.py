@@ -10,10 +10,46 @@ Protocols are added when the first slice needs them; keep this file small.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Sequence
+from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 from typing import Annotated, Protocol, runtime_checkable
 
 from fastapi import Depends
+
+# Re-exported so every existing caller keeps one import for "a port". The
+# model-facing and retrieval halves live next door only because the file
+# outgrew its cap.
+from app.core.ports_models import (
+    EvaluationFailed as EvaluationFailed,
+)
+from app.core.ports_models import (
+    Evaluator as Evaluator,
+)
+from app.core.ports_models import (
+    ProfileRenderer as ProfileRenderer,
+)
+from app.core.ports_models import (
+    RenderFailed as RenderFailed,
+)
+from app.core.ports_models import (
+    SummaryFailed as SummaryFailed,
+)
+from app.core.ports_models import (
+    TranscriptSummariser as TranscriptSummariser,
+)
+from app.core.ports_models import (
+    TutorPromptRenderer as TutorPromptRenderer,
+)
+from app.core.ports_retrieval import (
+    Embedder as Embedder,
+)
+from app.core.ports_retrieval import (
+    MaterialIndex as MaterialIndex,
+)
+from app.core.ports_retrieval import (
+    Passage as Passage,
+)
 
 
 @runtime_checkable
@@ -31,23 +67,36 @@ class EmailDeliveryFailed(Exception):
 
 
 @runtime_checkable
+class CheckoutSessions(Protocol):
+    """Starting a payment with the card processor.
+
+    A port because Stripe is the one outbound dependency this backend *initiates* a
+    call to, and a test that had to reach Stripe to prove a plan is refused
+    would not be run. The webhook that finishes the purchase needs no port:
+    it arrives as an HTTP request and is verified from its signature.
+    """
+
+    async def create(
+        self, *, price_id: str, customer_email: str, success_url: str, cancel_url: str, client_reference: str
+    ) -> str:
+        """Start a checkout and return the URL to send the customer to.
+
+        Raises `CheckoutUnavailable` when the processor cannot be reached or
+        refuses. Never returns a URL it is not sure of: sending somebody to a
+        broken checkout is worse than telling them it did not work.
+        """
+        ...
+
+
+class CheckoutUnavailable(Exception):
+    """The card processor could not start a checkout."""
+
+
+@runtime_checkable
 class EmailSender(Protocol):
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
         """Send one email and return the provider's message id. Raises EmailDeliveryFailed."""
         ...
-
-
-@runtime_checkable
-class MembershipProvider(Protocol):
-    """Which organisations a user belongs to.
-
-    `identity` needs this to stamp memberships into a token, but sits below
-    `tenancy` and may not import it. The provider is a port: `tenancy`
-    implements it and `main.py` wires it, so the dependency arrow keeps
-    pointing downward and a test can supply a list instead of a database.
-    """
-
-    async def for_user(self, session: object, user_id: object) -> list[object]: ...
 
 
 def get_clock() -> Clock:
@@ -56,66 +105,6 @@ def get_clock() -> Clock:
 
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
-
-
-class EvaluationFailed(Exception):
-    """The evaluator could not produce a valid result."""
-
-
-@runtime_checkable
-class Evaluator(Protocol):
-    """Marks a transcript against a framework.
-
-    The backend evaluates, always. The LiveKit worker delivers a transcript and
-    stops: it cannot import an evaluator, and it is never told the evaluation
-    policy, so marking cannot be influenced by whatever ran the conversation.
-
-    The real adapter wraps `osce_assessment.evaluation.LLMEvaluator` once the
-    engine is a versioned dependency; until then this port is what the job
-    depends on, so the boundary is fixed even though the implementation is not.
-    """
-
-    async def evaluate(
-        self,
-        *,
-        framework_id: str,
-        policy_version: str,
-        transcript: list[dict[str, object]],
-    ) -> dict[str, object]:
-        """Return the engine's result payload, already schema-valid.
-
-        Raises EvaluationFailed rather than returning a partial result: a
-        half-marked attempt shown to a candidate is worse than one not yet marked.
-        """
-        ...
-
-
-class RenderFailed(Exception):
-    """A station could not be rendered into instructions at all."""
-
-
-@runtime_checkable
-class ProfileRenderer(Protocol):
-    """Turns a resolved station into the instructions the AI is given.
-
-    The backend renders every prompt; the worker holds no templates and is
-    handed finished text. That is the boundary the whole assessment layer is
-    built on — a transport that had to understand a station's shape would need
-    changing every time an organisation invented a new one.
-
-    Speaks dicts rather than engine contracts for the same reason `Evaluator`
-    does: `app/core` stays free of the engine, so the API starts and the suite
-    runs without it installed.
-    """
-
-    def render(self, *, station: dict[str, object], exam_code: str, mode: str) -> dict[str, object]:
-        """Return `{"instructions": str, "greeting": str | None}`.
-
-        Raises `RenderFailed` rather than returning empty instructions: the
-        worker refuses a job with none, and it should fail here where somebody
-        can read the reason, not on connect.
-        """
-        ...
 
 
 @runtime_checkable
@@ -135,9 +124,17 @@ class VoiceTokens(Protocol):
         agent_name: str | None,
         dispatch_metadata: dict[str, str] | None,
         room_admin: bool = False,
+        can_publish: bool = True,
         ttl_seconds: int = 3600,
     ) -> str:
-        """Return a signed join token."""
+        """Return a signed join token.
+
+        `can_publish=False` is an examiner watching a station: they hear the
+        consultation and cannot be heard in it. Enforced in the token rather
+        than by hiding a button, because a muted microphone is a UI state and
+        this has to be a guarantee — a candidate must not be able to be
+        prompted, and the transcript must stay theirs.
+        """
         ...
 
 
@@ -167,15 +164,57 @@ class RoomAgents(Protocol):
 
 @runtime_checkable
 class VectorIndex(Protocol):
-    """Semantic search over study material.
+    """Semantic search over whole media items, by id.
 
-    A port because the provider is undecided — b2c uses Pinecone, and pgvector
-    is a candidate now that everything else is in Postgres. Whichever wins, the
-    slice depends on this and the tests use a fake.
+    The media slice's own search box: a query in, a ranked list of items out,
+    and the reader is shown the item. `ports_models.MaterialIndex` is the other
+    shape — passages out of material, filtered by exam — and the tutor uses
+    that one. Two ports rather than one general one because the media search
+    wants an item and the tutor wants a paragraph it can quote, and a port that
+    served both would be honest about neither.
+
+    pgvector settled the provider question for the tutor's index; whether this
+    one adopts the same adapter or stays with b2c's Pinecone is M-3 in
+    `docs/OPEN-QUESTIONS.md`.
     """
 
     async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None: ...
 
     async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
         """Return `(doc_id, score)` pairs, best first."""
+        ...
+
+
+@runtime_checkable
+class EventBus(Protocol):
+    """Fan-out for live updates, so a screen is told rather than asking.
+
+    A port because the transport is an implementation detail: Redis pub/sub in
+    a deployment with more than one API replica, an in-process bus when there
+    is one. Nothing durable goes through it — a subscriber that missed an event
+    re-reads the read model when it reconnects, which is also what makes a
+    dropped connection harmless.
+    """
+
+    async def publish(self, topic: str, name: str) -> None:
+        """Tell every subscriber to `topic` that `name` happened.
+
+        Deliberately carries no payload. A subscriber rebuilds the read model
+        from the database, so a screen cannot be updated with a shape that was
+        assembled by a writer who knew less than the reader does — and nothing
+        about anybody's data crosses the bus.
+        """
+        ...
+
+    def subscription(self, topics: Sequence[str]) -> AbstractAsyncContextManager[AsyncIterator[str]]:
+        """Watch `topics`, yielding the name of each event published to them.
+
+        A context manager rather than a bare generator because *when* the
+        subscription starts has to be something the caller can be sure of. An
+        async generator does not run a line of its body until the first
+        `__anext__`, so a caller that starts one and then reads the database
+        has a window in which an event is published to nobody — and the screen
+        it is feeding stays wrong until something else happens. Entering this
+        subscribes; the snapshot is taken inside.
+        """
         ...

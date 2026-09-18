@@ -9,10 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.ports import ClockDep, RoomAgents
-from app.core.settings import SettingsDep
-from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.sittings import errors, schemas, service, service_circuit
+from app.core.tenancy import OrgAdmin, OrgReader, OrgStaff
+from app.features.sittings import errors, schemas, service, service_structure
 
 router = APIRouter(tags=["sittings"])
 
@@ -37,7 +35,7 @@ async def list_sittings(
     "/orgs/{org_slug}/sittings",
     response_model=schemas.SittingRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.TemplateVersionNotFound, errors.TemplateNotPublishedError),
+    responses=error_responses(Forbidden, errors.TemplateVersionNotFound, errors.FeedbackTemplateNotPublished),
 )
 async def create_sitting(
     body: schemas.CreateSitting, workspace: OrgAdmin, session: Session
@@ -69,7 +67,12 @@ async def read_sitting(sitting_id: uuid.UUID, workspace: OrgReader, session: Ses
     "/orgs/{org_slug}/sittings/{sitting_id}/circuits",
     response_model=schemas.CircuitRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.SittingNotFound, errors.InvalidCircuitError),
+    responses=error_responses(
+        Forbidden,
+        errors.SittingNotFound,
+        errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
+    ),
 )
 async def add_circuit(
     sitting_id: uuid.UUID, body: schemas.CreateCircuit, workspace: OrgAdmin, session: Session
@@ -86,102 +89,38 @@ async def add_circuit(
     )
 
 
-@router.post(
-    "/orgs/{org_slug}/circuits/{circuit_id}/start",
+@router.put(
+    "/orgs/{org_slug}/circuits/{circuit_id}",
     response_model=schemas.CircuitRead,
-    responses=error_responses(Forbidden, errors.CircuitNotFound, errors.CircuitAlreadyEndedError),
-)
-async def start_circuit(
-    circuit_id: uuid.UUID, workspace: OrgReader, session: Session, clock: ClockDep
-) -> schemas.CircuitRead:
-    """A supervisor runs the circuit they were assigned, so org membership is
-    the gate rather than admin rights."""
-    return await service.start_circuit(session, workspace.org_id, circuit_id, now=clock.now())
-
-
-@router.post(
-    "/orgs/{org_slug}/circuits/{circuit_id}/switch-turn",
-    response_model=schemas.CircuitRead,
-    responses=error_responses(
-        Forbidden, errors.CircuitNotFound, errors.SlotNotFound, errors.NotPermittedInModeError
-    ),
-)
-async def switch_turn(
-    circuit_id: uuid.UUID, body: schemas.SwitchTurn, workspace: OrgReader, session: Session
-) -> schemas.CircuitRead:
-    return await service.switch_turn(session, workspace.org_id, circuit_id, slot_id=body.slot_id)
-
-
-@router.post(
-    "/orgs/{org_slug}/circuits/{circuit_id}/end",
-    response_model=schemas.CircuitRead,
-    responses=error_responses(Forbidden, errors.CircuitNotFound),
-)
-async def end_circuit(
-    circuit_id: uuid.UUID, workspace: OrgReader, session: Session, clock: ClockDep
-) -> schemas.CircuitRead:
-    return await service.end_circuit(session, workspace.org_id, circuit_id, now=clock.now())
-
-
-@router.post(
-    "/orgs/{org_slug}/circuits/{circuit_id}/dispatch-agent",
-    response_model=schemas.DispatchResult,
     responses=error_responses(
         Forbidden,
         errors.CircuitNotFound,
-        errors.SlotNotFound,
+        errors.SittingNotFound,
         errors.CircuitAlreadyEndedError,
-        errors.CircuitNotStarted,
+        errors.CircuitLockedError,
+        errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
     ),
 )
-async def dispatch_agent(
-    circuit_id: uuid.UUID,
-    body: schemas.DispatchAgent,
-    workspace: OrgReader,
-    session: Session,
-    clock: ClockDep,
-    settings: SettingsDep,
-    agents: Annotated[RoomAgents, Depends(service_circuit.get_room_agents)],
-) -> schemas.DispatchResult:
-    """Put an agent into the circuit's room for one station."""
-    return await service_circuit.dispatch_agent(
+async def rebuild_circuit(
+    circuit_id: uuid.UUID, body: schemas.RebuildCircuit, workspace: OrgAdmin, session: Session
+) -> schemas.CircuitRead:
+    """Change who is on a circuit and which stations they sit (C3).
+
+    A structural edit rebuilds the slots, so it is refused once one of them
+    means something: `circuit_locked` (409) if a consultation is in progress,
+    if feedback has been recorded, or if any station has already been run.
+    """
+    return await service_structure.rebuild_circuit(
         session,
         workspace.org_id,
         circuit_id,
-        slot_id=body.slot_id,
-        agents=agents,
-        settings=settings,
-        now=clock.now(),
+        trainee_ids=body.trainee_ids,
+        station_version_ids=body.station_version_ids,
+        name=body.name,
+        supervisor_user_id=body.supervisor_user_id,
+        timing=body.timing,
     )
-
-
-@router.post(
-    "/orgs/{org_slug}/circuits/{circuit_id}/end-consultation",
-    response_model=schemas.ConsultationEnded,
-    responses=error_responses(Forbidden, errors.CircuitNotFound),
-)
-async def end_consultation(
-    circuit_id: uuid.UUID,
-    workspace: OrgReader,
-    session: Session,
-    agents: Annotated[RoomAgents, Depends(service_circuit.get_room_agents)],
-) -> schemas.ConsultationEnded:
-    """Stop the station without ending the circuit: only the agent leaves."""
-    return await service_circuit.end_consultation(session, workspace.org_id, circuit_id, agents=agents)
-
-
-@router.get(
-    "/orgs/{org_slug}/circuits/{circuit_id}/edit-lock",
-    response_model=schemas.EditLock,
-    responses=error_responses(Forbidden, errors.CircuitNotFound),
-)
-async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgReader, session: Session) -> schemas.EditLock:
-    """Whether the slots may still be rebuilt, and why not.
-
-    Asked rather than discovered: the console needs this before it offers an
-    edit, not after somebody has typed one.
-    """
-    return await service_circuit.read_edit_lock(session, workspace.org_id, circuit_id)
 
 
 @router.post(
@@ -193,15 +132,16 @@ async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgReader, session: S
         errors.CircuitAlreadyEndedError,
         errors.NotPermittedInModeError,
         errors.InvalidCircuitError,
+        errors.TraineeRevokedError,
     ),
 )
 async def append_trainees(
     circuit_id: uuid.UUID,
     body: schemas.AppendTrainees,
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
 ) -> schemas.CircuitRead:
     """Add people to a training circuit, into the room it is already using."""
-    return await service_circuit.append_trainees(
+    return await service_structure.append_trainees(
         session, workspace.org_id, circuit_id, trainee_ids=body.trainee_ids
     )

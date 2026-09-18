@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.errors import Forbidden
+from app.core.errors import Forbidden, NotFound
 
 
 class NotEntitled(Forbidden):
@@ -13,3 +13,26 @@ class NotEntitled(Forbidden):
 
     code = "not_entitled"
     default_message = "You do not have access to this exam"
+
+
+class GranteeNotFound(NotFound):
+    """No account for the address an institution named.
+
+    The same code `tenancy` and `identity` answer with, because it is the
+    same situation and the frontend switches on the code.
+    """
+
+    code = "user_not_found"
+    default_message = "No account for that email address"
+
+
+class UnknownExamError(NotFound):
+    """Mirrors `catalog.errors.UnknownExamError`; the code is the shared contract."""
+
+    code = "unknown_exam"
+    default_message = "No such exam"
+
+
+class EntitlementNotFound(NotFound):
+    code = "entitlement_not_found"
+    default_message = "No such entitlement in this organisation"

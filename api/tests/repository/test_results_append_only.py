@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.results import domain, repository
+from tests.support.rubrics import published_feedback_version
 
 pytestmark = pytest.mark.db
 
@@ -16,17 +17,10 @@ pytestmark = pytest.mark.db
 async def a_revision(db_session: AsyncSession) -> uuid.UUID:
     from app.features.roster.models import Trainee
     from app.features.sittings.models import Sitting
-    from app.features.stations.models import FeedbackTemplate, FeedbackTemplateVersion
     from app.features.tenancy import repository as tenancy_repo
 
     org = await tenancy_repo.create_organization(db_session, slug="ao", name="AO")
-    template = FeedbackTemplate(org_id=org.id, title="R")
-    db_session.add(template)
-    await db_session.flush()
-    version = FeedbackTemplateVersion(
-        org_id=org.id, template_id=template.id, version=1, field_selection={}, status="published"
-    )
-    db_session.add(version)
+    version = await published_feedback_version(db_session, org.id)
     await db_session.flush()
     sitting = Sitting(org_id=org.id, name="S", mode="exam", feedback_template_version_id=version.id)
     trainee = Trainee(org_id=org.id, email="ao@example.com")

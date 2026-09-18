@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.pagination import keyset_page
 from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee, Sitting, Slot
 
 
@@ -48,19 +48,9 @@ async def list_sittings(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Sitting], str | None]:
     stmt = select(Sitting).where(Sitting.org_id == org_id)
-    if cursor:
-        stmt = stmt.where(Sitting.created_at < datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(
-                stmt.order_by(Sitting.created_at.desc(), Sitting.id.desc()).limit(limit + 1)
-            )
-        ).scalars()
+    return await keyset_page(
+        session, stmt, sort_col=Sitting.created_at, id_col=Sitting.id, limit=limit, cursor=cursor
     )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
 
 
 async def set_sitting_status(
@@ -151,14 +141,6 @@ async def add_circuit_members(
     await session.flush()
 
 
-async def clear_circuit_members(session: AsyncSession, circuit_id: uuid.UUID) -> None:
-    await session.execute(delete(CircuitTrainee).where(CircuitTrainee.circuit_id == circuit_id))
-    await session.execute(delete(CircuitStation).where(CircuitStation.circuit_id == circuit_id))
-
-
-# --- slots -----------------------------------------------------------------
-
-
 async def create_slots(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -209,8 +191,8 @@ async def update_slots_for_circuit(
     )
 
 
-async def delete_slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> None:
-    await session.execute(delete(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id))
+async def update_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, **values: Any) -> None:
+    await session.execute(update(Slot).where(Slot.org_id == org_id, Slot.id == slot_id).values(**values))
 
 
 async def slots_for_trainee(session: AsyncSession, trainee_id: uuid.UUID) -> list[Slot]:
@@ -218,3 +200,16 @@ async def slots_for_trainee(session: AsyncSession, trainee_id: uuid.UUID) -> lis
     this answers "what am I rostered onto?" across all of them."""
     stmt = select(Slot).where(Slot.trainee_id == trainee_id).order_by(Slot.created_at.desc())
     return list((await session.execute(stmt)).scalars())
+
+
+async def feedback_template_version_for_slot(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> uuid.UUID | None:
+    """The rubric a slot is marked against: its sitting's bound template version."""
+    stmt = (
+        select(Sitting.feedback_template_version_id)
+        .join(Circuit, Circuit.sitting_id == Sitting.id)
+        .join(Slot, Slot.circuit_id == Circuit.id)
+        .where(Slot.org_id == org_id, Slot.id == slot_id)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()

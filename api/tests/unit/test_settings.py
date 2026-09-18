@@ -3,30 +3,76 @@ from pydantic import ValidationError
 
 from app.core.settings import AppEnv, Settings
 
+DEPLOYED = dict(
+    jwt_secret="x" * 32,
+    worker_secret="y",
+    database_url="postgresql://u:p@h/db",
+    cors_origins=["https://app.example.com"],
+    livekit_url="wss://lk.example.com",
+    livekit_api_key="k",
+    livekit_api_secret="s",
+    stripe_webhook_secret="whsec",
+    resend_api_key="re",
+    openai_api_key="sk",
+)
 
-def test_local_fills_a_dev_jwt_secret() -> None:
+
+def test_local_fills_working_defaults() -> None:
     settings = Settings(_env_file=None, app_env=AppEnv.local, jwt_secret="")
     assert settings.jwt_secret
+    assert settings.database_url.startswith("postgresql")
+    assert settings.cors_origins == ["http://localhost:3000", "http://127.0.0.1:3000"]
     assert settings.is_deployed is False
 
 
 @pytest.mark.parametrize("env", [AppEnv.staging, AppEnv.production])
-def test_deployed_environments_refuse_missing_secrets(env: AppEnv) -> None:
-    with pytest.raises(ValidationError, match="JWT_SECRET, WORKER_SECRET"):
+def test_deployed_environments_refuse_missing_secrets(env: AppEnv, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Named one by one, so the message says what to go and set.
+
+    The ambient environment is cleared first: the test suite exports
+    `DATABASE_URL` for its container, and a settings test that passes only
+    because of that proves nothing about a real deployment.
+    """
+    for name in ("DATABASE_URL", "CORS_ORIGINS", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+    with pytest.raises(ValidationError, match="JWT_SECRET, WORKER_SECRET, DATABASE_URL, CORS_ORIGINS"):
         Settings(_env_file=None, app_env=env, jwt_secret="", worker_secret="")
 
 
+def test_a_deployed_environment_does_not_inherit_the_local_database() -> None:
+    """The old check compared against a non-empty default, so it could never fire."""
+    with pytest.raises(ValidationError, match="DATABASE_URL"):
+        Settings(_env_file=None, app_env=AppEnv.production, **{**DEPLOYED, "database_url": ""})
+
+
+def test_a_deployed_environment_refuses_a_short_jwt_secret() -> None:
+    with pytest.raises(ValidationError, match="32 characters"):
+        Settings(_env_file=None, app_env=AppEnv.production, **{**DEPLOYED, "jwt_secret": "short"})
+
+
 def test_deployed_environment_starts_with_all_secrets() -> None:
-    settings = Settings(
-        _env_file=None,
-        app_env=AppEnv.production,
-        jwt_secret="x",
-        worker_secret="y",
-        database_url="postgresql://u:p@h/db",
-    )
+    settings = Settings(_env_file=None, app_env=AppEnv.production, **DEPLOYED)
     assert settings.log_json is True
+    assert settings.cors_origins == ["https://app.example.com"]
 
 
 def test_cors_origins_accept_comma_separated_string() -> None:
     settings = Settings(_env_file=None, cors_origins="https://a.com, https://b.com")  # type: ignore[arg-type]
     assert settings.cors_origins == ["https://a.com", "https://b.com"]
+
+
+def test_cors_origins_parse_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The form `.env.example` uses. It used to fail before the validator ran."""
+    monkeypatch.setenv("CORS_ORIGINS", "https://a.com,https://b.com")
+    settings = Settings(_env_file=None)
+    assert settings.cors_origins == ["https://a.com", "https://b.com"]
+
+
+def test_the_example_env_file_loads(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.settings import PROJECT_ROOT
+
+    for name in ("APP_ENV", "DATABASE_URL", "REDIS_URL", "CORS_ORIGINS", "JWT_SECRET", "WORKER_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+    settings = Settings(_env_file=PROJECT_ROOT / ".env.example")
+    assert settings.app_env is AppEnv.local
+    assert settings.cors_origins == ["http://localhost:3000", "http://127.0.0.1:3000"]

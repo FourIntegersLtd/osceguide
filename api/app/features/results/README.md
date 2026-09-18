@@ -40,7 +40,8 @@ two outcomes, and an outbox rather than an inline email.
 | GET/PUT | `.../sittings/{id}/candidates/{trainee_id}/decision` | institution admin | each save is a revision |
 | POST | `.../decision/sign-off` | institution admin | `not_signable` (422) |
 | POST | `.../decision/release` | institution admin | `evidence_changed` (409) |
-| GET | `/api/v1/me/results/{sitting_id}` | bearer | released only |
+| GET | `/api/v1/me/results/{sitting_id}` | bearer | released only, with `acknowledged_at` |
+| POST | `/api/v1/me/results/{sitting_id}/acknowledge` | bearer | one event per revision; repeating returns the first answer |
 
 ## Jobs
 Delivering the outbox is not yet written; the rows accumulate safely until it is.

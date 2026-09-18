@@ -10,9 +10,12 @@ imports it.
 from __future__ import annotations
 
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+
+from tests.support.rubrics import frozen_rubric
 
 
 def _find_engine() -> Path | None:
@@ -39,6 +42,59 @@ pytestmark = pytest.mark.skipif(
     _ENGINE is None,
     reason="assessment-platform checkout not present; the engine is not a dependency yet (E-1)",
 )
+
+
+def _check_bootstrap(body: dict) -> tuple[object, object]:  # type: ignore[type-arg]
+    """Parse a bootstrap body exactly as `livekit_assessment_worker/bootstrap.py` does."""
+    from osce_assessment.contracts import AssessmentAttempt, Scenario
+
+    return AssessmentAttempt.model_validate(body["attempt"]), Scenario.model_validate(body["scenario"])
+
+
+@pytest.mark.db
+async def test_a_frozen_bootstrap_parses_as_the_worker_parses_it(client, db_session) -> None:  # type: ignore[no-untyped-def]
+    """The half of the contract nothing checked.
+
+    `test_worker_routes` asserted the body had an `attempt` and a `scenario`
+    key. It did; the scenario was `{ref, title, raw}`, which the engine's
+    `Scenario` rejects on three counts, and no live session could start.
+    """
+    from tests.contract.test_worker_routes import an_attempt, worker_headers
+
+    attempt_id = await an_attempt(db_session)
+    response = await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+    assert response.status_code == 200, response.text
+    attempt, scenario = _check_bootstrap(response.json())
+    assert attempt.definition.evaluation_policy is None  # type: ignore[attr-defined]
+    assert scenario.id  # type: ignore[attr-defined]
+
+
+@pytest.mark.db
+async def test_a_rendered_bootstrap_parses_as_the_worker_parses_it(client, db_session, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The real path: a station rendered by the engine, frozen, then handed over."""
+    from tests.contract.test_attempt_is_runnable import (
+        a_published_library_station,
+        an_entitled_candidate,
+        worker_headers,
+    )
+    from tests.support.tokens import bearer
+
+    token = await an_entitled_candidate(db_session, make_actor, "engine-shape@example.com")
+    station_version_id = await a_published_library_station(db_session)
+    created = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca", "station_version_id": str(station_version_id)},
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+
+    response = await client.get(f"/api/worker/attempts/{created.json()['id']}", headers=worker_headers())
+    assert response.status_code == 200, response.text
+    attempt, scenario = _check_bootstrap(response.json())
+    # The worker picks the patient's voice from these; Raymond is a man.
+    assert scenario.patient_gender == "male"  # type: ignore[attr-defined]
+    assert attempt.definition.interaction_profile.voice == "male"  # type: ignore[attr-defined]
+    assert scenario.title == "Chest pain in a 54-year-old"  # type: ignore[attr-defined]
 
 
 def test_the_engine_only_needs_pydantic() -> None:
@@ -74,10 +130,11 @@ async def test_the_adapter_builds_every_object_the_engine_expects() -> None:
             captured.update(attempt=attempt, transcript=transcript, policy=policy, scenario=scenario)
             raise RuntimeError("stop here; construction is what is under test")
 
-    adapter = EngineEvaluator(CapturingEngine(), scenario_title="Chest pain")
+    rubric = frozen_rubric()
+    adapter = EngineEvaluator(lambda framework: CapturingEngine(), scenario_title="Chest pain")
     with pytest.raises(EvaluationFailed):
         await adapter.evaluate(
-            framework_id="sca-rcgp-v1",
+            rubric=rubric,
             policy_version="platform-default@1",
             transcript=[
                 {"role": "user", "message": "Hello doctor", "seq": 0, "message_id": "m0"},
@@ -86,21 +143,71 @@ async def test_the_adapter_builds_every_object_the_engine_expects() -> None:
         )
 
     assert captured["scenario"].title == "Chest pain"  # type: ignore[union-attr]
-    assert captured["policy"].framework_id == "sca-rcgp-v1"  # type: ignore[union-attr]
+    assert captured["policy"].framework_id == rubric["framework"]["id"]  # type: ignore[union-attr]
     assert captured["policy"].version == "platform-default@1"  # type: ignore[union-attr]
+    # The rubric's author wrote the marking instructions; nothing is chosen by id.
+    assert captured["policy"].system_prompt_override == rubric["system_prompt"]  # type: ignore[union-attr]
     assert len(captured["transcript"].messages) == 2  # type: ignore[union-attr]
     assert captured["transcript"].complete is True  # type: ignore[union-attr]
     assert captured["attempt"].definition.evaluation_policy is not None  # type: ignore[union-attr]
 
 
-def test_the_four_framework_ids_match_the_exam_seed() -> None:
-    """The catalogue and the `exams` table have to agree, or an attempt is
-    marked against a framework the engine has never heard of."""
-    from osce_assessment.catalog import framework_ids
+def test_the_engine_publishes_no_catalogue_to_disagree_with() -> None:
+    """This used to assert that four exam rows named four frameworks the engine
+    shipped, because an attempt naming any other one could not be marked.
 
-    from app.features.catalog.domain import PUBLISHED_EXAMS
+    There is no catalogue to keep in step now: a rubric is authored, its version
+    id *is* the framework id, and the whole framework travels with the attempt.
+    """
+    with pytest.raises(ModuleNotFoundError):
+        import osce_assessment.catalog  # noqa: F401
 
-    assert {e.framework_id for e in PUBLISHED_EXAMS} <= set(framework_ids())
+
+async def test_the_adapter_marks_against_an_authored_rubric_with_no_catalogue() -> None:
+    """The point of the whole change: a rubric nobody shipped can be marked with."""
+    from osce_assessment.testing import example_payload_for
+
+    from app.features.attempts.evaluator import EngineEvaluator, FrozenFrameworkProvider
+
+    rubric = frozen_rubric()
+    framework = FrozenFrameworkProvider(rubric["framework"]).get(rubric["framework"]["id"])
+
+    class Engine:
+        def evaluate(self, attempt, transcript, policy, scenario):  # type: ignore[no-untyped-def]
+            from osce_assessment.contracts import AssessmentResult
+
+            return AssessmentResult(
+                attempt_id="a",
+                framework_id=framework.id,
+                policy_version=policy.version,
+                result=example_payload_for(framework.result_schema),
+                provider="primary",
+                model="a-model",
+                generated_at=datetime.now(UTC),
+            )
+
+    adapter = EngineEvaluator(lambda f: Engine())
+    payload = await adapter.evaluate(
+        rubric=rubric,
+        policy_version="platform-default@1",
+        transcript=[{"role": "user", "message": "Hi", "seq": 0, "message_id": "m0"}],
+    )
+
+    # The marks, not just the metadata. This read `result.payload`, which the
+    # engine's model does not define, so every stored result was `{"model_used"}`
+    # with the scores silently discarded.
+    assert "consulting" in payload
+    assert payload["consulting"]["opens_well"]["score"] in {"R", "A", "G"}
+    assert payload["model_used"] == "a-model"
+
+
+def test_a_framework_id_that_is_not_the_frozen_one_is_refused() -> None:
+    """There is nothing to resolve against, so a mismatch is a bug, not a lookup."""
+    from app.features.attempts.evaluator import FrozenFrameworkProvider
+
+    provider = FrozenFrameworkProvider(frozen_rubric()["framework"])
+    with pytest.raises(LookupError):
+        provider.get("something-else")
 
 
 async def test_the_adapter_reports_a_failure_rather_than_an_empty_result() -> None:
@@ -112,10 +219,10 @@ async def test_the_adapter_reports_a_failure_rather_than_an_empty_result() -> No
         def evaluate(self, *args: object, **kwargs: object) -> object:
             raise RuntimeError("model refused")
 
-    adapter = EngineEvaluator(RefusingEngine())
+    adapter = EngineEvaluator(lambda framework: RefusingEngine())
     with pytest.raises(EvaluationFailed):
         await adapter.evaluate(
-            framework_id="sca-rcgp-v1",
+            rubric=frozen_rubric(),
             policy_version="platform-default@1",
             transcript=[{"role": "user", "message": "Hi", "seq": 0, "message_id": "m0"}],
         )

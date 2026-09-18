@@ -39,3 +39,13 @@ class TraineeResultRead(BaseModel):
     assessment_outcome: str | None
     rationale: str | None
     released_at: datetime | None
+    # When this candidate confirmed they had read it. Null until they do; a new
+    # revision is a new decision and needs its own acknowledgement.
+    acknowledged_at: datetime | None = None
+
+
+class ResultAcknowledgement(BaseModel):
+    """A candidate's confirmation that they have read their result."""
+
+    sitting_id: uuid.UUID
+    acknowledged_at: datetime

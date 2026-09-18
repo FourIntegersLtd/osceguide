@@ -21,29 +21,25 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
-
-class StationSchema(Base, UUIDPrimaryKey, Timestamps):
-    """An org's field definition: what a station of this kind contains."""
-
-    __tablename__ = "station_schemas"
-    __table_args__ = (UniqueConstraint("org_id", "name", name="uq_station_schemas_org_name"),)
-
-    org_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
-    )
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    # Document-shaped by intention: the field set is authored per organisation
-    # and has no fixed columns to model.
-    structure: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
+_OWNER_MATCHES_ORG = (
+    "(owner_kind = 'platform' AND org_id IS NULL) OR (owner_kind = 'org' AND org_id IS NOT NULL)"
+)
 
 
 class StationTemplate(Base, UUIDPrimaryKey, Timestamps):
-    __tablename__ = "station_templates"
+    """A station shape: what a station of this kind contains, and what each
+    block of it is for.
 
-    org_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
-    )
+    Owned by the platform or by an org. It was org-only, so the platform's own
+    library stations had no template and were rendered by a formatter that
+    branched on the exam's code — which is why a new exam needed engine code.
+    """
+
+    __tablename__ = "station_templates"
+    __table_args__ = (CheckConstraint(_OWNER_MATCHES_ORG, name="ck_station_templates_owner_matches_org"),)
+
+    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     exam_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("exams.id", ondelete="SET NULL"))
     title: Mapped[str] = mapped_column(String(200), nullable=False)
 
@@ -53,11 +49,11 @@ class StationTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
     __table_args__ = (
         UniqueConstraint("template_id", "version", name="uq_station_template_versions_template_version"),
         Index("ix_station_template_versions_org_status", "org_id", "status"),
+        CheckConstraint(_OWNER_MATCHES_ORG, name="ck_station_template_versions_owner_matches_org"),
     )
 
-    org_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
-    )
+    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     template_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("station_templates.id", ondelete="CASCADE"), nullable=False
     )
@@ -122,43 +118,6 @@ class StationVersion(Base, UUIDPrimaryKey, Timestamps):
     template_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("station_template_versions.id", ondelete="SET NULL")
     )
-    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    archived_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-
-
-class FeedbackTemplate(Base, UUIDPrimaryKey, Timestamps):
-    __tablename__ = "feedback_templates"
-
-    org_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
-    )
-    exam_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("exams.id", ondelete="SET NULL"))
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-
-
-class FeedbackTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
-    """An org's narrowing of the platform marking schema.
-
-    `field_selection` is a list of paths into the exam's JSON Schema, which is
-    why it is JSON: it is a selection over a document, not a relation.
-    """
-
-    __tablename__ = "feedback_template_versions"
-    __table_args__ = (
-        UniqueConstraint("template_id", "version", name="uq_feedback_template_versions_template_version"),
-    )
-
-    org_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
-    )
-    template_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("feedback_templates.id", ondelete="CASCADE"), nullable=False
-    )
-    version: Mapped[int] = mapped_column(Integer, nullable=False)
-    field_selection: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

@@ -14,6 +14,7 @@ Both produce rows in the one `attempts` table.
 ## Use cases
 - As a **consumer**, I build a set from the station library and work through it.
 - As a **consumer**, I re-attempt a station until I have used my attempts.
+- As a **consumer**, I talk an attempt through afterwards, against a separate limit.
 - As a **consumer**, I debrief a station I have already run.
 - As a **consumer** whose access lapsed, my sets are still there when I renew.
 
@@ -37,6 +38,7 @@ Both produce rows in the one `attempts` table.
 | GET/POST | `/api/v1/me/station-sets` | bearer | each set carries its own progress |
 | GET | `/api/v1/me/station-sets/{id}` | owner | `set_not_found` (404) |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/attempts` | owner | `attempt_limit_reached` (409), `set_locked` (409) |
+| POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/debriefs` | owner | Talk through an attempt already made; `nothing_to_debrief` (409), `attempt_limit_reached` (409) |
 
 ## Jobs
 None. Locking on expiry belongs with `entitlements` and is not yet wired.

@@ -11,9 +11,8 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import repository as attempts_repo
-from app.features.attempts import repository_transcript as transcripts_repo
-from app.features.catalog import repository as catalog_repo
+from app.features.attempts import service_reads as attempts_reads
+from app.features.catalog import service as catalog
 from app.features.dashboard.schemas import (
     Dashboard,
     EntitlementSummary,
@@ -30,7 +29,7 @@ RECENT_LIMIT = 10
 async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> Dashboard:
     grants = await entitlements.list_for_user(session, user_id, now=now)
     sets, _ = await station_sets.list_sets(session, user_id, limit=RECENT_LIMIT, cursor=None)
-    attempts, _ = await attempts_repo.list_for_user(session, user_id, limit=RECENT_LIMIT)
+    attempts = await attempts_reads.recent_for_user(session, user_id, limit=RECENT_LIMIT)
 
     exam_codes: dict[uuid.UUID, str] = {}
     recent: list[RecentAttempt] = []
@@ -38,11 +37,9 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
 
     for attempt in attempts:
         if attempt.exam_id not in exam_codes:
-            exam = await catalog_repo.exam_by_id(session, attempt.exam_id)
-            exam_codes[attempt.exam_id] = exam.code if exam else ""
+            exam_codes[attempt.exam_id] = await catalog.exam_code_by_id(session, attempt.exam_id) or ""
         code = exam_codes[attempt.exam_id]
 
-        results = await transcripts_repo.results_for(session, attempt.id)
         recent.append(
             RecentAttempt(
                 id=attempt.id,
@@ -50,7 +47,7 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
                 status=attempt.status,
                 exam_code=code,
                 created_at=attempt.created_at,
-                has_result=bool(results),
+                has_result=attempt.has_result,
             )
         )
 

@@ -37,11 +37,15 @@ recomputed on every request and stored nowhere.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/me/entitlements` | bearer | including expired, with `live` computed |
-| POST | `/api/v1/orgs/{org_slug}/entitlements` | org admin | grants to a member |
+| GET | `/api/v1/orgs/{org_slug}/entitlements` | org admin | what the institution has granted, revoked included |
+| POST | `/api/v1/orgs/{org_slug}/entitlements` | org admin | grants by email, source `org_grant`; `user_not_found` (404), `unknown_exam` (404) |
+| POST | `/api/v1/orgs/{org_slug}/entitlements/{id}/revoke` | org admin | `entitlement_not_found` (404); the row stays |
 
 ## Jobs
 None. `billing` writes entitlements through this slice's service.
 
 ## Cross-slice dependencies
-Calls `catalog` to resolve an exam. `attempts` calls `require()` before creating
-anything; nothing else reads a paid flag.
+Calls `catalog` to resolve an exam and `identity` to resolve a grantee by email.
+`attempts` calls `require()` before creating anything; nothing else reads a paid
+flag. An exam-day slot is the one path that skips the gate: a dispatched attempt
+is the institution's, not a purchase.

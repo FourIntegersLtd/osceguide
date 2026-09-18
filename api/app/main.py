@@ -15,10 +15,11 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.composition import bind_seams
 from app.core.db import dispose_engine
 from app.core.errors import register_error_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging, get_logger
-from app.core.memberships import bind_membership_lookup
+from app.core.observability import configure_sentry
 from app.core.openapi import (
     TAGS,
     document_shared_auth_errors,
@@ -27,7 +28,6 @@ from app.core.openapi import (
 )
 from app.core.redis import close_redis
 from app.core.settings import get_settings
-from app.core.tenancy import bind_org_access_policy, bind_org_lookup, bind_role_policy
 from app.features import health
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
@@ -37,6 +37,7 @@ from app.features.billing.router import router as billing_router
 from app.features.catalog.router import router as catalog_router
 from app.features.community.router import router as community_router
 from app.features.dashboard.router import router as dashboard_router
+from app.features.dashboard.router_live import router as live_board_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.growth.router import router as growth_router
 from app.features.identity.router import router as identity_router
@@ -45,21 +46,21 @@ from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
-from app.features.reviews.service import slot_has_review
 from app.features.roster.router import router as roster_router
+from app.features.rubrics.router import router as rubrics_router
+from app.features.rubrics.router_feedback import router as feedback_templates_router
+from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
-from app.features.sittings.service_circuit import bind_feedback_lookup
+from app.features.sittings.router_overrides import router as circuit_overrides_router
+from app.features.sittings.router_run import router as circuit_run_router
 from app.features.station_sets.router import router as station_sets_router
 from app.features.stations.router import router as stations_router
+from app.features.stations.router_platform import router as platform_stations_router
+from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
-from app.features.tenancy.service import (
-    is_institution_admin,
-    is_org_admin,
-    may_read_org,
-    memberships_for_token,
-    org_permits_access,
-    org_ref_by_slug,
-)
+from app.features.tenancy.router_platform import router as platform_console_router
+from app.features.tutor_memory.router import router as tutor_memory_router
+from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
 from app.features.voice.router import router as voice_router
 from app.features.voice.router_worker import router as voice_worker_router
 
@@ -81,24 +82,34 @@ def api_v1_router() -> APIRouter:
     router = APIRouter()
     router.include_router(identity_router)
     router.include_router(tenancy_router)
+    router.include_router(platform_console_router)
     router.include_router(catalog_router)
+    router.include_router(rubrics_router)
+    router.include_router(org_rubrics_router)
     router.include_router(stations_router)
+    router.include_router(feedback_templates_router)
+    router.include_router(station_templates_router)
+    router.include_router(platform_stations_router)
     router.include_router(attempts_router)
     router.include_router(entitlements_router)
     router.include_router(voice_router)
     router.include_router(sittings_router)
+    router.include_router(circuit_run_router)
+    router.include_router(circuit_overrides_router)
     router.include_router(roster_router)
     router.include_router(reviews_router)
     router.include_router(results_router)
     router.include_router(billing_router)
     router.include_router(station_sets_router)
     router.include_router(dashboard_router)
+    router.include_router(live_board_router)
     router.include_router(assistant_router)
     router.include_router(marketplace_router)
     router.include_router(community_router)
     router.include_router(peer_practice_router)
     router.include_router(growth_router)
     router.include_router(media_router)
+    router.include_router(tutor_memory_router)
     return router
 
 
@@ -108,12 +119,15 @@ def worker_router() -> APIRouter:
     router.include_router(attempts_worker_router)
     router.include_router(assistant_worker_router)
     router.include_router(voice_worker_router)
+    router.include_router(tutor_memory_worker_router)
     return router
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings)
+    if configure_sentry(settings):
+        get_logger(__name__).info("error reporting on", environment=settings.app_env.value)
 
     app = FastAPI(
         title=settings.app_name,
@@ -134,19 +148,7 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
 
-    # `identity` needs a user's memberships to stamp a token but sits below
-    # `tenancy`, which owns them. The seam is bound here, in the one place
-    # allowed to know about both.
-    bind_membership_lookup(memberships_for_token)
-    bind_org_lookup(org_ref_by_slug)
-    bind_org_access_policy(org_permits_access)
-    # `reviews` sits above `sittings`, so the edit lock cannot ask it directly.
-    bind_feedback_lookup(slot_has_review)
-    bind_role_policy(
-        may_read_org=may_read_org,
-        is_org_admin=is_org_admin,
-        is_institution_admin=is_institution_admin,
-    )
+    bind_seams()
 
     app.include_router(health.router)
     app.include_router(api_v1_router(), prefix=API_V1_PREFIX)

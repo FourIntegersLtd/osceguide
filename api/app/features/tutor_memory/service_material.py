@@ -1,0 +1,179 @@
+"""Building the material index: what goes into it, and what is retired from it.
+
+What goes in decides what a citation can say, so the corpus names and the
+titles are settled here and read out by `service_search` unchanged.
+
+Answering a question out of the index is next door. The two are separate
+because they fail differently and are read at different times: this one is a
+nightly job that walks the whole catalogue, and that one sits inside a voice
+loop with a budget measured in milliseconds.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.logging import get_logger
+from app.core.pagination import decode_cursor
+from app.core.ports import MaterialIndex
+from app.features.media import service as media
+from app.features.media.schemas import MediaRead
+from app.features.stations import service_reads as stations
+from app.features.tutor_memory import chunking
+
+log = get_logger(__name__)
+
+STATION_CORPUS = "station"
+# The media kinds worth reading out. A podcast's `content` is a transcript and
+# a blog's is prose, so both search usefully; anything else is indexed only
+# once somebody has decided what a citation to it should say.
+MEDIA_CORPORA = ("summary", "slide_deck", "podcast", "blog")
+
+MEDIA_PAGE = 200
+
+# Three is what a spoken answer can carry. A fourth passage is not read out --
+# it lengthens the prompt and gives the model more to blend into one
+# undifferentiated paragraph with three citations after it.
+SEARCH_LIMIT = 3
+
+NOT_CONFIGURED = (
+    "The material search is not available in this deployment. Say you cannot look that up "
+    "right now, and answer from what you already know or offer to come back to it."
+)
+
+NOTHING_IN_MATERIAL = (
+    "The material has nothing on that. Say you could not find it in their reading rather than "
+    "answering from memory, and offer to come back to it."
+)
+
+# The card envelope the frontend parses. Bumped with the shape, never with the
+# contents: `frontend/src/shared/livekit-ui-guidance/contracts.ts` validates it.
+CARD_SCHEMA_VERSION = 2
+
+
+@dataclass(frozen=True)
+class IndexRun:
+    """What one re-index did, for the log line and the admin route's answer."""
+
+    sources: int
+    passages: int
+    retired: int
+
+
+async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) -> IndexRun:
+    """Rebuild the index from the published material, and retire what has gone.
+
+    Idempotent by construction: every source is upserted by `(corpus, id)` and
+    anything indexed that is no longer published is dropped. So running it
+    twice costs the embeddings and changes nothing, and a run that failed half
+    way is repaired by the next one rather than needing to be unwound.
+    """
+    from app.features.tutor_memory.index import NoMaterialIndex, build_material_index  # noqa: PLC0415
+
+    # Nothing configured: walk the material, index none of it, and say so in
+    # the log rather than failing a nightly job on every deployment without a key.
+    index = index or build_material_index(session) or NoMaterialIndex()
+    sources = passages = 0
+    seen: dict[str, set[str]] = {corpus: set() for corpus in (STATION_CORPUS, *MEDIA_CORPORA)}
+
+    for station in await stations.published_material(session):
+        source_id = str(station.version_id)
+        seen[STATION_CORPUS].add(source_id)
+        passages += await _index_one(
+            index,
+            corpus=STATION_CORPUS,
+            source_id=source_id,
+            exam_id=str(station.exam_id) if station.exam_id else None,
+            title=station.title,
+            text=station.text,
+        )
+        sources += 1
+
+    for item, exam_id in await _published_media(session):
+        if item.kind not in MEDIA_CORPORA:
+            continue
+        seen[item.kind].add(str(item.id))
+        passages += await _index_one(
+            index,
+            corpus=item.kind,
+            source_id=str(item.id),
+            exam_id=exam_id,
+            title=item.title,
+            text=" ".join(part for part in (item.summary, _content_text(item.content)) if part),
+        )
+        sources += 1
+
+    retired = await _retire(index, seen)
+    log.info("material reindexed", sources=sources, passages=passages, retired=retired)
+    return IndexRun(sources=sources, passages=passages, retired=retired)
+
+
+async def _index_one(
+    index: MaterialIndex, *, corpus: str, source_id: str, exam_id: str | None, title: str, text: str
+) -> int:
+    chunks = chunking.chunk(text)
+    return await index.upsert(
+        corpus=corpus,
+        source_id=source_id,
+        exam_id=exam_id,
+        title=title,
+        chunks=[{"index": c.index, "section": c.section, "text": c.text} for c in chunks],
+    )
+
+
+async def _retire(index: MaterialIndex, seen: dict[str, set[str]]) -> int:
+    """Drop passages of anything that is indexed but no longer published.
+
+    An unpublished summary that stayed in the index is the failure worth
+    preventing: the tutor would go on quoting it, with a citation to a page
+    that now returns a 404.
+
+    Through the port, not the repository. Both are this slice's own, so either
+    would satisfy the layering guard -- but a walk that read the table directly
+    could not be exercised against a fake, and this is the path that deletes
+    things.
+    """
+    retired = 0
+    for corpus, live in seen.items():
+        for source_id in await index.indexed_sources(corpus=corpus):
+            if source_id not in live:
+                retired += await index.forget(corpus=corpus, source_id=source_id)
+    return retired
+
+
+async def _published_media(session: AsyncSession) -> list[tuple[MediaRead, str | None]]:
+    """Every published media item, with the exam it belongs to, in one walk."""
+    from app.features.catalog import service as catalog  # noqa: PLC0415 - avoids an import cycle
+
+    out: list[tuple[MediaRead, str | None]] = []
+    codes: dict[str, uuid.UUID] = {}
+    cursor: dict[str, Any] | None = None
+    while True:
+        items, next_cursor = await media.list_published(session, kind=None, limit=MEDIA_PAGE, cursor=cursor)
+        for item in items:
+            exam_id: str | None = None
+            if item.exam_code:
+                if item.exam_code not in codes:
+                    codes[item.exam_code] = (await catalog.resolve_exam(session, item.exam_code)).id
+                exam_id = str(codes[item.exam_code])
+            out.append((item, exam_id))
+        if not next_cursor:
+            return out
+        # The service takes a decoded cursor; the encoded one is the router's
+        # currency, and this caller is not a router.
+        cursor = decode_cursor(next_cursor)
+
+
+def _content_text(content: object) -> str:
+    """Whatever prose a media item's body holds, flattened."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, dict):
+        return " ".join(_content_text(v) for v in content.values()).strip()
+    if isinstance(content, list):
+        return " ".join(_content_text(v) for v in content).strip()
+    return ""
