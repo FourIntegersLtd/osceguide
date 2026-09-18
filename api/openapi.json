@@ -9658,6 +9658,123 @@
         ]
       }
     },
+    "/api/v1/attempts/{attempt_id}/stream": {
+      "get": {
+        "description": "The attempt, pushed until it is marked.\n\nMarking is a background job taking a minute or two of model time, so the\npage has to learn it finished. This replaces b2c's feedback-status\nstream, its poller and the second poller behind that.",
+        "operationId": "attempts_stream_attempt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A stream ticket from POST /auth/stream-ticket",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A stream ticket from POST /auth/stream-ticket",
+              "title": "Ticket"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptRead"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `AttemptRead` each time the state changes, and `ping` every 25 seconds."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Attempt",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
     "/api/v1/attempts/{attempt_id}/transcript": {
       "get": {
         "operationId": "attempts_read_transcript",

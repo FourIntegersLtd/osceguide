@@ -19,6 +19,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_after_commit, user_topic
 from app.core.jobs import defer_in_transaction, get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import EvaluationFailed, Evaluator
@@ -137,6 +138,10 @@ async def score_attempt_now(
         await repository.set_status(
             session, attempt_id, status=domain.Status.FAILED, at=now, reason="empty_transcript"
         )
+        # Announced as loudly as a success: somebody is watching this attempt
+        # waiting for feedback, and a failure they are never told about is a
+        # spinner that turns for ever.
+        publish_after_commit(session, user_topic(attempt.user_id), "attempt")
         return False
 
     try:
@@ -162,6 +167,10 @@ async def score_attempt_now(
     )
     if status is domain.Status.INTERACTION_COMPLETE:
         await repository.set_status(session, attempt_id, status=domain.Status.EVALUATED, at=now)
+    # Marking takes a minute or two of model time, so the browser has to learn
+    # it finished somehow. b2c polled; this says so once, after the commit,
+    # and the poll goes.
+    publish_after_commit(session, user_topic(attempt.user_id), "attempt")
     return True
 
 

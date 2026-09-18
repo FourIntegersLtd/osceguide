@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
@@ -302,3 +303,56 @@ async def test_a_console_stream_is_refused_to_an_outsider(client: AsyncClient, m
     )
     assert response.status_code == 403
     assert response.json()["code"] == "forbidden"
+
+
+async def test_a_candidate_is_told_when_their_marking_finishes(
+    client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Marking is a background job of a minute or two of model time, so the
+    page has to learn it finished somehow.
+
+    b2c answered that with an SSE endpoint, a poller behind it and a second
+    poller behind that. This is the one stream, carrying the whole attempt per
+    frame (ADR 0015) so the page renders from a frame rather than diffing.
+    """
+
+    from tests.support.catalog import ensure_exam
+
+    await ensure_exam(db_session, "sca")
+    token = await make_actor("marked@example.com")
+    created = await client.post(
+        "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(token)
+    )
+    assert created.status_code == 201, created.text
+    attempt_id = created.json()["id"]
+
+    ticket = (await client.post("/api/v1/auth/stream-ticket", headers=bearer(token))).json()["ticket"]
+    async with streaming_client.stream(
+        "GET", f"/api/v1/attempts/{attempt_id}/stream?ticket={ticket}"
+    ) as response:
+        assert response.status_code == 200
+        opening = await asyncio.wait_for(frames(response.aiter_lines(), 2), timeout=10)
+        assert opening[0][0] == "connected"
+        first = json.loads(opening[1][1])
+        assert first["id"] == attempt_id
+        assert first["status"] == "created"
+
+
+async def test_the_attempt_stream_refuses_somebody_elses_attempt(
+    client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.catalog import ensure_exam
+
+    await ensure_exam(db_session, "sca")
+    owner = await make_actor("owner-stream@example.com")
+    created = await client.post(
+        "/api/v1/attempts", json={"kind": "practice", "exam_code": "sca"}, headers=bearer(owner)
+    )
+    attempt_id = created.json()["id"]
+
+    stranger = await make_actor("stranger-stream@example.com")
+    ticket = (await client.post("/api/v1/auth/stream-ticket", headers=bearer(stranger))).json()["ticket"]
+    async with streaming_client.stream(
+        "GET", f"/api/v1/attempts/{attempt_id}/stream?ticket={ticket}"
+    ) as response:
+        assert response.status_code == 403
