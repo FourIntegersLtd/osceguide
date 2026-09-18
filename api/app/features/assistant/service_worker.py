@@ -61,10 +61,12 @@ async def scene_instructions(session: AsyncSession, session_id: uuid.UUID, *, ph
 async def accept_transcript(
     session: AsyncSession, session_id: uuid.UUID, *, transcript: dict[str, Any], now: datetime
 ) -> None:
-    """Store a help session's turns; discard everyone else's.
+    """Store the turns, or not, according to what this kind of session is for.
 
-    The other three kinds are navigation, and keeping them would collect
-    recordings of people's screens for no purpose.
+    Three fates rather than two, once `tutor_memory` is bound: a help session
+    is retained, a dashboard session is retained *and* queued for summarising
+    so the job can replace it, and the rest are discarded unread. Unbound, this
+    is the old "help sessions only" rule exactly.
     """
     row = await require_session(session, session_id)
     # Whether to keep this kind of conversation is decided above this slice
