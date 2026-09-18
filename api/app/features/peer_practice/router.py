@@ -14,7 +14,8 @@ from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
 from app.core.pagination import Page
-from app.core.ports import ClockDep, EventBus
+from app.core.ports import ClockDep, EventBus, VoiceTokens
+from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.features.peer_practice import errors, schemas, service, service_stream
@@ -128,4 +129,32 @@ async def end_session(
 ) -> schemas.PracticeSessionRead:
     return await service.end_session(
         session, session_id, user_id=principal.user_id, reason=body.reason, now=clock.now()
+    )
+
+
+@router.post(
+    "/me/practice-sessions/{session_id}/voice-token",
+    response_model=schemas.RoomGrant,
+    responses=error_responses(
+        Unauthenticated,
+        errors.SessionNotFound,
+        errors.SessionAlreadyEnded,
+        errors.VoiceUnavailable,
+    ),
+)
+async def voice_token(
+    session_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    session: Session,
+    settings: SettingsDep,
+    tokens: Annotated[VoiceTokens, Depends(service.get_voice_tokens)],
+) -> schemas.RoomGrant:
+    """A way into the room the pair were matched into.
+
+    `practice_sessions.room_name` has been written since the slice landed and
+    nothing could mint a token for it, so two people could be paired and then
+    had nowhere to meet.
+    """
+    return await service.voice_grant(
+        session, session_id, user_id=principal.user_id, tokens=tokens, settings=settings
     )

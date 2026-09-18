@@ -8903,6 +8903,30 @@
         "title": "PostRead",
         "type": "object"
       },
+      "app__features__peer_practice__schemas__RoomGrant": {
+        "description": "What a browser needs to join a peer session's room.\n\nThis slice's own shape rather than `voice`'s or `sittings`', for the\nreason those two do not share one either: a wire contract belongs to the\nroutes that serve it.",
+        "properties": {
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "server_url": {
+            "title": "Server Url",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "server_url",
+          "room"
+        ],
+        "title": "RoomGrant",
+        "type": "object"
+      },
       "app__features__sittings__schemas__RoomGrant": {
         "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none yet\nand the examiner never will, which is what separates this from the token\nissued against an attempt.\n\nThis slice's own shape rather than `voice`'s, even though the two agree\ntoday: a wire contract belongs to the routes that serve it, and sharing one\nis how two slices come to be unable to change it separately.",
         "properties": {
@@ -12560,6 +12584,107 @@
           }
         ],
         "summary": "End Session",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/voice-token": {
+      "post": {
+        "description": "A way into the room the pair were matched into.\n\n`practice_sessions.room_name` has been written since the slice landed and\nnothing could mint a token for it, so two people could be paired and then\nhad nowhere to meet.",
+        "operationId": "peer_practice_voice_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__peer_practice__schemas__RoomGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_ended",
+            "x-codes": [
+              "practice_session_ended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Voice Token",
         "tags": [
           "peer-practice"
         ]

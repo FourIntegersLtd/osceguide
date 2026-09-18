@@ -40,3 +40,16 @@ class UnknownExamError(NotFound):
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+# Re-exported, not copied: the code is the contract, and `voice` owns it.
+from app.features.voice.errors import VoiceUnavailable  # noqa: E402
+
+__all__ = [
+    "AlreadyQueued",
+    "QueueEntryNotFound",
+    "SessionAlreadyEnded",
+    "SessionNotFound",
+    "UnknownExamError",
+    "VoiceUnavailable",
+]

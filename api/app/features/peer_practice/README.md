@@ -61,6 +61,7 @@ the patient.
 | GET | `/api/v1/me/practice-sessions` | bearer | |
 | GET | `/api/v1/me/practice-sessions/{id}` | participant | |
 | POST | `/api/v1/me/practice-sessions/{id}/end` | participant | |
+| POST | `/api/v1/me/practice-sessions/{id}/voice-token` | bearer | Join the room the pair were matched into; `practice_session_ended` (409) |
 
 ## Jobs
 `match_practice_queue` — periodic, every minute. Periodic rather than triggered

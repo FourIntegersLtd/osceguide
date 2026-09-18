@@ -45,3 +45,16 @@ class PracticeSessionRead(BaseModel):
 
 class EndSession(BaseModel):
     reason: str | None = Field(default=None, max_length=32)
+
+
+class RoomGrant(BaseModel):
+    """What a browser needs to join a peer session's room.
+
+    This slice's own shape rather than `voice`'s or `sittings`', for the
+    reason those two do not share one either: a wire contract belongs to the
+    routes that serve it.
+    """
+
+    token: str
+    server_url: str
+    room: str

@@ -8,9 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.peer_practice import service
 from tests.support.catalog import ensure_exam
+from tests.support.fakes import FakeVoiceTokens
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
+
+
+@pytest.fixture
+def voice_tokens(client: AsyncClient) -> FakeVoiceTokens:
+    """Replace the LiveKit adapter with a recording fake, at this slice's seam."""
+    from app.features.peer_practice.service import get_voice_tokens
+
+    fake = FakeVoiceTokens()
+    client._transport.app.dependency_overrides[get_voice_tokens] = lambda: fake  # type: ignore[attr-defined]
+    return fake
 
 
 @pytest.fixture(autouse=True)
@@ -239,3 +250,74 @@ async def test_a_queue_stream_is_refused_to_somebody_elses_entry(
         assert response.status_code == 200
         sent = await asyncio.wait_for(frames(response.aiter_lines(), 5), timeout=10)
         assert [name for name, _ in sent] == ["connected"]
+
+
+async def test_a_matched_pair_can_join_their_room(
+    client: AsyncClient, make_actor, db_session: AsyncSession, voice_tokens: FakeVoiceTokens
+) -> None:  # type: ignore[no-untyped-def]
+    """`practice_sessions.room_name` was written from the start and nothing
+    could mint a token for it, so two people were paired and had nowhere to
+    meet."""
+    a_token = await make_actor("v1-a@example.com")
+    b_token = await make_actor("v1-b@example.com")
+    await join(client, a_token)
+    await join(client, b_token)
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    matched = await service.match_waiting(db_session, exam.id)
+    assert matched is not None
+    await db_session.flush()
+
+    granted = await client.post(
+        f"/api/v1/me/practice-sessions/{matched.id}/voice-token", headers=bearer(a_token)
+    )
+    assert granted.status_code == 200, granted.text
+    assert granted.json()["room"] == f"practice_{matched.id}"
+
+    # Both may speak: there is no observer in a peer session, and no agent
+    # rides in on the token — nobody dispatches a patient into a room where
+    # the other doctor is playing one.
+    issued = voice_tokens.issued[-1]
+    assert issued["can_publish"] is True
+    assert issued["agent_name"] is None
+
+
+async def test_a_stranger_cannot_get_a_token_for_someone_elses_room(
+    client: AsyncClient, make_actor, db_session: AsyncSession, voice_tokens: FakeVoiceTokens
+) -> None:  # type: ignore[no-untyped-def]
+    await join(client, await make_actor("v2-a@example.com"))
+    await join(client, await make_actor("v2-b@example.com"))
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    matched = await service.match_waiting(db_session, exam.id)
+    assert matched is not None
+    await db_session.flush()
+
+    stranger = await make_actor("v2-c@example.com")
+    response = await client.post(
+        f"/api/v1/me/practice-sessions/{matched.id}/voice-token", headers=bearer(stranger)
+    )
+    # Not found rather than forbidden: whether a session exists is not
+    # something to confirm to somebody who is not in it.
+    assert response.status_code == 404
+    assert not voice_tokens.issued
+
+
+async def test_an_ended_session_has_no_room_to_join(
+    client: AsyncClient, make_actor, db_session: AsyncSession, voice_tokens: FakeVoiceTokens
+) -> None:  # type: ignore[no-untyped-def]
+    a_token = await make_actor("v3-a@example.com")
+    await join(client, a_token)
+    await join(client, await make_actor("v3-b@example.com"))
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    matched = await service.match_waiting(db_session, exam.id)
+    assert matched is not None
+    await db_session.flush()
+    await client.post(f"/api/v1/me/practice-sessions/{matched.id}/end", json={}, headers=bearer(a_token))
+
+    response = await client.post(
+        f"/api/v1/me/practice-sessions/{matched.id}/voice-token", headers=bearer(a_token)
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "practice_session_ended"

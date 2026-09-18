@@ -16,11 +16,14 @@ from app.core.audience import (
     ensure_may_address,
 )
 from app.core.events import publish_after_commit, user_topic
+from app.core.ports import VoiceTokens
+from app.core.settings import Settings
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.peer_practice import domain, errors, repository
 from app.features.peer_practice.models import PracticeSession, QueueEntry
-from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus
+from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus, RoomGrant
+from app.features.voice import service as voice
 
 # What the queue stream reacts to. Named here because this is where it happens.
 MATCHED = "practice.matched"
@@ -187,3 +190,48 @@ async def _session_read(
         started_at=row.started_at,
         ended_at=row.ended_at,
     )
+
+
+def get_voice_tokens() -> VoiceTokens:
+    """The LiveKit adapter, as a FastAPI dependency.
+
+    Imported inside the function so a test can override the dependency
+    without the SDK installed, which is the same reason `assistant` does it.
+    """
+    from app.features.voice.service import get_voice_tokens as build  # noqa: PLC0415
+
+    return build()
+
+
+async def voice_grant(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    user_id: uuid.UUID,
+    tokens: VoiceTokens,
+    settings: Settings,
+) -> RoomGrant:
+    """A token for the room two people were paired into.
+
+    The pairing is the permission: both the doctor and the patient join the
+    same room and both may speak, so there is no observer shape here. A
+    stranger gets `practice_session_not_found` rather than a refusal, because
+    whether a session exists is not something to confirm to somebody who is
+    not in it.
+
+    The room was named when the pair was matched and nothing could mint a
+    token for it, so the session existed and could never be held.
+    """
+    row = await repository.session_by_id(session, session_id)
+    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+        raise errors.SessionNotFound()
+    if row.status == "ended" or not row.room_name:
+        raise errors.SessionAlreadyEnded()
+    granted = voice.grant_for_room(
+        room=row.room_name,
+        identity=str(user_id),
+        can_publish=True,
+        tokens=tokens,
+        settings=settings,
+    )
+    return RoomGrant(token=granted.token, server_url=granted.server_url, room=granted.room)
