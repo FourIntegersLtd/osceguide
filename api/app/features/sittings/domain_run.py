@@ -17,6 +17,7 @@ candidate through twelve stations" are the same walk over different slots.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -208,3 +209,22 @@ def ensure_paused(paused_at: datetime | None) -> None:
 def ensure_jump_target(slot_index: int, *, slot_count: int) -> None:
     if not 0 <= slot_index < slot_count:
         raise InvalidCircuit("That station is not on this circuit.")
+
+
+def sitting_is_over(circuit_ended: Iterable[bool]) -> bool:
+    """Whether a sitting has nothing left to run (D-7).
+
+    A sitting was set `in_progress` by the first circuit to start and then never
+    moved again, so an exam day that finished last March still read as running.
+
+    The rule is that a sitting is over when **every** circuit on it has ended —
+    not when the last *running* one does, because a day with a morning and an
+    afternoon circuit is not over at lunchtime. A circuit that was never started
+    therefore holds its sitting open, which is right: nothing here can tell "not
+    run yet" from "never will be". Staff end such a circuit outright, and that
+    is what closes the sitting.
+
+    A sitting with no circuits at all is not over. It never began.
+    """
+    ended = list(circuit_ended)
+    return bool(ended) and all(ended)

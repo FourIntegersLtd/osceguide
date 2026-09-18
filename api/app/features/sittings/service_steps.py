@@ -180,6 +180,21 @@ async def finish(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, 
     circuit.ended_at = now
     circuit.phase = None
     circuit.phase_seq = seq
+    await _close_sitting_if_over(session, org_id, circuit)
+
+
+async def _close_sitting_if_over(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit) -> None:
+    """The last circuit to end closes its sitting (D-7).
+
+    `start_circuit` set the sitting `in_progress` and nothing ever set anything
+    else, so a finished exam day read as running for ever. The check is here
+    rather than in the use case because every way a circuit can end — the last
+    station, a manual end, the twelve-hour reaper — goes through `finish`.
+    """
+    siblings = await repository.circuits_for_sitting(session, org_id, circuit.sitting_id)
+    ended = [(c.ended_at is not None or c.id == circuit.id) for c in siblings]
+    if domain_run.sitting_is_over(ended):
+        await repository.set_sitting_status(session, org_id, circuit.sitting_id, status="completed")
 
 
 def slot_at(slots: list[Slot], index: int) -> Slot:
