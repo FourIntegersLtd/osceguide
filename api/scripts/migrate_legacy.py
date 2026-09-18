@@ -22,6 +22,8 @@ Firestore exports them:
     b2b_users.json        optional
     transcripts.json      the four `*_transcripts` collections
     feedbacks.json        optional, keyed by transcript id
+    stations.json         optional; the four `*stations` collections,
+                          concatenated, each document keeping its `app_type`
 
 Nothing about a failed run is kept. A record that cannot be loaded is reported
 with the reason and the run continues, because one bad row should not abandon
@@ -49,6 +51,8 @@ from app.core.db import get_engine, import_all_models  # noqa: E402
 from app.migration import exams as exam_loader  # noqa: E402
 from app.migration import loader, verify  # noqa: E402
 from app.migration.attempts import attempt_from_transcript  # noqa: E402
+from app.migration.load_stations import load_stations  # noqa: E402
+from app.migration.stations import StationTransformError, station_from_document  # noqa: E402
 from app.migration.users import UnknownLegacyProduct, entitlements_for, merge_users  # noqa: E402
 
 
@@ -69,6 +73,7 @@ async def run(export: Path, *, commit: bool, verify_only: bool, exams_file: Path
     b2b = read(export, "b2b_users.json", required=False)
     transcripts = read(export, "transcripts.json", required=False)
     feedbacks = {str(f.get("transcript_id") or ""): f for f in read(export, "feedbacks.json", required=False)}
+    station_documents = read(export, "stations.json", required=False)
 
     merged = merge_users(users, b2b_users=b2b)
     grants = [g for record in users for g in entitlements_for(record)]
@@ -86,8 +91,17 @@ async def run(export: Path, *, commit: bool, verify_only: bool, exams_file: Path
         # Defaulting here is how CASC came to be marked with a GP rubric.
         raise SystemExit(f"Refusing to import: {exc}") from exc
 
+    try:
+        migrated_stations = [station_from_document(raw) for raw in station_documents]
+    except (UnknownLegacyProduct, StationTransformError) as exc:
+        raise SystemExit(f"Refusing to import: {exc}") from exc
+
     # Which exams this import will reference, before anything is written.
-    required = {a.exam_code for a in migrated_attempts} | {g.exam_code for g in grants}
+    required = (
+        {a.exam_code for a in migrated_attempts}
+        | {g.exam_code for g in grants}
+        | {s.exam_code for s in migrated_stations}
+    )
     exams_spec: dict[str, object] = {}
     if exams_file is not None:
         exams_spec = json.loads(exams_file.read_text(encoding="utf-8"))
@@ -115,8 +129,11 @@ async def run(export: Path, *, commit: bool, verify_only: bool, exams_file: Path
                 created = await exam_loader.load_exams(session, exams_spec, now=datetime.now(UTC))
                 print(f"exams: {len(created)} available ({', '.join(sorted(created))})")  # noqa: T201
             people, ids = await loader.load_users(session, merged, grants)
+            # Before attempts: an imported attempt names the station it ran
+            # against, and only this resolves a Firestore station id.
+            stations, _station_ids = await load_stations(session, migrated_stations)
             attempts = await loader.load_attempts(session, migrated_attempts, user_ids=ids)
-            report = people.merge(attempts)
+            report = people.merge(stations).merge(attempts)
             print(report.summary())  # noqa: T201
             for problem in report.problems:
                 print(f"  problem: {problem}")  # noqa: T201

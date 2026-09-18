@@ -28,8 +28,10 @@ What it deliberately does not do:
   is what the model actually reads, but `--report` tells you which
   competencies a human still needs to write descriptors for before live
   marking means anything.
-- **Import no stations.** The library is a separate transform with its own
-  source of truth; see `scripts/migrate_legacy.py --stations`.
+- **Import no stations.** The library comes from Firestore, not from here:
+  put the four `*stations` collections in `stations.json` and
+  `scripts/migrate_legacy.py` loads them. Run this first — a station
+  whose exam does not exist yet is reported, not invented.
 """
 
 from __future__ import annotations
