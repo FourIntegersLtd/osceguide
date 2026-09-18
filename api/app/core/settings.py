@@ -14,7 +14,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Final
 
 from fastapi import Depends
 from pydantic import Field, field_validator, model_validator
@@ -36,6 +36,23 @@ class AppEnv(StrEnum):
 _LOCAL_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 _LOCAL_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/osce_platform"
 _LOCAL_JWT_SECRET = "dev-only-jwt-secret-change-me"  # noqa: S105 — local and test only
+
+
+# The values a deployed process refuses to start without, named once so the
+# validator, `docs/ENVIRONMENT.md` and `.env.example` cannot disagree about
+# what they are. The example drifted from this list for weeks.
+REQUIRED_WHEN_DEPLOYED: Final[tuple[str, ...]] = (
+    "JWT_SECRET",
+    "WORKER_SECRET",
+    "DATABASE_URL",
+    "CORS_ORIGINS",
+    "LIVEKIT_URL",
+    "LIVEKIT_API_KEY",
+    "LIVEKIT_API_SECRET",
+    "STRIPE_WEBHOOK_SECRET",
+    "RESEND_API_KEY",
+    "OPENAI_API_KEY",
+)
 
 
 class Settings(BaseSettings):
@@ -163,22 +180,19 @@ class Settings(BaseSettings):
             self.database_url = self.database_url or _LOCAL_DATABASE_URL
             self.cors_origins = self.cors_origins or list(_LOCAL_CORS_ORIGINS)
             return self
-        missing = [
-            name
-            for name, value in (
-                ("JWT_SECRET", self.jwt_secret),
-                ("WORKER_SECRET", self.worker_secret),
-                ("DATABASE_URL", self.database_url),
-                ("CORS_ORIGINS", ",".join(self.cors_origins)),
-                ("LIVEKIT_URL", self.livekit_url),
-                ("LIVEKIT_API_KEY", self.livekit_api_key),
-                ("LIVEKIT_API_SECRET", self.livekit_api_secret),
-                ("STRIPE_WEBHOOK_SECRET", self.stripe_webhook_secret),
-                ("RESEND_API_KEY", self.resend_api_key),
-                ("OPENAI_API_KEY", self.openai_api_key),
-            )
-            if not value.strip()
-        ]
+        present = {
+            "JWT_SECRET": self.jwt_secret,
+            "WORKER_SECRET": self.worker_secret,
+            "DATABASE_URL": self.database_url,
+            "CORS_ORIGINS": ",".join(self.cors_origins),
+            "LIVEKIT_URL": self.livekit_url,
+            "LIVEKIT_API_KEY": self.livekit_api_key,
+            "LIVEKIT_API_SECRET": self.livekit_api_secret,
+            "STRIPE_WEBHOOK_SECRET": self.stripe_webhook_secret,
+            "RESEND_API_KEY": self.resend_api_key,
+            "OPENAI_API_KEY": self.openai_api_key,
+        }
+        missing = [name for name in REQUIRED_WHEN_DEPLOYED if not present[name].strip()]
         if missing:
             raise ValueError(
                 f"{self.app_env.value} requires these environment variables: {', '.join(missing)}"

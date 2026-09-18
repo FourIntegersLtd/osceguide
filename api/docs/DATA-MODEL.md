@@ -32,8 +32,10 @@
 > explains it, or the next engineer will implement against a rationale that no
 > longer holds.
 >
-> Last verified against the code: **2026-09-17**, branch `main` (the rewrite was
-> merged; `feat/platform-api` is the branch it was built on).
+> Last verified against the code: **2026-09-18**, branch `feat/tutor-memory`.
+> `scripts/check_data_model.py` runs on every `make arch`, so the table and
+> column names here cannot drift from the schema; what no checker holds is the
+> *reasoning*, which is most of what this document is for.
 > There is also a published version of this reference, kept in step with it:
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 

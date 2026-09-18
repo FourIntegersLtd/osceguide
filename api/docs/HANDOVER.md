@@ -11,9 +11,13 @@ matter most here. Read it before `STATUS.md`.
 consumers, institutions, partners and the LiveKit workers from the same core.
 Both legacy backends are still live and untouched.
 
-- **Where:** `backend/platform-api/`, in the `backend` git repository. The
-  earlier worktree is gone and the work is merged to `main`; current branch
-  `feat/authored-exams-and-rubrics`, not pushed.
+- **Where:** `backend/platform-api/`, in the `backend` git repository, on branch
+  `feat/tutor-memory` — pushed, and checked out in the worktree
+  `backend-tutor-memory/`. Despite the name that branch is the whole revamp:
+  `feat/platform-api`, `feat/authored-exams-and-rubrics` and
+  `feat/assessment-cutover` are merged into it, and it is what goes to `main`
+  next. `main` itself is a superseded snapshot — roughly half the routes, no
+  rubrics, no tutor, no circuit automation. Read the branch, not `main`.
 - **Stack:** FastAPI, Pydantic v2, SQLAlchemy 2.0 async on psycopg 3, Alembic,
   Postgres, procrastinate for jobs, Redis for ephemeral state only.
 - **Spec:** `~/.claude/plans/we-are-going-to-happy-frost.md` — the remediation
@@ -140,8 +144,8 @@ database already enforces. Everything else the guard listed has a caller.
 
 - **A production Firestore export.** The importer, loader and verifier are
   written and tested against fixtures; nobody has seen the real shapes.
-- **Tag `engine-v0.6.0`** in `assessment-platform` and uncomment one line in
-  `platform-api/pyproject.toml`. The packaging is on `feat/package-the-engine`
+- ~~**Tag the engine**~~ **Done:** `engine-v0.7.0` is tagged and pinned in
+  `pyproject.toml`. The packaging is on `feat/package-the-engine`
   and that branch *is* on the remote — pushed by someone else, not by me — but
   no `engine-v*` tag exists, and the tag is what the dependency pins. Until
   then `make engine-dev` installs it from the sibling checkout, which works

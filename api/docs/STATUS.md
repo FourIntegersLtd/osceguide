@@ -35,7 +35,7 @@ stop, and its debt list is reproduced below.
 |---|---|
 | Prompt rendering | The backend renders every prompt; the worker holds no templates. An adapter onto the engine's formatters, with A1/A2 wired — the definition is frozen on the first *successful* render, and a degraded one is served but not persisted |
 | Prompt oracle | Renders byte-identical to the engine's own golden files for the library and org station shapes |
-| End to end | Creation → bootstrap → chunks → transcript → scored result, over real routes, plus an e2e test against the real worker (**never run** — see below) |
+| End to end | Creation → bootstrap → chunks → transcript → scored result, over real routes, plus an e2e test against the real worker (**run once, locally, on 2026-09-18** — see below) |
 | Reachability guard | Fires on a real planted orphan; ratchets a debt list that may only shrink |
 | Tenant scoping guard | Was inspecting **zero** functions — it walked `ast.ClassDef` and matched SQL strings, neither of which exists since ADR 0013. Now inspects 41 |
 | Cross-tenant write (P4) | Any org admin could store a review against any slot in the system. Reads filtered by org, so it looked contained |
