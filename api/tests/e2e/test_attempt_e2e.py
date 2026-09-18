@@ -23,6 +23,7 @@ treat the first run as part of the test rather than a formality.
     export LIVEKIT_E2E_AUDIO_WAV=/path/to/16k-mono.wav
     export DEEPGRAM_API_KEY=... OPENAI_API_KEY=...
     export ASSESSMENT_PLATFORM_ROOT=/path/to/assessment-platform
+    export ASSESSMENT_PLATFORM_PYTHON="$(cd $ASSESSMENT_PLATFORM_ROOT && poetry env info --path)/bin/python"
     export PLATFORM_E2E_BASE_URL=http://127.0.0.1:8002
     export PLATFORM_E2E_TOKEN=<bearer for an entitled user>
     export PLATFORM_E2E_STATION_VERSION_ID=<a published station version>
@@ -50,13 +51,28 @@ EXTRA = ("PLATFORM_E2E_BASE_URL", "PLATFORM_E2E_TOKEN", "PLATFORM_E2E_STATION_VE
 
 
 def _harness(root: str) -> Any:
-    """Import the worker's own e2e harness rather than reimplementing it."""
-    path = Path(root)
-    for entry in (str(path), str(path / "packages")):
-        if entry not in sys.path:
-            sys.path.insert(0, entry)
-    from tests.e2e import _harness as harness  # type: ignore[import-not-found]
+    """Import the worker's own e2e harness rather than reimplementing it.
 
+    Loaded from its file rather than as `tests.e2e._harness`: this repository
+    has a package of exactly that name, so the import found ours and failed
+    with "cannot import name _harness". The first run of this test is what
+    caught it, which is the argument for running it.
+    """
+    import importlib.util  # noqa: PLC0415
+
+    path = Path(root)
+    if str(path / "packages") not in sys.path:
+        sys.path.insert(0, str(path / "packages"))
+    source = path / "tests" / "e2e" / "_harness.py"
+    spec = importlib.util.spec_from_file_location("assessment_e2e_harness", source)
+    assert spec is not None and spec.loader is not None, f"no harness at {source}"
+    harness = importlib.util.module_from_spec(spec)
+    # Registered before it is executed: the harness declares dataclasses, and
+    # `dataclasses` resolves a field's annotations through `sys.modules[
+    # cls.__module__]`. A module that is not there yet makes that a
+    # `NoneType has no attribute __dict__` at class-definition time.
+    sys.modules[spec.name] = harness
+    spec.loader.exec_module(harness)
     return harness
 
 
@@ -73,8 +89,14 @@ def _start_worker(*, root: str, env: dict[str, str], base_url: str, secret: str,
             "slot_payload_key": "room_name",
         }
     }
+    # The worker's own interpreter, not this one: `livekit-agents` is a
+    # dependency of `assessment-platform`, not of this API, and running it on
+    # `sys.executable` fails with `No module named livekit.agents` — visibly in
+    # the subprocess's stderr and invisibly in the assertion, which just sees
+    # an attempt with no turns.
+    python = os.environ.get("ASSESSMENT_PLATFORM_PYTHON") or sys.executable
     return subprocess.Popen(  # noqa: S603
-        [sys.executable, "-m", "livekit_assessment_worker.entrypoint", "start"],
+        [python, "-m", "livekit_assessment_worker.entrypoint", "start"],
         cwd=Path(root),
         env={
             **os.environ,

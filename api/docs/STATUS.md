@@ -78,10 +78,37 @@ stop, and its debt list is reproduced below.
 
 ## Two things not to take on trust
 
-**The e2e test has never been run.** It needs a LiveKit project, Deepgram and
-OpenAI keys, a sibling `assessment-platform` checkout and a live API. Writing it
-caught a real bug in itself — it read `user_id` off a schema that does not carry
-it — which is what an unrun test hides. Treat the first run as part of the test.
+**The e2e test passed for the first time on 2026-09-18.** The real assessment
+worker joined a real LiveKit room, bootstrapped against a locally running
+platform-api, and the completed transcript came back through `GET
+/attempts/{id}/transcript`. One run, one station (`sca`), on a local API — not
+CI, and not against a deployed one.
+
+The first run was worth as much as the plan hoped: it found three defects in
+the test itself, all of which had been invisible.
+
+- It imported the worker's harness as `tests.e2e._harness`, and *this*
+  repository has a package of that name, so the import found ours and failed.
+  It is loaded from its file now, and registered in `sys.modules` before it is
+  executed — the harness declares dataclasses, and `dataclasses` resolves
+  annotations through `sys.modules[cls.__module__]`.
+- It started the worker on `sys.executable`, which is this API's interpreter
+  and has no `livekit-agents`. The subprocess died on import, and the assertion
+  saw only an attempt with no turns. `ASSESSMENT_PLATFORM_PYTHON` now points at
+  the worker's own environment.
+- Running it needs data nothing seeds: a published exam with a rubric, a
+  published library station and an entitled candidate. The exam in a fresh
+  local database is a draft with no rubric, so the attempt is refused with
+  `unknown_exam`.
+
+The harness also needs `aiohttp` and the LiveKit SDK, which are
+`assessment-platform`'s dev dependencies and not this API's; install them into
+the test environment before running — and **uninstall them afterwards**, or
+`make typecheck` fails. `livekit-api` publishes into the `livekit` namespace
+without type information, so once it is present mypy resolves
+`from livekit import api` in `voice/adapter.py` and reports "Module livekit has
+no attribute api" twice. Anyone declaring `livekit-api` as a real dependency
+here will meet the same two errors and will need a `types` stub or an ignore.
 
 **`poetry run pytest -q | tail -2` reports the last two lines and not the exit
 code**, so a red suite can look green. That led to two commits with failing
