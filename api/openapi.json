@@ -13466,6 +13466,119 @@
         ]
       }
     },
+    "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs": {
+      "post": {
+        "description": "Talk through an attempt you have already made.\n\nIts own route rather than a flag on the one above, because it is a\ndifferent act with a different limit and a different refusal: a debrief is\n*about* an earlier attempt, and `nothing_to_debrief` is what you get for\nasking to discuss a station you have not sat.\n\n`start_entry_attempt(debrief=True)` has been written and tested since the\nslice landed, and nothing called it \u2014 the b2c debrief had no way in.",
+        "operationId": "station_sets_start_debrief",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartedAttempt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found, set_entry_not_found",
+            "x-codes": [
+              "set_not_found",
+              "set_entry_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_limit_reached, nothing_to_debrief",
+            "x-codes": [
+              "attempt_limit_reached",
+              "nothing_to_debrief"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Debrief",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
     "/api/v1/me/tutor-memory": {
       "delete": {
         "description": "Forget the lot, and say how much was forgotten.\n\nDebrief summaries are opt-in: they are also this doctor's own record of\nwhat a debrief concluded, shown on their results.",

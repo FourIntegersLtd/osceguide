@@ -171,3 +171,40 @@ async def test_a_set_without_an_entitlement_cannot_be_attempted(
     )
     assert response.status_code == 403
     assert response.json()["code"] == "not_entitled"
+
+
+async def test_a_debrief_can_be_started_from_an_entry(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """`start_entry_attempt(debrief=True)` was written, tested and unreachable.
+
+    The b2c debrief — talking an attempt through afterwards — had no route at
+    all, so the only way to reach the code was to call the service directly.
+    """
+    token = await a_learner(client, db_session, make_actor, "debrief@example.com")
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    set_id, entry_id = created["id"], created["entries"][0]["id"]
+
+    nothing_yet = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs", headers=bearer(token)
+    )
+    assert nothing_yet.status_code == 409, nothing_yet.text
+    assert nothing_yet.json()["code"] == "nothing_to_debrief"
+
+    attempt = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
+    )
+    assert attempt.status_code == 201, attempt.text
+
+    debrief = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs", headers=bearer(token)
+    )
+    assert debrief.status_code == 201, debrief.text
+    assert debrief.json()["kind"] == "debrief"

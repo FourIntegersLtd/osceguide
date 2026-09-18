@@ -17,6 +17,13 @@ from typing import Any
 # Two sightings of the same thing inside this window are one visit. A doctor
 # who opens a summary, follows a link and comes back has not read it twice, and
 # a memory that says they did will be spoken back to them as a pattern.
+# The action plan's two rules live together in their own module: ticking a
+# step off and deciding what is still open have to agree, and `domain.py`
+# was over the file cap. Re-exported so callers import one domain.
+from app.features.tutor_memory.action_plan import mark_action_item_done, open_action_items
+
+__all__ = ["mark_action_item_done", "open_action_items"]
+
 DEDUP_WINDOW = timedelta(minutes=10)
 
 # A stated fact is spoken back to the doctor; a long one stops being a fact and
@@ -124,28 +131,6 @@ def entitled_exam_ids(grants: Sequence[Any]) -> frozenset[Any]:
         for g in grants
         if getattr(g, "exam_id", None) and getattr(g, "live", False)
     )
-
-
-def open_action_items(plans: Sequence[Any]) -> list[str]:
-    """Steps that were agreed and not yet ticked off, most recent first.
-
-    Accepts both shapes the summariser produces: `{"text": ..., "done": ...}`
-    and a bare string, which is what the model returns when it ignores the
-    schema's optional flag.
-    """
-    out: list[str] = []
-    for plan in plans:
-        items = plan if isinstance(plan, Sequence) and not isinstance(plan, str) else []
-        for item in items:
-            if isinstance(item, Mapping):
-                if item.get("done"):
-                    continue
-                text = str(item.get("text") or "").strip()
-            else:
-                text = str(item or "").strip()
-            if text:
-                out.append(text)
-    return out
 
 
 def observations_from_result(payload: Mapping[str, Any]) -> dict[str, Any]:

@@ -82,3 +82,38 @@ async def start_attempt(
     clock: ClockDep,
 ) -> schemas.StartedAttempt:
     return await service.start_entry_attempt(session, principal.user_id, set_id, entry_id, now=clock.now())
+
+
+@router.post(
+    "/me/station-sets/{set_id}/entries/{entry_id}/debriefs",
+    response_model=schemas.StartedAttempt,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(
+        Unauthenticated,
+        errors.NotEntitled,
+        errors.SetNotFound,
+        errors.EntryNotFound,
+        errors.AttemptLimitReachedError,
+        errors.NothingToDebriefError,
+    ),
+)
+async def start_debrief(
+    set_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.StartedAttempt:
+    """Talk through an attempt you have already made.
+
+    Its own route rather than a flag on the one above, because it is a
+    different act with a different limit and a different refusal: a debrief is
+    *about* an earlier attempt, and `nothing_to_debrief` is what you get for
+    asking to discuss a station you have not sat.
+
+    `start_entry_attempt(debrief=True)` has been written and tested since the
+    slice landed, and nothing called it — the b2c debrief had no way in.
+    """
+    return await service.start_entry_attempt(
+        session, principal.user_id, set_id, entry_id, now=clock.now(), debrief=True
+    )

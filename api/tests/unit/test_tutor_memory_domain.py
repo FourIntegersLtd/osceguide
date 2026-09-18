@@ -222,3 +222,63 @@ def test_every_indexed_corpus_is_one_the_table_allows() -> None:
 
     allowed = {"station", "summary", "slide_deck", "podcast", "blog"}
     assert {service_material.STATION_CORPUS, *service_material.MEDIA_CORPORA} <= allowed
+
+
+class TestMarkingAnActionItemDone:
+    """T-4: `done` was written false by the summariser and set true by nothing.
+
+    So `open_action_items` never filtered anything, and the tutor's brief
+    listed every step ever agreed, for ever. It degraded rather than failed,
+    which is exactly why it survived so long.
+    """
+
+    def test_a_step_is_ticked_off_by_its_own_words(self) -> None:
+        plan = [{"text": "Safety-net chest pain explicitly", "done": False}]
+        updated, matched = domain.mark_action_item_done(plan, "Safety-net chest pain explicitly")
+        assert matched == "Safety-net chest pain explicitly"
+        assert updated[0]["done"] is True
+
+    def test_a_paraphrase_still_finds_it(self) -> None:
+        # The tutor asks aloud and the doctor answers in their own words, so
+        # the model passes back a paraphrase. Exact equality would tick off
+        # nothing, which is the state this is fixing.
+        plan = [{"text": "Safety-net chest pain explicitly", "done": False}]
+        _, matched = domain.mark_action_item_done(plan, "safety-net chest pain")
+        assert matched == "Safety-net chest pain explicitly"
+
+    def test_a_bare_string_plan_is_accepted(self) -> None:
+        # What the model returns when it ignores the schema's optional flag.
+        updated, matched = domain.mark_action_item_done(["Read the asthma summary"], "asthma summary")
+        assert matched == "Read the asthma summary"
+        assert updated[0] == {"text": "Read the asthma summary", "done": True}
+
+    def test_nothing_matching_leaves_the_plan_alone(self) -> None:
+        # Ticking off the wrong step is worse than ticking off none: the
+        # doctor is then asked about the thing they did, and never about the
+        # thing they did not.
+        plan = [{"text": "Safety-net chest pain", "done": False}]
+        updated, matched = domain.mark_action_item_done(plan, "practise a cardiology station")
+        assert matched is None
+        assert updated[0]["done"] is False
+
+    def test_only_the_first_open_match_is_ticked(self) -> None:
+        plan = [
+            {"text": "Safety-net chest pain", "done": True},
+            {"text": "Safety-net headache", "done": False},
+        ]
+        updated, matched = domain.mark_action_item_done(plan, "safety-net")
+        assert matched == "Safety-net headache"
+        assert [item["done"] for item in updated] == [True, True]
+
+    def test_an_empty_step_ticks_nothing(self) -> None:
+        plan = [{"text": "Read the asthma summary", "done": False}]
+        updated, matched = domain.mark_action_item_done(plan, "   ")
+        assert matched is None
+        assert updated == plan
+
+    def test_a_ticked_item_stops_appearing_in_the_brief(self) -> None:
+        """The two rules have to agree, or the fix does nothing visible."""
+        plan = [{"text": "Read the asthma summary", "done": False}]
+        assert domain.open_action_items([plan]) == ["Read the asthma summary"]
+        updated, _ = domain.mark_action_item_done(plan, "asthma summary")
+        assert domain.open_action_items([updated]) == []

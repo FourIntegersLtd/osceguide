@@ -18,6 +18,7 @@ RECALL_HISTORY = "recall_history"
 SEARCH_MATERIAL = "search_material"
 SUGGEST_MATERIAL = "suggest_material"
 REMEMBER = "remember"
+MARK_DONE = "mark_done"
 
 # What the prompt calls each role, so the engine can name them in its wording
 # without knowing what they are called here.
@@ -26,6 +27,7 @@ TOOL_ROLES = {
     "search": SEARCH_MATERIAL,
     "suggest": SUGGEST_MATERIAL,
     "remember": REMEMBER,
+    "mark_done": MARK_DONE,
 }
 
 # What the model may ask to narrow a material search to, and the corpus each
@@ -150,6 +152,26 @@ CATALOG: tuple[dict[str, Any], ...] = (
                 }
             },
             "required": ["fact"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": MARK_DONE,
+        "description": (
+            "Tick off a step this doctor agreed to after an earlier debrief, once they say "
+            "they have done it. Use the doctor's own words for the step; you do not have to "
+            "quote it exactly."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "step": {
+                    "type": "string",
+                    "description": "The agreed step they have done, in a sentence.",
+                    "maxLength": 300,
+                }
+            },
+            "required": ["step"],
             "additionalProperties": False,
         },
     },

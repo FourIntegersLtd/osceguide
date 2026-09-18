@@ -28,6 +28,7 @@ from app.features.tutor_memory import (
     repository,
     service_recall,
     service_search,
+    service_writes,
     tools_catalog,
 )
 from app.features.tutor_memory.index import build_material_index
@@ -94,7 +95,10 @@ async def run(
         )
     if tool == tools_catalog.SUGGEST_MATERIAL:
         return await _suggest(session, user_id=user_id, now=now, **_suggest_args(cleaned))
-    return await _remember(session, user_id=user_id, session_id=session_id, fact=str(cleaned["fact"]))
+    if tool == tools_catalog.REMEMBER:
+        return await _remember(session, user_id=user_id, session_id=session_id, fact=str(cleaned["fact"]))
+    marked: ToolResult = await service_writes.mark_done(session, user_id=user_id, step=str(cleaned["step"]))
+    return marked
 
 
 def _recall_args(cleaned: dict[str, Any]) -> dict[str, Any]:

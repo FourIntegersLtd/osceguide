@@ -16,6 +16,8 @@ announce their moments through `bind_*` seams tied in `app/main.py`.
 ## Use cases
 - As a **doctor**, I talk to a tutor that remembers my recent consultations,
   what we agreed last time, and what I have been reading.
+- As a **doctor**, I tell the tutor I have done something we agreed, and it stops
+  asking me about it.
 - As a **doctor**, I read everything the tutor holds about me, and delete any
   of it.
 - As the **browser**, I report what somebody read, practised or listened to.
@@ -25,6 +27,13 @@ announce their moments through `bind_*` seams tied in `app/main.py`.
 ## Aggregates & invariants
 **LearningEvent**, **TutorNote**, **DebriefSummary** and **MaterialChunk**.
 
+- **An agreed step can be ticked off.** `action_plan[].done` was written `false`
+  by the summariser and set true by nothing, so `open_action_items` filtered
+  nothing and the brief carried every step ever agreed — the tutor kept asking
+  about work finished months ago (T-4). The `mark_done` tool closes it, matching
+  the doctor's paraphrase against the most recent debrief that still has that
+  step open, and matching nothing rather than guessing: ticking off the wrong
+  step means never asking about the one they did not do.
 - **Two sightings of the same thing inside ten minutes are one visit.** A
   doctor who opens a summary, follows a link and comes back has not read it
   twice, and a memory that says so will be spoken back as a pattern.

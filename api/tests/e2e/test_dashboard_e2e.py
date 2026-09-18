@@ -10,7 +10,7 @@ Step 0, and the one route the tutor's entire feature hangs off.
 
 It asserts the things that are the same on every run: that a dashboard session
 can be opened, that a browser can mint a token for its room, that the real
-worker joins and is handed four tools with their schemas, that a tool call
+worker joins and is handed the tutor's tools with their schemas, that a tool call
 answers with a line a model can say, and that the conversation is recorded.
 
 It does **not** assert that the model chose to call a tool. That depends on
@@ -66,7 +66,7 @@ pytestmark = pytest.mark.e2e
 # about this learner's own history and is not bound to a station at all.
 EXTRA = ("PLATFORM_E2E_BASE_URL", "PLATFORM_E2E_TOKEN")
 
-EXPECTED_TOOLS = {"recall_history", "search_material", "suggest_material", "remember"}
+EXPECTED_TOOLS = {"recall_history", "search_material", "suggest_material", "remember", "mark_done"}
 
 
 def _start_assistant_worker(*, root: str, env: dict[str, str], base_url: str, secret: str, agent: str):  # type: ignore[no-untyped-def]
@@ -154,7 +154,7 @@ async def test_a_browser_can_join_a_dashboard_session_and_its_tools_answer(
 
         # What the worker is about to be handed. Fetched here as well as by the
         # worker because this is the assertion — that a *dashboard* bootstrap
-        # carries the tutor's four tools, each with a schema the model can be
+        # carries the tutor's tools, each with a schema the model can be
         # given. An empty list is the pre-tutor behaviour and would pass every
         # other test in the suite.
         boot = await api.get(f"/api/worker/assistant-sessions/{session_id}", headers=_worker_headers())

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, desc, select
+from sqlalchemy import delete, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.tutor_memory.models import DebriefSummary, LearningEvent, TutorNote
@@ -166,6 +166,17 @@ async def add_debrief_summary(
 async def debrief_summary_for_attempt(session: AsyncSession, attempt_id: uuid.UUID) -> DebriefSummary | None:
     stmt = select(DebriefSummary).where(DebriefSummary.attempt_id == attempt_id)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def set_action_plan(session: AsyncSession, summary_id: uuid.UUID, plan: list[Any]) -> None:
+    """Replace one debrief's action plan.
+
+    A whole-column write rather than JSON surgery: the plan is a handful of
+    items, read and rewritten inside one transaction.
+    """
+    await session.execute(
+        update(DebriefSummary).where(DebriefSummary.id == summary_id).values(action_plan=plan)
+    )
 
 
 async def recent_debrief_summaries(
