@@ -23,11 +23,12 @@ dependencies = [
     "httpx (>=0.28,<0.29)",
     "email-validator (>=2.2,<3)",
     # The assessment engine. `make engine-dev` installs it editable from the
-    # sibling checkout for local work; a deployment wants the tag instead.
-    # Uncomment once `engine-v0.7.0` is pushed (E-1). 0.7.0 is the version that
-    # stopped shipping frameworks: a rubric is authored and travels with the
-    # attempt, so an older engine cannot mark anything this backend produces.
-    #   "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.7.0#subdirectory=packages/osce_assessment",
+    # sibling checkout for local work; a deployment wants the tag, which is
+    # this (E-1, closed). 0.7.0 is the version that stopped shipping
+    # frameworks — a rubric is authored and travels with the attempt, so an
+    # older engine cannot mark anything this backend produces — and the one
+    # that added the dashboard tutor's prompt.
+    "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.7.0#subdirectory=packages/osce_assessment",
     "python-multipart (>=0.0.18,<0.0.21)",
 ]
 
