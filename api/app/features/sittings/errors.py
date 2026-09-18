@@ -50,11 +50,17 @@ from app.features.rubrics.errors import (  # noqa: E402
 )
 from app.features.stations.errors import TemplateNotPublishedError  # noqa: E402
 
+# Putting a patient into a room is `voice`'s job, so its refusal is this
+# slice's vocabulary too: every route that starts or resumes a station can
+# answer with it.
+from app.features.voice.errors import VoiceUnavailable  # noqa: E402
+
 __all__ = [
     "FeedbackTemplateNotPublished",
     "TemplateNotPublishedError",
     "TemplateVersionNotFound",
     "TraineeRevokedError",
+    "VoiceUnavailable",
 ]
 
 
@@ -63,3 +69,39 @@ class CircuitNotStarted(Conflict):
 
     code = "circuit_not_started"
     default_message = "Start the circuit before dispatching an agent"
+
+
+class CircuitNotLive(Conflict):
+    """Not started, or already over. Nothing may be done to it and nobody may join."""
+
+    code = "circuit_not_live"
+    default_message = "That circuit is not running"
+
+
+class CircuitPausedError(Conflict):
+    code = "circuit_paused"
+    default_message = "The clock is stopped; resume it first"
+
+
+class CircuitNotPausedError(Conflict):
+    code = "circuit_not_paused"
+    default_message = "The clock is running; there is nothing to resume"
+
+
+class NoActiveStation(Conflict):
+    """Asked to act on the station in progress when there is not one.
+
+    A circuit on a break has no station, which is the case this exists for:
+    "send the patient in again" during a break would otherwise dispatch into a
+    room where nobody is due.
+    """
+
+    code = "no_active_station"
+    default_message = "No station is in progress"
+
+
+# What "you cannot do that to this circuit" can mean, as one tuple: every
+# route that acts on a live examination declares the same three, and three
+# spellings of one list is how a route ends up advertising a code it cannot
+# raise.
+LIVE_CIRCUIT_REFUSALS = (CircuitNotFound, CircuitNotLive)

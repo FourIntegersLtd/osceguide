@@ -140,9 +140,17 @@ class VoiceTokens(Protocol):
         agent_name: str | None,
         dispatch_metadata: dict[str, str] | None,
         room_admin: bool = False,
+        can_publish: bool = True,
         ttl_seconds: int = 3600,
     ) -> str:
-        """Return a signed join token."""
+        """Return a signed join token.
+
+        `can_publish=False` is an examiner watching a station: they hear the
+        consultation and cannot be heard in it. Enforced in the token rather
+        than by hiding a button, because a muted microphone is a UI state and
+        this has to be a guarantee — a candidate must not be able to be
+        prompted, and the transcript must stay theirs.
+        """
         ...
 
 

@@ -27,6 +27,9 @@ dashboard makes five, four of which exist only to produce a count.
   turn to join.
 - As a **GP lead**, I see how an examination's candidates compare, so I know
   who to review first.
+- As a **course lead on exam day**, I see every circuit running in my
+  organisation at once — whose station is live, how long is left, how many are
+  done, and what has gone wrong — without walking between rooms.
 
 ## Aggregates & invariants
 None, deliberately. This slice owns no tables and has no `domain.py`: a
@@ -48,6 +51,8 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report` | org admin | per candidate: stations sat, marking, reviewers' combined RAG, decision state; `sitting_not_found` (404) |
 | GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cohort` | org member | the sitting's candidates ranked on their effective scores, completion before score; `not_an_exam_sitting` (422) for a training sitting |
 | GET | `/api/v1/me/sittings/stream` | bearer or `?ticket=` | the same payload, pushed (SSE) |
+| GET | `/api/v1/orgs/{org_slug}/live` | org staff | every circuit running now, with its clock, its progress and its alerts |
+| GET | `/api/v1/orgs/{org_slug}/live/stream` | org staff | the same payload, pushed (SSE) |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream` | org member | the same payload, pushed (SSE) |
 
 ## Jobs
@@ -55,12 +60,25 @@ None. Anything expensive enough to need caching belongs behind Redis here rather
 than in the callers.
 
 ## Streaming
-Two of these read models are also served as server-sent events (ADR 0015). A
+Three of these read models are also served as server-sent events (ADR 0015). A
 frame carries the whole read model, identical to the `GET`, so a client renders
 a stream and a poll with the same code and can be switched between them one
 screen at a time. Circuit changes are announced after the commit — to the
 circuit's topic for the console, and to each rostered trainee's topic for the
 portal, since a trainee may not read a circuit directly.
+
+The exam-day board subscribes to the **organisation's** topic rather than to
+each circuit: an admin watching twelve candidates would otherwise hold twelve
+streams, and would miss a thirteenth circuit starting.
+
+Frames are pushed when something changes, not on a tick. A client counts down
+from `phase_ends_at` between them rather than waiting to be told the time — the
+elapsed and remaining figures in a frame are computed against the server's clock
+so the first render is right, not so the page can be driven by them.
+
+The board is `OrgStaff`, not `OrgReader`: it names every candidate and how each
+is doing, which is not a thing a candidate may read about the people sitting
+beside them.
 
 A browser authenticates with a stream ticket (`POST /api/v1/auth/stream-ticket`)
 because `EventSource` cannot send a header; see `core.streams` for why that is

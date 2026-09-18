@@ -25,6 +25,14 @@ class FakeClock:
     def advance(self, seconds: float) -> None:
         self._now = self._now + timedelta(seconds=seconds)
 
+    def set(self, now: datetime) -> None:
+        """Move to a moment, rather than by an interval.
+
+        A test about a deadline reads better as "an hour later" than as a sum
+        of every step that got there.
+        """
+        self._now = now
+
 
 @dataclass(frozen=True)
 class SentEmail:
@@ -117,6 +125,7 @@ class FakeVoiceTokens:
         agent_name: str | None,
         dispatch_metadata: dict[str, str] | None,
         room_admin: bool = False,
+        can_publish: bool = True,
         ttl_seconds: int = 3600,
     ) -> str:
         self.issued.append(
@@ -126,6 +135,7 @@ class FakeVoiceTokens:
                 "agent_name": agent_name,
                 "dispatch_metadata": dispatch_metadata,
                 "room_admin": room_admin,
+                "can_publish": can_publish,
                 "ttl_seconds": ttl_seconds,
             }
         )

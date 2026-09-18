@@ -1,97 +1,36 @@
-"""What another slice may ask about sittings in bulk.
+"""The queries `dashboard` asks of this slice, filling the shapes next door.
 
-The projections themselves live in `dashboard`; this is the part of them that
-only this slice can answer, returned as plain dataclasses. A read model that
-reached into `sittings`' tables for a supervisor's circuits would become a
-second owner of them, and the tenant scoping would have two homes.
+Split from `reads_types.py` at the file cap, at the seam that was already
+there: the dataclasses are the contract another slice reads, and these are the
+queries that fill them.
 """
 
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.sittings import repository, repository_reads
+from app.features.sittings import (
+    domain,
+    domain_alerts,
+    domain_run,
+    repository,
+    repository_reads,
+    repository_run,
+)
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import timing_read
-from app.features.sittings.schemas import TimingRead
 
-
-@dataclass(frozen=True)
-class SittingRef:
-    """A sitting as a line on somebody else's screen."""
-
-    id: uuid.UUID
-    org_id: uuid.UUID
-    name: str
-    mode: str
-    sitting_type: str
-    status: str
-    scheduled_for: datetime | None
-    feedback_template_version_id: uuid.UUID
-
-
-@dataclass(frozen=True)
-class CircuitRef:
-    id: uuid.UUID
-    sitting_id: uuid.UUID
-    name: str
-    supervisor_user_id: uuid.UUID | None
-    # Already resolved to the defaults a circuit runs with, so a caller does
-    # not re-implement the clamping this slice owns.
-    timing: TimingRead
-    active_slot_id: uuid.UUID | None
-    room_name: str | None
-    agent_dispatched_at: datetime | None
-    started_at: datetime | None
-    ended_at: datetime | None
-
-
-@dataclass(frozen=True)
-class SlotRef:
-    id: uuid.UUID
-    circuit_id: uuid.UUID
-    slot_index: int
-    trainee_id: uuid.UUID
-    station_version_id: uuid.UUID
-    status: str
-    room_name: str | None
-    started_at: datetime | None
-    ended_at: datetime | None
-    exam_completed_at: datetime | None
-    phase: str | None = None
-    phase_started_at: datetime | None = None
-    phase_ends_at: datetime | None = None
-
-
-@dataclass(frozen=True)
-class SupervisorCircuit:
-    """One row of "circuits assigned to me"."""
-
-    circuit: CircuitRef
-    sitting: SittingRef
-    slot_count: int
-
-
-@dataclass(frozen=True)
-class CircuitDetail:
-    """Everything one console screen needs from this slice."""
-
-    circuit: CircuitRef
-    sitting: SittingRef
-    slots: list[SlotRef] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class TraineeSlot:
-    """A slot a trainee is rostered onto, with the sitting it belongs to."""
-
-    slot: SlotRef
-    circuit: CircuitRef
-    sitting: SittingRef
+# Re-exported: a caller asks this module for a circuit and is handed a
+# `CircuitRef`, so it should not have to know which file the dataclass is in.
+from app.features.sittings.reads_types import CircuitDetail as CircuitDetail
+from app.features.sittings.reads_types import CircuitRef as CircuitRef
+from app.features.sittings.reads_types import SittingDetail as SittingDetail
+from app.features.sittings.reads_types import SittingRef as SittingRef
+from app.features.sittings.reads_types import SlotRef as SlotRef
+from app.features.sittings.reads_types import SupervisorCircuit as SupervisorCircuit
+from app.features.sittings.reads_types import TraineeSlot as TraineeSlot
 
 
 def _sitting_ref(row: Sitting) -> SittingRef:
@@ -119,6 +58,13 @@ def _circuit_ref(row: Circuit) -> CircuitRef:
         agent_dispatched_at=row.agent_dispatched_at,
         started_at=row.started_at,
         ended_at=row.ended_at,
+        phase=row.phase,
+        phase_started_at=row.phase_started_at,
+        phase_ends_at=row.phase_ends_at,
+        phase_seq=row.phase_seq,
+        paused_at=row.paused_at,
+        paused_seconds=row.paused_seconds,
+        auto_advance=row.auto_advance,
     )
 
 
@@ -134,9 +80,6 @@ def _slot_ref(row: Slot) -> SlotRef:
         started_at=row.started_at,
         ended_at=row.ended_at,
         exam_completed_at=row.exam_completed_at,
-        phase=row.phase,
-        phase_started_at=row.phase_started_at,
-        phase_ends_at=row.phase_ends_at,
     )
 
 
@@ -191,14 +134,6 @@ async def slots_for_trainee(session: AsyncSession, trainee_user_id: uuid.UUID) -
     ]
 
 
-@dataclass(frozen=True)
-class SittingDetail:
-    """A sitting with every circuit and slot, for a report over all of it."""
-
-    sitting: SittingRef
-    circuits: list[CircuitDetail] = field(default_factory=list)
-
-
 async def sitting_detail(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> SittingDetail | None:
@@ -231,3 +166,31 @@ async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id
     cohort would be a cohort of one.
     """
     return [_slot_ref(row) for row in await repository_reads.slots_for_sitting(session, org_id, sitting_id)]
+
+
+async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[CircuitDetail]:
+    """Every circuit this organisation currently has running, with its slots.
+
+    The exam-day board's question. Asked of this slice rather than answered by
+    reading its tables, so the tenant scoping stays in one place.
+    """
+    details = []
+    for circuit, sitting in await repository_run.live_circuits_for_org(session, org_id):
+        slots = await repository.slots_for_circuit(session, org_id, circuit.id)
+        details.append(
+            CircuitDetail(
+                circuit=_circuit_ref(circuit),
+                sitting=_sitting_ref(sitting),
+                slots=[_slot_ref(s) for s in slots],
+            )
+        )
+    return details
+
+
+# The clock arithmetic and the alerts, re-exported so `dashboard` can compute a
+# board without importing this slice's domain: a slice reaches another through
+# its service, and these are part of what this one knows.
+alerts_for = domain_alerts.alerts_for
+elapsed_seconds = domain_run.elapsed_seconds
+remaining_seconds = domain_run.remaining_seconds
+FINISHED_SLOT_STATUSES = frozenset(str(s) for s in domain.FINISHED_SLOT_STATUSES)

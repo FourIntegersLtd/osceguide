@@ -22,6 +22,7 @@ class LiveKitTokens:
         agent_name: str | None,
         dispatch_metadata: dict[str, str] | None,
         room_admin: bool = False,
+        can_publish: bool = True,
         ttl_seconds: int = 3600,
     ) -> str:
         import json
@@ -45,7 +46,7 @@ class LiveKitTokens:
                 api.VideoGrants(
                     room_join=True,
                     room=room,
-                    can_publish=True,
+                    can_publish=can_publish,
                     can_subscribe=True,
                     room_admin=room_admin,
                 )

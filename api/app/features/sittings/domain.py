@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
@@ -36,6 +35,27 @@ BREAK_BOUNDS = (1, 60)
 class Mode(StrEnum):
     TRAINING = "training"
     EXAM = "exam"
+
+
+class SlotStatus(StrEnum):
+    """Where one trainee's station has got to.
+
+    Written by nothing until the circuit learnt to run itself, while four read
+    models displayed it — so a finished station kept offering a join button.
+    `SKIPPED` is a station the circuit moved past: jumped over, or left unsat
+    when the examination was ended early. It is not `COMPLETED`, because
+    nothing was recorded, and it is not `SCHEDULED`, because it is not coming.
+    """
+
+    SCHEDULED = "scheduled"
+    READING = "reading"
+    IN_CONSULTATION = "in_consultation"
+    COMPLETED = "completed"
+    SKIPPED = "skipped"
+
+
+# A station that will not be sat again, whichever way it ended.
+FINISHED_SLOT_STATUSES = frozenset({SlotStatus.COMPLETED, SlotStatus.SKIPPED})
 
 
 class InvalidCircuit(Exception):
@@ -81,29 +101,6 @@ class Timing:
     # one down and the circuit had no way to know when it was over.
     break_minutes: int = DEFAULT_BREAK_MINUTES
     breaks: tuple[Break, ...] = ()
-
-
-class Phase(StrEnum):
-    """Where a slot is in its station: reading the brief, or in the consultation."""
-
-    READING = "reading"
-    SIMULATION = "simulation"
-
-
-def phase_window(
-    phase: Phase, *, reading_minutes: int, simulation_minutes: int, now: datetime
-) -> tuple[datetime, datetime]:
-    """When a phase that starts now ends (D-6).
-
-    The clock is the server's: the phase and its end are written on the slot
-    when a supervisor moves the turn or dispatches the patient, and every
-    screen reads the same deadline. It used to be the supervisor's browser,
-    lost on refresh and never shown to the candidate.
-    """
-    minutes = reading_minutes if phase is Phase.READING else simulation_minutes
-    if minutes <= 0:
-        raise InvalidCircuit("A phase needs a positive duration.")
-    return now, now + timedelta(minutes=minutes)
 
 
 def build_slots(mode: Mode, *, trainees: Sequence[str], stations: Sequence[str]) -> list[PlannedSlot]:
@@ -180,13 +177,6 @@ def ensure_live(state: CircuitState) -> None:
     """
     if state.ended:
         raise CircuitAlreadyEnded("That circuit has already finished.")
-
-
-def ensure_can_switch_turn(mode: Mode) -> None:
-    if mode is not Mode.TRAINING:
-        raise NotPermittedInMode(
-            "Only a training circuit has a turn to switch; in an exam each candidate runs their own."
-        )
 
 
 def ensure_can_append_trainees(mode: Mode) -> None:

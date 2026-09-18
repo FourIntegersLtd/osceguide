@@ -10,9 +10,14 @@ Replaces near-identical copies in both backends: `livekit_agent_routing.py` and
 modules sharing one Redis key.
 
 ## Use cases
-- As a **candidate**, I get a token that joins me to my attempt's room with the
-  right worker waiting.
-- As a **supervisor**, I get a room-admin token so I can observe a circuit.
+- As a **candidate practising alone**, I get a token that joins me to my
+  attempt's room with the right worker waiting.
+- As a **candidate in an examination**, I get a token for the circuit's room
+  with no worker attached: the circuit dispatches the patient, not my token.
+- As an **examiner**, I get a token that lets me hear a consultation and not be
+  heard in it.
+- As a **circuit**, I put a patient into a room that is already up, and take it
+  out again when the station ends.
 - As the **platform**, I overflow to our own workers when Cloud concurrency is full.
 
 ## Aggregates & invariants
@@ -30,6 +35,13 @@ Owns no tables. The decisions are pure and live in `domain.py`.
   cannot become a second, drifting copy of the attempt.
 - A token is issued only for an attempt the caller owns and which has not
   finished.
+- **An `exam_slot` token carries no dispatch.** The consumer path attaches one
+  to the candidate's own token, because there is nobody else to bring the
+  patient; a circuit has an orchestrator that does it. Attaching one here put a
+  second patient in the room beside the first, and both answered.
+- **`can_publish=False` is a guarantee, not a UI state.** An examiner's token
+  cannot publish audio at all, so a candidate cannot be prompted and the
+  transcript stays a record of what they said to the patient.
 - The room is derived from the attempt id, so a stray room says which attempt
   it belongs to.
 
@@ -37,6 +49,10 @@ Owns no tables. The decisions are pure and live in `domain.py`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/attempts/{id}/voice-token` | owner | `attempt_not_joinable` (409), `voice_unavailable` (503) |
+
+`grant_for_room` has no route of its own: it is how `sittings` mints the
+candidate's and the examiner's tokens for a circuit's room, which are served
+from that slice because being on the circuit is what grants them.
 
 ## Jobs
 None.

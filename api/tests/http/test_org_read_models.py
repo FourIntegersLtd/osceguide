@@ -371,12 +371,15 @@ async def test_my_sittings_needs_a_token(client: AsyncClient) -> None:
 # --- joining, and the clock ----------------------------------------------------
 
 
-async def test_a_dispatch_hands_the_candidate_their_attempt_and_the_clock(
+async def test_the_portal_follows_the_circuit_through_its_phases(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """The voice token is per attempt and the dispatch creates it, so the portal
-    has to say which one is the candidate's. And the consultation clock is the
-    server's now (D-6): dispatch stamps `simulation` and when it ends."""
+    """The portal has to say which attempt is the candidate's, and where the
+    clock is: the voice token is per attempt, and the clock is the circuit's.
+
+    A candidate is in one room for the whole examination and watches the phase
+    change around them, rather than waiting for a join button per station.
+    """
     from datetime import datetime
 
     from app.features.voice.service import get_room_agents, get_voice_tokens
@@ -386,6 +389,7 @@ async def test_a_dispatch_hands_the_candidate_their_attempt_and_the_clock(
     sitting = await a_sitting(client, admin, "kings", mode="training")
     station = await published_station(client, admin, "kings", "Chest pain")
     client._transport.app.dependency_overrides[get_voice_tokens] = lambda: FakeVoiceTokens()  # type: ignore[attr-defined]
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
     candidate = await make_actor(
         "me@example.com",
         memberships=(Membership(org_id=org_id, org_slug="kings", role="trainee"),),
@@ -401,23 +405,22 @@ async def test_a_dispatch_hands_the_candidate_their_attempt_and_the_clock(
         station_version_ids=[station],
     )
     await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
-    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
 
-    before = (await client.get("/api/v1/me/sittings", headers=bearer(candidate))).json()["items"][0]["slots"][
-        0
-    ]
-    assert before["attempt_id"] is None
-    assert before["phase"] is None
+    # Starting puts them straight into the reading period: there is no separate
+    # act of calling the first candidate forward any more.
+    before = (await client.get("/api/v1/me/sittings", headers=bearer(candidate))).json()["items"][0]
+    assert before["phase"] == "reading"
+    assert before["can_join"] is True, "the room is open before the patient arrives"
+    assert before["slots"][0]["attempt_id"] is None
 
-    dispatched = await client.post(
-        f"/api/v1/orgs/kings/circuits/{circuit['id']}/dispatch-agent",
-        json={"slot_id": before["id"]},
-        headers=bearer(admin),
+    advanced = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}/advance", json={}, headers=bearer(admin)
     )
-    assert dispatched.status_code == 200, dispatched.text
+    assert advanced.status_code == 200, advanced.text
 
-    mine = (await client.get("/api/v1/me/sittings", headers=bearer(candidate))).json()["items"][0]["slots"][0]
-    assert mine["attempt_id"] == dispatched.json()["attempt_id"]
+    mine = (await client.get("/api/v1/me/sittings", headers=bearer(candidate))).json()["items"][0]
+    slot = mine["slots"][0]
+    assert slot["attempt_id"] is not None
     assert mine["phase"] == "simulation"
     started = datetime.fromisoformat(mine["phase_started_at"])
     ends = datetime.fromisoformat(mine["phase_ends_at"])
@@ -425,71 +428,35 @@ async def test_a_dispatch_hands_the_candidate_their_attempt_and_the_clock(
         await client.get(f"/api/v1/orgs/kings/circuits/{circuit['id']}/console", headers=bearer(admin))
     ).json()
     assert (ends - started).total_seconds() == console["circuit"]["timing"]["simulation_minutes"] * 60
-    assert console["slots"][0]["attempt_id"] == mine["attempt_id"]
+    assert console["slots"][0]["attempt_id"] == slot["attempt_id"]
     assert console["slots"][0]["phase"] == "simulation"
+    assert console["circuit"]["phase"] == "simulation"
 
-    # The candidate can now ask for the room, because the attempt is theirs.
-    token = await client.post(f"/api/v1/attempts/{mine['attempt_id']}/voice-token", headers=bearer(candidate))
+    # The candidate can ask for the room by the circuit, without naming an
+    # attempt or an organisation at all.
+    token = await client.post(f"/api/v1/me/circuits/{circuit['id']}/join-token", headers=bearer(candidate))
     assert token.status_code == 200, token.text
 
-    # Ending the consultation takes the clock off the slot; the attempt stays.
-    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end-consultation", headers=bearer(admin))
-    after = (await client.get("/api/v1/me/sittings", headers=bearer(candidate))).json()["items"][0]["slots"][
-        0
-    ]
+    # It was the only station, so the consultation ending ends the circuit and
+    # the clock comes off with it.
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/advance", json={}, headers=bearer(admin))
+    after = (await client.get("/api/v1/me/sittings", headers=bearer(candidate))).json()["items"][0]
     assert after["phase"] is None
-    assert after["attempt_id"] == mine["attempt_id"]
+    assert after["live"] is False
+    # The recording survives the circuit it was made in: it is what gets marked.
+    assert after["slots"][0]["attempt_id"] == slot["attempt_id"]
 
 
-async def test_switching_the_turn_starts_the_reading_clock(
+async def test_the_clock_moves_between_stations_without_anybody_switching_it(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    from datetime import datetime
+    """What `switch-turn` and `dispatch-agent` used to do by hand, in order.
 
-    org_id, admin = await org_with_admin(client, make_actor)
-    sitting = await a_sitting(client, admin, "kings", mode="training")
-    stations = [
-        await published_station(client, admin, "kings", "S1"),
-        await published_station(client, admin, "kings", "S2"),
-    ]
-    trainees = [str(await a_user(db_session, f"t{i}@example.com")) for i in (1, 2)]
-    circuit = await a_circuit(
-        client, admin, "kings", sitting_id=sitting["id"], trainee_ids=trainees, station_version_ids=stations
-    )
-    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
-    slots = circuit["slots"]
-
-    first = await client.post(
-        f"/api/v1/orgs/kings/circuits/{circuit['id']}/switch-turn",
-        json={"slot_id": slots[0]["id"]},
-        headers=bearer(admin),
-    )
-    assert first.status_code == 200, first.text
-    slot = next(s for s in first.json()["slots"] if s["id"] == slots[0]["id"])
-    assert slot["phase"] == "reading"
-    window = datetime.fromisoformat(slot["phase_ends_at"]) - datetime.fromisoformat(slot["phase_started_at"])
-    assert window.total_seconds() == first.json()["timing"]["reading_minutes"] * 60
-
-    # Moving on takes the clock off the previous slot.
-    second = await client.post(
-        f"/api/v1/orgs/kings/circuits/{circuit['id']}/switch-turn",
-        json={"slot_id": slots[1]["id"]},
-        headers=bearer(admin),
-    )
-    by_id = {s["id"]: s for s in second.json()["slots"]}
-    assert by_id[slots[0]["id"]]["phase"] is None
-    assert by_id[slots[1]["id"]]["phase"] == "reading"
-
-    ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
-    assert all(s["phase"] is None for s in ended.json()["slots"])
-
-
-async def test_dispatching_another_slot_takes_the_clock_off_the_previous_one(
-    client: AsyncClient, make_actor, db_session: AsyncSession
-) -> None:  # type: ignore[no-untyped-def]
-    """A supervisor who dispatches straight to the next candidate, without
-    switching the turn first, must not leave the previous candidate's reading
-    clock running: two screens would then show two deadlines."""
+    Two things had to be true of those and remain true of this: one candidate
+    holds the clock at a time, and the one who had it loses it. Two screens
+    showing two deadlines is the failure, and it is the reason the clock moved
+    onto the circuit — with one row holding it, it cannot happen at all.
+    """
     from app.features.voice.service import get_room_agents
     from tests.support.fakes import FakeRoomAgents
 
@@ -503,28 +470,31 @@ async def test_dispatching_another_slot_takes_the_clock_off_the_previous_one(
     circuit = await a_circuit(
         client, admin, "kings", sitting_id=sitting["id"], trainee_ids=trainees, station_version_ids=stations
     )
-    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
     client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
     slots = circuit["slots"]
 
-    switched = await client.post(
-        f"/api/v1/orgs/kings/circuits/{circuit['id']}/switch-turn",
-        json={"slot_id": slots[0]["id"]},
-        headers=bearer(admin),
-    )
-    assert switched.status_code == 200, switched.text
+    def console_slots(payload: dict) -> dict:  # type: ignore[type-arg]
+        return {s["id"]: s for s in payload["slots"]}
 
-    dispatched = await client.post(
-        f"/api/v1/orgs/kings/circuits/{circuit['id']}/dispatch-agent",
-        json={"slot_id": slots[1]["id"]},
-        headers=bearer(admin),
-    )
-    assert dispatched.status_code == 200, dispatched.text
+    first = (
+        await client.get(f"/api/v1/orgs/kings/circuits/{circuit['id']}/console", headers=bearer(admin))
+    ).json()
+    assert console_slots(first)[slots[0]["id"]]["phase"] == "reading"
+    assert console_slots(first)[slots[1]["id"]]["phase"] is None
+
+    url = f"/api/v1/orgs/kings/circuits/{circuit['id']}/advance"
+    await client.post(url, json={}, headers=bearer(admin))  # into the consultation
+    await client.post(url, json={}, headers=bearer(admin))  # on to the next station
 
     console = (
         await client.get(f"/api/v1/orgs/kings/circuits/{circuit['id']}/console", headers=bearer(admin))
     ).json()
-    by_id = {s["id"]: s for s in console["slots"]}
-    assert by_id[slots[0]["id"]]["phase"] is None
-    assert by_id[slots[1]["id"]]["phase"] == "simulation"
+    by_id = console_slots(console)
+    assert by_id[slots[0]["id"]]["phase"] is None, "the clock left with them"
+    assert by_id[slots[0]["id"]]["status"] == "completed"
+    assert by_id[slots[1]["id"]]["phase"] == "reading"
     assert console["circuit"]["active_slot_id"] == slots[1]["id"]
+
+    ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
+    assert all(s["phase"] is None for s in ended.json()["slots"])

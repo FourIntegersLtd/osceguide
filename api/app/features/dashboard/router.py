@@ -15,7 +15,12 @@ from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.core.tenancy import OrgAdmin, OrgReader, may_read_org_policy, resolve_workspace
+from app.core.tenancy import (
+    OrgAdmin,
+    OrgReader,
+    may_read_org_policy,
+    resolve_workspace,
+)
 from app.features.dashboard import (
     errors,
     schemas,
@@ -23,6 +28,7 @@ from app.features.dashboard import (
     schemas_report,
     service,
     service_cohort,
+    service_console,
     service_org,
     service_report,
     service_streams,
@@ -54,7 +60,9 @@ async def read_dashboard(principal: CurrentPrincipal, session: Session, clock: C
     response_model=schemas.MySittings,
     responses=error_responses(Unauthenticated),
 )
-async def read_my_sittings(principal: CurrentPrincipal, session: Session) -> schemas.MySittings:
+async def read_my_sittings(
+    principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.MySittings:
     """What a trainee is rostered onto, and whether it is their turn.
 
     The portal asks two endpoints every five seconds and joins them in the
@@ -65,6 +73,7 @@ async def read_my_sittings(principal: CurrentPrincipal, session: Session) -> sch
         session,
         principal.user_id,
         org_slugs={m.org_id: m.org_slug for m in principal.memberships},
+        now=clock.now(),
     )
 
 
@@ -98,14 +107,14 @@ async def read_supervisor_circuits(workspace: OrgReader, session: Session) -> sc
     responses=error_responses(Forbidden, errors.CircuitNotFound),
 )
 async def read_circuit_console(
-    circuit_id: uuid.UUID, workspace: OrgReader, session: Session
+    circuit_id: uuid.UUID, workspace: OrgReader, session: Session, clock: ClockDep
 ) -> schemas_org.CircuitConsole:
     """One request for the screen an examination is run from.
 
     Replaces a session read, a station list, a trainee list, a staff list and a
     feedback probe per slot — repeated every eight seconds while a circuit runs.
     """
-    return await service_org.build_console(session, workspace.org_id, circuit_id)
+    return await service_console.build_console(session, workspace.org_id, circuit_id, now=clock.now())
 
 
 @router.get(
@@ -153,6 +162,7 @@ async def stream_circuit_console(
     principal: StreamPrincipal,
     bus: Annotated[EventBus, Depends(get_event_bus)],
     open_session: SessionOpenerDep,
+    clock: ClockDep,
 ) -> StreamingResponse:
     """The console, pushed. The streaming form of the route above it.
 
@@ -167,7 +177,9 @@ async def stream_circuit_console(
     async with open_session() as session:
         workspace = await resolve_workspace(session, principal, org_slug, predicate=may_read_org_policy())
     return StreamingResponse(
-        service_streams.console_stream(workspace.org_id, circuit_id, bus=bus, open_session=open_session),
+        service_streams.console_stream(
+            workspace.org_id, circuit_id, bus=bus, open_session=open_session, clock=clock
+        ),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )
@@ -182,10 +194,11 @@ async def stream_my_sittings(
     principal: StreamPrincipal,
     bus: Annotated[EventBus, Depends(get_event_bus)],
     open_session: SessionOpenerDep,
+    clock: ClockDep,
 ) -> StreamingResponse:
     """The trainee portal, pushed. Replaces a five-second poll of two lists."""
     return StreamingResponse(
-        service_streams.my_sittings_stream(principal, bus=bus, open_session=open_session),
+        service_streams.my_sittings_stream(principal, bus=bus, open_session=open_session, clock=clock),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )

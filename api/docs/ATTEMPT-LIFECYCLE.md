@@ -131,13 +131,33 @@ decision is a different path entirely — `candidate_result_revisions`, signed o
 released — and a candidate sees that only through `GET /me/results/{sitting_id}`, only
 once released.
 
-## Variant — when a supervisor runs it
+## Variant — when it is an examination
 
-`POST /orgs/{slug}/circuits/{id}/dispatch-agent` replaces steps 1–2. The supervisor's
-dispatch creates the attempt and puts the agent into a room that is *already running*,
-rather than the candidate requesting a token for a room of their own. Stale agents are
-cleared first, and *each dispatch creates a new attempt* — which is what the partial
-unique index enforces: a slot may have at most one attempt that has not failed, so a
-re-dispatch fails the previous one rather than overwriting its recording.
+Steps 1–2 are replaced by the circuit's own clock (ADR 0018). Nobody asks for a
+token per station and nobody presses "send the patient in".
+
+The candidate joins the circuit's room once, at the start, with
+`POST /me/circuits/{id}/join-token` — a token with **no agent attached**, because
+the circuit brings the patient rather than the candidate's token carrying one.
+Attaching one here put a second patient in the room beside the first, and both
+answered as the patient.
+
+When the reading period ends, the transition scheduled for that moment fires and
+the consultation begins: the attempt is created and the agent is dispatched into
+the room, in one transaction. *Each dispatch creates a new attempt* — which is
+what the partial unique index enforces: a slot may have at most one attempt that
+has not failed, so sending the patient again fails the previous one rather than
+overwriting its recording.
+
+When the consultation's own deadline passes, the next transition removes the
+agent. **That is how the recording ends.** The worker has no timer — it ends on
+the candidate leaving, the room closing, or being removed — and on its way out it
+posts the full transcript, which queues the marking. So the bell ringing and the
+recording being delivered are the same act.
+
+Two overrides create a second attempt: `resend-patient`, when the patient did not
+arrive, and `redo-station`, when the station has to be given back. Both fail the
+live attempt rather than deleting it, so what happened the first time survives
+beside the retry.
 
 From step 3 onward the flow is identical.

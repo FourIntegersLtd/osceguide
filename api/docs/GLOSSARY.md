@@ -62,8 +62,14 @@ There is no separate employer product — an exam is a **mode** on a sitting.
 | circuit | One run of stations inside a sitting: candidates rotating through stations, one supervisor, one room. |
 | slot | **One trainee at one station.** Sat once. Carries no transcript and no feedback — those live on the attempt, which is what lets a re-dispatch keep the first recording. |
 | supervisor | The staff member running a circuit live. An ordinary org member, not an admin. |
-| dispatch | Sending the AI patient into the room. Each dispatch clears stale agents and creates a **new** attempt. |
-| switch turn | Advancing to the next slot, under a row lock. |
+| dispatch | Putting the AI patient into the room. Each dispatch clears stale agents and creates a **new** attempt. Done by the circuit when a consultation starts, not by a person. |
+| phase | What a circuit is counting down: `reading`, `simulation` or `break`. It belongs to the **circuit**, not the slot — a break belongs to no station. |
+| advance | Move the circuit on one step. The clock does this by itself; a supervisor can do it early. It replaced "switch turn", which only a training circuit could do. |
+| jump to | Move to a station out of order. Stations passed over are marked `skipped`. Allowed in an examination, which switching the turn was not. |
+| intervention | One recorded override of a running circuit: who did it, what, and why. |
+| observer | An examiner in a candidate's room on a subscribe-only token: they hear the consultation and cannot be heard in it. Not a role — it is what a `supervisor` gets. |
+| live board | The exam-day screen: every circuit an organisation has running, with its clock, its progress and its alerts. |
+| auto advance | Whether the circuit acts on its own clock. Off hands it to a person; the countdown still runs. |
 | edit lock | Whether a circuit's structure may still be changed, and why not. |
 | append trainees | Adding latecomers into a circuit already running. |
 | station set | A learner's **own** collection of stations, with attempt counters. The counters are why a set is not a circuit: a set entry can be re-run, a slot cannot. |

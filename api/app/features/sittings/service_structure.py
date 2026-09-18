@@ -142,6 +142,7 @@ async def rebuild_circuit(
                 {
                     "reading_minutes": timing.reading_minutes,
                     "simulation_minutes": timing.simulation_minutes,
+                    "break_minutes": timing.break_minutes,
                     "breaks": [{"after_station": b} for b in timing.breaks],
                 },
                 mode=mode,

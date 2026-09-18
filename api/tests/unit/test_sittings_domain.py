@@ -89,14 +89,6 @@ def test_force_overrides_the_lock() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_switching_turn_is_training_only() -> None:
-    """Oracle: circuit_control.py:173. In an exam each candidate runs their own
-    circuit, so there is no turn to switch."""
-    domain.ensure_can_switch_turn(Mode.TRAINING)
-    with pytest.raises(domain.NotPermittedInMode):
-        domain.ensure_can_switch_turn(Mode.EXAM)
-
-
 def test_appending_trainees_is_training_only() -> None:
     """Oracle: circuit_service.py:321."""
     domain.ensure_can_append_trainees(Mode.TRAINING)

@@ -16,8 +16,17 @@ FEATURE_TASKS = {
     "deliver_outbound_messages",
     "match_practice_queue",
     "suspend_lapsed_organizations",
+    # The examination bell. Unregistered, a circuit starts and never moves —
+    # which is the failure this whole file exists to make impossible.
+    "advance_circuit",
+    "sweep_circuits",
 }
-PERIODIC_TASKS = {"deliver_outbound_messages", "match_practice_queue", "suspend_lapsed_organizations"}
+PERIODIC_TASKS = {
+    "deliver_outbound_messages",
+    "match_practice_queue",
+    "suspend_lapsed_organizations",
+    "sweep_circuits",
+}
 
 
 def test_every_slice_task_is_registered_with_the_worker() -> None:

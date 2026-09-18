@@ -686,6 +686,11 @@
             ],
             "title": "Active Slot Id"
           },
+          "auto_advance": {
+            "default": true,
+            "title": "Auto Advance",
+            "type": "boolean"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -706,6 +711,63 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "paused": {
+            "default": false,
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_seq": {
+            "default": 0,
+            "title": "Phase Seq",
+            "type": "integer"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
           },
           "room_name": {
             "anyOf": [
@@ -985,6 +1047,18 @@
             "title": "Agent Dispatched",
             "type": "boolean"
           },
+          "alerts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "auto_advance": {
+            "default": true,
+            "title": "Auto Advance",
+            "type": "boolean"
+          },
           "edit_block": {
             "anyOf": [
               {
@@ -999,6 +1073,17 @@
           "editable": {
             "title": "Editable",
             "type": "boolean"
+          },
+          "elapsed_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Seconds"
           },
           "ended_at": {
             "anyOf": [
@@ -1020,6 +1105,74 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "paused": {
+            "default": false,
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "paused_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_seq": {
+            "default": 0,
+            "title": "Phase Seq",
+            "type": "integer"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
+          },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
           },
           "room_name": {
             "anyOf": [
@@ -1377,6 +1530,10 @@
       },
       "ConsoleTiming": {
         "properties": {
+          "break_minutes": {
+            "title": "Break Minutes",
+            "type": "integer"
+          },
           "breaks": {
             "items": {
               "type": "integer"
@@ -1395,41 +1552,10 @@
         },
         "required": [
           "reading_minutes",
-          "simulation_minutes"
+          "simulation_minutes",
+          "break_minutes"
         ],
         "title": "ConsoleTiming",
-        "type": "object"
-      },
-      "ConsultationEnded": {
-        "properties": {
-          "agents_removed": {
-            "title": "Agents Removed",
-            "type": "integer"
-          },
-          "circuit_id": {
-            "format": "uuid",
-            "title": "Circuit Id",
-            "type": "string"
-          },
-          "ended_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ended At"
-          }
-        },
-        "required": [
-          "circuit_id",
-          "agents_removed",
-          "ended_at"
-        ],
-        "title": "ConsultationEnded",
         "type": "object"
       },
       "CreateAttempt": {
@@ -2392,21 +2518,6 @@
         "title": "DecisionSummary",
         "type": "object"
       },
-      "DispatchAgent": {
-        "description": "Which slot the agent is being dispatched for.\n\nNamed rather than taken from `active_slot_id`, so dispatching and switching\nare separate decisions: a supervisor can re-dispatch the current station\nwithout the circuit's state having to be right first.",
-        "properties": {
-          "slot_id": {
-            "format": "uuid",
-            "title": "Slot Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "slot_id"
-        ],
-        "title": "DispatchAgent",
-        "type": "object"
-      },
       "DispatchResult": {
         "properties": {
           "agent_name": {
@@ -2706,7 +2817,10 @@
               "circuit_already_ended",
               "circuit_locked",
               "circuit_not_found",
+              "circuit_not_live",
+              "circuit_not_paused",
               "circuit_not_started",
+              "circuit_paused",
               "cohort_not_found",
               "conflict",
               "content_too_long",
@@ -2746,6 +2860,7 @@
               "media_not_found",
               "membership_exists",
               "membership_not_found",
+              "no_active_station",
               "not_a_member",
               "not_a_partner_reporter",
               "not_an_exam_sitting",
@@ -2967,6 +3082,33 @@
           "station_attempt_limit"
         ],
         "title": "ExamRead",
+        "type": "object"
+      },
+      "ExtendClock": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "seconds": {
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seconds"
+        ],
+        "title": "ExtendClock",
         "type": "object"
       },
       "FeedbackTemplateRead": {
@@ -3287,6 +3429,98 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "Intervention": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "circuit_id": {
+            "format": "uuid",
+            "title": "Circuit Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phase_seq_after": {
+            "title": "Phase Seq After",
+            "type": "integer"
+          },
+          "phase_seq_before": {
+            "title": "Phase Seq Before",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "slot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Id"
+          }
+        },
+        "required": [
+          "id",
+          "circuit_id",
+          "slot_id",
+          "actor_user_id",
+          "action",
+          "reason",
+          "phase_seq_before",
+          "phase_seq_after",
+          "at"
+        ],
+        "title": "Intervention",
+        "type": "object"
+      },
+      "Interventions": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Intervention"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "Interventions",
+        "type": "object"
+      },
       "JoinQueue": {
         "properties": {
           "audience": {
@@ -3351,6 +3585,277 @@
           "version"
         ],
         "title": "LibraryStationRead",
+        "type": "object"
+      },
+      "LiveBoard": {
+        "description": "Everything running in one organisation, in one request.\n\n`as_of` is the server time the numbers were computed against, so a client\ncan count down from the deadlines rather than waiting to be told again.",
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "circuits": {
+            "items": {
+              "$ref": "#/components/schemas/LiveCircuit"
+            },
+            "title": "Circuits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of"
+        ],
+        "title": "LiveBoard",
+        "type": "object"
+      },
+      "LiveCircuit": {
+        "description": "One examination in progress, as a row on the board.",
+        "properties": {
+          "alerts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
+          "attempt_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Status"
+          },
+          "auto_advance": {
+            "default": true,
+            "title": "Auto Advance",
+            "type": "boolean"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/LivePerson"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "circuit_id": {
+            "format": "uuid",
+            "title": "Circuit Id",
+            "type": "string"
+          },
+          "circuit_name": {
+            "title": "Circuit Name",
+            "type": "string"
+          },
+          "current_station": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveStation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elapsed_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Seconds"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "paused": {
+            "default": false,
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
+          },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "sitting_id": {
+            "format": "uuid",
+            "title": "Sitting Id",
+            "type": "string"
+          },
+          "sitting_name": {
+            "title": "Sitting Name",
+            "type": "string"
+          },
+          "stations_completed": {
+            "title": "Stations Completed",
+            "type": "integer"
+          },
+          "stations_total": {
+            "title": "Stations Total",
+            "type": "integer"
+          },
+          "supervisor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "circuit_id",
+          "circuit_name",
+          "sitting_id",
+          "sitting_name",
+          "mode",
+          "room_name",
+          "stations_total",
+          "stations_completed"
+        ],
+        "title": "LiveCircuit",
+        "type": "object"
+      },
+      "LivePerson": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "LivePerson",
+        "type": "object"
+      },
+      "LiveStation": {
+        "description": "The station a candidate is on now. Null when the circuit is on a break.",
+        "properties": {
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "slot_index": {
+            "title": "Slot Index",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "slot_id",
+          "slot_index"
+        ],
+        "title": "LiveStation",
         "type": "object"
       },
       "LoginRequest": {
@@ -3471,6 +3976,23 @@
       },
       "MySitting": {
         "properties": {
+          "active_slot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Slot Id"
+          },
+          "can_join": {
+            "default": false,
+            "title": "Can Join",
+            "type": "boolean"
+          },
           "circuit_id": {
             "format": "uuid",
             "title": "Circuit Id",
@@ -3484,6 +4006,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "live": {
+            "default": false,
+            "title": "Live",
+            "type": "boolean"
           },
           "mode": {
             "title": "Mode",
@@ -3508,6 +4035,57 @@
               }
             ],
             "title": "Org Slug"
+          },
+          "paused": {
+            "default": false,
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "phase_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Started At"
+          },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
           },
           "scheduled_for": {
             "anyOf": [
@@ -3604,6 +4182,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "is_active": {
+            "default": false,
+            "title": "Is Active",
+            "type": "boolean"
           },
           "joinable": {
             "title": "Joinable",
@@ -3888,6 +4471,25 @@
           "created_at"
         ],
         "title": "OrganizationRead",
+        "type": "object"
+      },
+      "Override": {
+        "description": "What every override may carry: why it was done.\n\nOptional, and free text, because the reasons are the ones nobody predicted\n\u2014 that is what an override is for. It is written to the record beside the\naction, so \"the clock was extended\" is answerable with \"because the fire\nalarm went\".",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "Override",
         "type": "object"
       },
       "Page_AssessmentResultRead_": {
@@ -5306,6 +5908,30 @@
         "title": "ResultAcknowledgement",
         "type": "object"
       },
+      "RoomGrant": {
+        "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none yet\nand the examiner never will, which is what separates this from the token\nissued against an attempt.\n\nThis slice's own shape rather than `voice`'s, even though the two agree\ntoday: a wire contract belongs to the routes that serve it, and sharing one\nis how two slices come to be unable to change it separately.",
+        "properties": {
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "server_url": {
+            "title": "Server Url",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "server_url",
+          "room"
+        ],
+        "title": "RoomGrant",
+        "type": "object"
+      },
       "RosterWarningRead": {
         "properties": {
           "code": {
@@ -5698,6 +6324,19 @@
           "created_at"
         ],
         "title": "SessionRead",
+        "type": "object"
+      },
+      "SetAutoAdvance": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SetAutoAdvance",
         "type": "object"
       },
       "SetGroupMembers": {
@@ -6224,6 +6863,32 @@
         "title": "StartedAttempt",
         "type": "object"
       },
+      "StationOverride": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot_id"
+        ],
+        "title": "StationOverride",
+        "type": "object"
+      },
       "StationRead": {
         "properties": {
           "content": {
@@ -6645,20 +7310,6 @@
         "title": "SupervisorCircuits",
         "type": "object"
       },
-      "SwitchTurn": {
-        "properties": {
-          "slot_id": {
-            "format": "uuid",
-            "title": "Slot Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "slot_id"
-        ],
-        "title": "SwitchTurn",
-        "type": "object"
-      },
       "SwitchWorkspace": {
         "properties": {
           "org_slug": {
@@ -6674,6 +7325,17 @@
       },
       "TimingIn": {
         "properties": {
+          "break_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Break Minutes"
+          },
           "breaks": {
             "items": {
               "type": "integer"
@@ -6709,6 +7371,10 @@
       },
       "TimingRead": {
         "properties": {
+          "break_minutes": {
+            "title": "Break Minutes",
+            "type": "integer"
+          },
           "breaks": {
             "items": {
               "type": "integer"
@@ -6727,7 +7393,8 @@
         },
         "required": [
           "reading_minutes",
-          "simulation_minutes"
+          "simulation_minutes",
+          "break_minutes"
         ],
         "title": "TimingRead",
         "type": "object"
@@ -10713,6 +11380,107 @@
         ]
       }
     },
+    "/api/v1/me/circuits/{circuit_id}/join-token": {
+      "post": {
+        "description": "A candidate's way in, at the start of the circuit rather than per station.\n\nBeing rostered onto the circuit is the permission, so this is not under an\norganisation's path: a candidate should not have to name their institution\nto sit its examination.",
+        "operationId": "sittings_join_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live",
+            "x-codes": [
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Join Token",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
     "/api/v1/me/dashboard": {
       "get": {
         "description": "One call for a screen that currently makes seven.\n\nA read model over several aggregates. \"Dashboard\" is not a domain concept \u2014\nnothing owns one and no rule is enforced about it \u2014 which is why this slice\nhas no tables and no domain module.",
@@ -12837,6 +13605,130 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/advance": {
+      "post": {
+        "description": "\"This phase is done.\" Whatever the clock was counting, move on.\n\nDeliberately not \"end the station\": during a reading period it brings the\npatient in, during a break it starts the next station. One button that\nalways means the same thing.",
+        "operationId": "sittings_advance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Override"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, circuit_paused",
+            "x-codes": [
+              "circuit_not_live",
+              "circuit_paused"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Advance",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/append-trainees": {
       "post": {
         "description": "Add people to a training circuit, into the room it is already using.",
@@ -12945,6 +13837,116 @@
           }
         ],
         "summary": "Append Trainees",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/auto-advance": {
+      "patch": {
+        "description": "Hand the circuit back to a human, or return it to the clock.",
+        "operationId": "sittings_set_auto_advance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoAdvance"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live",
+            "x-codes": [
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Auto Advance",
         "tags": [
           "sittings"
         ]
@@ -13150,118 +14152,6 @@
         ]
       }
     },
-    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/dispatch-agent": {
-      "post": {
-        "description": "Put an agent into the circuit's room for one station.",
-        "operationId": "sittings_dispatch_agent",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "circuit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Circuit Id",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DispatchAgent"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DispatchResult"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "circuit_not_found, slot_not_found",
-            "x-codes": [
-              "circuit_not_found",
-              "slot_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "circuit_already_ended, circuit_not_started",
-            "x-codes": [
-              "circuit_already_ended",
-              "circuit_not_started"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Dispatch Agent",
-        "tags": [
-          "sittings"
-        ]
-      }
-    },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/edit-lock": {
       "get": {
         "description": "Whether the slots may still be rebuilt, and why not.\n\nAsked rather than discovered: the console needs this before it offers an\nedit, not after somebody has typed one.",
@@ -13351,6 +14241,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/end": {
       "post": {
+        "description": "Stop the whole examination, wherever it had got to.",
         "operationId": "sittings_end_circuit",
         "parameters": [
           {
@@ -13422,6 +14313,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
           }
         },
         "security": [
@@ -13435,10 +14339,120 @@
         ]
       }
     },
-    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/end-consultation": {
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/extend-clock": {
       "post": {
-        "description": "Stop the station without ending the circuit: only the agent leaves.",
-        "operationId": "sittings_end_consultation",
+        "description": "Give this phase more time without restarting it.",
+        "operationId": "sittings_extend_clock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtendClock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live",
+            "x-codes": [
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extend Clock",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/interventions": {
+      "get": {
+        "description": "Everything a human did to this examination, and why.",
+        "operationId": "sittings_list_interventions",
         "parameters": [
           {
             "in": "path",
@@ -13467,7 +14481,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConsultationEnded"
+                  "$ref": "#/components/schemas/Interventions"
                 }
               }
             },
@@ -13516,7 +14530,813 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "End Consultation",
+        "summary": "List Interventions",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/jump-to": {
+      "post": {
+        "description": "Move to a station out of order. Stations passed over are marked skipped.",
+        "operationId": "sittings_jump_to",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StationOverride"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, invalid_circuit",
+            "x-codes": [
+              "circuit_not_live",
+              "invalid_circuit"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Jump To",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/observer-token": {
+      "post": {
+        "description": "An examiner's way into a candidate's room: they hear it, and cannot be heard.",
+        "operationId": "sittings_observer_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live",
+            "x-codes": [
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Observer Token",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/pause": {
+      "post": {
+        "description": "Stop the clock. Nothing advances until it is resumed.",
+        "operationId": "sittings_pause",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Override"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, circuit_paused",
+            "x-codes": [
+              "circuit_not_live",
+              "circuit_paused"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pause",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/redo-station": {
+      "post": {
+        "description": "Give a station back, from its reading period. The first recording survives.",
+        "operationId": "sittings_redo_station",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StationOverride"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live",
+            "x-codes": [
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Redo Station",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/resend-patient": {
+      "post": {
+        "description": "Put a fresh patient into the room, for the station already running.",
+        "operationId": "sittings_resend_patient",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Override"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found, slot_not_found",
+            "x-codes": [
+              "circuit_not_found",
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, no_active_station",
+            "x-codes": [
+              "circuit_not_live",
+              "no_active_station"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resend Patient",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/reset-clock": {
+      "post": {
+        "description": "Run this phase again from the top, for its full length.",
+        "operationId": "sittings_reset_clock",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Override"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live",
+            "x-codes": [
+              "circuit_not_live"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset Clock",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/resume": {
+      "post": {
+        "description": "Start the clock again, with the deadline pushed out by exactly the pause.",
+        "operationId": "sittings_resume",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Override"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_live, circuit_not_paused",
+            "x-codes": [
+              "circuit_not_live",
+              "circuit_not_paused"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resume",
         "tags": [
           "sittings"
         ]
@@ -13607,7 +15427,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/start": {
       "post": {
-        "description": "A supervisor runs the circuit they were assigned, so org membership is\nthe gate rather than admin rights.",
+        "description": "Open the room and start the first station's reading time.\n\nThe only manual act left in an examination: from here the clock carries it.",
         "operationId": "sittings_start_circuit",
         "parameters": [
           {
@@ -13700,117 +15520,6 @@
           }
         ],
         "summary": "Start Circuit",
-        "tags": [
-          "sittings"
-        ]
-      }
-    },
-    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/switch-turn": {
-      "post": {
-        "description": "Also starts the new slot's reading clock on the server (D-6).",
-        "operationId": "sittings_switch_turn",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "circuit_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Circuit Id",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SwitchTurn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CircuitRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "circuit_not_found, slot_not_found",
-            "x-codes": [
-              "circuit_not_found",
-              "slot_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "not_permitted_in_mode",
-            "x-codes": [
-              "not_permitted_in_mode"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Switch Turn",
         "tags": [
           "sittings"
         ]
@@ -15190,6 +16899,160 @@
         "summary": "Edit Feedback Template Version",
         "tags": [
           "rubrics"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/live": {
+      "get": {
+        "description": "Every examination this organisation has running, in one request.\n\nThe screen that did not exist: a course lead on the morning of an OSCE\ncould open one circuit's console, or a list of sittings that did not say\nwhich were live.",
+        "operationId": "dashboard_read_live_board",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveBoard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Live Board",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/live/stream": {
+      "get": {
+        "description": "The board, pushed. One subscription for the whole organisation.\n\nFrames arrive when something changes, not on a tick: a client counts down\nfrom `phase_ends_at` between them rather than being told the time.",
+        "operationId": "dashboard_stream_live_board",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A stream ticket from POST /auth/stream-ticket",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A stream ticket from POST /auth/stream-ticket",
+              "title": "Ticket"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveBoard"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `LiveBoard` each time the state changes, and `ping` every 25 seconds."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Live Board",
+        "tags": [
+          "dashboard"
         ]
       }
     },

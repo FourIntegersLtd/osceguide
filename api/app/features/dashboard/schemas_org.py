@@ -109,7 +109,7 @@ class ConsoleSlot(BaseModel):
     is_active: bool
     # The live attempt, if the patient has been dispatched for this slot.
     attempt_id: uuid.UUID | None = None
-    # The server's clock (D-6).
+    # The circuit's clock, shown against the slot it is on and null elsewhere.
     phase: str | None = None
     phase_started_at: datetime | None = None
     phase_ends_at: datetime | None = None
@@ -118,6 +118,7 @@ class ConsoleSlot(BaseModel):
 class ConsoleTiming(BaseModel):
     reading_minutes: int
     simulation_minutes: int
+    break_minutes: int
     breaks: list[int] = Field(default_factory=list)
 
 
@@ -131,6 +132,21 @@ class ConsoleCircuit(BaseModel):
     ended_at: datetime | None
     agent_dispatched: bool
     supervisor: ConsolePerson | None
+    # The examination clock, and whether the circuit is still driving itself.
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
+    # Every transition and every override bumps this. A console that has been
+    # open through an override can tell that what it is showing is behind.
+    phase_seq: int = 0
+    paused: bool = False
+    paused_at: datetime | None = None
+    auto_advance: bool = True
+    # Computed here against the server's clock, so a browser with a wrong
+    # system time still shows the right numbers.
+    elapsed_seconds: int | None = None
+    remaining_seconds: int | None = None
+    alerts: list[str] = Field(default_factory=list)
     # From the same rule the edit-lock route serves, so the console does not
     # have to ask twice.
     editable: bool

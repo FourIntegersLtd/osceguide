@@ -76,10 +76,13 @@ class MySlot(BaseModel):
     # is one. The voice token is issued per attempt, so without this a
     # candidate had no way to ask for one.
     attempt_id: uuid.UUID | None = None
-    # The server's clock (D-6): `reading` or `simulation`, and when it ends.
+    # The circuit's clock, shown against the station it is on and null for the
+    # rest. Derived, because the clock belongs to the circuit.
     phase: str | None = None
     phase_started_at: datetime | None = None
     phase_ends_at: datetime | None = None
+    # Whether this is the station the circuit is actually on.
+    is_active: bool = False
 
 
 class MySitting(BaseModel):
@@ -92,6 +95,21 @@ class MySitting(BaseModel):
     org_slug: str | None
     circuit_id: uuid.UUID
     circuit_name: str
+    # The circuit's own state, which is what a candidate actually watches: they
+    # are in one room for the whole examination, and what changes is the phase.
+    live: bool = False
+    # Whether to offer the room. A candidate joins once, at the start, and
+    # stays — waiting for a per-station button was the browser's idea, not an
+    # examination's.
+    can_join: bool = False
+    phase: str | None = None
+    phase_started_at: datetime | None = None
+    phase_ends_at: datetime | None = None
+    paused: bool = False
+    # Counted here against the server's clock, so a candidate with a wrong
+    # system time is not told they have four minutes when they have one.
+    remaining_seconds: int | None = None
+    active_slot_id: uuid.UUID | None = None
     slots: list[MySlot] = Field(default_factory=list)
 
 

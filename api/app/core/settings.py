@@ -110,6 +110,12 @@ class Settings(BaseSettings):
 
     # --- Background jobs ---
     worker_concurrency: int = 4
+    # How often an idle worker looks for work that has become due. procrastinate
+    # notifies on a job being written, but a job *scheduled* for later cannot be
+    # notified about — the worker only finds it by polling. The default of five
+    # seconds is fine for marking and much too slow for an examination clock,
+    # where it is five seconds of a candidate sitting in silence.
+    worker_fetch_job_polling_seconds: float = 1.0
 
     # --- HTTP ---
     # `NoDecode`: pydantic-settings would otherwise JSON-decode a `list[str]`

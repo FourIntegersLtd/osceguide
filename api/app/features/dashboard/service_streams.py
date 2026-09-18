@@ -17,15 +17,20 @@ from collections.abc import AsyncIterator, Mapping
 
 from app.core.auth import Principal
 from app.core.db import SessionOpener
-from app.core.events import circuit_topic, user_topic
-from app.core.ports import EventBus
+from app.core.events import circuit_topic, org_topic, user_topic
+from app.core.ports import Clock, EventBus
 from app.core.sse import Snapshot, StreamFinished, event_stream
-from app.features.dashboard import service_org, service_trainee
+from app.features.dashboard import service_console, service_live, service_trainee
 from app.features.dashboard.errors import CircuitNotFound
 
 
 def console_stream(
-    org_id: uuid.UUID, circuit_id: uuid.UUID, *, bus: EventBus, open_session: SessionOpener
+    org_id: uuid.UUID,
+    circuit_id: uuid.UUID,
+    *,
+    bus: EventBus,
+    open_session: SessionOpener,
+    clock: Clock,
 ) -> AsyncIterator[str]:
     """The supervisor's console, pushed. Replaces an eight-second poll.
 
@@ -37,7 +42,7 @@ def console_stream(
     async def snapshot() -> Snapshot:
         async with open_session() as session:
             try:
-                console = await service_org.build_console(session, org_id, circuit_id)
+                console = await service_console.build_console(session, org_id, circuit_id, now=clock.now())
             except CircuitNotFound:
                 # Deleted, or never this org's. Closing says so in the one way
                 # a stream can; the client re-reads the route for the status.
@@ -49,7 +54,7 @@ def console_stream(
 
 
 def my_sittings_stream(
-    principal: Principal, *, bus: EventBus, open_session: SessionOpener
+    principal: Principal, *, bus: EventBus, open_session: SessionOpener, clock: Clock
 ) -> AsyncIterator[str]:
     """The trainee portal, pushed. Replaces a five-second poll of two lists.
 
@@ -62,8 +67,31 @@ def my_sittings_stream(
 
     async def snapshot() -> Snapshot:
         async with open_session() as session:
-            mine = await service_trainee.my_sittings(session, principal.user_id, org_slugs=org_slugs)
+            mine = await service_trainee.my_sittings(
+                session, principal.user_id, org_slugs=org_slugs, now=clock.now()
+            )
         # Never final: a trainee's portal outlives any one sitting.
         return Snapshot(mine.model_dump_json())
 
     return event_stream(topics=[user_topic(principal.user_id)], snapshot=snapshot, bus=bus)
+
+
+def live_board_stream(
+    org_id: uuid.UUID, *, bus: EventBus, open_session: SessionOpener, clock: Clock
+) -> AsyncIterator[str]:
+    """The exam-day board, pushed.
+
+    Subscribed to the organisation rather than to each circuit: an admin
+    watching twelve candidates would otherwise hold twelve streams, and would
+    miss a thirteenth circuit starting.
+
+    Never final. A board outlives any one examination, and the morning is not
+    over because the circuit that was running has ended.
+    """
+
+    async def snapshot() -> Snapshot:
+        async with open_session() as session:
+            board = await service_live.build_live_board(session, org_id, now=clock.now())
+        return Snapshot(board.model_dump_json())
+
+    return event_stream(topics=[org_topic(org_id)], snapshot=snapshot, bus=bus)

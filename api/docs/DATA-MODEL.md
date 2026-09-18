@@ -38,7 +38,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-58 tables across 20 slices. Every table's classes live in `app/features/<slice>/models.py`
+59 tables across 20 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -633,7 +633,7 @@ What a supervisor finalises for a whole circuit.
 
 # Institutions running exams
 
-## sittings — 5 tables
+## sittings — 6 tables
 
 Domain bounds: `EXAM_MAX_STATIONS = 12`, `DEFAULT_READING_MINUTES = 3`,
 `DEFAULT_SIMULATION_MINUTES = 10`, `READING_BOUNDS = (1, 30)`,
@@ -665,7 +665,42 @@ A scheduled event an organisation holds.
 | `active_slot_id` | `uuid null` | deliberately not a FK — it points into `slots`, which points back |
 | `room_name` | `varchar(200) null` | |
 | `agent_dispatched_at` | `timestamptz null` | |
-| `started_at` / `ended_at` | `timestamptz null` | |
+| `started_at` / `ended_at` | `timestamptz null` | partial index `(org_id) WHERE started_at IS NOT NULL AND ended_at IS NULL` — the exam-day board's query |
+| `phase` | `varchar(16) null` | `reading`, `simulation` or `break`; null when nothing is running. CHECK `ck_circuits_phase` |
+| `phase_started_at` / `phase_ends_at` | `timestamptz null` | the one deadline every screen reads |
+| `phase_seq` | `int not null default 0` | bumped by every transition and every override |
+| `paused_at` | `timestamptz null` | set while the clock is stopped |
+| `paused_seconds` | `int not null default 0` | total time this phase spent paused, so elapsed excludes it |
+| `auto_advance` | `boolean not null default true` | off means a human decides every move |
+
+**The examination clock is here, not on the slot.** A break belongs to no slot —
+it is the circuit resting between stations — and that is the one thing a per-slot
+clock could not express, which is why breaks were stored and counted down by
+nobody. A pause has the same shape: stopping the clock must rewrite one deadline,
+and with the clock on two rows it rewrote two.
+
+`phase_seq` is how a human beats the clock. Every transition is a job scheduled
+for the moment the phase ends, carrying the sequence it was scheduled against;
+any override bumps the sequence, so the job it raced arrives holding a number
+that no longer matches and does nothing. That is the whole concurrency design —
+no lease, no claim table, one integer.
+
+### `circuit_interventions`
+What a human did to a running examination, and why. Append-only, and no
+`updated_at`: an intervention is a fact about a moment, not a row anybody edits.
+When a candidate says their station went wrong, the question is what was done to
+it and by whom, and before this the answer was nowhere.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | |
+| `circuit_id` | `uuid not null` → `circuits.id` CASCADE | indexed with `at` |
+| `slot_id` | `uuid null` → `slots.id` SET NULL | null for an override about the circuit rather than one station |
+| `actor_user_id` | `uuid null` → `users.id` SET NULL | SET NULL, not CASCADE: removing a member must not delete the record that they extended a candidate's clock |
+| `action` | `varchar(32) not null` | `pause`, `resume`, `extend_clock`, `reset_clock`, `resend_patient`, `redo_station`, `jump_to`, `advance`, `auto_advance` |
+| `reason` | `text null` | free text, because the reasons are the ones nobody predicted |
+| `phase_seq_before` / `phase_seq_after` | `int not null` | places the intervention against the transition it displaced |
+| `at` | `timestamptz not null` | |
 
 ### `circuit_stations`
 Replaces b2b's `station_refs jsonb`. A real row per station, so a station cannot be
@@ -695,21 +730,21 @@ address a slot directly; every user-facing route still resolves `org_id` from th
 | `slot_index` | `int not null` | |
 | `trainee_id` | `uuid not null` → `users.id` CASCADE | indexed |
 | `station_version_id` | `uuid not null` → `station_versions.id` RESTRICT | |
-| `status` | `varchar(32) not null default 'scheduled'` | `scheduled` → `in_progress` → `completed` |
+| `status` | `varchar(32) not null default 'scheduled'` | `scheduled` → `reading` → `in_consultation` → `completed`, or `skipped`. CHECK `ck_slots_status` |
 | `room_name` | `varchar(200) null` | |
 | `started_at` / `ended_at` | `timestamptz null` | |
 | `exam_completed_at` | `timestamptz null` | |
-| `phase` | `varchar(16) null` | `reading` or `simulation`; null when no clock is running |
-| `phase_started_at` | `timestamptz null` | |
-| `phase_ends_at` | `timestamptz null` | |
 
 UNIQUE `(circuit_id, slot_index)`.
 
-The three `phase*` columns are the exam clock (D-6), and it is the server's.
-Switching the turn starts `reading` on the new slot, dispatching the agent starts
-`simulation`, and either one takes the clock off whoever held it before; ending the
-consultation or the circuit clears it. It used to live in the supervisor's browser,
-lost on refresh and never shown to the candidate.
+`status` and the three timestamps were written by nothing at all while four read
+models displayed them, which is why a finished station kept offering a join
+button. The orchestrator owns them now. `skipped` is a station the circuit moved
+past — jumped over, or left unsat when the examination ended early. It is not
+`completed`, because nothing was recorded, and not `scheduled`, because it is not
+coming.
+
+A slot carries no clock. That is the circuit's: see `circuits` above.
 
 ## roster — 4 tables
 

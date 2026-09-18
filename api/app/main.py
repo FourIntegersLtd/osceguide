@@ -41,6 +41,7 @@ from app.features.billing.service import count_payments_for_users
 from app.features.catalog.router import router as catalog_router
 from app.features.community.router import router as community_router
 from app.features.dashboard.router import router as dashboard_router
+from app.features.dashboard.router_live import router as live_board_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.growth.router import router as growth_router
 from app.features.growth.service import bind_purchase_counter
@@ -59,6 +60,8 @@ from app.features.rubrics.router import router as rubrics_router
 from app.features.rubrics.router_feedback import router as feedback_templates_router
 from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
+from app.features.sittings.router_overrides import router as circuit_overrides_router
+from app.features.sittings.router_run import router as circuit_run_router
 from app.features.sittings.service_circuit import bind_feedback_lookup
 from app.features.station_sets.router import router as station_sets_router
 from app.features.stations.router import router as stations_router
@@ -109,12 +112,15 @@ def api_v1_router() -> APIRouter:
     router.include_router(entitlements_router)
     router.include_router(voice_router)
     router.include_router(sittings_router)
+    router.include_router(circuit_run_router)
+    router.include_router(circuit_overrides_router)
     router.include_router(roster_router)
     router.include_router(reviews_router)
     router.include_router(results_router)
     router.include_router(billing_router)
     router.include_router(station_sets_router)
     router.include_router(dashboard_router)
+    router.include_router(live_board_router)
     router.include_router(assistant_router)
     router.include_router(marketplace_router)
     router.include_router(community_router)

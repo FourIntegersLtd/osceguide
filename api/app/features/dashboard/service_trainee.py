@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,10 +18,10 @@ from app.features.dashboard.schemas import MySitting, MySittings, MySlot
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 
-# A slot is finished for the candidate once the station is completed, however
-# the circuit ends up. b2b decides this in the browser by string-matching the
+# A slot is finished for the candidate once the station is completed or the
+# circuit moved past it. b2b decided this in the browser by string-matching the
 # status, which is why a completed station kept offering a "join" button.
-FINISHED_STATUSES = frozenset({"completed", "abandoned", "expired"})
+FINISHED_STATUSES = frozenset({"completed", "abandoned", "expired", "skipped"})
 
 
 def _joinable(status: str, room_name: str | None, exam_completed: bool, circuit_live: bool) -> bool:
@@ -28,7 +29,7 @@ def _joinable(status: str, room_name: str | None, exam_completed: bool, circuit_
 
 
 async def my_sittings(
-    session: AsyncSession, user_id: uuid.UUID, *, org_slugs: Mapping[uuid.UUID, str]
+    session: AsyncSession, user_id: uuid.UUID, *, org_slugs: Mapping[uuid.UUID, str], now: datetime
 ) -> MySittings:
     """Every sitting this person is rostered onto, grouped by circuit.
 
@@ -57,11 +58,22 @@ async def my_sittings(
                 org_slug=org_slugs.get(row.sitting.org_id),
                 circuit_id=row.circuit.id,
                 circuit_name=row.circuit.name,
+                live=_circuit_live(row.circuit),
+                can_join=_circuit_live(row.circuit) and bool(row.circuit.room_name),
+                phase=row.circuit.phase,
+                phase_started_at=row.circuit.phase_started_at,
+                phase_ends_at=row.circuit.phase_ends_at,
+                paused=row.circuit.paused_at is not None,
+                remaining_seconds=sittings.remaining_seconds(
+                    row.circuit.phase_ends_at, paused_at=row.circuit.paused_at, now=now
+                ),
+                active_slot_id=row.circuit.active_slot_id,
                 slots=[],
             )
             grouped[row.circuit.id] = entry
 
-        circuit_live = row.circuit.started_at is not None and row.circuit.ended_at is None
+        circuit_live = _circuit_live(row.circuit)
+        is_active = row.circuit.active_slot_id == row.slot.id
         summary = titles.get(row.slot.station_version_id)
         entry.slots.append(
             MySlot(
@@ -80,12 +92,17 @@ async def my_sittings(
                     circuit_live,
                 ),
                 attempt_id=live[row.slot.id].id if row.slot.id in live else None,
-                phase=row.slot.phase,
-                phase_started_at=row.slot.phase_started_at,
-                phase_ends_at=row.slot.phase_ends_at,
+                is_active=is_active,
+                phase=row.circuit.phase if is_active else None,
+                phase_started_at=row.circuit.phase_started_at if is_active else None,
+                phase_ends_at=row.circuit.phase_ends_at if is_active else None,
             )
         )
     return MySittings(items=list(grouped.values()))
+
+
+def _circuit_live(circuit: sittings.CircuitRef) -> bool:
+    return circuit.started_at is not None and circuit.ended_at is None
 
 
 async def _titles_per_org(

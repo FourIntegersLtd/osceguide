@@ -156,6 +156,18 @@ async def restart_for_slot(
     )
 
 
+async def fail_live_for_slot(
+    session: AsyncSession, *, slot_id: uuid.UUID, now: datetime, reason: str
+) -> None:
+    """End whatever recording this slot has, without starting another.
+
+    For a station being given back to a candidate: the attempt that went wrong
+    is failed rather than deleted, so what happened the first time survives
+    beside the retry, and the partial unique index will accept the new one.
+    """
+    await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason=reason)
+
+
 async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:
     """Which exam this slot's station belongs to.
 

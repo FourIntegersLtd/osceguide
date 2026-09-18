@@ -1,9 +1,10 @@
 """Who to tell when a circuit changes.
 
-A circuit change is watched from two sides at once: the supervisor running it
-and every candidate waiting to be called. Both are told, because the trainee
-portal's question — "is it my turn?" — is answered by exactly the events the
-console causes, and a trainee is not subscribed to a circuit they cannot read.
+A circuit change is watched from three sides at once: the supervisor running
+it, the organisation's exam-day board, and every candidate waiting to be
+called. All three are told, because the trainee portal's question — "is it my
+turn?" — is answered by exactly the events the clock causes, and a trainee is
+not subscribed to a circuit they cannot read.
 
 Announcements are queued on the session and go out after the commit, so a
 subscriber that re-reads the database sees the change it was told about. See
@@ -16,14 +17,21 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import circuit_topic, publish_after_commit, user_topic
+from app.core.events import circuit_topic, org_topic, publish_after_commit, user_topic
 from app.features.sittings import repository
 
 STARTED = "circuit.started"
-TURN_SWITCHED = "circuit.turn_switched"
 ENDED = "circuit.ended"
-AGENT_DISPATCHED = "circuit.agent_dispatched"
-CONSULTATION_ENDED = "circuit.consultation_ended"
+# One name for every move the clock makes, because a subscriber re-reads the
+# whole read model anyway: what changed is in the snapshot, not in the name.
+PHASE_ADVANCED = "circuit.phase_advanced"
+PAUSED = "circuit.paused"
+RESUMED = "circuit.resumed"
+CLOCK_CHANGED = "circuit.clock_changed"
+PATIENT_RESENT = "circuit.patient_resent"
+STATION_REDONE = "circuit.station_redone"
+JUMPED = "circuit.jumped"
+AUTO_ADVANCE_CHANGED = "circuit.auto_advance_changed"
 TRAINEES_APPENDED = "circuit.trainees_appended"
 REBUILT = "circuit.rebuilt"
 
@@ -31,7 +39,13 @@ REBUILT = "circuit.rebuilt"
 async def circuit_changed(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, *, name: str
 ) -> None:
-    """Tell the console and everybody rostered onto this circuit."""
+    """Tell the console, the organisation's board, and everybody rostered on.
+
+    Three audiences for one event. The organisation's topic is what makes the
+    exam-day board live without it subscribing to every circuit it is showing —
+    an admin watching twelve candidates would otherwise hold twelve streams.
+    """
     publish_after_commit(session, circuit_topic(circuit_id), name)
+    publish_after_commit(session, org_topic(org_id), name)
     for slot in await repository.slots_for_circuit(session, org_id, circuit_id):
         publish_after_commit(session, user_topic(slot.trainee_id), name)

@@ -38,6 +38,16 @@ def user_topic(user_id: object) -> str:
     return f"user:{user_id}"
 
 
+def org_topic(org_id: object) -> str:
+    """One subscription for everything happening inside an organisation.
+
+    The exam-day board watches this instead of subscribing per circuit: an
+    admin with twelve candidates running would otherwise hold twelve streams,
+    and would miss a thirteenth circuit starting.
+    """
+    return f"org:{org_id}"
+
+
 PENDING_KEY = "pending_events"
 
 

@@ -13,6 +13,7 @@ from app.core.settings import Settings
 from app.features.attempts import service_reads as attempts
 from app.features.attempts.errors import AttemptNotFound, AttemptNotYours
 from app.features.voice import capacity, domain, errors
+from app.features.voice.schemas import RoomGrant as RoomGrant
 from app.features.voice.schemas import VoiceGrant
 
 log = get_logger(__name__)
@@ -82,14 +83,47 @@ async def grant_for_attempt(
         "candidate_ref": str(attempt.user_id),
     }
 
+    # A circuit's patient is dispatched by the orchestrator, into a room that
+    # is already up. Carrying a dispatch on the candidate's token as well would
+    # put a second patient in beside the first, and both would answer.
+    agent_name = None if attempt.kind == "exam_slot" else domain.agent_name(family, mode)
+
     token = tokens.issue(
         identity=str(attempt.user_id),
         room=room,
-        agent_name=domain.agent_name(family, mode),
+        agent_name=agent_name,
         dispatch_metadata=metadata,
         ttl_seconds=settings.livekit_token_ttl_seconds,
     )
     return VoiceGrant(token=token, server_url=settings.livekit_url, room=room, attempt_id=attempt.id)
+
+
+def grant_for_room(
+    *,
+    room: str,
+    identity: str,
+    can_publish: bool,
+    tokens: VoiceTokens,
+    settings: Settings,
+) -> RoomGrant:
+    """A token for a room that already exists, with no agent attached.
+
+    Two callers, both of whom join a room somebody else is running: a candidate
+    taking their place before the station starts, and an examiner watching one.
+    Neither brings a patient with them — the orchestrator does that — which is
+    the difference from `grant_for_attempt`.
+    """
+    if not settings.livekit_url:
+        raise errors.VoiceUnavailable()
+    token = tokens.issue(
+        identity=identity,
+        room=room,
+        agent_name=None,
+        dispatch_metadata=None,
+        can_publish=can_publish,
+        ttl_seconds=settings.livekit_token_ttl_seconds,
+    )
+    return RoomGrant(token=token, server_url=settings.livekit_url, room=room)
 
 
 def get_voice_tokens() -> VoiceTokens:

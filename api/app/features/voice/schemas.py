@@ -31,3 +31,16 @@ class CloudSlotResult(BaseModel):
     # Whether anything actually changed: a release of a room that held no slot,
     # or an extend of one, is a no-op rather than an error.
     changed: bool
+
+
+class RoomGrant(BaseModel):
+    """A token for a room, with no attempt behind it.
+
+    Distinct from `VoiceGrant`, which names the recording the worker will
+    bootstrap. Somebody joining a circuit's room before their station starts
+    has no recording yet, and an examiner watching one never will.
+    """
+
+    token: str
+    server_url: str
+    room: str

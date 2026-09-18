@@ -43,14 +43,12 @@ async def test_the_report_lists_every_candidate_with_marking_ratings_and_decisio
         trainee_ids=[str(candidate)],
         station_version_ids=stations,
     )
-    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
     client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
     first_slot = circuit["slots"][0]["id"]
-    await client.post(
-        f"/api/v1/orgs/kings/circuits/{circuit['id']}/dispatch-agent",
-        json={"slot_id": first_slot},
-        headers=bearer(admin),
-    )
+    # Advancing out of the reading period is what puts the patient in, and the
+    # recording is created as it happens.
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/advance", json={}, headers=bearer(admin))
     reviewed = await client.put(
         f"/api/v1/orgs/kings/slots/{first_slot}/reviews/mine",
         json={"field_values": {"communication.score": "a"}, "status": "completed"},
