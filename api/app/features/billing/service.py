@@ -15,6 +15,7 @@ from app.features.billing import domain, errors, receipts, repository, signature
 from app.features.billing.models import Plan
 from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
+from app.features.notifications import service as notifications
 
 log = get_logger(__name__)
 
@@ -155,26 +156,66 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
         source_ref=intent_id,
         ends_at=ends_at,
     )
+    # Our own receipt, minted here so it exists from the moment the payment
+    # does. A receipt created on demand later would have no stable id, and the
+    # id is what a customer quotes to support.
+    receipt_id = receipts.new_receipt_id(plan_row.exam_code)
+    customer_name = (payload.get("customer_details") or {}).get("name") or user.name
+    amount_total = int(payload.get("amount_total") or plan.amount_pence)
+    amount_tax = int((payload.get("total_details") or {}).get("amount_tax") or 0)
+    currency = str(payload.get("currency") or "gbp")
+    receipt_url = str(payload.get("receipt_url") or "") or None
+
     await repository.record_payment(
         session,
         user_id=user.id,
         plan_id=plan_row.id,
         stripe_payment_intent_id=intent_id,
         checkout_session_id=str(payload.get("id") or "") or None,
-        amount_total_pence=int(payload.get("amount_total") or plan.amount_pence),
-        currency=str(payload.get("currency") or "gbp"),
-        receipt_url=str(payload.get("receipt_url") or "") or None,
+        amount_total_pence=amount_total,
+        currency=currency,
+        receipt_url=receipt_url,
         paid_at=now,
         entitlement_id=granted.id,
-        # Our own receipt, minted here so it exists from the moment the payment
-        # does. A receipt created on demand later would have no stable id, and
-        # the id is what a customer quotes to support.
-        receipt_id=receipts.new_receipt_id(plan_row.exam_code),
+        receipt_id=receipt_id,
         customer_email=email,
-        customer_name=(payload.get("customer_details") or {}).get("name") or user.name,
-        amount_tax_pence=int((payload.get("total_details") or {}).get("amount_tax") or 0),
+        customer_name=customer_name,
+        amount_tax_pence=amount_tax,
         plan_starts_at=starts_at,
         plan_ends_at=ends_at,
+    )
+
+    # The receipt reaches the customer. Its fields were minted above and read
+    # back through `/me/receipts` from the day billing landed, and nothing
+    # ever sent one — a person paid and heard nothing from us at all.
+    #
+    # Queued on the outbox in this transaction, like every other message, so
+    # a webhook that rolls back cannot leave a receipt for a payment that did
+    # not happen, and a mail provider being briefly down does not lose it.
+    await notifications.enqueue_email(
+        session,
+        recipient=email,
+        subject="Your OSCE Guide receipt",
+        template_key="payment_receipt",
+        payload=receipts.receipt_fields(
+            receipts.PaymentRecord(
+                receipt_id=receipt_id,
+                customer_email=email,
+                customer_name=customer_name,
+                exam_code=plan_row.exam_code or "",
+                plan_code=plan_row.code,
+                amount_total_pence=amount_total,
+                amount_tax_pence=amount_tax,
+                currency=currency,
+                paid_at=now,
+                plan_starts_at=starts_at,
+                plan_ends_at=ends_at,
+                stripe_payment_intent_id=intent_id,
+                stripe_receipt_url=receipt_url,
+            )
+        ),
+        # One receipt per payment, however many times Stripe delivers it.
+        idempotency_key=f"payment_receipt:{intent_id}",
     )
 
 

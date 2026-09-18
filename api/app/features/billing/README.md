@@ -36,6 +36,7 @@ service and never grants access itself.
 | POST | `/api/v1/billing/webhooks/stripe` | signature | `already_applied` / `ignored` / `applied` |
 | GET | `/api/v1/me/receipts` | bearer | this person's receipt ids, newest first |
 | GET | `/api/v1/me/receipts/{receipt_id}` | bearer | one receipt, every field rendered for display; `receipt_not_found` (404) |
+| GET | `/api/v1/me/receipts/{receipt_id}/document` | bearer | The receipt as HTML, to print or keep |
 
 A receipt is scoped to the person who paid. The id is short and printed on a
 document that gets forwarded to an accountant or an employer, so holding it is

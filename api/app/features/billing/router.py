@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
+from app.core.openapi import DOCUMENT_MEDIA_TYPE
 from app.core.pagination import Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
@@ -87,3 +89,26 @@ async def read_receipt(receipt_id: str, principal: CurrentPrincipal, session: Se
     anybody holding it can read.
     """
     return await service_receipts.read_receipt(session, principal.user_id, receipt_id)
+
+
+@router.get(
+    "/me/receipts/{receipt_id}/document",
+    response_class=HTMLResponse,
+    responses={
+        **error_responses(Unauthenticated, errors.ReceiptNotFound),
+        # Declared, not inferred: this is a document, so the generated client
+        # must know it hands back markup rather than an object to parse.
+        200: {"content": {DOCUMENT_MEDIA_TYPE: {}}, "description": "The receipt, as HTML."},
+    },
+)
+async def read_receipt_document(
+    receipt_id: str, principal: CurrentPrincipal, session: Session
+) -> HTMLResponse:
+    """The receipt as something to print, keep or send to an accountant.
+
+    Served inline rather than as a download: a browser can print it to PDF,
+    and a `Content-Disposition: attachment` would stop somebody simply
+    looking at it.
+    """
+    html = await service_receipts.read_receipt_document(session, principal.user_id, receipt_id)
+    return HTMLResponse(content=html)

@@ -18,7 +18,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.core.auth import require_worker_secret
-from app.core.openapi import SSE_MEDIA_TYPE
+from app.core.openapi import DOCUMENT_MEDIA_TYPE, SSE_MEDIA_TYPE
 from app.main import API_V1_PREFIX, WORKER_PREFIX, create_app
 
 INFRA_PATHS = {"/health"}
@@ -59,11 +59,29 @@ def streams_events(route: APIRoute) -> bool:
     return SSE_MEDIA_TYPE in declared.get("content", {})
 
 
+def serves_a_document(route: APIRoute) -> bool:
+    """Whether this route's 200 is declared as a document rather than an object.
+
+    A receipt to print or keep has no object shape to model, so requiring one
+    would mean inventing a schema that describes nothing. Exempt only where
+    the route *says so* in its `responses`, so this cannot be reached by
+    forgetting to declare anything at all — which is the case the rule exists
+    to catch.
+    """
+    declared = route.responses.get(200, {})
+    return DOCUMENT_MEDIA_TYPE in declared.get("content", {})
+
+
 def test_every_route_declares_a_response_model(app: FastAPI) -> None:
     """A route returns a declared shape, so the generated client has a type.
 
     204 is exempt: it means "no content", and declaring a body model for one
     would put a lie in the OpenAPI document.
+
+    A `text/html` document route is exempt too, and for the same reason: a
+    receipt somebody prints has no object shape, and a schema describing one
+    would describe nothing. It has to declare the media type to qualify, so
+    the exemption cannot be reached by declaring nothing at all.
 
     A `text/event-stream` route is exempt from `response_model` for the same
     reason and no further: its body is an unbounded sequence of frames, not one
@@ -73,7 +91,10 @@ def test_every_route_declares_a_response_model(app: FastAPI) -> None:
     missing = [
         f"{sorted(r.methods)} {r.path}"
         for r in api_routes(app)
-        if r.response_model is None and r.status_code != status.HTTP_204_NO_CONTENT and not streams_events(r)
+        if r.response_model is None
+        and r.status_code != status.HTTP_204_NO_CONTENT
+        and not streams_events(r)
+        and not serves_a_document(r)
     ]
     assert not missing, f"routes without response_model: {missing}"
 

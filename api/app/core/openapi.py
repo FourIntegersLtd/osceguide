@@ -133,6 +133,10 @@ def install_error_catalogue(app: FastAPI) -> None:
 
 
 SSE_MEDIA_TYPE = "text/event-stream"
+# A route that hands back a document rather than an object: a receipt to
+# print or keep. Declared so the generated client knows not to parse it,
+# and so the route guard's exemption is stated rather than inferred.
+DOCUMENT_MEDIA_TYPE = "text/html"
 
 
 def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[str, Any]]:

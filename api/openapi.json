@@ -12844,6 +12844,80 @@
         ]
       }
     },
+    "/api/v1/me/receipts/{receipt_id}/document": {
+      "get": {
+        "description": "The receipt as something to print, keep or send to an accountant.\n\nServed inline rather than as a download: a browser can print it to PDF,\nand a `Content-Disposition: attachment` would stop somebody simply\nlooking at it.",
+        "operationId": "billing_read_receipt_document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receipt_id",
+            "required": true,
+            "schema": {
+              "title": "Receipt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The receipt, as HTML."
+          },
+          "401": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "receipt_not_found",
+            "x-codes": [
+              "receipt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Receipt Document",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/me/referral-code": {
       "post": {
         "description": "One code per person; asking again returns the one they have.",

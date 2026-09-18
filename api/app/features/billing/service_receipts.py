@@ -13,6 +13,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.billing import errors, receipts, repository
+from app.features.billing.receipt_document import render_receipt_html
 from app.features.billing.schemas import ReceiptRead
 
 
@@ -45,6 +46,16 @@ async def read_receipt(session: AsyncSession, user_id: uuid.UUID, receipt_id: st
         stripe_receipt_url=row.receipt_url,
     )
     return ReceiptRead(**receipts.receipt_fields(record))
+
+
+async def read_receipt_document(session: AsyncSession, user_id: uuid.UUID, receipt_id: str) -> str:
+    """The same receipt, as a document somebody can print or keep.
+
+    Rendered from the same fields the JSON carries, so the two can never
+    disagree about what was charged.
+    """
+    receipt = await read_receipt(session, user_id, receipt_id)
+    return render_receipt_html(receipt.model_dump())
 
 
 async def list_my_receipts(session: AsyncSession, user_id: uuid.UUID) -> list[str]:

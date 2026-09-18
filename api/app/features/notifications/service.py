@@ -142,8 +142,32 @@ def _invitation(data: dict[str, str]) -> str:
     )
 
 
+def _payment_receipt(data: dict[str, str]) -> str:
+    """The receipt, in the body of the email rather than attached.
+
+    Attached is what the legacy backend did, and an attachment is the thing a
+    mail client hides behind a click and a spam filter treats with suspicion.
+    The full document is also at `/me/receipts/{id}/document` for anyone who
+    wants to print it.
+
+    Rendered by `billing`, which owns what a receipt says. This slice sits
+    below it and must not learn — the payload arrives already rendered into
+    fields, and the whole body is passed through as one escaped value only
+    because `_render` escapes everything it is given.
+    """
+    total = data.get("amount_total", "")
+    return (
+        "<h1>Your receipt</h1>"
+        f"<p>Thank you for your payment of {total}.</p>"
+        f"<p>Receipt {data.get('receipt_id', '')} — {data.get('plan_label', '')}, "
+        f"access until {data.get('plan_end_date', '')}.</p>"
+        "<p>You can open the full receipt in your account at any time.</p>"
+    )
+
+
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
+    "payment_receipt": _payment_receipt,
     "invitation": _invitation,
     "candidate_result_released": _result_released,
 }
