@@ -1099,7 +1099,7 @@ signer/releaser rules, the three `AUDIENCE_CHECK` tables, `stations.owner_kind`.
 Other status columns are enforced in the domain layer only.
 
 **JSON is used in five places, each on purpose**: `station_versions.content` and
-`station_schemas.structure` (org-authored shapes with no fixed columns),
+`rubric_versions.structure` (org-authored shapes with no fixed columns),
 `attempts.definition` and `assessment_results.payload` (the engine's own documents,
 already schema-validated), `feedback_template_versions.field_selection` (a selection
 over a document), `circuits.timing` (a closed shape read as a unit),
