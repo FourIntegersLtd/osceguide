@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LuCircleHelp, LuX } from "react-icons/lu";
-import { Alert, Button, Spinner, cn } from "@/foundation/ui";
+import { Alert, Button, Spinner } from "@/foundation/ui";
 import { AgentTile, VoiceRoom, useMicPreflight, type RoomGrant } from "@/foundation/livekit";
 import { errorMessage } from "@/foundation/hooks";
 import { assistantSurfaceFor } from "@/capabilities/surface";

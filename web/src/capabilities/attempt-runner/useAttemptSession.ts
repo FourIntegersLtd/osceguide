@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Room } from "livekit-client";
 import { publishToAgent, type RoomGrant } from "@/foundation/livekit";
-import {
-  abandonAttempt,
-  attemptVoiceToken,
-  createAttempt,
-  type Attempt,
-  type AttemptKind,
-} from "@/capabilities/attempt-runner/api";
+import { abandonAttempt, attemptVoiceToken } from "@/capabilities/attempt-runner/api";
+
+/** The minimum the runner needs back from whatever created the attempt. */
+export interface StartedAttemptRef {
+  id: string;
+}
 
 /**
  * Where a candidate is in one attempt.
@@ -22,7 +21,7 @@ export type AttemptPhase = "idle" | "reading" | "connecting" | "live" | "ending"
 
 export interface AttemptSession {
   phase: AttemptPhase;
-  attempt: Attempt | null;
+  attempt: StartedAttemptRef | null;
   grant: RoomGrant | null;
   error: Error | null;
   /** Begin the reading period. */
@@ -39,12 +38,18 @@ export interface AttemptSession {
 }
 
 export interface AttemptSessionInput {
-  examCode: string;
-  kind: AttemptKind;
-  stationVersionId?: string | null;
+  /**
+   * How this arm creates the attempt it is entitled to run.
+   *
+   * Train posts to `/attempts` for free practice or to its station set's entry;
+   * Assess starts a circuit slot. The runner must not know which, or it would
+   * need a branch per arm and stop being a capability — so the caller supplies
+   * the one call that differs and everything after it is shared.
+   */
+  start: () => Promise<StartedAttemptRef>;
   /** Skipped when zero, which is what a debrief and a peer session want. */
   readingSeconds: number;
-  onEnded?: (attempt: Attempt) => void;
+  onEnded?: (attemptId: string) => void;
 }
 
 /**
@@ -57,7 +62,7 @@ export interface AttemptSessionInput {
  */
 export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   const [phase, setPhase] = useState<AttemptPhase>("idle");
-  const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [attempt, setAttempt] = useState<StartedAttemptRef | null>(null);
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const roomRef = useRef<Room | null>(null);
@@ -76,14 +81,13 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   }, []);
 
   const startConsultation = useCallback(async () => {
-    const { examCode, kind, stationVersionId } = inputRef.current;
     setPhase("connecting");
     setError(null);
     try {
       // The attempt is created first and frozen server-side; the worker then
       // fetches it by id. Nothing about the scenario travels through the
       // browser, so a tampered payload cannot change what is assessed.
-      const created = await createAttempt({ examCode, kind, stationVersionId });
+      const created = await inputRef.current.start();
       setAttempt(created);
       setGrant(await attemptVoiceToken(created.id));
       setPhase("live");
@@ -104,7 +108,7 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
       // Already gone. The server ends the session from its side regardless.
     }
     setPhase("ended");
-    if (attempt) inputRef.current.onEnded?.(attempt);
+    if (attempt) inputRef.current.onEnded?.(attempt.id);
   }, [attempt]);
 
   const abandon = useCallback(async () => {

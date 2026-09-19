@@ -21,6 +21,7 @@ export {
   rememberPlatformSession,
   clearPlatformSession,
   exchangeLegacyToken,
+  mintStreamTicket,
   type LegacyProvider,
 } from "@/foundation/platform-client/auth";
 export type { components, paths, operations } from "@/foundation/platform-client/schema";

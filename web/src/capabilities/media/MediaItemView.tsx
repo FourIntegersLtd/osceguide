@@ -68,7 +68,6 @@ function Episode({ item }: { item: MediaItem }) {
   return (
     <div className="flex max-w-3xl flex-col gap-5">
       {url ? (
-        // eslint-disable-next-line jsx-a11y/media-has-caption
         <audio controls src={url} className="w-full" preload="none" />
       ) : (
         <Card>This episode has no audio attached yet.</Card>

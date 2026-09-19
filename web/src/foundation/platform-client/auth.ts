@@ -262,3 +262,19 @@ export async function requestPasswordReset(email: string): Promise<void> {
 export function hasStoredSession(): boolean {
   return Boolean(session?.accessToken ?? read(ACCESS_KEY));
 }
+
+/**
+ * A short-lived ticket for an EventSource.
+ *
+ * `EventSource` cannot set an Authorization header, so the backend accepts a
+ * one-shot ticket in the query string instead. It is minted per connection and
+ * expires in seconds, which is why it is safe to put somewhere a URL might be
+ * logged — unlike the access token.
+ */
+export async function mintStreamTicket(): Promise<string> {
+  const { ticket } = await platformRequest<{ ticket: string; expires_in: number }>(
+    "/api/v1/auth/stream-ticket",
+    { method: "POST" },
+  );
+  return ticket;
+}

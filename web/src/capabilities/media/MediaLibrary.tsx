@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { LuFileText, LuHeadphones, LuNewspaper, LuPresentation } from "react-icons/lu";
-import { AsyncBoundary, Badge, Card, PageHeader, cn } from "@/foundation/ui";
+import { AsyncBoundary, Badge, PageHeader, cn } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import {

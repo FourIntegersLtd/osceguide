@@ -1,5 +1,5 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import { flatConfig as next } from "@next/eslint-plugin-next";
+import next from "eslint-config-next";
 import boundaries from "eslint-plugin-boundaries";
 import tseslint from "typescript-eslint";
 
@@ -15,7 +15,7 @@ import tseslint from "typescript-eslint";
  */
 export default defineConfig([
   globalIgnores([".next/**", "out/**", "next-env.d.ts"]),
-  next.recommended,
+  ...next,
   ...tseslint.configs.recommended,
   {
     files: ["src/**/*.{ts,tsx}"],
@@ -86,7 +86,25 @@ export default defineConfig([
       ],
       "@typescript-eslint/no-explicit-any": "error",
       "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+      /*
+       * The React Compiler would rather data came from a data layer than an
+       * effect, and it is right about product code — which is why every screen
+       * here goes through `useAsync` instead of writing its own effect.
+       *
+       * These three hooks are the exception the rule's own guidance describes:
+       * synchronising with an external system (a fetch, an interval, the
+       * microphone permission) and calling setState from its callback. Left as
+       * warnings so a new violation in product code is still visible, rather
+       * than switched off.
+       */
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "warn",
     },
+  },
+  {
+    // Generated from the backend's OpenAPI document. Never edited by hand.
+    files: ["src/foundation/platform-client/schema.d.ts"],
+    rules: { "max-lines": "off" },
   },
   {
     // Route files are composition, and the barrels are lists.
