@@ -68,21 +68,18 @@ export function startSetDebrief(setId: string, entryId: string): Promise<Started
   );
 }
 
+/** What this person may practise. The mocks screens gate on it. */
 export function listEntitlements(signal?: AbortSignal) {
   return platformRequest<{ items: Entitlement[] }>("/api/v1/me/entitlements", { signal });
 }
 
-export function listPlans(signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_PlanRead_"]>("/api/v1/billing/plans", {
-    signal,
-  });
-}
-
-export type Receipt = components["schemas"]["ReceiptRead"];
-
-export function listReceipts(signal?: AbortSignal) {
-  return platformRequest<{ items: Receipt[] }>("/api/v1/me/receipts", { signal });
-}
+/*
+ * Plans and receipts are read by the account capability, not here. They
+ * describe the person rather than the arm, and the readers that used to sit in
+ * this file typed `GET /me/receipts` as a page of receipts when it is a page
+ * of receipt *ids* — so every field on the access screen rendered undefined.
+ * `capabilities/account/api.ts` has the correct pair.
+ */
 
 /* ------------------------------------------------------------------------
  * Performance analytics
