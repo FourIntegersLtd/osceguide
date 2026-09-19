@@ -26,6 +26,8 @@ TAGS: list[dict[str, str]] = [
     {"name": "health", "description": "Liveness and dependency checks"},
     {"name": "identity", "description": "Accounts, sessions and passwords"},
     {"name": "tenancy", "description": "Organisations, membership and access"},
+    {"name": "sso", "description": "Which organisation a visitor signs in through"},
+    {"name": "public-site", "description": "What the marketing site reads, and what visitors send us"},
     {"name": "catalog", "description": "Exams and the programmes that offer them"},
     {"name": "rubrics", "description": "What a candidate is marked against, and who wrote it"},
     {"name": "stations", "description": "Scenarios and the templates behind them"},

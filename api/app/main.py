@@ -41,9 +41,11 @@ from app.features.dashboard.router_live import router as live_board_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.growth.router import router as growth_router
 from app.features.identity.router import router as identity_router
+from app.features.identity.router_me import router as identity_me_router
 from app.features.marketplace.router import router as marketplace_router
 from app.features.media.router import router as media_router
 from app.features.peer_practice.router import router as peer_practice_router
+from app.features.public_site.router import router as public_site_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
 from app.features.roster.router import router as roster_router
@@ -53,6 +55,7 @@ from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
 from app.features.sittings.router_overrides import router as circuit_overrides_router
 from app.features.sittings.router_run import router as circuit_run_router
+from app.features.sso.router import router as sso_router
 from app.features.station_sets.router import router as station_sets_router
 from app.features.stations.router import router as stations_router
 from app.features.stations.router_platform import router as platform_stations_router
@@ -81,6 +84,7 @@ def api_v1_router() -> APIRouter:
     """Public, versioned API. Add each slice's router here."""
     router = APIRouter()
     router.include_router(identity_router)
+    router.include_router(identity_me_router)
     router.include_router(tenancy_router)
     router.include_router(platform_console_router)
     router.include_router(catalog_router)
@@ -109,6 +113,8 @@ def api_v1_router() -> APIRouter:
     router.include_router(peer_practice_router)
     router.include_router(growth_router)
     router.include_router(media_router)
+    router.include_router(sso_router)
+    router.include_router(public_site_router)
     router.include_router(tutor_memory_router)
     return router
 
