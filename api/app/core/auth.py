@@ -180,6 +180,33 @@ def _refuse_unless_password_route(request: Request) -> None:
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
 
 
+async def get_principal_if_present(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Principal | None:
+    """Whoever is calling, or nobody.
+
+    For the handful of reads that are genuinely public but answer differently
+    to somebody signed in — a published article is readable by a visitor, and
+    its unpublished draft is readable by the admin writing it.
+
+    A *bad* token is still a refusal. "No credentials" and "credentials that do
+    not decode" are different: treating the second as anonymous would turn an
+    expired session into a silent downgrade, and the caller would see a public
+    answer where they expected theirs.
+    """
+    if credentials is None or not credentials.credentials:
+        return None
+    principal = decode_access_token(credentials.credentials, settings=settings)
+    if principal.must_change_password:
+        _refuse_unless_password_route(request)
+    return principal
+
+
+MaybePrincipal = Annotated[Principal | None, Depends(get_principal_if_present)]
+
+
 async def require_worker_secret(
     request: Request, settings: Annotated[Settings, Depends(get_settings)]
 ) -> None:

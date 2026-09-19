@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import CurrentPrincipal
+from app.core.auth import CurrentPrincipal, MaybePrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
@@ -23,14 +23,20 @@ Index = Annotated[VectorIndex, Depends(service.get_vector_index)]
 @router.get(
     "/media",
     response_model=Page[schemas.MediaRead],
-    responses=error_responses(errors.UnknownExamError, Unauthenticated, errors.UnknownMediaKindError),
+    responses=error_responses(errors.UnknownExamError, errors.UnknownMediaKindError),
 )
 async def list_published(
-    principal: CurrentPrincipal,
     session: Session,
     page: Annotated[CursorParams, Depends()],
     kind: Annotated[str | None, Query()] = None,
 ) -> Page[schemas.MediaRead]:
+    """Published material, to anybody.
+
+    No token: a bearer was required here, so a signed-out visitor could not
+    read the landing page's own article rail and a shared link to an article
+    asked them to sign in first. Everything this returns is published, which is
+    what published means.
+    """
     items, next_cursor = await service.list_published(
         session, kind=kind, limit=page.limit, cursor=page.cursor
     )
@@ -40,11 +46,17 @@ async def list_published(
 @router.get(
     "/media/{slug}",
     response_model=schemas.MediaRead,
-    responses=error_responses(Unauthenticated, errors.ItemNotFound),
+    responses=error_responses(errors.ItemNotFound),
 )
-async def read_by_slug(slug: str, principal: CurrentPrincipal, session: Session) -> schemas.MediaRead:
-    """A draft is 404 to everyone but an admin: its existence is not public."""
-    return await service.read_by_slug(session, slug, viewer_is_admin=principal.is_platform_admin)
+async def read_by_slug(slug: str, principal: MaybePrincipal, session: Session) -> schemas.MediaRead:
+    """A draft is 404 to everyone but an admin: its existence is not public.
+
+    Readable without a token, for the same reason the listing is — but a token,
+    when there is one, still decides whether a draft exists.
+    """
+    return await service.read_by_slug(
+        session, slug, viewer_is_admin=bool(principal and principal.is_platform_admin)
+    )
 
 
 @router.get(

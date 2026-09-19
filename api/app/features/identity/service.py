@@ -22,7 +22,7 @@ from app.features.identity.errors import (
     WeakPasswordError,
 )
 from app.features.identity.models import User
-from app.features.identity.schemas import AuthResult, MembershipRead, UserRead
+from app.features.identity.schemas import AuthResult, MembershipRead, UpdateMe, UserRead
 from app.features.identity.service_sessions import default_workspace_slug, issue
 from app.features.identity.tokens import (
     hash_password,
@@ -76,6 +76,8 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         name=user.name,
         is_platform_admin=user.is_platform_admin,
         must_change_password=user.must_change_password,
+        exam_date=user.exam_date,
+        extra_reading_percent=user.extra_reading_percent,
         memberships=[
             MembershipRead(
                 org_id=m.org_id,
@@ -113,6 +115,39 @@ async def read_me(
     session: AsyncSession, *, principal: Principal, memberships_for: MembershipLookup
 ) -> UserRead:
     user = await repository.user_by_id(session, principal.user_id)
+    if user is None:
+        raise InvalidCredentials()
+    memberships = await memberships_for(session, principal.user_id)
+    return user_read(user, memberships)
+
+
+async def update_me(
+    session: AsyncSession,
+    *,
+    principal: Principal,
+    body: UpdateMe,
+    fields_sent: set[str],
+    memberships_for: MembershipLookup,
+) -> UserRead:
+    """Change what is a person's own to change.
+
+    `extra_reading_percent` is an access arrangement and a person sets their
+    own, because what it affects is their own practice. It is **not** applied
+    to an institution's examination: a circuit's clock is one clock for
+    everybody on it, and extending it for one candidate would extend it for
+    the rest. Whoever grants an accommodation in an examination hall does it
+    to the circuit's timing. See `docs/port-gaps.md`.
+    """
+    user = await repository.update_profile(
+        session,
+        principal.user_id,
+        name=body.name,
+        exam_date=body.exam_date,
+        extra_reading_percent=body.extra_reading_percent,
+        # A PATCH that cannot tell "not mentioned" from "set to nothing" makes
+        # clearing an exam date impossible.
+        clear_exam_date="exam_date" in fields_sent and body.exam_date is None,
+    )
     if user is None:
         raise InvalidCredentials()
     memberships = await memberships_for(session, principal.user_id)

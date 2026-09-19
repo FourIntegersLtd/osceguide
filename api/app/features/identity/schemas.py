@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -32,6 +32,19 @@ class UserRead(BaseModel):
     memberships: list[MembershipRead] = Field(default_factory=list)
     active_org_slug: str | None = None
     last_login_at: datetime | None = None
+    # When they sit the real thing, and what extra reading time they are
+    # granted. Both are the person's own, and both are on `/me` because every
+    # screen that needs them already reads it.
+    exam_date: date | None = None
+    extra_reading_percent: int = 0
+
+
+class UpdateMe(BaseModel):
+    """What a person may change about themselves. Absent means "leave it"."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    exam_date: date | None = None
+    extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
 
 
 class TokenPair(BaseModel):

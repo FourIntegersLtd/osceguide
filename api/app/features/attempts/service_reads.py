@@ -186,3 +186,17 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
     it with it or fail on the foreign key at the end of the request.
     """
     return await repository.slots_with_attempts(session, list(slot_ids))
+
+
+async def count_consultations(session: AsyncSession) -> int:
+    """Every consultation this platform has run, debriefs excluded.
+
+    On this slice's service face because the public statistics band draws it
+    and `public_site` may not read this slice's tables.
+    """
+    return await repository.count_completed(session)
+
+
+async def count_debriefs(session: AsyncSession) -> int:
+    """Every debrief, which is an attempt of its own kind against another."""
+    return await repository.count_completed(session, kind="debrief")

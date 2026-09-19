@@ -10,6 +10,8 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from tests.support.tokens import bearer
+
 pytestmark = pytest.mark.db
 
 REGISTER = {"email": "new@example.com", "name": "New Person", "password": "correct horse battery"}
@@ -166,3 +168,40 @@ async def test_an_unknown_address_queues_nothing(client: AsyncClient, db_session
     queued = list((await db_session.execute(select(OutboundMessage))).scalars())
     assert queued == []
 
+
+
+async def test_a_person_may_set_their_exam_date_and_reading_arrangement(
+    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+) -> None:
+    """Two fields the ported screens needed and had nowhere to read."""
+    token = await make_actor("amara@example.com")
+
+    saved = await client.patch(
+        "/api/v1/me",
+        json={"exam_date": "2026-11-03", "extra_reading_percent": 25},
+        headers=bearer(token),
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["exam_date"] == "2026-11-03"
+    assert saved.json()["extra_reading_percent"] == 25
+
+    # A PATCH writes only what it was sent.
+    renamed = await client.patch("/api/v1/me", json={"name": "Amara O."}, headers=bearer(token))
+    assert renamed.json()["name"] == "Amara O."
+    assert renamed.json()["exam_date"] == "2026-11-03"
+
+    # And "set to nothing" is distinguishable from "not mentioned".
+    cleared = await client.patch("/api/v1/me", json={"exam_date": None}, headers=bearer(token))
+    assert cleared.json()["exam_date"] is None
+    assert cleared.json()["extra_reading_percent"] == 25
+
+
+async def test_an_impossible_reading_arrangement_is_refused(
+    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+) -> None:
+    token = await make_actor("amara@example.com")
+    for bad in (-10, 500):
+        refused = await client.patch(
+            "/api/v1/me", json={"extra_reading_percent": bad}, headers=bearer(token)
+        )
+        assert refused.status_code == 422, refused.text

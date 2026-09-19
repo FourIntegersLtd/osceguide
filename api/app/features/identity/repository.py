@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select, update
@@ -195,3 +195,33 @@ async def count_users(session: AsyncSession) -> int:
 
 async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool) -> None:
     await session.execute(update(User).where(User.id == user_id).values(is_platform_admin=is_admin))
+
+
+async def update_profile(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    name: str | None,
+    exam_date: date | None,
+    extra_reading_percent: int | None,
+    clear_exam_date: bool,
+) -> User | None:
+    """Write only what was sent.
+
+    `None` means "leave it" for every field, which is why clearing an exam date
+    needs its own flag: a PATCH that cannot distinguish "not mentioned" from
+    "set to nothing" makes one of the two impossible.
+    """
+    user = await session.get(User, user_id)
+    if user is None:
+        return None
+    if name is not None:
+        user.name = name
+    if extra_reading_percent is not None:
+        user.extra_reading_percent = extra_reading_percent
+    if clear_exam_date:
+        user.exam_date = None
+    elif exam_date is not None:
+        user.exam_date = exam_date
+    await session.flush()
+    return user

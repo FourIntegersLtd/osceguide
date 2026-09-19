@@ -2992,12 +2992,14 @@
               "invalid_exam_code",
               "invalid_input",
               "invalid_legacy_token",
+              "invalid_message",
               "invalid_rag",
               "invalid_refresh_token",
               "invalid_reset_token",
               "invalid_review_status",
               "invalid_rubric",
               "invalid_signature",
+              "invalid_sso_binding",
               "invalid_webhook",
               "invalid_workflow",
               "legacy_account_not_imported",
@@ -3007,6 +3009,7 @@
               "media_not_found",
               "membership_exists",
               "membership_not_found",
+              "message_not_found",
               "no_active_station",
               "not_a_member",
               "not_a_partner_reporter",
@@ -3055,6 +3058,9 @@
               "sitting_not_found",
               "slot_not_found",
               "slug_taken",
+              "sso_binding_taken",
+              "sso_not_configurable",
+              "sso_not_configured",
               "station_not_found",
               "station_not_published",
               "station_template_not_found",
@@ -3073,6 +3079,7 @@
               "unknown_media_kind",
               "unknown_partner",
               "unknown_plan",
+              "unknown_sso_provider",
               "unknown_tool",
               "unusable_title",
               "user_not_found",
@@ -4212,6 +4219,130 @@
           "published_at"
         ],
         "title": "MediaRead",
+        "type": "object"
+      },
+      "MessageAccepted": {
+        "description": "Deliberately thin: an id, so support can be quoted one, and nothing else.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "title": "MessageAccepted",
+        "type": "object"
+      },
+      "MessageRead": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "handled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handled At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "email",
+          "subject",
+          "body",
+          "source",
+          "user_id",
+          "created_at",
+          "handled_at"
+        ],
+        "title": "MessageRead",
         "type": "object"
       },
       "MySitting": {
@@ -6509,6 +6640,79 @@
         "title": "SaveGpLeadReview",
         "type": "object"
       },
+      "SaveSsoConfig": {
+        "properties": {
+          "default_exam_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Exam Code"
+          },
+          "email_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Email Domains",
+            "type": "array"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hosts",
+            "type": "array"
+          },
+          "issuer": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sign_in_label": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign In Label"
+          },
+          "sso_only": {
+            "default": false,
+            "title": "Sso Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "title": "SaveSsoConfig",
+        "type": "object"
+      },
       "SceneInstructions": {
         "properties": {
           "instructions": {
@@ -6593,6 +6797,74 @@
           "score"
         ],
         "title": "SearchHit",
+        "type": "object"
+      },
+      "SendMessage": {
+        "properties": {
+          "body": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "kind": {
+            "default": "contact",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "SendMessage",
         "type": "object"
       },
       "SessionComplete": {
@@ -6799,6 +7071,41 @@
           "locked"
         ],
         "title": "SetSummary",
+        "type": "object"
+      },
+      "SiteStatistics": {
+        "description": "The counters the landing page's numbers band shows.\n\nMarketing figures, not analytics: they are rounded down to a readable\nnumber and they are cached, because the busiest page on the site should not\ncost five aggregate queries per view.",
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "consultations": {
+            "title": "Consultations",
+            "type": "integer"
+          },
+          "debriefs": {
+            "title": "Debriefs",
+            "type": "integer"
+          },
+          "stations": {
+            "title": "Stations",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "consultations",
+          "debriefs",
+          "users",
+          "stations",
+          "as_of"
+        ],
+        "title": "SiteStatistics",
         "type": "object"
       },
       "SittingRead": {
@@ -7138,6 +7445,140 @@
           "summary"
         ],
         "title": "SlotReviewsRead",
+        "type": "object"
+      },
+      "SsoBinding": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ],
+        "title": "SsoBinding",
+        "type": "object"
+      },
+      "SsoConfigRead": {
+        "description": "The whole arrangement, for whoever administers it.",
+        "properties": {
+          "bindings": {
+            "items": {
+              "$ref": "#/components/schemas/SsoBinding"
+            },
+            "title": "Bindings",
+            "type": "array"
+          },
+          "default_exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Exam Code"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "issuer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuer"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "org_slug": {
+            "title": "Org Slug",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sign_in_label": {
+            "title": "Sign In Label",
+            "type": "string"
+          },
+          "sso_only": {
+            "title": "Sso Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "org_id",
+          "org_slug",
+          "provider",
+          "issuer",
+          "enabled",
+          "sso_only",
+          "sign_in_label",
+          "default_exam_code"
+        ],
+        "title": "SsoConfigRead",
+        "type": "object"
+      },
+      "SsoSignIn": {
+        "description": "What a sign-in page may know before anybody has proved anything.\n\nDeliberately thin. This is served without a token, to anyone who asks, so\nit carries what a button needs and nothing about the organisation beyond\nthe name it already puts on its own front page. No issuer, no bindings, no\ncounts: those are configuration, and configuration is for administrators.",
+        "properties": {
+          "default_exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Exam Code"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "org_slug": {
+            "title": "Org Slug",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sign_in_label": {
+            "title": "Sign In Label",
+            "type": "string"
+          },
+          "sso_only": {
+            "title": "Sso Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "org_slug",
+          "org_name",
+          "provider",
+          "sign_in_label",
+          "sso_only"
+        ],
+        "title": "SsoSignIn",
         "type": "object"
       },
       "StartCheckout": {
@@ -8337,6 +8778,51 @@
         "title": "UpdateFeedbackTemplateVersion",
         "type": "object"
       },
+      "UpdateMe": {
+        "description": "What a person may change about themselves. Absent means \"leave it\".",
+        "properties": {
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "extra_reading_percent": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Reading Percent"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateMe",
+        "type": "object"
+      },
       "UpdateMedia": {
         "properties": {
           "content": {
@@ -8507,6 +8993,23 @@
           "email": {
             "title": "Email",
             "type": "string"
+          },
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "extra_reading_percent": {
+            "default": 0,
+            "title": "Extra Reading Percent",
+            "type": "integer"
           },
           "id": {
             "format": "uuid",
@@ -10597,6 +11100,92 @@
         ]
       }
     },
+    "/api/v1/auth/sso/sign-in": {
+      "get": {
+        "description": "Whether this visitor's organisation signs in somewhere else.\n\n**Unauthenticated, and it has to be**: this is what a sign-in page asks\nbefore anybody has signed in. The retiring client answered it from a\nhostname allow-list compiled into the bundle, so adding a partner meant a\nfrontend deploy and the tenant slug, the button's wording and the\n\"no password form\" rule were three things that could disagree with the\nbackend.\n\nA 404 means \"sign in here, with a password\", which is the ordinary case and\nwhat every host that is not a partner's gets.",
+        "operationId": "sso_read_sign_in",
+        "parameters": [
+          {
+            "description": "The hostname the visitor arrived at, for a white-label site.",
+            "in": "query",
+            "name": "host",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The hostname the visitor arrived at, for a white-label site.",
+              "title": "Host"
+            }
+          },
+          {
+            "description": "An address typed into the ordinary sign-in form.",
+            "in": "query",
+            "name": "email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "An address typed into the ordinary sign-in form.",
+              "title": "Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoSignIn"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_sso_binding",
+            "x-codes": [
+              "invalid_sso_binding"
+            ]
+          }
+        },
+        "summary": "Read Sign In",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
     "/api/v1/auth/stream-ticket": {
       "post": {
         "description": "A sixty-second credential a browser can put in a stream's URL.\n\nMinted with an ordinary bearer token, spent immediately on one\n`text/event-stream` connection, and refused by every other route.",
@@ -12379,6 +12968,64 @@
           }
         ],
         "summary": "Read Me",
+        "tags": [
+          "identity"
+        ]
+      },
+      "patch": {
+        "description": "Change a person's own profile: their name, their exam date, their\nreading-time arrangement.\n\nOnly what was sent is written \u2014 `model_fields_set` rather than the whole\nbody, so a screen that edits one field does not silently clear the others.",
+        "operationId": "identity_update_me",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMe"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Me",
         "tags": [
           "identity"
         ]
@@ -14442,6 +15089,7 @@
     },
     "/api/v1/media": {
       "get": {
+        "description": "Published material, to anybody.\n\nNo token: a bearer was required here, so a signed-out visitor could not\nread the landing page's own article rail and a shared link to an article\nasked them to sign in first. Everything this returns is published, which is\nwhat published means.",
         "operationId": "media_list_published",
         "parameters": [
           {
@@ -14502,19 +15150,6 @@
             },
             "description": "Successful Response"
           },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unauthenticated",
-            "x-codes": [
-              "unauthenticated"
-            ]
-          },
           "404": {
             "content": {
               "application/json": {
@@ -14542,11 +15177,6 @@
             ]
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List Published",
         "tags": [
           "media"
@@ -14892,7 +15522,7 @@
     },
     "/api/v1/media/{slug}": {
       "get": {
-        "description": "A draft is 404 to everyone but an admin: its existence is not public.",
+        "description": "A draft is 404 to everyone but an admin: its existence is not public.\n\nReadable without a token, for the same reason the listing is \u2014 but a token,\nwhen there is one, still decides whether a draft exists.",
         "operationId": "media_read_by_slug",
         "parameters": [
           {
@@ -14915,19 +15545,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unauthenticated",
-            "x-codes": [
-              "unauthenticated"
-            ]
           },
           "404": {
             "content": {
@@ -25197,6 +25814,206 @@
         ]
       }
     },
+    "/api/v1/platform/orgs/{org_slug}/sso": {
+      "get": {
+        "description": "The whole arrangement, including the issuer and every binding.",
+        "operationId": "sso_read_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Config",
+        "tags": [
+          "sso"
+        ]
+      },
+      "put": {
+        "description": "Write it. Platform admin only, deliberately.\n\nWhoever controls the issuer controls who may sign in as that institution's\nmembers, so this is not a field to put on a customer's own settings screen\nbeside their logo. When there is an onboarding flow with a domain\nverification step in it, that is where this moves.",
+        "operationId": "sso_save_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSsoConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_binding_taken",
+            "x-codes": [
+              "sso_binding_taken"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_sso_provider, invalid_sso_binding, sso_not_configurable",
+            "x-codes": [
+              "unknown_sso_provider",
+              "invalid_sso_binding",
+              "sso_not_configurable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Config",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
     "/api/v1/platform/overview": {
       "get": {
         "description": "The numbers the console opens with, counted rather than listed.",
@@ -25930,6 +26747,193 @@
         "summary": "Publish Platform Version",
         "tags": [
           "rubrics"
+        ]
+      }
+    },
+    "/api/v1/platform/site/messages": {
+      "get": {
+        "description": "The inbox. Platform admin, because it is everybody's messages.",
+        "operationId": "public_site_list_messages",
+        "parameters": [
+          {
+            "description": "contact or product_feedback",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "contact or product_feedback",
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MessageRead"
+                  },
+                  "title": "Response Public Site List Messages",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Messages",
+        "tags": [
+          "public-site"
+        ]
+      }
+    },
+    "/api/v1/platform/site/messages/{message_id}/handled": {
+      "post": {
+        "description": "Answered, or read and nothing to do. Either way it leaves the queue.",
+        "operationId": "public_site_mark_handled",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "message_not_found",
+            "x-codes": [
+              "message_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Handled",
+        "tags": [
+          "public-site"
         ]
       }
     },
@@ -27189,6 +28193,104 @@
         ]
       }
     },
+    "/api/v1/site/messages": {
+      "post": {
+        "description": "The contact form, and the product-feedback box inside the product.\n\nSigned in or not: the contact form is on the public site and the feedback\nbox is on a screen somebody is already using. When there is a token the\nmessage is filed against them, which is how a reply finds the right person\nwithout asking them to type their address again.",
+        "operationId": "public_site_send_message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_message",
+            "x-codes": [
+              "invalid_message"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Message",
+        "tags": [
+          "public-site"
+        ]
+      }
+    },
+    "/api/v1/site/statistics": {
+      "get": {
+        "description": "The counters on the landing page's numbers band.\n\nUnauthenticated, because the landing page is what a visitor sees before\nanything else. The retiring backend served these from `/landing`; the\nreplacement had no equivalent, so the band hid itself rather than showing\nzeroes.\n\nCached for ten minutes: the busiest page on the site should not cost four\naggregate queries per view, and no figure here changes meaningfully in\nthat time.",
+        "operationId": "public_site_read_statistics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteStatistics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "summary": "Read Statistics",
+        "tags": [
+          "public-site"
+        ]
+      }
+    },
     "/api/v1/stations": {
       "get": {
         "description": "The published platform library, which nothing could read before.\n\nEvery signed-in user, because the library is the product: a consumer builds\na practice set from it and an institution draws on it to build a circuit.\nThe rows carry no station content \u2014 see `LibraryStationRead`.",
@@ -28294,6 +29396,14 @@
     {
       "description": "Organisations, membership and access",
       "name": "tenancy"
+    },
+    {
+      "description": "Which organisation a visitor signs in through",
+      "name": "sso"
+    },
+    {
+      "description": "What the marketing site reads, and what visitors send us",
+      "name": "public-site"
     },
     {
       "description": "Exams and the programmes that offer them",

@@ -222,3 +222,19 @@ async def evaluated_for_user(
         stmt = stmt.where(Attempt.exam_id == exam_id)
     stmt = stmt.order_by(Attempt.created_at.desc(), Attempt.id.desc()).limit(limit)
     return list((await session.execute(stmt)).scalars())
+
+
+# What "has happened" means for the public counters: the consultation ran to
+# the end, whether or not the marking has caught up with it.
+_COMPLETED = (Status.INTERACTION_COMPLETE, Status.EVALUATED)
+
+
+async def count_completed(session: AsyncSession, *, kind: str | None = None) -> int:
+    """How many consultations have actually happened.
+
+    `kind` narrows it — `debrief` for the debriefs, nothing for everything
+    else. Counted rather than paged: the caller wants the number.
+    """
+    stmt = select(func.count()).select_from(Attempt).where(Attempt.status.in_(_COMPLETED))
+    stmt = stmt.where(Attempt.kind == kind) if kind else stmt.where(Attempt.kind != "debrief")
+    return int((await session.execute(stmt)).scalar_one())
