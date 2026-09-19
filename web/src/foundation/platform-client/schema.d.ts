@@ -899,6 +899,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Performance
+         * @description How this person is doing at one exam: per domain, overall, over time.
+         *
+         *     Separate from `/me/dashboard` because it is a different question over a
+         *     different set of rows — the marked attempts at one exam — and a screen that
+         *     only lists access and recent attempts should not pay for reading every
+         *     result document.
+         *
+         *     An exam with nothing marked yet is an empty answer, not a refusal: that is
+         *     the dashboard's empty state, and a 404 would make it read as an error.
+         */
+        get: operations["dashboard_read_performance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/practice-sessions": {
         parameters: {
             query?: never;
@@ -4814,6 +4842,18 @@ export interface components {
             /** Stale Agents Removed */
             stale_agents_removed: number;
         };
+        /**
+         * DomainScore
+         * @description One bar of the radar: a rubric domain, averaged across the attempts.
+         */
+        DomainScore: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Score */
+            score: number;
+        };
         /** EditLock */
         EditLock: {
             /**
@@ -5826,6 +5866,39 @@ export interface components {
             starts_at: string;
             /** Status */
             status: string;
+        };
+        /**
+         * Performance
+         * @description The charts on the consumer exam dashboard, in one call.
+         *
+         *     The legacy screen asks four RAG endpoints and a weekly trend for this and
+         *     joins them in the browser. `exam_code` is null only when the caller named
+         *     no exam and has never attempted one — there is no exam to report on, and
+         *     an empty string would be a code.
+         */
+        Performance: {
+            /** Domains */
+            domains?: components["schemas"]["DomainScore"][];
+            /** Exam Code */
+            exam_code?: string | null;
+            summary: components["schemas"]["PerformanceSummary"];
+            /** Trend */
+            trend?: components["schemas"]["TrendPoint"][];
+        };
+        /**
+         * PerformanceSummary
+         * @description How the marked attempts divide, as rates rather than counts.
+         *
+         *     Rates because the chart draws bands, and because a candidate with four
+         *     attempts and one with forty should read the same way.
+         */
+        PerformanceSummary: {
+            /** Critical Rate */
+            critical_rate: number;
+            /** Fail Rate */
+            fail_rate: number;
+            /** Pass Rate */
+            pass_rate: number;
         };
         /** PlanRead */
         PlanRead: {
@@ -6911,6 +6984,19 @@ export interface components {
             complete: boolean;
             /** Messages */
             messages: components["schemas"]["TranscriptMessageRead"][];
+        };
+        /**
+         * TrendPoint
+         * @description One attempt, in the order it was sat.
+         */
+        TrendPoint: {
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+            /** Score */
+            score: number;
         };
         /**
          * TutorMemoryRead
@@ -9703,6 +9789,56 @@ export interface operations {
             };
             /** @description peer_session_not_open */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_read_performance: {
+        parameters: {
+            query?: {
+                /** @description Which exam to report on. Defaults to the most recently attempted one. */
+                exam_code?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Performance"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_exam */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

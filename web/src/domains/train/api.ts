@@ -89,35 +89,22 @@ export function listReceipts(signal?: AbortSignal) {
  *
  * `GET /api/v1/me/performance` is the consumer half of what the retiring
  * backend served from `/api/{exam}_dashboard`: a pass/fail/critical summary, a
- * score per rubric domain and a trend line. It is being built now, so the
- * types are written here against the agreed shape rather than generated — the
- * generated `schema.d.ts` will carry them once the route lands and these
- * aliases can then point at it.
+ * score per rubric domain and a trend line.
+ *
+ * Generated, not hand-written. These were written by hand while the endpoint
+ * was being built in parallel; now that it exists they point at the schema, so
+ * a field the backend renames breaks the build here rather than rendering an
+ * empty chart.
+ *
+ * `exam_code` is nullable on purpose, and only in one case: the caller named
+ * no exam and has never attempted one, so there is no exam to report on. An
+ * empty string would have been a code, which is worse.
  * --------------------------------------------------------------------- */
 
-export interface PerformanceSummary {
-  pass_rate: number;
-  fail_rate: number;
-  critical_rate: number;
-}
-
-export interface PerformanceDomain {
-  id: string;
-  label: string;
-  score: number;
-}
-
-export interface PerformanceTrendPoint {
-  date: string;
-  score: number;
-}
-
-export interface Performance {
-  exam_code: string;
-  summary: PerformanceSummary;
-  domains: PerformanceDomain[];
-  trend: PerformanceTrendPoint[];
-}
+export type Performance = components["schemas"]["Performance"];
+export type PerformanceSummary = components["schemas"]["PerformanceSummary"];
+export type PerformanceDomain = components["schemas"]["DomainScore"];
+export type PerformanceTrendPoint = components["schemas"]["TrendPoint"];
 
 /**
  * One exam's marked performance, or `null` while the endpoint does not exist.
