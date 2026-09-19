@@ -91,48 +91,52 @@ export default function ThresholdBars({
             vertical={false}
             horizontal
           />
-          {isHorizontal ? (
-            <>
-              <XAxis
-                type="number"
-                domain={[0, maxScore]}
-                ticks={ticks}
-                tick={chartAxisTick}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={formatTick}
-              />
-              <YAxis
-                type="category"
-                dataKey="label"
-                width={yAxisWidth}
-                tick={chartAxisTick}
-                tickLine={false}
-                axisLine={false}
-              />
-            </>
-          ) : (
-            <>
-              <XAxis
-                dataKey="label"
-                tick={chartAxisTick}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-                minTickGap={24}
-              />
-              <YAxis
-                domain={[0, maxScore]}
-                ticks={ticks}
-                tick={chartAxisTick}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={formatTick}
-                width={36}
-                allowDecimals={false}
-              />
-            </>
-          )}
+          {/*
+            One axis element each, with orientation chosen in the props.
+
+            These used to be two fragments in a ternary, and under React 19 the
+            axes silently disappeared: recharts flattens its children with its
+            own bundled `react-is@18`, which does not recognise React 19's
+            element symbol, so everything inside a fragment was dropped. The
+            bars drew and the scale and the pass line did not — a chart that
+            looks fine and means nothing. Recharts has to see each axis as a
+            direct child, so it gets one.
+          */}
+          <XAxis
+            {...(isHorizontal
+              ? {
+                  type: "number" as const,
+                  domain: [0, maxScore],
+                  ticks,
+                  tickFormatter: formatTick,
+                }
+              : {
+                  dataKey: "label",
+                  interval: "preserveStartEnd" as const,
+                  minTickGap: 24,
+                })}
+            tick={chartAxisTick}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            {...(isHorizontal
+              ? {
+                  type: "category" as const,
+                  dataKey: "label",
+                  width: yAxisWidth,
+                }
+              : {
+                  domain: [0, maxScore],
+                  ticks,
+                  tickFormatter: formatTick,
+                  width: 36,
+                  allowDecimals: false,
+                })}
+            tick={chartAxisTick}
+            tickLine={false}
+            axisLine={false}
+          />
           <Tooltip
             formatter={(value: number) => [formatValue(value), "Score"]}
             labelFormatter={(label, payload) =>

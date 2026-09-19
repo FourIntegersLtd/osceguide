@@ -1,128 +1,209 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { LuFileText, LuHeadphones, LuNewspaper, LuPresentation } from "react-icons/lu";
-import { AsyncBoundary, Badge, PageHeader, cn } from "@/foundation/ui";
+import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
+import {
+  AsyncBoundary,
+  B2CEmptyState,
+  B2CPageHeader,
+  B2CSegmentedTabs,
+  Pagination,
+  cn,
+  productTokens as t,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import {
   MEDIA_KINDS,
   MEDIA_KIND_LABELS,
-  listMedia,
+  listAllMedia,
   type MediaItem,
   type MediaKind,
 } from "@/capabilities/media/api";
+import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid } from "@/capabilities/media/MediaCard";
+import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
+import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
 
-const KIND_ICON: Record<MediaKind, typeof LuPresentation> = {
-  slide_deck: LuPresentation,
-  summary: LuFileText,
-  blog: LuNewspaper,
-  podcast: LuHeadphones,
+type Filter = MediaKind | "all";
+
+const EMPTY: Record<Filter, { title: string; description: string }> = {
+  all: {
+    title: "Nothing published yet",
+    description: "Study material appears here as it is published for your exams.",
+  },
+  slide_deck: {
+    title: "No slides available",
+    description: "Check back later for new content.",
+  },
+  summary: {
+    title: "No summaries yet",
+    description: "Summaries appear here as they are published.",
+  },
+  blog: {
+    title: "No articles found",
+    description: "New articles are published regularly — check back soon.",
+  },
+  podcast: {
+    title: "No episodes yet",
+    description: "Episodes appear here as they are published.",
+  },
 };
 
 /**
  * The study library.
  *
- * Mounted on Train and Assess from the same file. It asks the surface only for
- * its own base path, so an institution's trainees get the decks and summaries
+ * Two nav items in the retiring client — "Slides" and "A to Z" — plus a blog
+ * and a podcast that hung off a summary. On this backend all four are one
+ * `media` row with a `kind`, so they are one screen with a filter, and each
+ * kind keeps the way it is meant to be read: an index of letters for the
+ * A-to-Z, a deck viewer for a presentation, an article for a post.
+ *
+ * Mounted on Train and Assess from this one file. It asks the surface only for
+ * its base path, so an institution's trainees get the decks and summaries
  * their programme publishes without a line of institution-specific code here.
  */
 export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind | null }) {
-  const [kind, setKind] = useState<MediaKind | null>(initialKind);
   const { hrefFor } = useSurface();
-  const state = useAsync((signal) => listMedia({ kind, limit: 60 }, signal), [kind]);
+  const [filter, setFilter] = useState<Filter>(initialKind ?? "all");
+  const [term, setTerm] = useState("");
+  const [query, setQuery] = useState("");
+
+  const kind = filter === "all" ? null : filter;
+  const state = useAsync((signal) => listAllMedia(kind, signal), [kind]);
+
+  const clearSearch = () => {
+    setTerm("");
+    setQuery("");
+  };
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
+    <div className="w-full text-left">
+      <B2CPageHeader
         title="Study material"
-        description="Decks, summaries, articles and episodes published for your exams."
+        subtitle="Slide decks, summaries, articles and podcast episodes."
       />
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Material type">
-        <FilterChip active={kind === null} onClick={() => setKind(null)}>
-          Everything
-        </FilterChip>
-        {MEDIA_KINDS.map((option) => (
-          <FilterChip key={option} active={kind === option} onClick={() => setKind(option)}>
-            {MEDIA_KIND_LABELS[option].many}
-          </FilterChip>
-        ))}
-      </div>
-
-      <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
-        empty={{
-          title: "Nothing published yet",
-          description:
-            kind === null
-              ? "Study material appears here as it is published for your exams."
-              : `No ${MEDIA_KIND_LABELS[kind].many.toLowerCase()} have been published yet.`,
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (term.trim() !== "") setQuery(term.trim());
         }}
+        className="relative mb-8 mt-6"
+        role="search"
       >
-        {(page) => (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {page.items.map((item) => (
-              <li key={item.id}>
-                <MediaCard item={item} href={hrefFor(`/library/${item.slug}`)} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </AsyncBoundary>
+        <HiOutlineMagnifyingGlass
+          className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
+          aria-hidden
+        />
+        <input
+          type="search"
+          placeholder="Search for a topic or condition..."
+          value={term}
+          onChange={(event) => setTerm(event.target.value)}
+          aria-label="Search study material"
+          className="w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-24 text-left text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+        />
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+          {term ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
+              aria-label="Clear search"
+            >
+              <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ) : null}
+          {term.trim() !== "" ? (
+            <button type="submit" className={t.b2cButtonPrimarySm}>
+              Search
+            </button>
+          ) : null}
+        </div>
+      </form>
+
+      {query ? (
+        <MediaSearchResults query={query} hrefFor={hrefFor} onClear={clearSearch} />
+      ) : (
+        <>
+          <B2CSegmentedTabs
+            className="mb-8"
+            items={[
+              { id: "all", label: "Everything" },
+              ...MEDIA_KINDS.map((option) => {
+                const Icon = MEDIA_KIND_ICON[option];
+                return {
+                  id: option,
+                  label: (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icon className="h-4 w-4" aria-hidden />
+                      {MEDIA_KIND_LABELS[option].many}
+                    </span>
+                  ),
+                };
+              }),
+            ]}
+            value={filter}
+            onChange={setFilter}
+            aria-label="Material type"
+          />
+
+          <AsyncBoundary state={state}>
+            {(items) =>
+              items.length === 0 ? (
+                <B2CEmptyState
+                  icon={filter === "all" ? undefined : MEDIA_KIND_ICON[filter]}
+                  title={EMPTY[filter].title}
+                  description={EMPTY[filter].description}
+                />
+              ) : filter === "summary" ? (
+                <SummaryIndex items={items} hrefFor={hrefFor} />
+              ) : (
+                <PagedGrid items={items} hrefFor={hrefFor} />
+              )
+            }
+          </AsyncBoundary>
+        </>
+      )}
     </div>
   );
 }
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-        active
-          ? "border-accent bg-accent text-ink-inverse"
-          : "border-border bg-surface text-ink-muted hover:border-border-strong hover:text-ink",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
+/**
+ * Paged in the browser, because the whole set is already here.
+ *
+ * `GET /api/v1/media` pages on an opaque cursor, so there is no total to count
+ * pages against until every page has been walked — which the index and the
+ * deck sidebar need anyway.
+ */
+function PagedGrid({ items, hrefFor }: { items: MediaItem[]; hrefFor: (path: string) => string }) {
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
-function MediaCard({ item, href }: { item: MediaItem; href: string }) {
-  const kind = (MEDIA_KINDS as readonly string[]).includes(item.kind)
-    ? (item.kind as MediaKind)
-    : null;
-  const Icon = kind ? KIND_ICON[kind] : LuFileText;
+  const start = (page - 1) * perPage;
+  const visible = items.slice(start, start + perPage);
 
   return (
-    <Link
-      href={href}
-      className="group flex h-full flex-col gap-3 rounded-panel border border-border bg-surface p-4 transition-colors hover:border-border-strong"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-2 text-xs font-medium text-ink-muted">
-          <Icon className="h-4 w-4" aria-hidden />
-          {kind ? MEDIA_KIND_LABELS[kind].one : item.kind}
-        </span>
-        {item.exam_code && <Badge tone="accent">{item.exam_code.toUpperCase()}</Badge>}
-      </div>
-      <h3 className="text-sm font-semibold text-ink group-hover:text-accent">{item.title}</h3>
-      {item.summary && <p className="line-clamp-3 text-sm text-ink-muted">{item.summary}</p>}
-    </Link>
+    <div className={cn("space-y-8", items.length <= perPage && "pb-4")}>
+      <MediaCardGrid>
+        {visible.map((item) => (
+          <MediaCard key={item.id} item={item} href={hrefFor(`/library/${item.slug}`)} />
+        ))}
+      </MediaCardGrid>
+
+      {items.length > perPage ? (
+        <Pagination
+          currentPage={page}
+          totalItems={items.length}
+          itemsPerPage={perPage}
+          knownTotal
+          onPageChange={setPage}
+          onItemsPerPageChange={(next) => {
+            setPerPage(next);
+            setPage(1);
+          }}
+        />
+      ) : null}
+    </div>
   );
 }
