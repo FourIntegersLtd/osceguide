@@ -100,7 +100,47 @@ async function main() {
     });
   }
 
-  await step("my station sets", "/api/v1/me/station-sets");
+  await step("my station sets", "/api/v1/me/station-sets", {
+    // The list carries each set's entries, which is what lets the mocks
+    // screens work out attempted, incomplete and combinable stations without
+    // a request per set. If that stops being true, three screens go quiet.
+    expect: (p) => must(Array.isArray(p.items), "not a page"),
+  });
+
+  // Build a session the way the Setup tab does, then run its whole loop:
+  // start an attempt at the first entry, and ask to debrief it.
+  const forSet = await step("library for a session", "/api/v1/stations?limit=2");
+  if (forSet?.items?.length) {
+    const set = await step("create a session", "/api/v1/me/station-sets", {
+      method: "POST",
+      body: {
+        name: `Smoke session ${Date.now()}`,
+        exam_code: forSet.items[0].exam_code,
+        station_version_ids: forSet.items.map((station) => station.version_id),
+      },
+      expect: (p) => must(Array.isArray(p.entries) && p.entries.length > 0, "no entries"),
+    });
+    if (set) {
+      await step("read the session back", `/api/v1/me/station-sets/${set.id}`, {
+        expect: (p) => must(p.total_entries === set.total_entries, "entry count moved"),
+      });
+      const entryId = set.entries[0].id;
+      const started = await step(
+        "start a station in it",
+        `/api/v1/me/station-sets/${set.id}/entries/${entryId}/attempts`,
+        { method: "POST", expect: (p) => must(p.attempt_id, "no attempt id") },
+      );
+      if (started) {
+        await step("debrief it", `/api/v1/me/station-sets/${set.id}/entries/${entryId}/debriefs`, {
+          method: "POST",
+          expect: (p) => must(p.attempt_id, "no debrief attempt id"),
+        });
+        await step("abandon the session attempt", `/api/v1/attempts/${started.attempt_id}/abandon`, {
+          method: "POST",
+        });
+      }
+    }
+  }
   await step("my sittings", "/api/v1/me/sittings", {
     expect: (p) => must(Array.isArray(p.items), "not a list"),
   });

@@ -1,7 +1,5 @@
 export { Dashboard } from "@/domains/train/Dashboard";
-export { Mocks } from "@/domains/train/Mocks";
-export { MockDetail } from "@/domains/train/MockDetail";
-export { MockStationRunner } from "@/domains/train/MockStationRunner";
+export { Mocks, MockDetail, MockStationRunner } from "@/domains/train/mocks";
 export { AttemptResult } from "@/domains/train/AttemptResult";
 export { Access } from "@/domains/train/Access";
 export { useExam } from "@/domains/train/useExam";

@@ -1,5 +1,7 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 
+import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
+
 export type Dashboard = components["schemas"]["Dashboard"];
 export type StationSet = components["schemas"]["SetRead"];
 export type SetPage = components["schemas"]["Page_SetRead_"];
@@ -51,6 +53,21 @@ export function startSetAttempt(setId: string, entryId: string): Promise<Started
   );
 }
 
+/**
+ * Talk an attempt you have already sat back through.
+ *
+ * Its own route rather than a flag on `startSetAttempt`, because the backend
+ * treats it as a different act with a different limit: asking to debrief a
+ * station you never sat is refused with `nothing_to_debrief` rather than
+ * quietly starting a first attempt.
+ */
+export function startSetDebrief(setId: string, entryId: string): Promise<StartedAttempt> {
+  return platformRequest<StartedAttempt>(
+    `/api/v1/me/station-sets/${encodeURIComponent(setId)}/entries/${encodeURIComponent(entryId)}/debriefs`,
+    { method: "POST" },
+  );
+}
+
 export function listEntitlements(signal?: AbortSignal) {
   return platformRequest<{ items: Entitlement[] }>("/api/v1/me/entitlements", { signal });
 }
@@ -65,4 +82,33 @@ export type Receipt = components["schemas"]["ReceiptRead"];
 
 export function listReceipts(signal?: AbortSignal) {
   return platformRequest<{ items: Receipt[] }>("/api/v1/me/receipts", { signal });
+}
+
+/** The library's own page cap. Asking for more is a 422, not a longer page. */
+const LIBRARY_PAGE = 100;
+
+/**
+ * Every published station for an exam, paged.
+ *
+ * A set entry carries a station version id and no title, so every mocks screen
+ * needs the whole catalogue to render a name. `browse_library` caps a page at
+ * 100 — the rebuilt screens asked for 200 and got a 422 on every load, which
+ * is why the mocks list rendered as "The request was not valid" — so this
+ * follows the cursor instead, bounded so a runaway catalogue cannot hang a
+ * screen.
+ */
+export async function loadStationCatalogue(
+  examCode: string | null,
+  signal?: AbortSignal,
+  maxPages = 10,
+): Promise<LibraryStation[]> {
+  const items: LibraryStation[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await browseLibrary({ examCode, cursor, limit: LIBRARY_PAGE }, signal);
+    items.push(...result.items);
+    cursor = result.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  return items;
 }
