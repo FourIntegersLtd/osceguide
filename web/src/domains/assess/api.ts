@@ -81,15 +81,63 @@ export function observerToken(
   );
 }
 
-export function listTrainees(slug: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_TraineeRead_"]>(`${org(slug)}/trainees`, {
-    signal,
-  });
+/* ------------------------------------------------------------------------
+ * Cursor paging, shared with `team/api.ts` and `roster/api.ts`.
+ *
+ * Every list endpoint answers `{ items, next_cursor }` and caps `limit` at a
+ * hundred, so a screen that needs a whole list — the group editor, the
+ * exam-access picker — walks the cursors. One helper with a ceiling, rather
+ * than three copies of the loop and one of them spinning on a bad cursor.
+ * --------------------------------------------------------------------- */
+
+export interface PageParams {
+  limit?: number;
+  cursor?: string | null;
 }
 
-export function listMemberships(slug: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_MembershipRead_"]>(`${org(slug)}/memberships`, {
+const PAGE_LIMIT = 100;
+const MAX_PAGES = 25;
+
+/** The org prefix, so the team and roster slices spell it the same way. */
+export const orgPath = org;
+
+export function pageQuery(page?: PageParams) {
+  return { limit: page?.limit ?? PAGE_LIMIT, cursor: page?.cursor ?? undefined };
+}
+
+export async function collectPages<T>(
+  fetchPage: (cursor: string | null) => Promise<{ items: T[]; next_cursor?: string | null }>,
+): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  for (let index = 0; index < MAX_PAGES; index += 1) {
+    const page = await fetchPage(cursor);
+    items.push(...page.items);
+    cursor = page.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  return items;
+}
+
+export type TraineePage = components["schemas"]["Page_TraineeRead_"];
+export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
+
+export function listTrainees(
+  slug: string,
+  signal?: AbortSignal,
+  page?: PageParams,
+): Promise<TraineePage> {
+  return platformRequest<TraineePage>(`${org(slug)}/trainees`, { signal, query: pageQuery(page) });
+}
+
+export function listMemberships(
+  slug: string,
+  signal?: AbortSignal,
+  page?: PageParams,
+): Promise<MembershipPage> {
+  return platformRequest<MembershipPage>(`${org(slug)}/memberships`, {
     signal,
+    query: pageQuery(page),
   });
 }
 

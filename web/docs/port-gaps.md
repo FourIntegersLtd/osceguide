@@ -488,3 +488,101 @@ server-owned clock the rest of the product uses.
 | The join window | The old card said twenty minutes and the new backend opens the session at ten (`marketplace/domain.py`). The copy says ten, so the button does not 409 on a person who believed it. |
 | Exam and session length | The old app was one exam per deployment and a fixed thirty minutes. Both are asked for now, because a slot and a queue place are addressed to an exam. |
 | The partner's tile | `foundation/livekit`'s `AgentTile` reads `useVoiceAssistant`, which is an agent's state. A human partner renders in it but its status line is about an agent that is not there. A participant tile beside it in `foundation/livekit` is the fix, and it is foundation work rather than this capability's. |
+
+## The team and the roster (institution)
+
+The retiring client ran both through one `useOrgTeamPage` hook, and most of
+what it did to a *person* was an operation `platform-api` deliberately does not
+have. Nothing below is a missing screen; it is a different model, and where the
+difference loses something an institution used, it says so.
+
+### Removal is revocation
+
+| What the old screen did | Here |
+|---|---|
+| **Remove a staff member from the org** (`DELETE` staff, and a bulk "Remove" over a selection) | There is no delete. `POST /memberships/{id}/revoke` revokes — the record of who had access, and when, survives, which is what an examination audit needs. The screens offer Revoke and Restore. |
+| **Remove a trainee from the team** (single and bulk) | Likewise `POST /trainees/{id}/access` with `{"revoked": true}`. A trainee has sat things; deleting the row would take an examination's candidate with it. |
+
+If an institution genuinely needs erasure — a person added in error, a data
+subject request — it has no route today. That is the one real loss in this
+pair and the case for a delete that refuses once anything is attached.
+
+### Passwords and login emails
+
+The whole provisioning apparatus is gone, and deliberately: `POST /memberships`
+and `POST /trainees` invite an unknown address, create the account and email a
+link to choose a password. So there is no endpoint behind any of these, and
+none is wanted:
+
+- a temporary password generated in the browser, shown on the page, and copied
+  to the clipboard for an administrator to relay;
+- "Email login to all staff", "Send first invites (n)", "New passwords for
+  everyone eligible", and the per-row "Send again (new password)";
+- the **Portal email** column and its `b2bPortalLoginLastSentAt` stamp — the
+  platform has no record of what it has emailed to whom, so the column has
+  nothing to show.
+
+One thing does go missing with them: **an administrator cannot re-send an
+invitation.** If the first email is lost, there is nothing to press. A
+`POST /memberships/{id}/resend-invite` is the smallest fix.
+
+### `GET /memberships` does not carry the email address
+
+`tenancy/service_memberships.list_memberships` builds every row through
+`_membership_read(r)` with no `email`, so the field is `null` on the list and
+on `PATCH`; only the `POST` response fills it in. The team list therefore
+cannot show addresses for people it did not just invite, and says
+"Account without a listed address" beside the first eight characters of the
+user id rather than printing a uuid as if it were a name. It is a one-line join
+in the service, and it is the single thing that would most improve this screen.
+
+### Cohorts and groups
+
+The platform splits what the old client held in one free-text `cohort` string:
+a **cohort** is an intake a trainee belongs to, a **group** is a list you put on
+a circuit. That is better, and it costs four operations the old screen had:
+
+| What the old screen did | Here |
+|---|---|
+| Rename a group (and rewrite every trainee's label to match) | No `PATCH /trainee-groups/{id}`. A group is created and populated; the name is fixed. |
+| Delete a group | No `DELETE`. |
+| Change a trainee's cohort after they are added, or move a selection into a group in bulk | No `PATCH /trainees/{id}`. A cohort is set when the trainee is created; group membership is edited through `PUT /trainee-groups/{id}/members`, which is the whole list at once. |
+| Rename, archive or delete a cohort | Only `GET` and `POST` exist. |
+
+There is also **no endpoint that lists a group's members** — `GroupRead` carries
+a count and nothing else. The group editor reads membership with
+`POST /roster/resolve` on that one group, which answers exactly the ids a
+circuit builder would get. It works and it is honest, but a
+`GET /trainee-groups/{id}/members` would be the obvious shape.
+
+The CSV import accepts a `cohort` column and matches it to an existing cohort by
+name. An unrecognised name is reported *before* the upload and those rows import
+with no cohort, because there is no way to set one afterwards.
+
+### Staff cannot be imported from a spreadsheet
+
+`POST /trainees/bulk` exists; there is no equivalent for memberships, so the old
+import's "Trainees or Staff?" step is now trainees only. Staff go in one at a
+time.
+
+### Exam access had no screen at all
+
+The entitlement endpoints were among the fifteen nothing called. They have one
+now (**Trainees → Exam access**), and two things about it are worth knowing:
+
+- a grant is made against an **email address**, and `EntitlementRead` answers a
+  `user_id` — no address, no name. The screen joins it back through
+  `Trainee.user_id`, so a grant to somebody who is not on this roster, or who
+  has not yet accepted their invitation and therefore has no user row, shows as
+  "Not on this roster";
+- `live` is the field that gates. The list carries revoked and expired rows too,
+  so anything reading "granted" off the row's existence is wrong.
+
+### `trainee_id` means two things, and both are in this pair
+
+Everything in the `roster` slice — access, group members, resolve — takes
+`trainees.id`. A circuit slot takes `users.id` (`NewCircuit` sends
+`Trainee.user_id`). `POST /roster/resolve` therefore answers **roster** ids, and
+whatever eventually wires it into the circuit builder has to map them across
+`Trainee.user_id` first — a trainee who has never signed in has no user row and
+cannot be put on a circuit at all.

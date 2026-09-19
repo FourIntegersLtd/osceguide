@@ -1,0 +1,174 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { HiOutlineArrowUpTray } from "react-icons/hi2";
+import { Alert, b2bTokens } from "@/foundation/ui";
+import { errorMessage } from "@/foundation/hooks";
+import { Dialog } from "@/domains/assess/team/chrome";
+import { bulkAddTrainees, type BulkTraineesResult, type Cohort } from "@/domains/assess/roster/api";
+import { parseTraineeCsv, skipReason, type CsvParse } from "@/domains/assess/roster/csv";
+import { ImportInstructions, ImportOutcome } from "@/domains/assess/roster/ImportParts";
+
+/**
+ * The spreadsheet import.
+ *
+ * Two things changed from the old modal and both are the backend's doing.
+ * There is no `password` column any more — an unknown address is invited and
+ * chooses its own — and a `cohort` column names a cohort that must already
+ * exist, because the platform has cohort rows with ids rather than a free-text
+ * label copied onto every trainee. Unrecognised names are reported before
+ * anything is sent rather than quietly imported as nothing.
+ */
+export function BulkImportDialog({
+  orgSlug,
+  open,
+  cohorts,
+  onClose,
+  onImported,
+}: {
+  orgSlug: string;
+  open: boolean;
+  cohorts: Cohort[];
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [parsed, setParsed] = useState<CsvParse | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<BulkTraineesResult | null>(null);
+
+  const take = useCallback(async (next: File) => {
+    setFile(next);
+    setResult(null);
+    setError(null);
+    try {
+      setParsed(parseTraineeCsv(await next.text()));
+    } catch (cause) {
+      setParsed(null);
+      setError(errorMessage(cause));
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { "text/csv": [".csv"] },
+    multiple: false,
+    onDrop: (files) => {
+      if (files[0]) void take(files[0]);
+    },
+  });
+
+  const byName = useMemo(
+    () => new Map(cohorts.map((cohort) => [cohort.name.trim().toLowerCase(), cohort.id])),
+    [cohorts],
+  );
+  const unknownCohorts = parsed
+    ? [
+        ...new Set(
+          parsed.rows
+            .map((row) => row.cohort)
+            .filter((label): label is string => Boolean(label))
+            .filter((label) => !byName.has(label.trim().toLowerCase())),
+        ),
+      ]
+    : [];
+
+  const reset = () => {
+    setFile(null);
+    setParsed(null);
+    setResult(null);
+    setError(null);
+  };
+
+  const close = () => {
+    if (busy) return;
+    reset();
+    onClose();
+  };
+
+  const commit = useCallback(async () => {
+    if (!parsed || parsed.rows.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const outcome = await bulkAddTrainees(
+        orgSlug,
+        parsed.rows.map((row) => ({
+          email: row.email,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          cohortId: row.cohort ? (byName.get(row.cohort.trim().toLowerCase()) ?? null) : null,
+        })),
+      );
+      setResult(outcome);
+      onImported();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  }, [parsed, orgSlug, byName, onImported]);
+
+  const ready = parsed != null && parsed.error == null && parsed.rows.length > 0;
+
+  return (
+    <Dialog
+      open={open}
+      title="Import trainees"
+      lead="One spreadsheet of trainees, saved as .csv. The first row must name the columns."
+      error={error}
+      busy={busy}
+      commitLabel={
+        result ? "Done" : ready ? `Import ${parsed.rows.length} trainee${parsed.rows.length === 1 ? "" : "s"}` : "Import trainees"
+      }
+      busyLabel="Importing…"
+      commitDisabled={!ready && !result}
+      onClose={close}
+      onCommit={() => (result ? close() : void commit())}
+    >
+      <ImportInstructions />
+
+      <div
+        {...getRootProps({
+          className: `flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center transition-colors ${
+            isDragActive ? "border-b2b-accent bg-b2b-accent-bg" : "border-b2b-border bg-b2b-cream/60"
+          }`,
+        })}
+      >
+        <input {...getInputProps()} />
+        <HiOutlineArrowUpTray className="h-6 w-6 text-b2b-accent" aria-hidden />
+        <p className="text-osce-body font-medium text-b2b-headline">
+          {file ? file.name : "Drop your .csv here, or choose a file"}
+        </p>
+        <p className="text-osce-caption text-b2b-mid">
+          {file ? `${(file.size / 1024).toFixed(1)} KB` : ".csv files only"}
+        </p>
+      </div>
+
+      {parsed?.error ? <Alert tone="danger">{parsed.error}</Alert> : null}
+
+      {ready && !result ? (
+        <div className={`${b2bTokens.b2bGroupedShell} p-4 text-osce-body text-b2b-graphite`}>
+          <p className="font-medium text-b2b-headline">
+            {parsed.rows.length} row{parsed.rows.length === 1 ? "" : "s"} ready to import.
+          </p>
+          {parsed.skippedLines.length > 0 ? (
+            <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
+              No email address on line{parsed.skippedLines.length === 1 ? "" : "s"}{" "}
+              {parsed.skippedLines.join(", ")} — those rows are left out.
+            </p>
+          ) : null}
+          {unknownCohorts.length > 0 ? (
+            <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
+              No cohort here is called {unknownCohorts.join(", ")}. Those people are imported with
+              no cohort; create the cohort under Groups and set it afterwards.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {result ? <ImportOutcome result={result} describe={skipReason} /> : null}
+    </Dialog>
+  );
+}
