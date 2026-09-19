@@ -55,7 +55,7 @@ export function ExamDashboard() {
 function DashboardBody({ data }: { data: DashboardData }) {
   const { session } = useSession();
   const { hrefFor } = useSurface();
-  const { exams, examCode, setExamCode, attempts } = useDashboardExam(data);
+  const { examCode, attempts } = useDashboardExam(data);
   const config = configFor(examCode);
   const [about, setAbout] = useState<AboutKey | null>(null);
 
@@ -84,23 +84,6 @@ function DashboardBody({ data }: { data: DashboardData }) {
         subtitle={subtitle}
         actions={
           <>
-            {exams.length > 1 ? (
-              <label className="flex items-center gap-2 text-osce-meta text-b2c-text-secondary">
-                <span className="sr-only sm:not-sr-only">Exam</span>
-                <select
-                  value={examCode}
-                  onChange={(event) => setExamCode(event.target.value)}
-                  className={productTokens.b2cInputBase}
-                  aria-label="Exam"
-                >
-                  {exams.map((exam) => (
-                    <option key={exam.code} value={exam.code}>
-                      {configFor(exam.code).label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
             <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
               {attempts === 0 ? "Start your first station" : "Practise a station"}
             </ButtonLink>

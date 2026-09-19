@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { createElement, useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { LuLogOut, LuMenu, LuX } from "react-icons/lu";
 import { Button, cn } from "@/foundation/ui";
 import { useSession, can as hasPermission, type Permission } from "@/foundation/session";
-import { SurfaceProvider, capabilitiesFor } from "@/capabilities";
+import {
+  SurfaceProvider,
+  capabilitiesFor,
+  NAV_SECTIONS,
+  NAV_SECTION_LABELS,
+} from "@/capabilities";
 import { HelpPanel, type HelpNavItem } from "@/capabilities/help";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
+import { navFooterFor } from "@/surfaces/screens";
 import { WorkspaceSwitcher } from "@/surfaces/WorkspaceSwitcher";
 import type { Workspace } from "@/foundation/routing";
 
@@ -59,9 +65,57 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
       label: capability.title,
       href: capability.href,
       icon: capability.icon,
+      section: capability.section,
     }));
     return [...own, ...mounted];
   }, [manifest, workspace, session, href, basePath]);
+
+  /**
+   * The sidebar, grouped.
+   *
+   * An arm whose items name no section gets one flat list, which is what this
+   * used to be for everybody and what the institution arms still want. The
+   * consumer arm names them, and then this draws the retiring client's three
+   * headed groups — Practice, Connect, General — in its order.
+   */
+  const groups = useMemo(() => {
+    const ungrouped = items.filter((item) => !item.section);
+    const sections = NAV_SECTIONS.map((section) => ({
+      section,
+      label: NAV_SECTION_LABELS[section],
+      items: items.filter((item) => item.section === section),
+    })).filter((group) => group.items.length > 0);
+    return { ungrouped, sections };
+  }, [items]);
+
+  const renderItem = useCallback(
+    (item: NavItem) => {
+      const active =
+        pathname === item.href ||
+        (item.href !== basePath && pathname?.startsWith(`${item.href}/`));
+      const Icon = item.icon;
+      return (
+        <Link
+          key={item.key}
+          href={item.href}
+          onClick={() => setMenuOpen(false)}
+          aria-current={active ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-2.5 rounded-control px-3 py-2 text-sm transition-colors",
+            active
+              ? "bg-accent-subtle font-medium text-accent"
+              : "text-ink-muted hover:bg-surface-raised hover:text-ink",
+          )}
+        >
+          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          {item.label}
+        </Link>
+      );
+    },
+    [pathname, basePath],
+  );
+
+  const navFooter = navFooterFor(manifest);
 
   const helpNav = useMemo<HelpNavItem[]>(
     () => items.map((item) => ({ key: item.key, label: item.label, path: item.href })),
@@ -116,30 +170,28 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
             </button>
           </div>
 
-          <nav className="flex flex-col gap-0.5 p-3" aria-label={`${manifest.label} sections`}>
-            {items.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== basePath && pathname?.startsWith(`${item.href}/`));
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-control px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "bg-accent-subtle font-medium text-accent"
-                      : "text-ink-muted hover:bg-surface-raised hover:text-ink",
-                  )}
-                >
-                  {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                  {item.label}
-                </Link>
-              );
-            })}
+          <nav
+            className="flex h-[calc(100%-3.5rem)] flex-col overflow-y-auto p-3"
+            aria-label={`${manifest.label} sections`}
+          >
+            <div className="flex flex-col gap-0.5">{groups.ungrouped.map(renderItem)}</div>
+
+            {groups.sections.map((group) => (
+              <div key={group.section} className="mt-4 first:mt-0">
+                <p className="px-3 pb-1.5 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-muted">
+                  {group.label}
+                </p>
+                <div className="flex flex-col gap-0.5">{group.items.map(renderItem)}</div>
+              </div>
+            ))}
+
+            {/*
+              * `createElement` rather than a capitalised local rendered as
+              * JSX, for the reason `app/[workspace]/screen.tsx` gives: the
+              * React Compiler reads that as defining a component during
+              * render. This is a lookup in a table fixed at module scope.
+              */}
+            {navFooter && createElement(navFooter)}
           </nav>
         </aside>
 

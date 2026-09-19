@@ -315,3 +315,32 @@ collide. An agent should add its own line and expect to rebase.
 
 The tier linter is the real protection: a job that reaches outside its folder
 fails the build rather than quietly coupling two features together.
+
+---
+
+## J16 · Consumer parity — **in progress**
+
+Raised after walking the signed-in consumer arm against `frontend/` and finding
+three things wrong. The first two are done; the third is the current job.
+
+**The navigation did not match.** It was one flat list carrying an "Access"
+item that rendered the same panel Settings already showed as a tab, and a
+"Transcripts" item for something that is a panel of the consultation screen
+rather than a destination. It is now the retiring client's three headed groups
+— Practice, Connect, General — in its order, with the study library kept where
+the user asked for it, billing back under Settings, and a footer carrying the
+upgrade button, the person's name and which exam they are sitting. Settings has
+its Preferences and Exam tabs back.
+
+**Exam dropdowns were everywhere.** See `port-gaps.md`, "The active exam".
+One answer from the backend, one switcher, no per-screen selectors — and the
+backend now refuses browsing, queueing, offering a slot or building a set for
+an exam somebody does not hold, where only `POST /attempts` checked before.
+
+**The station flow is not the old one, and is next.** The old screen is one
+tabbed container — 1. Reading time, 2. Consultation, 3. Management, 4. Feedback
+— with a timer, per-exam doctor information, a two-column consultation, a
+management plan and a marking modal. `AttemptRunner` shows no brief at all,
+there is no management step, and feedback is a separate page. The backend reads
+it needs are done (`/attempts/{id}/brief`, `/attempts/{id}/review`,
+`GET /me/attempts`); the screen is the work.

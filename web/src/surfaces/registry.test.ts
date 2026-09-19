@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SURFACES, type Surface } from "@/capabilities/surface";
-import { CAPABILITIES } from "@/capabilities/registry";
+import { CAPABILITIES, capabilitiesFor } from "@/capabilities/registry";
+import { NAV_SECTIONS } from "@/capabilities/navSection";
 import { PERSONAL_WORKSPACE, type OrgWorkspace } from "@/foundation/routing";
 import {
   ALL_SURFACES,
@@ -148,6 +149,66 @@ describe("surface registry", () => {
         );
       }
     }
+  });
+
+  it("groups the consumer navigation the way the product does", () => {
+    /*
+     * The retiring client's three headed groups. This is the whole of the
+     * consumer sidebar, in order, and it is asserted rather than described
+     * because the grouping is split over two files by design — an arm names
+     * the sections of its own items, a capability names its own — and nothing
+     * else would notice one of them drifting.
+     */
+    const own = SURFACE_MANIFESTS.train.nav({
+      workspace: PERSONAL_WORKSPACE,
+      can: () => true,
+      href: (path) => path,
+    });
+    const mounted = capabilitiesFor("train", { can: {} });
+    const labelled = [
+      ...own.map((item) => ({ label: item.label, section: item.section })),
+      ...mounted.map((capability) => ({
+        label: capability.title,
+        section: capability.section,
+      })),
+    ];
+
+    const bySection = NAV_SECTIONS.map((section) =>
+      labelled.filter((item) => item.section === section).map((item) => item.label),
+    );
+
+    assert.deepEqual(bySection, [
+      ["Dashboard", "AI Practice", "Stations", "Study material"],
+      ["Discussion", "Practise with someone"],
+      ["Settings"],
+    ]);
+    // Nothing ungrouped: an item with no section would render above the
+    // headings, which on this arm means somebody forgot to name one.
+    assert.deepEqual(
+      labelled.filter((item) => !item.section),
+      [],
+    );
+  });
+
+  it("keeps billing in settings rather than beside it", () => {
+    /*
+     * "Access" was a nav item of its own rendering the same panel the Settings
+     * tab renders, so one screen appeared in two places and neither said which
+     * was canonical. It is a tab.
+     */
+    const own = SURFACE_MANIFESTS.train.nav({
+      workspace: PERSONAL_WORKSPACE,
+      can: () => true,
+      href: (path) => path,
+    });
+    assert.ok(
+      !own.some((item) => item.key === "access"),
+      "Access is a Settings tab, not a destination",
+    );
+    assert.ok(
+      !SURFACE_MANIFESTS.train.screenNames.includes("access" as never),
+      "and the arm no longer answers a screen for it",
+    );
   });
 
   it("hides what the backend has not granted", () => {

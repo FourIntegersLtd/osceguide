@@ -15,6 +15,7 @@ export const accountCapability: CapabilityModule = {
   description: "Your profile, password, access and receipts.",
   surfaces: ["train", "assess", "hire", "partner", "platform"],
   permission: null,
+  section: "general",
   path: "/settings",
   icon: LuUserCog,
 };

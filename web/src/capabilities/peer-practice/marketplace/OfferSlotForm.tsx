@@ -119,17 +119,32 @@ export function OfferSlotForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="text-osce-meta font-medium text-osce-ink-900">Exam</span>
-          <select
-            value={examCode}
-            onChange={(event) => setExamCode(event.target.value)}
-            className={b2cInputBase}
-          >
-            {exams.map((exam) => (
-              <option key={exam.code} value={exam.code}>
-                {exam.name}
-              </option>
-            ))}
-          </select>
+          {/*
+           * One exam is the normal case, and a dropdown holding a single
+           * option is a control that cannot be used. The slot is still
+           * addressed to an exam; it is just not a choice being made here.
+           */}
+          {exams.length > 1 ? (
+            <select
+              value={examCode}
+              onChange={(event) => setExamCode(event.target.value)}
+              className={b2cInputBase}
+            >
+              {exams.map((exam) => (
+                <option key={exam.code} value={exam.code}>
+                  {exam.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={exams[0]?.name ?? ""}
+              disabled
+              aria-label="Exam"
+              className={b2cInputBase}
+            />
+          )}
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-osce-meta font-medium text-osce-ink-900">Length</span>

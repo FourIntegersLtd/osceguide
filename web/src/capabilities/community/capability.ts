@@ -14,6 +14,7 @@ export const communityCapability: CapabilityModule = {
   description: "Ask the community a question, and answer other people's.",
   surfaces: ["train", "assess"],
   permission: null,
+  section: "connect",
   path: "/discussion",
   icon: LuMessagesSquare,
 };

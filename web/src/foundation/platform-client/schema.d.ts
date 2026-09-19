@@ -123,6 +123,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attempts/{attempt_id}/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Brief
+         * @description What the candidate reads before the patient is called.
+         *
+         *     Keyed on the attempt, not the station: the library's own read carries no
+         *     content on purpose, because browsing is open to everybody and the brief is
+         *     part of the exam. Having started the station is what makes it readable.
+         */
+        get: operations["attempts_read_brief"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attempts/{attempt_id}/result": {
         parameters: {
             query?: never;
@@ -136,6 +160,29 @@ export interface paths {
          *     the old, so a candidate's history stays readable.
          */
         get: operations["attempts_read_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attempts/{attempt_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Review
+         * @description The model answer: the patient's ideas and concerns, and the plan.
+         *
+         *     Refused until the consultation is over — before that it is the answer to
+         *     the station being sat.
+         */
+        get: operations["attempts_read_review"];
         put?: never;
         post?: never;
         delete?: never;
@@ -338,6 +385,36 @@ export interface paths {
         put?: never;
         /** Register */
         post: operations["identity_register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sso/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Sign In
+         * @description Whether this visitor's organisation signs in somewhere else.
+         *
+         *     **Unauthenticated, and it has to be**: this is what a sign-in page asks
+         *     before anybody has signed in. The retiring client answered it from a
+         *     hostname allow-list compiled into the bundle, so adding a partner meant a
+         *     frontend deploy and the tenant slug, the button's wording and the
+         *     "no password form" rule were three things that could disagree with the
+         *     backend.
+         *
+         *     A 404 means "sign in here, with a password", which is the ordinary case and
+         *     what every host that is not a partner's gets.
+         */
+        get: operations["sso_read_sign_in"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -752,7 +829,15 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Me
+         * @description Change a person's own profile: their name, their exam date, their
+         *     reading-time arrangement.
+         *
+         *     Only what was sent is written — `model_fields_set` rather than the whole
+         *     body, so a screen that edits one field does not silently clear the others.
+         */
+        patch: operations["identity_update_me"];
         trace?: never;
     };
     "/api/v1/me/activity": {
@@ -773,6 +858,29 @@ export interface paths {
          *     success that records nothing.
          */
         post: operations["tutor_memory_record_activity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Attempts
+         * @description Everything this person has sat, newest first.
+         *
+         *     The two filters answer the two questions the screens ask: every attempt at
+         *     one station, and every attempt at one entry of a practice set.
+         */
+        get: operations["attempts_list_my_attempts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1352,7 +1460,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Published */
+        /**
+         * List Published
+         * @description Published material: the titles to anybody, the bodies to subscribers.
+         *
+         *     No token required, because a signed-out visitor still needs the landing
+         *     page's article rail and a shared link still needs to say what it points at.
+         *     What a token changes is `content`: the slide decks and the A to Z are the
+         *     paid half of the product and used to come back in full to anyone who asked,
+         *     signed in or not.
+         */
         get: operations["media_list_published"];
         put?: never;
         /** Create */
@@ -1370,7 +1487,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search */
+        /**
+         * Search
+         * @description Over the material this reader holds, not the whole library.
+         */
         get: operations["media_search"];
         put?: never;
         post?: never;
@@ -1427,6 +1547,11 @@ export interface paths {
         /**
          * Read By Slug
          * @description A draft is 404 to everyone but an admin: its existence is not public.
+         *
+         *     Readable without a token, for the same reason the listing is — but a token
+         *     decides two things: whether a draft exists at all, and whether the body
+         *     comes with it. `locked` says which, so the client can offer the upgrade
+         *     rather than render an empty article.
          */
         get: operations["media_read_by_slug"];
         put?: never;
@@ -3289,6 +3414,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/orgs/{org_slug}/sso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Config
+         * @description The whole arrangement, including the issuer and every binding.
+         */
+        get: operations["sso_read_config"];
+        /**
+         * Save Config
+         * @description Write it. Platform admin only, deliberately.
+         *
+         *     Whoever controls the issuer controls who may sign in as that institution's
+         *     members, so this is not a field to put on a customer's own settings screen
+         *     beside their logo. When there is an onboarding flow with a domain
+         *     verification step in it, that is where this moves.
+         */
+        put: operations["sso_save_config"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/overview": {
         parameters: {
             query?: never;
@@ -3409,6 +3563,46 @@ export interface paths {
         put?: never;
         /** Publish Platform Version */
         post: operations["rubrics_publish_platform_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/site/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Messages
+         * @description The inbox. Platform admin, because it is everybody's messages.
+         */
+        get: operations["public_site_list_messages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/site/messages/{message_id}/handled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Handled
+         * @description Answered, or read and nothing to do. Either way it leaves the queue.
+         */
+        post: operations["public_site_mark_handled"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3617,6 +3811,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/site/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Message
+         * @description The contact form, and the product-feedback box inside the product.
+         *
+         *     Signed in or not: the contact form is on the public site and the feedback
+         *     box is on a screen somebody is already using. When there is a token the
+         *     message is filed against them, which is how a reply finds the right person
+         *     without asking them to type their address again.
+         */
+        post: operations["public_site_send_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/site/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Statistics
+         * @description The counters on the landing page's numbers band.
+         *
+         *     Unauthenticated, because the landing page is what a visitor sees before
+         *     anything else. The retiring backend served these from `/landing`; the
+         *     replacement had no equivalent, so the band hid itself rather than showing
+         *     zeroes.
+         *
+         *     Cached for ten minutes: the busiest page on the site should not cost four
+         *     aggregate queries per view, and no figure here changes meaningfully in
+         *     that time.
+         */
+        get: operations["public_site_read_statistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stations": {
         parameters: {
             query?: never;
@@ -3626,11 +3874,16 @@ export interface paths {
         };
         /**
          * Browse Library
-         * @description The published platform library, which nothing could read before.
+         * @description The published platform library, scoped to what the caller may open.
          *
          *     Every signed-in user, because the library is the product: a consumer builds
          *     a practice set from it and an institution draws on it to build a circuit.
          *     The rows carry no station content — see `LibraryStationRead`.
+         *
+         *     A platform admin browses the whole catalogue, because curating it is their
+         *     job. Everybody else gets their own exam, and asking for another is refused
+         *     rather than answered — the retiring client had one exam per deployment and
+         *     no picker at all.
          */
         get: operations["stations_browse_library"];
         put?: never;
@@ -3984,6 +4237,85 @@ export interface components {
             /** Worker Type */
             worker_type: string;
         };
+        /**
+         * AttemptBriefRead
+         * @description The reading-time screen, keyed on the attempt rather than the station.
+         *
+         *     On the attempt because that is what the entitlement check has already been
+         *     made against: `LibraryStationRead` deliberately carries no content, since
+         *     the library is browsable by everyone and the brief is part of the exam.
+         *     Once somebody has started a station, the brief is theirs to read.
+         */
+        AttemptBriefRead: {
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            doctor_information?: components["schemas"]["DoctorInformationRead"] | null;
+            /** Exam Code */
+            exam_code: string;
+            /** Kind */
+            kind: string;
+            patient: components["schemas"]["PatientIdentityRead"];
+            scenario?: components["schemas"]["CandidateScenarioRead"] | null;
+            /** Set Entry Id */
+            set_entry_id?: string | null;
+            /**
+             * Station Id
+             * Format: uuid
+             */
+            station_id: string;
+            /** Station Title */
+            station_title: string;
+            /**
+             * Station Version Id
+             * Format: uuid
+             */
+            station_version_id: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * AttemptHistoryItem
+         * @description One row of "what have I sat", with its station named.
+         *
+         *     `has_result` rather than a status the client has to interpret: "is there
+         *     feedback to open" is the only question every screen listing these asks.
+         */
+        AttemptHistoryItem: {
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Exam Code */
+            exam_code: string;
+            /**
+             * Has Result
+             * @default false
+             */
+            has_result: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Set Entry Id */
+            set_entry_id?: string | null;
+            /** Station Id */
+            station_id?: string | null;
+            /** Station Title */
+            station_title?: string | null;
+            /** Station Version Id */
+            station_version_id?: string | null;
+            /** Status */
+            status: string;
+        };
         /** AttemptRead */
         AttemptRead: {
             /** Completed At */
@@ -4013,6 +4345,41 @@ export interface components {
             station_version_id: string | null;
             /** Status */
             status: string;
+        };
+        /**
+         * AttemptReviewRead
+         * @description The management step: what the candidate should have covered.
+         */
+        AttemptReviewRead: {
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            /** Exam Code */
+            exam_code: string;
+            /** Kind */
+            kind: string;
+            management_plan?: components["schemas"]["ManagementPlanRead"] | null;
+            patient_information?: components["schemas"]["PatientReviewRead"] | null;
+            scenario?: components["schemas"]["CandidateScenarioRead"] | null;
+            /** Set Entry Id */
+            set_entry_id?: string | null;
+            /**
+             * Station Id
+             * Format: uuid
+             */
+            station_id: string;
+            /** Station Title */
+            station_title: string;
+            /**
+             * Station Version Id
+             * Format: uuid
+             */
+            station_version_id: string;
+            /** Status */
+            status: string;
+            teaching?: components["schemas"]["StationTeachingRead"] | null;
         };
         /**
          * AudienceIn
@@ -4119,6 +4486,33 @@ export interface components {
              * Format: uuid
              */
             user_id: string;
+        };
+        /**
+         * CandidateScenarioRead
+         * @description Candidate-facing keys that sit flat on the document rather than in a block.
+         *
+         *     Ortho's stations are shaped this way: an interview or a trauma list rather
+         *     than a consultation, so the brief is a scenario and a set of images.
+         */
+        CandidateScenarioRead: {
+            /** Additional Image Urls */
+            additional_image_urls?: string[];
+            /** Background Overview */
+            background_overview?: string | null;
+            /** Clinical Scenario */
+            clinical_scenario?: string | null;
+            /** Clinical Scenario Title */
+            clinical_scenario_title?: string | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Patient List For Candidate */
+            patient_list_for_candidate?: components["schemas"]["PrioritisationPatientRead"][];
+            /** Radiograph Image Url */
+            radiograph_image_url?: string | null;
+            /** Station Type */
+            station_type?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * Capabilities
@@ -4755,8 +5149,12 @@ export interface components {
          *     marketplace lists, then joins them in the browser.
          */
         Dashboard: {
+            /** Current Exam Code */
+            current_exam_code?: string | null;
             /** Entitlements */
             entitlements?: components["schemas"]["EntitlementSummary"][];
+            /** Exam Codes */
+            exam_codes?: string[];
             /** Progress */
             progress?: components["schemas"]["ExamProgress"][];
             /** Recent Attempts */
@@ -4841,6 +5239,36 @@ export interface components {
             slot_id: string;
             /** Stale Agents Removed */
             stale_agents_removed: number;
+        };
+        /**
+         * DoctorInformationRead
+         * @description The candidate's brief: what the doctor has in front of them.
+         */
+        DoctorInformationRead: {
+            /** Current Medications */
+            current_medications?: string[];
+            /** Doctor Identity */
+            doctor_identity?: string | null;
+            /** Doctor Task */
+            doctor_task?: string | null;
+            /** Past Medical History */
+            past_medical_history?: string[];
+            /** Patient Biodata */
+            patient_biodata?: string | null;
+            /** Patient Information */
+            patient_information?: string[];
+            /** Photos */
+            photos?: string[];
+            /** Recent Investigations */
+            recent_investigations?: string[];
+            /** Recent Notes */
+            recent_notes?: string[];
+            /** Social History */
+            social_history?: string[];
+            /** Task Instructions */
+            task_instructions?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DomainScore
@@ -4959,7 +5387,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_webhook" | "invalid_workflow" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_editable" | "media_not_found" | "membership_exists" | "membership_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_editable" | "media_not_found" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_not_configurable" | "sso_not_configured" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -5223,6 +5651,15 @@ export interface components {
             /** Items */
             items?: components["schemas"]["Intervention"][];
         };
+        /** InterviewQuestionRead */
+        InterviewQuestionRead: {
+            /** Answer */
+            answer?: string | null;
+            /** Question */
+            question?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** JoinQueue */
         JoinQueue: {
             audience?: components["schemas"]["AudienceIn"];
@@ -5399,12 +5836,59 @@ export interface components {
             /** Refresh Token */
             refresh_token?: string | null;
         };
-        /** MediaRead */
+        /**
+         * ManagementPlanRead
+         * @description The model answer, readable once the consultation is over.
+         */
+        ManagementPlanRead: {
+            /** Additional Notes */
+            additional_notes?: string | null;
+            /** Assessment */
+            assessment?: string[];
+            /** Differential Diagnosis */
+            differential_diagnosis?: string[];
+            /** Examination Findings */
+            examination_findings?: string[];
+            /** Explanation */
+            explanation?: string | null;
+            /** Follow Up */
+            follow_up?: string | null;
+            /** Further Investigations */
+            further_investigations?: string[];
+            /** Health Education */
+            health_education?: string[];
+            /** Ice */
+            ice?: string[];
+            /** Immediate Actions */
+            immediate_actions?: string[];
+            /** Non Pharmacological Treatment */
+            non_pharmacological_treatment?: string[];
+            /** Pharmacological Treatment */
+            pharmacological_treatment?: string[];
+            /** Safety Netting */
+            safety_netting?: string | null;
+            /** Social Concerns */
+            social_concerns?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * MediaRead
+         * @description One piece of study material.
+         *
+         *     `content` is the body — the slide deck, the summary, the article — and it
+         *     is the paid half. It is `None` for a reader who does not hold the exam it
+         *     belongs to, and `locked` says which of the two happened, so the client can
+         *     show the upgrade prompt the retiring app showed rather than an empty page.
+         *
+         *     Everything else is deliberately public: the landing page's article rail and
+         *     a shared link both need a title and a summary without a token.
+         */
         MediaRead: {
             /** Content */
-            content: {
+            content?: {
                 [key: string]: unknown;
-            };
+            } | null;
             /** Exam Code */
             exam_code: string | null;
             /**
@@ -5414,6 +5898,11 @@ export interface components {
             id: string;
             /** Kind */
             kind: string;
+            /**
+             * Locked
+             * @default false
+             */
+            locked: boolean;
             /** Published At */
             published_at: string | null;
             /** Slug */
@@ -5424,6 +5913,48 @@ export interface components {
             summary: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * MessageAccepted
+         * @description Deliberately thin: an id, so support can be quoted one, and nothing else.
+         */
+        MessageAccepted: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+        };
+        /** MessageRead */
+        MessageRead: {
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string | null;
+            /** Handled At */
+            handled_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string | null;
+            /** Source */
+            source: string | null;
+            /** Subject */
+            subject: string | null;
+            /** User Id */
+            user_id: string | null;
         };
         /** MySitting */
         MySitting: {
@@ -5660,6 +6191,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** Page[AttemptHistoryItem] */
+        Page_AttemptHistoryItem_: {
+            /** Items */
+            items: components["schemas"]["AttemptHistoryItem"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[AuditRead] */
         Page_AuditRead_: {
             /** Items */
@@ -5843,6 +6381,38 @@ export interface components {
              */
             email: string;
         };
+        /**
+         * PatientIdentityRead
+         * @description Who the candidate is about to speak to, for the consultation header.
+         */
+        PatientIdentityRead: {
+            /** Gender */
+            gender?: string | null;
+            /** Name Line */
+            name_line?: string | null;
+        };
+        /**
+         * PatientReviewRead
+         * @description The patient's side, as a candidate may read it afterwards.
+         *
+         *     Not a passthrough: `persona`, `opening_sentence`, `expanded_history` and
+         *     the hidden question list are how the patient is played, and they stay on
+         *     the server. What is here is what the old management screen showed — the
+         *     biodata line and the ideas, concerns and expectations the candidate was
+         *     supposed to draw out.
+         */
+        PatientReviewRead: {
+            /** Concerns */
+            concerns?: string[];
+            /** Expectation */
+            expectation?: string[];
+            /** Gender */
+            gender?: string | null;
+            /** Idea */
+            idea?: string[];
+            /** Patient Biodata */
+            patient_biodata?: string | null;
+        };
         /** PeerSessionRead */
         PeerSessionRead: {
             /** Exam Code */
@@ -5944,6 +6514,20 @@ export interface components {
             started_at: string | null;
             /** Status */
             status: string;
+        };
+        /**
+         * PrioritisationPatientRead
+         * @description One patient on an Ortho prioritisation list.
+         */
+        PrioritisationPatientRead: {
+            /** Age */
+            age?: number | null;
+            /** Gender */
+            gender?: string | null;
+            /** Number */
+            number?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /** ProgrammeRead */
         ProgrammeRead: {
@@ -6126,6 +6710,8 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** Exam Code */
+            exam_code?: string | null;
             /** Name */
             name: string;
             /** Password */
@@ -6292,6 +6878,31 @@ export interface components {
              */
             status: string;
         };
+        /** SaveSsoConfig */
+        SaveSsoConfig: {
+            /** Default Exam Code */
+            default_exam_code?: string | null;
+            /** Email Domains */
+            email_domains?: string[];
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Hosts */
+            hosts?: string[];
+            /** Issuer */
+            issuer?: string | null;
+            /** Provider */
+            provider: string;
+            /** Sign In Label */
+            sign_in_label?: string | null;
+            /**
+             * Sso Only
+             * @default false
+             */
+            sso_only: boolean;
+        };
         /** SceneInstructions */
         SceneInstructions: {
             /** Instructions */
@@ -6321,6 +6932,24 @@ export interface components {
             slug: string;
             /** Title */
             title: string;
+        };
+        /** SendMessage */
+        SendMessage: {
+            /** Body */
+            body: string;
+            /** Email */
+            email?: string | null;
+            /**
+             * Kind
+             * @default contact
+             */
+            kind: string;
+            /** Name */
+            name?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Subject */
+            subject?: string | null;
         };
         /** SessionComplete */
         SessionComplete: {
@@ -6407,6 +7036,29 @@ export interface components {
             name: string;
             /** Total Entries */
             total_entries: number;
+        };
+        /**
+         * SiteStatistics
+         * @description The counters the landing page's numbers band shows.
+         *
+         *     Marketing figures, not analytics: they are rounded down to a readable
+         *     number and they are cached, because the busiest page on the site should not
+         *     cost five aggregate queries per view.
+         */
+        SiteStatistics: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Consultations */
+            consultations: number;
+            /** Debriefs */
+            debriefs: number;
+            /** Stations */
+            stations: number;
+            /** Users */
+            users: number;
         };
         /** SittingRead */
         SittingRead: {
@@ -6545,6 +7197,63 @@ export interface components {
             items?: components["schemas"]["SlotReviewRead"][];
             summary: components["schemas"]["SlotRagSummary"];
         };
+        /** SsoBinding */
+        SsoBinding: {
+            /** Kind */
+            kind: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * SsoConfigRead
+         * @description The whole arrangement, for whoever administers it.
+         */
+        SsoConfigRead: {
+            /** Bindings */
+            bindings?: components["schemas"]["SsoBinding"][];
+            /** Default Exam Code */
+            default_exam_code: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Issuer */
+            issuer: string | null;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /** Org Slug */
+            org_slug: string;
+            /** Provider */
+            provider: string;
+            /** Sign In Label */
+            sign_in_label: string;
+            /** Sso Only */
+            sso_only: boolean;
+        };
+        /**
+         * SsoSignIn
+         * @description What a sign-in page may know before anybody has proved anything.
+         *
+         *     Deliberately thin. This is served without a token, to anyone who asks, so
+         *     it carries what a button needs and nothing about the organisation beyond
+         *     the name it already puts on its own front page. No issuer, no bindings, no
+         *     counts: those are configuration, and configuration is for administrators.
+         */
+        SsoSignIn: {
+            /** Default Exam Code */
+            default_exam_code?: string | null;
+            /** Org Name */
+            org_name: string;
+            /** Org Slug */
+            org_slug: string;
+            /** Provider */
+            provider: string;
+            /** Sign In Label */
+            sign_in_label: string;
+            /** Sso Only */
+            sso_only: boolean;
+        };
         /**
          * StartCheckout
          * @description Which plan to buy. A code, never a price: the plan row owns the price.
@@ -6652,6 +7361,48 @@ export interface components {
             slot_status: string;
             /** Station Title */
             station_title: string | null;
+        };
+        /**
+         * StationTeachingRead
+         * @description Ortho's flat teaching keys: the debrief material for a non-consultation station.
+         */
+        StationTeachingRead: {
+            /** Breaking Bad News Framework */
+            breaking_bad_news_framework?: string | null;
+            /** Communication Themes */
+            communication_themes?: string[];
+            /** Consent Approach */
+            consent_approach?: string | null;
+            /** Examination Overview */
+            examination_overview?: string | null;
+            /** Examiner Additional Info */
+            examiner_additional_info?: components["schemas"]["PrioritisationPatientRead"][];
+            /** History Overview */
+            history_overview?: string | null;
+            /** Interview Questions */
+            interview_questions?: components["schemas"]["InterviewQuestionRead"][];
+            /** Investigations Overview */
+            investigations_overview?: string | null;
+            /** Key Concerns */
+            key_concerns?: string[];
+            /** Key Learning Points */
+            key_learning_points?: string[];
+            /** Management Overview */
+            management_overview?: string | null;
+            /** Portfolio Themes */
+            portfolio_themes?: string[];
+            /** Professional Conduct Topics */
+            professional_conduct_topics?: string[];
+            /** References */
+            references?: string[];
+            /** Suggested Order */
+            suggested_order?: {
+                [key: string]: unknown;
+            } | null;
+            /** Suggested Order Overview */
+            suggested_order_overview?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** StationTemplateRead */
         StationTemplateRead: {
@@ -7046,6 +7797,20 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * UpdateMe
+         * @description What a person may change about themselves. Absent means "leave it".
+         */
+        UpdateMe: {
+            /** Exam Code */
+            exam_code?: string | null;
+            /** Exam Date */
+            exam_date?: string | null;
+            /** Extra Reading Percent */
+            extra_reading_percent?: number | null;
+            /** Name */
+            name?: string | null;
+        };
         /** UpdateMedia */
         UpdateMedia: {
             /** Content */
@@ -7104,6 +7869,15 @@ export interface components {
             active_org_slug?: string | null;
             /** Email */
             email: string;
+            /** Exam Code */
+            exam_code?: string | null;
+            /** Exam Date */
+            exam_date?: string | null;
+            /**
+             * Extra Reading Percent
+             * @default 0
+             */
+            extra_reading_percent: number;
             /**
              * Id
              * Format: uuid
@@ -7783,6 +8557,73 @@ export interface operations {
             };
         };
     };
+    attempts_read_brief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptBriefRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_yours */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_ready */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     attempts_read_results: {
         parameters: {
             query?: never;
@@ -7823,6 +8664,73 @@ export interface operations {
             };
             /** @description attempt_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_read_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptReviewRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_yours */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_ready, attempt_not_finished */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8380,6 +9288,49 @@ export interface operations {
                 };
             };
             /** @description weak_password */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sso_read_sign_in: {
+        parameters: {
+            query?: {
+                /** @description The hostname the visitor arrived at, for a white-label site. */
+                host?: string | null;
+                /** @description An address typed into the ordinary sign-in form. */
+                email?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoSignIn"];
+                };
+            };
+            /** @description sso_not_configured */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_sso_binding */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9343,7 +10294,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description audience_not_yours */
+            /** @description not_entitled, audience_not_yours */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -9466,6 +10417,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description not_entitled */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description post_not_found */
             404: {
                 headers: {
@@ -9524,6 +10484,48 @@ export interface operations {
             };
         };
     };
+    identity_update_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMe"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     tutor_memory_record_activity: {
         parameters: {
             query?: never;
@@ -9544,6 +10546,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityAccepted"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_list_my_attempts: {
+        parameters: {
+            query?: {
+                station_version_id?: string | null;
+                set_entry_id?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AttemptHistoryItem_"];
                 };
             };
             /** @description unauthenticated */
@@ -10510,6 +11556,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description not_entitled */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description unknown_exam */
             404: {
                 headers: {
@@ -10554,6 +11609,15 @@ export interface operations {
             };
             /** @description unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_entitled */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10905,15 +11969,6 @@ export interface operations {
                     "application/json": components["schemas"]["Page_MediaRead_"];
                 };
             };
-            /** @description unauthenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description unknown_exam */
             404: {
                 headers: {
@@ -11173,15 +12228,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaRead"];
-                };
-            };
-            /** @description unauthenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description media_not_found */
@@ -16196,7 +17242,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description audience_not_yours */
+            /** @description not_entitled, audience_not_yours */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -17211,6 +18257,135 @@ export interface operations {
             };
         };
     };
+    sso_read_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoConfigRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_not_configured */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sso_save_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSsoConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoConfigRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_not_configured */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_binding_taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_sso_provider, invalid_sso_binding, sso_not_configurable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     tenancy_read_overview: {
         parameters: {
             query?: never;
@@ -17662,6 +18837,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    public_site_list_messages: {
+        parameters: {
+            query?: {
+                /** @description contact or product_feedback */
+                kind?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"][];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_site_mark_handled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description message_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -18444,6 +19728,77 @@ export interface operations {
             };
         };
     };
+    public_site_send_message: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessage"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageAccepted"];
+                };
+            };
+            /** @description invalid_message */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    public_site_read_statistics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteStatistics"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     stations_browse_library: {
         parameters: {
             query?: {
@@ -18469,6 +19824,15 @@ export interface operations {
             };
             /** @description unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_entitled */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

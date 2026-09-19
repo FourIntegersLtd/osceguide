@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Button } from "@/foundation/ui";
@@ -31,6 +31,17 @@ type RegisterField = "username" | "email" | "password" | "confirmPassword";
 export default function Register() {
   const router = useRouter();
   const { refresh } = useSession();
+  /*
+   * Which exam they came to sit, from the per-exam landing pages' own links.
+   *
+   * This replaces the retiring client's subdomains: `sca.osceguide.com` set an
+   * `appType` that every request carried, and the whole app was that one exam.
+   * There is no picker here because the exam catalogue needs a token to read
+   * and this form is the last screen before there is one — somebody who
+   * arrives at the site root signs up without an exam and gets one when they
+   * buy, or from the organisation that rostered them.
+   */
+  const examCode = useSearchParams().get("appType");
 
   const [formData, setFormData] = useState({
     username: "",
@@ -66,6 +77,7 @@ export default function Register() {
         email: result.data.email,
         password: result.data.password,
         name: result.data.username,
+        examCode,
       });
       await refresh();
       router.replace("/app");
@@ -101,7 +113,11 @@ export default function Register() {
     <AuthShell
       variant="split"
       title="Create your account"
-      subtitle="Start practising in a few minutes"
+      subtitle={
+        examCode
+          ? `Start practising for the ${examCode.toUpperCase()} in a few minutes`
+          : "Start practising in a few minutes"
+      }
       sidePanel={<AuthQuotePanel />}
     >
       <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>

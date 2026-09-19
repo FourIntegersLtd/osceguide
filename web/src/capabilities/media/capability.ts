@@ -17,6 +17,7 @@ export const mediaCapability: CapabilityModule = {
   description: "Slide decks, summaries, articles and podcast episodes.",
   surfaces: ["train", "assess"],
   permission: null,
+  section: "practice",
   path: "/library",
   icon: LuLibrary,
 };

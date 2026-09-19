@@ -15,6 +15,7 @@ export const peerPracticeCapability: CapabilityModule = {
   description: "Be paired with another candidate, now or at a time you arrange.",
   surfaces: ["train"],
   permission: null,
+  section: "connect",
   path: "/peers",
   icon: LuHandshake,
 };

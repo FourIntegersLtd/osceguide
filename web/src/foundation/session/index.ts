@@ -1,4 +1,5 @@
 export { SessionProvider, useSession } from "@/foundation/session/SessionProvider";
+export { useCurrentExam, type CurrentExam } from "@/foundation/session/useCurrentExam";
 export { RequireSession, RequireCapability } from "@/foundation/session/guards";
 export { PERMISSIONS, type Permission } from "@/foundation/session/permissions";
 export {

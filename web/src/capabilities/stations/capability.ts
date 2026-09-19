@@ -14,6 +14,7 @@ export const stationsCapability: CapabilityModule = {
   description: "Browse every scenario published for your exams, and practise one.",
   surfaces: ["train", "assess", "hire"],
   permission: null,
+  section: "practice",
   path: "/stations",
   icon: LuStethoscope,
 };

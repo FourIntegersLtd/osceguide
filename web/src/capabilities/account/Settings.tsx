@@ -3,6 +3,8 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  HiOutlineAcademicCap,
+  HiOutlineAdjustmentsHorizontal,
   HiOutlineCreditCard,
   HiOutlineGift,
   HiOutlineSparkles,
@@ -10,17 +12,36 @@ import {
 } from "react-icons/hi2";
 import { B2CSegmentedTabs, type B2CSegmentedTabItem } from "@/foundation/ui";
 import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
+import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
+import ExamPanel from "@/capabilities/account/settings/ExamPanel";
 import AccessPanel from "@/capabilities/account/settings/AccessPanel";
 import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
 import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
 
-export type SettingsTab = "profile" | "payments" | "referrals" | "memory";
+export type SettingsTab = "profile" | "preferences" | "exam" | "payments" | "referrals" | "memory";
 
-const VALID_TABS: SettingsTab[] = ["profile", "payments", "referrals", "memory"];
+const VALID_TABS: SettingsTab[] = [
+  "profile",
+  "preferences",
+  "exam",
+  "payments",
+  "referrals",
+  "memory",
+];
 
+/**
+ * The retiring client's tabs, in its order, plus the tutor's memory.
+ *
+ * "Access" was this tab's label for a while and is "Payments" again: the old
+ * one said Payments, and it is where somebody looks for a receipt. It was also
+ * a nav item of its own for a while, rendering the same panel — one screen in
+ * two places, neither of them canonical.
+ */
 const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "profile", label: "Profile", icon: HiOutlineUser },
-  { id: "payments", label: "Access", icon: HiOutlineCreditCard },
+  { id: "preferences", label: "Preferences", icon: HiOutlineAdjustmentsHorizontal },
+  { id: "exam", label: "Exam", icon: HiOutlineAcademicCap },
+  { id: "payments", label: "Payments", icon: HiOutlineCreditCard },
   { id: "referrals", label: "Referrals", icon: HiOutlineGift },
   { id: "memory", label: "Memory", icon: HiOutlineSparkles },
 ];
@@ -95,6 +116,8 @@ function SettingsFrame({
       />
       <div>
         {tab === "profile" ? <ProfilePanel /> : null}
+        {tab === "preferences" ? <PreferencesPanel /> : null}
+        {tab === "exam" ? <ExamPanel /> : null}
         {tab === "payments" ? <AccessPanel /> : null}
         {tab === "referrals" ? <ReferralsPanel /> : null}
         {tab === "memory" ? <TutorMemoryPanel /> : null}

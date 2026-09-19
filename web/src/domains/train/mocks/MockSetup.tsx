@@ -17,6 +17,7 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
+import { useCurrentExam } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet } from "@/domains/train/api";
 import { attemptedVersionIds, chooseStations } from "@/domains/train/mocks/model";
@@ -50,7 +51,10 @@ export function MockSetup({
 }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
-  const [examCode, setExamCode] = useState(() => defaultExamCode(workspace));
+  // The exam is the app's. It used to be a dropdown over every exam this
+  // person had stations for, which in practice meant the whole catalogue.
+  const { code: currentExam } = useCurrentExam();
+  const examCode = defaultExamCode(workspace, currentExam);
   const [name, setName] = useState(`Session ${workspace.sets.length + 1}`);
   const [stationCount, setStationCount] = useState(1);
   const [includePreviouslyAttempted, setIncludePreviouslyAttempted] = useState(false);
@@ -62,10 +66,6 @@ export function MockSetup({
   const attempted = useMemo(() => attemptedVersionIds(workspace.sets), [workspace.sets]);
   const hasLockedSets = workspace.sets.some((set) => set.locked);
   const access = accessState(workspace, examCode);
-  const examOptions = workspace.exams.filter((exam) =>
-    workspace.stations.some((station) => station.exam_code === exam.code),
-  );
-
   const submit = async () => {
     const picked = chooseStations(stations, stationCount, {
       excludeVersionIds: includePreviouslyAttempted ? undefined : attempted,
@@ -129,26 +129,6 @@ export function MockSetup({
               />
             </div>
 
-            {examOptions.length > 1 ? (
-              <div>
-                <label htmlFor="exam_code" className={productTokens.b2cFieldLabel}>
-                  Exam
-                </label>
-                <select
-                  id="exam_code"
-                  name="exam_code"
-                  value={examCode}
-                  onChange={(event) => setExamCode(event.target.value)}
-                  className={cn(productTokens.b2cInputBase, "mt-1.5")}
-                >
-                  {examOptions.map((exam) => (
-                    <option key={exam.code} value={exam.code}>
-                      {exam.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
 
             <div>
               <label

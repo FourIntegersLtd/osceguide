@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { HiOutlineCalendarDays, HiOutlinePlus } from "react-icons/hi2";
 import {
   Alert,
@@ -11,8 +11,8 @@ import {
   ConfirmModal,
   Modal,
 } from "@/foundation/ui";
-import { b2cInputBase } from "@/foundation/ui/productTokens";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useCurrentExam } from "@/foundation/session";
 import { listExams } from "@/capabilities/stations";
 import {
   claimSlot,
@@ -59,7 +59,6 @@ import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/tim
  */
 export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
   const [tab, setTab] = useState<MarketplaceTab>("available");
-  const [examCode, setExamCode] = useState<string>("");
   const [reloadKey, setReloadKey] = useState(0);
   const [offering, setOffering] = useState(false);
   const [explaining, setExplaining] = useState(false);
@@ -71,18 +70,22 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
   const [failure, setFailure] = useState<string | null>(null);
   const [chosenSessionId, setChosenSessionId] = useState<string | null>(null);
 
+  // The exam is the app's, not this screen's. There used to be a dropdown
+  // here over every published exam, which offered to pair somebody for an exam
+  // they had never bought — and `POST /peer-practice/queue` now refuses that.
+  const { code: activeExam } = useCurrentExam();
   const exams = useAsync((signal) => listExams(signal), []);
   const slots = useAsync((signal) => listSlots({ orgId }, signal), [orgId, reloadKey]);
   const mySessions = useAsync((signal) => listPracticeSessions(signal), [reloadKey]);
   const queue = useQueue(orgId);
 
-  const examOptions = useMemo(
-    () => (exams.data?.items ?? []).map((exam) => ({ code: exam.code, name: exam.name })),
-    [exams.data],
-  );
-  const activeExam = examCode || examOptions[0]?.code || "";
+  // Still read, but only to put a name on the exam rather than to choose one.
   const examLabel =
-    examOptions.find((exam) => exam.code === activeExam)?.name ?? activeExam.toUpperCase();
+    (exams.data?.items ?? []).find((exam) => exam.code === activeExam)?.name ??
+    (activeExam ?? "").toUpperCase();
+  // The slot is offered for the exam being practised, so the form is handed
+  // that one rather than the catalogue.
+  const offerableExams = activeExam ? [{ code: activeExam, name: examLabel }] : [];
 
   // A match is the one thing that takes over the screen: both people are
   // waiting on each other, so there is nothing else worth looking at. Read
@@ -196,21 +199,6 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
 
         {tab === "available" && (
           <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-            <label className="sr-only" htmlFor="peer-practice-exam">
-              Exam
-            </label>
-            <select
-              id="peer-practice-exam"
-              value={activeExam}
-              onChange={(event) => setExamCode(event.target.value)}
-              className={`${b2cInputBase} w-full sm:w-auto`}
-            >
-              {examOptions.map((exam) => (
-                <option key={exam.code} value={exam.code}>
-                  {exam.name}
-                </option>
-              ))}
-            </select>
             <LivePracticeButton queue={queue} examCode={activeExam || null} />
             <Button
               type="button"
@@ -253,7 +241,7 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
           height="fit-content"
         >
           <OfferSlotForm
-            exams={examOptions}
+            exams={offerableExams}
             onSubmit={post}
             isLoading={posting}
             onCancel={() => setOffering(false)}

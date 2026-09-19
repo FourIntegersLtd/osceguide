@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { Permission } from "@/foundation/session";
 import type { Surface } from "@/capabilities/surface";
+import type { NavSection } from "@/capabilities/navSection";
 
 /**
  * What a capability is.
@@ -47,6 +48,14 @@ export interface CapabilityModule {
   icon?: ComponentType<{ className?: string }>;
   /** Left out of surface navigation; reachable by direct link only. */
   hidden?: boolean;
+  /**
+   * Which navigation group it sits in on the arms that show groups.
+   *
+   * A capability names its own because the grouping is about what the thing
+   * *is* — study material is practice, discussion is people — and an arm
+   * listing them all over again would be the same knowledge in two places.
+   */
+  section?: NavSection;
 }
 
 export interface MountedCapability extends CapabilityModule {

@@ -1,5 +1,7 @@
+import type { ComponentType } from "react";
 import type { Surface } from "@/capabilities";
 import type { ScreenMap, ScreenName, SurfaceManifest } from "@/surfaces/contract";
+import { TrainNavFooter } from "@/surfaces/train/TrainNavFooter";
 import { assessScreens } from "@/surfaces/assess/screens";
 import { partnerScreens } from "@/surfaces/partner/screens";
 import { platformScreens } from "@/surfaces/platform/screens";
@@ -31,4 +33,20 @@ export function screensFor(manifest: SurfaceManifest): ScreenMap {
 
 export function screenComponent(manifest: SurfaceManifest, name: ScreenName) {
   return screensFor(manifest)[name];
+}
+
+/**
+ * What an arm renders under its navigation, if anything.
+ *
+ * Here rather than on the manifest for the same reason the screens are: a
+ * component in the manifest would put React in a file the registry test reads
+ * without a renderer. Only the consumer arm has one, where it carries the
+ * upgrade button, the person's name and which exam they are sitting.
+ */
+const NAV_FOOTERS: Partial<Record<Surface, ComponentType>> = {
+  train: TrainNavFooter,
+};
+
+export function navFooterFor(manifest: SurfaceManifest): ComponentType | undefined {
+  return NAV_FOOTERS[manifest.screensFrom ?? manifest.id];
 }

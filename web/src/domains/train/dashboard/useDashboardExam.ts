@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useCurrentExam } from "@/foundation/session";
 import type { Dashboard } from "@/domains/train/api";
 
 export interface DashboardExam {
@@ -9,35 +10,33 @@ export interface DashboardExam {
 }
 
 /**
- * Which exam the dashboard is showing, and which it could show.
+ * How much this person has done in the exam the app is showing.
  *
- * The retiring client answered this with a subdomain: `sca.osceguide.com`
- * carried an `appType` through a context, and each exam had its own build of
- * the same screen. The platform has one workspace and one dashboard, and the
- * person may hold access to more than one exam — so the exams come from what
- * they have actually attempted or been granted, most-practised first, and the
- * picker in the header switches between them.
- *
- * A person with one exam never sees the control.
+ * This used to decide *which* exam as well, from what had been attempted,
+ * granted or built a practice set for — and it offered a picker in the header
+ * when there was more than one. Three other screens each made a different
+ * decision the same way. There is one answer now (`useCurrentExam`, from the
+ * backend) and one switcher, in the navigation.
  */
 export function useDashboardExam(data: Dashboard): {
-  exams: DashboardExam[];
   examCode: string;
-  setExamCode: (code: string) => void;
   attempts: number;
 } {
+  const { code } = useCurrentExam();
   const exams = useMemo(() => availableExams(data), [data]);
-  const [selected, setSelected] = useState<string | null>(null);
-
-  const examCode = selected && exams.some((exam) => exam.code === selected)
-    ? selected
-    : (exams[0]?.code ?? "sca");
-
+  const examCode = code ?? exams[0]?.code ?? "sca";
   const attempts = exams.find((exam) => exam.code === examCode)?.attempts ?? 0;
-
-  return { exams, examCode, setExamCode: setSelected, attempts };
+  return { examCode, attempts };
 }
 
+
+/**
+ * How many attempts this person has in each exam.
+ *
+ * Only ever read for the exam being shown now, but built as a map because the
+ * dashboard payload reports progress per exam and picking one row out of it is
+ * the same walk.
+ */
 function availableExams(data: Dashboard): DashboardExam[] {
   const counts = new Map<string, number>();
 

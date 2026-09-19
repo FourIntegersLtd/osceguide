@@ -61,12 +61,16 @@ export function useExamStations(
 /**
  * Which exam a new session belongs to.
  *
- * The old client never asked: a deployment was one exam, and `appType` came
- * from the subdomain. One account can now hold access to several, so the
- * default is the first exam this person actually has stations for and the
- * form offers the rest.
+ * The app's exam, not this form's. This used to fall back through the person's
+ * first practice set, then the first station in the catalogue, then the first
+ * published exam — three guesses, none of which was what the person was
+ * sitting, and the form offered the rest of the catalogue beside it.
+ *
+ * `fallback` is `useCurrentExam().code`. The old fallbacks stay only for the
+ * moment before it resolves, so the form is never rendered against nothing.
  */
-export function defaultExamCode(workspace: MockWorkspace | null): string {
+export function defaultExamCode(workspace: MockWorkspace | null, fallback: string | null): string {
+  if (fallback) return fallback;
   if (!workspace) return "";
   const fromSets = workspace.sets[0]?.exam_code;
   if (fromSets) return fromSets;

@@ -47,7 +47,9 @@ export const CONSUMER_REDIRECTS: readonly LegacyRedirect[] = [
   { from: "/achievements", to: personal("/achievements") },
   { from: "/settings", to: personal("/settings") },
   { from: "/messages", to: personal("/messages") },
-  { from: "/access", to: personal("/access") },
+  // Billing lives under Settings, where the retiring client kept it. `/access`
+  // was briefly a destination of its own rendering the same panel.
+  { from: "/access", to: `${personal("/settings")}?tab=payments` },
   { from: "/welcome", to: personal("/welcome") },
   { from: "/auth/login", to: "/login" },
   { from: "/auth/register", to: "/register" },

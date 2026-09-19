@@ -235,15 +235,28 @@ export async function login(email: string, password: string): Promise<AuthResult
   return result;
 }
 
-/** Create a consumer account. Institutions provision their people instead. */
+/**
+ * Create a consumer account. Institutions provision their people instead.
+ *
+ * `examCode` is which exam they came to sit. The retiring client got it from
+ * the hostname — `sca.osceguide.com` — and on one domain the per-exam landing
+ * pages carry it into this form instead. Optional, because somebody arriving
+ * at the site root has not said yet.
+ */
 export async function register(input: {
   email: string;
   password: string;
   name: string;
+  examCode?: string | null;
 }): Promise<AuthResult> {
   const result = await platformRequest<AuthResult>("/api/v1/auth/register", {
     method: "POST",
-    body: input,
+    body: {
+      email: input.email,
+      password: input.password,
+      name: input.name,
+      exam_code: input.examCode || null,
+    },
   });
   remember(result);
   return result;

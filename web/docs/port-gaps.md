@@ -183,16 +183,27 @@ the ported screen leaves them out rather than inventing them.
 amber band. The old PLAB and CASC screens defined a colour for it and never
 showed it either.
 
-### There is no active exam on the session
+### The active exam — closed
 
-The old client got its exam from the subdomain — `sca.osceguide.com` set an
-`appType` in a context, and each exam had its own build of the same screen.
-The platform has one workspace and no such field, so `domains/train/dashboard`
-derives the list from what the person has actually attempted, been granted or
-built a mock for, orders it by attempts, and offers a picker in the header when
-there is more than one. Somebody with a single exam never sees the control.
-A remembered choice — on the user, or in the workspace — would be an
-improvement, not a correction.
+**Was:** the old client got its exam from the subdomain, so there was one exam
+per session and no picker anywhere in the product. The platform had no such
+field, so four screens each derived their own answer from a different source —
+the dashboard from what had been attempted, the station library from the whole
+published catalogue, peer practice and the mock form from whichever exam sorted
+first — and each offered its own dropdown over exams nobody had bought.
+
+**Now:** `users.exam_code` is recorded at sign-up (the per-exam landing pages
+carry it into the register form) and `GET /me/dashboard` answers `exam_codes`
+and `current_exam_code` — live entitlements plus that exam, filtered through the
+published catalogue. `foundation/session/useCurrentExam` is the one reader, and
+the choice is remembered per person in `localStorage`.
+
+Every per-screen selector is gone. The only switcher left is the navigation's
+footer line (`SCA · 3 weeks to exam`), and it appears only for somebody holding
+more than one exam — which almost nobody does.
+
+`GET /api/v1/stations` refuses an exam the caller may not open, so the chips
+that used to sit above the library would have been buttons that mostly 403.
 
 ## Mocks (practice sessions)
 

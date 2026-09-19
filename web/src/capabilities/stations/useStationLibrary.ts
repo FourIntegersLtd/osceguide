@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useAsync, type AsyncState } from "@/foundation/hooks";
-import { browseLibrary, listExams, type Exam, type LibraryPage, type LibraryStation } from "@/capabilities/stations/api";
+import { useCurrentExam } from "@/foundation/session";
+import { browseLibrary, type LibraryPage, type LibraryStation } from "@/capabilities/stations/api";
 
 /** One page. Large enough that the client-side search has something to search. */
 const PAGE_SIZE = 100;
@@ -24,9 +25,8 @@ export interface StationLibraryState {
   stations: LibraryStation[];
   /** Fetched but filtered out — so the empty state can say which kind of empty. */
   total: number;
-  exams: AsyncState<Exam[]>;
+  /** The exam being browsed. The app's, not this screen's — see `useCurrentExam`. */
   examCode: string | null;
-  setExamCode: (code: string | null) => void;
   search: string;
   setSearch: (term: string) => void;
   hasMore: boolean;
@@ -35,21 +35,33 @@ export interface StationLibraryState {
 }
 
 /**
- * Browsing the library: the exam filter, the search and the cursor.
+ * Browsing the library: the search and the cursor, over one exam.
  *
- * The search is applied here rather than sent, because `GET /api/v1/stations`
- * takes an exam code and a cursor and nothing else. That is a real limit and
- * it is recorded in `docs/port-gaps.md`: a term only matches what has been
- * paged in, which is why "Load more" stays offered while one is typed.
+ * The exam is the app's, not this screen's. This used to own an "All exams"
+ * chip and one per published exam, which meant somebody browsing scenarios for
+ * an exam they had never bought — the old client had one exam per deployment
+ * and no such control at all. `GET /api/v1/stations` now refuses an exam the
+ * caller may not open, so the chips would have been a row of buttons that
+ * mostly 403.
+ *
+ * The search is applied here rather than sent, because that endpoint takes an
+ * exam code and a cursor and nothing else. That is a real limit and it is
+ * recorded in `docs/port-gaps.md`: a term only matches what has been paged in,
+ * which is why "Load more" stays offered while one is typed.
  */
 export function useStationLibrary(): StationLibraryState {
-  const [examCode, setExamCode] = useState<string | null>(null);
+  const { code: examCode, loading: examLoading } = useCurrentExam();
   const [search, setSearch] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
   const first = useAsync(
-    (signal) => browseLibrary({ examCode, limit: PAGE_SIZE }, signal),
+    // Nothing to browse until the exam is known. Asking without one would ask
+    // the server to choose, and it would choose right — but the page would then
+    // show a different exam's stations for one frame.
+    (signal) =>
+      examCode
+        ? browseLibrary({ examCode, limit: PAGE_SIZE }, signal)
+        : Promise.resolve({ items: [], next_cursor: null } as LibraryPage),
     [examCode],
   );
 
@@ -99,12 +111,10 @@ export function useStationLibrary(): StationLibraryState {
   }, [loaded, search]);
 
   return {
-    first,
+    first: examLoading ? { ...first, loading: true } : first,
     stations,
     total: loaded.length,
-    exams,
     examCode,
-    setExamCode,
     search,
     setSearch,
     hasMore: cursor !== null,

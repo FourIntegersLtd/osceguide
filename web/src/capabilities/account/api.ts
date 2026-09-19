@@ -130,3 +130,16 @@ export function forgetTutorNote(noteId: string): Promise<void> {
     { method: "DELETE" },
   );
 }
+
+export type UpdateMe = components["schemas"]["UpdateMe"];
+
+/**
+ * Change what is a person's own to change.
+ *
+ * Only the fields named are written — the backend reads `model_fields_set`, so
+ * a panel that edits one thing does not silently clear the others. That is why
+ * this takes a partial rather than the whole profile.
+ */
+export function updateMe(body: UpdateMe, signal?: AbortSignal): Promise<Me> {
+  return platformRequest<Me>("/api/v1/me", { method: "PATCH", body, signal });
+}

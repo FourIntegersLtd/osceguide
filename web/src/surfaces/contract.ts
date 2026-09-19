@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import type { Surface } from "@/capabilities";
+import type { NavSection, Surface } from "@/capabilities";
 import type { Permission } from "@/foundation/session";
 import type { Workspace, WorkspaceKind } from "@/foundation/routing";
 
@@ -22,7 +22,6 @@ export type ScreenName =
   | "mockDetail"
   | "mockStation"
   | "attempt"
-  | "access"
   // Institution and employer
   | "sittings"
   | "sittingDetail"
@@ -49,6 +48,8 @@ export interface NavItem {
   label: string;
   href: string;
   icon?: ComponentType<{ className?: string }>;
+  /** Which group this sits in. Ungrouped items render above the groups. */
+  section?: NavSection;
 }
 
 export interface NavContext {
