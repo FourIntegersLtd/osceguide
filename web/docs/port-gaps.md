@@ -586,3 +586,88 @@ Everything in the `roster` slice — access, group members, resolve — takes
 whatever eventually wires it into the circuit builder has to map them across
 `Trainee.user_id` first — a trainee who has never signed in has no user row and
 cannot be put on a circuit at all.
+
+## The live session runner (institution)
+
+The circuit runner came across as one screen over a server-driven circuit,
+where the retiring one was two layouts over ninety-four files driving the
+examination from a browser. Most of what is not here is not missing — it is
+something the backend now does, or deliberately refuses. Both kinds are below,
+because a reader comparing the two screens will notice either way.
+
+### No microphone, no camera, no video tiles — and that is the design
+
+The retiring runner gave a supervisor a full LiveKit room: a tile grid, a
+camera, and a microphone described in its own copy as "you can coach or
+intervene". None of that ports.
+
+- `POST /circuits/{id}/observer-token` mints a **subscribe-only** token — the
+  grant carries `can_publish=False`, so there is no microphone to mute and no
+  camera to turn off. It is a guarantee rather than a UI state on purpose: a
+  candidate must not be promptable mid-consultation, and the transcript has to
+  stay a record of what they said to the patient.
+- Nothing in this product publishes video. The candidate's own room is voice
+  (`VoiceRoom` asks for audio only), and the patient is a voice agent. A tile
+  grid here would be a grid of black rectangles, which reads as a broken camera
+  rather than as a voice call.
+
+What is here instead is `ObserverPanel`: the server's clock, who is actually in
+the room, and who is speaking. The one thing genuinely lost is a supervisor
+being able to speak into a training circuit, which the old runner allowed and
+this backend does not offer a token for.
+
+### The reading brief is not in the runner
+
+The old runner showed the station's brief in a sidebar while reading time ran.
+`CircuitConsole` carries a station's title and version and no content, for the
+same reason the station library does not — see "The station library" above. A
+candidate-scoped brief read is what this needs.
+
+### Nothing says whether a circuit's feedback has already been published
+
+`POST /orgs/{slug}/circuits/{id}/review/finalize` publishes it and there is no
+matching read, so `CircuitFeedbackCard` can say "published" only about a
+publish it just did. Reopen the screen and the card offers to publish again as
+though it never had. A `GET .../review` returning `CircuitReviewRead` would fix
+it in a line.
+
+### A latecomer cannot be given a particular station
+
+The old add-trainee modal picked a station for the person being added.
+`POST /circuits/{id}/append-trainees` takes user ids only and the backend pairs
+them positionally, so the runner offers the people and not the stations. It is
+training-only, too: an exam circuit is one candidate by construction.
+
+### Deliberately dropped, because the server owns it now
+
+- **The timer data channel.** `useCircuitTimerChannel`, `protocol.ts`, the
+  supervisor icon bar and the "start reading time / start consultation"
+  controls all published the examination's clock from one browser over LiveKit
+  data packets. The clock is `phase`, `phase_ends_at` and `remaining_seconds`
+  on the console stream now, and the transitions are `start`, `advance` and
+  `auto-advance`. Two supervisors with the page open no longer disagree, and a
+  refresh no longer loses the timing.
+- **Activating a slot from the browser.** Putting somebody on station is
+  `jump-to` — a recorded override with a reason — rather than local state.
+- **Polling.** The old console re-fetched every eight seconds and resolved each
+  station title and candidate name one request at a time.
+
+### Two things the rebuilt console got wrong, now fixed
+
+Worth naming because they were in this repo rather than the old one: it printed
+alert **codes** at the supervisor (`no_running_attempt` on screen mid-exam —
+the backend sends codes precisely so the client can choose the words), and its
+slot badges switched on statuses the backend never sends (`live`, `ended`,
+`in_progress`; the real ones are `scheduled`, `reading`, `in_consultation`,
+`completed`, `skipped`). Both are in `support.ts` now, with tests.
+
+### `edit-lock` is not this screen's business
+
+`GET /circuits/{id}/edit-lock` stays unwired, and so do `editable` and
+`edit_block` on the console frame. They answer whether the circuit's *slots*
+can be rebuilt, and `consultation_in_progress` — one of the three codes — is
+the normal state of a running examination, so surfacing it here reads as a
+warning about nothing. The runner offers no structural edit: adding a latecomer
+is `append-trainees`, which the backend gates on the circuit being live and in
+training mode instead. The screen that rebuilds a circuit is where this
+belongs.

@@ -98,16 +98,34 @@ unwired endpoints — the single biggest block of unused backend.
 
 ### Wave 2 — after the job it names
 
-**J11 · Institution: the live session runner** — `b2b/components/features/
-sessions` (15.2k, 94 files) → `domains/assess/sessions/`. The circuit console,
-the candidate view, the clock, the interventions. Split along its existing
-sub-folders into files under 300 lines; move state into one `useCircuitRun`
-hook fed by the console stream. 19 unwired `sittings` endpoints.
-*Do this one alone.* It is the largest single screen in either client.
+Wave 1 is done: J1–J10 all landed, and so did the backend's `GET /me/performance`
+(B1). J11 below is done too.
+
+**J11 · Institution: the live session runner** — **done.**
+`b2b/components/features/sessions` (15.2k, 94 files) → `domains/assess/sessions/`
+(twelve files, all under 300 lines). One `useCircuitRun` hook fed by the console
+stream; one screen for both modes, because a training circuit and an examination
+turned out to differ only in the turn strip and who may be added to it. The
+rebuilt `CircuitConsole` it replaces is deleted.
+
+Wired: `jump-to`, `redo-station`, `append-trainees`, `auto-advance`,
+`interventions`, `review/finalize`, and a reason on every override — the backend
+keeps it beside the action, which is what makes an interrupted examination
+defensible afterwards. `edit-lock` stays unwired on purpose (the console frame
+already carries `editable` and `edit_block`).
+
+Not ported, and why, in `port-gaps.md`: the supervisor's microphone, camera and
+video tiles (the observer token is subscribe-only by construction, and nothing
+in this product publishes video), the reading brief, and the whole LiveKit timer
+data channel — the clock is the server's now.
 
 **J12 · Institution: results and reviews** — `b2b/components/features/feedback`
 + the reviews screens (2k) → `domains/assess/results/`. GP lead review, finalise,
-sign-off, release. **Needs J11** for the slot navigation it hangs off.
+sign-off, release. **J11 has landed**, so the slot navigation this hangs off is
+there: every station row in `StationProgressList` links to its review. The
+circuit-level finalise is already wired from the runner; what is left here is
+the GP lead's own review, the sign-off and the release.
+**Next job.**
 
 **J13 · Institution: dashboard, live board, reporting** —
 `b2b/components/features/dashboard` (0.8k) → `domains/assess/dashboard/`.

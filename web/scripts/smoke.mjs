@@ -288,8 +288,28 @@ async function main() {
           expect: (p) => {
             must(p.circuit && p.sitting, "unexpected shape");
             must(Array.isArray(p.slots), "no slots");
+            // The runner draws its stepper, its clock and its alerts off
+            // these three; a rename would leave the screen blank rather
+            // than broken, which is the kind of thing this script is for.
+            must("phase" in p.circuit, "no phase on the circuit");
+            must("auto_advance" in p.circuit, "no auto_advance on the circuit");
+            must(Array.isArray(p.circuit.alerts), "no alerts on the circuit");
           },
         });
+        // The record behind every override the runner offers.
+        await step(
+          "circuit interventions",
+          `/api/v1/orgs/${slug}/circuits/${circuitId}/interventions`,
+          { expect: (p) => must(Array.isArray(p.items), "not a list") },
+        );
+        // Subscribe-only by construction: an examiner who could publish
+        // could prompt a candidate, so this is a route worth watching.
+        await step(
+          "observer token",
+          `/api/v1/orgs/${slug}/circuits/${circuitId}/observer-token`,
+          // 409 is a circuit that is not running, which is the usual seed.
+          { method: "POST", allow: [409], expect: (p) => must(p.token && p.server_url, "no grant") },
+        );
       }
     }
   }

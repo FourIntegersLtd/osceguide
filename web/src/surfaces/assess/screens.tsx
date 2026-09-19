@@ -2,7 +2,7 @@
 
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
-  CircuitConsole,
+  CircuitRunner,
   MyResult,
   NewCircuit,
   NewSitting,
@@ -46,8 +46,8 @@ function AssessNewCircuit(props: ScreenProps) {
   return <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />;
 }
 
-function AssessCircuitConsole(props: ScreenProps) {
-  return <CircuitConsole orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />;
+function AssessCircuitRunner(props: ScreenProps) {
+  return <CircuitRunner orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />;
 }
 
 function AssessResults(props: ScreenProps) {
@@ -90,7 +90,7 @@ export const assessScreens: ScreenMap = {
   sittingDetail: AssessSittingDetail,
   newSitting: AssessNewSitting,
   newCircuit: AssessNewCircuit,
-  circuitConsole: AssessCircuitConsole,
+  circuitConsole: AssessCircuitRunner,
   sittingResults: AssessResults,
   slotReview: AssessSlotReview,
   trainees: AssessTrainees,

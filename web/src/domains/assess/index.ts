@@ -1,7 +1,7 @@
 export { OrgDashboard } from "@/domains/assess/OrgDashboard";
 export { Sittings } from "@/domains/assess/Sittings";
 export { SittingDetail } from "@/domains/assess/SittingDetail";
-export { CircuitConsole } from "@/domains/assess/CircuitConsole";
+export { CircuitRunner } from "@/domains/assess/sessions";
 export { TraineeHome } from "@/domains/assess/TraineeHome";
 export { Trainees } from "@/domains/assess/roster";
 export { Team } from "@/domains/assess/team";
