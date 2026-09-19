@@ -20434,6 +20434,19 @@
               "organization_suspended"
             ]
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_not_found",
+            "x-codes": [
+              "trainee_not_found"
+            ]
+          },
           "409": {
             "content": {
               "application/json": {

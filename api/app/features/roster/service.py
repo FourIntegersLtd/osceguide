@@ -108,6 +108,18 @@ def _trainee_read(row: Trainee) -> TraineeRead:
     )
 
 
+async def ensure_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> None:
+    """That this id names a roster entry of this organisation.
+
+    `results` asks before writing a decision. A slot's `trainee_id` is a
+    `users.id` and a decision's is a `trainees.id`, so an id taken from the
+    circuit console and used on the decision route reaches the database and
+    fails a foreign key, which surfaces as a 500. That is a caller mistake and
+    should read as one.
+    """
+    await _require_trainee(session, org_id, trainee_id)
+
+
 async def trainee_email(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> str:
     """Where to write to this candidate.
 

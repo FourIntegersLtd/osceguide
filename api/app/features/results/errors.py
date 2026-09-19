@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from app.core.errors import Conflict, InvalidInput, NotFound
 
+# Raised from here when a decision names something that is not a roster entry.
+# Re-exported rather than restated so there is one `trainee_not_found`, and so
+# the router can keep importing only its own errors.
+from app.features.roster.errors import TraineeNotFound as TraineeNotFound
+
 
 class ResultNotFound(NotFound):
     code = "result_not_found"

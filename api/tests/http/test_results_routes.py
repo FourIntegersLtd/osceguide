@@ -375,3 +375,50 @@ async def test_releasing_writes_to_the_candidate_and_not_the_administrator(
     )
     assert [m.recipient for m in queued] == [candidate_email]
     assert "admin-kings@example.com" not in {m.recipient for m in queued}
+
+
+async def test_a_users_id_here_is_refused_not_a_crash(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Found on the first production exam day.
+
+    A circuit slot's `trainee_id` is a `users.id`; a decision's is a
+    `trainees.id`. The console hands out the former, so an id copied from it
+    onto this route reached the database and failed a foreign key, which the
+    caller saw as `internal_error` with nothing to act on.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, _ = await a_sitting_and_trainee(db_session, org_id)
+    await make_actor("not-on-the-roster@example.com")
+    from app.features.identity import repository as identity
+
+    somebody = await identity.user_by_email(db_session, "not-on-the-roster@example.com")
+    assert somebody is not None
+
+    refused = await client.put(
+        url(sitting, somebody.id),
+        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "trainee_not_found"
+
+
+async def test_another_orgs_trainee_is_not_decidable(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The same check has to be org-scoped, or it is only a typo guard."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    other_id, _ = await org_with_admin(client, make_actor, slug="barts")
+    sitting, _ = await a_sitting_and_trainee(db_session, org_id)
+    _, theirs = await a_sitting_and_trainee(db_session, other_id)
+
+    refused = await client.put(
+        url(sitting, theirs),
+        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "trainee_not_found"
