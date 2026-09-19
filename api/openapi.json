@@ -3446,6 +3446,7 @@
               "attempt_not_ready",
               "attempt_not_yours",
               "audience_not_yours",
+              "billing_event_not_found",
               "cannot_claim_own_post",
               "checkout_failed",
               "circuit_already_ended",
@@ -3520,6 +3521,7 @@
               "organization_suspended",
               "password_change_required",
               "payment_already_recorded",
+              "payment_not_found",
               "peer_session_not_found",
               "peer_session_not_open",
               "plan_not_available",
@@ -3799,6 +3801,52 @@
           "seconds"
         ],
         "title": "ExtendClock",
+        "type": "object"
+      },
+      "ExtendEntitlement": {
+        "description": "Move the end date. `None` makes the grant open-ended.",
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "ExtendEntitlement",
+        "type": "object"
+      },
+      "FailAttemptRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "FailAttemptRequest",
         "type": "object"
       },
       "FeedbackTemplateRead": {
@@ -5401,6 +5449,48 @@
           "created_at"
         ],
         "title": "NoteRead",
+        "type": "object"
+      },
+      "OrgAtRisk": {
+        "description": "An organisation the console should look at before it looks at anything else.",
+        "properties": {
+          "contract_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Ends At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "status",
+          "contract_ends_at",
+          "reason"
+        ],
+        "title": "OrgAtRisk",
         "type": "object"
       },
       "OrgCounts": {
@@ -7301,11 +7391,60 @@
         "title": "PlatformEntitlementRead",
         "type": "object"
       },
+      "PlatformGrantEntitlement": {
+        "description": "A platform admin granting access outright \u2014 a refund made good, a\nsponsor's seat, a support gesture. `note` is why, and goes in the audit row.",
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "exam_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exam_code",
+          "note"
+        ],
+        "title": "PlatformGrantEntitlement",
+        "type": "object"
+      },
       "PlatformOverview": {
         "properties": {
+          "at_risk": {
+            "items": {
+              "$ref": "#/components/schemas/OrgAtRisk"
+            },
+            "title": "At Risk",
+            "type": "array"
+          },
           "organizations": {
             "title": "Organizations",
             "type": "integer"
+          },
+          "organizations_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Organizations By Status",
+            "type": "object"
           },
           "users": {
             "title": "Users",
@@ -8002,6 +8141,66 @@
         "title": "RecordArrival",
         "type": "object"
       },
+      "RecordManualPayment": {
+        "description": "A payment that did not come through Stripe \u2014 a bank transfer, a sponsor,\na comped seat \u2014 recorded so it grants access, mints a receipt and counts\nlike any other. Without a reference one is minted as `manual:<id>`.",
+        "properties": {
+          "amount_total_pence": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Total Pence"
+          },
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "plan_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Plan Code",
+            "type": "string"
+          },
+          "stripe_payment_intent_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Payment Intent Id"
+          }
+        },
+        "required": [
+          "plan_code",
+          "note"
+        ],
+        "title": "RecordManualPayment",
+        "type": "object"
+      },
       "RedeemReferral": {
         "properties": {
           "code": {
@@ -8051,6 +8250,22 @@
           "refresh_token"
         ],
         "title": "RefreshRequest",
+        "type": "object"
+      },
+      "RefundRequest": {
+        "description": "Record-only: the money is returned in the Stripe dashboard. This revokes\nwhat the payment bought and says so in the audit log; the payment row stays.",
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RefundRequest",
         "type": "object"
       },
       "RegisterRequest": {
@@ -8118,6 +8333,38 @@
         "title": "ReindexReport",
         "type": "object"
       },
+      "RenewContract": {
+        "description": "New dates, and whether a suspension should lift with them.\n\nOne call rather than a `PATCH` and a `restore`: a renewal that sets the\ndate and forgets to restore leaves a paying customer locked out.",
+        "properties": {
+          "contract_ends_at": {
+            "format": "date-time",
+            "title": "Contract Ends At",
+            "type": "string"
+          },
+          "contract_starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Starts At"
+          },
+          "restore": {
+            "default": true,
+            "title": "Restore",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contract_ends_at"
+        ],
+        "title": "RenewContract",
+        "type": "object"
+      },
       "ReportTotals": {
         "properties": {
           "candidates": {
@@ -8144,6 +8391,55 @@
           "decisions_released"
         ],
         "title": "ReportTotals",
+        "type": "object"
+      },
+      "RescoreRequest": {
+        "description": "Re-queue the marking. Left empty, under the policy the attempt was\nfrozen with; named, under another one, whose result sits beside the old.",
+        "properties": {
+          "policy_version": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          }
+        },
+        "title": "RescoreRequest",
+        "type": "object"
+      },
+      "RescoreResult": {
+        "properties": {
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "queued",
+          "policy_version"
+        ],
+        "title": "RescoreResult",
         "type": "object"
       },
       "ResolveRosterRequest": {
@@ -8213,6 +8509,21 @@
           "acknowledged_at"
         ],
         "title": "ResultAcknowledgement",
+        "type": "object"
+      },
+      "RevokeEntitlement": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RevokeEntitlement",
         "type": "object"
       },
       "RosterWarningRead": {
@@ -11909,9 +12220,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -11958,9 +12270,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -12023,9 +12336,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12134,9 +12448,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12235,9 +12550,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12323,9 +12639,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12424,9 +12741,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12525,9 +12843,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12613,9 +12932,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12749,9 +13069,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12831,9 +13152,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -12918,9 +13240,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -13243,9 +13566,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -13592,9 +13916,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -13641,9 +13966,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -13714,9 +14040,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -13892,9 +14219,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -13979,9 +14307,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -14052,9 +14381,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -14199,9 +14529,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -14269,9 +14600,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -14360,9 +14692,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -14442,9 +14775,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -14508,9 +14842,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -14566,9 +14901,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -14685,9 +15021,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -14772,9 +15109,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -15009,9 +15347,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -15079,9 +15418,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -15163,9 +15503,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -15264,9 +15605,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -15353,9 +15695,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -15401,9 +15744,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -15461,9 +15805,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -15577,9 +15922,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -15626,9 +15972,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -15678,9 +16025,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -15767,9 +16115,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -15807,9 +16156,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -15846,9 +16196,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -15897,9 +16248,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -15993,9 +16345,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16055,9 +16408,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -16106,9 +16460,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16190,9 +16545,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16278,9 +16634,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16367,9 +16724,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -16418,9 +16776,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16492,9 +16851,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16555,9 +16915,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -16594,9 +16955,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -16644,9 +17006,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16732,9 +17095,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16807,9 +17171,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -16870,9 +17235,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -16946,9 +17312,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -17023,9 +17390,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -17106,9 +17474,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -17193,9 +17562,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -17277,9 +17647,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -17390,9 +17761,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -17493,9 +17865,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -17541,9 +17914,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           }
         },
@@ -17586,9 +17960,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -17850,9 +18225,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -26750,9 +27126,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -26834,9 +27211,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -26907,9 +27285,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -27016,9 +27395,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -27165,6 +27545,290 @@
           }
         ],
         "summary": "Read Attempt For Support",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/platform/attempts/{attempt_id}/fail": {
+      "post": {
+        "description": "End a stuck attempt so the person, or their supervisor, can start a fresh one.",
+        "operationId": "attempts_fail_attempt_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAttemptDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_attempt_state",
+            "x-codes": [
+              "invalid_attempt_state"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fail Attempt For Support",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/platform/attempts/{attempt_id}/rescore": {
+      "post": {
+        "description": "Queue the marking again. Twice is once; an existing result is kept.",
+        "operationId": "attempts_rescore_attempt_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RescoreResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_attempt_state",
+            "x-codes": [
+              "invalid_attempt_state"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rescore Attempt For Support",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/platform/attempts/{attempt_id}/salvage": {
+      "post": {
+        "description": "Treat the turns that arrived as the transcript the worker never\ndelivered, and queue the marking.",
+        "operationId": "attempts_salvage_attempt_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAttemptDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_attempt_state",
+            "x-codes": [
+              "invalid_attempt_state"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Salvage Attempt For Support",
         "tags": [
           "attempts"
         ]
@@ -27413,6 +28077,255 @@
         ]
       }
     },
+    "/api/v1/platform/billing/events/{event_id}/replay": {
+      "post": {
+        "description": "Apply a refused delivery again, once its cause is fixed. `already_applied`\nfor one that went through; the same refusal, and a new audit row, for one\nwhose cause is not fixed yet.",
+        "operationId": "billing_replay_billing_event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "billing_event_not_found, unknown_plan, unknown_exam",
+            "x-codes": [
+              "billing_event_not_found",
+              "unknown_plan",
+              "unknown_exam"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_webhook",
+            "x-codes": [
+              "invalid_webhook"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Replay Billing Event",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/platform/entitlements/{entitlement_id}": {
+      "patch": {
+        "description": "Move the end date. A renewal is this rather than a second row.",
+        "operationId": "entitlements_extend_entitlement_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entitlement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entitlement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtendEntitlement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformEntitlementRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "entitlement_not_found",
+            "x-codes": [
+              "entitlement_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extend Entitlement For Support",
+        "tags": [
+          "entitlements"
+        ]
+      }
+    },
+    "/api/v1/platform/entitlements/{entitlement_id}/revoke": {
+      "post": {
+        "description": "Withdraw a grant; the row stays so the history holds.",
+        "operationId": "entitlements_revoke_entitlement_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entitlement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entitlement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeEntitlement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformEntitlementRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "entitlement_not_found",
+            "x-codes": [
+              "entitlement_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Entitlement For Support",
+        "tags": [
+          "entitlements"
+        ]
+      }
+    },
     "/api/v1/platform/exams": {
       "post": {
         "description": "A new platform exam, as a draft \u2014 the consumer catalogue.\n\nThe table starts empty and stays that way until somebody writes one. There\nis no seed: four exams used to be inserted by a migration and mirrored by a\ntuple in this slice, and a fifth needed both changed and shipped.",
@@ -27446,9 +28359,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -27559,9 +28473,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -27648,9 +28563,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -27749,9 +28665,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -28939,6 +29856,93 @@
         ]
       }
     },
+    "/api/v1/platform/organizations/{org_slug}/contract": {
+      "post": {
+        "description": "Record a renewal and lift the suspension it ends, in one step.",
+        "operationId": "tenancy_renew_contract",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewContract"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Renew Contract",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
     "/api/v1/platform/organizations/{org_slug}/memberships": {
       "get": {
         "description": "Read-only member list for platform support.",
@@ -29046,7 +30050,7 @@
         ]
       },
       "post": {
-        "description": "Put the first person into an organisation.\n\nEvery other membership is added by an org admin, and a freshly provisioned\norganisation has none: the console could provision, rename and suspend an\norganisation but could not seat its owner, so the first row had to be\ninserted by hand. A platform admin holds no org role, so this is the one\nmembership write that does not go through `OrgAdmin`.",
+        "description": "Put somebody into an organisation from the console.\n\nUsually the first person: a freshly provisioned organisation has no admin\nto do it. Not only the first \u2014 the admin who left before naming a\nsuccessor leaves the same gap, and an address with no account is invited\nexactly as an org admin's invitation would.",
         "operationId": "tenancy_seat_membership",
         "parameters": [
           {
@@ -29139,6 +30143,280 @@
           }
         ],
         "summary": "Seat Membership",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}": {
+      "patch": {
+        "description": "The wrong person is the administrator: move the role.",
+        "operationId": "tenancy_change_membership_role_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMembership"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__tenancy__schemas__MembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found, membership_not_found",
+            "x-codes": [
+              "org_not_found",
+              "membership_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Membership Role For Support",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}/restore": {
+      "post": {
+        "description": "The administrator who locked themselves out, let back in.",
+        "operationId": "tenancy_restore_membership_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__tenancy__schemas__MembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found, membership_not_found",
+            "x-codes": [
+              "org_not_found",
+              "membership_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Restore Membership For Support",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}/revoke": {
+      "post": {
+        "description": "Revoked, not deleted: the record of who had access and when survives.",
+        "operationId": "tenancy_revoke_membership_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__tenancy__schemas__MembershipRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found, membership_not_found",
+            "x-codes": [
+              "org_not_found",
+              "membership_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Membership For Support",
         "tags": [
           "tenancy"
         ]
@@ -29331,9 +30609,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -29426,9 +30705,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -29499,7 +30779,7 @@
     },
     "/api/v1/platform/overview": {
       "get": {
-        "description": "The numbers the console opens with, counted rather than listed.",
+        "description": "The numbers the console opens with, and the organisations to look at first.",
         "operationId": "tenancy_read_overview",
         "responses": {
           "200": {
@@ -29534,6 +30814,91 @@
         "summary": "Read Overview",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/payments/{payment_id}/refund": {
+      "post": {
+        "description": "Withdraw what a refunded payment bought. The money moves in Stripe; the row stays.",
+        "operationId": "billing_record_refund",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPaymentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "payment_not_found",
+            "x-codes": [
+              "payment_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Refund",
+        "tags": [
+          "billing"
         ]
       }
     },
@@ -29591,9 +30956,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -29662,9 +31028,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -29739,9 +31106,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -29827,9 +31195,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -29934,9 +31303,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30049,9 +31419,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30161,9 +31532,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30292,9 +31664,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30367,9 +31740,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30442,9 +31816,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30502,9 +31877,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30589,9 +31965,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30692,9 +32069,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30799,9 +32177,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30921,9 +32300,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -30991,9 +32371,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -31092,9 +32473,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -31199,9 +32581,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -31309,9 +32692,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -31422,9 +32806,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -31684,7 +33069,7 @@
         ]
       },
       "patch": {
-        "description": "Correct a name or exam, or deactivate the account.",
+        "description": "Correct a name or exam, or deactivate the account \u2014 which ends its\nsessions now, not at the next refresh.",
         "operationId": "tenancy_update_user",
         "parameters": [
           {
@@ -32144,6 +33529,90 @@
         "tags": [
           "entitlements"
         ]
+      },
+      "post": {
+        "description": "Grant access outright, source `admin`, with the reason in the audit log.\n\nFor the payment that was taken under another address, the sponsor's seat,\nthe goodwill month. Not for a purchase that failed to apply: replay that.",
+        "operationId": "entitlements_grant_entitlement_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformGrantEntitlement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformEntitlementRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found, unknown_exam",
+            "x-codes": [
+              "user_not_found",
+              "unknown_exam"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grant Entitlement For Support",
+        "tags": [
+          "entitlements"
+        ]
       }
     },
     "/api/v1/platform/users/{user_id}/payments": {
@@ -32216,6 +33685,105 @@
           }
         ],
         "summary": "List User Payments For Support",
+        "tags": [
+          "billing"
+        ]
+      },
+      "post": {
+        "description": "Record a payment that did not come through Stripe, granting what it bought.",
+        "operationId": "billing_record_manual_payment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordManualPayment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPaymentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found, plan_not_available, unknown_plan, unknown_exam",
+            "x-codes": [
+              "user_not_found",
+              "plan_not_available",
+              "unknown_plan",
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "payment_already_recorded",
+            "x-codes": [
+              "payment_already_recorded"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Manual Payment",
         "tags": [
           "billing"
         ]
@@ -32543,9 +34111,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -32630,9 +34199,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -32699,9 +34269,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "403": {
@@ -32777,9 +34348,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -32869,9 +34441,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -32958,9 +34531,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -33054,9 +34628,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -33123,9 +34698,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -33216,9 +34792,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -33308,9 +34885,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {
@@ -33389,9 +34967,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -33444,9 +35023,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "422": {
@@ -33511,9 +35091,10 @@
                 }
               }
             },
-            "description": "unauthenticated",
+            "description": "unauthenticated, account_suspended",
             "x-codes": [
-              "unauthenticated"
+              "unauthenticated",
+              "account_suspended"
             ]
           },
           "404": {

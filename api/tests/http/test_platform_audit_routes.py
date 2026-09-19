@@ -73,7 +73,12 @@ async def test_a_persons_history_is_what_was_done_to_them_and_what_they_did(
 
     history = await client.get(f"/api/v1/platform/users/{user_id}/audit", headers=bearer(root))
     assert history.status_code == 200, history.text
-    assert [row["action"] for row in history.json()["items"]] == ["platform_admin.granted", "user.updated"]
+    # Rows written inside one test share a `now()`, so the order between them
+    # is not something to assert on; the set is.
+    assert sorted(row["action"] for row in history.json()["items"]) == [
+        "platform_admin.granted",
+        "user.updated",
+    ]
 
     root_history = await client.get(
         "/api/v1/platform/audit?actor_email=root@osceguide.com", headers=bearer(root)

@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -45,6 +45,17 @@ async def organizations_with_contracts(
         Organization.status.in_(list(statuses)), Organization.contract_ends_at.is_not(None)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def organizations_in_statuses(session: AsyncSession, *, statuses: Sequence[str]) -> list[Organization]:
+    """Every organisation in these statuses, contract or no contract."""
+    stmt = select(Organization).where(Organization.status.in_(list(statuses))).order_by(Organization.name)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def count_organizations_by_status(session: AsyncSession) -> dict[str, int]:
+    stmt = select(Organization.status, func.count()).group_by(Organization.status)
+    return {str(status): int(n) for status, n in (await session.execute(stmt)).all()}
 
 
 async def list_audit_across_orgs(

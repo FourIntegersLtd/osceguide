@@ -67,6 +67,7 @@ from app.features.stations.router_platform import router as platform_stations_ro
 from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
 from app.features.tenancy.router_platform import router as platform_console_router
+from app.features.tenancy.router_platform_members import router as platform_members_router
 from app.features.tenancy.router_platform_users import router as platform_users_router
 from app.features.tutor_memory.router import router as tutor_memory_router
 from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
@@ -94,6 +95,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(tenancy_router)
     router.include_router(platform_console_router)
     router.include_router(platform_users_router)
+    router.include_router(platform_members_router)
     router.include_router(catalog_router)
     router.include_router(rubrics_router)
     router.include_router(org_rubrics_router)

@@ -62,9 +62,35 @@ class SetPlatformAdmin(BaseModel):
     is_platform_admin: bool
 
 
+class OrgAtRisk(BaseModel):
+    """An organisation the console should look at before it looks at anything else."""
+
+    slug: str
+    name: str
+    status: str
+    contract_ends_at: datetime | None
+    # `suspended`, `contract_lapsed` (ended, not yet swept) or `contract_ending`
+    # (within thirty days).
+    reason: str
+
+
 class PlatformOverview(BaseModel):
     organizations: int
     users: int
+    organizations_by_status: dict[str, int] = Field(default_factory=dict)
+    at_risk: list[OrgAtRisk] = Field(default_factory=list)
+
+
+class RenewContract(BaseModel):
+    """New dates, and whether a suspension should lift with them.
+
+    One call rather than a `PATCH` and a `restore`: a renewal that sets the
+    date and forgets to restore leaves a paying customer locked out.
+    """
+
+    contract_starts_at: datetime | None = None
+    contract_ends_at: datetime
+    restore: bool = True
 
 
 class CreateOrganization(BaseModel):
