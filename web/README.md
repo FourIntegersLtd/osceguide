@@ -90,13 +90,52 @@ node scripts/seed-dev-content.mjs --email you@example.com --password ...
 
 ### Talking to the workers
 
-`POST /api/v1/attempts/{id}/voice-token` answers `voice_unavailable` until the
-**API** has `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. The same
-three live in `assessment-platform/.env`; the API mints the token and decides
-Cloud against self-hosted, and the browser never chooses a server.
+Three things have to line up, and all three are verified by `scripts/smoke.mjs`
+and the steps below.
 
-For a patient to actually answer, run a worker from `assessment-platform` with
-a `VOICE_BACKENDS_JSON` entry whose `WORKER_SECRET` matches the API's.
+**1. The API can mint a room token.** `POST /api/v1/attempts/{id}/voice-token`
+answers `voice_unavailable` until the API has `LIVEKIT_URL`,
+`LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. The same three live in
+`assessment-platform/.env`. The API mints the token and decides Cloud against
+self-hosted; the browser never chooses a server.
+
+**2. The agent names match.** The API dispatches `{family}-{mode}`, so with the
+default self-hosted mode it asks for `assessment-self-hosted`. The worker
+registers under `LIVEKIT_ASSESSMENT_AGENT_NAME`, which is that same string in
+`assessment-platform/.env`. If they differ, a candidate joins a room and nobody
+comes.
+
+```bash
+cd ../assessment-platform && make dev-assessment
+# registered worker {"agent_name": "assessment-self-hosted", ...}
+```
+
+**3. The worker can read the attempt back.** It fetches the frozen scenario from
+`/api/worker/attempts/{id}` with an `X-Worker-Secret` header, so
+`assessment-platform`'s `VOICE_BACKENDS_JSON` needs a `platform` entry whose
+`PLATFORM_WORKER_SECRET` equals the API's `WORKER_SECRET`:
+
+```json
+"platform": {
+  "base_url_env": "PLATFORM_API_URL",
+  "secret_env": "PLATFORM_WORKER_SECRET",
+  "secret_header": "X-Worker-Secret",
+  "slot_release_path": "/api/worker/livekit-cloud-slot/release",
+  "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
+  "slot_payload_key": "room_name"
+}
+```
+
+Check it without a browser:
+
+```bash
+curl -H "X-Worker-Secret: $WORKER_SECRET" \
+  http://127.0.0.1:8002/api/worker/attempts/<attempt-id>
+```
+
+Nothing about the scenario travels through the browser: the attempt is frozen
+server-side when it is created and the worker fetches it by id, so a tampered
+payload cannot change what is assessed.
 
 ## Checking it
 
