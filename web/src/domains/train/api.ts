@@ -60,3 +60,9 @@ export function listPlans(signal?: AbortSignal) {
     signal,
   });
 }
+
+export type Receipt = components["schemas"]["ReceiptRead"];
+
+export function listReceipts(signal?: AbortSignal) {
+  return platformRequest<{ items: Receipt[] }>("/api/v1/me/receipts", { signal });
+}

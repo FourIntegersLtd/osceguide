@@ -4,6 +4,7 @@ import { helpCapability } from "@/capabilities/help/capability";
 import { mediaCapability } from "@/capabilities/media/capability";
 import { stationsCapability } from "@/capabilities/stations/capability";
 import { communityCapability } from "@/capabilities/community/capability";
+import { peerPracticeCapability } from "@/capabilities/peer-practice/capability";
 
 /**
  * Every capability, and the surfaces each is mounted on.
@@ -19,6 +20,7 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
   helpCapability,
   mediaCapability,
   communityCapability,
+  peerPracticeCapability,
 ];
 
 export interface MountOptions {
