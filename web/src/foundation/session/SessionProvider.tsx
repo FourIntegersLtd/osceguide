@@ -32,10 +32,18 @@ function ensureAuthInstalled() {
 export function SessionProvider({ children }: { children: ReactNode }) {
   ensureAuthInstalled();
   const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<SessionStatus>(() =>
-    hasStoredSession() ? "loading" : "anonymous",
-  );
-  const [ready, setReady] = useState(() => !hasStoredSession());
+  /*
+   * Always "loading" to begin with, on the server and on the first client
+   * paint alike.
+   *
+   * Seeding this from `hasStoredSession()` read `localStorage`, which does not
+   * exist during a server render: the server decided "anonymous, resolved" and
+   * the browser decided "loading", so every gated screen hydrated against a
+   * different tree and React threw the whole thing away and re-rendered. The
+   * answer is not knowable before mount, so nothing pretends to know it.
+   */
+  const [status, setStatus] = useState<SessionStatus>("loading");
+  const [ready, setReady] = useState(false);
   const inFlight = useRef<Promise<void> | null>(null);
 
   const load = useCallback(async () => {

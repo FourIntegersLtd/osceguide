@@ -36,8 +36,8 @@ export const CONSUMER_REDIRECTS: readonly LegacyRedirect[] = [
   { from: "/library", to: personal("/library") },
   { from: "/slides", to: personal("/library") },
   { from: "/summary", to: personal("/library") },
-  { from: "/community", to: personal("/community") },
-  { from: "/discussion", to: personal("/community") },
+  { from: "/community", to: personal("/discussion") },
+  { from: "/discussion", to: personal("/discussion") },
   { from: "/marketplace", to: personal("/peers") },
   { from: "/peers", to: personal("/peers") },
   { from: "/human-practice", to: personal("/peers") },
@@ -84,7 +84,7 @@ export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
   { pattern: /^\/transcripts(\/.+)$/, to: `/app/${PERSONAL_SLUG}/transcripts$1` },
   { pattern: /^\/debriefs(\/.+)$/, to: `/app/${PERSONAL_SLUG}/debriefs$1` },
   { pattern: /^\/feedbacks(\/.+)$/, to: `/app/${PERSONAL_SLUG}/feedbacks$1` },
-  { pattern: /^\/community\/(.+)$/, to: `/app/${PERSONAL_SLUG}/community/$1` },
+  { pattern: /^\/community\/(.+)$/, to: `/app/${PERSONAL_SLUG}/discussion/$1` },
 ];
 
 const EXACT = new Map(CONSUMER_REDIRECTS.map((r) => [r.from, r.to]));

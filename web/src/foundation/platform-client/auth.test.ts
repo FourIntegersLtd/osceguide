@@ -114,3 +114,70 @@ test("the synchronous peek never refreshes", async () => {
   }) as typeof fetch;
   assert.equal(peekPlatformAccessToken(), "access-1");
 });
+
+test("a reload does not spend the refresh token when the access token is still good", async () => {
+  /*
+   * This is the bug that signed people out on every reload.
+   *
+   * Refresh tokens are single-use with reuse detection. The expiry used not to
+   * be stored, so a restored session was always treated as due and every page
+   * load refreshed — and two module instances doing that at once (a
+   * code-split chunk, a second tab) spent the same token twice, which reads as
+   * theft and revokes the whole chain.
+   */
+  respondWith(200, PAIR);
+  await exchangeLegacyToken("institution", "legacy-token");
+
+  // A fresh page load: module scope is gone, storage is not.
+  clearPlatformSessionMemoryOnly();
+
+  const calls = respondWith(500, { code: "should_not_be_called", message: "" });
+  assert.equal(await platformAccessToken(), "access-1");
+  assert.equal(calls(), 0, "a valid access token needs no refresh");
+});
+
+test("a reload refreshes once the stored expiry has passed", async () => {
+  respondWith(200, PAIR);
+  await exchangeLegacyToken("institution", "legacy-token");
+  window.localStorage.setItem(STORAGE_KEYS.expiresAt, String(Date.now() - 1));
+  clearPlatformSessionMemoryOnly();
+
+  const calls = respondWith(200, { ...PAIR, access_token: "access-2", refresh_token: "refresh-2" });
+  assert.equal(await platformAccessToken(), "access-2");
+  assert.equal(calls(), 1);
+});
+
+test("losing a refresh race adopts the winner's pair rather than signing out", async () => {
+  // Two module instances can refresh at once — a second tab, or a code-split
+  // chunk with its own scope. The loser's token is spent through no fault of
+  // the person using it, and their session is alive in storage.
+  window.localStorage.setItem(STORAGE_KEYS.access, "stale");
+  window.localStorage.setItem(STORAGE_KEYS.refresh, "mine");
+
+  globalThis.fetch = (async () => {
+    // Meanwhile the other instance finished and stored its pair.
+    window.localStorage.setItem(STORAGE_KEYS.access, "access-from-winner");
+    window.localStorage.setItem(STORAGE_KEYS.refresh, "refresh-from-winner");
+    window.localStorage.setItem(STORAGE_KEYS.expiresAt, String(Date.now() + 900_000));
+    return new Response(JSON.stringify({ code: "invalid_refresh_token", message: "spent" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+
+  assert.equal(await platformAccessToken(), "access-from-winner");
+  assert.equal(window.localStorage.getItem(STORAGE_KEYS.refresh), "refresh-from-winner");
+});
+
+/** Drop the in-memory session, keeping storage: what a page reload does. */
+function clearPlatformSessionMemoryOnly(): void {
+  const keep = {
+    access: window.localStorage.getItem(STORAGE_KEYS.access),
+    refresh: window.localStorage.getItem(STORAGE_KEYS.refresh),
+    expiresAt: window.localStorage.getItem(STORAGE_KEYS.expiresAt),
+  };
+  clearPlatformSession();
+  if (keep.access) window.localStorage.setItem(STORAGE_KEYS.access, keep.access);
+  if (keep.refresh) window.localStorage.setItem(STORAGE_KEYS.refresh, keep.refresh);
+  if (keep.expiresAt) window.localStorage.setItem(STORAGE_KEYS.expiresAt, keep.expiresAt);
+}

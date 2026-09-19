@@ -1,4 +1,3 @@
-import { platformRequest } from "@/foundation/platform-client";
 
 /**
  * The counters the hero and the numbers band show.
@@ -26,10 +25,17 @@ export interface LandingStats {
   all_stations?: number;
 }
 
+/**
+ * The figures, when there are any.
+ *
+ * `platform-api` has no public statistics endpoint. The retiring backend
+ * served `/landing`; asking the replacement for it 404s on every view of the
+ * busiest public page, so this does not ask. The band hides itself on `null`,
+ * which is the same thing a failed request produced, and the page is one
+ * request lighter until the endpoint exists.
+ *
+ * Putting it back is this function's body. See `docs/port-gaps.md`.
+ */
 export async function fetchLandingStats(): Promise<LandingStats | null> {
-  try {
-    return await platformRequest<LandingStats>("/api/v1/landing");
-  } catch {
-    return null;
-  }
+  return null;
 }

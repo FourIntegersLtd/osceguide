@@ -24,6 +24,17 @@ export type LegacyProvider = "consumer" | "institution";
 const ACCESS_KEY = "osce_platform_access_token";
 const REFRESH_KEY = "osce_platform_refresh_token";
 /**
+ * When the stored access token expires, in epoch milliseconds.
+ *
+ * Persisted rather than recomputed because refresh tokens are single-use with
+ * reuse detection. Without it, every page load treated its access token as due
+ * and refreshed — and any two module instances doing that at once (a code-split
+ * chunk, a second tab, a dev-mode double render) spent the same token twice,
+ * which reads as theft and revokes the whole chain. The person is then signed
+ * out on reload with no explanation.
+ */
+const EXPIRES_KEY = "osce_platform_token_expires_at";
+/**
  * Refresh this long before the access token expires.
  *
  * Tokens live fifteen minutes. Refreshing a minute early costs one extra
@@ -70,6 +81,7 @@ function remember(result: AuthResult): StoredSession {
   session = stored;
   write(ACCESS_KEY, stored.accessToken);
   write(REFRESH_KEY, stored.refreshToken);
+  write(EXPIRES_KEY, String(stored.expiresAt));
   return stored;
 }
 
@@ -90,6 +102,7 @@ export function clearPlatformSession(): void {
   inFlight = null;
   write(ACCESS_KEY, null);
   write(REFRESH_KEY, null);
+  write(EXPIRES_KEY, null);
 }
 
 /**
@@ -126,7 +139,24 @@ async function refresh(): Promise<string | null> {
       body: { refresh_token: refreshToken },
     });
     return remember(pair).accessToken;
-  } catch {
+  } catch (cause) {
+    /*
+     * Another instance of this module may have refreshed while we were in
+     * flight — a second tab, or a code-split chunk with its own module scope.
+     * It stored a fresh pair, and ours is spent through no fault of the
+     * person using it. Adopting theirs is right; clearing would sign them out
+     * of a session that is perfectly alive.
+     */
+    const current = read(REFRESH_KEY);
+    if (current && current !== refreshToken) {
+      const accessToken = read(ACCESS_KEY);
+      const expiresAt = Number(read(EXPIRES_KEY));
+      if (accessToken && Number.isFinite(expiresAt) && Date.now() < expiresAt) {
+        session = { accessToken, refreshToken: current, expiresAt };
+        return accessToken;
+      }
+    }
+    void cause;
     // A refused refresh means the chain is spent or revoked. Dropping it
     // sends the next call back through the exchange rather than retrying a
     // token that will never work again.
@@ -147,9 +177,14 @@ export async function platformAccessToken(): Promise<string | null> {
     const accessToken = read(ACCESS_KEY);
     const refreshToken = read(REFRESH_KEY);
     if (!accessToken || !refreshToken) return null;
-    // The expiry is not stored, so a token restored from a previous page load
-    // is treated as due: one refresh is cheaper than one 401.
-    session = { accessToken, refreshToken, expiresAt: 0 };
+    // A stored expiry in the past — or a missing one, from a session saved
+    // before this was kept — is treated as due, which costs one refresh.
+    const storedExpiry = Number(read(EXPIRES_KEY));
+    session = {
+      accessToken,
+      refreshToken,
+      expiresAt: Number.isFinite(storedExpiry) ? storedExpiry : 0,
+    };
   }
   if (Date.now() < session.expiresAt - REFRESH_MARGIN_MS) return session.accessToken;
   inFlight ??= refresh().finally(() => {
@@ -183,7 +218,11 @@ export function peekPlatformAccessToken(): string | null {
 }
 
 /** Exported for the tests, which need to start from nothing. */
-export const STORAGE_KEYS = { access: ACCESS_KEY, refresh: REFRESH_KEY } as const;
+export const STORAGE_KEYS = {
+  access: ACCESS_KEY,
+  refresh: REFRESH_KEY,
+  expiresAt: EXPIRES_KEY,
+} as const;
 
 
 /** Sign in. One login for every product. */
