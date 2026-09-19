@@ -23,6 +23,30 @@ Each entry says what the screen does today, so nothing is silently dropped.
 | Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | The old client read `accessibility.needs_extra_reading_time` off the user and extended the clock from inside the timer. No such field on `platform-api`. The timer takes the duration it is given; when the field exists, whoever creates the attempt applies it. |
 | Photo upload | `foundation/ui/PhotoUpload.tsx` | Posted to the old backend's `/api/upload_photos/{id}`. The component takes an `upload` function now, and nothing supplies one yet. |
 
+## The one that blocks a whole screen
+
+**Consumer performance analytics.** The four exam dashboards draw three things
+from the retiring backend's `/api/{exam}_dashboard`: a pass/fail/critical
+summary, a score per rubric domain, and a trend line over time.
+`GET /api/v1/me/dashboard` serves none of them — it serves entitlements,
+attempt counts, recent attempts and station sets, which is a real dashboard but
+not that one.
+
+The data exists. `assessment_results.payload` holds the engine's structured
+output, keyed on the rubric's own domain and competency ids, and
+`reviews/scoring.py` already turns a flat `domain.skill.score` map into a score
+per domain — that is how an institution ranks a cohort. What is missing is the
+step between: reading a framework's payload into that flat form. The
+institution path never needed it, because its RAG comes from human reviews.
+
+So the endpoint is buildable and contained — a `/me/performance` in the
+`dashboard` slice, reading `attempts` and `rubrics` the way `service.py`
+already reads `entitlements` and `station_sets` — but it needs a real marked
+attempt to write against, not a guess at the payload's shape.
+
+Until then the consumer dashboard shows what is true: progress, recent
+attempts, sets and access.
+
 ## Shape disagreements
 
 | What | Where | How it is handled |
