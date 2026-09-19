@@ -98,10 +98,8 @@ function EntitlementsCard({ items }: { items: Entitlement[] }) {
                   className="flex items-center justify-between gap-4 px-4 py-3"
                 >
                   <dt className={b2cFieldLabel}>
-                    {entitlement.exam_code.toUpperCase()}
-                    <span className="ml-1.5 capitalize">
-                      · from your {entitlement.source}
-                    </span>
+                    {entitlement.exam_code.toUpperCase()} · from your{" "}
+                    {sourceLabel(entitlement.source)}
                   </dt>
                   <dd className={`${b2cFieldValue} text-right`}>
                     {entitlement.ends_at ? formatDate(entitlement.ends_at) : "No end date"}
@@ -128,13 +126,33 @@ function EndedList({ items }: { items: Entitlement[] }) {
             key={`${entitlement.exam_code}-${entitlement.source}-ended`}
             className="text-osce-meta text-b2c-text-muted"
           >
-            {entitlement.exam_code.toUpperCase()} from your {entitlement.source}
+            {entitlement.exam_code.toUpperCase()} from your {sourceLabel(entitlement.source)}
             {entitlement.ends_at ? ` · ended ${formatDate(entitlement.ends_at)}` : ""}
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+/**
+ * Where an entitlement came from, in words.
+ *
+ * `org_grant`, `sso_tenant` and the rest are the backend's own spelling
+ * (`entitlements/domain.py`). A `capitalize` class over the raw value read
+ * "From Your Org_grant", which is the kind of thing that survives to
+ * production because nobody in the team has an org grant on their test
+ * account.
+ */
+function sourceLabel(source: string): string {
+  const named: Record<string, string> = {
+    purchase: "purchase",
+    org_grant: "organisation",
+    trial: "free trial",
+    sso_tenant: "institution",
+    admin: "OSCE Guide team",
+  };
+  return named[source] ?? source.replace(/_/g, " ");
 }
 
 export function formatDate(value: string): string {
