@@ -1,0 +1,154 @@
+"use client";
+
+import { useState } from "react";
+import { HiOutlinePlusCircle } from "react-icons/hi2";
+import { Alert, Button, getInputClassName } from "@/foundation/ui";
+import { useAsync } from "@/foundation/hooks";
+import {
+  addProgramme,
+  listExams,
+  listProgrammes,
+  updateProgramme,
+} from "@/capabilities/authoring/api";
+import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
+import { useAction } from "@/capabilities/authoring/parts/useAction";
+import { ListCard } from "@/capabilities/authoring/parts/ListCard";
+import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
+import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
+
+/**
+ * Programmes: an institution's sittings, grouped under one exam.
+ *
+ * The exam may be the institution's own or one the platform published; the
+ * code is resolved in the institution's scope, so its own wins a clash. There
+ * is no platform equivalent — the catalogue has nothing to group — which is
+ * why this section is only offered where `supportsProgrammes` holds.
+ */
+export function ProgrammesSection() {
+  const scope = useAuthoringScope();
+  const programmes = useAsync((signal) => listProgrammes(scope, signal), [scope.base]);
+  const exams = useAsync((signal) => listExams(scope, {}, signal), [scope.base]);
+  const action = useAction(programmes.reload);
+
+  const [adding, setAdding] = useState(false);
+  const [examCode, setExamCode] = useState("");
+
+  const items = programmes.data?.items ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-osce-body text-b2b-mid">
+          Group this institution&apos;s sittings under one exam.
+        </p>
+        <Button
+          themeType="b2b"
+          variant="commit"
+          size="sm"
+          className="gap-2"
+          onClick={() => setAdding(true)}
+        >
+          <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+          Add programme
+        </Button>
+      </div>
+
+      {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
+
+      <ListCard
+        count={items.length}
+        countLabel="Programmes"
+        loading={programmes.loading && !programmes.data}
+        error={programmes.error ? programmes.error.message : null}
+        onDismissError={programmes.reload}
+        empty={{
+          title: "No programmes yet",
+          description: "Add a programme for each exam you run sittings against.",
+        }}
+      >
+        {items.map((programme) => (
+          <div
+            key={programme.id}
+            className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-osce-body font-medium text-b2b-headline">
+                {programme.exam_name}
+              </p>
+              <p className="mt-0.5 truncate text-osce-caption text-b2b-mid">
+                {programme.exam_code} · {programme.source}
+                {programme.exam_owner_kind === "platform" ? " · OSCE Guide exam" : ""}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <StatusBadge status={programme.status} />
+              <Button
+                themeType="b2b"
+                variant="secondary"
+                size="xs"
+                disabled={action.busy !== null}
+                onClick={() =>
+                  void action.run(`status:${programme.id}`, () =>
+                    updateProgramme(
+                      scope,
+                      programme.id,
+                      programme.status === "active" ? "retired" : "active",
+                    ),
+                  )
+                }
+              >
+                {action.busy === `status:${programme.id}`
+                  ? "Saving…"
+                  : programme.status === "active"
+                    ? "Retire"
+                    : "Reactivate"}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </ListCard>
+
+      <AuthoringDialog
+        open={adding}
+        title="Add programme"
+        lead="Pick the exam this institution's sittings will be grouped under."
+        error={action.error}
+        busy={action.busy === "add"}
+        busyLabel="Adding…"
+        commitLabel="Add programme"
+        commitDisabled={examCode.trim() === ""}
+        onClose={() => setAdding(false)}
+        onCommit={() =>
+          void action.run("add", async () => {
+            await addProgramme(scope, examCode.trim());
+            setExamCode("");
+            setAdding(false);
+          })
+        }
+      >
+        <div>
+          <label className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
+          <select
+            value={examCode}
+            onChange={(e) => setExamCode(e.target.value)}
+            className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+          >
+            <option value="">Select an exam…</option>
+            {(exams.data?.items ?? []).map((exam) => (
+              <option key={exam.id} value={exam.code}>
+                {exam.name} ({exam.code})
+              </option>
+            ))}
+          </select>
+          <input
+            value={examCode}
+            onChange={(e) => setExamCode(e.target.value)}
+            className={`mt-2 ${getInputClassName()}`}
+            aria-label="Exam code"
+            placeholder="…or type an exam code"
+          />
+        </div>
+      </AuthoringDialog>
+    </div>
+  );
+}

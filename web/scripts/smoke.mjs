@@ -19,7 +19,12 @@ function arg(name, fallback) {
 let token = null;
 const results = [];
 
-async function step(label, path, { method = "GET", body, expect } = {}) {
+/*
+ * `allow` lists statuses that are an answer rather than a failure — a 403 from
+ * the platform scope means this account is not a platform admin, which is a
+ * fact about the seed and not a broken route.
+ */
+async function step(label, path, { method = "GET", body, expect, allow = [] } = {}) {
   try {
     const response = await fetch(`${API}${path}`, {
       method,
@@ -31,6 +36,10 @@ async function step(label, path, { method = "GET", body, expect } = {}) {
     });
     const text = await response.text();
     const payload = text ? JSON.parse(text) : null;
+    if (allow.includes(response.status)) {
+      results.push({ label, ok: true, detail: `${response.status} ${payload?.code ?? ""}`.trim() });
+      return null;
+    }
     if (!response.ok) throw new Error(`${response.status} ${payload?.code ?? ""}`);
     if (expect) expect(payload);
     results.push({ label, ok: true });
@@ -40,6 +49,15 @@ async function step(label, path, { method = "GET", body, expect } = {}) {
     return null;
   }
 }
+
+/** The five listings the authoring capability renders under either prefix. */
+const AUTHORING_LISTINGS = [
+  ["stations", "stations"],
+  ["station templates", "station-templates"],
+  ["feedback templates", "feedback-templates"],
+  ["rubrics", "rubrics"],
+  ["exams", "exams"],
+];
 
 function must(condition, message) {
   if (!condition) throw new Error(message);
@@ -197,6 +215,29 @@ async function main() {
       expect: (p) => must(p.counts && p.setup, "unexpected shape"),
     });
     await step("org trainees", `/api/v1/orgs/${slug}/trainees`);
+
+    /*
+     * Authoring reads both scopes, because that is the claim the capability
+     * makes: the same five listings under `/orgs/{slug}` and under
+     * `/platform`. If one prefix drifts, one implementation can no longer
+     * serve both arms, and this is where that is caught rather than in a
+     * browser on whichever arm somebody happened to open.
+     */
+    for (const [label, path] of AUTHORING_LISTINGS) {
+      await step(`org ${label}`, `/api/v1/orgs/${slug}/${path}`, {
+        expect: (p) => must(Array.isArray(p.items), "not a page"),
+      });
+    }
+    await step("org programmes", `/api/v1/orgs/${slug}/programmes`, {
+      expect: (p) => must(Array.isArray(p.items), "not a page"),
+    });
+
+    for (const [label, path] of AUTHORING_LISTINGS) {
+      await step(`platform ${label}`, `/api/v1/platform/${path}`, {
+        allow: [403],
+        expect: (p) => must(Array.isArray(p.items), "not a page"),
+      });
+    }
     const sittings = await step("org sittings", `/api/v1/orgs/${slug}/sittings`);
     const sittingId = sittings?.items?.[0]?.id;
     if (sittingId) {
