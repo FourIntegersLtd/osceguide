@@ -51,42 +51,28 @@ four-line wrapper in `domains/assess`, not a change here.
 `PostRead` carries `author_id` and no display name, so a comment shows its date
 and its likes and not who wrote it. The old station comments showed a username.
 
-## Community — what the posts table does not carry
+## Study material
 
-The discussion screens (`capabilities/community`) came across whole: the three
-tabs, the composer, a question and its answers, likes, the author's own delete,
-and the comments under a station. These are the places the old screens knew
-something `platform-api` does not.
+One capability over four old folders — slide decks, the A-to-Z, articles and
+podcast episodes are one `media` row with a `kind` here. These are the places
+where that row carries less than the four old collections did.
 
 | What | Where | Today |
 |---|---|---|
-| A display name on a post | `posts.tsx`, `authorLabel` | `PostRead` carries `author_id` and nothing else, so only the viewer's own posts can be bylined. A stranger reads as "@a colleague" where the old screens read "@somebody". One `author_name` on `PostRead` fixes every screen here at once — it is the single most visible gap in this capability. |
-| `GET /community/questions/{id}` | `QuestionDetail.tsx` | There is no read for one question; only the paged list and the replies. A thread is found in the page the feed already serves, so a question older than the first hundred opens as "Question not found." The same shape as `findLibraryStation`, and the same fix. |
-| Questions I asked | `MyQuestions.tsx` | No `mine` or `author_id` filter on the feed, so the tab narrows the first page (100) to the viewer. Bounded, and therefore honest, but somebody with a long history sees only their recent questions. |
-| Answers I wrote | `MyAnswers.tsx` | Nothing lists one person's replies — replies are read per question, so assembling the tab means a request per question in the feed. The screen keeps its empty state rather than being built on a hundred requests. A `GET /community/replies?author=me` is the whole of what it needs. |
-| Tags on a question | not ported | The old composer offered `MEDICAL_SPECIALTIES_CATEGORIES` as chips and the cards showed them back. `posts` has no tags. `exam_code` is the nearest thing the table has and `PostRead` does not return it, so tagging would write something nobody could read. |
-| Images on a post | not ported | The old question, reply and answer forms all carried an `images` array, always posted empty because the upload endpoint went with the retiring backend (see *Photo upload*). Nothing is lost that was working. |
+| A specialty facet | `SummaryIndex.tsx`, the deck sidebar in `DeckView.tsx` | `MediaRead` has no specialty or tag column. The old slides list filtered on `?specialty=` and every summary carried a `specialties[]` the A-to-Z grouped by. `specialtiesOf` reads `content.specialties` (or `content.specialty`) from the authoring payload instead, and both facets hide themselves when nothing carries one — so the Specialty tab is an empty state, not a bucket holding the whole library. A column, or a tags table, is what this wants. |
+| Filtering the library by exam | `MediaLibrary.tsx` | `GET /api/v1/media` takes `kind` and nothing else. Every old list was implicitly scoped to the signed-in person's `app_type`, so a PLAB candidate never saw CASC material. Items carry `exam_code` and the card shows it as a badge; everything is listed to everybody until the endpoint takes an exam. |
+| Searching inside a kind, and a snippet per hit | `MediaSearchResults.tsx` | `GET /api/v1/media-search` is one vector search over every kind and returns `id`, `kind`, `slug`, `title` and a score — no excerpt, no `kind` filter, no paging (`next_cursor` is always null). The old A-to-Z and blog boxes were server-side substring matches over one collection each and returned whole rows, which is what let them show a preview. It also answers nothing at all on a deployment with no embedding key, by design — a local API with no key looks like a library where nothing matches. |
+| A total, for paging | `PagedGrid` in `MediaLibrary.tsx` | Cursor pagination with no `total_count`, so there is no page count until every page has been walked. The library walks the cursor (six pages of a hundred, which the A-to-Z needs anyway) and pages in the browser. A library past six hundred items needs a real page. |
+| `updated_at` on an item | `ArticleView.tsx` | The old article header printed "Published … · Updated …". `MediaRead` carries `published_at` only, so the Updated line is gone. |
+| Audio for an episode | `EpisodeView.tsx`, the Listen button on a summary | A `podcast` item plays only what `content.audio_url` (or `content.podcast_url` on a summary) points at, and nothing uploads one — there is no media asset endpoint. The seeded episode has no audio and the player says so. |
+| The upgrade path on a locked read | not ported | The old A-to-Z answered `403` with `show_upgrade_modal` for an unsubscribed reader and offered "Upgrade to Pro" in place of the list. `GET /api/v1/media` gates nothing today (its own tests pin that search is deliberately unfiltered by what a reader has bought), and `/billing/checkout` is unwired — see J8. When the read becomes entitlement-gated, this screen needs that prompt back. |
+| Blog authoring, and a public listing | not ported | Covered above: reading is this capability, authoring has no endpoint, and an anonymous read would also bring back the landing's blog rail. |
 
-`POST /stations/{id}/comments` with a station id that does not exist answers
-`internal_error` rather than `station_not_found`; the row is written against a
-foreign key and the failure is not mapped. Nothing reaches it through the UI.
-
-**Two implementations of the station comments.** `capabilities/stations`
-carries its own `listStationComments` / `commentOnStation` and a rebuilt
-`StationComments`; `capabilities/community` now carries the port of the old
-screen — the real copy, the like toggle, the author's delete and the
-moderation footnote — beside the questions it shares a table with. One should
-go, and it should be the rebuild: a capability may import another capability,
-so `capabilities/stations` swapping its import for
-`@/capabilities/community` is a one-line change. Until it happens the station
-detail screen shows the rebuilt panel.
-
-**Scoping needs no wrapper any more.** `useRoom()` turns the workspace slug
-from `useSurface()` into the organisation's id using the memberships the
-session already carries, so `Discussion` scopes itself on whichever workspace
-it is mounted in. `domains/assess/OrgDiscussion` still works — the `orgId` prop
-it passes wins — but nothing has to supply one.
-
+Two things from the old folders are deliberately elsewhere. `shared/media/` is
+`MicrophoneCheck` — a pre-flight for the consultation runner, not study
+material, and it belongs to the station library (J3). The "Conversation" tab on
+a deck never had a backend in the old client either; it is kept, and still says
+there is no conversation.
 
 ## The one that blocks a whole screen
 
