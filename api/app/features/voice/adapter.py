@@ -78,6 +78,17 @@ class LiveKitRoomAgents:
     """Explicit agent dispatch, for rooms a supervisor is already running."""
 
     async def remove_agents(self, room: str) -> int:
+        """Clear stale patients out of a room. A room that does not exist has none.
+
+        LiveKit answers `not_found` for a room nobody has joined yet, and that
+        used to fail the whole call. On exam day the consequence was a stalled
+        circuit: the reading phase ends, the transition tries to dispatch the
+        patient, the candidate's browser has not opened the room yet, and the
+        scheduled job errors instead of advancing. The circuit then sits
+        overdue for ever, because every retry hits the same empty room.
+
+        Nothing to remove is success.
+        """
         api = _livekit_api()
         settings = get_settings()
         from livekit.protocol.room import ListParticipantsRequest, RoomParticipantIdentity
@@ -86,7 +97,12 @@ class LiveKitRoomAgents:
         async with api.LiveKitAPI(
             settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
         ) as client:
-            listed = await client.room.list_participants(ListParticipantsRequest(room=room))
+            try:
+                listed = await client.room.list_participants(ListParticipantsRequest(room=room))
+            except Exception as exc:  # noqa: BLE001 - the SDK raises a transport error type
+                if _is_room_missing(exc):
+                    return 0
+                raise
             for participant in listed.participants:
                 identity = getattr(participant, "identity", "")
                 # LiveKit names agent participants `agent-*`; a candidate or a
@@ -103,13 +119,28 @@ class LiveKitRoomAgents:
         api = _livekit_api()
         settings = get_settings()
         from livekit.protocol.agent_dispatch import CreateAgentDispatchRequest
+        from livekit.protocol.room import CreateRoomRequest
 
         async with api.LiveKitAPI(
             settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
         ) as client:
+            # Created first, because a circuit dispatches its patient on the
+            # server's clock rather than when somebody joins: at that moment
+            # the room may not exist yet. Creating an existing room is a no-op.
+            await client.room.create_room(CreateRoomRequest(name=room))
             await client.agent_dispatch.create_dispatch(
                 CreateAgentDispatchRequest(agent_name=agent_name, room=room, metadata=json.dumps(metadata))
             )
+
+
+def _is_room_missing(exc: Exception) -> bool:
+    """Whether a LiveKit error means "no such room" rather than a real fault.
+
+    Matched on the message because the SDK raises one transport error type for
+    every server-side condition, so catching the class alone would swallow an
+    authentication failure too.
+    """
+    return "not_found" in str(exc) or "does not exist" in str(exc)
 
 
 def _livekit_api() -> Any:
