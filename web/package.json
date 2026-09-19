@@ -1,0 +1,45 @@
+{
+  "name": "platform-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "types": "tsc --noEmit",
+    "test": "node --import ./scripts/register-test-loader.mjs --test \"src/**/*.test.ts\"",
+    "platform:types": "openapi-typescript ../backend/platform-api/openapi.json -o src/foundation/platform-client/schema.d.ts",
+    "ci": "npm run types && npm run lint && npm test"
+  },
+  "dependencies": {
+    "@livekit/components-react": "^2.9.17",
+    "@livekit/components-styles": "^1.2.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "livekit-client": "^2.17.0",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-icons": "^5.4.0",
+    "react-markdown": "^9.0.3",
+    "recharts": "^2.15.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^16.3.5",
+    "@types/node": "^20",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.5",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "openapi-typescript": "^7.13.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "typescript-eslint": "^8.46.0"
+  }
+}
