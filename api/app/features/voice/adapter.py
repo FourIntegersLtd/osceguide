@@ -109,7 +109,17 @@ class LiveKitRoomAgents:
                 # supervisor must never be removed by this.
                 if not isinstance(identity, str) or not identity.startswith("agent-"):
                     continue
-                await client.room.remove_participant(RoomParticipantIdentity(room=room, identity=identity))
+                try:
+                    await client.room.remove_participant(
+                        RoomParticipantIdentity(room=room, identity=identity)
+                    )
+                except Exception as exc:  # noqa: BLE001 - as above
+                    # The last participant can leave between the list and this
+                    # call, and LiveKit reaps an empty room. Same outcome as an
+                    # absent agent, so it is not a failure either.
+                    if _is_room_missing(exc):
+                        continue
+                    raise
                 removed += 1
         return removed
 
