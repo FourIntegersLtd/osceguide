@@ -117,102 +117,6 @@ for, and three places the two systems disagree about what a session is.
 
 | What | Where | Today |
 |---|---|---|
-| Deleting a session | `domains/train/mocks/MockSessions.tsx` | The old card had a bin next to its title (`DELETE /api/delete_mock/{mock}/{user}`). There is no `DELETE /me/station-sets/{id}`, so the card has no bin. A session is cheap and locks rather than disappearing when access lapses, so this is the least painful of the six — but somebody with fifty sessions has no way to tidy them. |
-| Editing a session | not ported | `UpdateMock.tsx` renamed a session and added or removed its stations (`PUT /api/update_mock/{id}`). `/me/station-sets` serves `GET` and `POST` and nothing else, so a session is immutable once created and the pencil is gone from the card with the bin. The screen is a straight port the day a `PATCH` exists. |
-| Listing a station's previous attempts | `domains/train/mocks/MockStationsTable.tsx` | The expander under each station showed "All previous Transcripts (3)" and "All previous Feedbacks (2)", linking to `/transcripts` and `/feedbacks` filtered by station. `EntryRead` carries a count of attempts and the date of the last one, but no attempt **ids**, and there is no `GET /me/attempts`, so there is nothing to count and nothing to link to. The row still opens and still shows the two empty states. A listing filtered by set entry is what this needs. |
-| "Review Last Attempt" | `domains/train/mocks/MockStationsTable.tsx` | Same cause: no attempt id to review. The act it stood for — go back over the station you sat — is served by `POST /me/station-sets/{set}/entries/{entry}/debriefs`, so the button is wired to that and reads "Talk Through Last Attempt". When an attempt listing exists, the old link belongs beside it rather than instead of it. |
-| "Feedback" badge on a session card | `domains/train/mocks/model.ts` | The old list read a `has_feedback` the retiring backend wrote onto the mock, and used it to turn "Start" into "Review". `SetRead` has no such field. `sessionAction` branches on `locked` and `completed_at` instead, which agrees with the old behaviour everywhere except a session whose marking is still running — that reads "Start" for a few minutes longer than it used to. |
-| The exam-date prompt | not ported | `CustomizeMock` opened a modal asking for the candidate's exam date on first visit. `UserRead` carries no `exam_date` — the same gap the dashboard's countdown hits — so the modal is not there. |
-
-### Shape disagreements
-
-**A session's stations are chosen in the browser.** `POST /api/customise_mock`
-took a number of stations and picked them server-side; `POST /me/station-sets`
-takes explicit `station_version_ids`. The Setup tab keeps the question the
-candidate knows — "how many stations?" — and `chooseStations` in
-`domains/train/mocks/model.ts` samples the library, preferring versions this
-person has not attempted. That is better than it sounds: the client already
-holds every set with every entry's attempt count, so the exclusion is exact and
-needs no per-user state on the backend.
-
-**A session has no stored duration.** The old mock document carried a
-`duration` written at create time, and eight constants in the old
-`constants.ts` (`SCA_DOCTOR_TIMER_DURATION` and siblings) told the rules screen
-what a station's clock was. `sessionMinutes` derives it from
-`ExamRead.default_reading_seconds` and `default_simulation_seconds`, so a
-session created before an exam's timings changed stops advertising the old
-length. `station_attempt_limit` replaces the hardcoded
-`ALLOWED_STATION_ATTEMPTS = 3` the same way.
-
-**One route, not five.** The retiring client spread this over `/mocks`,
-`/mocks/list`, `/mocks/[id]`, `/mocks/[id]/update` and
-`/mocks/[id]/complete`. There are three routes here, so the sessions list is
-the third tab of `/mocks` rather than its own page, and the completion screen
-is a state of the session — `set.completed_at` — rather than a URL you could
-reload into congratulations for work finished last week. `update` has no
-backend (above) and needs no route.
-
-`MockCore`'s other two tabs are somebody else's work rather than gaps:
-"Consultation Tips" is the help capability's content and "Flagged Stations"
-belongs with the station library, which has its own flagging gap above.
-
-## Feedback, transcripts and debriefs
-
-The screens are ported and the marking and the transcript are served. What the
-backend does not have is a way to *list* any of it, and a debrief that is not
-about a mock's station.
-
-**No attempt history.** There is no `GET /me/attempts`. The only list of a
-person's attempts is `recent_attempts` on `GET /me/dashboard`, and it is
-capped at ten with no cursor, so `capabilities/transcripts` shows the last ten
-consultations and nothing older. The retiring screen listed one station's
-transcripts from a query string, so this is more than it had — but a paged
-`/me/attempts` is what the Transcripts page actually wants, and the same
-endpoint would answer "my feedback history" for the mocks screens.
-
-**A transcript row carries no station.** `RecentAttempt` has an exam code, a
-kind, a status and a date, but not the station's title, so the list reads
-`SCA · Mock station` where the old one read the station's name. Every row
-would otherwise need its own `/attempts/{id}` and then a station-version read.
-
-**Debriefs are readable only through the tutor's memory.** There is no
-`GET /debriefs/{id}` and no debriefs collection: `DebriefSummaryRead` reaches a
-client only inside `GET /me/tutor-memory`, so `DebriefDetail` reads the list
-and finds its id in it. Two consequences worth stating — a debrief page costs
-the whole memory, and the route is `/me/…`, so an examiner cannot read a
-trainee's debrief even though the debrief capability is mounted on Assess. A
-`GET /attempts/{id}/debrief` keyed on the attempt, with the same visibility
-rule the result already has, would fix both.
-
-**A debrief needs a station set.** `POST /me/station-sets/{set}/entries/{entry}/debriefs`
-is the only way to start one, so a free-practice attempt — the kind a consumer
-makes from the station library — cannot be debriefed at all. The backend
-already keys a debrief on `source_attempt_id`; a `POST /attempts/{id}/debriefs`
-would make the button work everywhere the feedback does.
-
-**An examiner cannot yet read a candidate's attempt.** `FeedbackView`,
-`AttemptFeedback` and `TranscriptView` ask nothing about who is reading — that
-is the point of them being capabilities — but `GET /attempts/{id}/result` and
-`/transcript` are owner-or-platform-admin (`service_reads._ensure_visible`),
-and the reviews slice has no transcript read of its own. So the screens are
-ready for the examiner and the endpoint is not: a GP lead reviewing a slot can
-see their org's reviews but not the machine's mark or the words that produced
-it. Widening the visibility rule to a member of the organisation the attempt's
-slot belongs to is the whole of it.
-
-**"Practice as Patient" is not a debrief.** The retiring debrief modal offered
-a second choice beside the debrief: run the same case from the patient's side
-with the tutor as the doctor. On the platform that is a practice session
-(`/me/practice-sessions`), not a debrief, so it belongs with peer practice
-rather than in `capabilities/debrief`. Nothing mounts it yet.
-
-## Mocks (practice sessions)
-
-Six things the retiring mocks screens did that `platform-api` has no answer
-for, and three places the two systems disagree about what a session is.
-
-| What | Where | Today |
-|---|---|---|
 | Deleting a session | `domains/train/mocks/MockSessions.tsx` | The old card had a bin next to its title (`DELETE /api/delete_mock/{mock}/{user}`). There is no `DELETE /me/station-sets/{id}`, so the card has no bin. A session is cheap and locks rather than disappearing when access lapses, so this is the least painful of the six — but somebody with fifty sessions has no way to tidy them, and `scripts/smoke.mjs` leaves a "Smoke session" behind on every run for the same reason. |
 | Editing a session | not ported | `UpdateMock.tsx` renamed a session and added or removed its stations (`PUT /api/update_mock/{id}`). `/me/station-sets` serves `GET` and `POST` and nothing else, so a session is immutable once created and the pencil is gone from the card with the bin. The screen is a straight port the day a `PATCH` exists. |
 | Listing a station's previous attempts | `domains/train/mocks/MockStationsTable.tsx` | The expander under each station showed "All previous Transcripts (3)" and "All previous Feedbacks (2)", linking to `/transcripts` and `/feedbacks` filtered by station. `EntryRead` carries a count of attempts and the date of the last one, but no attempt **ids**, and there is no `GET /me/attempts`, so there is nothing to count and nothing to link to. The row still opens and still shows the two empty states. A listing filtered by set entry is what this needs. |
@@ -316,3 +220,126 @@ rather than in `capabilities/debrief`. Nothing mounts it yet.
 - `features/[featureId]`, superseded by the landing's feature sections.
 - The four separate B2B console logins (`b2bLoginRoutes`), replaced by the one
   sign-in the platform actually has.
+
+## Authoring
+
+`capabilities/authoring` is one implementation for three arms: the scope is the
+base path (`/api/v1/orgs/{slug}` or `/api/v1/platform`) and nothing in the
+capability branches on which arm is asking. Most of what is missing below is a
+consequence of that — the backend serves the two scopes *almost* symmetrically,
+and the three asymmetries are named in `api/scope.ts` rather than discovered at
+runtime.
+
+### The platform scope is narrower than an organisation's
+
+| What | Where | Today |
+|---|---|---|
+| Reading brief | `sections/BriefEditor.tsx` | `PATCH …/stations/{id}/versions/{v}/brief` exists under `/orgs/{slug}` and not under `/platform`. The brief editor is offered when `supportsBrief(scope)` holds, so a staff author has to cut a new version to fix a typo in a brief. The endpoint is the same service call; only the platform router is missing it. |
+| Throwing a draft away | `sections/StationDetail.tsx` | Same shape: `DELETE …/stations/{id}/versions/{v}` is org-only. The staff console archives instead, which is the safe half of the pair but leaves abandoned drafts behind. |
+| Programmes | `sections/ProgrammesSection.tsx` | There is no `/api/v1/platform/programmes`, which is correct — a programme groups *an institution's* sittings — so the section is left out of the tab strip on the staff surface rather than erroring. |
+
+### Reads the backend does not serve
+
+| What | Where | Today |
+|---|---|---|
+| A station's version history | `sections/StationDetail.tsx` | There is no `GET …/stations/{id}/versions`, only the writes against one. `StationRead` carries the current version and its content, so the detail screen works on that version and holds whatever `POST …/versions` last returned. It cannot show a history, which is the one thing an author asks for before republishing. |
+| One station | `sections/StationsSection.tsx` | No `GET …/stations/{id}` either. The list row is the only source, so opening a station carries the row across rather than re-reading it. |
+| Searching or filtering stations | `sections/StationsSection.tsx` | `GET …/stations` takes `cursor` and `limit` and nothing else — no `q`, no exam filter. The old screen's search box is kept and filters the page already loaded (100 rows). Past that it silently searches less than everything, which is the gap. |
+| Paging the two template listings | `api/templates.ts` | `GET …/station-templates` and `…/feedback-templates` answer a `Page_…` with a `next_cursor` but accept no `cursor` parameter, so only the first page is reachable. |
+| What a station is used by | `sections/StationsSection.tsx` | The old delete dialog counted the circuits and slots referencing a station and required a "delete anyway" tick. Nothing answers that question, so the version-level delete has no usage warning. |
+| Deleting an exam or a template | `sections/ExamsSection.tsx` | The partner's exam catalogue had a delete. Exams retire and templates only gain versions; neither has a `DELETE`. Retire is offered; delete is not. |
+| Importing from the OSCE Guide library | not ported | The institution's screen had "Import from OSCE Guide library", which copied a platform station into the organisation. Platform-owned rows already appear in an organisation's listing (`owner_kind`), but there is no endpoint that copies one, so the modal has no action to call. |
+
+### No backend at all
+
+| What | Old source | Today |
+|---|---|---|
+| AI-assisted authoring | `b2c/components/shared/aiauto` (~645 lines) and `b2c/components/admin` (~725) | The platform admin's four generators — auto station, auto summary, auto blog, auto slide — and the "Generate with AI" tab in the station create modal. `platform-api` has no generation endpoint of any kind, so none of it is ported and the create dialog offers the manual half only. This is the whole of the old `/admin` section apart from the partner dashboard, which is `domains/partner`. |
+
+### Ported as fields rather than as a builder
+
+The station-template and feedback-template structures are open JSON objects on
+the backend — their shape is the exam's, not the platform's. The retiring
+client had a drag-and-drop builder over them (`features/stations/templates`,
+~2,700 lines: a component palette, a canvas, a section filmstrip and an
+inspector) that only ever wrote what a person could also type. This port edits
+those objects as validated JSON, with the parse failure shown under the field
+and the commit disabled until it parses. The builder is a real piece of UI and
+worth bringing across; it is not a gap in the backend, and nothing is
+unreachable without it.
+
+## Peer practice — the marketplace and the paired session
+
+`b2c/components/shared/{marketplace,human-practice}` (41 files, 7.2k lines) is
+now `capabilities/peer-practice`. The queue half is whole: joining, the live
+pairing stream, the match, the room and ending a session all go through
+`platform-api`. The marketplace half stops one step short of the call, and the
+session itself has nothing to read during it. Both are backend work, not
+frontend work, and neither is a guess — the routes simply do not exist.
+
+### No way into an arranged session's room
+
+`POST /api/v1/me/peer-sessions/{id}/join` validates the ten-minute window and
+answers with the session, and `marketplace/service.py` has written
+`peer_sessions.room_name` since the slice landed — but nothing mints a token
+for that room. The queue half has exactly this route
+(`/me/practice-sessions/{id}/voice-token`), added for the same reason: two
+people were being paired and had nowhere to meet.
+
+Today **Join Session** checks the person in and says so, and points them at
+Live Practice for a room they can actually enter. A
+`POST /me/peer-sessions/{id}/voice-token` alongside the one `peer_practice`
+already has is the whole of the fix.
+
+### The session has no station
+
+`PracticeSessionRead` carries an exam code, a role, a room and two timestamps.
+It does not carry the station the pair are practising, so four screens from the
+old runner have no content to render and are not ported:
+
+| What it showed | Needed |
+|---|---|
+| The doctor's reading brief (per-exam screens) | A station on the practice session |
+| The patient's roleplay script — history, ICE, persona | The same |
+| The debrief's management plan | The same |
+| The station name in the session header | The same |
+
+The pairing job picks no station at all, so this starts further back than the
+schema: `peer_practice` would have to choose one when it makes the pair, the
+way `attempts` freezes a scenario when it creates an attempt.
+
+### No phase clock
+
+The retiring runner ran reading, consultation and debrief off a single
+`preparation_started_at`, recomputing all three phases inside a one-second
+interval — the browser deciding when an exam ends. `platform-api` owns
+`started_at` and `ended_at` for a practice session and nothing between them.
+
+The session screen shows **elapsed** time, which is true, rather than a
+countdown nobody is keeping. `phase_ends_at` and `remaining_seconds` on a
+practice session — the columns `sittings` already has — would give this the
+server-owned clock the rest of the product uses.
+
+### Smaller ones, each a route that does not exist
+
+| What the old screen did | Today |
+|---|---|
+| Session feedback after a peer session (would you practise again, 1–5 stars, free text) | Not ported. No endpoint. It fed the matcher's reputation signal. |
+| Report a no-show while waiting for a partner | Not ported. |
+| Report abuse or harassment during a session | Not ported — and this one is a safety control, so it is the first of these worth building. |
+| Requeue after a partner leaves or declines | Not ported. The person leaves the session and joins the queue again. |
+| Cancel an arranged session | The card's **Cancel** explains that it is not available and points at withdrawing the slot. `DELETE /marketplace/slots/{id}` covers the poster; the claimer has nothing. |
+| Accept or decline a match within two minutes | Not ported. `peer_practice` pairs both people directly, so there is no offer to answer — which also removes the auto-decline, the cancelled-session modal and the localStorage keys the old client kept per exam. |
+| Queue expiry after ten minutes | Queue entries are `waiting`, `matched` or `left`; nothing expires them, so the "No Match Found" modal has no event to fire on. |
+| The leaderboard by sessions completed | Not ported. Already commented out in the retiring screen. |
+| Consultation recording and transcript (`start-egress`, `consultation-ended`) | Not ported — `peer_practice/README.md` names it as open question P-1. |
+
+### Shape disagreements
+
+| What | How it is handled |
+|---|---|
+| Partner and poster names | `PostRead` and `PeerSessionRead` carry user **ids**, not usernames, and there is no public profile endpoint. Every `@username` in the old cards reads "You" or "A colleague". Two ids on a card are not worth a join; a display name on these two shapes is. |
+| A slot was a calendar date plus a wall-clock time plus a timezone | It is one `starts_at` instant, rendered in the reader's own zone. This fixes a real bug rather than losing anything: a slot offered at 19:00 in London read as 19:00 in Lagos. |
+| The join window | The old card said twenty minutes and the new backend opens the session at ten (`marketplace/domain.py`). The copy says ten, so the button does not 409 on a person who believed it. |
+| Exam and session length | The old app was one exam per deployment and a fixed thirty minutes. Both are asked for now, because a slot and a queue place are addressed to an exam. |
+| The partner's tile | `foundation/livekit`'s `AgentTile` reads `useVoiceAssistant`, which is an agent's state. A human partner renders in it but its status line is about an agent that is not there. A participant tile beside it in `foundation/livekit` is the fix, and it is foundation work rather than this capability's. |

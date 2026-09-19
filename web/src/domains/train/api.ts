@@ -1,4 +1,4 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { isPlatformError, platformRequest, type components } from "@/foundation/platform-client";
 
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 
@@ -82,6 +82,65 @@ export type Receipt = components["schemas"]["ReceiptRead"];
 
 export function listReceipts(signal?: AbortSignal) {
   return platformRequest<{ items: Receipt[] }>("/api/v1/me/receipts", { signal });
+}
+
+/* ------------------------------------------------------------------------
+ * Performance analytics
+ *
+ * `GET /api/v1/me/performance` is the consumer half of what the retiring
+ * backend served from `/api/{exam}_dashboard`: a pass/fail/critical summary, a
+ * score per rubric domain and a trend line. It is being built now, so the
+ * types are written here against the agreed shape rather than generated — the
+ * generated `schema.d.ts` will carry them once the route lands and these
+ * aliases can then point at it.
+ * --------------------------------------------------------------------- */
+
+export interface PerformanceSummary {
+  pass_rate: number;
+  fail_rate: number;
+  critical_rate: number;
+}
+
+export interface PerformanceDomain {
+  id: string;
+  label: string;
+  score: number;
+}
+
+export interface PerformanceTrendPoint {
+  date: string;
+  score: number;
+}
+
+export interface Performance {
+  exam_code: string;
+  summary: PerformanceSummary;
+  domains: PerformanceDomain[];
+  trend: PerformanceTrendPoint[];
+}
+
+/**
+ * One exam's marked performance, or `null` while the endpoint does not exist.
+ *
+ * A 404 is treated as "nothing to draw yet" rather than a failure on purpose:
+ * the charts have an empty state of their own, and a dashboard that renders
+ * its error banner on every load until the backend ships would be worse than
+ * one that shows the entitlements and attempts it can already serve. Every
+ * other status still raises, so a real 500 is still a visible failure.
+ */
+export async function readPerformance(
+  examCode: string,
+  signal?: AbortSignal,
+): Promise<Performance | null> {
+  try {
+    return await platformRequest<Performance>("/api/v1/me/performance", {
+      query: { exam_code: examCode },
+      signal,
+    });
+  } catch (error) {
+    if (isPlatformError(error) && error.status === 404) return null;
+    throw error;
+  }
 }
 
 /** The library's own page cap. Asking for more is a 422, not a longer page. */

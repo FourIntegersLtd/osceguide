@@ -1,0 +1,204 @@
+"use client";
+
+import { useState } from "react";
+import { HiOutlineMicrophone } from "react-icons/hi2";
+import { AsyncBoundary, B2CEmptyState, ButtonLink, productTokens } from "@/foundation/ui";
+import { useAsync } from "@/foundation/hooks";
+import { useSession } from "@/foundation/session";
+import { useSurface } from "@/capabilities";
+import {
+  readDashboard,
+  readPerformance,
+  type Dashboard as DashboardData,
+  type Performance,
+} from "@/domains/train/api";
+import {
+  DashboardChartGrid,
+  DashboardChartSide,
+  DashboardChartWide,
+  DashboardHeader,
+} from "@/domains/train/dashboard/DashboardLayout";
+import { AboutModal } from "@/domains/train/dashboard/AboutModals";
+import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
+import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
+import { InsightsList } from "@/domains/train/dashboard/InsightsList";
+import { PerformanceSummary } from "@/domains/train/dashboard/PerformanceSummary";
+import { PracticeSections } from "@/domains/train/dashboard/PracticeSections";
+import { TrendCard } from "@/domains/train/dashboard/TrendCard";
+import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
+import { configFor } from "@/domains/train/dashboard/examConfig";
+import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
+import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
+
+/**
+ * Home for someone practising on their own — one screen for every exam.
+ *
+ * It replaces four: `sca/dashboard`, `plab/dashboard`, `casc/dashboard` and
+ * `ortho/dashboard`, 8.4k lines whose differences were domain names, bar
+ * colours, a maximum score, a threshold and the wording around them. Those are
+ * rows in `examConfig` now. SCA is the one that is genuinely richer, and its
+ * hero, weekly column and insights list are switched on by the same table.
+ *
+ * Two requests, not the old seven: `/me/dashboard` for who the person is and
+ * what they hold, `/me/performance` for the marked work behind the charts.
+ */
+export function ExamDashboard() {
+  const state = useAsync((signal) => readDashboard(signal), []);
+
+  return (
+    <div className={productTokens.b2cPageColumn}>
+      <AsyncBoundary state={state}>{(data) => <DashboardBody data={data} />}</AsyncBoundary>
+    </div>
+  );
+}
+
+function DashboardBody({ data }: { data: DashboardData }) {
+  const { session } = useSession();
+  const { hrefFor } = useSurface();
+  const { exams, examCode, setExamCode, attempts } = useDashboardExam(data);
+  const config = configFor(examCode);
+  const [about, setAbout] = useState<AboutKey | null>(null);
+
+  /*
+   * Wrapped in an object so a 404 — the endpoint is not built yet — is a
+   * successful load of nothing rather than a null the boundary would read as
+   * "render nothing". A real failure still reaches the boundary and is shown
+   * with a retry, which is the rule that "no data" must never mean "it broke".
+   */
+  const performanceState = useAsync(
+    async (signal) => ({ performance: await readPerformance(examCode, signal) }),
+    [examCode],
+  );
+
+  const firstName = session?.user.name?.split(" ")[0] ?? "there";
+  const subtitle = config.subtitle ? `Welcome back, ${firstName}. ${config.subtitle}` : undefined;
+  const eyebrow = config.sections.hero
+    ? `${attempts} station${attempts === 1 ? "" : "s"} attempted`
+    : undefined;
+
+  return (
+    <>
+      <DashboardHeader
+        title={config.title}
+        eyebrow={eyebrow}
+        subtitle={subtitle}
+        actions={
+          <>
+            {exams.length > 1 ? (
+              <label className="flex items-center gap-2 text-osce-meta text-b2c-text-secondary">
+                <span className="sr-only sm:not-sr-only">Exam</span>
+                <select
+                  value={examCode}
+                  onChange={(event) => setExamCode(event.target.value)}
+                  className={productTokens.b2cInputBase}
+                  aria-label="Exam"
+                >
+                  {exams.map((exam) => (
+                    <option key={exam.code} value={exam.code}>
+                      {configFor(exam.code).label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
+              {attempts === 0 ? "Start your first station" : "Practise a station"}
+            </ButtonLink>
+          </>
+        }
+      />
+
+      {config.sections.firstStation && attempts === 0 ? (
+        <B2CEmptyState
+          icon={HiOutlineMicrophone}
+          title="Ready for your first station?"
+          description="Practise a consultation with an AI patient. It takes about 12 minutes, and your scores will appear here once it's marked."
+          action={
+            <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
+              Choose a station
+            </ButtonLink>
+          }
+          className="mb-5 py-10"
+        />
+      ) : null}
+
+      <AsyncBoundary state={performanceState}>
+        {({ performance }) => (
+          <ExamSections
+            config={config}
+            performance={performance}
+            loading={performanceState.loading}
+            onAbout={setAbout}
+          />
+        )}
+      </AsyncBoundary>
+
+      <PracticeSections data={data} />
+
+      <AboutModal config={config} active={about} onClose={() => setAbout(null)} />
+    </>
+  );
+}
+
+function ExamSections({
+  config,
+  performance,
+  loading,
+  onAbout,
+}: {
+  config: ReturnType<typeof configFor>;
+  performance: Performance | null;
+  loading: boolean;
+  onAbout: (key: AboutKey) => void;
+}) {
+  const summary = performance?.summary ?? null;
+
+  return (
+    <div className="mb-6 space-y-5 sm:mb-8">
+      {config.sections.hero ? (
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-stretch">
+          <div className="min-w-0 flex-1">
+            <CompetencyHero className="h-full" summary={summary} loading={loading} />
+          </div>
+          {config.sections.weeklyTrend ? (
+            <WeeklyTrendCard
+              className="h-full"
+              trend={performance?.trend ?? null}
+              loading={loading}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <PerformanceSummary
+          config={config}
+          summary={summary}
+          loading={loading}
+          onAbout={() => onAbout("summary")}
+        />
+      )}
+
+      <DashboardChartGrid>
+        <DashboardChartWide>
+          <DomainPerformanceCard
+            config={config}
+            domains={performance?.domains ?? null}
+            loading={loading}
+            onAbout={() => onAbout("domain")}
+          />
+        </DashboardChartWide>
+        <DashboardChartSide>
+          <TrendCard
+            config={config}
+            trend={performance?.trend ?? null}
+            loading={loading}
+            onAbout={() => onAbout("trend")}
+          />
+        </DashboardChartSide>
+      </DashboardChartGrid>
+
+      {config.sections.insights ? (
+        <InsightsList items={[]} loading={loading} onAbout={() => onAbout("summary")} />
+      ) : null}
+    </div>
+  );
+}

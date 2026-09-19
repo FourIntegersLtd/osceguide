@@ -4,7 +4,7 @@ import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   Access,
   AttemptResult,
-  Dashboard,
+  ExamDashboard,
   MockDetail,
   MockStationRunner,
   Mocks,
@@ -18,7 +18,7 @@ import {
  * once per arm, rather than pushing a route-shaped type down into the domain.
  */
 
-const TrainDashboard = () => <Dashboard />;
+const TrainDashboard = () => <ExamDashboard />;
 const TrainMocks = () => <Mocks />;
 const TrainAccess = () => <Access />;
 

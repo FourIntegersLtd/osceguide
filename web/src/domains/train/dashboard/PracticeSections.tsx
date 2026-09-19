@@ -2,65 +2,27 @@
 
 import Link from "next/link";
 import { LuArrowRight, LuCircleCheck, LuClock } from "react-icons/lu";
-import { AsyncBoundary, Badge, ButtonLink, Card, PageHeader } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { Badge, Card } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { readDashboard, type Dashboard as DashboardData } from "@/domains/train/api";
+import type { Dashboard } from "@/domains/train/api";
 
 /**
- * Home for someone practising on their own.
+ * Everything `/me/dashboard` serves: mocks, access and recent attempts.
  *
- * One request. The old consumer dashboard made seven — four grade endpoints, a
- * weekly trend and two marketplace lists — and joined them in the browser,
- * which is why it showed four different loading states and could half-fail.
+ * The retiring exam dashboards had none of this — a person's sets, their
+ * entitlements and their last attempts lived on three other screens, and the
+ * old dashboard made seven requests to draw charts alone. The platform serves
+ * all of it in the one request the screen already makes, so it is shown here
+ * rather than thrown away with the screen that replaced it.
  */
-export function Dashboard() {
-  const state = useAsync((signal) => readDashboard(signal), []);
-
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Your practice" description="Where you left off, and what you have access to." />
-      <AsyncBoundary state={state}>{(data) => <DashboardBody data={data} />}</AsyncBoundary>
-    </div>
-  );
-}
-
-function DashboardBody({ data }: { data: DashboardData }) {
+export function PracticeSections({ data }: { data: Dashboard }) {
   const { hrefFor } = useSurface();
   const entitlements = data.entitlements ?? [];
   const sets = data.sets ?? [];
-  const progress = data.progress ?? [];
   const recent = data.recent_attempts ?? [];
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="grid gap-3 sm:grid-cols-3">
-        {progress.map((exam) => (
-          <Card key={exam.exam_code}>
-            <p className="text-xs uppercase tracking-wide text-ink-subtle">
-              {exam.exam_code.toUpperCase()}
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{exam.attempts}</p>
-            <p className="text-sm text-ink-muted">
-              {exam.evaluated} marked
-              {exam.last_attempt_at
-                ? ` · last ${new Date(exam.last_attempt_at).toLocaleDateString()}`
-                : ""}
-            </p>
-          </Card>
-        ))}
-        {progress.length === 0 && (
-          <Card className="sm:col-span-3">
-            <p className="text-sm text-ink-muted">
-              You have not attempted a station yet. Pick one from the library to begin.
-            </p>
-            <ButtonLink className="mt-3" href={hrefFor("/stations")}>
-              Browse stations
-            </ButtonLink>
-          </Card>
-        )}
-      </section>
-
+    <div className="flex flex-col gap-4 sm:gap-6">
       <Card
         title="Your mocks"
         description="Sets of stations you have put together."
