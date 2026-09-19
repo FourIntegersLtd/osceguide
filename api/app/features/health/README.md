@@ -13,6 +13,8 @@ ask what the queue holds for the thing it is about without growing its own SQL.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/health` | none | 200 `ok`/`degraded`, 503 `down` when the database fails |
+| GET | `/api/v1/platform/health` | platform admin | the same report plus the queue by status and the worker's last heartbeat |
+| GET | `/api/v1/platform/jobs` | platform admin | the queue, newest first; `?status=failed`, `?task=`, `?before_id=` to page. No retry route: re-queue through the thing the job was about |
 
 ## Jobs
 None.

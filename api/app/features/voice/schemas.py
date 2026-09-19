@@ -44,3 +44,16 @@ class RoomGrant(BaseModel):
     token: str
     server_url: str
     room: str
+
+
+class CloudCapacityRead(BaseModel):
+    """How full LiveKit Cloud is, for the people watching it.
+
+    `active` is None when Redis cannot be asked, which is also what routes a
+    new session to our own workers — so None here is the thing to look at.
+    """
+
+    overflow_enabled: bool
+    max_concurrent: int
+    active: int | None
+    free: int | None

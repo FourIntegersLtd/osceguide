@@ -1374,6 +1374,49 @@
         "title": "CircuitReviewRead",
         "type": "object"
       },
+      "CloudCapacityRead": {
+        "description": "How full LiveKit Cloud is, for the people watching it.\n\n`active` is None when Redis cannot be asked, which is also what routes a\nnew session to our own workers \u2014 so None here is the thing to look at.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "free": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free"
+          },
+          "max_concurrent": {
+            "title": "Max Concurrent",
+            "type": "integer"
+          },
+          "overflow_enabled": {
+            "title": "Overflow Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "overflow_enabled",
+          "max_concurrent",
+          "active",
+          "free"
+        ],
+        "title": "CloudCapacityRead",
+        "type": "object"
+      },
       "CloudSlotPost": {
         "description": "What the worker posts. `room_name` is fixed by `slot_payload_key` in its\nown configuration, so the field name is part of the contract.",
         "properties": {
@@ -4372,6 +4415,99 @@
           }
         },
         "title": "InterviewQuestionRead",
+        "type": "object"
+      },
+      "JobRead": {
+        "description": "One queued job as procrastinate holds it.",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "queue_name": {
+            "title": "Queue Name",
+            "type": "string"
+          },
+          "queueing_lock": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queueing Lock"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_name": {
+            "title": "Task Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "queue_name",
+          "task_name",
+          "status",
+          "attempts",
+          "scheduled_at",
+          "args",
+          "queueing_lock"
+        ],
+        "title": "JobRead",
+        "type": "object"
+      },
+      "JobsPage": {
+        "description": "Newest first, keyed on the job id; pass `next_before_id` back to continue.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JobRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_before_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before Id"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "JobsPage",
         "type": "object"
       },
       "JoinQueue": {
@@ -7424,6 +7560,64 @@
           "note"
         ],
         "title": "PlatformGrantEntitlement",
+        "type": "object"
+      },
+      "PlatformHealth": {
+        "description": "The liveness report plus what only the console needs: the queue and the worker.",
+        "properties": {
+          "checks": {
+            "additionalProperties": {
+              "enum": [
+                "ok",
+                "error",
+                "disabled"
+              ],
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "object"
+          },
+          "jobs_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Jobs By Status",
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded",
+              "down"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "worker_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Seen At"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "checks",
+          "jobs_by_status",
+          "worker_seen_at"
+        ],
+        "title": "PlatformHealth",
         "type": "object"
       },
       "PlatformOverview": {
@@ -29417,6 +29611,164 @@
         ]
       }
     },
+    "/api/v1/platform/health": {
+      "get": {
+        "description": "The liveness report, the queue by status, and when a worker last checked in.",
+        "operationId": "health_read_platform_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Platform Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/platform/jobs": {
+      "get": {
+        "description": "The queue, newest first. `status=failed` is what to look at when something is missing.\n\nNo retry route: a failed job is re-queued through the thing it was about \u2014\n`POST /platform/attempts/{id}/rescore` for a marking \u2014 so the retry is\nchecked against the current state rather than replayed blind.",
+        "operationId": "health_list_jobs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(todo|doing|succeeded|failed|cancelled|aborting|aborted)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "A task name, such as `score_attempt`",
+            "in": "query",
+            "name": "task",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A task name, such as `score_attempt`",
+              "title": "Task"
+            }
+          },
+          {
+            "description": "Continue from a previous page",
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Continue from a previous page",
+              "title": "Before Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Jobs",
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/v1/platform/moderation/posts": {
       "get": {
         "description": "Recent community and station posts for platform moderators.",
@@ -33939,6 +34291,46 @@
         "summary": "Reset User Password",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/voice/capacity": {
+      "get": {
+        "description": "How many LiveKit Cloud sessions are held against the metered cap.\n\nA count, not a reservation: `LiveKit Cloud \"Updating\"` on the dashboard is\nusually a worker recycle, and this is what says whether sessions are\nactually running through it.",
+        "operationId": "voice_read_cloud_capacity",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudCapacityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Cloud Capacity",
+        "tags": [
+          "voice"
         ]
       }
     },

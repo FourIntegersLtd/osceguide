@@ -29,6 +29,7 @@ from app.core.openapi import (
 from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.features import health
+from app.features.health.router_platform import router as platform_health_router
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
 from app.features.attempts.router import router as attempts_router
@@ -72,6 +73,7 @@ from app.features.tenancy.router_platform_users import router as platform_users_
 from app.features.tutor_memory.router import router as tutor_memory_router
 from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
 from app.features.voice.router import router as voice_router
+from app.features.voice.router_platform import router as platform_voice_router
 from app.features.voice.router_worker import router as voice_worker_router
 
 API_V1_PREFIX = "/api/v1"
@@ -108,6 +110,8 @@ def api_v1_router() -> APIRouter:
     router.include_router(entitlements_router)
     router.include_router(platform_entitlements_router)
     router.include_router(voice_router)
+    router.include_router(platform_voice_router)
+    router.include_router(platform_health_router)
     router.include_router(sittings_router)
     router.include_router(circuit_run_router)
     router.include_router(circuit_overrides_router)
