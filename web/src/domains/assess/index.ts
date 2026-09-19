@@ -6,5 +6,8 @@ export { TraineeHome } from "@/domains/assess/TraineeHome";
 export { Trainees, Team } from "@/domains/assess/Roster";
 export { NewSitting } from "@/domains/assess/NewSitting";
 export { SlotReview } from "@/domains/assess/SlotReview";
+export { NewCircuit } from "@/domains/assess/NewCircuit";
+export { Results } from "@/domains/assess/Results";
+export { MyResult } from "@/domains/assess/MyResult";
 export { OrgDiscussion } from "@/domains/assess/OrgDiscussion";
 export * from "@/domains/assess/api";

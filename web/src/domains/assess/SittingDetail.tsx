@@ -23,20 +23,36 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   : "Not scheduled"
               }
               actions={
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Badge tone="neutral">{sitting.mode}</Badge>
                   <Badge tone={sitting.status === "live" ? "success" : "neutral"}>
                     {sitting.status}
                   </Badge>
+                  <ButtonLink
+                    size="sm"
+                    variant="secondary"
+                    href={hrefFor(`/sittings/${sitting.id}/results`)}
+                  >
+                    Results
+                  </ButtonLink>
+                  <ButtonLink size="sm" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
+                    Add a circuit
+                  </ButtonLink>
                 </div>
               }
             />
 
             <Card title="Circuits">
               {(sitting.circuits ?? []).length === 0 ? (
-                <p className="text-sm text-ink-muted">
-                  No circuits on this sitting yet. Add one to roster trainees against stations.
-                </p>
+                <div className="flex flex-col items-start gap-3">
+                  <p className="text-sm text-ink-muted">
+                    No circuits yet. A sitting runs its circuits, so it needs at least one before
+                    anybody can sit it.
+                  </p>
+                  <ButtonLink size="sm" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
+                    Add a circuit
+                  </ButtonLink>
+                </div>
               ) : (
                 <ul className="divide-y divide-border">
                   {(sitting.circuits ?? []).map((circuit) => (

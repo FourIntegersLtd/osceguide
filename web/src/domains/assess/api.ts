@@ -141,6 +141,45 @@ export function createSitting(
   });
 }
 
+export type Circuit = components["schemas"]["CircuitRead"];
+
+/**
+ * Add a circuit to a sitting.
+ *
+ * An exam circuit is one candidate through every station, capped at twelve. A
+ * training circuit pairs each trainee with one station positionally and they
+ * rotate — which is why the two lists are sent as they are and the backend
+ * builds the slots.
+ */
+export function createCircuit(
+  slug: string,
+  sittingId: string,
+  input: {
+    name: string;
+    stationVersionIds: string[];
+    traineeIds: string[];
+    supervisorUserId: string | null;
+    timing: { readingMinutes: number; simulationMinutes: number };
+  },
+): Promise<Circuit> {
+  return platformRequest<Circuit>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/circuits`,
+    {
+      method: "POST",
+      body: {
+        name: input.name,
+        station_version_ids: input.stationVersionIds,
+        trainee_ids: input.traineeIds,
+        supervisor_user_id: input.supervisorUserId,
+        timing: {
+          reading_minutes: input.timing.readingMinutes,
+          simulation_minutes: input.timing.simulationMinutes,
+        },
+      },
+    },
+  );
+}
+
 /* ---------- marking ---------- */
 
 export type SlotReview = components["schemas"]["SlotReviewRead"];
@@ -207,6 +246,27 @@ export function acknowledgeResult(sittingId: string): Promise<void> {
   );
 }
 
+export type SittingReport = components["schemas"]["SittingReport"];
+export type CandidateReport = components["schemas"]["CandidateReport"];
+
+export function readSittingReport(
+  slug: string,
+  sittingId: string,
+  signal?: AbortSignal,
+): Promise<SittingReport> {
+  return platformRequest<SittingReport>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/report`,
+    { signal },
+  );
+}
+
+/**
+ * Record or revise a decision.
+ *
+ * Revisions are append-only, enforced by a database trigger: a correction is a
+ * new revision superseding the old, so what was considered survives and the
+ * record is still defensible months later.
+ */
 export function recordDecision(
   slug: string,
   sittingId: string,
