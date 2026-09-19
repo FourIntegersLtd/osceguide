@@ -19,6 +19,7 @@ Each entry says what the screen does today, so nothing is silently dropped.
 | SSO configuration | not ported | `getSsoConfig` in the old arm. |
 | Public user profiles | not ported | `/users/[userId]`. |
 | Blog authoring | not ported | Reading is `capabilities/media`; authoring has no endpoint. |
+| Public blog listing | `domains/marketing/support/landingBlogs.ts` | `GET /media` requires a bearer token, so a signed-out visitor cannot read the landing's blog rail. It hides itself. A public listing — or an anonymous read for published items — would bring it back. |
 | Exam wishes | not ported | `ExamWishes` in the old achievements folder. |
 | Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | The old client read `accessibility.needs_extra_reading_time` off the user and extended the clock from inside the timer. No such field on `platform-api`. The timer takes the duration it is given; when the field exists, whoever creates the attempt applies it. |
 | Photo upload | `foundation/ui/PhotoUpload.tsx` | Posted to the old backend's `/api/upload_photos/{id}`. The component takes an `upload` function now, and nothing supplies one yet. |
