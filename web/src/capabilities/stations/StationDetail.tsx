@@ -21,7 +21,10 @@ import { b2cBodyText, b2cBodyTextMuted, b2cPageTitle } from "@/foundation/ui/pro
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { findLibraryStation, listExams } from "@/capabilities/stations/api";
-import { StationComments } from "@/capabilities/stations/StationComments";
+// The thread lives in `community`: it is the same post model as every other
+// discussion, with the same likes, the same deletion rule and the same
+// audience scoping. Two jobs built this at once and this is the faithful one.
+import { StationComments } from "@/capabilities/community";
 import { libraryHref, practiseHref } from "@/capabilities/stations/routes";
 
 type DetailTab = "brief" | "discussion";

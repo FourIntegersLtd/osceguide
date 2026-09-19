@@ -13,8 +13,6 @@ export type ExamPage = components["schemas"]["Page_ExamRead_"];
  * there is one moderation path and one like count rather than the separate
  * `station_comments` collection the retiring client wrote to.
  */
-export type StationComment = components["schemas"]["app__features__community__schemas__PostRead"];
-export type StationCommentPage = components["schemas"]["app__core__pagination__Page_PostRead___2"];
 
 /**
  * The stations anyone signed in may practise.
@@ -75,42 +73,4 @@ export async function findLibraryStation(
   }
 
   return null;
-}
-
-/**
- * What other candidates said about this station.
- *
- * Readable by anyone who can see the station, which is what makes this part of
- * the capability rather than of the consumer arm: an institution's trainees
- * discuss the same scenario in the same thread.
- */
-export function listStationComments(
-  stationId: string,
-  signal?: AbortSignal,
-): Promise<StationCommentPage> {
-  return platformRequest<StationCommentPage>(
-    `/api/v1/stations/${encodeURIComponent(stationId)}/comments`,
-    { signal },
-  );
-}
-
-export function commentOnStation(
-  stationId: string,
-  input: { body: string; orgId?: string | null },
-): Promise<StationComment> {
-  return platformRequest<StationComment>(
-    `/api/v1/stations/${encodeURIComponent(stationId)}/comments`,
-    {
-      method: "POST",
-      body: {
-        body: input.body,
-        // An organisation's workspace keeps its own thread; a personal one
-        // posts to the public board. The audience is the backend's, so the
-        // capability passes what the surface gave it and decides nothing.
-        audience: input.orgId
-          ? { visibility: "organisation", org_id: input.orgId }
-          : { visibility: "public", org_id: null },
-      },
-    },
-  );
 }
