@@ -74,7 +74,17 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
       orgSlug={workspace?.orgSlug ?? null}
       basePath={basePath}
     >
-      <div data-surface={manifest.id} className="flex min-h-screen bg-canvas text-ink">
+      <div
+        data-surface={manifest.id}
+        /*
+         * The product stylesheet's app-shell scope: Inter at 16px for body,
+         * Archivo for headings, and the document scroll locked so the sidebar
+         * and the content region scroll independently. Every signed-in screen
+         * is inside this.
+         */
+        data-b2c-shell=""
+        className="flex min-h-screen bg-canvas text-ink"
+      >
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-control focus:bg-surface focus:px-3 focus:py-2"
