@@ -2,7 +2,7 @@ import { createLandingType } from "@/domains/marketing/landingTypography";
 import {
   getLandingTheme,
   landingAccent,
-} from "@/domains/marketing/landingTheme";
+} from "@/foundation/ui/landingTheme";
 
 /** Classic B2C marketing tokens — same sky canvas as `/`. */
 export const institutionsLandingType = createLandingType("classic");

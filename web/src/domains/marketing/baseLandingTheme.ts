@@ -1,4 +1,4 @@
-/** @deprecated Import from `./landingTheme` instead. */
+/** @deprecated Import from `@/foundation/ui/landingTheme` instead. */
 export {
   baseLandingBlue,
   baseLandingRootProps,
@@ -6,4 +6,4 @@ export {
   landingAccent,
   landingCssVariables as baseLandingCssVariables,
   landingEmphasisGradientClassName,
-} from "./landingTheme";
+} from "@/foundation/ui/landingTheme";

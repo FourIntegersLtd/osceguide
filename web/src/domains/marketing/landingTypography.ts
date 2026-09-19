@@ -1,6 +1,6 @@
 import { getButtonClassName } from "@/foundation/ui";
-import type { LandingThemeVariant } from "./landingTheme";
-import { landingAccent, landingFocusRing } from "./landingTheme";
+import type { LandingThemeVariant } from "@/foundation/ui/landingTheme";
+import { landingAccent, landingFocusRing } from "@/foundation/ui/landingTheme";
 
 export type LandingTypographyVariant = LandingThemeVariant;
 

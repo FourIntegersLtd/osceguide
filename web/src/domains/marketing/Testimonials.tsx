@@ -7,7 +7,7 @@ import {
 import Link from "next/link";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
-import { TestimonialMarqueeCard } from "./TestimonialMarqueeCard";
+import { TestimonialMarqueeCard } from "@/foundation/ui/TestimonialMarqueeCard";
 import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
 
 type TestimonialCta = {

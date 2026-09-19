@@ -305,6 +305,20 @@ export async function requestPasswordReset(email: string): Promise<void> {
   });
 }
 
+/**
+ * Finish a password reset.
+ *
+ * The token comes from the emailed link. A refused one is expired or already
+ * spent, and the person has to ask for another — there is no way to tell those
+ * two apart without telling an attacker which addresses have accounts.
+ */
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  await platformRequest<void>("/api/v1/auth/password-reset/confirm", {
+    method: "POST",
+    body: { token, password: newPassword },
+  });
+}
+
 export function hasStoredSession(): boolean {
   return Boolean(session?.accessToken ?? read(ACCESS_KEY));
 }

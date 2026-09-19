@@ -14,6 +14,7 @@ export {
   switchWorkspace,
   changePassword,
   requestPasswordReset,
+  confirmPasswordReset,
   hasStoredSession,
   installPlatformAuth,
   platformAccessToken,

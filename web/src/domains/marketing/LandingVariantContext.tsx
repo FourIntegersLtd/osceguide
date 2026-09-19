@@ -7,7 +7,7 @@ import {
   type LandingAccent,
   type LandingTheme,
   type LandingThemeVariant,
-} from "./landingTheme";
+} from "@/foundation/ui/landingTheme";
 
 type LandingVariantContextValue = {
   type: LandingType;

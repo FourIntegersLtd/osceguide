@@ -2,9 +2,8 @@
 
 import { LuQuote } from "react-icons/lu";
 import type { ReactNode } from "react";
-import type { MarqueeTestimonial } from "@/domains/marketing/support/testimonials";
+import type { MarqueeTestimonial } from "@/foundation/ui/marqueeTestimonials";
 import { cn } from "@/foundation/ui";
-import { useLandingVariant } from "./LandingVariantContext";
 
 const MENTION = "@OSCEGuide";
 
@@ -84,9 +83,21 @@ function renderExcerpt(excerpt: string, highlight: string): ReactNode {
 type TestimonialMarqueeCardProps = {
   testimonial: MarqueeTestimonial;
   layout?: "marquee" | "inline";
+  /**
+   * The landing's body-text class for this variant.
+   *
+   * A prop, not a context read. The card used to reach into the landing's
+   * variant provider for one class name, with a fallback for when there was
+   * none — which is most of the time, because the sign-in page shows these too.
+   * Passing it keeps the card usable anywhere.
+   */
   bodyClassName?: string;
   className?: string;
 };
+
+/** The landing's own body-text treatment, which is also the right default. */
+const DEFAULT_BODY_CLASS =
+  "font-landing-body text-sm leading-relaxed text-b2c-text-secondary sm:text-[14.5px] sm:leading-[1.6]";
 
 export function TestimonialMarqueeCard({
   testimonial,
@@ -94,7 +105,6 @@ export function TestimonialMarqueeCard({
   bodyClassName,
   className,
 }: TestimonialMarqueeCardProps) {
-  const { type } = useLandingVariant();
   const initials = getInitials(testimonial.name);
   const isInline = layout === "inline";
 
@@ -146,7 +156,7 @@ export function TestimonialMarqueeCard({
         className={cn(
           "mt-5",
           !isInline && "flex-1",
-          bodyClassName ?? type.itemBody,
+          bodyClassName ?? DEFAULT_BODY_CLASS,
         )}
       >
         {renderExcerpt(testimonial.excerpt, testimonial.highlight)}
