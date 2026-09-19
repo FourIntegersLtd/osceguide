@@ -1,7 +1,7 @@
 # platform-web
 
 The single frontend for every OSCE Guide product: consumer practice, an
-institution's examinations, and the employer arm. It talks to one backend
+institution's examinations, the employer arm and the publishing partners. It talks to one backend
 (`platform-api`) and to the LiveKit workers in `assessment-platform`.
 
 It replaces `frontend/`, which is two source trees — `src/b2c` and `src/b2b` —
@@ -11,21 +11,44 @@ beside it the way `platform-api` was stood up beside `b2b-api` and `b2c-api`.
 ## Why it is shaped like this
 
 `docs/adr/0001-one-app-shared-capabilities-three-surfaces.md` is the argument.
-The short version: the three arms are not three products. The backend has no
+The short version: the arms are not separate products. The backend has no
 notion of an arm — it has exams, organisations with programmes, entitlements,
 and **one `attempts` table** that consumer practice, a mock station, a debrief,
 an exam slot and a peer session all write to. A frontend that renders that loop
 three times is fighting the backend it consumes.
 
+## Where things are
+
+```
+osceguide.com/              marketing: the landing, /exams/[exam], /institutions, /compliances/*
+osceguide.com/login         one sign-in, for every product
+osceguide.com/app/me/…      somebody's own practice
+osceguide.com/app/<slug>/…  an organisation — its `org_type` picks the shell
+osceguide.com/staff/…       the OSCE Guide console
+```
+
+A person's own practice is a workspace, addressed exactly like an
+organisation's. No arm appears in a path, so adding one adds no routes. The
+argument is `docs/adr/0002-url-grammar.md`; the short version is that every
+product with a personal space and a team space is shaped this way, and the
+alternative forced a special case into every routing decision.
+
 ## The tiers
 
 ```
   src/app          routes only — a page composes, it does not decide
-  src/surfaces     one shell per arm: train · assess · hire · platform
-  src/domains      arm-specific work: train, assess, hire
+  src/surfaces     one manifest per arm: train · assess · hire · partner · platform
+  src/domains      arm-specific work
   src/capabilities mountable by ANY surface
-  src/foundation   ui · session · platform-client · livekit · hooks
+  src/foundation   ui · charts · table · routing · session · platform-client · livekit · hooks
 ```
+
+An arm is declared as data — its label, which workspace kinds reach it, its
+navigation, and which pages it answers — and holds no React, which is what lets
+`src/surfaces/registry.test.ts` assert the whole shape of the product's
+navigation without rendering anything: that no two arms claim the same kind of
+workspace, that every arm answers every destination its own menu offers, and
+that Hire is still Assess's screens rather than a fork of them.
 
 Each tier may import only downwards, and `eslint-plugin-boundaries` fails the
 build otherwise. Prove it:
@@ -41,12 +64,25 @@ import a surface or a domain. That is what keeps help, study material, the
 station library and discussion mountable by institutions. In the old client the
 help section became consumer-only one import at a time and nothing caught it.
 
+### Adding an arm
+
+1. Add its id to `SURFACES` in `src/capabilities/surface.ts` — a compile error
+   until step 2, because the registry is a `Record<Surface, SurfaceManifest>`.
+2. Add `src/surfaces/<arm>/surface.ts` (the manifest) and `screens.tsx`.
+3. List the arm in the `surfaces` of each capability it should mount.
+4. Update the `registry.test.ts` snapshot.
+
+No route files, no URL prefix, no redirect. Partner was added this way.
+
 ### Adding a capability to another arm
 
 Adding the study library to institutions was, in full:
 
 1. `surfaces: ["train", "assess"]` in `src/capabilities/media/capability.ts`
-2. `src/app/assess/[orgSlug]/library/page.tsx`, four lines
+
+That is all of it now: there is one `/app/[workspace]/library` route and
+`<Capability>` decides from the same registry the navigation reads, so a page
+can never be reachable by URL while absent from the menu, or the reverse.
 
 Navigation, the href prefix and the help assistant's knowledge of the section
 all follow from the registry. `src/capabilities/registry.test.ts` pins it, so
@@ -140,9 +176,17 @@ payload cannot change what is assessed.
 ## Checking it
 
 ```bash
-npm run ci                    # types, lint, unit tests
+npm run ci                    # types, lint (tiers included), unit tests
 node scripts/smoke.mjs        # every call a screen makes, against a live API
+node scripts/walkthrough.mjs  # sign in and visit every arm, in a real browser
 ```
+
+`walkthrough.mjs` is the one that catches what needs a second page load: it
+found a refresh-token race that signed people out on reload, a hydration
+mismatch on every gated screen, a staff console with no session gate, and a
+redirect pointing at a page that does not exist. It prints each arm's
+navigation and heading and checks that a consumer page asked of an institution
+404s, and so does a workspace you are not in.
 
 `smoke.mjs` is the one that catches drift a typed client cannot: the generated
 schema comes from a document that can itself be stale. The capability keys in
