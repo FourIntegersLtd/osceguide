@@ -431,7 +431,7 @@ runtime.
 | A station's version history | `sections/StationDetail.tsx` | There is no `GET …/stations/{id}/versions`, only the writes against one. `StationRead` carries the current version and its content, so the detail screen works on that version and holds whatever `POST …/versions` last returned. It cannot show a history, which is the one thing an author asks for before republishing. |
 | One station | `sections/StationsSection.tsx` | No `GET …/stations/{id}` either. The list row is the only source, so opening a station carries the row across rather than re-reading it. |
 | Searching or filtering stations | `sections/StationsSection.tsx` | `GET …/stations` takes `cursor` and `limit` and nothing else — no `q`, no exam filter. The old screen's search box is kept and filters the page already loaded (100 rows). Past that it silently searches less than everything, which is the gap. |
-| Paging the two template listings | `api/templates.ts` | `GET …/station-templates` and `…/feedback-templates` answer a `Page_…` with a `next_cursor` but accept no `cursor` parameter, so only the first page is reachable. |
+| Paging template listings | `api/templates.ts` | `GET …/station-templates` answers a `Page_…` with a `next_cursor` but accepts no `cursor` parameter, so only the first page is reachable. Feedback templates were removed from platform-api; examiner layout lives on `rubric_versions.marking_layout`. |
 | What a station is used by | `sections/StationsSection.tsx` | The old delete dialog counted the circuits and slots referencing a station and required a "delete anyway" tick. Nothing answers that question, so the version-level delete has no usage warning. |
 | Deleting an exam or a template | `sections/ExamsSection.tsx` | The partner's exam catalogue had a delete. Exams retire and templates only gain versions; neither has a `DELETE`. Retire is offered; delete is not. |
 | Importing from the OSCE Guide library | not ported | The institution's screen had "Import from OSCE Guide library", which copied a platform station into the organisation. Platform-owned rows already appear in an organisation's listing (`owner_kind`), but there is no endpoint that copies one, so the modal has no action to call. |
@@ -440,7 +440,7 @@ runtime.
 
 | What | Old source | Today |
 |---|---|---|
-| AI-assisted authoring | `b2c/components/shared/aiauto` (~645 lines) and `b2c/components/admin` (~725) | The platform admin's four generators — auto station, auto summary, auto blog, auto slide — and the "Generate with AI" tab in the station create modal. `platform-api` has no generation endpoint of any kind, so none of it is ported and the create dialog offers the manual half only. This is the whole of the old `/admin` section apart from the partner dashboard, which is `domains/partner`. |
+| AI-assisted authoring | `b2c/components/shared/aiauto` (~645 lines) and `b2c/components/admin` (~725) | **Served on platform-api.** Template-bound autogenerate uses `structure.generation.profileKey` + per-block `generationHint` / author `placeholder` (profiles from B2C `StationModel` Field descriptions; editable in B2B template builder). `GET /api/v1/station-generation-profiles`. Staff media **Generate** via `/platform/generate/*` (B2C `shared_prompts.py`). B2C Firestore autogenerate and AV pipelines not ported. |
 
 ### Ported as fields rather than as a builder
 
@@ -960,6 +960,22 @@ remove both the duplicate and the poller.
 
 ## The staff console
 
+> **2026-09-19.** Most of what follows is closed. `platform-api` now serves
+> `GET /platform/audit` (cross-tenant, filtered by org, actor and action),
+> `?platform_admin=true` on the account search, contract dates and an
+> `at_risk` list on the overview, console membership routes (role, revoke,
+> restore), a one-step contract renewal, and the whole support view of an
+> account — attempts with their marking state, entitlements, payments, refused
+> webhook deliveries, history — with the actions that fix them (rescore,
+> salvage, fail, grant/extend/revoke, replay, manual payment, refund) and
+> immediate deactivation. `domains/platform` wires all of it: the account's
+> Attempts, Entitlements, Billing and History tabs, `/staff/attempts/[id]`,
+> `/staff/billing`, `/staff/audit` and `/staff/ops`. See
+> `platform-api/docs/SUPPORT-RUNBOOK.md`. Still open: backend search on the
+> directory, the org hierarchy, LLM generation keys, and the SSO and
+> contact-inbox screens.
+
+
 `b2b/components/features/platform` (9 files, 2.3k lines) is now
 `domains/platform` (eight files). The overview, the tenant directory, an
 organisation's own screen and the user search all came across. Four things did
@@ -1046,9 +1062,12 @@ the organisation screen offers. This is not a gap to fill.
 |---|---|---|
 | Bootstrap admin credentials | `ProvisionPanel.tsx` | The old form took an admin email and a temporary password generated in the browser, displayed it in `TenantAdminProvisioningPanel` for an administrator to relay by hand, and offered "Send login email". There is no bootstrap-admin route and no login-email route; the first member is seated by address and the backend emails a link. No password passes through this app, which is the improvement rather than the loss. |
 | Reprovisioning an org's admin | not ported | `b2bReprovisionTenantAdmin` — same absence. Seating another member is the nearest thing, and it does not reset anybody's password. |
-| Resetting somebody's password from the console | not ported | `b2bPlatformResetUserPassword`. There is no per-user write of any kind on `platform-api` beyond the platform-admin flag. |
-| Revoking one person's access to one organisation | not ported | `b2bPlatformRevokeOrgAccess` / `…Restore`. That is `POST /orgs/{slug}/memberships/{id}/revoke`, which is `OrgAdmin` — the same gap as the member list. |
-| A user's memberships, last login, and whether they must change their password | not ported | `PlatformUserDetailPage` showed all three off `B2BPlatformUserDetailDTO`. There is no `GET /platform/users/{id}`, and `UserSummary` carries none of them. |
+| Resetting somebody's password from the console | `domains/platform/UserDetail.tsx` | Wired to `POST /platform/users/{id}/reset-password` when platform-api serves it; otherwise the button fails with the API error. |
+| Revoking one person's access to one organisation | not ported | `b2bPlatformRevokeOrgAccess` / `…Restore`. That is `POST /orgs/{slug}/memberships/{id}/revoke`, which is `OrgAdmin` — not on the platform support routes. |
+| A user's memberships, last login, and whether they must change their password | `domains/platform/UserDetail.tsx` | Wired to `GET /platform/users/{id}` when served. Search rows show `is_platform_admin` when `UserSummary` carries it. |
+| Platform org member list and audit from the console | `OrganizationDetail.tsx` | Wired to `GET /platform/organizations/{slug}/memberships` and `…/audit` when platform-api serves them; org-scoped routes still 403 for a console-only admin. |
+| LLM content generation | `capabilities/staff-media/MediaAuthoringHome.tsx` | `POST /platform/generate/*` — needs generation routes and keys on the deployment. |
+| Moderation queue | `capabilities/staff-moderation/` | `GET /platform/moderation/posts` — not on every platform-api build yet. |
 | Searching or filtering the directory on the backend | `Organizations.tsx` | `GET /platform/organizations` takes `status`, `cursor` and `limit`. The type filter and the search box work over what has been paged in, which is why the whole directory is walked (25 pages of 100). Past that it silently searches less than everything. |
 | The organisation hierarchy | `Organizations.tsx` | The old directory showed an institution's parent partner, from `parentOrgId`. `OrganizationRead` has no parent, so a row shows its type and not who it sits under. |
 | Filtering the audit log by actor | not ported | Part of the audit gap above. The org-scoped log takes `cursor` and `limit` only, so even where it is readable there is no actor or action filter — `domains/assess/team`'s History tab has the same limit. |

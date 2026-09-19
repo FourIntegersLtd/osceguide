@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { LuArrowLeft } from "react-icons/lu";
-import { Alert, AsyncBoundary, Button, Card, PageHeader } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, Card } from "@/foundation/ui";
+import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -15,6 +16,11 @@ import {
 import { Section, StatusBadge } from "@/domains/platform/chrome";
 import { OrganizationSettings } from "@/domains/platform/OrganizationSettings";
 import { SeatMemberPanel } from "@/domains/platform/SeatMemberPanel";
+import { MembersSection } from "@/domains/platform/MembersSection";
+import { AuditSection } from "@/domains/platform/AuditSection";
+import { renewContract } from "@/domains/platform/support/api";
+import { asContractDate } from "@/domains/platform/support";
+import { Input } from "@/foundation/ui";
 import { STATUS_HELP, formatDay, permitsSignIn } from "@/domains/platform/support";
 
 /**
@@ -22,11 +28,9 @@ import { STATUS_HELP, formatDay, permitsSignIn } from "@/domains/platform/suppor
  *
  * The retiring screen also showed four counts, a member list, the tenant's
  * audit log and a delete. None of the four are this console's to read: a
- * platform admin may *read* an organisation for support and inherits none of
- * its powers, so the memberships list and the audit log — both `OrgAdmin` on
- * the backend — answer 403 here. Delete does not exist at all, and that is a
- * decision: a tenant's rows include candidate results that have to stay
- * defensible. All four are in `docs/port-gaps.md`.
+ * Member list and audit log are available on dedicated platform support routes
+ * when platform-api serves them. Delete does not exist — a tenant's rows include
+ * candidate results that have to stay defensible.
  *
  * The read itself is `GET /orgs/{slug}`, not a platform route — there is no
  * `GET /platform/organizations/{slug}`, and the org-scoped read admits a
@@ -55,7 +59,7 @@ export function OrganizationDetail({ slug }: { slug: string }) {
           const current = organization ?? loaded;
           return (
             <>
-              <PageHeader
+              <PlatformPageHeader
                 title={current.name}
                 description={`/${current.slug} · ${current.org_type} · created ${formatDay(current.created_at)}`}
                 actions={<StatusBadge status={current.status} />}
@@ -71,17 +75,13 @@ export function OrganizationDetail({ slug }: { slug: string }) {
 
               <OrganizationSettings organization={current} onChanged={setFresh} />
 
+              <RenewPanel organization={current} onChanged={(u) => { setFresh(u); state.reload(); }} />
+
               <SeatMemberPanel slug={current.slug} />
 
-              <Section title="Not visible from here">
-                <Card padding="md">
-                  <p className="text-sm text-ink-muted">
-                    This organisation&rsquo;s member list and its audit log belong to its own
-                    administrators. A platform administrator may read an organisation for support
-                    and inherits none of its powers, so neither is readable from this console.
-                  </p>
-                </Card>
-              </Section>
+              <MembersSection slug={current.slug} />
+
+              <AuditSection slug={current.slug} />
             </>
           );
         }}
@@ -148,6 +148,42 @@ function Lifecycle({
               Restoring sets the status to <strong>active</strong>, not back to what it was before.
             </p>
           ) : null}
+        </div>
+      </Card>
+    </Section>
+  );
+}
+
+
+/** A renewal in one step: the dates, and the suspension lifted with them. */
+function RenewPanel({ organization, onChanged }: { organization: Organization; onChanged: (u: Organization) => void }) {
+  const toast = useToast();
+  const [endsAt, setEndsAt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const renew = useCallback(async () => {
+    const ends = asContractDate(endsAt);
+    if (!ends) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onChanged(await renewContract(organization.slug, { endsAt: ends }));
+      toast.success("Contract renewed", "Any suspension has been lifted.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error(String(cause)));
+    } finally {
+      setBusy(false);
+    }
+  }, [endsAt, organization.slug, onChanged, toast]);
+  return (
+    <Section title="Renew" description="New end date, and access restored with it — one step, so the second is not forgotten.">
+      <Card padding="md">
+        <div className="flex max-w-lg flex-col gap-3">
+          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+          <Input type="date" label="Contract now ends" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={busy} />
+          <div className="flex justify-end">
+            <Button disabled={busy || !endsAt} onClick={() => void renew()}>{busy ? "Renewing…" : "Renew"}</Button>
+          </div>
         </div>
       </Card>
     </Section>

@@ -1,9 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { LuShieldCheck } from "react-icons/lu";
-import { Alert, AsyncBoundary, Badge, Button, Card, ConfirmModal, Input, PageHeader } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, ConfirmModal } from "@/foundation/ui";
+import { LuShieldCheck, LuUsers } from "react-icons/lu";
+import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import {
+  PlatformFilterBar,
+  PlatformFilterSearch,
+} from "@/domains/platform/PlatformFilterBar";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { useSurface } from "@/capabilities";
 import { searchUsers, setPlatformAdmin, type User } from "@/domains/platform/api";
 import { LoadMore, Row, RowList, Section } from "@/domains/platform/chrome";
 import { formatDay } from "@/domains/platform/support";
@@ -13,19 +20,11 @@ import { formatDay } from "@/domains/platform/support";
  *
  * Two of the retiring console's screens in one. `/platform/users` was a search
  * and `/platform/team` was the list of people who run this console; there is
- * no listing of platform administrators on `platform-api`, and `UserSummary`
- * does not say whether an account is one — so the team screen has no read to
- * build on and the grant lives here, on the person it is about.
- *
- * That means this screen cannot show who is already an administrator, and it
- * does not pretend to: granting and revoking are two explicit acts rather than
- * a toggle whose position would be a guess. `docs/port-gaps.md` names the
- * field that would fix it.
- *
- * The old user detail — memberships, revoking portal access per organisation,
- * resetting a password — has no endpoints here either, so a row is a row.
+ * Rows link to a support detail screen when `GET /platform/users/{id}` is
+ * available. `UserSummary.is_platform_admin` is shown when the API sends it.
  */
 export function Users() {
+  const { hrefFor } = useSurface();
   const [term, setTerm] = useState("");
   const [query, setQuery] = useState("");
   const [extra, setExtra] = useState<{ query: string; rows: User[]; cursor: string | null }>({
@@ -65,29 +64,24 @@ export function Users() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Users" description="Everyone with an account, across every organisation." />
+      <PlatformPageHeader title="Users" description="Everyone with an account, across every organisation." icon={LuUsers} />
 
-      <Card padding="md">
-        <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setExtra({ query: term.trim(), rows: [], cursor: null });
-            setQuery(term.trim());
-          }}
-        >
-          <Input
-            className="sm:flex-1"
-            type="search"
-            label="Email"
-            placeholder="Part of an email address"
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setExtra({ query: term.trim(), rows: [], cursor: null });
+          setQuery(term.trim());
+        }}
+      >
+        <PlatformFilterBar>
+          <PlatformFilterSearch
             value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            hint="Leave it empty to list everybody, newest first."
+            onChange={setTerm}
+            placeholder="Search by email"
+            aria-label="Search users by email"
           />
-          <Button type="submit">Search</Button>
-        </form>
-      </Card>
+        </PlatformFilterBar>
+      </form>
 
       <Section title="Accounts">
         <AsyncBoundary
@@ -105,6 +99,7 @@ export function Users() {
                   <UserRow
                     key={user.id}
                     user={user}
+                    profileHref={hrefFor(`/users/${user.id}`)}
                     justChanged={changed[user.id]}
                     onChanged={(isAdmin) =>
                       setChanged((current) => ({ ...current, [user.id]: isAdmin }))
@@ -136,10 +131,12 @@ export function Users() {
  */
 function UserRow({
   user,
+  profileHref,
   justChanged,
   onChanged,
 }: {
   user: User;
+  profileHref: string;
   justChanged: boolean | undefined;
   onChanged: (isAdmin: boolean) => void;
 }) {
@@ -176,12 +173,20 @@ function UserRow({
       <Row className="flex-col items-stretch sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-ink">{user.email}</p>
+            <Link href={profileHref} className="truncate text-sm font-medium text-ink hover:text-accent">
+              {user.email}
+            </Link>
             <p className="truncate text-xs text-ink-subtle">
               {user.name || "No name"} · joined {formatDay(user.created_at)}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {user.is_platform_admin ? (
+              <Badge tone="success">
+                <LuShieldCheck className="mr-1 h-3 w-3" aria-hidden />
+                Console
+              </Badge>
+            ) : null}
             {justChanged !== undefined ? (
               <Badge tone={justChanged ? "success" : "neutral"}>
                 <LuShieldCheck className="mr-1 h-3 w-3" aria-hidden />
@@ -202,9 +207,12 @@ function UserRow({
         {open ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-0 sm:w-full">
             <p className="min-w-0 flex-1 text-xs text-ink-subtle">
-              Whether {user.email} already has this is not something the API answers, so both acts
-              are offered and neither is shown as current.
+              Grant or revoke staff console access. For memberships and password reset, open the
+              profile.
             </p>
+            <Link href={profileHref}>
+              <Button variant="ghost" size="sm">Profile</Button>
+            </Link>
             <Button variant="secondary" size="sm" onClick={() => setPending(true)}>
               Grant
             </Button>

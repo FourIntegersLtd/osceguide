@@ -1,4 +1,4 @@
-import { LuBuilding2, LuGauge, LuUsers } from "react-icons/lu";
+import { LuActivity, LuBuilding2, LuGauge, LuReceipt, LuScrollText, LuShieldCheck, LuUsers } from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -14,9 +14,25 @@ import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
  */
 function nav({ href }: NavContext): NavItem[] {
   return [
-    { key: "overview", label: "Overview", href: href(""), icon: LuGauge },
-    { key: "orgs", label: "Organisations", href: href("/organizations"), icon: LuBuilding2 },
-    { key: "users", label: "Users", href: href("/users"), icon: LuUsers },
+    { key: "overview", label: "Overview", href: href(""), icon: LuGauge, section: "console" },
+    {
+      key: "orgs",
+      label: "Organisations",
+      href: href("/organizations"),
+      icon: LuBuilding2,
+      section: "console",
+    },
+    { key: "users", label: "Users", href: href("/users"), icon: LuUsers, section: "console" },
+    {
+      key: "team",
+      label: "Platform team",
+      href: href("/team"),
+      icon: LuShieldCheck,
+      section: "console",
+    },
+    { key: "billing", label: "Billing", href: href("/billing"), icon: LuReceipt, section: "console" },
+    { key: "audit", label: "Audit log", href: href("/audit"), icon: LuScrollText, section: "console" },
+    { key: "ops", label: "Machinery", href: href("/ops"), icon: LuActivity, section: "console" },
   ];
 }
 
@@ -26,5 +42,5 @@ export const platformSurface: SurfaceManifest = {
   // Reached by permission, not by belonging to a workspace.
   workspaceKinds: [],
   nav,
-  screenNames: ["dashboard", "organizations", "users"],
+  screenNames: ["dashboard", "organizations", "users", "team", "billing", "audit", "ops"],
 };

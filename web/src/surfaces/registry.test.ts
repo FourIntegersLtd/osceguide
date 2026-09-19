@@ -151,6 +151,41 @@ describe("surface registry", () => {
     }
   });
 
+  it("groups the staff console navigation the way the product does", () => {
+    const own = SURFACE_MANIFESTS.platform.nav({
+      workspace: PERSONAL_WORKSPACE,
+      can: () => true,
+      href: (path) => path,
+    });
+    const mounted = capabilitiesFor("platform", {
+      can: { administer_platform: true },
+      basePath: "/staff",
+    });
+    const labelled = [
+      ...own.map((item) => ({ label: item.label, section: item.section })),
+      ...mounted.map((capability) => ({
+        label: capability.title,
+        section: capability.section,
+      })),
+    ];
+
+    const bySection = NAV_SECTIONS.map((section) =>
+      labelled.filter((item) => item.section === section).map((item) => item.label),
+    );
+
+    assert.deepEqual(bySection[0], [
+      "Overview",
+      "Organisations",
+      "Users",
+      "Platform team",
+      "Billing",
+      "Audit log",
+      "Machinery",
+    ]);
+    assert.deepEqual(bySection[1], ["Authoring"]);
+    assert.deepEqual(bySection[2], ["Study material", "Growth", "Moderation"]);
+  });
+
   it("groups the consumer navigation the way the product does", () => {
     /*
      * The retiring client's three headed groups. This is the whole of the
@@ -173,15 +208,17 @@ describe("surface registry", () => {
       })),
     ];
 
-    const bySection = NAV_SECTIONS.map((section) =>
-      labelled.filter((item) => item.section === section).map((item) => item.label),
-    );
+    const bySection = (section: (typeof NAV_SECTIONS)[number]) =>
+      labelled.filter((item) => item.section === section).map((item) => item.label);
 
-    assert.deepEqual(bySection, [
-      ["Dashboard", "AI Practice", "Stations", "Study material"],
-      ["Discussion", "Practise with someone"],
-      ["Settings"],
+    assert.deepEqual(bySection("practice"), [
+      "Dashboard",
+      "AI Practice",
+      "Stations",
+      "Study material",
     ]);
+    assert.deepEqual(bySection("connect"), ["Discussion", "Practise with someone"]);
+    assert.deepEqual(bySection("general"), ["Settings"]);
     // Nothing ungrouped: an item with no section would render above the
     // headings, which on this arm means somebody forgot to name one.
     assert.deepEqual(

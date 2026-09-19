@@ -2172,78 +2172,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/orgs/{org_slug}/feedback-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Feedback Templates */
-        get: operations["rubrics_list_feedback_templates"];
-        put?: never;
-        /** Create Feedback Template */
-        post: operations["rubrics_create_feedback_template"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/orgs/{org_slug}/feedback-templates/{template_id}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Publish Feedback Template
-         * @description Publishes the template's newest version.
-         */
-        post: operations["rubrics_publish_feedback_template"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/orgs/{org_slug}/feedback-templates/{template_id}/versions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Add Feedback Template Version */
-        post: operations["rubrics_add_feedback_template_version"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/orgs/{org_slug}/feedback-templates/{template_id}/versions/{version}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Edit Feedback Template Version */
-        patch: operations["rubrics_edit_feedback_template_version"];
-        trace?: never;
-    };
     "/api/v1/orgs/{org_slug}/live": {
         parameters: {
             query?: never;
@@ -2844,11 +2772,32 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Station Template Version
+         * @description Throw away a draft. A published version is what stations may have been built on.
+         */
+        delete: operations["stations_delete_station_template_version"];
         options?: never;
         head?: never;
         /** Edit Station Template Version */
         patch: operations["stations_edit_station_template_version"];
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/station-templates/{template_id}/versions/{version}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Station Template Version */
+        post: operations["stations_archive_station_template_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/orgs/{org_slug}/stations": {
@@ -2863,6 +2812,23 @@ export interface paths {
         put?: never;
         /** Create Station */
         post: operations["stations_create_station"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/stations/autogenerate-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Autogenerate Station Draft */
+        post: operations["stations_autogenerate_station_draft"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3159,6 +3125,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/admins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Platform Admins
+         * @description Everyone who may use this console.
+         */
+        get: operations["tenancy_list_platform_admins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/attempts/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Attempt For Support
+         * @description Everything support needs about one attempt: the frozen definition's
+         *     presence, how many turns arrived, and every marking job ever queued.
+         */
+        get: operations["attempts_read_attempt_for_support"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/attempts/{attempt_id}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fail Attempt For Support
+         * @description End a stuck attempt so the person, or their supervisor, can start a fresh one.
+         */
+        post: operations["attempts_fail_attempt_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/attempts/{attempt_id}/rescore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rescore Attempt For Support
+         * @description Queue the marking again. Twice is once; an existing result is kept.
+         */
+        post: operations["attempts_rescore_attempt_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/attempts/{attempt_id}/salvage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Salvage Attempt For Support
+         * @description Treat the turns that arrived as the transcript the worker never
+         *     delivered, and queue the marking.
+         */
+        post: operations["attempts_salvage_attempt_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Platform Audit
+         * @description Who changed what, across every organisation and the platform itself.
+         */
+        get: operations["tenancy_list_platform_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/billing/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Billing Events
+         * @description The webhook ledger, newest first. With `failed_only`, the reconcile queue.
+         */
+        get: operations["billing_list_billing_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/billing/events/{event_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replay Billing Event
+         * @description Apply a refused delivery again, once its cause is fixed. `already_applied`
+         *     for one that went through; the same refusal, and a new audit row, for one
+         *     whose cause is not fixed yet.
+         */
+        post: operations["billing_replay_billing_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/entitlements/{entitlement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Extend Entitlement For Support
+         * @description Move the end date. A renewal is this rather than a second row.
+         */
+        patch: operations["entitlements_extend_entitlement_for_support"];
+        trace?: never;
+    };
+    "/api/v1/platform/entitlements/{entitlement_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Entitlement For Support
+         * @description Withdraw a grant; the row stays so the history holds.
+         */
+        post: operations["entitlements_revoke_entitlement_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/exams": {
         parameters: {
             query?: never;
@@ -3240,25 +3410,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/feedback-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Platform Feedback Templates */
-        get: operations["rubrics_list_platform_feedback_templates"];
-        put?: never;
-        /** Create Platform Feedback Template */
-        post: operations["rubrics_create_platform_feedback_template"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/feedback-templates/{template_id}/publish": {
+    "/api/v1/platform/generate/blog": {
         parameters: {
             query?: never;
             header?: never;
@@ -3267,15 +3419,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish Platform Feedback Template */
-        post: operations["rubrics_publish_platform_feedback_template"];
+        /** Generate Blog */
+        post: operations["generation_generate_blog"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/feedback-templates/{template_id}/versions": {
+    "/api/v1/platform/generate/slide-deck": {
         parameters: {
             query?: never;
             header?: never;
@@ -3284,15 +3436,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add Platform Feedback Version */
-        post: operations["rubrics_add_platform_feedback_version"];
+        /** Generate Slide Deck */
+        post: operations["generation_generate_slide_deck"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/feedback-templates/{template_id}/versions/{version}": {
+    "/api/v1/platform/generate/station": {
         parameters: {
             query?: never;
             header?: never;
@@ -3300,13 +3452,94 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        put?: never;
+        /** Generate Station */
+        post: operations["generation_generate_station"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/generate/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Summary */
+        post: operations["generation_generate_summary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Platform Health
+         * @description The liveness report, the queue by status, and when a worker last checked in.
+         */
+        get: operations["health_read_platform_health"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Edit Platform Feedback Version */
-        patch: operations["rubrics_edit_platform_feedback_version"];
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description The queue, newest first. `status=failed` is what to look at when something is missing.
+         *
+         *     No retry route: a failed job is re-queued through the thing it was about —
+         *     `POST /platform/attempts/{id}/rescore` for a marking — so the retry is
+         *     checked against the current state rather than replayed blind.
+         */
+        get: operations["health_list_jobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/moderation/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Moderation Posts
+         * @description Recent community and station posts for platform moderators.
+         */
+        get: operations["community_list_moderation_posts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/platform/organizations": {
@@ -3350,7 +3583,24 @@ export interface paths {
         patch: operations["tenancy_update_organization"];
         trace?: never;
     };
-    "/api/v1/platform/organizations/{org_slug}/memberships": {
+    "/api/v1/platform/organizations/{org_slug}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Org Audit For Support */
+        get: operations["tenancy_list_org_audit_for_support"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{org_slug}/contract": {
         parameters: {
             query?: never;
             header?: never;
@@ -3360,16 +3610,99 @@ export interface paths {
         get?: never;
         put?: never;
         /**
+         * Renew Contract
+         * @description Record a renewal and lift the suspension it ends, in one step.
+         */
+        post: operations["tenancy_renew_contract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{org_slug}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Org Memberships For Support
+         * @description Read-only member list for platform support.
+         */
+        get: operations["tenancy_list_org_memberships_for_support"];
+        put?: never;
+        /**
          * Seat Membership
-         * @description Put the first person into an organisation.
+         * @description Put somebody into an organisation from the console.
          *
-         *     Every other membership is added by an org admin, and a freshly provisioned
-         *     organisation has none: the console could provision, rename and suspend an
-         *     organisation but could not seat its owner, so the first row had to be
-         *     inserted by hand. A platform admin holds no org role, so this is the one
-         *     membership write that does not go through `OrgAdmin`.
+         *     Usually the first person: a freshly provisioned organisation has no admin
+         *     to do it. Not only the first — the admin who left before naming a
+         *     successor leaves the same gap, and an address with no account is invited
+         *     exactly as an org admin's invitation would.
          */
         post: operations["tenancy_seat_membership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Membership Role For Support
+         * @description The wrong person is the administrator: move the role.
+         */
+        patch: operations["tenancy_change_membership_role_for_support"];
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Membership For Support
+         * @description The administrator who locked themselves out, let back in.
+         */
+        post: operations["tenancy_restore_membership_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Membership For Support
+         * @description Revoked, not deleted: the record of who had access and when survives.
+         */
+        post: operations["tenancy_revoke_membership_for_support"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3452,11 +3785,31 @@ export interface paths {
         };
         /**
          * Read Overview
-         * @description The numbers the console opens with, counted rather than listed.
+         * @description The numbers the console opens with, and the organisations to look at first.
          */
         get: operations["tenancy_read_overview"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/payments/{payment_id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Refund
+         * @description Withdraw what a refunded payment bought. The money moves in Stripe; the row stays.
+         */
+        post: operations["billing_record_refund"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3671,11 +4024,29 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Platform Station Template Version */
+        delete: operations["stations_delete_platform_station_template_version"];
         options?: never;
         head?: never;
         /** Edit Platform Template Version */
         patch: operations["stations_edit_platform_template_version"];
+        trace?: never;
+    };
+    "/api/v1/platform/station-templates/{template_id}/versions/{version}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Platform Station Template Version */
+        post: operations["stations_archive_platform_station_template_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/platform/stations": {
@@ -3693,6 +4064,23 @@ export interface paths {
         put?: never;
         /** Create Platform Station */
         post: operations["stations_create_platform_station"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/stations/autogenerate-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Autogenerate Platform Station Draft */
+        post: operations["stations_autogenerate_platform_station_draft"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3790,6 +4178,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read User
+         * @description The support view of one account: flags, last sign-in, memberships.
+         */
+        get: operations["tenancy_read_user"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update User
+         * @description Correct a name or exam, or deactivate the account — which ends its
+         *     sessions now, not at the next refresh.
+         */
+        patch: operations["tenancy_update_user"];
+        trace?: never;
+    };
+    "/api/v1/platform/users/{user_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Attempts For Support
+         * @description One person's attempts, newest first, each saying whether its transcript
+         *     arrived, whether it was marked, and what the queue holds for it.
+         */
+        get: operations["attempts_list_user_attempts_for_support"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/users/{user_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Audit For Support
+         * @description Everything done to this account and everything it did, newest first.
+         */
+        get: operations["tenancy_list_user_audit_for_support"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/users/{user_id}/billing-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Billing Events For Support
+         * @description Every webhook delivery that named this person's address, applied or
+         *     refused. A refused one with a `failure` is the "paid but no access" case.
+         */
+        get: operations["billing_list_user_billing_events_for_support"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/users/{user_id}/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Entitlements For Support
+         * @description Every grant this person has held — purchase, institution, trial, admin —
+         *     with `live` computed now and revoked ones kept, because "your access ended
+         *     on the 3rd" is the answer support is usually looking for.
+         */
+        get: operations["entitlements_list_user_entitlements_for_support"];
+        put?: never;
+        /**
+         * Grant Entitlement For Support
+         * @description Grant access outright, source `admin`, with the reason in the audit log.
+         *
+         *     For the payment that was taken under another address, the sponsor's seat,
+         *     the goodwill month. Not for a purchase that failed to apply: replay that.
+         */
+        post: operations["entitlements_grant_entitlement_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/users/{user_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Payments For Support
+         * @description This person's payments, newest first, with what each one bought.
+         */
+        get: operations["billing_list_user_payments_for_support"];
+        put?: never;
+        /**
+         * Record Manual Payment
+         * @description Record a payment that did not come through Stripe, granting what it bought.
+         */
+        post: operations["billing_record_manual_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/users/{user_id}/platform-admin": {
         parameters: {
             query?: never;
@@ -3804,6 +4332,50 @@ export interface paths {
          *     decision and two would invite one of them to be forgotten.
          */
         put: operations["tenancy_set_platform_admin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/users/{user_id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset User Password
+         * @description Send the person a link to choose a new password.
+         */
+        post: operations["tenancy_reset_user_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/voice/capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Cloud Capacity
+         * @description How many LiveKit Cloud sessions are held against the metered cap.
+         *
+         *     A count, not a reservation: `LiveKit Cloud "Updating"` on the dashboard is
+         *     usually a worker recycle, and this is what says whether sessions are
+         *     actually running through it.
+         */
+        get: operations["voice_read_cloud_capacity"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -4445,6 +5017,28 @@ export interface components {
             token_type: string;
             user: components["schemas"]["UserRead"];
         };
+        /** AutogenerateStationDraft */
+        AutogenerateStationDraft: {
+            /** Prompt */
+            prompt: string;
+            /**
+             * Template Version Id
+             * Format: uuid
+             */
+            template_version_id: string;
+        };
+        /** AutogenerateStationDraftResult */
+        AutogenerateStationDraftResult: {
+            /** Content */
+            content?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Suggested Title
+             * @default
+             */
+            suggested_title: string;
+        };
         /**
          * BulkCreateTrainees
          * @description A spreadsheet's worth of trainees in one request.
@@ -4639,6 +5233,23 @@ export interface components {
             merged_notes: string | null;
         };
         /**
+         * CloudCapacityRead
+         * @description How full LiveKit Cloud is, for the people watching it.
+         *
+         *     `active` is None when Redis cannot be asked, which is also what routes a
+         *     new session to our own workers — so None here is the thing to look at.
+         */
+        CloudCapacityRead: {
+            /** Active */
+            active: number | null;
+            /** Free */
+            free: number | null;
+            /** Max Concurrent */
+            max_concurrent: number;
+            /** Overflow Enabled */
+            overflow_enabled: boolean;
+        };
+        /**
          * CloudSlotPost
          * @description What the worker posts. `room_name` is fixed by `slot_payload_key` in its
          *     own configuration, so the field name is part of the contract.
@@ -4780,11 +5391,6 @@ export interface components {
         /** ConsoleSitting */
         ConsoleSitting: {
             /**
-             * Feedback Template Version Id
-             * Format: uuid
-             */
-            feedback_template_version_id: string;
-            /**
              * Id
              * Format: uuid
              */
@@ -4793,6 +5399,11 @@ export interface components {
             mode: string;
             /** Name */
             name: string;
+            /**
+             * Rubric Version Id
+             * Format: uuid
+             */
+            rubric_version_id: string;
             /** Scheduled For */
             scheduled_for: string | null;
             /** Sitting Type */
@@ -4932,20 +5543,6 @@ export interface components {
              */
             station_attempt_limit: number;
         };
-        /** CreateFeedbackTemplate */
-        CreateFeedbackTemplate: {
-            /** Field Selection */
-            field_selection?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Rubric Version Id
-             * Format: uuid
-             */
-            rubric_version_id: string;
-            /** Title */
-            title: string;
-        };
         /** CreateGroup */
         CreateGroup: {
             /** Label */
@@ -5036,6 +5633,10 @@ export interface components {
         };
         /** CreateRubric */
         CreateRubric: {
+            /** Marking Layout */
+            marking_layout?: {
+                [key: string]: unknown;
+            } | null;
             /** Pacing */
             pacing: {
                 [key: string]: unknown;
@@ -5065,19 +5666,17 @@ export interface components {
         /** CreateSitting */
         CreateSitting: {
             /**
-             * Feedback Template Version Id
-             * Format: uuid
-             */
-            feedback_template_version_id: string;
-            /**
              * Mode
              * @default training
              */
             mode: string;
             /** Name */
             name: string;
-            /** Programme Id */
-            programme_id?: string | null;
+            /**
+             * Programme Id
+             * Format: uuid
+             */
+            programme_id: string;
             /** Scheduled For */
             scheduled_for?: string | null;
             /**
@@ -5296,6 +5895,10 @@ export interface components {
         };
         /** EditRubricVersion */
         EditRubricVersion: {
+            /** Marking Layout */
+            marking_layout?: {
+                [key: string]: unknown;
+            } | null;
             /** Pacing */
             pacing: {
                 [key: string]: unknown;
@@ -5387,7 +5990,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_editable" | "media_not_found" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_not_configurable" | "sso_not_configured" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "generation_unavailable" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_editable" | "media_not_found" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_not_configurable" | "sso_not_configured" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -5472,47 +6075,20 @@ export interface components {
             /** Seconds */
             seconds: number;
         };
-        /** FeedbackTemplateRead */
-        FeedbackTemplateRead: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Owner Kind */
-            owner_kind: string;
-            /**
-             * Rubric Version Id
-             * Format: uuid
-             */
-            rubric_version_id: string;
-            /** Title */
-            title: string;
-            /** Versions */
-            versions: components["schemas"]["FeedbackTemplateVersionRead"][];
+        /**
+         * ExtendEntitlement
+         * @description Move the end date. `None` makes the grant open-ended.
+         */
+        ExtendEntitlement: {
+            /** Ends At */
+            ends_at?: string | null;
+            /** Note */
+            note?: string | null;
         };
-        /** FeedbackTemplateVersionRead */
-        FeedbackTemplateVersionRead: {
-            /** Field Selection */
-            field_selection: {
-                [key: string]: unknown;
-            };
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Published At */
-            published_at?: string | null;
-            /** Status */
-            status: string;
-            /**
-             * Template Id
-             * Format: uuid
-             */
-            template_id: string;
-            /** Version */
-            version: number;
+        /** FailAttemptRequest */
+        FailAttemptRequest: {
+            /** Reason */
+            reason: string;
         };
         /** FinalizeCircuitReview */
         FinalizeCircuitReview: {
@@ -5542,6 +6118,27 @@ export interface components {
             signup_rate: number;
             /** Signups */
             signups: number;
+        };
+        /** GenerateResult */
+        GenerateResult: {
+            /** Content */
+            content: {
+                [key: string]: unknown;
+            };
+        };
+        /** GenerateStationRequest */
+        GenerateStationRequest: {
+            /** Exam Code */
+            exam_code: string;
+            /** Prompt */
+            prompt: string;
+        };
+        /** GenerateTextRequest */
+        GenerateTextRequest: {
+            /** Exam Code */
+            exam_code?: string | null;
+            /** Prompt */
+            prompt: string;
         };
         /** GpLeadReviewRead */
         GpLeadReviewRead: {
@@ -5659,6 +6256,40 @@ export interface components {
             question?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * JobRead
+         * @description One queued job as procrastinate holds it.
+         */
+        JobRead: {
+            /** Args */
+            args: {
+                [key: string]: unknown;
+            };
+            /** Attempts */
+            attempts: number;
+            /** Id */
+            id: number;
+            /** Queue Name */
+            queue_name: string;
+            /** Queueing Lock */
+            queueing_lock: string | null;
+            /** Scheduled At */
+            scheduled_at: string | null;
+            /** Status */
+            status: string;
+            /** Task Name */
+            task_name: string;
+        };
+        /**
+         * JobsPage
+         * @description Newest first, keyed on the job id; pass `next_before_id` back to continue.
+         */
+        JobsPage: {
+            /** Items */
+            items: components["schemas"]["JobRead"][];
+            /** Next Before Id */
+            next_before_id?: number | null;
         };
         /** JoinQueue */
         JoinQueue: {
@@ -6084,12 +6715,28 @@ export interface components {
             kind: string;
         };
         /**
+         * OrgAtRisk
+         * @description An organisation the console should look at before it looks at anything else.
+         */
+        OrgAtRisk: {
+            /** Contract Ends At */
+            contract_ends_at: string | null;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+        };
+        /**
          * OrgCounts
          * @description What the setup checklist counts. Four legacy calls existed to produce these.
          */
         OrgCounts: {
-            /** Published Feedback Templates */
-            published_feedback_templates: number;
+            /** Programmes With Markable Exam */
+            programmes_with_markable_exam: number;
             /** Sittings */
             sittings: number;
             /** Staff */
@@ -6123,8 +6770,8 @@ export interface components {
          *     take the length of.
          */
         OrgSetup: {
-            /** Feedback Template Published */
-            feedback_template_published: boolean;
+            /** Programme Exam Rubric Ready */
+            programme_exam_rubric_ready: boolean;
             /** Ready To Run */
             ready_to_run: boolean;
             /** Stations Authored */
@@ -6152,6 +6799,10 @@ export interface components {
         };
         /** OrganizationRead */
         OrganizationRead: {
+            /** Contract Ends At */
+            contract_ends_at?: string | null;
+            /** Contract Starts At */
+            contract_starts_at?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -6226,13 +6877,6 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
-        /** Page[FeedbackTemplateRead] */
-        Page_FeedbackTemplateRead_: {
-            /** Items */
-            items: components["schemas"]["FeedbackTemplateRead"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-        };
         /** Page[GroupRead] */
         Page_GroupRead_: {
             /** Items */
@@ -6279,6 +6923,34 @@ export interface components {
         Page_PlanRead_: {
             /** Items */
             items: components["schemas"]["PlanRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[PlatformAttemptRead] */
+        Page_PlatformAttemptRead_: {
+            /** Items */
+            items: components["schemas"]["PlatformAttemptRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[PlatformAuditRead] */
+        Page_PlatformAuditRead_: {
+            /** Items */
+            items: components["schemas"]["PlatformAuditRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[PlatformEntitlementRead] */
+        Page_PlatformEntitlementRead_: {
+            /** Items */
+            items: components["schemas"]["PlatformEntitlementRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[PlatformPaymentRead] */
+        Page_PlatformPaymentRead_: {
+            /** Items */
+            items: components["schemas"]["PlatformPaymentRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -6335,6 +7007,13 @@ export interface components {
         Page_StationTemplateRead_: {
             /** Items */
             items: components["schemas"]["StationTemplateRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[StripeEventRead] */
+        Page_StripeEventRead_: {
+            /** Items */
+            items: components["schemas"]["StripeEventRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -6483,12 +7162,320 @@ export interface components {
             /** Exam Code */
             exam_code: string | null;
         };
+        /** PlatformAttemptDetail */
+        PlatformAttemptDetail: {
+            /** Chunk Count */
+            chunk_count: number;
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Definition Frozen At */
+            definition_frozen_at: string | null;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
+            /** Failed Reason */
+            failed_reason: string | null;
+            /** Has Definition */
+            has_definition: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Jobs */
+            jobs: components["schemas"]["ScoringJobRead"][];
+            /** Kind */
+            kind: string;
+            /** Org Id */
+            org_id: string | null;
+            /** Result Policy Versions */
+            result_policy_versions: string[];
+            /** Room Name */
+            room_name: string | null;
+            scoring_job: components["schemas"]["ScoringJobRead"] | null;
+            /** Started At */
+            started_at: string | null;
+            /** Station Version Id */
+            station_version_id: string | null;
+            /** Status */
+            status: string;
+            /** Transcript Complete */
+            transcript_complete: boolean;
+            /** Transcript Delivered At */
+            transcript_delivered_at: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /**
+         * PlatformAttemptRead
+         * @description An attempt, with the state a support question turns on.
+         *
+         *     `scoring_job` is the newest marking job for it, or None when nothing was
+         *     ever queued — which with a complete transcript is itself the diagnosis.
+         */
+        PlatformAttemptRead: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
+            /** Failed Reason */
+            failed_reason: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Org Id */
+            org_id: string | null;
+            /** Result Policy Versions */
+            result_policy_versions: string[];
+            /** Room Name */
+            room_name: string | null;
+            scoring_job: components["schemas"]["ScoringJobRead"] | null;
+            /** Started At */
+            started_at: string | null;
+            /** Station Version Id */
+            station_version_id: string | null;
+            /** Status */
+            status: string;
+            /** Transcript Complete */
+            transcript_complete: boolean;
+            /** Transcript Delivered At */
+            transcript_delivered_at: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /**
+         * PlatformAuditRead
+         * @description An audit row as the console reads it across every organisation.
+         *
+         *     `org_id` is None for the platform's own acts; `meta` is whatever the
+         *     action recorded beyond its summary, such as the old and new value.
+         */
+        PlatformAuditRead: {
+            /** Action */
+            action: string;
+            /** Actor Email */
+            actor_email: string | null;
+            /** Actor User Id */
+            actor_user_id: string | null;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            } | null;
+            /** Org Id */
+            org_id: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Target Id */
+            target_id: string | null;
+            /** Target Type */
+            target_type: string | null;
+        };
+        /**
+         * PlatformEntitlementRead
+         * @description A grant as the platform console reads it: where it came from, who made it.
+         */
+        PlatformEntitlementRead: {
+            /** Ends At */
+            ends_at: string | null;
+            /** Exam Code */
+            exam_code: string;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
+            /** Granted By */
+            granted_by: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Live */
+            live: boolean;
+            /** Org Id */
+            org_id: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Source */
+            source: string;
+            /** Source Ref */
+            source_ref: string | null;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /**
+         * PlatformGrantEntitlement
+         * @description A platform admin granting access outright — a refund made good, a
+         *     sponsor's seat, a support gesture. `note` is why, and goes in the audit row.
+         */
+        PlatformGrantEntitlement: {
+            /** Ends At */
+            ends_at?: string | null;
+            /** Exam Code */
+            exam_code: string;
+            /** Note */
+            note: string;
+        };
+        /**
+         * PlatformHealth
+         * @description The liveness report plus what only the console needs: the queue and the worker.
+         */
+        PlatformHealth: {
+            /** Checks */
+            checks: {
+                [key: string]: "ok" | "error" | "disabled";
+            };
+            /** Jobs By Status */
+            jobs_by_status: {
+                [key: string]: number;
+            };
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "degraded" | "down";
+            /** Version */
+            version: string;
+            /** Worker Seen At */
+            worker_seen_at: string | null;
+        };
         /** PlatformOverview */
         PlatformOverview: {
+            /** At Risk */
+            at_risk?: components["schemas"]["OrgAtRisk"][];
             /** Organizations */
             organizations: number;
+            /** Organizations By Status */
+            organizations_by_status?: {
+                [key: string]: number;
+            };
             /** Users */
             users: number;
+        };
+        /**
+         * PlatformPaymentRead
+         * @description A payment as the console reads it: raw amounts, both references, what it bought.
+         */
+        PlatformPaymentRead: {
+            /** Amount Tax Pence */
+            amount_tax_pence: number;
+            /** Amount Total Pence */
+            amount_total_pence: number;
+            /** Checkout Session Id */
+            checkout_session_id: string | null;
+            /** Currency */
+            currency: string;
+            /** Customer Email */
+            customer_email: string | null;
+            /** Entitlement Id */
+            entitlement_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Paid At
+             * Format: date-time
+             */
+            paid_at: string;
+            /** Plan Code */
+            plan_code: string | null;
+            /** Plan Ends At */
+            plan_ends_at: string | null;
+            /** Plan Starts At */
+            plan_starts_at: string | null;
+            /** Receipt Id */
+            receipt_id: string | null;
+            /** Receipt Url */
+            receipt_url: string | null;
+            /** Stripe Payment Intent Id */
+            stripe_payment_intent_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+        };
+        /**
+         * PlatformUserDetail
+         * @description Support view: memberships and account flags the list row omits.
+         */
+        PlatformUserDetail: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+            /** Exam Code */
+            exam_code?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Is Platform Admin
+             * @default false
+             */
+            is_platform_admin: boolean;
+            /** Last Login At */
+            last_login_at?: string | null;
+            /** Memberships */
+            memberships?: components["schemas"]["app__features__tenancy__schemas__MembershipRead"][];
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password: boolean;
+            /** Name */
+            name: string;
         };
         /** PracticeSessionRead */
         PracticeSessionRead: {
@@ -6684,6 +7671,24 @@ export interface components {
             /** Visitor Key */
             visitor_key: string;
         };
+        /**
+         * RecordManualPayment
+         * @description A payment that did not come through Stripe — a bank transfer, a sponsor,
+         *     a comped seat — recorded so it grants access, mints a receipt and counts
+         *     like any other. Without a reference one is minted as `manual:<id>`.
+         */
+        RecordManualPayment: {
+            /** Amount Total Pence */
+            amount_total_pence?: number | null;
+            /** Note */
+            note: string;
+            /** Paid At */
+            paid_at?: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /** Stripe Payment Intent Id */
+            stripe_payment_intent_id?: string | null;
+        };
         /** RedeemReferral */
         RedeemReferral: {
             /** Code */
@@ -6702,6 +7707,15 @@ export interface components {
         RefreshRequest: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /**
+         * RefundRequest
+         * @description Record-only: the money is returned in the Stripe dashboard. This revokes
+         *     what the payment bought and says so in the audit log; the payment row stays.
+         */
+        RefundRequest: {
+            /** Reason */
+            reason: string;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -6729,6 +7743,27 @@ export interface components {
             /** Sources */
             sources: number;
         };
+        /**
+         * RenewContract
+         * @description New dates, and whether a suspension should lift with them.
+         *
+         *     One call rather than a `PATCH` and a `restore`: a renewal that sets the
+         *     date and forgets to restore leaves a paying customer locked out.
+         */
+        RenewContract: {
+            /**
+             * Contract Ends At
+             * Format: date-time
+             */
+            contract_ends_at: string;
+            /** Contract Starts At */
+            contract_starts_at?: string | null;
+            /**
+             * Restore
+             * @default true
+             */
+            restore: boolean;
+        };
         /** ReportTotals */
         ReportTotals: {
             /** Candidates */
@@ -6739,6 +7774,24 @@ export interface components {
             stations: number;
             /** Stations Marked */
             stations_marked: number;
+        };
+        /**
+         * RescoreRequest
+         * @description Re-queue the marking. Left empty, under the policy the attempt was
+         *     frozen with; named, under another one, whose result sits beside the old.
+         */
+        RescoreRequest: {
+            /** Policy Version */
+            policy_version?: string | null;
+        };
+        /** RescoreResult */
+        RescoreResult: {
+            /** Policy Version */
+            policy_version: string;
+            /** Queued */
+            queued: boolean;
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * ResolveRosterRequest
@@ -6779,6 +7832,11 @@ export interface components {
              */
             sitting_id: string;
         };
+        /** RevokeEntitlement */
+        RevokeEntitlement: {
+            /** Reason */
+            reason: string;
+        };
         /** RosterWarningRead */
         RosterWarningRead: {
             /** Code */
@@ -6814,6 +7872,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Marking Layout */
+            marking_layout?: {
+                [key: string]: unknown;
+            } | null;
             /** Pacing */
             pacing: {
                 [key: string]: unknown;
@@ -6916,6 +7978,22 @@ export interface components {
             phase?: string | null;
             /** Question */
             question?: string | null;
+        };
+        /**
+         * ScoringJobRead
+         * @description One marking job as the queue holds it.
+         */
+        ScoringJobRead: {
+            /** Attempts */
+            attempts: number;
+            /** Id */
+            id: number;
+            /** Policy Version */
+            policy_version: string | null;
+            /** Scheduled At */
+            scheduled_at: string | null;
+            /** Status */
+            status: string;
         };
         /** SearchHit */
         SearchHit: {
@@ -7065,11 +8143,6 @@ export interface components {
             /** Circuits */
             circuits?: components["schemas"]["CircuitRead"][];
             /**
-             * Feedback Template Version Id
-             * Format: uuid
-             */
-            feedback_template_version_id: string;
-            /**
              * Id
              * Format: uuid
              */
@@ -7078,6 +8151,13 @@ export interface components {
             mode: string;
             /** Name */
             name: string;
+            /** Programme Id */
+            programme_id?: string | null;
+            /**
+             * Rubric Version Id
+             * Format: uuid
+             */
+            rubric_version_id: string;
             /** Scheduled For */
             scheduled_for: string | null;
             /** Sitting Type */
@@ -7326,6 +8406,8 @@ export interface components {
             owner_kind: string;
             /** Status */
             status: string;
+            /** Template Version Id */
+            template_version_id?: string | null;
             /** Title */
             title: string;
             /** Version */
@@ -7476,6 +8558,32 @@ export interface components {
             expires_in: number;
             /** Ticket */
             ticket: string;
+        };
+        /**
+         * StripeEventRead
+         * @description One webhook delivery from the ledger, with the fields support reads
+         *     out of the payload rather than the whole document.
+         */
+        StripeEventRead: {
+            /** Customer Email */
+            customer_email: string | null;
+            /** Event Id */
+            event_id: string;
+            /** Event Type */
+            event_type: string;
+            /** Failure */
+            failure: string | null;
+            /** Payment Intent Id */
+            payment_intent_id: string | null;
+            /** Price Id */
+            price_id: string | null;
+            /** Processed At */
+            processed_at: string | null;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
         };
         /** SubmitSlotReview */
         SubmitSlotReview: {
@@ -7790,13 +8898,6 @@ export interface components {
             /** Station Attempt Limit */
             station_attempt_limit?: number | null;
         };
-        /** UpdateFeedbackTemplateVersion */
-        UpdateFeedbackTemplateVersion: {
-            /** Field Selection */
-            field_selection: {
-                [key: string]: unknown;
-            };
-        };
         /**
          * UpdateMe
          * @description What a person may change about themselves. Absent means "leave it".
@@ -7843,6 +8944,15 @@ export interface components {
             name?: string | null;
             /** Org Type */
             org_type?: string | null;
+        };
+        /** UpdatePlatformUser */
+        UpdatePlatformUser: {
+            /** Exam Code */
+            exam_code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Status */
+            status?: string | null;
         };
         /** UpdateProgramme */
         UpdateProgramme: {
@@ -7911,6 +9021,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Is Platform Admin
+             * @default false
+             */
+            is_platform_admin: boolean;
             /** Name */
             name: string;
         };
@@ -8234,7 +9349,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReindexReport"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8267,7 +9382,7 @@ export interface operations {
                     "application/json": components["schemas"]["SessionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8307,7 +9422,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__assistant__schemas__RoomGrant"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8385,7 +9500,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8452,7 +9567,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8510,7 +9625,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8577,7 +9692,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptBriefRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8644,7 +9759,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_AssessmentResultRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8702,7 +9817,7 @@ export interface operations {
                     "application/json": components["schemas"]["AttemptReviewRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8774,7 +9889,7 @@ export interface operations {
                     "text/event-stream": components["schemas"]["AttemptRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8832,7 +9947,7 @@ export interface operations {
                     "application/json": components["schemas"]["TranscriptRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8890,7 +10005,7 @@ export interface operations {
                     "application/json": components["schemas"]["VoiceGrant"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9119,7 +10234,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9359,7 +10474,7 @@ export interface operations {
                     "application/json": components["schemas"]["StreamTicket"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9392,7 +10507,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceToken"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9443,7 +10558,7 @@ export interface operations {
                     "application/json": components["schemas"]["CheckoutStarted"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9575,7 +10690,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9633,7 +10748,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__community__schemas__PostRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9682,7 +10797,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__community__schemas__PostRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9737,7 +10852,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__core__pagination__Page_PostRead___2"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9788,7 +10903,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__community__schemas__PostRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9846,7 +10961,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__core__pagination__Page_PostRead___2"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9899,7 +11014,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__community__schemas__PostRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9946,7 +11061,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_ExamRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -9979,7 +11094,7 @@ export interface operations {
                     "application/json": components["schemas"]["AcquisitionRead"] | null;
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10061,7 +11176,7 @@ export interface operations {
                     "application/json": components["schemas"]["FunnelRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10119,7 +11234,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_TrackingReference_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10234,7 +11349,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__core__pagination__Page_PostRead___1"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10285,7 +11400,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__marketplace__schemas__PostRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10341,7 +11456,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10408,7 +11523,7 @@ export interface operations {
                     "application/json": components["schemas"]["PeerSessionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10473,7 +11588,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10506,7 +11621,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10548,7 +11663,7 @@ export interface operations {
                     "application/json": components["schemas"]["ActivityAccepted"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10592,7 +11707,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_AttemptHistoryItem_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10630,7 +11745,7 @@ export interface operations {
                     "application/json": components["schemas"]["Capabilities"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10661,7 +11776,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__sittings__schemas__RoomGrant"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10726,7 +11841,7 @@ export interface operations {
                     "application/json": components["schemas"]["Dashboard"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10755,7 +11870,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_EntitlementRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10784,7 +11899,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PeerSessionRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10815,7 +11930,7 @@ export interface operations {
                     "application/json": components["schemas"]["PeerSessionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10874,7 +11989,7 @@ export interface operations {
                     "application/json": components["schemas"]["Performance"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10921,7 +12036,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PracticeSessionRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -10952,7 +12067,7 @@ export interface operations {
                     "application/json": components["schemas"]["PracticeSessionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11005,7 +12120,7 @@ export interface operations {
                     "application/json": components["schemas"]["PracticeSessionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11063,7 +12178,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__peer_practice__schemas__RoomGrant"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11128,7 +12243,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_str_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11159,7 +12274,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReceiptRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11208,7 +12323,7 @@ export interface operations {
                     "text/html": string;
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11255,7 +12370,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReferralRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11284,7 +12399,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReferralRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11317,7 +12432,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReferralRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11375,7 +12490,7 @@ export interface operations {
                     "application/json": components["schemas"]["TraineeResultRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11424,7 +12539,7 @@ export interface operations {
                     "application/json": components["schemas"]["ResultAcknowledgement"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11471,7 +12586,7 @@ export interface operations {
                     "application/json": components["schemas"]["MySittings"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11505,7 +12620,7 @@ export interface operations {
                     "text/event-stream": components["schemas"]["MySittings"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11547,7 +12662,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_SetRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11607,7 +12722,7 @@ export interface operations {
                     "application/json": components["schemas"]["SetRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11665,7 +12780,7 @@ export interface operations {
                     "application/json": components["schemas"]["SetRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11715,7 +12830,7 @@ export interface operations {
                     "application/json": components["schemas"]["StartedAttempt"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11783,7 +12898,7 @@ export interface operations {
                     "application/json": components["schemas"]["StartedAttempt"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11848,7 +12963,7 @@ export interface operations {
                     "application/json": components["schemas"]["TutorMemoryRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11879,7 +12994,7 @@ export interface operations {
                     "application/json": components["schemas"]["ForgottenCounts"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -11917,7 +13032,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -12070,7 +13185,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_SearchHit_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -14073,286 +15188,6 @@ export interface operations {
             };
         };
     };
-    rubrics_list_feedback_templates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Organisation slug */
-                org_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_FeedbackTemplateRead_"];
-                };
-            };
-            /** @description forbidden, organization_suspended */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    rubrics_create_feedback_template: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Organisation slug */
-                org_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFeedbackTemplate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeedbackTemplateRead"];
-                };
-            };
-            /** @description forbidden, organization_suspended */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description rubric_version_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description rubric_version_not_published */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description invalid_rubric */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    rubrics_publish_feedback_template: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                template_id: string;
-                /** @description Organisation slug */
-                org_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeedbackTemplateVersionRead"];
-                };
-            };
-            /** @description forbidden, organization_suspended */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description feedback_template_not_found, version_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description already_published, not_editable */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    rubrics_add_feedback_template_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                template_id: string;
-                /** @description Organisation slug */
-                org_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeedbackTemplateVersionRead"];
-                };
-            };
-            /** @description forbidden, organization_suspended */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description feedback_template_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    rubrics_edit_feedback_template_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                template_id: string;
-                version: number;
-                /** @description Organisation slug */
-                org_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFeedbackTemplateVersion"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeedbackTemplateVersionRead"];
-                };
-            };
-            /** @description forbidden, organization_suspended */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description feedback_template_not_found, version_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description not_editable */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     dashboard_read_live_board: {
         parameters: {
             query?: never;
@@ -15370,7 +16205,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description feedback_template_version_not_found */
+            /** @description programme_not_found, rubric_version_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -15379,7 +16214,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description feedback_template_not_published */
+            /** @description programme_required, exam_rubric_not_ready, rubric_version_not_published */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -16286,6 +17121,65 @@ export interface operations {
             };
         };
     };
+    stations_delete_station_template_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+                version: number;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_template_not_found, version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_deletable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stations_edit_station_template_version: {
         parameters: {
             query?: never;
@@ -16332,6 +17226,67 @@ export interface operations {
                 };
             };
             /** @description not_editable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_archive_station_template_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+                version: number;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationTemplateVersionRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_template_not_found, version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_archivable */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -16455,6 +17410,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_autogenerate_station_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutogenerateStationDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutogenerateStationDraftResult"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_template_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description template_not_published */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description generation_unavailable */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -17233,7 +18260,7 @@ export interface operations {
                     "application/json": components["schemas"]["QueueStatus"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17291,7 +18318,7 @@ export interface operations {
                     "application/json": components["schemas"]["QueueStatus"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17338,7 +18365,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17392,7 +18419,7 @@ export interface operations {
                     "text/event-stream": components["schemas"]["QueueStatus"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17402,6 +18429,522 @@ export interface operations {
                 };
             };
             /** @description queue_entry_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_list_platform_admins: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummary"][];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attempts_read_attempt_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAttemptDetail"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_fail_attempt_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FailAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAttemptDetail"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_attempt_state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_rescore_attempt_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescoreResult"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_attempt_state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_salvage_attempt_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAttemptDetail"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_attempt_state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_list_platform_audit: {
+        parameters: {
+            query?: {
+                /** @description Only one organisation's rows */
+                org_slug?: string | null;
+                /** @description Only what this person did */
+                actor_email?: string | null;
+                /** @description An action name, or its prefix such as `entitlement.` */
+                action?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlatformAuditRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_list_billing_events: {
+        parameters: {
+            query?: {
+                /** @description Only deliveries recorded but never applied */
+                failed_only?: boolean;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_StripeEventRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_replay_billing_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResult"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description billing_event_not_found, unknown_plan, unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_webhook */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    entitlements_extend_entitlement_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entitlement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtendEntitlement"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformEntitlementRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description entitlement_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlements_revoke_entitlement_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entitlement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeEntitlement"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformEntitlementRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description entitlement_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -17443,7 +18986,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExamRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17514,7 +19057,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExamRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17572,7 +19115,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExamRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17639,7 +19182,7 @@ export interface operations {
                     "application/json": components["schemas"]["ExamRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -17686,36 +19229,7 @@ export interface operations {
             };
         };
     };
-    rubrics_list_platform_feedback_templates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_FeedbackTemplateRead_"];
-                };
-            };
-            /** @description forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    rubrics_create_platform_feedback_template: {
+    generation_generate_blog: {
         parameters: {
             query?: never;
             header?: never;
@@ -17724,17 +19238,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateFeedbackTemplate"];
+                "application/json": components["schemas"]["GenerateTextRequest"];
             };
         };
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeedbackTemplateRead"];
+                    "application/json": components["schemas"]["GenerateResult"];
                 };
             };
             /** @description forbidden */
@@ -17746,26 +19260,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description rubric_version_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description rubric_version_not_published */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description invalid_rubric */
+            /** @description Validation Error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description generation_unavailable */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17775,13 +19280,164 @@ export interface operations {
             };
         };
     };
-    rubrics_publish_platform_feedback_template: {
+    generation_generate_slide_deck: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                template_id: string;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateTextRequest"];
             };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateResult"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description generation_unavailable */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generation_generate_station: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateStationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateResult"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description generation_unavailable */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generation_generate_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateResult"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description generation_unavailable */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    health_read_platform_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -17792,7 +19448,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeedbackTemplateVersionRead"];
+                    "application/json": components["schemas"]["PlatformHealth"];
                 };
             };
             /** @description forbidden */
@@ -17804,17 +19460,35 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description feedback_template_not_found, version_not_found */
-            404: {
+        };
+    };
+    health_list_jobs: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                /** @description A task name, such as `score_attempt` */
+                task?: string | null;
+                /** @description Continue from a previous page */
+                before_id?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["JobsPage"];
                 };
             };
-            /** @description already_published */
-            409: {
+            /** @description forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17833,37 +19507,29 @@ export interface operations {
             };
         };
     };
-    rubrics_add_platform_feedback_version: {
+    community_list_moderation_posts: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                template_id: string;
+            query?: {
+                days?: number;
+                limit?: number;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeedbackTemplateVersionRead"];
+                    "application/json": components["schemas"]["app__core__pagination__Page_PostRead___2"];
                 };
             };
             /** @description forbidden */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description feedback_template_not_found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17878,69 +19544,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    rubrics_edit_platform_feedback_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                template_id: string;
-                version: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFeedbackTemplateVersion"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeedbackTemplateVersionRead"];
-                };
-            };
-            /** @description forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description feedback_template_not_found, version_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description not_editable */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description invalid_rubric */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -18094,6 +19697,168 @@ export interface operations {
             };
         };
     };
+    tenancy_list_org_audit_for_support: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AuditRead_"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_renew_contract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenewContract"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_list_org_memberships_for_support: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MembershipRead_"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     tenancy_seat_membership: {
         parameters: {
             query?: never;
@@ -18139,6 +19904,163 @@ export interface operations {
             };
             /** @description membership_exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_change_membership_role_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMembership"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found, membership_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_restore_membership_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found, membership_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_revoke_membership_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found, membership_not_found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18277,7 +20199,7 @@ export interface operations {
                     "application/json": components["schemas"]["SsoConfigRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18339,7 +20261,7 @@ export interface operations {
                     "application/json": components["schemas"]["SsoConfigRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18415,6 +20337,59 @@ export interface operations {
             };
         };
     };
+    billing_record_refund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformPaymentRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description payment_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rubrics_list_platform_rubrics: {
         parameters: {
             query?: {
@@ -18437,7 +20412,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_RubricRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18488,7 +20463,7 @@ export interface operations {
                     "application/json": components["schemas"]["RubricRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18537,7 +20512,7 @@ export interface operations {
                     "application/json": components["schemas"]["RubricRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18595,7 +20570,7 @@ export interface operations {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18658,7 +20633,7 @@ export interface operations {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18726,7 +20701,7 @@ export interface operations {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18794,7 +20769,7 @@ export interface operations {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18863,7 +20838,7 @@ export interface operations {
                     "application/json": components["schemas"]["MessageRead"][];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18912,7 +20887,7 @@ export interface operations {
                     "application/json": components["schemas"]["MessageRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -18968,7 +20943,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_StationTemplateRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19010,7 +20985,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19068,7 +21043,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19095,7 +21070,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description not_editable, already_published, not_archivable */
+            /** @description not_editable, already_published, not_archivable, not_deletable */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -19135,7 +21110,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19155,6 +21130,72 @@ export interface operations {
             };
             /** @description station_template_not_found, version_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_delete_platform_station_template_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_template_not_found, version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_editable, already_published, not_archivable, not_deletable */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19198,7 +21239,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19245,6 +21286,74 @@ export interface operations {
             };
         };
     };
+    stations_archive_platform_station_template_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationTemplateVersionRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_template_not_found, version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_editable, already_published, not_archivable, not_deletable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stations_list_platform_stations: {
         parameters: {
             query?: {
@@ -19267,7 +21376,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_StationRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19318,7 +21427,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19365,6 +21474,84 @@ export interface operations {
             };
         };
     };
+    stations_autogenerate_platform_station_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutogenerateStationDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutogenerateStationDraftResult"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_template_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description template_not_published */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description generation_unavailable */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     stations_add_platform_station_version: {
         parameters: {
             query?: never;
@@ -19385,7 +21572,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19448,7 +21635,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19516,7 +21703,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19543,7 +21730,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description not_editable, already_published, not_archivable */
+            /** @description not_editable, already_published, not_archivable, not_deletable */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -19584,7 +21771,7 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19611,7 +21798,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description not_editable, already_published, not_archivable */
+            /** @description not_editable, already_published, not_archivable, not_deletable */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -19636,6 +21823,8 @@ export interface operations {
             query?: {
                 /** @description Part of an email address */
                 q?: string | null;
+                /** @description Only accounts that may (or may not) use this console */
+                platform_admin?: boolean | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -19657,6 +21846,478 @@ export interface operations {
             };
             /** @description forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_read_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformUserDetail"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_update_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlatformUser"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformUserDetail"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_list_user_attempts_for_support: {
+        parameters: {
+            query?: {
+                /** @description Only attempts in this state */
+                status?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlatformAttemptRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_list_user_audit_for_support: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlatformAuditRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_list_user_billing_events_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_StripeEventRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlements_list_user_entitlements_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlatformEntitlementRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlements_grant_entitlement_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformGrantEntitlement"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformEntitlementRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found, unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_list_user_payments_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlatformPaymentRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_record_manual_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordManualPayment"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformPaymentRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found, plan_not_available, unknown_plan, unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description payment_already_recorded */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19724,6 +22385,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_reset_user_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description user_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    voice_read_cloud_capacity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudCapacityRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -19822,7 +22559,7 @@ export interface operations {
                     "application/json": components["schemas"]["Page_LibraryStationRead_"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19880,7 +22617,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__core__pagination__Page_PostRead___2"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19924,7 +22661,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__community__schemas__PostRead"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -19973,7 +22710,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkerSessionPayload"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20035,7 +22772,7 @@ export interface operations {
                     "application/json": components["schemas"]["SceneInstructions"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20089,7 +22826,7 @@ export interface operations {
                     "application/json": components["schemas"]["ToolResult"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20151,7 +22888,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__assistant__schemas__Accepted"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20200,7 +22937,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkerBootstrap"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20262,7 +22999,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkerAccepted"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20324,7 +23061,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkerAccepted"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20384,7 +23121,7 @@ export interface operations {
                     "application/json": components["schemas"]["CloudSlotResult"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20426,7 +23163,7 @@ export interface operations {
                     "application/json": components["schemas"]["CloudSlotResult"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20470,7 +23207,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__assistant__schemas__Accepted"];
                 };
             };
-            /** @description unauthenticated */
+            /** @description unauthenticated, account_suspended */
             401: {
                 headers: {
                     [name: string]: unknown;

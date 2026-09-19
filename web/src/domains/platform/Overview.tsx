@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { LuBuilding2, LuPencilRuler, LuTriangleAlert, LuUserCog, LuUsers } from "react-icons/lu";
+import { LuBuilding2, LuGauge, LuPencilRuler, LuTriangleAlert, LuUserCog, LuUsers } from "react-icons/lu";
 import type { IconType } from "react-icons";
-import { AsyncBoundary, Card, PageHeader } from "@/foundation/ui";
+import { AsyncBoundary, Card } from "@/foundation/ui";
+import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { listAllOrganizations, readOverview, type Organization } from "@/domains/platform/api";
+import { listAllOrganizations, readOverview } from "@/domains/platform/api";
+import type { OrgAtRisk } from "@/domains/platform/support/api";
 import { Row, RowList, Section, StatusBadge } from "@/domains/platform/chrome";
-import { permitsSignIn } from "@/domains/platform/support";
+import { atRiskLabel } from "@/domains/platform/support";
 
 /**
  * The console's first screen: how many of everything, and what needs a look.
@@ -39,16 +41,17 @@ export function PlatformOverview() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
+      <PlatformPageHeader
         title={firstName ? `Hello, ${firstName}.` : "Platform"}
         description="Everything, across every organisation."
+        icon={LuGauge}
       />
 
       <AsyncBoundary state={state}>
         {({ overview, organizations }) => {
           const partners = organizations.filter((o) => o.org_type === "partner").length;
           const institutions = organizations.length - partners;
-          const attention = organizations.filter((o) => !permitsSignIn(o.status));
+          const attention = overview.at_risk ?? [];
 
           return (
             <>
@@ -77,7 +80,7 @@ export function PlatformOverview() {
                     icon={LuUsers}
                   />
                   <Destination
-                    href={hrefFor("/authoring")}
+                    href={`${hrefFor("/authoring")}/stations`}
                     title="Authoring"
                     subtitle="The OSCE Guide catalogue every organisation draws on"
                     icon={LuPencilRuler}
@@ -93,7 +96,7 @@ export function PlatformOverview() {
 
               <Section
                 title={`Needs attention (${attention.length})`}
-                description="Organisations whose members cannot sign in today."
+                description="Suspended, lapsed, or ending within thirty days."
               >
                 {attention.length === 0 ? (
                   <Card padding="md">
@@ -103,11 +106,11 @@ export function PlatformOverview() {
                   </Card>
                 ) : (
                   <RowList>
-                    {attention.map((organization) => (
+                    {attention.map((risk) => (
                       <AttentionRow
-                        key={organization.id}
-                        organization={organization}
-                        href={hrefFor(`/organizations/${encodeURIComponent(organization.slug)}`)}
+                        key={risk.slug}
+                        organization={risk}
+                        href={hrefFor(`/organizations/${encodeURIComponent(risk.slug)}`)}
                       />
                     ))}
                   </RowList>
@@ -167,7 +170,7 @@ function Destination({
   );
 }
 
-function AttentionRow({ organization, href }: { organization: Organization; href: string }) {
+function AttentionRow({ organization, href }: { organization: OrgAtRisk; href: string }) {
   return (
     <Row>
       <Link href={href} className="flex min-w-0 flex-1 items-center gap-3">
@@ -175,7 +178,7 @@ function AttentionRow({ organization, href }: { organization: Organization; href
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium text-ink">{organization.name}</span>
           <span className="block truncate text-xs text-ink-subtle">
-            /{organization.slug} · {organization.org_type}
+            /{organization.slug} · {atRiskLabel(organization.reason)}
           </span>
         </span>
       </Link>

@@ -18,11 +18,33 @@ import { platformRequest, type components } from "@/foundation/platform-client";
 type S = components["schemas"];
 
 export type Overview = S["PlatformOverview"];
-export type Organization = S["OrganizationRead"];
+/** Contract dates may be present once the OpenAPI spec catches up with platform-api. */
+export type Organization = S["OrganizationRead"] & {
+  contract_starts_at?: string | null;
+  contract_ends_at?: string | null;
+};
 export type OrganizationPage = S["Page_OrganizationRead_"];
-export type User = S["UserSummary"];
+export type User = S["UserSummary"] & { is_platform_admin?: boolean };
 export type UserPage = S["Page_UserSummary_"];
 export type Membership = S["app__features__tenancy__schemas__MembershipRead"];
+export type AuditEntry = S["AuditRead"];
+export type AuditPage = S["Page_AuditRead_"];
+
+/** Support view of one account — richer than `UserSummary`. */
+export interface PlatformUserDetail extends User {
+  is_platform_admin: boolean;
+  must_change_password?: boolean;
+  last_login_at?: string | null;
+  exam_code?: string | null;
+  status?: string | null;
+  memberships?: Membership[];
+}
+
+export interface UpdatePlatformUserInput {
+  name?: string | null;
+  exam_code?: string | null;
+  status?: "active" | "deactivated" | null;
+}
 
 const PLATFORM = "/api/v1/platform";
 
@@ -186,5 +208,54 @@ export function setPlatformAdmin(userId: string, isPlatformAdmin: boolean): Prom
   return platformRequest<User>(
     `${PLATFORM}/users/${encodeURIComponent(userId)}/platform-admin`,
     { method: "PUT", body: { is_platform_admin: isPlatformAdmin } },
+  );
+}
+
+export function readUser(userId: string, signal?: AbortSignal): Promise<PlatformUserDetail> {
+  return platformRequest<PlatformUserDetail>(`${PLATFORM}/users/${encodeURIComponent(userId)}`, {
+    signal,
+  });
+}
+
+export function updateUser(
+  userId: string,
+  changes: UpdatePlatformUserInput,
+): Promise<PlatformUserDetail> {
+  return platformRequest<PlatformUserDetail>(`${PLATFORM}/users/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    body: changes,
+  });
+}
+
+export function resetUserPassword(userId: string): Promise<void> {
+  return platformRequest<void>(
+    `${PLATFORM}/users/${encodeURIComponent(userId)}/reset-password`,
+    { method: "POST" },
+  );
+}
+
+export function listPlatformAdmins(signal?: AbortSignal): Promise<User[]> {
+  return platformRequest<User[]>(`${PLATFORM}/admins`, { signal });
+}
+
+export function listOrgMembershipsForSupport(
+  slug: string,
+  page?: PageParams,
+  signal?: AbortSignal,
+): Promise<{ items: Membership[]; next_cursor?: string | null }> {
+  return platformRequest(`${PLATFORM}/organizations/${encodeURIComponent(slug)}/memberships`, {
+    signal,
+    query: pageQuery(page),
+  });
+}
+
+export function listOrgAuditForSupport(
+  slug: string,
+  page?: PageParams,
+  signal?: AbortSignal,
+): Promise<AuditPage> {
+  return platformRequest<AuditPage>(
+    `${PLATFORM}/organizations/${encodeURIComponent(slug)}/audit`,
+    { signal, query: pageQuery(page) },
   );
 }

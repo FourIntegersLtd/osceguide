@@ -110,33 +110,37 @@ export function OrganizationSettings({
         </Card>
       </Section>
 
-      <ContractDates busy={busy} onCommit={commit} />
+      <ContractDates organization={organization} busy={busy} onCommit={commit} />
     </div>
   );
 }
 
 /**
- * The contract window, which the backend takes and does not give back.
+ * The contract window. `contract_ends_at` is not decoration: a nightly sweep
+ * suspends an organisation whose contract has lapsed.
  *
- * `contract_ends_at` is not decoration: a nightly sweep suspends an
- * organisation whose contract has lapsed, which is what puts it on the
- * overview's "needs attention" list. `OrganizationRead` carries neither date,
- * so these fields start empty on every visit and cannot show what is stored —
- * recorded in `docs/port-gaps.md`.
- *
- * That is also why an empty field is never sent. Submitting a blank form would
- * silently clear dates this screen cannot see; clearing one is its own button,
- * and it says what it will do.
+ * When the API omits dates from `OrganizationRead`, fields start empty and a
+ * blank save leaves stored values untouched.
  */
+function contractInputValue(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const day = iso.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+}
+
 function ContractDates({
+  organization,
   busy,
   onCommit,
 }: {
+  organization: Organization;
   busy: boolean;
   onCommit: (changes: OrganizationChanges, done: string) => Promise<void>;
 }) {
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
+  const [startsAt, setStartsAt] = useState(() =>
+    contractInputValue(organization.contract_starts_at),
+  );
+  const [endsAt, setEndsAt] = useState(() => contractInputValue(organization.contract_ends_at));
 
   const save = () => {
     const changes: OrganizationChanges = {};
@@ -153,10 +157,12 @@ function ContractDates({
     >
       <Card padding="md">
         <div className="flex max-w-lg flex-col gap-3">
-          <WriteOnlyNote>
-            The API accepts these dates and does not return them, so this form cannot show what is
-            stored. A blank field is left untouched when you save.
-          </WriteOnlyNote>
+          {!organization.contract_starts_at && !organization.contract_ends_at ? (
+            <WriteOnlyNote>
+              Contract dates are not on this organisation record yet. A blank field is left
+              untouched when you save.
+            </WriteOnlyNote>
+          ) : null}
 
           <Input
             type="date"

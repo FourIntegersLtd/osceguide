@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { LuChevronRight } from "react-icons/lu";
-import { AsyncBoundary, Button, Card, Input, PageHeader } from "@/foundation/ui";
+import { AsyncBoundary, Button, Card } from "@/foundation/ui";
+import { LuBuilding2 } from "react-icons/lu";
+import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import {
+  PlatformFilterBar,
+  PlatformFilterDivider,
+  PlatformFilterSearch,
+  PlatformFilterSelect,
+} from "@/domains/platform/PlatformFilterBar";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listAllOrganizations, type Organization } from "@/domains/platform/api";
@@ -41,9 +49,10 @@ export function Organizations() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
+      <PlatformPageHeader
         title="Organisations"
         description="Institutions and partners. Both run sittings; the mode is what differs."
+        icon={LuBuilding2}
         actions={
           <Button
             variant={provisioning ? "secondary" : "primary"}
@@ -63,34 +72,36 @@ export function Organizations() {
         />
       ) : null}
 
-      <Card padding="md">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Input
-            className="sm:flex-1"
-            type="search"
-            label="Search"
-            placeholder="Name or slug"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <Filter label="Type" value={typeFilter} onChange={setTypeFilter}>
-            <option value="all">All types</option>
-            {ORG_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </Filter>
-          <Filter label="Status" value={status} onChange={setStatus}>
-            <option value="">All statuses</option>
-            {ORG_STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </Filter>
-        </div>
-      </Card>
+      <PlatformFilterBar>
+        <PlatformFilterSelect
+          aria-label="Type"
+          value={typeFilter}
+          onChange={(value) => setTypeFilter(value as TypeFilter)}
+        >
+          <option value="all">All types</option>
+          {ORG_TYPES.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </PlatformFilterSelect>
+        <PlatformFilterDivider />
+        <PlatformFilterSelect aria-label="Status" value={status} onChange={setStatus}>
+          <option value="">All statuses</option>
+          {ORG_STATUSES.map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </PlatformFilterSelect>
+        <PlatformFilterDivider />
+        <PlatformFilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search name or slug"
+          aria-label="Search organisations"
+        />
+      </PlatformFilterBar>
 
       <AsyncBoundary
         state={state}
@@ -194,30 +205,5 @@ function Directory({
         );
       })}
     </>
-  );
-}
-
-function Filter({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-osce-meta font-medium text-osce-ink-700">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
-      >
-        {children}
-      </select>
-    </label>
   );
 }
