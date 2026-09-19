@@ -169,7 +169,42 @@ async function main() {
     method: "POST",
     expect: (p) => must(typeof p.ticket === "string", "no ticket"),
   });
-  await step("plans", "/api/v1/billing/plans");
+  // The account capability: the person, what they may practise, what they paid,
+  // who they referred and what the tutor remembers.
+  await step("plans", "/api/v1/billing/plans", {
+    expect: (p) => must(Array.isArray(p.items), "not a page"),
+  });
+  await step("my entitlements", "/api/v1/me/entitlements", {
+    expect: (p) => {
+      must(Array.isArray(p.items), "not a page");
+      // A gate reads `live` and nothing else; the list carries revoked and
+      // expired rows too.
+      for (const item of p.items) must(typeof item.live === "boolean", "no live flag");
+    },
+  });
+  /*
+   * Receipts are ids, not documents. The settings screen was written against
+   * the detail shape until this said otherwise — `domains/train/Access.tsx`
+   * still reads `plan_label` off this list and renders nothing.
+   */
+  const receipts = await step("my receipts", "/api/v1/me/receipts", {
+    expect: (p) => {
+      must(Array.isArray(p.items), "not a page");
+      for (const item of p.items) must(typeof item === "string", "receipts are ids, not objects");
+    },
+  });
+  const receiptId = receipts?.items?.[0];
+  if (receiptId) {
+    await step("one receipt", `/api/v1/me/receipts/${receiptId}`, {
+      expect: (p) => must(typeof p.plan_label === "string", "no plan label"),
+    });
+  }
+  await step("my referrals", "/api/v1/me/referrals", {
+    expect: (p) => must(typeof p.code === "string" && typeof p.earned_pence === "number", "unexpected shape"),
+  });
+  await step("what the tutor remembers", "/api/v1/me/tutor-memory", {
+    expect: (p) => must(Array.isArray(p.notes) && Array.isArray(p.events), "unexpected shape"),
+  });
 
   // The whole voice path short of the worker answering: an attempt is created
   // and frozen, then `voice` mints a room token and decides Cloud or
