@@ -1,3 +1,12 @@
 export { FeedbackView } from "@/capabilities/feedback/FeedbackView";
+export { AttemptFeedback } from "@/capabilities/feedback/AttemptFeedback";
+export { FeedbackDomains } from "@/capabilities/feedback/FeedbackDomains";
+export { FeedbackCategories } from "@/capabilities/feedback/FeedbackCategories";
+export { FeedbackClinicalAnalysis } from "@/capabilities/feedback/FeedbackClinicalAnalysis";
+export { FeedbackLiveCoverage } from "@/capabilities/feedback/FeedbackLiveCoverage";
+export { FeedbackPriorityAreas } from "@/capabilities/feedback/FeedbackPriorityAreas";
+export { GradeCircle } from "@/capabilities/feedback/GradeCircle";
 export { TranscriptView } from "@/capabilities/feedback/TranscriptView";
 export * from "@/capabilities/feedback/model";
+export { attemptStreamPath, isTerminal, readResults, readTranscript, scoredAtLabel } from "@/capabilities/feedback/api";
+export type { AssessmentResult, Transcript } from "@/capabilities/feedback/api";

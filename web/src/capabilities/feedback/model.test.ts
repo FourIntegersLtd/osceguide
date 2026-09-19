@@ -28,7 +28,15 @@ const scaLike = {
       },
     ],
   },
-  clinical_analysis: { differential: "Reasonable differential offered." },
+  clinical_analysis: {
+    differential: "Reasonable differential offered.",
+    missed_history: ["Family history", "Smoking"],
+    key_positives: [],
+  },
+  live_coverage: [
+    { competency_id: "c2", label: "Safety net", state: "partial", quote: "If it gets worse", seq: 2 },
+    { competency_id: "c1", label: "Opening", state: "covered", quote: null, seq: 1 },
+  ],
 };
 
 describe("normaliseFeedback", () => {
@@ -56,6 +64,35 @@ describe("normaliseFeedback", () => {
     assert.equal(result.priorities.length, 1);
     assert.equal(result.priorities[0]?.area, "Safety netting");
     assert.equal(result.analysis[0]?.label, "Differential");
+    assert.equal(result.analysis[0]?.body, "Reasonable differential offered.");
+  });
+
+  it("reads a clinical-analysis section written as a list", () => {
+    // The SCA framework writes ten of these as arrays and one as a sentence.
+    // Reading only strings dropped the ten, which is most of the analysis.
+    const result = normaliseFeedback(scaLike);
+    const missed = result.analysis.find((section) => section.key === "missed_history");
+    assert.deepEqual(missed?.items, ["Family history", "Smoking"]);
+    assert.equal(missed?.body, null);
+  });
+
+  it("drops an analysis section with nothing in it", () => {
+    const result = normaliseFeedback(scaLike);
+    assert.ok(!result.analysis.some((section) => section.key === "key_positives"));
+  });
+
+  it("orders live coverage by when it happened, not by how it arrived", () => {
+    const result = normaliseFeedback(scaLike);
+    assert.deepEqual(
+      result.coverage.map((item) => item.label),
+      ["Opening", "Safety net"],
+    );
+    // Anything short of "covered" is partial: covering something badly still
+    // covers it, so this is a record and never a grade.
+    assert.deepEqual(
+      result.coverage.map((item) => item.covered),
+      [true, false],
+    );
   });
 
   it("renders a framework it has never seen", () => {
@@ -73,6 +110,8 @@ describe("normaliseFeedback", () => {
     const result = normaliseFeedback({ note: "scoring failed" });
     assert.deepEqual(result.groups, []);
     assert.deepEqual(result.priorities, []);
+    assert.deepEqual(result.analysis, []);
+    assert.deepEqual(result.coverage, []);
   });
 
   it("tallies grades across groups", () => {

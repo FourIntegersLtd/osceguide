@@ -1,149 +1,60 @@
 "use client";
 
 import { useMemo } from "react";
-import { Badge, Card, cn } from "@/foundation/ui";
-import {
-  RAG_LABEL,
-  normaliseFeedback,
-  ragTally,
-  type CompetencyGroup,
-  type Rag,
-} from "@/capabilities/feedback/model";
-
-const RAG_TONE: Record<Rag, "danger" | "warning" | "success"> = {
-  R: "danger",
-  A: "warning",
-  G: "success",
-};
+import { HiOutlineFaceFrown } from "react-icons/hi2";
+import { B2CEmptyState } from "@/foundation/ui";
+import { normaliseFeedback } from "@/capabilities/feedback/model";
+import { FeedbackDomains } from "@/capabilities/feedback/FeedbackDomains";
+import { FeedbackCategories } from "@/capabilities/feedback/FeedbackCategories";
+import { FeedbackClinicalAnalysis } from "@/capabilities/feedback/FeedbackClinicalAnalysis";
+import { FeedbackLiveCoverage } from "@/capabilities/feedback/FeedbackLiveCoverage";
+import { FeedbackPriorityAreas } from "@/capabilities/feedback/FeedbackPriorityAreas";
 
 /**
  * One scored attempt, rendered.
  *
- * The same component shows a consumer their practice feedback and a supervisor
- * the machine's view beside their own marking. `readOnly` is the only
- * difference, and a reviewer's controls are composed around this rather than
- * forking it — two renderers is how the two clients came to disagree about
- * what a grade meant.
+ * The same component shows a consumer their practice feedback and an examiner
+ * the machine's view of a candidate's — the sections, their order and their
+ * wording are the retiring consumer screen's, and nothing here asks who is
+ * reading. A reviewer's controls are composed around this rather than forking
+ * it; two renderers is how the two clients came to disagree about what a grade
+ * meant.
+ *
+ * `payload` is the assessment result's payload exactly as the engine wrote it.
+ * Everything framework-specific about reading it lives in `model.ts`, so the
+ * four exams — and the fifth nobody has written yet — come through here.
  */
 export function FeedbackView({
   payload,
-  className,
+  className = "space-y-8",
 }: {
   payload: Record<string, unknown>;
   className?: string;
 }) {
   const feedback = useMemo(() => normaliseFeedback(payload), [payload]);
-  const tally = useMemo(() => ragTally(feedback.groups), [feedback.groups]);
+  const isEmpty =
+    feedback.groups.length === 0 &&
+    feedback.priorities.length === 0 &&
+    feedback.analysis.length === 0 &&
+    feedback.coverage.length === 0;
 
-  if (feedback.groups.length === 0 && feedback.priorities.length === 0) {
+  if (isEmpty) {
     return (
-      <Card>
-        <p className="text-sm text-ink-muted">
-          This attempt has no feedback recorded. If it was just completed, scoring may still be
-          running.
-        </p>
-      </Card>
+      <B2CEmptyState
+        icon={HiOutlineFaceFrown}
+        title="No feedback recorded"
+        description="This attempt has no feedback recorded. If it was just completed, scoring may still be running."
+      />
     );
   }
 
   return (
-    <div className={cn("flex flex-col gap-5", className)}>
-      <div className="flex flex-wrap items-center gap-2">
-        {(["G", "A", "R"] as const).map((grade) => (
-          <Badge key={grade} tone={RAG_TONE[grade]}>
-            {tally[grade]} {RAG_LABEL[grade].toLowerCase()}
-          </Badge>
-        ))}
-      </div>
-
-      {feedback.priorities.length > 0 && (
-        <Card title="Work on these first">
-          <ol className="flex flex-col gap-4">
-            {feedback.priorities.map((priority, index) => (
-              <li key={`${priority.area}-${index}`} className="flex flex-col gap-1">
-                <p className="text-sm font-semibold text-ink">{priority.area}</p>
-                {priority.currentLevel && (
-                  <p className="text-xs uppercase tracking-wide text-ink-subtle">
-                    {priority.currentLevel}
-                  </p>
-                )}
-                {priority.steps.length > 0 && (
-                  <ul className="ml-4 list-disc text-sm text-ink-muted">
-                    {priority.steps.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ul>
-                )}
-                {priority.expectedOutcome && (
-                  <p className="text-sm text-ink-muted">{priority.expectedOutcome}</p>
-                )}
-              </li>
-            ))}
-          </ol>
-        </Card>
-      )}
-
-      {feedback.groups.map((group) => (
-        <GroupCard key={group.key} group={group} />
-      ))}
-
-      {feedback.analysis.map((section) => (
-        <Card key={section.label} title={section.label}>
-          <p className="whitespace-pre-wrap text-sm text-ink-muted">{section.body}</p>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function GroupCard({ group }: { group: CompetencyGroup }) {
-  return (
-    <Card
-      title={group.label}
-      actions={group.score ? <Badge tone={RAG_TONE[group.score]}>{RAG_LABEL[group.score]}</Badge> : null}
-    >
-      <div className="flex flex-col gap-4">
-        <Narrative label="What went well" items={group.strengths} />
-        <Narrative label="What to improve" items={group.improvements} />
-        <Narrative label="Try this next" items={group.actions} />
-
-        <ul className="divide-y divide-border rounded-control border border-border">
-          {group.competencies.map((competency) => (
-            <li key={competency.key} className="flex flex-col gap-1 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-ink">{competency.label}</p>
-                {competency.score ? (
-                  <Badge tone={RAG_TONE[competency.score]}>{competency.score}</Badge>
-                ) : (
-                  <Badge tone="neutral">Not scored</Badge>
-                )}
-              </div>
-              {competency.explanation && (
-                <p className="text-sm text-ink-muted">{competency.explanation}</p>
-              )}
-              {competency.quote && (
-                <p className="border-l-2 border-border-strong pl-2 text-sm italic text-ink-subtle">
-                  “{competency.quote}”
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </Card>
-  );
-}
-
-function Narrative({ label, items }: { label: string; items: string[] }) {
-  if (items.length === 0) return null;
-  return (
-    <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-subtle">{label}</p>
-      <ul className="ml-4 list-disc text-sm text-ink-muted">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-    </div>
+    <section className={className}>
+      <FeedbackDomains groups={feedback.groups} />
+      <FeedbackCategories groups={feedback.groups} />
+      <FeedbackClinicalAnalysis sections={feedback.analysis} />
+      <FeedbackLiveCoverage coverage={feedback.coverage} />
+      <FeedbackPriorityAreas priorities={feedback.priorities} />
+    </section>
   );
 }

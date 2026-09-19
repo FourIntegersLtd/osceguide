@@ -49,11 +49,36 @@ export interface PriorityAction {
   expectedOutcome: string | null;
 }
 
+/**
+ * A clinical-analysis section: a paragraph, a list, or both.
+ *
+ * The SCA framework writes ten of these as arrays of strings (missed history,
+ * key positives, safety considerations…) and one as a sentence. Reading both
+ * shapes here is what lets a framework that words it differently still render.
+ */
+export interface AnalysisSection {
+  key: string;
+  label: string;
+  body: string | null;
+  items: string[];
+}
+
+/** One line of what the live panel showed while the consultation ran. */
+export interface CoverageEntry {
+  id: string;
+  label: string;
+  covered: boolean;
+  quote: string | null;
+  seq: number;
+}
+
 export interface NormalisedFeedback {
   groups: CompetencyGroup[];
   priorities: PriorityAction[];
   /** Anything the framework produced that is prose rather than scores. */
-  analysis: { label: string; body: string }[];
+  analysis: AnalysisSection[];
+  /** What was ticked off live, in the order it happened. */
+  coverage: CoverageEntry[];
 }
 
 /** Domains that are narrative wrappers rather than scored competency groups. */
@@ -125,6 +150,7 @@ export function normaliseFeedback(payload: Record<string, unknown>): NormalisedF
     groups,
     priorities: readPriorities(actionable.overall_priorities ?? payload.overall_priorities),
     analysis: readAnalysis(payload.clinical_analysis),
+    coverage: readCoverage(payload.live_coverage),
   };
 }
 
@@ -165,14 +191,43 @@ function readPriorities(value: unknown): PriorityAction[] {
   });
 }
 
-function readAnalysis(value: unknown): { label: string; body: string }[] {
+function readAnalysis(value: unknown): AnalysisSection[] {
   const record = asRecord(value);
   if (!record) return [];
-  return Object.entries(record).flatMap(([key, item]) =>
-    typeof item === "string" && item.trim().length > 0
-      ? [{ label: titleise(key), body: item }]
-      : [],
-  );
+  return Object.entries(record).flatMap(([key, item]) => {
+    const body = typeof item === "string" && item.trim().length > 0 ? item : null;
+    const items = asStringList(item).filter((entry) => entry.trim().length > 0);
+    if (!body && items.length === 0) return [];
+    return [{ key, label: titleise(key), body, items }];
+  });
+}
+
+/**
+ * The live panel's record, which is not a score.
+ *
+ * Coverage says what was done; the RAG grades say how well. The two can
+ * legitimately disagree — covering something badly still covers it — so this
+ * is normalised separately and the screen frames it as a record.
+ */
+function readCoverage(value: unknown): CoverageEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item, index) => {
+      const record = asRecord(item);
+      if (!record) return [];
+      const label = typeof record.label === "string" ? record.label : null;
+      if (!label) return [];
+      return [
+        {
+          id: typeof record.competency_id === "string" ? record.competency_id : `${index}`,
+          label,
+          covered: record.state === "covered",
+          quote: typeof record.quote === "string" ? record.quote : null,
+          seq: typeof record.seq === "number" ? record.seq : index,
+        },
+      ];
+    })
+    .sort((a, b) => a.seq - b.seq);
 }
 
 /** How many of each grade, for a summary line. */
