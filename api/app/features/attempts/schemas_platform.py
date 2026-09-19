@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.features.attempts.schemas import AttemptRead
 
@@ -46,3 +46,20 @@ class PlatformAttemptDetail(PlatformAttemptRead):
     definition_frozen_at: datetime | None
     chunk_count: int
     jobs: list[ScoringJobRead]
+
+
+class RescoreRequest(BaseModel):
+    """Re-queue the marking. Left empty, under the policy the attempt was
+    frozen with; named, under another one, whose result sits beside the old."""
+
+    policy_version: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class RescoreResult(BaseModel):
+    queued: bool
+    policy_version: str
+    reason: str | None = None
+
+
+class FailAttemptRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=180)

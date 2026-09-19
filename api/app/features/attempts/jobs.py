@@ -55,7 +55,9 @@ def policy_for(attempt: Attempt) -> tuple[str, str]:
     return framework_id, version
 
 
-async def enqueue_scoring(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:
+async def enqueue_scoring(
+    session: AsyncSession, attempt: Attempt, *, now: datetime, policy_version: str | None = None
+) -> None:
     """Queue the marking in the caller's transaction.
 
     Deliberately not `app.defer_async`: procrastinate's own connector holds its
@@ -68,7 +70,8 @@ async def enqueue_scoring(session: AsyncSession, attempt: Attempt, *, now: datet
     through the task object. The queueing lock makes it idempotent: a redelivered
     transcript cannot queue a second marking of the same attempt.
     """
-    framework_id, policy_version = policy_for(attempt)
+    framework_id, frozen_version = policy_for(attempt)
+    policy_version = policy_version or frozen_version
     if not framework_id or domain_definition.rubric_for(attempt.definition) is None:
         # No frozen definition, so the worker never bootstrapped this attempt —
         # yet a transcript arrived for it. There is nothing to mark it against:
