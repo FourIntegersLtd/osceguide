@@ -1,10 +1,7 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
-import type { RoomGrant } from "@/foundation/livekit";
 
 export type Sitting = components["schemas"]["SittingRead"];
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
-export type MySittings = components["schemas"]["MySittings"];
-export type MySitting = components["schemas"]["MySitting"];
 export type Trainee = components["schemas"]["TraineeRead"];
 
 const org = (slug: string) => `/api/v1/orgs/${encodeURIComponent(slug)}`;
@@ -193,37 +190,5 @@ export function saveReview(
       method: "PUT",
       body: { field_values: input.fieldValues, notes: input.notes, status: input.status },
     },
-  );
-}
-
-/* ---------- results ---------- */
-
-export type TraineeResult = components["schemas"]["TraineeResultRead"];
-
-export function readMyResult(sittingId: string, signal?: AbortSignal): Promise<TraineeResult> {
-  return platformRequest<TraineeResult>(
-    `/api/v1/me/results/${encodeURIComponent(sittingId)}`,
-    { signal },
-  );
-}
-
-export function acknowledgeResult(sittingId: string): Promise<void> {
-  return platformRequest<void>(
-    `/api/v1/me/results/${encodeURIComponent(sittingId)}/acknowledge`,
-    { method: "POST" },
-  );
-}
-
-/* ---------- the trainee's side ---------- */
-
-export function readMySittings(signal?: AbortSignal): Promise<MySittings> {
-  return platformRequest<MySittings>("/api/v1/me/sittings", { signal });
-}
-
-/** Join the room for the circuit I am rostered onto. */
-export function joinCircuit(circuitId: string, signal?: AbortSignal): Promise<RoomGrant> {
-  return platformRequest<RoomGrant>(
-    `/api/v1/me/circuits/${encodeURIComponent(circuitId)}/join-token`,
-    { signal },
   );
 }

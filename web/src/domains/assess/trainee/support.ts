@@ -1,0 +1,254 @@
+import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
+
+/**
+ * The vocabulary and the arithmetic of a candidate's own view.
+ *
+ * Pure, because the things that decide what somebody is told before an
+ * examination — whether a station counts as done, whether a room is open,
+ * which sitting to put in front of them — should be testable rather than read
+ * off a component. The retiring arm computed all of it inline across five
+ * screens and the three copies of "is this station finished?" disagreed.
+ */
+
+export type Tone = "success" | "warning" | "danger" | "accent" | "neutral";
+
+/* ---------- a station, as the candidate sees it ---------- */
+
+export interface SlotStatus {
+  label: string;
+  tone: Tone;
+  /** Finished for good. A candidate may not re-enter one. */
+  done: boolean;
+}
+
+/**
+ * Where one station has got to.
+ *
+ * `exam_completed_at` is the authority and `status` only fills in around it:
+ * a slot the circuit has moved past is completed whether or not the status
+ * string caught up. The old screen read the two in the opposite order and
+ * offered "Join station" on stations people had already sat.
+ */
+export function slotStatus(slot: MySlot): SlotStatus {
+  if (slot.exam_completed_at) return { label: "Completed", tone: "success", done: true };
+  switch (slot.status) {
+    case "completed":
+      return { label: "Completed", tone: "success", done: true };
+    case "in_progress":
+      return { label: "In progress", tone: "accent", done: false };
+    case "skipped":
+      return { label: "Skipped", tone: "warning", done: true };
+    case "ready":
+      return { label: "Ready", tone: "accent", done: false };
+    default:
+      return { label: "Not started", tone: "neutral", done: false };
+  }
+}
+
+/** Slots in the order they will be sat. */
+export function orderedSlots(sitting: MySitting): MySlot[] {
+  return [...(sitting.slots ?? [])].sort((a, b) => a.slot_index - b.slot_index);
+}
+
+export interface Progress {
+  completed: number;
+  total: number;
+}
+
+export function progressOf(sitting: MySitting): Progress {
+  const slots = sitting.slots ?? [];
+  return { completed: slots.filter((slot) => slotStatus(slot).done).length, total: slots.length };
+}
+
+/**
+ * The station the candidate is on, if any.
+ *
+ * `is_active` is the circuit's own pointer. A sitting that is live but between
+ * stations has none, which is a real state and not a missing one.
+ */
+export function activeSlot(sitting: MySitting): MySlot | null {
+  return (sitting.slots ?? []).find((slot) => slot.is_active) ?? null;
+}
+
+/** Whether this person may enter a room right now, as the backend decided. */
+export function joinable(sitting: MySitting): boolean {
+  return sitting.can_join === true;
+}
+
+/* ---------- a sitting, as a row ---------- */
+
+export const EXAM_MODES = new Set(["exam", "examination"]);
+
+export function isExam(sitting: MySitting): boolean {
+  return EXAM_MODES.has(sitting.mode);
+}
+
+export function modeLabel(sitting: MySitting): string {
+  return isExam(sitting) ? "Examination" : "Practice circuit";
+}
+
+/**
+ * Sittings in the order somebody wants to deal with them.
+ *
+ * Live first, then what is scheduled, then what is over — and within a group,
+ * soonest first. A candidate with a station running should not have to scroll
+ * for it.
+ */
+export function sortSittings(sittings: readonly MySitting[]): MySitting[] {
+  return [...sittings].sort((a, b) => {
+    const byPriority = priority(a) - priority(b);
+    if (byPriority !== 0) return byPriority;
+    return scheduledAt(a) - scheduledAt(b);
+  });
+}
+
+function priority(sitting: MySitting): number {
+  if (sitting.live) return 0;
+  if (sitting.status === "scheduled" || sitting.status === "created") return 1;
+  if (sitting.status === "completed" || sitting.status === "ended") return 3;
+  return 2;
+}
+
+function scheduledAt(sitting: MySitting): number {
+  const parsed = sitting.scheduled_for ? Date.parse(sitting.scheduled_for) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+/** The one thing to put in front of somebody when they arrive. */
+export function spotlight(sittings: readonly MySitting[]): MySitting | null {
+  return sortSittings(sittings)[0] ?? null;
+}
+
+/** Everything with a station open for this person right now. */
+export function liveSittings(sittings: readonly MySitting[]): MySitting[] {
+  return sittings.filter(joinable);
+}
+
+/** Stations this person has finished, across everything they are rostered onto. */
+export function stationsCompleted(sittings: readonly MySitting[]): number {
+  return sittings.reduce((total, sitting) => total + progressOf(sitting).completed, 0);
+}
+
+/**
+ * The subtitle under a sitting's name.
+ *
+ * Says what is true and nothing more: a progress count only for an
+ * examination, where the candidate works through their own stations, and never
+ * a count of zero for a sitting whose slots have not been published yet.
+ */
+export function summaryLine(sitting: MySitting): string {
+  const parts = [modeLabel(sitting)];
+  const { completed, total } = progressOf(sitting);
+  if (isExam(sitting) && total > 0) parts.push(`${completed} of ${total} stations completed`);
+  if (sitting.scheduled_for) {
+    const when = new Date(sitting.scheduled_for);
+    if (Number.isFinite(when.getTime())) parts.push(when.toLocaleString());
+  }
+  return parts.join(" · ");
+}
+
+/** What the button on the spotlight row should say. */
+export function continueLabel(sitting: MySitting): string {
+  if (joinable(sitting)) return "Your station is open";
+  if (sitting.paused) return "Paused by your supervisor";
+  if (sitting.live) return "Running now";
+  const { completed, total } = progressOf(sitting);
+  if (total > 0 && completed === total) return "Finished";
+  if (completed > 0) return "Continue";
+  return "Not started";
+}
+
+/**
+ * What the live banner says, which differs by mode.
+ *
+ * In an examination the candidate walks into their own station; in a training
+ * circuit only the person on turn speaks and the rest observe. Telling one
+ * that they are about to be heard when they are not is how somebody sits in
+ * silence waiting for a patient.
+ */
+export function liveBannerCopy(sitting: MySitting): { title: string; body: string } {
+  if (isExam(sitting)) {
+    return {
+      title: "Your station is open",
+      body: "Go in and read the brief. The patient joins when the reading time ends.",
+    };
+  }
+  return {
+    title: "Your turn is live",
+    body: "Join the room to speak with the patient while your supervisor runs the circuit.",
+  };
+}
+
+/* ---------- the clock ---------- */
+
+/**
+ * The phase, in words, when the server has named one.
+ *
+ * The clock itself is never computed here — `remaining_seconds` and
+ * `phase_ends_at` are the server's and the browser only renders them.
+ */
+export function phaseLabel(phase: string | null | undefined): string {
+  if (!phase) return "Now";
+  const labels: Record<string, string> = {
+    reading: "Reading",
+    simulation: "Consultation",
+    consultation: "Consultation",
+    feedback: "Feedback",
+    idle: "Waiting",
+  };
+  return labels[phase] ?? phase.replace(/_/g, " ");
+}
+
+/* ---------- self practice ---------- */
+
+/**
+ * The organisation's stations somebody may actually sit.
+ *
+ * A station with no published version cannot be run — `POST /attempts` refuses
+ * a draft with `station_not_published` — so offering it would be a button that
+ * only ever fails. Sorted by title because an org library is browsed, not
+ * worked through in order.
+ */
+export function practisable(stations: readonly OrgStation[]): OrgStation[] {
+  return stations
+    .filter((station) => station.status === "published" && Boolean(station.current_version_id))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/**
+ * The brief a candidate reads before a station starts.
+ *
+ * `reading_brief` is the key the backend writes — `stations/service_versions.py`
+ * names it, and the PATCH that corrects one without cutting a new version
+ * writes there. `candidate_brief` is accepted too because station content
+ * authored before that route existed uses it.
+ *
+ * Nothing else in `content` is read on purpose. The organisation's station
+ * list hands a trainee the **whole** document, the patient's material
+ * included, so picking one field is the difference between a reading brief and
+ * a candidate who can see the diagnosis. See `docs/port-gaps.md`.
+ */
+export function readingBrief(station: OrgStation): string | null {
+  const content = station.content;
+  if (!content) return null;
+  for (const key of ["reading_brief", "candidate_brief"]) {
+    const value = content[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return null;
+}
+
+/* ---------- copy ---------- */
+
+export function greeting(now: Date): string {
+  const hour = now.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+export function firstName(name: string | null | undefined): string | null {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return null;
+  return trimmed.split(/\s+/)[0] ?? null;
+}

@@ -4,14 +4,17 @@ import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   CircuitRunner,
   LiveBoard,
+  MySittingDetail,
   MyResult,
   NewCircuit,
   NewSitting,
   OrgDashboard,
   Results,
+  SelfPractice,
   SittingDetail,
   Sittings,
   SlotReview,
+  StationRecord,
   Team,
   TraineeHome,
   Trainees,
@@ -79,8 +82,20 @@ function AssessTeam(props: ScreenProps) {
 
 const AssessMyTraining = () => <TraineeHome />;
 
+function AssessMySitting({ params }: ScreenProps) {
+  return <MySittingDetail sittingId={params?.sittingId ?? ""} />;
+}
+
 function AssessMyResult({ params }: ScreenProps) {
   return <MyResult sittingId={params?.sittingId ?? ""} />;
+}
+
+function AssessMyPractice(props: ScreenProps) {
+  return <SelfPractice orgSlug={slugOf(props)} />;
+}
+
+function AssessAttempt({ params }: ScreenProps) {
+  return <StationRecord attemptId={params?.attemptId ?? ""} />;
 }
 
 /**
@@ -102,5 +117,8 @@ export const assessScreens: ScreenMap = {
   trainees: AssessTrainees,
   team: AssessTeam,
   myTraining: AssessMyTraining,
+  mySitting: AssessMySitting,
   myResult: AssessMyResult,
+  myPractice: AssessMyPractice,
+  attempt: AssessAttempt,
 };

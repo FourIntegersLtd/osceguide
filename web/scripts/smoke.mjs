@@ -159,9 +159,41 @@ async function main() {
       }
     }
   }
-  await step("my sittings", "/api/v1/me/sittings", {
-    expect: (p) => must(Array.isArray(p.items), "not a list"),
+  /*
+   * The trainee arm. One feed drives the overview and the sitting page, so the
+   * shape of a slot inside it is what those screens depend on — `joinable` and
+   * `exam_completed_at` decide whether somebody is offered a way into a
+   * station, and `attempt_id` is the only route to their own record.
+   */
+  const mySittings = await step("my sittings", "/api/v1/me/sittings", {
+    expect: (p) => {
+      must(Array.isArray(p.items), "not a list");
+      for (const sitting of p.items) {
+        must(typeof sitting.can_join === "boolean", "no can_join on a sitting");
+        must(typeof sitting.circuit_id === "string", "no circuit on a sitting");
+        for (const slot of sitting.slots ?? []) {
+          must(typeof slot.slot_index === "number", "no slot_index");
+          must("exam_completed_at" in slot, "no exam_completed_at");
+          must("attempt_id" in slot, "no attempt_id on a slot");
+        }
+      }
+    },
   });
+  const myFirstSitting = mySittings?.items?.[0];
+  if (myFirstSitting) {
+    /*
+     * A result nobody has released is a 404 here, not an empty document — the
+     * sitting page treats that as "no link yet" rather than a failure.
+     */
+    await step("my result", `/api/v1/me/results/${myFirstSitting.id}`, { allow: [403, 404] });
+    if (myFirstSitting.can_join) {
+      await step(
+        "join my circuit",
+        `/api/v1/me/circuits/${myFirstSitting.circuit_id}/join-token`,
+        { expect: (p) => must(typeof p.token === "string", "no room token") },
+      );
+    }
+  }
   await step("discussion", "/api/v1/community/questions?limit=5", {
     expect: (p) => must(Array.isArray(p.items), "not a page"),
   });
@@ -263,6 +295,21 @@ async function main() {
         expect: (p) => must(Array.isArray(p.items), "not a page"),
       });
     }
+    /*
+     * Self practice reads the same list the authoring screens write, because a
+     * trainee is an `OrgReader` and the org's library is one library. What the
+     * screen needs off a row is the published version it would sit: without
+     * `current_version_id` the station is a button that can only ever fail.
+     */
+    await step("org stations for self practice", `/api/v1/orgs/${slug}/stations`, {
+      expect: (p) => {
+        must(Array.isArray(p.items), "not a page");
+        for (const station of p.items) {
+          must(typeof station.status === "string", "no station status");
+          must("current_version_id" in station, "no current_version_id");
+        }
+      },
+    });
     await step("org programmes", `/api/v1/orgs/${slug}/programmes`, {
       expect: (p) => must(Array.isArray(p.items), "not a page"),
     });

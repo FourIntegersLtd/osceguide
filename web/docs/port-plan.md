@@ -156,9 +156,47 @@ while it happens rather than discovered afterwards.
 
 The sitting report and the cohort view landed with J12.
 
-**J14 · Trainee and practice arms** — `b2b/components/features/{trainee,
-practice}` (4.1k) → `domains/assess/trainee/`. A rostered trainee's sittings,
-joining, their result, and an organisation's self-practice arm.
+**J14 · Trainee and practice arms** — **done.**
+`b2b/components/features/{trainee,practice}` (4.1k, 29 files) →
+`domains/assess/trainee/` (nine files). A rostered trainee's sittings, joining,
+their result, their station records, and the organisation's self-practice arm.
+The rebuilt `TraineeHome` and `MyResult` it replaces are deleted.
+
+One feed does most of it. `/me/sittings` carries every sitting *and every slot*
+this person owns and it streams, so the overview and the sitting page are two
+projections of one subscription — where the old arm had a list endpoint, a
+detail endpoint polled every five seconds, and a filter in the browser over the
+organisation's own session list.
+
+Joining is one component used by both. The old arm decided whether somebody
+could go in from five booleans (`isSelfLedTraineeSession`, `examSelfLedTimer`,
+`isDirectPractice`, `isSoloPractice`, `partnerSelfLedTraining`) across a join
+page, a live-session component and four pre-join states; the backend answers it
+with `can_join`. The automatic join during reading is kept, and the reason is
+in the file: the patient is dispatched on the server's clock and needs the room
+to already exist.
+
+Self practice is one screen where there were three — self practice, a
+direct-practice home and its station list — plus a `mock/` folder with its own
+timer, LiveKit consultation and five tabs. All of them list an organisation's
+published stations and sit one alone, which is `POST /attempts` over
+`capabilities/attempt-runner`. `self_practice` was missing from `AttemptKind`
+and is the one kind that route actually accepts; it is there now.
+
+Also wired: `GET /orgs/{slug}/stations` as a trainee (the predicate behind
+`OrgReader` admits one), and the `attempt` screen on Assess, so an institution's
+candidate can read a station back — the marking and the transcript, both off the
+attempt on their slot.
+
+Not ported, and why, in `port-gaps.md`: **a candidate cannot read the circuit
+feedback their supervisor published** — `review/finalize` writes it and nothing
+reads it back for the person it is about, which is the largest gap this job
+found — nor their own slot review; the practice *mock* (pick n stations, sit
+them back to back) is a station set and mounting `domains/train/mocks` on Assess
+is a product decision rather than a port; and there are no candidate microphone
+or camera controls, for the same reason the supervisor has none.
+
+**J15 · Staff console** is the last of them.
 
 **J15 · Staff console** — `b2b/components/features/platform` (2.3k) →
 `domains/platform/`. Org edit, memberships, audit log, platform-admin toggle,

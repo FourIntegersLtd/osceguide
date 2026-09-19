@@ -272,7 +272,7 @@ rather than in `capabilities/debrief`. Nothing mounts it yet.
 | What | Where | How it is handled |
 |---|---|---|
 | `GET /attempts/{id}/result` is a page | `capabilities/feedback/api.ts` | The endpoint answers `Page[AssessmentResultRead]`, not one result: re-scoring under a new policy writes beside the old so a candidate's history stays readable, and the items come back oldest first. `attempt-runner/api.ts`'s `readResult` is typed as a single `AssessmentResultRead` and would read `.payload` off the page — the feedback capability reads the page itself and shows the last item, with a picker when there is more than one. |
-| `AttemptKind` in `attempt-runner/api.ts` | `capabilities/attempt-runner` | The client spells the kinds `set_entry`, `slot`, `self_practice`… where the backend's `attempts.Kind` is `set_station`, `exam_slot`, `self_practice`, `practice`, `debrief`, `peer`. Only `practice`, `debrief` and `peer` agree. `capabilities/transcripts/api.ts` labels attempts from the backend's spelling. |
+| `AttemptKind` in `attempt-runner/api.ts` | `capabilities/attempt-runner` | The client spells the kinds `set_entry` and `slot` where the backend's `attempts.Kind` is `set_station` and `exam_slot`; `practice`, `self_practice`, `debrief` and `peer` agree. Only the first two are wrong now — `self_practice` was missing from the union until the institution's self practice needed it, and that is the one kind this union is actually used to *send*, because `POST /attempts` accepts `^(practice\|self_practice)$` and nothing else. The rest are created by their own routes, so the union describes them rather than asking for them. `capabilities/transcripts/api.ts` labels attempts from the backend's spelling. |
 | `user.user_id`, `user.station_progress` | `domains/marketing/InstallPrompt.tsx` | The old consumer user object inlined a progress array. The platform's `/me` carries neither — progress is its own endpoint. The prompt passes `user.id` and a count of 0, which errs towards showing onboarding once more rather than never. |
 
 ## The account capability
@@ -794,3 +794,125 @@ which is a different question asked a different way.
 route the other way, so an administrator cannot see who is covering what
 without opening each circuit. The live board names the supervisor per running
 circuit, which covers the exam-day case and not the planning one.
+
+## The trainee arm and self practice (institution)
+
+`b2b/components/features/{trainee,practice}` — 29 files, 4.1k lines — is now
+`domains/assess/trainee` in eight. Most of the reduction is not compression: it
+is that the retiring arm answered in the browser several questions the backend
+now answers, and had a second, near-identical implementation of the
+consultation runner.
+
+### There is no per-sitting read for a candidate
+
+`/me/sittings` carries every sitting *and every slot* this person owns, and it
+streams. So the sitting page is a projection of the same feed the overview
+renders rather than a second endpoint — which is also why it updates live
+without polling, where the retiring detail page re-fetched every five seconds.
+
+A `GET /me/sittings/{id}` would make a deep link cheaper (the page currently
+loads everything and filters), but it would be a second source for the same
+facts. If one is added it should replace this read rather than sit beside it.
+
+### A candidate cannot read the circuit's published feedback
+
+The retiring arm had a whole screen for it —
+`TraineeCircuitFeedbackPage`, reached from a training circuit — reading a
+`mergedNotes` document with a contribution per turn.
+`POST /orgs/{slug}/circuits/{id}/review/finalize` writes that summary and
+**nothing reads it back for the person it is about**: the reviews live under
+`/orgs/{slug}/slots/{id}/reviews`, which is an org route, and a trainee's own
+`/me/results/{sitting}` carries only the sitting-level outcome and rationale.
+
+So a candidate on a training circuit sees their own station records — the
+transcript and the automated marking, both off the attempt — and not what the
+supervisor wrote about the circuit. **This is the largest thing J14 could not
+port.** The obvious shape is `GET /me/sittings/{id}/circuit-review`, disclosed
+on the same rule as a result.
+
+### Nor their own slot review
+
+Same root cause as the entry above and as the one under "Results and reviews":
+there is no `reviews/mine` read for the reviewer, and no per-slot read at all
+for the candidate. `MySlot.attempt_id` gives them the automated marking, which
+is not the same thing as what an examiner recorded.
+
+### Self practice is the organisation's library, sat through `/attempts`
+
+The retiring arm had three doors onto one act — self practice inside a
+trainee's workspace, a direct-practice home and its station list for a partner
+account — with `selfPractice.ts`, `directPractice.ts` and a `mock/` folder of
+its own behind them: a timer, a LiveKit consultation, five tabs and a completion
+page. All three list an organisation's published stations and start a solo
+consultation on one, so they are now one screen over `capabilities/attempt-runner`.
+
+Two things follow from that:
+
+- **`POST /attempts` takes only `practice` and `self_practice`.** The pattern on
+  `CreateAttempt` is `^(practice|self_practice)$`, so the other kinds in
+  `AttemptKind` are created by their own routes, not this one. `self_practice`
+  has been added to that union — it was missing, which is what the shape
+  disagreement noted under "Mocks" is about.
+- **The candidate needs an entitlement to the exam.** `start_attempt` calls
+  `entitlements.require` whoever is asking, so an institution must have granted
+  the trainee access (Trainees → Exam access) before self practice works. That
+  is the right gate and it is worth knowing: a rostered trainee with no grant
+  gets `not_entitled` at the moment they press a station.
+
+### `GET /orgs/{slug}/stations` hands a trainee the whole station document
+
+`StationRead.content` is the version's full content — on the seeded case that
+is `candidate_brief` **and** `patient_brief` together, and on a
+template-authored station it is every block, the hidden ones included. The route
+is `OrgReader`, and that predicate admits a trainee (`may_read_org` is
+`is_org_admin or is_assigned_staff or is_trainee`), so anybody on the roster can
+read the patient's material and the examiner's notes for every station their
+organisation has authored — including the ones they are about to be examined on.
+
+`SelfPractice` reads exactly one field out of it, `readingBrief()`, and the
+helper says why. That is a client being careful about a response it should not
+have been given: the fix is the backend's, either a reader-scoped projection
+that carries only the brief, or a `GET /stations/{version}/brief` a candidate
+may call. Until then the disclosure is one `fetch` away from anybody signed in
+as a trainee, whatever this screen renders.
+
+### The practice mock — selecting stations and running a circuit alone — is not ported
+
+`PracticeMockSetupPage`, `PracticeMockRulesPage`, `PracticeStationRunnerPage`
+and `PracticeMockCompletePage` let somebody pick *n* stations from an exam and
+sit them back to back with one clock, then review the set. On the platform that
+is a **station set** — `/me/station-sets`, which `domains/train/mocks` already
+implements — and the institution arm does not mount it today.
+
+Nothing in the backend stops it: station sets are a `/me` resource. Mounting
+mocks on Assess is a line in the surface manifest and a route file, and it would
+replace those four screens exactly. It was left out of J14 because collapsing an
+institution's mock into the consumer one is a product decision, not a port.
+
+### The pre-join states are gone, and that is the point
+
+`TraineeJoinPreJoinStates` had four phases — loading, waiting, ended, error —
+with copy chosen by `isSelfLedTraineeSession`, `examSelfLedTimer`,
+`isDirectPractice`, `isSoloPractice` and `partnerSelfLedTraining`, five booleans
+deciding what a candidate was told about whether they could go in. The backend
+answers that with `can_join`, so there is one state and no phase machine.
+
+The join is still automatic during reading, for the reason recorded in
+`JoinRoom.tsx`: the patient is dispatched on the server's clock and needs the
+room to exist by then.
+
+### No microphone or camera controls for a candidate, either
+
+The same as the supervisor's case recorded under "The live session runner":
+nothing in this product publishes video, and `TraineeLiveRoom`'s tiles, device
+pickers and the LiveKit timer data channel have no counterpart. The clock is
+read from `remaining_seconds` and `phase_ends_at`.
+
+### `domains/train/AttemptResult` and `StationRecord` are the same screen twice
+
+Both render an attempt's marking beside its transcript. They are separate only
+because they sit in different arms and a domain may not import another domain;
+the parts they compose — `AttemptFeedback`, `TranscriptView` — are shared, so
+the duplication is the heading and the layout. The Train one still polls for a
+result where `AttemptFeedback` streams; folding it onto the capability would
+remove both the duplicate and the poller.

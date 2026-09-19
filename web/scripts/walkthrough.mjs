@@ -37,6 +37,10 @@ await show("personal", "/app/me/dashboard");
 await show("institution", "/app/kings/dashboard");
 await show("partner", "/app/bmj/dashboard");
 await show("staff", "/staff");
+await show("my training", "/app/kings/trainee");
+await show("self practice", "/app/kings/trainee/practice");
+// The trainee arm is Assess's, so a personal workspace must not answer it.
+await show("trainee page on personal (should 404)", "/app/me/trainee");
 await show("consumer page on institution (should 404)", "/app/kings/mocks");
 await show("workspace you are not in (should 404)", "/app/nowhere/dashboard");
 

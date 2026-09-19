@@ -13,7 +13,7 @@ export type Transcript = components["schemas"]["TranscriptRead"];
  * was permitted to start. That is why there is one runner for all of them
  * rather than one per arm, which is what the old clients had.
  */
-export type AttemptKind = "practice" | "set_entry" | "debrief" | "slot" | "peer";
+export type AttemptKind = "practice" | "self_practice" | "set_entry" | "debrief" | "slot" | "peer";
 
 export function createAttempt(
   input: { examCode: string; kind: AttemptKind; stationVersionId?: string | null },

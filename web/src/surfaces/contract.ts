@@ -35,7 +35,9 @@ export type ScreenName =
   | "trainees"
   | "team"
   | "myTraining"
+  | "mySitting"
   | "myResult"
+  | "myPractice"
   // Partner
   | "reporting"
   // Staff console

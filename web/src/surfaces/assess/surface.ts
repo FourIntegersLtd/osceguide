@@ -1,4 +1,12 @@
-import { LuCalendarDays, LuGauge, LuRadio, LuUserCog, LuUsers } from "react-icons/lu";
+import {
+  LuCalendarDays,
+  LuGauge,
+  LuGraduationCap,
+  LuRadio,
+  LuSparkles,
+  LuUserCog,
+  LuUsers,
+} from "react-icons/lu";
 import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -13,6 +21,22 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
   const items: NavItem[] = [
     { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
     { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
+    /*
+     * Everybody in the organisation, and deliberately ungated.
+     *
+     * There is no "is a trainee" permission and there should not be one: an
+     * examiner is often rostered onto something themselves, and the backend
+     * answers `/me/sittings` for whoever asks. Somebody on nothing sees an
+     * empty state, which is honest; hiding the item from them would hide it
+     * from the supervisor who is also a candidate.
+     */
+    { key: "myTraining", label: "My training", href: href("/trainee"), icon: LuGraduationCap },
+    {
+      key: "myPractice",
+      label: "Self practice",
+      href: href("/trainee/practice"),
+      icon: LuSparkles,
+    },
   ];
   /* The exam-day board is for the people who run circuits, and it names every
    * candidate on them — which is why the backend gates it on staff rather than
@@ -43,7 +67,16 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "trainees",
   "team",
   "myTraining",
+  "mySitting",
   "myResult",
+  "myPractice",
+  /*
+   * A station record, which is an attempt: the transcript and the marking both
+   * hang off one. Train answers the same screen — a candidate reading back
+   * their own consultation is the same act wherever they sat it — and the API
+   * decides whose attempts a person may open.
+   */
+  "attempt",
 ];
 
 export const assessSurface: SurfaceManifest = {
