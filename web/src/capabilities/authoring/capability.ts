@@ -14,15 +14,18 @@ import type { CapabilityModule } from "@/capabilities/contract";
  * platform admin's as separate trees, and a fix to one reached the others when
  * somebody remembered.
  *
- * Gated on `read_org`, which is the backend's answer for "may this person see
- * the organisation's own material at all".
+ * Gated on `read_org` *or* `administer_platform`. Inside an organisation the
+ * first is the backend's answer for "may this person see our own material at
+ * all". On the staff console nobody has it — OSCE Guide's own people belong to
+ * no organisation — and the second is what says they may edit the platform
+ * catalogue.
  */
 export const authoringCapability: CapabilityModule = {
   id: "authoring",
   title: "Authoring",
   description: "Stations, templates, rubrics, exams and programmes.",
   surfaces: ["assess", "partner", "platform"],
-  permission: "read_org",
+  permission: ["read_org", "administer_platform"],
   path: "/authoring",
   icon: LuPencilRuler,
 };

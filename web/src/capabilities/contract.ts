@@ -29,11 +29,18 @@ export interface CapabilityModule {
   surfaces: readonly Surface[];
   /**
    * The backend permission that gates it, checked against `/me/capabilities`.
+   *
+   * A list means *any of them* will do, which is not a loophole but the honest
+   * shape of a capability that two different kinds of person reach: authoring
+   * is `read_org` for somebody inside an organisation and
+   * `administer_platform` for OSCE Guide's own staff, who belong to no
+   * organisation and would otherwise fail an org permission for the platform
+   * catalogue they own.
    * `null` means everyone signed in may use it — study material and help are
    * like this, and entitlement is enforced per item by the API rather than by
    * hiding the section.
    */
-  permission: Permission | null;
+  permission: Permission | readonly Permission[] | null;
   /** Path under the surface's base, e.g. `/help`. */
   path: string;
   /** Rendered by the route file that mounts it. */

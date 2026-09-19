@@ -55,9 +55,25 @@ export function capabilitiesFor(
   return CAPABILITIES.filter((capability) => {
     if (!capability.surfaces.includes(surface)) return false;
     if (capability.hidden && !includeHidden) return false;
-    if (capability.permission && can[capability.permission] !== true) return false;
+    if (!permitted(capability.permission, can)) return false;
     return true;
   }).map((capability) => ({ ...capability, href: `${basePath}${capability.path}` }));
+}
+
+/**
+ * Whether the backend grants what this capability needs.
+ *
+ * A list is satisfied by any one of its entries. Nothing is satisfied by
+ * everyone signed in — the API still decides per item, and hiding a whole
+ * section would also hide the parts a person may use.
+ */
+function permitted(
+  permission: CapabilityModule["permission"],
+  can: Record<string, boolean>,
+): boolean {
+  if (!permission) return true;
+  const needed = Array.isArray(permission) ? permission : [permission];
+  return needed.some((p) => can[p] === true);
 }
 
 export function capabilityById(id: string): CapabilityModule | undefined {
