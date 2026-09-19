@@ -323,6 +323,51 @@ async function main() {
         expect: (p) => must(Array.isArray(p.items), "not a page"),
       });
     }
+    /*
+     * The staff console's own reads.
+     *
+     * Reads only. There is no delete for an organisation — deliberately, since
+     * a tenant's rows include results that have to stay defensible — so a
+     * smoke run must not provision one it cannot take back.
+     *
+     * The last two steps allow either answer, and that is the honest shape of
+     * them: this account is a platform admin *and* an admin of the org it
+     * switched into, so it reads both through its membership. Against an
+     * organisation it does not belong to, both answer 403 — `OrgAdmin` is
+     * declared `allow_platform_admin=False`, so a console admin may read an
+     * organisation for support and inherits none of its powers. That is why
+     * the staff console shows neither. `docs/port-gaps.md` carries it.
+     */
+    await step("platform overview", "/api/v1/platform/overview", {
+      allow: [403],
+      expect: (p) => {
+        must(typeof p.organizations === "number", "no organisation count");
+        must(typeof p.users === "number", "no user count");
+      },
+    });
+    await step("platform organizations", "/api/v1/platform/organizations?limit=5", {
+      allow: [403],
+      expect: (p) => {
+        must(Array.isArray(p.items), "not a page");
+        for (const org of p.items) {
+          must(typeof org.slug === "string", "no slug to address it by");
+          must(typeof org.status === "string", "no status to colour it by");
+        }
+      },
+    });
+    await step("platform users", "/api/v1/platform/users?q=dev&limit=5", {
+      allow: [403],
+      expect: (p) => must(Array.isArray(p.items), "not a page"),
+    });
+    await step("staff reads one organisation", `/api/v1/orgs/${slug}`, {
+      expect: (p) => must(typeof p.slug === "string", "not an organisation"),
+    });
+    await step("org memberships are not the console's", `/api/v1/orgs/${slug}/memberships`, {
+      allow: [200, 403],
+    });
+    await step("org audit is not the console's", `/api/v1/orgs/${slug}/audit`, {
+      allow: [200, 403],
+    });
     // The exam-day board and the supervisor's own circuits: both were unwired
     // until the dashboard screens were ported, so both are worth watching.
     await step("org live board", `/api/v1/orgs/${slug}/live`, {
