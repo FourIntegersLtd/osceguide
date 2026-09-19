@@ -40,6 +40,7 @@ recomputed on every request and stored nowhere.
 | GET | `/api/v1/orgs/{org_slug}/entitlements` | org admin | what the institution has granted, revoked included |
 | POST | `/api/v1/orgs/{org_slug}/entitlements` | org admin | grants by email, source `org_grant`; `user_not_found` (404), `unknown_exam` (404) |
 | POST | `/api/v1/orgs/{org_slug}/entitlements/{id}/revoke` | org admin | `entitlement_not_found` (404); the row stays |
+| GET | `/api/v1/platform/users/{id}/entitlements` | platform admin | every grant the person has held, with source, `source_ref`, `granted_by` and `live`; `user_not_found` (404) |
 
 ## Jobs
 None. `billing` writes entitlements through this slice's service.

@@ -41,6 +41,7 @@ from app.features.community.router_platform import router as community_platform_
 from app.features.dashboard.router import router as dashboard_router
 from app.features.dashboard.router_live import router as live_board_router
 from app.features.entitlements.router import router as entitlements_router
+from app.features.entitlements.router_platform import router as platform_entitlements_router
 from app.features.generation.router import router as generation_router
 from app.features.growth.router import router as growth_router
 from app.features.identity.router import router as identity_router
@@ -102,6 +103,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(attempts_router)
     router.include_router(platform_attempts_router)
     router.include_router(entitlements_router)
+    router.include_router(platform_entitlements_router)
     router.include_router(voice_router)
     router.include_router(sittings_router)
     router.include_router(circuit_run_router)

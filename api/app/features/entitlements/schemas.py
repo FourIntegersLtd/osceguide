@@ -28,3 +28,11 @@ class GrantEntitlement(BaseModel):
     email: str
     exam_code: str
     ends_at: datetime | None = None
+
+
+class PlatformEntitlementRead(EntitlementRead):
+    """A grant as the platform console reads it: where it came from, who made it."""
+
+    source_ref: str | None
+    org_id: uuid.UUID | None
+    granted_by: uuid.UUID | None
