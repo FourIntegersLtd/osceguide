@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LuDoorOpen } from "react-icons/lu";
 import { Alert, AsyncBoundary, Badge, Button, Card, PageHeader, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync, useEventStream } from "@/foundation/hooks";
@@ -64,13 +64,18 @@ function SittingCard({ sitting }: { sitting: MySitting }) {
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [left, setLeft] = useState(false);
   const mic = useMicPreflight(sitting.can_join);
+  const attempted = useRef(false);
 
   const join = useCallback(async () => {
     setJoining(true);
     setError(null);
     try {
-      if (mic.status !== "ready") await mic.request();
+      // Mic permission is asked for, but a refusal must not stop the join: the
+      // room existing is what matters (see below), and a candidate with no
+      // microphone in the room can still be helped.
+      if (mic.status !== "ready") await mic.request().catch(() => undefined);
       setGrant(await joinCircuit(sitting.circuit_id));
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error(String(cause)));
@@ -79,10 +84,46 @@ function SittingCard({ sitting }: { sitting: MySitting }) {
     }
   }, [mic, sitting.circuit_id]);
 
+  /**
+   * Join as soon as the backend allows it, during reading — do not wait for the
+   * candidate to press a button when the consultation starts.
+   *
+   * The circuit dispatches its patient on the server's clock when the reading
+   * phase ends, not when somebody joins. If nobody has opened the LiveKit room
+   * by then the dispatch hits a room that does not exist, the transition errors,
+   * and the circuit sits overdue for ever — it cannot even be ended, because the
+   * same sweep runs on `end_circuit`. That cost two failed exam-day runs.
+   *
+   * The join token needs only a live circuit and carries no phase condition, so
+   * joining during reading is both allowed and what a real candidate does.
+   */
+  useEffect(() => {
+    if (!sitting.can_join || grant || joining || left || attempted.current) return;
+    attempted.current = true;
+    void join();
+  }, [sitting.can_join, grant, joining, left, join]);
+
+  // A candidate who left deliberately may come back in; a later circuit makes
+  // the automatic join eligible again.
+  useEffect(() => {
+    if (!sitting.can_join) {
+      attempted.current = false;
+      setLeft(false);
+    }
+  }, [sitting.can_join]);
+
   if (grant) {
     return (
       <Card title={sitting.circuit_name}>
-        <VoiceRoom grant={grant} onDisconnected={() => setGrant(null)}>
+        <VoiceRoom
+          grant={grant}
+          onDisconnected={(unexpected) => {
+            setGrant(null);
+            // An unexpected drop should re-join: the room has to stay occupied
+            // for the patient dispatch to land.
+            if (unexpected) attempted.current = false;
+          }}
+        >
           <div className="flex flex-col items-center gap-4">
             {sitting.remaining_seconds !== null && sitting.remaining_seconds !== undefined && (
               <ExamClock
@@ -91,7 +132,13 @@ function SittingCard({ sitting }: { sitting: MySitting }) {
               />
             )}
             <AgentTile name="Your patient" className="w-full max-w-sm" />
-            <Button variant="danger" onClick={() => setGrant(null)}>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setLeft(true);
+                setGrant(null);
+              }}
+            >
               Leave the room
             </Button>
           </div>
@@ -126,7 +173,7 @@ function SittingCard({ sitting }: { sitting: MySitting }) {
             {sitting.can_join && (
               <Button onClick={join} disabled={joining}>
                 {joining ? <Spinner /> : <LuDoorOpen className="h-4 w-4" aria-hidden />}
-                Join
+                {left ? "Re-join" : "Join"}
               </Button>
             )}
           </div>
