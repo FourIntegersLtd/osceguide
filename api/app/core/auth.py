@@ -41,6 +41,12 @@ class Membership:
     # reads it, and a renamed organisation would otherwise show its old name
     # for the life of every token already issued. Filled by the tenancy lookup.
     org_name: str | None = None
+    # Also display only, and for the same reason. The frontend picks which
+    # workspace shell to render from this — an institution examines a cohort, a
+    # partner watches a funnel — and that is a presentation choice, never an
+    # authorisation one. Baking it into a claim would freeze it for fifteen
+    # minutes after an organisation changed what it is.
+    org_type: str | None = None
 
 
 @dataclass(frozen=True)

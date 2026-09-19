@@ -15,6 +15,10 @@ class MembershipRead(BaseModel):
     # Optional because the lookup that fills it is a display concern: a
     # membership authorises with its slug and role alone.
     org_name: str | None = None
+    # What the organisation is for: "institution" or "partner". The frontend
+    # chooses which workspace shell to render from this, so a partner sees
+    # their funnel where an institution sees its cohort.
+    org_type: str | None = None
     role: str
     surface: str | None = None
 

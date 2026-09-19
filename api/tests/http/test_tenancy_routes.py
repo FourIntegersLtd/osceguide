@@ -230,6 +230,24 @@ async def test_switching_to_an_org_you_do_not_belong_to_is_refused(client: Async
     assert response.json()["code"] == "not_a_member"
 
 
+async def test_me_says_what_each_organisation_is_for(client: AsyncClient, make_actor) -> None:
+    """The frontend picks a workspace shell from `org_type`.
+
+    An institution examines a cohort and a partner watches a funnel, so they
+    get different screens behind the same URL shape. Without this field the
+    client would have to infer the arm from a role name, which is how the
+    retiring client ended up with a route prefix per arm.
+    """
+    org_id = await seed_org(client, make_actor, "kings")
+    response = await client.get(
+        "/api/v1/me", headers=bearer(await member_token(make_actor, org_id, "kings", "owner"))
+    )
+    assert response.status_code == 200
+    membership = response.json()["memberships"][0]
+    assert membership["org_slug"] == "kings"
+    assert membership["org_type"] == "institution"
+
+
 # --------------------------------------------------------------------------
 # Capabilities read model
 # --------------------------------------------------------------------------

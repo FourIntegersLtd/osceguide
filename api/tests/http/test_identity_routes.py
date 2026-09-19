@@ -165,3 +165,4 @@ async def test_an_unknown_address_queues_nothing(client: AsyncClient, db_session
     await client.post("/api/v1/auth/password-reset", json={"email": "ghost@example.com"})
     queued = list((await db_session.execute(select(OutboundMessage))).scalars())
     assert queued == []
+

@@ -8869,6 +8869,17 @@
             "title": "Org Slug",
             "type": "string"
           },
+          "org_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Type"
+          },
           "role": {
             "title": "Role",
             "type": "string"

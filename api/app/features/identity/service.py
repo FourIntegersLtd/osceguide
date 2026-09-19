@@ -81,6 +81,7 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
                 org_id=m.org_id,
                 org_slug=m.org_slug,
                 org_name=m.org_name,
+                org_type=m.org_type,
                 role=m.role,
                 surface=m.surface,
             )

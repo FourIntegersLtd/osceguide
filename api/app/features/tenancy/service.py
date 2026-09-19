@@ -51,8 +51,8 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
 
     Returns the token's shape, not the table's: a mapped row would drag lazy
     relationships into a JWT, and the claims carry only what authorisation
-    needs — org, slug, role, surface. `org_name` rides along for `GET /me` and
-    is deliberately not a claim.
+    needs — org, slug, role, surface. `org_name` and `org_type` ride along for
+    `GET /me` and are deliberately not claims.
     """
     return [
         TokenMembership(
@@ -61,6 +61,7 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
             role=row.role,
             surface=row.product_surface,
             org_name=org.name,
+            org_type=org.org_type,
         )
         for row, org in await repository.live_memberships_with_orgs(session, user_id)
     ]
