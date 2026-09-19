@@ -33,9 +33,7 @@ READ_STATISTICS = Limit(name="site-statistics", allowance=60, window_seconds=60)
     response_model=schemas.SiteStatistics,
     responses=error_responses(TooManyRequests),
 )
-async def read_statistics(
-    request: Request, session: Session, clock: ClockDep
-) -> schemas.SiteStatistics:
+async def read_statistics(request: Request, session: Session, clock: ClockDep) -> schemas.SiteStatistics:
     """The counters on the landing page's numbers band.
 
     Unauthenticated, because the landing page is what a visitor sees before
@@ -101,6 +99,4 @@ async def mark_handled(
     clock: ClockDep,
 ) -> schemas.MessageRead:
     """Answered, or read and nothing to do. Either way it leaves the queue."""
-    return await service.mark_handled(
-        session, message_id=message_id, by=admin.user_id, at=clock.now()
-    )
+    return await service.mark_handled(session, message_id=message_id, by=admin.user_id, at=clock.now())

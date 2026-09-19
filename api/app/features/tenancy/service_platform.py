@@ -1,6 +1,8 @@
-"""The platform console: what the people who run the product can see and do.
+"""The platform console: the organisations, as the people who run the product see them.
 
-Deliberately the only place in the API that reads across tenants. Everything
+Deliberately one of the two places in the API that read across tenants — the
+other is `service_platform_users`, split off at the file cap along the line
+between an organisation and a person. Everything
 else takes an `org_id` obtained by proving membership; these functions take
 none, which is why every route that reaches them is behind `PlatformAdmin` and
 why they live in a module named for what they are.
@@ -23,11 +25,12 @@ from app.core.auth import Principal
 from app.features.identity import service as identity
 from app.features.tenancy import domain, repository, repository_platform
 from app.features.tenancy.errors import OrgNotFound
+from app.features.tenancy.models import AuditEntry
 from app.features.tenancy.schemas import (
     OrganizationRead,
+    PlatformAuditRead,
     PlatformOverview,
     UpdateOrganization,
-    UserSummary,
 )
 from app.features.tenancy.service import _org_read
 
@@ -100,38 +103,6 @@ async def restore_organization(
     return _org_read(refreshed)
 
 
-async def search_users(
-    session: AsyncSession, *, query: str | None, limit: int, cursor: dict[str, Any] | None
-) -> tuple[list[UserSummary], str | None]:
-    """Find an account by email, for the people who answer support."""
-    refs, next_cursor = await identity.search_users(session, query=query, limit=limit, cursor=cursor)
-    return [UserSummary(id=r.id, email=r.email, name=r.name, created_at=r.created_at) for r in refs], (
-        next_cursor
-    )
-
-
-async def set_platform_admin(
-    session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool, actor: Principal
-) -> UserSummary:
-    """Grant or revoke the console itself.
-
-    Audited without an organisation: this is a platform act, and the audit log
-    is where "who made whom an administrator" has to be answerable from.
-    """
-    user = await identity.set_platform_admin(session, user_id, is_admin=is_admin)
-    await repository.write_audit(
-        session,
-        org_id=None,
-        actor_user_id=actor.user_id,
-        actor_email=actor.email,
-        action="platform_admin.granted" if is_admin else "platform_admin.revoked",
-        target_type="user",
-        target_id=str(user_id),
-        summary=user.email,
-    )
-    return UserSummary(id=user.id, email=user.email, name=user.name, created_at=user.created_at)
-
-
 async def overview(session: AsyncSession) -> PlatformOverview:
     """The numbers the console opens with, counted rather than listed."""
     return PlatformOverview(
@@ -169,3 +140,45 @@ async def suspend_lapsed_organizations(session: AsyncSession, *, now: datetime) 
         )
         lapsed.append(org.slug)
     return lapsed
+
+
+async def list_audit(
+    session: AsyncSession,
+    *,
+    org_slug: str | None,
+    actor_email: str | None,
+    action: str | None,
+    limit: int,
+    cursor: dict[str, Any] | None,
+) -> tuple[list[PlatformAuditRead], str | None]:
+    """The audit log across every organisation, and the platform's own rows.
+
+    Those rows — who granted the console to whom, who deactivated an account —
+    were written from the start with no organisation and, until this read
+    existed, nothing could read them back.
+    """
+    org_id: uuid.UUID | None = None
+    if org_slug:
+        org = await repository.organization_by_slug(session, org_slug)
+        if org is None:
+            raise OrgNotFound()
+        org_id = org.id
+    rows, next_cursor = await repository_platform.list_audit_across_orgs(
+        session, org_id=org_id, actor_email=actor_email, action=action, limit=limit, cursor=cursor
+    )
+    return [platform_audit_read(row) for row in rows], next_cursor
+
+
+def platform_audit_read(row: AuditEntry) -> PlatformAuditRead:
+    return PlatformAuditRead(
+        id=row.id,
+        actor_email=row.actor_email,
+        action=row.action,
+        target_type=row.target_type,
+        target_id=row.target_id,
+        summary=row.summary,
+        at=row.at,
+        org_id=row.org_id,
+        actor_user_id=row.actor_user_id,
+        meta=row.meta,
+    )

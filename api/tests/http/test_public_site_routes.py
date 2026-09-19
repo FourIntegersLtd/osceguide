@@ -47,7 +47,8 @@ async def test_feedback_may_be_anonymous_and_contact_may_not(client: AsyncClient
 
 
 async def test_a_signed_in_sender_is_filed_against_their_account(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     token = await make_actor("amara@example.com")
     sent = await client.post(
@@ -81,8 +82,6 @@ async def test_a_message_can_be_taken_out_of_the_queue(client: AsyncClient, make
     message_id = sent.json()["id"]
 
     root = await make_actor("root@osceguide.com", platform_admin=True)
-    handled = await client.post(
-        f"/api/v1/platform/site/messages/{message_id}/handled", headers=bearer(root)
-    )
+    handled = await client.post(f"/api/v1/platform/site/messages/{message_id}/handled", headers=bearer(root))
     assert handled.status_code == 200, handled.text
     assert handled.json()["handled_at"] is not None

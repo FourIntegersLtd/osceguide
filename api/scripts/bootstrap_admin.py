@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.db import get_session_factory, import_all_models  # noqa: E402
-from app.features.identity import repository  # noqa: E402
+from app.features.identity import repository, repository_platform  # noqa: E402
 from app.features.identity.service_passwords import hash_password  # noqa: E402
 
 
@@ -40,7 +40,7 @@ async def bootstrap(*, email: str, name: str, password: str | None) -> int:
             if existing.is_platform_admin:
                 print(f"{email} is already a platform admin.")  # noqa: T201
                 return 0
-            await repository.set_platform_admin(session, existing.id, is_admin=True)
+            await repository_platform.set_platform_admin(session, existing.id, is_admin=True)
             print(f"{email} is now a platform admin.")  # noqa: T201
             return 0
 

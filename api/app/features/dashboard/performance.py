@@ -72,9 +72,7 @@ def ratings_by_domain(
     return out
 
 
-def domain_scores(
-    payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None
-) -> dict[str, float]:
+def domain_scores(payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None) -> dict[str, float]:
     """One 0–100 score per domain, from the competency ratings inside it.
 
     The majority rating rather than the mean, which is `reviews/scoring.py`'s

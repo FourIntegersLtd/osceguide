@@ -6,14 +6,13 @@ import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership, Principal
 from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
-from app.features.identity import repository
+from app.features.identity import repository, repository_platform
 from app.features.identity.domain import WeakPassword, may_call, validate_password
 from app.features.identity.errors import (
     EmailTaken,
@@ -221,22 +220,8 @@ async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID])
     return {row.id: _ref(row) for row in rows}
 
 
-async def search_users(
-    session: AsyncSession, *, query: str | None, limit: int, cursor: dict[str, Any] | None
-) -> tuple[list[UserRef], str | None]:
-    """Find a person by a fragment of their email. Platform support only.
-
-    Exposed for `tenancy`'s console, which sits above this slice. The only
-    caller is behind `PlatformAdmin`: this is the one read in the API that
-    crosses every tenant at once, and it belongs to the people who answer
-    "somebody cannot sign in" rather than to any organisation.
-    """
-    rows, next_cursor = await repository.search_users(session, query=query, limit=limit, cursor=cursor)
-    return [_ref(row) for row in rows], next_cursor
-
-
 async def count_users(session: AsyncSession) -> int:
-    return await repository.count_users(session)
+    return await repository_platform.count_users(session)
 
 
 async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool) -> UserRef:
@@ -244,5 +229,8 @@ async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_ad
     user = await repository.user_by_id(session, user_id)
     if user is None:
         raise UserNotFound()
-    await repository.set_platform_admin(session, user_id, is_admin=is_admin)
-    return _ref(user)
+    await repository_platform.set_platform_admin(session, user_id, is_admin=is_admin)
+    refreshed = await repository.user_by_id(session, user_id)
+    if refreshed is None:
+        raise UserNotFound()
+    return _ref(refreshed)

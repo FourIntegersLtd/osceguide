@@ -80,9 +80,7 @@ async def send(
 ) -> schemas.MessageAccepted:
     try:
         kind = domain.normalise_kind(body.kind)
-        domain.ensure_sendable(
-            name=body.name or "", email=body.email or "", body=body.body, kind=kind
-        )
+        domain.ensure_sendable(name=body.name or "", email=body.email or "", body=body.body, kind=kind)
     except domain.InvalidMessage as exc:
         raise_mapped(exc, _REFUSALS)
 
@@ -99,9 +97,7 @@ async def send(
     return schemas.MessageAccepted(id=row.id, kind=row.kind)
 
 
-async def list_messages(
-    session: AsyncSession, *, kind: str | None, limit: int
-) -> list[schemas.MessageRead]:
+async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> list[schemas.MessageRead]:
     rows = await repository.list_messages(session, kind=kind, limit=limit)
     return [_read(row) for row in rows]
 

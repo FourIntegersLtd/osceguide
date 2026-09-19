@@ -35,9 +35,7 @@ async def add_message(
     return row
 
 
-async def list_messages(
-    session: AsyncSession, *, kind: str | None, limit: int
-) -> Sequence[SiteMessage]:
+async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> Sequence[SiteMessage]:
     stmt = select(SiteMessage).order_by(SiteMessage.created_at.desc()).limit(limit)
     if kind:
         stmt = stmt.where(SiteMessage.kind == kind)
@@ -55,4 +53,3 @@ async def mark_handled(
     row.handled_by = by
     await session.flush()
     return row
-

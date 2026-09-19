@@ -211,9 +211,7 @@ async def test_switching_workspace_with_no_body_is_your_own_practice(client: Asy
         memberships=(Membership(org_id=kings, org_slug="kings", role="trainee"),),
         active_org_slug="kings",
     )
-    response = await client.post(
-        "/api/v1/auth/switch-workspace", json={}, headers=bearer(token)
-    )
+    response = await client.post("/api/v1/auth/switch-workspace", json={}, headers=bearer(token))
     assert response.status_code == 200
     assert response.json()["active_org_slug"] is None
 

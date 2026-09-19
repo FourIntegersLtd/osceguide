@@ -46,6 +46,7 @@ TAGS: list[dict[str, str]] = [
     {"name": "peer-practice", "description": "Being matched with somebody to practise"},
     {"name": "growth", "description": "Partner attribution and referrals"},
     {"name": "media", "description": "Slides, summaries, blogs and podcasts"},
+    {"name": "generation", "description": "Drafting content with a model, for the people who author it"},
     {"name": "assistant", "description": "Help, onboarding and demonstration sessions"},
     {"name": "tutor-memory", "description": "What the tutor remembers about a learner"},
     {"name": "worker", "description": "Routes the LiveKit workers call"},

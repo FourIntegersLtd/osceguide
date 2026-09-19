@@ -167,4 +167,6 @@ def _org_read(org: Any) -> OrganizationRead:
         org_type=org.org_type,
         status=org.status,
         created_at=org.created_at,
+        contract_starts_at=org.contract_starts_at,
+        contract_ends_at=org.contract_ends_at,
     )

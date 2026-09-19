@@ -23,9 +23,7 @@ async def bindings_for(session: AsyncSession, sso_id: uuid.UUID) -> Sequence[Org
     return result.scalars().all()
 
 
-async def find_by_binding(
-    session: AsyncSession, *, kind: str, value: str
-) -> OrganizationSso | None:
+async def find_by_binding(session: AsyncSession, *, kind: str, value: str) -> OrganizationSso | None:
     """The lookup the sign-in page makes, by host or by email domain.
 
     Answers this slice's row and not the organisation: `organizations` belongs
@@ -86,9 +84,7 @@ async def replace_bindings(
     A replace rather than a merge because the screen sends the whole list, and
     a merge would make removing a hostname impossible without another route.
     """
-    await session.execute(
-        delete(OrganizationSsoBinding).where(OrganizationSsoBinding.sso_id == sso_id)
-    )
+    await session.execute(delete(OrganizationSsoBinding).where(OrganizationSsoBinding.sso_id == sso_id))
     for kind, value in bindings:
         session.add(OrganizationSsoBinding(sso_id=sso_id, kind=kind, value=value))
     await session.flush()

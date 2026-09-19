@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -13,6 +14,8 @@ class OrganizationRead(BaseModel):
     org_type: str
     status: str
     created_at: datetime
+    contract_starts_at: datetime | None = None
+    contract_ends_at: datetime | None = None
 
 
 class UpdateOrganization(BaseModel):
@@ -35,6 +38,22 @@ class UserSummary(BaseModel):
     email: str
     name: str
     created_at: datetime
+    is_platform_admin: bool = False
+
+
+class UpdatePlatformUser(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    exam_code: str | None = Field(default=None, min_length=1, max_length=32)
+    status: str | None = Field(default=None, pattern="^(active|deactivated)$")
+
+
+class PlatformUserDetail(UserSummary):
+    """Support view: memberships and account flags the list row omits."""
+
+    must_change_password: bool = False
+    last_login_at: datetime | None = None
+    exam_code: str | None = None
+    memberships: list[MembershipRead] = Field(default_factory=list)
 
 
 class SetPlatformAdmin(BaseModel):
@@ -105,6 +124,18 @@ class AuditRead(BaseModel):
     target_id: str | None
     summary: str | None
     at: datetime
+
+
+class PlatformAuditRead(AuditRead):
+    """An audit row as the console reads it across every organisation.
+
+    `org_id` is None for the platform's own acts; `meta` is whatever the
+    action recorded beyond its summary, such as the old and new value.
+    """
+
+    org_id: uuid.UUID | None
+    actor_user_id: uuid.UUID | None
+    meta: dict[str, Any] | None = None
 
 
 class Capabilities(BaseModel):

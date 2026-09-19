@@ -71,9 +71,7 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, exam_code: str | N
     if exam is None:
         return _empty(exam_code)
 
-    attempts = await attempts_reads.evaluated_for_user(
-        session, user_id, exam_id=exam.id, limit=TREND_LIMIT
-    )
+    attempts = await attempts_reads.evaluated_for_user(session, user_id, exam_id=exam.id, limit=TREND_LIMIT)
     structure = await _structure(session, exam)
     marked: list[_Scored] = []
     for attempt in reversed(attempts):  # oldest first: the trend is read left to right
@@ -140,9 +138,7 @@ async def _structure(session: AsyncSession, exam: _Exam) -> Mapping[str, Any] | 
     """
     if exam.rubric_version_id is None:
         return None
-    snapshot = await rubrics.marking_snapshot(
-        session, exam.org_id, rubric_version_id=exam.rubric_version_id
-    )
+    snapshot = await rubrics.marking_snapshot(session, exam.org_id, rubric_version_id=exam.rubric_version_id)
     framework = snapshot.get("framework")
     return framework if isinstance(framework, Mapping) else None
 

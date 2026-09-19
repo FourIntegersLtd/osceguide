@@ -59,7 +59,8 @@ async def test_a_partner_host_is_a_server_side_fact(client: AsyncClient, make_ac
 
 
 async def test_an_anonymous_caller_learns_nothing_about_the_arrangement(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await an_org(client, root, "bmj")
@@ -90,7 +91,8 @@ async def test_an_ordinary_host_is_told_to_sign_in_here(client: AsyncClient) -> 
 
 
 async def test_a_configuration_that_is_switched_off_is_not_advertised(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await an_org(client, root, "bmj")
@@ -105,7 +107,8 @@ async def test_a_configuration_that_is_switched_off_is_not_advertised(
 
 
 async def test_restricting_sign_in_to_sso_while_sso_is_off_is_refused(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await an_org(client, root, "bmj")
@@ -140,7 +143,8 @@ async def test_two_organisations_cannot_claim_one_host(client: AsyncClient, make
 
 
 async def test_saving_again_replaces_the_list_rather_than_adding_to_it(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await an_org(client, root, "bmj")
@@ -162,9 +166,7 @@ async def test_only_a_platform_admin_may_read_or_write_it(client: AsyncClient, m
 
     ordinary = await make_actor("someone@bmj.com")
     assert (await client.get("/api/v1/platform/orgs/bmj/sso", headers=bearer(ordinary))).status_code == 403
-    written = await client.put(
-        "/api/v1/platform/orgs/bmj/sso", json=a_config(), headers=bearer(ordinary)
-    )
+    written = await client.put("/api/v1/platform/orgs/bmj/sso", json=a_config(), headers=bearer(ordinary))
     assert written.status_code == 403
     assert (await client.get("/api/v1/platform/orgs/bmj/sso")).status_code == 401
 

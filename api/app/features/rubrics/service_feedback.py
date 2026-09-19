@@ -73,6 +73,10 @@ async def _validated_selection(
     a template could name a domain no schema had, and the review built on it
     could never be completed.
     """
+    if field_selection.get("templateKind") == "structure":
+        if not field_selection.get("structure"):
+            raise errors.InvalidRubricError("A structure template needs a structure body.")
+        return
     version = await service_marking.published_version(session, org_id, rubric_version_id)
     try:
         domain.narrow_structure(domain.parse_structure(version.structure), field_selection)
@@ -222,26 +226,3 @@ def _version_read(row: FeedbackTemplateVersion) -> FeedbackTemplateVersionRead:
         field_selection=dict(row.field_selection or {}),
         published_at=row.published_at,
     )
-
-
-async def published_feedback_template(
-    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
-) -> FeedbackTemplateVersion:
-    """The feedback template version a sitting may bind (S1).
-
-    Raises if it is missing, belongs to another org, or is still a draft. The
-    NOT NULL foreign key on `sittings` made this look enforced, but a foreign
-    key only says the row exists — a sitting could bind a rubric somebody was
-    still editing, and candidates would be marked against it.
-    """
-    row = await repository.feedback_template_version(session, org_id, version_id)
-    if row is None:
-        raise errors.TemplateVersionNotFound()
-    if row.status != "published":
-        raise errors.FeedbackTemplateNotPublished("A sitting needs a published feedback template version.")
-    return row
-
-
-async def count_published_versions(session: AsyncSession, org_id: uuid.UUID | None) -> int:
-    """How many published feedback templates an owner has; a sitting needs one."""
-    return await repository.count_published_versions(session, org_id)

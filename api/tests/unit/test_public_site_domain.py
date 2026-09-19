@@ -9,9 +9,7 @@ from app.features.public_site import domain
 
 def test_a_contact_message_needs_an_address_to_reply_to() -> None:
     with pytest.raises(domain.InvalidMessage):
-        domain.ensure_sendable(
-            name="Amara", email="", body="How do I book?", kind=domain.MessageKind.CONTACT
-        )
+        domain.ensure_sendable(name="Amara", email="", body="How do I book?", kind=domain.MessageKind.CONTACT)
     with pytest.raises(domain.InvalidMessage):
         domain.ensure_sendable(
             name="Amara", email="not-an-address", body="How?", kind=domain.MessageKind.CONTACT
@@ -28,9 +26,7 @@ def test_product_feedback_does_not_need_anybody_to_identify_themselves() -> None
 def test_an_empty_message_is_nothing_to_send() -> None:
     for blank in ("", "   ", "\n\t "):
         with pytest.raises(domain.InvalidMessage):
-            domain.ensure_sendable(
-                name="A", email="a@b.com", body=blank, kind=domain.MessageKind.CONTACT
-            )
+            domain.ensure_sendable(name="A", email="a@b.com", body=blank, kind=domain.MessageKind.CONTACT)
 
 
 def test_a_message_longer_than_the_column_is_refused_rather_than_truncated() -> None:

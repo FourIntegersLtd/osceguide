@@ -155,3 +155,19 @@ async def test_every_console_route_is_refused_to_an_org_admin(client: AsyncClien
             call(path, json=body, headers=bearer(owner)) if body else call(path, headers=bearer(owner))
         )
         assert response.status_code == 403, f"{method} {path} returned {response.status_code}"
+
+
+async def test_the_account_search_can_be_narrowed_to_console_users(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The team screen used to guess who was an admin from the whole list."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await make_actor("plain@example.com")
+
+    admins = await client.get("/api/v1/platform/users?platform_admin=true", headers=bearer(root))
+    assert admins.status_code == 200, admins.text
+    emails = {row["email"] for row in admins.json()["items"]}
+    assert "root@osceguide.com" in emails
+    assert "plain@example.com" not in emails
+    assert all(row["is_platform_admin"] for row in admins.json()["items"])
+
+    others = await client.get("/api/v1/platform/users?platform_admin=false", headers=bearer(root))
+    assert "plain@example.com" in {row["email"] for row in others.json()["items"]}

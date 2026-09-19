@@ -36,9 +36,11 @@ from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
 from app.features.catalog.router import router as catalog_router
 from app.features.community.router import router as community_router
+from app.features.community.router_platform import router as community_platform_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.dashboard.router_live import router as live_board_router
 from app.features.entitlements.router import router as entitlements_router
+from app.features.generation.router import router as generation_router
 from app.features.growth.router import router as growth_router
 from app.features.identity.router import router as identity_router
 from app.features.identity.router_me import router as identity_me_router
@@ -62,6 +64,7 @@ from app.features.stations.router_platform import router as platform_stations_ro
 from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
 from app.features.tenancy.router_platform import router as platform_console_router
+from app.features.tenancy.router_platform_users import router as platform_users_router
 from app.features.tutor_memory.router import router as tutor_memory_router
 from app.features.tutor_memory.router_worker import router as tutor_memory_worker_router
 from app.features.voice.router import router as voice_router
@@ -87,6 +90,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(identity_me_router)
     router.include_router(tenancy_router)
     router.include_router(platform_console_router)
+    router.include_router(platform_users_router)
     router.include_router(catalog_router)
     router.include_router(rubrics_router)
     router.include_router(org_rubrics_router)
@@ -110,8 +114,10 @@ def api_v1_router() -> APIRouter:
     router.include_router(assistant_router)
     router.include_router(marketplace_router)
     router.include_router(community_router)
+    router.include_router(community_platform_router)
     router.include_router(peer_practice_router)
     router.include_router(growth_router)
+    router.include_router(generation_router)
     router.include_router(media_router)
     router.include_router(sso_router)
     router.include_router(public_site_router)

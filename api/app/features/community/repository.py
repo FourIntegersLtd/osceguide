@@ -148,3 +148,13 @@ async def reply_counts(session: AsyncSession, post_ids: list[uuid.UUID]) -> dict
         )
     ).all()
     return {row[0]: row[1] for row in rows}
+
+
+async def list_recent_for_moderation(session: AsyncSession, *, since: datetime, limit: int) -> list[Post]:
+    stmt = (
+        select(Post)
+        .where(Post.removed_at.is_(None), Post.created_at >= since)
+        .order_by(Post.created_at.desc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())

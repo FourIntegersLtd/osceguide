@@ -57,8 +57,16 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | GET | `/api/v1/platform/organizations` | platform admin | every tenant; `?status=` |
 | PATCH | `/api/v1/platform/organizations/{slug}` | platform admin | name, type, contract dates — never the slug |
 | POST | `/api/v1/platform/organizations/{slug}/restore` | platform admin | lifts a suspension |
-| GET | `/api/v1/platform/users` | platform admin | `?q=` part of an email |
-| PUT | `/api/v1/platform/users/{id}/platform-admin` | platform admin | grant or revoke the console |
+| GET | `/api/v1/platform/organizations/{slug}/memberships` | platform admin | read-only member list, for support |
+| GET | `/api/v1/platform/organizations/{slug}/audit` | platform admin | one organisation's audit log, for support |
+| GET | `/api/v1/platform/users` | platform admin | `?q=` part of an email; `?platform_admin=true` only console users |
+| GET | `/api/v1/platform/users/{id}` | platform admin | flags, last sign-in, `exam_code`, memberships |
+| PATCH | `/api/v1/platform/users/{id}` | platform admin | `name`, `exam_code`, `status` (`active`/`deactivated`); audited |
+| POST | `/api/v1/platform/users/{id}/reset-password` | platform admin | sends the reset link; audited |
+| PUT | `/api/v1/platform/users/{id}/platform-admin` | platform admin | grant or revoke the console; audited |
+| GET | `/api/v1/platform/admins` | platform admin | everyone who may use the console |
+| GET | `/api/v1/platform/audit` | platform admin | every organisation's log and the platform's own rows; `?org_slug=`, `?actor_email=`, `?action=` (prefix) |
+| GET | `/api/v1/platform/users/{id}/audit` | platform admin | what was done to the account and what it did |
 | GET | `/api/v1/platform/overview` | platform admin | counts, not lists |
 
 The console **cannot delete an organisation**, and that is a decision rather

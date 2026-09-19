@@ -20,7 +20,7 @@ from app.features.dashboard.schemas_org import (
     SupervisorCircuits,
 )
 from app.features.roster import service as roster
-from app.features.rubrics import service_feedback as rubrics
+from app.features.rubrics import service_feedback_binding as rubrics
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 from app.features.tenancy import service as tenancy

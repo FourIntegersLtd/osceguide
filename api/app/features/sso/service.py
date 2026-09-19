@@ -45,9 +45,7 @@ async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSig
     return await _sign_in(session, kind=domain.BindingKind.EMAIL_DOMAIN, value=value)
 
 
-async def _sign_in(
-    session: AsyncSession, *, kind: domain.BindingKind, value: str
-) -> schemas.SsoSignIn:
+async def _sign_in(session: AsyncSession, *, kind: domain.BindingKind, value: str) -> schemas.SsoSignIn:
     config = await repository.find_by_binding(session, kind=kind.value, value=value)
     if config is None:
         raise errors.SsoNotConfigured()
@@ -135,9 +133,7 @@ def _bindings(body: schemas.SaveSsoConfig) -> list[tuple[str, str]]:
     return out
 
 
-async def _read(
-    session: AsyncSession, config: OrganizationSso, *, org_slug: str
-) -> schemas.SsoConfigRead:
+async def _read(session: AsyncSession, config: OrganizationSso, *, org_slug: str) -> schemas.SsoConfigRead:
     rows = await repository.bindings_for(session, config.id)
     provider = domain.normalise_provider(config.provider)
     return schemas.SsoConfigRead(

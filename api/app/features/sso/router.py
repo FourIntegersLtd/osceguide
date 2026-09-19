@@ -55,9 +55,7 @@ async def read_sign_in(
     response_model=schemas.SsoConfigRead,
     responses=error_responses(Unauthenticated, Forbidden, errors.SsoNotConfigured),
 )
-async def read_config(
-    org_slug: str, _admin: PlatformAdmin, session: Session
-) -> schemas.SsoConfigRead:
+async def read_config(org_slug: str, _admin: PlatformAdmin, session: Session) -> schemas.SsoConfigRead:
     """The whole arrangement, including the issuer and every binding."""
     return await service.read_config(session, org_slug)
 

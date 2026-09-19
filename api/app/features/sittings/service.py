@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.roster import service as roster
-from app.features.rubrics import service_feedback as rubrics
+from app.features.rubrics import service_feedback_binding as rubrics
 from app.features.sittings import domain, domain_run, errors, repository
 from app.features.sittings.models import Circuit, Sitting
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json

@@ -91,6 +91,10 @@ bootstrap-admin:
 	@test -n "$(EMAIL)" || { echo "Set EMAIL=you@example.com"; exit 1; }
 	poetry run python scripts/bootstrap_admin.py --email "$(EMAIL)" --name "$(NAME)"
 
+grant-exam-access:
+	@test -n "$(EMAIL)" || { echo "Set EMAIL=you@example.com"; exit 1; }
+	poetry run python scripts/grant_exam_access.py --email "$(EMAIL)" --exam "$(or $(EXAM),sca)"
+
 engine-dev:
 	@test -f "$(ENGINE)/pyproject.toml" || 		{ echo "No engine at $(ENGINE). Set ENGINE=<path to packages/osce_assessment>."; exit 1; }
 	poetry run pip install -e "$(ENGINE)"
