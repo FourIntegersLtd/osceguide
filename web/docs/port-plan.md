@@ -1,7 +1,7 @@
-# The port: what is left, split into jobs
+# The port, and the jobs it was split into
 
-`platform-web` replaces `frontend/`. The frame is done and proven; most of the
-screens are not. This is the audit and the split.
+`platform-web` replaces `frontend/`. This was the audit and the split; it is
+now the record. Every job has landed — see "Where things stand".
 
 Each job below is sized for one agent in one session. They are drawn along the
 tier boundaries, which is what makes them safe to run at the same time: a
@@ -11,26 +11,24 @@ working in different folders cannot silently break each other.
 
 ## Where things stand
 
+**The port is finished.** J1 to J15 have all landed; the table below is the
+record of what each one did, not a queue.
+
 | | Files | Lines |
 |---|---|---|
 | Old consumer arm `frontend/src/b2c` | 530 | 77,150 |
 | Old institution arm `frontend/src/b2b` | 466 | 60,483 |
-| `platform-web` today | 375 | 51,110 |
+| `platform-web` when this plan was written | 375 | 51,110 |
+| `platform-web` now | 592 | 76,410 |
 
-Backend endpoints wired by a screen: **76 of 180**.
+Two old arms totalling 137,633 lines are one client of 76,410, and that is
+before deleting `frontend/`.
 
-### Done, and checked in a browser against a live API
+### What is left
 
-The frame (workspace URLs, arms as data, one shell, the switcher, redirects,
-middleware, error pages) · the public site (landing, per-exam pages,
-institutions, legal) · the foundation (~40 primitives, 12 charts, the table,
-modals, toasts, both token vocabularies, the full product stylesheet) · auth
-(sign-in, register, forgot, reset) · the Partner arm · the marking-payload
-reader on the backend.
-
-### Not done
-
-Everything else. The table below is the work.
+Not screens. Every remaining item is something `platform-api` does not serve,
+and each one is written down in `docs/port-gaps.md` beside the screen that
+wants it. The two backend jobs below, B2 and B3, are the rest.
 
 ---
 
@@ -98,8 +96,9 @@ unwired endpoints — the single biggest block of unused backend.
 
 ### Wave 2 — after the job it names
 
-Wave 1 is done: J1–J10 all landed, and so did the backend's `GET /me/performance`
-(B1). J11 and J12 below are done too; J13 is next.
+Every job in both waves has landed, and so has the backend's
+`GET /me/performance` (B1). Each is recorded below with what it wired and what
+it could not.
 
 **J11 · Institution: the live session runner** — **done.**
 `b2b/components/features/sessions` (15.2k, 94 files) → `domains/assess/sessions/`
@@ -137,8 +136,6 @@ sent, so that safeguard compared two empty objects. There is also no
 draft never came back. All in `port-gaps.md`, with what the backend still owes:
 a bulk release, a notification on release, a cohort export, and optimistic
 concurrency on a decision.
-
-**J13 · Institution: dashboard, live board, reporting** is next.
 
 **J13 · Institution: dashboard, live board, reporting** — **done.**
 `b2b/components/features/dashboard` (0.8k) → `domains/assess/dashboard/`.
@@ -196,28 +193,90 @@ them back to back) is a station set and mounting `domains/train/mocks` on Assess
 is a product decision rather than a port; and there are no candidate microphone
 or camera controls, for the same reason the supervisor has none.
 
-**J15 · Staff console** is the last of them.
+**J15 · Staff console** — **done.** The last of them.
+`b2b/components/features/platform` (2.3k, 9 files) → `domains/platform/` (eight
+files). The overview, the tenant directory, an organisation's own screen and
+the user search. It replaces the rebuilt `Console.tsx`, which was one file
+holding three screens.
 
-**J15 · Staff console** — `b2b/components/features/platform` (2.3k) →
-`domains/platform/`. Org edit, memberships, audit log, platform-admin toggle,
-and the authoring routes over J10.
+Wired: provisioning, renaming, changing a type, the contract dates, suspend and
+restore, seating a new tenant's first member, searching accounts by address
+with paging, and the platform-admin grant. The authoring routes over J10 needed
+no work beyond checking them: `SurfaceShell` appends the capability registry to
+every arm's nav, so `/staff/authoring` and `/staff/settings` are already there
+and were verified in a browser.
+
+Two of the old screens have no backend to stand on and are not ported: the
+audit log and the platform team. Both are recorded in `port-gaps.md` with the
+one-line backend change each would need — `OrgAdmin` is declared
+`allow_platform_admin=False`, so a console admin may read an organisation for
+support and inherits none of its powers, and `UserSummary` does not say whether
+an account is a platform admin. The grant is therefore two explicit acts rather
+than a toggle whose position would be a guess.
+
+Deleting a tenant is **deliberately** gone rather than missing: the backend has
+no delete, because an organisation's rows include candidate results that have
+to stay defensible. Suspension is the reversible mechanism.
+
+One defect found in a browser and fixed: filtering the directory to a status
+nothing was in said "No organisations yet" on a platform with six of them.
 
 ### Backend jobs — independent of all the above
 
-**B1 · `GET /me/performance`** — the endpoint J1 is waiting on. The hard part
-is done and committed: `dashboard/performance.py` reads the engine's payload
-into a score per domain, tested against all four seeded frameworks. What is
-left is the service that walks a person's evaluated attempts, the schema, the
-router, and a summary (pass/fail/critical rates) and trend line beside the
-domain scores. Half a day.
+**B1 · `GET /me/performance`** — **done**, and it was already done before this
+sweep looked: the router, the schema (summary, domain scores and trend line),
+the service that walks a person's evaluated attempts, and 27 tests, all in
+`app/features/dashboard`.
 
-**B2 · Tenant SSO** — `getSsoConfig` in the old client has no counterpart.
-Blocks nothing today; sign-in works without it.
+**B2 · Tenant SSO** — **the discovery half is done** (platform-api commit
+c04411e). `organization_sso` and `organization_sso_bindings` hold what the old
+client hardcoded in its bundle, and `GET /auth/sso/sign-in?host=…` or `?email=…`
+answers a sign-in page without a token. `GET|PUT /platform/orgs/{slug}/sso`
+configures it, platform admin only.
 
-**B3 · The small gaps** — accessibility settings (extra reading time), photo
-upload, achievements, contact messages, product feedback, public blog listing,
-public statistics. Each is small; together they unblock the last corners of
-J1, J4 and J8. See `docs/port-gaps.md`.
+**The sign-in itself is deliberately not built.** Who verifies an identity is an
+open decision — the retiring backend brokered through Clerk to Microsoft, and
+neither backend in this repo has a flow to port — so `sso_only` is a display
+rule and nothing refuses a password login yet. See platform-api's
+`docs/OPEN-QUESTIONS.md`, S-1.
+
+Frontend follow-up when somebody wants it: the sign-in page calls
+`/auth/sso/sign-in` with `window.location.hostname` and hides its password form
+on `sso_only`.
+
+**B3 · The small gaps** — **five of seven done** (platform-api commit b1c597d):
+
+- **public blog listing** — `GET /media` and `GET /media/{slug}` no longer
+  require a bearer. `landingBlogs.ts` can ask again.
+- **public statistics** — `GET /site/statistics`, cached for ten minutes.
+  `fetchLandingStats()` returning `null` is one function body away from working.
+- **contact messages** and **product feedback** — `POST /site/messages`, with a
+  platform-admin inbox behind it. The "Help Us Improve" section can go back into
+  `landingSections`.
+- **accessibility (extra reading time)** — `users.extra_reading_percent`, on
+  `/me` and settable through `PATCH /me`. It applies to a person's own practice
+  and **not** to a circuit's clock, which serves everybody on it — see S-2.
+- **exam date** — `users.exam_date`, which the dashboard countdown and
+  `ExamWishes` both needed and neither had.
+
+Still unbuilt, each for a reason in platform-api's `OPEN-QUESTIONS.md` (S-3):
+**achievements** needs a decision about what a streak is when attempts are the
+only progress record, and **photo upload** needs an object store before it needs
+code.
+
+---
+
+## The port is done
+
+J1 to J15 have all landed, and so has B1. `platform-web` is the client; nothing
+is waiting on `frontend/` any more.
+
+What is left is not porting. It is the backlog in `docs/port-gaps.md`: B2 and
+B3 above, and the per-screen gaps each job recorded — every one of them a thing
+the backend does not serve yet, written down beside the screen that wants it.
+
+The two sections below are kept as they were. They are how each of these jobs
+was run, and the next person adding a screen should work the same way.
 
 ---
 

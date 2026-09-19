@@ -7,6 +7,29 @@ shape. One file so the backlog is countable rather than scattered through
 
 Each entry says what the screen does today, so nothing is silently dropped.
 
+## Five of these are now served
+
+The backend jobs B2 and B3 closed a row of these (platform-api commits c04411e
+and b1c597d). The entries below are **left standing with a note** rather than
+deleted, because what a screen does today is still what it does until somebody
+wires the new route:
+
+- **Landing statistics** — `GET /site/statistics` exists, cached for ten
+  minutes and carrying `as_of`. `fetchLandingStats()` still returns `null`;
+  putting it back is that function's body.
+- **Public blog listing** — `GET /media` and `GET /media/{slug}` no longer
+  require a bearer, so `landingBlogs.ts` can ask again.
+- **Messages / contact** and **product feedback** — `POST /site/messages` takes
+  both, with a platform-admin inbox behind it.
+- **Accessibility (extra reading time)** — `users.extra_reading_percent` is on
+  `/me`. It is a person's own practice arrangement and is **not** applied to a
+  circuit's clock, which serves everybody on it.
+- **Exam wishes / the dashboard countdown** — `users.exam_date` is on `/me`.
+
+Still genuinely absent: **achievements**, **photo upload**, **push
+notifications**, **public user profiles**, **blog authoring**, and the sign-in
+half of **SSO** (the discovery half landed — see below).
+
 ## No endpoint on platform-api
 
 | What | Where | Today |
@@ -16,7 +39,7 @@ Each entry says what the screen does today, so nothing is silently dropped.
 | Messages / contact | not yet ported | `/messages` in the old arm. No backend. |
 | Product feedback form | `domains/marketing` section, unlisted | The "Help Us Improve" landing section is kept but left out of `landingSections`; it needs a product-feedback slice. |
 | Push notifications | not ported | `web-push` is deliberately not a dependency here yet. |
-| SSO configuration | not ported | `getSsoConfig` in the old arm. |
+| SSO configuration | not ported | `getSsoConfig` in the old arm — a hostname allow-list in the bundle. **The backend now answers it**: `GET /auth/sso/sign-in?host=…` or `?email=…`, unauthenticated, returning the organisation, the button's wording and whether to draw the password form. Nothing in this client calls it yet. The *sign-in* half — who verifies the identity — is still an open decision, so `sso_only` is a display rule and a password login is not refused. |
 | Public user profiles | not ported | `/users/[userId]`. The old `b2c/components/shared/users` was not a public profile at all: it is an **administrator's** user list and user detail — plan editing, station-progress resetting, hard delete, filters by plan type. None of it is servable. See "The old `users/` folder" below. |
 | Blog authoring | not ported | Reading is `capabilities/media`; authoring has no endpoint. |
 | Public blog listing | `domains/marketing/support/landingBlogs.ts` | `GET /media` requires a bearer token, so a signed-out visitor cannot read the landing's blog rail. It hides itself. A public listing — or an anonymous read for published items — would bring it back. |
@@ -326,7 +349,7 @@ and exported from `capabilities/account`:
 | `src/app/billing/complete/page.tsx` | `PaymentReturn` | The backend hardcodes `success_url = {FRONTEND_URL}/billing/complete?session_id=…` in `billing/service_checkout.py`. **Not** `/payments/success`, which is what the retiring client used. |
 | `src/app/pricing/page.tsx` | `CheckoutCancelled` | The same file hardcodes `cancel_url = {FRONTEND_URL}/pricing`. **Not** `/payments/cancel`. Either these two route files are added, or the backend's two URLs are changed to match whatever is preferred — but they have to agree, or a paying customer lands on a 404. |
 | `src/app/app/[workspace]/achievements/page.tsx` | `Achievements` | The old `/achievements` route. |
-| `src/app/staff/settings/page.tsx` | `Settings` | The staff console is outside the workspace grammar and has its own route tree, so `surfaces: ["…", "platform"]` on the capability does not reach it — `/staff/settings` is a 404 today. `surfaces/platform/surface.ts` also builds its nav by hand rather than from the capability registry, so the entry has to be added there too. |
+| `src/app/staff/settings/page.tsx` | `Settings` | **Done.** The staff console is outside the workspace grammar and has its own route tree, so `surfaces: ["…", "platform"]` on the capability does not reach it by itself and the route file is written out. The nav entry needed nothing: `SurfaceShell` appends `capabilitiesFor(manifest.id, …)` to every arm's own items, so Settings and Authoring appear on `/staff` from the capability registry. Checked in a browser against a live API in J15. |
 
 ### The old `users/` folder is the staff console, not an account screen
 
@@ -916,3 +939,98 @@ the parts they compose — `AttemptFeedback`, `TranscriptView` — are shared, s
 the duplication is the heading and the layout. The Train one still polls for a
 result where `AttemptFeedback` streams; folding it onto the capability would
 remove both the duplicate and the poller.
+
+## The staff console
+
+`b2b/components/features/platform` (9 files, 2.3k lines) is now
+`domains/platform` (eight files). The overview, the tenant directory, an
+organisation's own screen and the user search all came across. Four things did
+not, and one of them is a deliberate decision rather than a hole.
+
+### A platform admin cannot read an organisation's members or its audit log
+
+The largest gap, and the reason the organisation screen ends with a card saying
+so. `GET /orgs/{slug}/memberships` and `GET /orgs/{slug}/audit` are both
+`OrgAdmin`, which is declared `allow_platform_admin=False` — on purpose:
+"a platform admin may read any organisation for support, but does not thereby
+become its administrator", and the legacy policy is emphatic that a console
+admin inherits no org powers. So both answer 403 to this console, and the old
+`PlatformAuditPage` (filters by org slug and actor email) and the member list
+on `PlatformOrganizationDetailPage` have nothing to render.
+
+What the console can still do is seat the **first** member —
+`POST /platform/organizations/{slug}/memberships` exists exactly because a new
+tenant has nobody to add anybody — so provisioning is not blocked. Changing a
+role, revoking one, and reading the log are the organisation's own.
+
+Two ways out, and they are different decisions: open the two reads to a
+platform admin (one `allow_platform_admin` on each), or add a
+`/platform/audit` that reads across tenants, which is what the retiring console
+actually had and what "who suspended this tenant, and when?" needs. The second
+is the one worth having; the first would quietly widen `OrgAdmin`'s promise.
+
+`scripts/smoke.mjs` walks both routes and allows either answer, because the
+smoke account is a member of the org it switched into and so reads them through
+its membership. Against an organisation it does not belong to, both are 403.
+
+### There is no list of platform administrators, and no field saying who is one
+
+`PlatformTeamPage` listed them, granted by email and revoked by id. On
+`platform-api`, `PUT /platform/users/{id}/platform-admin` is the whole of it:
+there is no listing, and `UserSummary` — the only shape `/platform/users`
+answers — carries `id`, `email`, `name` and `created_at`. `is_platform_admin`
+exists on `UserRead`, which is `/me` only.
+
+So the grant lives on the user row, and the screen does not pretend to know the
+current state: it offers Grant and Revoke as two explicit acts behind a
+disclosure, and shows what *this session* just did rather than what is stored.
+Adding `is_platform_admin` to `UserSummary` is the one-field fix; a
+`?platform_admin=true` filter on the same listing would bring the team screen
+back whole.
+
+### An organisation's counts, and its at-risk list
+
+`PlatformDashboardPage` showed active users and sessions over thirty days and a
+list of at-risk tenants derived from contract dates;
+`PlatformOrganizationDetailPage` showed trainees, sessions, practice users and
+memberships-by-role for one tenant. `GET /platform/overview` answers two
+integers — `organizations` and `users` — and `OrganizationRead` carries no
+stats at all, so none of the six counts survive.
+
+"Needs attention" is therefore the organisations whose status does not permit
+signing in, which is servable from the directory and catches the same tenants:
+the sweep that suspends a lapsed contract puts them in exactly that state.
+
+### Contract dates are write-only
+
+`UpdateOrganization` takes `contract_starts_at` and `contract_ends_at`, and
+they matter — `jobs.py` suspends an organisation whose contract has lapsed.
+`OrganizationRead` returns neither, so the form cannot show what is stored and
+says so on the screen. It also never sends a blank field, because submitting
+one would silently clear a date this console cannot see; clearing is its own
+button. Putting the two columns on `OrganizationRead` is the fix.
+
+### Deleting a tenant is gone, and that is the decision
+
+`PlatformTenantDeleteFlow` (319 lines) previewed the cascade — portal users,
+memberships, trainees, sessions, circuits, slots, feedback, station instances,
+template versions, schemas, exams, cohorts, practice users, entitlements, audit
+entries, and any child institutions — and then deleted all of it behind a
+type-the-slug confirmation. `platform-api` has no delete, and
+`service_platform.py` says why in its own docstring: an organisation's rows
+include candidate results, which exist to be defensible months later, and a
+cascade would take them. Suspension is the reversible mechanism and it is what
+the organisation screen offers. This is not a gap to fill.
+
+### Smaller ones
+
+| What | Where | Today |
+|---|---|---|
+| Bootstrap admin credentials | `ProvisionPanel.tsx` | The old form took an admin email and a temporary password generated in the browser, displayed it in `TenantAdminProvisioningPanel` for an administrator to relay by hand, and offered "Send login email". There is no bootstrap-admin route and no login-email route; the first member is seated by address and the backend emails a link. No password passes through this app, which is the improvement rather than the loss. |
+| Reprovisioning an org's admin | not ported | `b2bReprovisionTenantAdmin` — same absence. Seating another member is the nearest thing, and it does not reset anybody's password. |
+| Resetting somebody's password from the console | not ported | `b2bPlatformResetUserPassword`. There is no per-user write of any kind on `platform-api` beyond the platform-admin flag. |
+| Revoking one person's access to one organisation | not ported | `b2bPlatformRevokeOrgAccess` / `…Restore`. That is `POST /orgs/{slug}/memberships/{id}/revoke`, which is `OrgAdmin` — the same gap as the member list. |
+| A user's memberships, last login, and whether they must change their password | not ported | `PlatformUserDetailPage` showed all three off `B2BPlatformUserDetailDTO`. There is no `GET /platform/users/{id}`, and `UserSummary` carries none of them. |
+| Searching or filtering the directory on the backend | `Organizations.tsx` | `GET /platform/organizations` takes `status`, `cursor` and `limit`. The type filter and the search box work over what has been paged in, which is why the whole directory is walked (25 pages of 100). Past that it silently searches less than everything. |
+| The organisation hierarchy | `Organizations.tsx` | The old directory showed an institution's parent partner, from `parentOrgId`. `OrganizationRead` has no parent, so a row shows its type and not who it sits under. |
+| Filtering the audit log by actor | not ported | Part of the audit gap above. The org-scoped log takes `cursor` and `limit` only, so even where it is readable there is no actor or action filter — `domains/assess/team`'s History tab has the same limit. |
