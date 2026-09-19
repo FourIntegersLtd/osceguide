@@ -78,15 +78,23 @@ class UpdateMembership(BaseModel):
 
 
 class SwitchWorkspace(BaseModel):
-    org_slug: str
+    """Which workspace to re-issue the token against.
+
+    `None` means the person's own practice. That is a real destination, not an
+    absence: somebody who belongs to an institution still has their own
+    entitlements and their own attempts, and without this there is no way back
+    to them once an organisation is active.
+    """
+
+    org_slug: str | None = None
 
 
 class WorkspaceToken(BaseModel):
     access_token: str
     token_type: str = "bearer"  # noqa: S105 - a scheme name, not a secret
     expires_in: int
-    active_org_slug: str
-    active_role: str
+    active_org_slug: str | None
+    active_role: str | None
 
 
 class AuditRead(BaseModel):

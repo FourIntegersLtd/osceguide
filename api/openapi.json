@@ -7574,15 +7574,20 @@
         "type": "object"
       },
       "SwitchWorkspace": {
+        "description": "Which workspace to re-issue the token against.\n\n`None` means the person's own practice. That is a real destination, not an\nabsence: somebody who belongs to an institution still has their own\nentitlements and their own attempts, and without this there is no way back\nto them once an organisation is active.",
         "properties": {
           "org_slug": {
-            "title": "Org Slug",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Slug"
           }
         },
-        "required": [
-          "org_slug"
-        ],
         "title": "SwitchWorkspace",
         "type": "object"
       },
@@ -8621,12 +8626,26 @@
             "type": "string"
           },
           "active_org_slug": {
-            "title": "Active Org Slug",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Org Slug"
           },
           "active_role": {
-            "title": "Active Role",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Role"
           },
           "expires_in": {
             "title": "Expires In",

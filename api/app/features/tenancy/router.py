@@ -13,7 +13,7 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
-from app.features.tenancy import errors, schemas, service, service_memberships
+from app.features.tenancy import errors, schemas, service, service_memberships, service_workspace
 
 router = APIRouter(tags=["tenancy"])
 
@@ -169,7 +169,7 @@ async def switch_workspace(
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.WorkspaceToken:
-    return await service.switch_workspace(
+    return await service_workspace.switch_workspace(
         session, principal=principal, org_slug=body.org_slug, settings=settings, now=clock.now()
     )
 
@@ -180,4 +180,4 @@ async def switch_workspace(
     responses=error_responses(Unauthenticated),
 )
 async def read_capabilities(principal: CurrentPrincipal) -> schemas.Capabilities:
-    return service.capabilities_for(principal)
+    return service_workspace.capabilities_for(principal)

@@ -174,6 +174,50 @@ async def test_switching_to_an_org_you_belong_to_reissues_the_token(client: Asyn
     assert response.json()["access_token"] != token
 
 
+async def test_switching_to_your_own_practice_clears_the_active_org(client: AsyncClient, make_actor) -> None:
+    """Belonging to an institution must not be a one-way door.
+
+    Somebody in a cohort still has their own entitlements and their own
+    attempts. Without a null workspace there is no token that addresses them,
+    so the frontend could offer no way back from an organisation.
+    """
+    kings = await seed_org(client, make_actor, "kings")
+    token = await make_actor(
+        "both@example.com",
+        memberships=(Membership(org_id=kings, org_slug="kings", role="trainee"),),
+        active_org_slug="kings",
+    )
+    response = await client.post(
+        "/api/v1/auth/switch-workspace", json={"org_slug": None}, headers=bearer(token)
+    )
+    assert response.status_code == 200
+    assert response.json()["active_org_slug"] is None
+    assert response.json()["active_role"] is None
+
+    capabilities = await client.get(
+        "/api/v1/me/capabilities", headers=bearer(response.json()["access_token"])
+    )
+    assert capabilities.status_code == 200
+    assert capabilities.json()["active_org_slug"] is None
+    # The membership is still theirs; only the active workspace changed.
+    me = await client.get("/api/v1/me", headers=bearer(response.json()["access_token"]))
+    assert [m["org_slug"] for m in me.json()["memberships"]] == ["kings"]
+
+
+async def test_switching_workspace_with_no_body_is_your_own_practice(client: AsyncClient, make_actor) -> None:
+    kings = await seed_org(client, make_actor, "kings")
+    token = await make_actor(
+        "default@example.com",
+        memberships=(Membership(org_id=kings, org_slug="kings", role="trainee"),),
+        active_org_slug="kings",
+    )
+    response = await client.post(
+        "/api/v1/auth/switch-workspace", json={}, headers=bearer(token)
+    )
+    assert response.status_code == 200
+    assert response.json()["active_org_slug"] is None
+
+
 async def test_switching_to_an_org_you_do_not_belong_to_is_refused(client: AsyncClient, make_actor) -> None:
     kings = await seed_org(client, make_actor, "kings")
     await seed_org(client, make_actor, "guys")
