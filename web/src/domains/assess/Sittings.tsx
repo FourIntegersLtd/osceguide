@@ -36,13 +36,14 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-ink">{sitting.name}</p>
+                        {/* The list endpoint does not carry circuits — only the
+                            detail does — so this must not claim a count it
+                            cannot know. Showing "0 circuits" for a sitting that
+                            has three is worse than not showing a number. */}
                         <p className="text-xs text-ink-subtle">
                           {sitting.scheduled_for
                             ? new Date(sitting.scheduled_for).toLocaleString()
                             : "Not scheduled"}
-                          {" · "}
-                          {(sitting.circuits ?? []).length} circuit
-                          {(sitting.circuits ?? []).length === 1 ? "" : "s"}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">

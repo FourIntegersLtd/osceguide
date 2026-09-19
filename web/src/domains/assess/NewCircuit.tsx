@@ -61,7 +61,13 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
   );
 }
 
-type TraineeRow = { id: string; email: string; first_name: string | null; last_name: string | null };
+type TraineeRow = {
+  id: string;
+  user_id: string | null;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+};
 type StaffRow = { user_id: string; email?: string | null; role: string };
 
 function Builder({
@@ -98,6 +104,9 @@ function Builder({
       await createCircuit(orgSlug, sittingId, {
         name: name.trim() || "Circuit",
         stationVersionIds: stations.map((station) => station.version_id),
+        // `trainee_ids` on the wire means *user* ids: a slot names a user, and
+        // an organisation may examine somebody it has not rostered. A trainee
+        // who has never signed in has no user row and cannot be put on one.
         traineeIds: [...picked],
         supervisorUserId: supervisor || null,
         timing: { readingMinutes: reading, simulationMinutes: simulation },
@@ -172,7 +181,24 @@ function Builder({
         ) : (
           <ul className="flex flex-wrap gap-2">
             {trainees.map((trainee) => {
-              const on = picked.has(trainee.id);
+              const userId = trainee.user_id;
+              const on = userId !== null && picked.has(userId);
+              const label =
+                [trainee.first_name, trainee.last_name].filter(Boolean).join(" ") || trainee.email;
+              // Somebody who has never signed in has no user row, and a slot
+              // names a user. Saying so beats a foreign key error on submit.
+              if (userId === null) {
+                return (
+                  <li key={trainee.id}>
+                    <span
+                      title="They have not signed in yet, so they cannot be put on a circuit."
+                      className="inline-block cursor-not-allowed rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-ink-subtle"
+                    >
+                      {label} · not signed in
+                    </span>
+                  </li>
+                );
+              }
               return (
                 <li key={trainee.id}>
                   <button
@@ -181,8 +207,8 @@ function Builder({
                     onClick={() =>
                       setPicked((current) => {
                         const next = new Set(current);
-                        if (next.has(trainee.id)) next.delete(trainee.id);
-                        else next.add(trainee.id);
+                        if (next.has(userId)) next.delete(userId);
+                        else next.add(userId);
                         return next;
                       })
                     }
@@ -193,7 +219,7 @@ function Builder({
                         : "border-border bg-surface text-ink-muted hover:text-ink",
                     )}
                   >
-                    {[trainee.first_name, trainee.last_name].filter(Boolean).join(" ") || trainee.email}
+                    {label}
                   </button>
                 </li>
               );

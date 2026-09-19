@@ -140,6 +140,44 @@ async function main() {
     }
   }
 
+  // The institution path, when the demo organisation exists. Skipped rather
+  // than failed otherwise, so this stays runnable on a bare database.
+  const me = await step("my memberships", "/api/v1/me");
+  const membership = (me?.memberships ?? [])[0];
+  if (membership) {
+    const switched = await step("switch workspace", "/api/v1/auth/switch-workspace", {
+      method: "POST",
+      body: { org_slug: membership.org_slug },
+      expect: (p) => must(p.access_token, "no token"),
+    });
+    if (switched) token = switched.access_token;
+
+    const slug = membership.org_slug;
+    await step("org dashboard", `/api/v1/orgs/${slug}/dashboard`, {
+      expect: (p) => must(p.counts && p.setup, "unexpected shape"),
+    });
+    await step("org trainees", `/api/v1/orgs/${slug}/trainees`);
+    const sittings = await step("org sittings", `/api/v1/orgs/${slug}/sittings`);
+    const sittingId = sittings?.items?.[0]?.id;
+    if (sittingId) {
+      const detail = await step("sitting detail", `/api/v1/orgs/${slug}/sittings/${sittingId}`, {
+        // Circuits come back on the detail and not on the list; the sittings
+        // screen relied on the list carrying them until this caught it.
+        expect: (p) => must(Array.isArray(p.circuits), "no circuits on the detail"),
+      });
+      await step("sitting report", `/api/v1/orgs/${slug}/sittings/${sittingId}/report`);
+      const circuitId = detail?.circuits?.[0]?.id;
+      if (circuitId) {
+        await step("circuit console", `/api/v1/orgs/${slug}/circuits/${circuitId}/console`, {
+          expect: (p) => {
+            must(p.circuit && p.sitting, "unexpected shape");
+            must(Array.isArray(p.slots), "no slots");
+          },
+        });
+      }
+    }
+  }
+
   report();
 }
 
