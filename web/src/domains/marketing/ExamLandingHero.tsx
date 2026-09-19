@@ -10,6 +10,7 @@ import { HeroSocialProof } from "./HeroSocialProof";
 import type { ExamKey } from "./landingExams";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
+import { LOGIN_PATH, REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
 
 type ExamLandingHeroProps = {
   appType: ExamKey;
@@ -29,8 +30,8 @@ export function ExamLandingHero({
 }: ExamLandingHeroProps) {
   const { type } = useLandingVariant();
   const partner = usePartnerContext();
-  const registerHref = partner.href("/auth/register", appType);
-  const loginHref = partner.href("/auth/login", appType);
+  const registerHref = partner.href(REGISTER_PATH, appType);
+  const loginHref = partner.href(LOGIN_PATH, appType);
 
   return (
     <section

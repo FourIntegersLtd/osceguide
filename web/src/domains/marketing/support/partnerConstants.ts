@@ -19,8 +19,14 @@ export const PILOT_EXAMS = ["sca", "plab", "ortho"] as const;
 export const DEFAULT_PILOT_PARTNER: (typeof PILOT_PARTNERS)[number] = "bmj";
 
 export const EXAM_LANDING_PATH_PREFIX = "/exams/";
-export const REGISTER_PATH = "/auth/register";
-export const LOGIN_PATH = "/auth/login";
+/*
+ * The retiring client nested these under `/auth`. There is one sign-in for
+ * every product now, so they sit at the root beside the landing — see ADR
+ * 0002. Every call site reaches them through `partner.href`, so this is the
+ * only place the spelling lives.
+ */
+export const REGISTER_PATH = "/register";
+export const LOGIN_PATH = "/login";
 
 export const ACQUISITION_COOKIE_NAME = "osce_acquisition";
 

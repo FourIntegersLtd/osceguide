@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { ButtonLink } from "@/foundation/ui";
 import { landingNavConfig } from "./landingConfig";
 import { useLandingVariant } from "./LandingVariantContext";
+import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
 
 export function LandingNav() {
   const partner = usePartnerContext();
@@ -38,7 +39,7 @@ export function LandingNav() {
   }, [isMobileMenuOpen]);
 
   const handleLogin = () => {
-    router.push(partner.href("/auth/login"));
+    router.push(partner.href(LOGIN_PATH));
     closeMobileMenu();
   };
 
@@ -95,7 +96,7 @@ export function LandingNav() {
             Login ↗
           </button>
           <ButtonLink
-            href="/b2b/institutions"
+            href="/institutions"
             variant="primary"
             size="md"
             className={`px-4 py-2.5 text-[13.5px] shadow-landing-cta ${accent.btn}`}

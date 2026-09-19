@@ -10,6 +10,7 @@ import { HeroReportShowcase } from "./HeroReportShowcase";
 import { HeroSocialProof } from "./HeroSocialProof";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
+import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
 
 export function ClassicLandingHero() {
   const partner = usePartnerContext();
@@ -48,7 +49,7 @@ export function ClassicLandingHero() {
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
           <button
             type="button"
-            onClick={() => router.push(partner.href("/auth/login"))}
+            onClick={() => router.push(partner.href(LOGIN_PATH))}
             className={`${type.ctaInk} group w-full gap-2 px-7 py-3.5 text-base sm:w-auto`}
           >
             Login

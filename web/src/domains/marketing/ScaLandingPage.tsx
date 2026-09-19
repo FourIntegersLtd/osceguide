@@ -24,6 +24,7 @@ import type { LandingIconColor } from "./landingIconPalette";
 import { LandingFeedbackShowcase } from "./showcases/LandingFeedbackShowcase";
 import { LandingProgressShowcase } from "./showcases/LandingProgressShowcase";
 import { LandingSimulationShowcase } from "./showcases/LandingSimulationShowcase";
+import { LOGIN_PATH, REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
 
 const scaDomains = CAPABILITIES.slice(0, 6).map((item) => item.capability);
 
@@ -293,9 +294,9 @@ function ScaLandingContent() {
         description={null}
         primaryCta={{
           label: "Register",
-          href: partner.href("/auth/register", "sca"),
+          href: partner.href(REGISTER_PATH, "sca"),
         }}
-        secondaryCta={{ label: "Log in", href: partner.href("/auth/login", "sca") }}
+        secondaryCta={{ label: "Log in", href: partner.href(LOGIN_PATH, "sca") }}
       />
 
       <LandingPricingSection appType="sca" />

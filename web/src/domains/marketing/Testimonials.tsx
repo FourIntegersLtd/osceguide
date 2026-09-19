@@ -8,6 +8,7 @@ import Link from "next/link";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
 import { TestimonialMarqueeCard } from "./TestimonialMarqueeCard";
+import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
 
 type TestimonialCta = {
   label: string;
@@ -55,7 +56,7 @@ function Testimonials({
   titleAfter = " Say",
   description =
     "Doctors use OSCE Guide to practise voice-first consultations, get structured feedback, and walk into exam day ready.",
-  primaryCta = { label: "Start practising", href: "/auth/login" },
+  primaryCta = { label: "Start practising", href: LOGIN_PATH },
   secondaryCta = {
     label: "Book a demo",
     href: "mailto:hello@fourintegers.com?subject=OSCE%20Guide%20Demo",

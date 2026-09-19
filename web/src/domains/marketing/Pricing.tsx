@@ -7,6 +7,7 @@ import { Button } from "@/foundation/ui";
 import type { LandingType } from "./landingTypography";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
+import { REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
 
 const EXAM_CONFIGS = {
   SCA: {
@@ -333,7 +334,7 @@ export function PricingSectionContent() {
   const [selectedExam, setSelectedExam] = useState<ExamName>("SCA");
 
   const handleNavigation = (examName: ExamName) => {
-    router.push(partner.href("/auth/register", examName.toLowerCase()));
+    router.push(partner.href(REGISTER_PATH, examName.toLowerCase()));
   };
 
   const currentExamConfig = EXAM_CONFIGS[selectedExam];
@@ -468,7 +469,7 @@ export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
 
         <PricingComparisonLayout
           examConfig={plansConfig}
-          onSelectPlan={() => router.push(partner.href("/auth/register", appType))}
+          onSelectPlan={() => router.push(partner.href(REGISTER_PATH, appType))}
           type={type}
         />
       </div>

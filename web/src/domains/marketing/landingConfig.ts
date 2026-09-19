@@ -59,7 +59,7 @@ export const landingNavConfig: LandingNavConfig = {
     { href: "#exams", label: "Exams" },
     { href: "#pricing", label: "Pricing" },
     { href: "#faq", label: "FAQ" },
-    { href: "/b2b/institutions", label: "Institutions" },
+    { href: "/institutions", label: "Institutions" },
   ],
   mobileCtaLabel: "Login",
 };

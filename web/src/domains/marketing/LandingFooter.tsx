@@ -122,7 +122,7 @@ export function LandingFooter({
               <h4 className={`mb-4 ${headingClass}`}>Institutions</h4>
               <ul className="space-y-3">
                 <li>
-                  <Link href="/b2b/institutions" className={linkClass}>
+                  <Link href="/institutions" className={linkClass}>
                     For universities & programmes
                   </Link>
                 </li>

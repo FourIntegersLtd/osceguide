@@ -6,6 +6,7 @@ import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext
 import Logo from "@/foundation/ui/Logo";
 import type { ExamKey } from "./landingExams";
 import { useLandingVariant } from "./LandingVariantContext";
+import { LOGIN_PATH, REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
 
 type ExamLandingNavProps = {
   appType: ExamKey;
@@ -18,8 +19,8 @@ export function ExamLandingNav({
 }: ExamLandingNavProps) {
   const { type, theme } = useLandingVariant();
   const partner = usePartnerContext();
-  const registerHref = partner.href("/auth/register", appType);
-  const loginHref = partner.href("/auth/login", appType);
+  const registerHref = partner.href(REGISTER_PATH, appType);
+  const loginHref = partner.href(LOGIN_PATH, appType);
 
   return (
     <header className={theme.navClassName}>
