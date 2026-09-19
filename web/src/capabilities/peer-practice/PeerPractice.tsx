@@ -1,347 +1,284 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { LuClock, LuUsers } from "react-icons/lu";
-import { Alert, AsyncBoundary, Badge, Button, Card, Input, PageHeader, Spinner } from "@/foundation/ui";
-import { errorMessage, useAsync, useEventStream } from "@/foundation/hooks";
-import { AgentTile, VoiceRoom, useMicPreflight, type RoomGrant } from "@/foundation/livekit";
+import { useCallback, useMemo, useState } from "react";
+import { HiOutlineCalendarDays, HiOutlinePlus } from "react-icons/hi2";
+import {
+  Alert,
+  AsyncBoundary,
+  B2CPageHeader,
+  B2CSegmentedTabs,
+  Button,
+  ConfirmModal,
+  Modal,
+} from "@/foundation/ui";
+import { b2cInputBase } from "@/foundation/ui/productTokens";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations";
 import {
   claimSlot,
-  joinPeerSession,
-  joinQueue,
-  leaveQueue,
+  listPracticeSessions,
   listSlots,
   offerSlot,
   withdrawSlot,
-  type QueueStatus,
+  type Slot,
 } from "@/capabilities/peer-practice/api";
+import {
+  MARKETPLACE_TABS,
+  type MarketplaceTab,
+} from "@/capabilities/peer-practice/marketplace/tabs";
+import { MarketplaceIntroCard } from "@/capabilities/peer-practice/marketplace/MarketplaceIntroCard";
+import {
+  ClaimConfirmationModal,
+  MarketplaceHowItWorksModal,
+} from "@/capabilities/peer-practice/marketplace/modals";
+import {
+  OfferSlotForm,
+  OFFER_SLOT_MODAL_WIDTH,
+  type OfferSlotInput,
+} from "@/capabilities/peer-practice/marketplace/OfferSlotForm";
+import { MySlots, SlotSections } from "@/capabilities/peer-practice/marketplace/SlotSections";
+import { UpcomingSessions } from "@/capabilities/peer-practice/marketplace/UpcomingSessions";
+import { LivePracticeButton } from "@/capabilities/peer-practice/queue/LivePracticeButton";
+import { PeerSessionScreen } from "@/capabilities/peer-practice/session/PeerSessionScreen";
+import { useQueue } from "@/capabilities/peer-practice/support/useQueue";
+import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/time";
 
 /**
  * Practise with another person.
  *
+ * Two halves of one thing: a marketplace of arranged times, and a queue that
+ * pairs you with whoever else is waiting. They were two folders and forty-one
+ * files in the retiring client, connected through a context, a localStorage
+ * key per exam and a polling hook each; they are one screen here because they
+ * are one question — "who can I practise with?" — and the answer to it is
+ * either a time or a person.
+ *
  * `orgId` scopes both halves to one organisation's cohort when a surface
- * supplies it. The component itself knows only that an audience exists.
+ * supplies it. The component itself knows only that an audience exists, which
+ * is what lets an institution have this without a second implementation.
  */
 export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Practise with someone"
-        description="Queue to be paired now, or arrange a time with a peer."
-      />
-      <Queue orgId={orgId} />
-      <Marketplace orgId={orgId} />
-    </div>
-  );
-}
-
-function Queue({ orgId }: { orgId: string | null }) {
-  const exams = useAsync((signal) => listExams(signal), []);
+  const [tab, setTab] = useState<MarketplaceTab>("available");
   const [examCode, setExamCode] = useState<string>("");
-  const [entry, setEntry] = useState<QueueStatus | null>(null);
-  const [grant, setGrant] = useState<RoomGrant | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const mic = useMicPreflight(entry !== null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [offering, setOffering] = useState(false);
+  const [explaining, setExplaining] = useState(false);
+  const [claiming, setClaiming] = useState<Slot | null>(null);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [chosenSessionId, setChosenSessionId] = useState<string | null>(null);
 
-  // The queue pushes its own state, so there is no poll and no guessing when a
-  // partner appears.
-  const stream = useEventStream<QueueStatus>(
-    entry ? `/api/v1/peer-practice/queue/${entry.entry_id}/stream` : null,
+  const exams = useAsync((signal) => listExams(signal), []);
+  const slots = useAsync((signal) => listSlots({ orgId }, signal), [orgId, reloadKey]);
+  const mySessions = useAsync((signal) => listPracticeSessions(signal), [reloadKey]);
+  const queue = useQueue(orgId);
+
+  const examOptions = useMemo(
+    () => (exams.data?.items ?? []).map((exam) => ({ code: exam.code, name: exam.name })),
+    [exams.data],
   );
-  const status = stream.data ?? entry;
+  const activeExam = examCode || examOptions[0]?.code || "";
+  const examLabel =
+    examOptions.find((exam) => exam.code === activeExam)?.name ?? activeExam.toUpperCase();
 
-  useEffect(() => {
-    if (!status?.session_id || grant) return;
-    // Matched. Get into the room without asking again — both people are waiting.
-    void (async () => {
+  // A match is the one thing that takes over the screen: both people are
+  // waiting on each other, so there is nothing else worth looking at. Read
+  // from the queue rather than copied into state by an effect, so the room
+  // appears on the frame the match arrives on.
+  const openSessionId = chosenSessionId ?? queue.matchedSessionId;
+
+  const live = (mySessions.data?.items ?? []).find((session) => session.status !== "ended");
+
+  const leaveSession = useCallback(() => {
+    setChosenSessionId(null);
+    queue.reset();
+    setReloadKey((key) => key + 1);
+  }, [queue]);
+
+  const post = useCallback(
+    async (input: OfferSlotInput) => {
+      setPosting(true);
+      setSuccess(null);
+      setFailure(null);
       try {
-        if (mic.status !== "ready") await mic.request();
-        setGrant(await joinPeerSession(status.session_id!));
+        await offerSlot({ ...input, orgId });
+        setOffering(false);
+        setSuccess("Availability posted successfully!");
+        setTab("myPosts");
+        setReloadKey((key) => key + 1);
       } catch (cause) {
-        setError(cause instanceof Error ? cause : new Error(String(cause)));
+        setFailure(errorMessage(cause));
+      } finally {
+        setPosting(false);
       }
-    })();
-  }, [status?.session_id, grant, mic]);
+    },
+    [orgId],
+  );
 
-  const join = useCallback(async () => {
-    setBusy(true);
-    setError(null);
+  const confirmClaim = useCallback(async () => {
+    const slot = claiming;
+    if (!slot) return;
+    setClaiming(null);
+    setClaimingId(slot.id);
+    setSuccess(null);
+    setFailure(null);
     try {
-      if (mic.status !== "ready") await mic.request();
-      setEntry(await joinQueue(examCode || exams.data?.items[0]?.code || "sca", orgId));
+      const session = await claimSlot(slot.id);
+      setSuccess(
+        `Session booked! You will practice on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`,
+      );
+      setTab("upcoming");
     } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error(String(cause)));
+      setFailure(errorMessage(cause));
     } finally {
-      setBusy(false);
+      setClaimingId(null);
+      // Always refresh: the slot is gone either way, whether we took it or
+      // somebody beat us to it by a fraction of a second.
+      setReloadKey((key) => key + 1);
     }
-  }, [examCode, exams.data, orgId, mic]);
+  }, [claiming]);
 
-  const leave = useCallback(async () => {
-    if (!entry) return;
-    setBusy(true);
+  const confirmWithdraw = useCallback(async () => {
+    const postId = withdrawing;
+    setWithdrawing(null);
+    if (!postId) return;
+    setSuccess(null);
+    setFailure(null);
     try {
-      await leaveQueue(entry.entry_id);
-      setEntry(null);
-      setGrant(null);
+      await withdrawSlot(postId);
+      setSuccess("Post cancelled successfully.");
+    } catch (cause) {
+      setFailure(errorMessage(cause));
     } finally {
-      setBusy(false);
+      setReloadKey((key) => key + 1);
     }
-  }, [entry]);
+  }, [withdrawing]);
 
-  if (grant) {
-    return (
-      <Card title="You are paired">
-        <VoiceRoom
-          grant={grant}
-          onDisconnected={() => {
-            setGrant(null);
-            setEntry(null);
-          }}
-        >
-          <div className="flex flex-col items-center gap-4">
-            <AgentTile name="Your partner" detail="One of you is the doctor" className="w-full max-w-sm" />
-            <Button variant="danger" onClick={() => setGrant(null)}>
-              Leave
-            </Button>
-          </div>
-        </VoiceRoom>
-      </Card>
-    );
+  const actions = {
+    onClaim: setClaiming,
+    onWithdraw: setWithdrawing,
+    claimingId,
+  };
+
+  if (openSessionId) {
+    return <PeerSessionScreen sessionId={openSessionId} onLeave={leaveSession} />;
   }
 
   return (
-    <Card title="Queue now" description="You will be paired with whoever else is waiting.">
-      <div className="flex flex-col gap-3">
-        {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
-        {mic.message && <Alert tone="warning">{mic.message}</Alert>}
+    <div className="w-full pb-24">
+      <B2CPageHeader
+        title="Practise with someone"
+        subtitle="Be paired with another candidate now, or arrange a time."
+        icon={HiOutlineCalendarDays}
+      />
 
-        {status ? (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-sm text-ink-muted">
-              <Spinner />
-              {status.position !== null && status.position !== undefined
-                ? `You are number ${status.position} in the queue`
-                : "Waiting for a partner"}
-              <Badge tone="neutral">
-                <LuUsers className="mr-1 h-3 w-3" aria-hidden /> {status.waiting_count} waiting
-              </Badge>
-            </span>
-            <Button variant="secondary" onClick={leave} disabled={busy}>
-              Leave the queue
+      {success && <Alert tone="success" className="mb-4">{success}</Alert>}
+      {failure && <Alert tone="danger" className="mb-4">{failure}</Alert>}
+
+      {live && (
+        <Alert tone="info" className="mb-4">
+          You have a practice session in progress.{" "}
+          <button
+            type="button"
+            onClick={() => setChosenSessionId(live.id)}
+            className="font-semibold underline underline-offset-2"
+          >
+            Rejoin it
+          </button>
+        </Alert>
+      )}
+
+      <div className="mb-4 flex min-w-0 flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <B2CSegmentedTabs items={MARKETPLACE_TABS} value={tab} onChange={setTab} aria-label="Marketplace" />
+
+        {tab === "available" && (
+          <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+            <label className="sr-only" htmlFor="peer-practice-exam">
+              Exam
+            </label>
+            <select
+              id="peer-practice-exam"
+              value={activeExam}
+              onChange={(event) => setExamCode(event.target.value)}
+              className={`${b2cInputBase} w-full sm:w-auto`}
+            >
+              {examOptions.map((exam) => (
+                <option key={exam.code} value={exam.code}>
+                  {exam.name}
+                </option>
+              ))}
+            </select>
+            <LivePracticeButton queue={queue} examCode={activeExam || null} />
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => setOffering(true)}
+              className="w-full gap-1.5 sm:w-auto"
+            >
+              <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" />
+              <span>Post Availability</span>
             </Button>
           </div>
+        )}
+      </div>
+
+      <div className="mb-6 sm:mb-8">
+        <MarketplaceIntroCard examLabel={examLabel} onLearnMore={() => setExplaining(true)} />
+      </div>
+
+      <div id={`tab-panel-${tab}`} role="tabpanel">
+        {tab === "upcoming" ? (
+          <UpcomingSessions reloadKey={reloadKey} />
         ) : (
-          <AsyncBoundary state={exams}>
-            {(page) => (
-              <div className="flex flex-wrap items-end gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium text-ink">Exam</span>
-                  <select
-                    value={examCode || page.items[0]?.code || ""}
-                    onChange={(event) => setExamCode(event.target.value)}
-                    className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
-                  >
-                    {page.items.map((exam) => (
-                      <option key={exam.id} value={exam.code}>
-                        {exam.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Button onClick={join} disabled={busy}>
-                  {busy ? <Spinner /> : "Join the queue"}
-                </Button>
-              </div>
-            )}
+          <AsyncBoundary state={slots} isEmpty={() => false}>
+            {(page) =>
+              tab === "available" ? (
+                <SlotSections slots={page.items} actions={actions} />
+              ) : (
+                <MySlots slots={page.items} actions={actions} />
+              )
+            }
           </AsyncBoundary>
         )}
       </div>
-    </Card>
-  );
-}
 
-function Marketplace({ orgId }: { orgId: string | null }) {
-  const state = useAsync((signal) => listSlots({}, signal), []);
-  const exams = useAsync((signal) => listExams(signal), []);
-  const [offering, setOffering] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const act = useCallback(
-    async (id: string, action: () => Promise<unknown>) => {
-      setBusy(id);
-      try {
-        await action();
-        state.reload();
-      } finally {
-        setBusy(null);
-      }
-    },
-    [state],
-  );
-
-  return (
-    <Card
-      title="Arrange a time"
-      description="Offer a slot, or claim one somebody else has offered."
-      actions={
-        <Button variant="secondary" size="sm" onClick={() => setOffering((open) => !open)}>
-          {offering ? "Cancel" : "Offer a slot"}
-        </Button>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        {offering && (
-          <AsyncBoundary state={exams}>
-            {(page) => (
-              <OfferForm
-                examCodes={page.items.map((exam) => ({ code: exam.code, name: exam.name }))}
-                orgId={orgId}
-                onOffered={() => {
-                  setOffering(false);
-                  state.reload();
-                }}
-              />
-            )}
-          </AsyncBoundary>
-        )}
-
-        <AsyncBoundary
-          state={state}
-          isEmpty={(page) => page.items.length === 0}
-          empty={{ title: "No slots offered", description: "Offer one and somebody may claim it." }}
+      {offering && (
+        <Modal
+          onClose={() => setOffering(false)}
+          width={OFFER_SLOT_MODAL_WIDTH}
+          height="fit-content"
         >
-          {(page) => (
-            <ul className="divide-y divide-border">
-              {page.items.map((slot) => (
-                <li key={slot.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-sm font-medium text-ink">
-                      <LuClock className="h-3.5 w-3.5 text-ink-subtle" aria-hidden />
-                      {new Date(slot.starts_at).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-ink-subtle">
-                      {slot.exam_code.toUpperCase()} · {slot.duration_minutes} minutes
-                      {slot.note ? ` · ${slot.note}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge tone={slot.status === "available" ? "success" : "neutral"}>
-                      {slot.status}
-                    </Badge>
-                    {slot.is_mine ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={busy !== null || slot.status !== "available"}
-                        onClick={() => act(slot.id, () => withdrawSlot(slot.id))}
-                      >
-                        Withdraw
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        disabled={busy !== null || slot.status !== "available"}
-                        onClick={() => act(slot.id, () => claimSlot(slot.id))}
-                      >
-                        {busy === slot.id ? <Spinner /> : "Claim"}
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </AsyncBoundary>
-      </div>
-    </Card>
-  );
-}
+          <OfferSlotForm
+            exams={examOptions}
+            onSubmit={post}
+            isLoading={posting}
+            onCancel={() => setOffering(false)}
+          />
+        </Modal>
+      )}
 
-function OfferForm({
-  examCodes,
-  orgId,
-  onOffered,
-}: {
-  examCodes: { code: string; name: string }[];
-  orgId: string | null;
-  onOffered: () => void;
-}) {
-  const [examCode, setExamCode] = useState(examCodes[0]?.code ?? "");
-  const [startsAt, setStartsAt] = useState("");
-  const [duration, setDuration] = useState(30);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [note, setNote] = useState("");
-
-  const submit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
-      setBusy(true);
-      setError(null);
-      try {
-        await offerSlot({
-          examCode,
-          startsAt: new Date(startsAt).toISOString(),
-          durationMinutes: duration,
-          note: note.trim() || null,
-          orgId,
-        });
-        onOffered();
-      } catch (cause) {
-        setError(cause instanceof Error ? cause : new Error(String(cause)));
-      } finally {
-        setBusy(false);
-      }
-    },
-    [examCode, startsAt, duration, note, orgId, onOffered],
-  );
-
-  return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-panel border border-border p-4">
-      {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Exam</span>
-          <select
-            value={examCode}
-            onChange={(event) => setExamCode(event.target.value)}
-            className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
-          >
-            {examCodes.map((exam) => (
-              <option key={exam.code} value={exam.code}>
-                {exam.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Input
-          label="Starts at"
-          type="datetime-local"
-          required
-          value={startsAt}
-          onChange={(event) => setStartsAt(event.target.value)}
-        />
-        <Input
-          label="Minutes"
-          type="number"
-          min={10}
-          value={duration}
-          onChange={(event) => setDuration(Number(event.target.value))}
-        />
-      </div>
-      <Input
-        label="Note"
-        value={note}
-        onChange={(event) => setNote(event.target.value)}
-        placeholder="Anything your partner should know"
+      <ClaimConfirmationModal
+        slot={claiming}
+        isClaiming={claimingId !== null}
+        onConfirm={() => void confirmClaim()}
+        onCancel={() => setClaiming(null)}
       />
-      <div className="flex justify-end">
-        <Button type="submit" disabled={busy || !startsAt}>
-          Offer slot
-        </Button>
-      </div>
-    </form>
+
+      {explaining && <MarketplaceHowItWorksModal onClose={() => setExplaining(false)} />}
+
+      <ConfirmModal
+        isOpen={withdrawing !== null}
+        onCancel={() => setWithdrawing(null)}
+        onConfirm={() => void confirmWithdraw()}
+        title="Cancel post?"
+        message="Are you sure you want to cancel this post?"
+        confirmText="Yes, cancel post"
+        cancelText="Keep post"
+      />
+    </div>
   );
 }
