@@ -12,15 +12,15 @@ Each entry says what the screen does today, so nothing is silently dropped.
 | What | Where | Today |
 |---|---|---|
 | Landing statistics band | `domains/marketing/Numbers.tsx` | The retiring backend served `/api/v1/landing`. `fetchLandingStats` returns `null` without asking, and the band hides itself — asking would 404 on every view of the busiest public page. Putting it back is that function's body. |
-| Achievements | not yet ported | The old consumer arm had `/achievements`. No backend. |
+| Achievements | `capabilities/account/Achievements.tsx` | **Ported as its own empty state, and it asks for nothing.** The old screen counted station badges from `user.station_progress` and computed streaks in the browser from the transcript list; `platform-api` has neither — progress is attempts, and a streak exists nowhere on the backend. The component takes the four numbers as props and defaults them to zero, so the day something serves them it is a one-line change at the call site rather than a port. It has no route: see "Route files the account capability still needs". |
 | Messages / contact | not yet ported | `/messages` in the old arm. No backend. |
 | Product feedback form | `domains/marketing` section, unlisted | The "Help Us Improve" landing section is kept but left out of `landingSections`; it needs a product-feedback slice. |
 | Push notifications | not ported | `web-push` is deliberately not a dependency here yet. |
 | SSO configuration | not ported | `getSsoConfig` in the old arm. |
-| Public user profiles | not ported | `/users/[userId]`. |
+| Public user profiles | not ported | `/users/[userId]`. The old `b2c/components/shared/users` was not a public profile at all: it is an **administrator's** user list and user detail — plan editing, station-progress resetting, hard delete, filters by plan type. None of it is servable. See "The old `users/` folder" below. |
 | Blog authoring | not ported | Reading is `capabilities/media`; authoring has no endpoint. |
 | Public blog listing | `domains/marketing/support/landingBlogs.ts` | `GET /media` requires a bearer token, so a signed-out visitor cannot read the landing's blog rail. It hides itself. A public listing — or an anonymous read for published items — would bring it back. |
-| Exam wishes | not ported | `ExamWishes` in the old achievements folder. |
+| Exam wishes | `capabilities/account/ExamWishes.tsx` | Ported, and nothing renders it. It was shown in the week of somebody's exam, and `UserRead` carries no `exam_date` — the same gap the dashboard countdown hits. |
 | Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | The old client read `accessibility.needs_extra_reading_time` off the user and extended the clock from inside the timer. No such field on `platform-api`. The timer takes the duration it is given; when the field exists, whoever creates the attempt applies it. |
 | Photo upload | `foundation/ui/PhotoUpload.tsx` | Posted to the old backend's `/api/upload_photos/{id}`. The component takes an `upload` function now, and nothing supplies one yet. |
 
@@ -274,6 +274,90 @@ rather than in `capabilities/debrief`. Nothing mounts it yet.
 | `GET /attempts/{id}/result` is a page | `capabilities/feedback/api.ts` | The endpoint answers `Page[AssessmentResultRead]`, not one result: re-scoring under a new policy writes beside the old so a candidate's history stays readable, and the items come back oldest first. `attempt-runner/api.ts`'s `readResult` is typed as a single `AssessmentResultRead` and would read `.payload` off the page — the feedback capability reads the page itself and shows the last item, with a picker when there is more than one. |
 | `AttemptKind` in `attempt-runner/api.ts` | `capabilities/attempt-runner` | The client spells the kinds `set_entry`, `slot`, `self_practice`… where the backend's `attempts.Kind` is `set_station`, `exam_slot`, `self_practice`, `practice`, `debrief`, `peer`. Only `practice`, `debrief` and `peer` agree. `capabilities/transcripts/api.ts` labels attempts from the backend's spelling. |
 | `user.user_id`, `user.station_progress` | `domains/marketing/InstallPrompt.tsx` | The old consumer user object inlined a progress array. The platform's `/me` carries neither — progress is its own endpoint. The prompt passes `user.id` and a count of 0, which errs towards showing onboarding once more rather than never. |
+
+## The account capability
+
+`capabilities/account` is the person rather than the work, mounted on all five
+arms. Most of it is wired; these are the parts of the retiring screens that
+`platform-api` has no answer for.
+
+### Reads and writes the backend does not serve
+
+| What | The old screen | Today |
+|---|---|---|
+| Editing your own name | `settings/profile/Profile.tsx` had an editable username and an "Update Profile" button | `/api/v1/me` is **read-only** — there is no `PUT` or `PATCH`. The name and the email are rendered as disabled fields. A box that discards what you typed is worse than a box you cannot type in. |
+| Deleting your own account | The "Danger zone" card, `DELETE /api/soft_delete_user/{email}` | No endpoint. The card is not ported; nothing on the screen implies you can leave. |
+| Preferences | `settings/preferences/SettingsPreferences.tsx` — AI training consent, extra reading time, "email me when a colleague is waiting", replaying the Athena onboarding | **None of these four fields exist on `platform-api`.** `UserRead` is id, email, name, `is_platform_admin`, `must_change_password` and memberships. The whole tab is left out rather than rendered with checkboxes that cannot save. It needs a `preferences` object on the user and a write for it. |
+| The Exam tab | `settings/exam/SettingsExam.tsx` — exam type and exam date | An account is not bound to one exam any more; entitlements carry exam codes and are shown on the Access tab. The exam **date** has no field (the same gap the dashboard countdown hits). |
+| Bank details for referral payouts | `settings/referrals/user/BankDetails.tsx` (293 lines) | The growth slice tracks a code, a redemption count and pence earned. There is nowhere to store a sort code, and nothing pays anybody out. Not ported. |
+| Referral history per referee | `settings/referrals/user/ReferralHistory.tsx`, `ReferralDetail.tsx` | `GET /me/referrals` answers one `ReferralRead` — `{code, redeemed_count, earned_pence}` — with no per-referee rows, no join dates and no payout status. The screen shows the two totals it can prove. A listing endpoint would bring the table back unchanged. |
+| The admin referral console | `settings/referrals/admin/*` (665 lines) | Marking payouts paid across all users. No endpoint, and it belongs to the staff console (J15) rather than to an account capability, since it is about other people. |
+| Ortho CV upload and display | `Profile.tsx`, `/api/ortho/cv_status` | An exam-specific attachment on a consumer profile. No endpoint. |
+
+### Checkout works; two things about it are worth knowing
+
+`POST /api/v1/billing/checkout` is wired
+(`capabilities/account/settings/PlanPicker.tsx`) and is now the only way
+anybody buys anything. It sends a **plan code** and nothing else, and the
+plans, prices and durations come from `GET /billing/plans` rather than from
+constants in the bundle — the retiring client posted the pence it had rendered
+and the backend matched them against a hardcoded table, so a price change broke
+the purchase *after* the card was charged.
+
+- **It needs Stripe configured.** With an empty `STRIPE_SECRET_KEY` the route
+  answers `checkout_failed` before it even looks the plan up, because the
+  adapter is a FastAPI dependency. The screen says so, and says no money left
+  your account.
+- **A migrated database has no plans.** `scripts/seed_platform.py` seeds no
+  `plans` rows, so `/billing/plans` is empty and the Payments card explains
+  that nothing is on sale rather than rendering an empty list.
+
+`@stripe/stripe-js` is **not** needed and is not installed: the backend returns
+a hosted `checkout_url` and the browser is handed to it. Nothing about a card
+passes through this app.
+
+### Route files the account capability still needs
+
+Four route files, all outside `capabilities/`, for components that are built
+and exported from `capabilities/account`:
+
+| Route file | Component | Why it is where it is |
+|---|---|---|
+| `src/app/billing/complete/page.tsx` | `PaymentReturn` | The backend hardcodes `success_url = {FRONTEND_URL}/billing/complete?session_id=…` in `billing/service_checkout.py`. **Not** `/payments/success`, which is what the retiring client used. |
+| `src/app/pricing/page.tsx` | `CheckoutCancelled` | The same file hardcodes `cancel_url = {FRONTEND_URL}/pricing`. **Not** `/payments/cancel`. Either these two route files are added, or the backend's two URLs are changed to match whatever is preferred — but they have to agree, or a paying customer lands on a 404. |
+| `src/app/app/[workspace]/achievements/page.tsx` | `Achievements` | The old `/achievements` route. |
+| `src/app/staff/settings/page.tsx` | `Settings` | The staff console is outside the workspace grammar and has its own route tree, so `surfaces: ["…", "platform"]` on the capability does not reach it — `/staff/settings` is a 404 today. `surfaces/platform/surface.ts` also builds its nav by hand rather than from the capability registry, so the entry has to be added there too. |
+
+### The old `users/` folder is the staff console, not an account screen
+
+`b2c/components/shared/users` (1,395 lines) is an administrator looking at
+somebody else: a filterable list with plan-type facets and bulk hard delete,
+and a detail screen that edits another person's plan dates, flips `has_paid`,
+resets individual station progress and deletes stations from their history.
+
+None of that is an account capability — a capability may not know it is
+standing in the staff arm, and this screen is *only* ever the staff arm. It is
+also almost entirely unservable: `platform-api` has `GET /platform/users` and
+`PUT /platform/users/{id}/platform-admin` and nothing else. There is no
+per-user read, no plan write, no progress reset, no delete. It belongs to **J15
+(staff console)** with the endpoints it needs, and is recorded here so it is
+not mistaken for something J8 dropped.
+
+### `domains/train/Access.tsx` reads receipts wrongly
+
+Outside this capability and left alone, but found while wiring the same
+endpoint. `GET /me/receipts` answers `Page[str]` — a page of receipt **ids** —
+and `Access.tsx` maps over `data.items` reading `receipt.plan_label`,
+`receipt.amount_total` and `receipt.currency` off each one. Every field is
+`undefined`, so the card renders blank rows for anybody who has ever paid.
+`capabilities/account/api.ts#listReceipts` shows the shape: list the ids, then
+read each. Its `Receipt` type alias is wrong for the same reason.
+
+The detail's date and money fields are **display strings** the backend has
+already formatted (`"16 September 2026"`, `"£99.00"`), pinned by a receipt
+oracle against the legacy formatter. They must be printed verbatim;
+`new Date("16 September 2026")` is invalid on most browsers, and reformatting
+a financial figure makes the screen disagree with the printed document.
 
 ## Deliberately not ported
 
