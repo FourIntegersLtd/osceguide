@@ -5,3 +5,5 @@ export { default as ResetPassword } from "@/capabilities/account/ResetPassword";
 export { default as AuthShell } from "@/capabilities/account/AuthShell";
 export { default as AuthFormField } from "@/capabilities/account/AuthFormField";
 export { sanitizeReturnTo, isPublicPath } from "@/capabilities/account/support/sessionEvents";
+export { accountCapability } from "@/capabilities/account/capability";
+export { Settings } from "@/capabilities/account/Settings";
