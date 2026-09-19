@@ -206,3 +206,19 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
         return set()
     stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()
     return {row for row in (await session.execute(stmt)).scalars() if row is not None}
+
+
+async def evaluated_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, exam_id: uuid.UUID | None = None, limit: int
+) -> list[Attempt]:
+    """This person's marked attempts, newest first, optionally for one exam.
+
+    Filtered in SQL rather than by reading a page of everything and discarding
+    the unmarked rows: somebody who practises daily has hundreds of attempts
+    and the marked ones are what a performance chart is drawn from.
+    """
+    stmt = select(Attempt).where(Attempt.user_id == user_id, Attempt.status == Status.EVALUATED)
+    if exam_id is not None:
+        stmt = stmt.where(Attempt.exam_id == exam_id)
+    stmt = stmt.order_by(Attempt.created_at.desc(), Attempt.id.desc()).limit(limit)
+    return list((await session.execute(stmt)).scalars())

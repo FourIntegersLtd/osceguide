@@ -2670,6 +2670,30 @@
         "title": "DispatchResult",
         "type": "object"
       },
+      "DomainScore": {
+        "description": "One bar of the radar: a rubric domain, averaged across the attempts.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "score"
+        ],
+        "title": "DomainScore",
+        "type": "object"
+      },
       "EditLock": {
         "properties": {
           "circuit_id": {
@@ -5496,6 +5520,68 @@
         "title": "PeerSessionRead",
         "type": "object"
       },
+      "Performance": {
+        "description": "The charts on the consumer exam dashboard, in one call.\n\nThe legacy screen asks four RAG endpoints and a weekly trend for this and\njoins them in the browser. `exam_code` is null only when the caller named\nno exam and has never attempted one \u2014 there is no exam to report on, and\nan empty string would be a code.",
+        "properties": {
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/DomainScore"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PerformanceSummary"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "Performance",
+        "type": "object"
+      },
+      "PerformanceSummary": {
+        "description": "How the marked attempts divide, as rates rather than counts.\n\nRates because the chart draws bands, and because a candidate with four\nattempts and one with forty should read the same way.",
+        "properties": {
+          "critical_rate": {
+            "title": "Critical Rate",
+            "type": "number"
+          },
+          "fail_rate": {
+            "title": "Fail Rate",
+            "type": "number"
+          },
+          "pass_rate": {
+            "title": "Pass Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "pass_rate",
+          "fail_rate",
+          "critical_rate"
+        ],
+        "title": "PerformanceSummary",
+        "type": "object"
+      },
       "PlanRead": {
         "properties": {
           "amount_pence": {
@@ -8085,6 +8171,26 @@
           "messages"
         ],
         "title": "TranscriptRead",
+        "type": "object"
+      },
+      "TrendPoint": {
+        "description": "One attempt, in the order it was sat.",
+        "properties": {
+          "date": {
+            "format": "date-time",
+            "title": "Date",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "score"
+        ],
+        "title": "TrendPoint",
         "type": "object"
       },
       "TutorMemoryRead": {
@@ -12681,6 +12787,89 @@
         "summary": "Join Session",
         "tags": [
           "marketplace"
+        ]
+      }
+    },
+    "/api/v1/me/performance": {
+      "get": {
+        "description": "How this person is doing at one exam: per domain, overall, over time.\n\nSeparate from `/me/dashboard` because it is a different question over a\ndifferent set of rows \u2014 the marked attempts at one exam \u2014 and a screen that\nonly lists access and recent attempts should not pay for reading every\nresult document.\n\nAn exam with nothing marked yet is an empty answer, not a refusal: that is\nthe dashboard's empty state, and a 404 would make it read as an error.",
+        "operationId": "dashboard_read_performance",
+        "parameters": [
+          {
+            "description": "Which exam to report on. Defaults to the most recently attempted one.",
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Which exam to report on. Defaults to the most recently attempted one.",
+              "title": "Exam Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Performance"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Performance",
+        "tags": [
+          "dashboard"
         ]
       }
     },

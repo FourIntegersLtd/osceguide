@@ -58,6 +58,48 @@ class Dashboard(BaseModel):
     sets: list[SetSummary] = Field(default_factory=list)
 
 
+class PerformanceSummary(BaseModel):
+    """How the marked attempts divide, as rates rather than counts.
+
+    Rates because the chart draws bands, and because a candidate with four
+    attempts and one with forty should read the same way.
+    """
+
+    pass_rate: float
+    fail_rate: float
+    critical_rate: float
+
+
+class DomainScore(BaseModel):
+    """One bar of the radar: a rubric domain, averaged across the attempts."""
+
+    id: str
+    label: str
+    score: float
+
+
+class TrendPoint(BaseModel):
+    """One attempt, in the order it was sat."""
+
+    date: datetime
+    score: float
+
+
+class Performance(BaseModel):
+    """The charts on the consumer exam dashboard, in one call.
+
+    The legacy screen asks four RAG endpoints and a weekly trend for this and
+    joins them in the browser. `exam_code` is null only when the caller named
+    no exam and has never attempted one — there is no exam to report on, and
+    an empty string would be a code.
+    """
+
+    exam_code: str | None = None
+    summary: PerformanceSummary
+    domains: list[DomainScore] = Field(default_factory=list)
+    trend: list[TrendPoint] = Field(default_factory=list)
+
+
 class MySlot(BaseModel):
     """A station this person is rostered onto, from their side of it."""
 

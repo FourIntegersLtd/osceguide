@@ -14,6 +14,8 @@ dashboard makes five, four of which exist only to produce a count.
 ## Use cases
 - As a **consumer**, I open the app and see my access, my progress and where I
   left off, in one request.
+- As a **consumer**, I see how I am doing at one exam — per domain, overall and
+  over time — so I know what to practise next.
 - As an **institution admin**, I see what my organisation has set up and what
   is still missing, without downloading four lists to count them.
 - As a **supervisor**, I see the circuits assigned to me.
@@ -44,6 +46,7 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/me/dashboard` | bearer | entitlements, per-exam progress, recent attempts, sets |
+| GET | `/api/v1/me/performance` | bearer | per-domain scores, pass/fail/critical rates and a trend for one exam; `?exam_code=`, defaulting to the last attempted; `unknown_exam` (404) |
 | GET | `/api/v1/me/sittings` | bearer | what a trainee is rostered onto, whether each slot is joinable, its `attempt_id` once dispatched, and the server clock |
 | GET | `/api/v1/orgs/{org_slug}/dashboard` | org member | counts, setup state, recent sittings |
 | GET | `/api/v1/orgs/{org_slug}/supervisor/circuits` | org member | the circuits assigned to the caller |
@@ -86,10 +89,29 @@ not a cookie and not the access token.
 
 ## Cross-slice dependencies
 Reads `entitlements`, `attempts`, `station_sets`, `sittings`, `stations`,
-`roster`, `reviews`, `tenancy` and `identity` through their services. Sits at
+`roster`, `reviews`, `catalog`, `rubrics`, `tenancy` and `identity` through
+their services. Sits at
 the top of the layer order and nothing depends on it.
 
 The one error it can answer with, `circuit_not_found`, is `sittings`',
 re-exported by `errors.py`: asking for the console of a circuit that is not
 yours is the same refusal as asking for the circuit, and the frontend should
 not have two codes for it.
+
+## Performance
+`performance.py` reads the marking engine's document into a score per domain
+and `service_performance.py` aggregates those across somebody's marked
+attempts at one exam. The arithmetic is `reviews`' throughout — the majority
+rating per domain, ties resolved downward, domains equally weighted — because
+an institution ranks its cohort on those numbers and a person's own dashboard
+must not quietly use different ones.
+
+"Pass" is stated once, as `service_performance.PASS_SCORE`: no seeded rubric
+carries a pass mark, so an attempt passes when its score is at least an amber
+(66.0). Passes and fails therefore sum to one, and a red anywhere is reported
+separately, because a passing attempt can still hold a competency worth a
+conversation.
+
+The rubric's domains come from the marking snapshot rather than from a read of
+the rubric, so the ids used here are the keys the result document actually
+carries. An exam with nothing marked yet is an empty answer, not a 404.

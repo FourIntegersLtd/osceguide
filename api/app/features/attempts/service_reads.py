@@ -133,6 +133,23 @@ async def recent_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: i
     return [_ref(row, has_result=bool(await transcripts.results_for(session, row.id))) for row in rows]
 
 
+async def evaluated_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, exam_id: uuid.UUID | None = None, limit: int
+) -> list[AttemptRef]:
+    """This person's marked attempts, newest first, optionally for one exam.
+
+    On the service face because the consumer dashboard draws a performance
+    chart from exactly this set, and the alternative — paging `recent_for_user`
+    and discarding whatever is unmarked — reads rows it will throw away and
+    silently truncates a trend to whatever fell inside the page.
+
+    `has_result` is not asked per row here: an evaluated attempt has a result
+    by definition, and the caller reads the payload itself.
+    """
+    rows = await repository.evaluated_for_user(session, user_id, exam_id=exam_id, limit=limit)
+    return [_ref(row, has_result=True) for row in rows]
+
+
 def _ref(row: Attempt, *, has_result: bool = False) -> AttemptRef:
     return AttemptRef(
         id=row.id,
