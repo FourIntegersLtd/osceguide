@@ -22,8 +22,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from app.features.reviews.domain import InvalidRag
-from app.features.reviews.scoring import RAG_SCORES, majority_rag
+from app.features.reviews import service_summary as reviews
 
 SCORE_KEY = "score"
 
@@ -84,14 +83,11 @@ def domain_scores(
     """
     out: dict[str, float] = {}
     for domain_id, ratings in ratings_by_domain(payload, structure).items():
-        try:
-            majority = majority_rag(ratings)
-        except InvalidRag:
-            # A rating outside the vocabulary is a migration artefact, not
-            # something to hand a reader a 500 for. The domain goes unscored.
-            continue
-        if majority is not None:
-            out[domain_id] = RAG_SCORES[majority]
+        # A rating outside the vocabulary leaves the domain unscored rather
+        # than raising: that is a migration artefact, not a reader's problem.
+        score = reviews.score_for_ratings(ratings)
+        if score is not None:
+            out[domain_id] = score
     return out
 
 
@@ -101,9 +97,7 @@ def attempt_score(scores: Mapping[str, float]) -> float | None:
     Equal weighting is the institution rule too — a domain with twelve
     competencies counts the same as one with four.
     """
-    if not scores:
-        return None
-    return sum(scores.values()) / len(scores)
+    return reviews.mean_score(list(scores.values()))
 
 
 def critical_count(payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None) -> int:

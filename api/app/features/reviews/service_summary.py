@@ -93,6 +93,33 @@ def combine_ratings(values: Sequence[str | None]) -> str | None:
         return None
 
 
+def score_for_ratings(values: Sequence[str]) -> float | None:
+    """The 0–100 score a set of competency ratings adds up to.
+
+    The majority rating rather than the mean — three greens and a red is a
+    green with a red in it, not an amber that describes neither — and ties
+    resolved downward. Exposed for the same reason `combine_ratings` is: the
+    learner's own dashboard scores the marking engine's output, and it must not
+    reimplement the arithmetic an institution ranks its cohort on. A rating
+    outside the vocabulary leaves the set unscored rather than raising.
+    """
+    try:
+        majority = scoring.majority_rag(list(values))
+    except domain.InvalidRag:
+        return None
+    return scoring.RAG_SCORES[majority] if majority is not None else None
+
+
+def mean_score(values: Sequence[float]) -> float | None:
+    """Several domain scores as one, equally weighted.
+
+    `scoring.station_score` over a bare sequence: a domain with twelve
+    competencies counts the same as one with four, which is a decision worth
+    stating rather than leaving in an average.
+    """
+    return scoring.station_score({str(i): v for i, v in enumerate(values)})
+
+
 async def scores_for_slots(
     session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, float | None]:
