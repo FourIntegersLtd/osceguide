@@ -24,6 +24,33 @@ Each entry says what the screen does today, so nothing is silently dropped.
 | Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | The old client read `accessibility.needs_extra_reading_time` off the user and extended the clock from inside the timer. No such field on `platform-api`. The timer takes the duration it is given; when the field exists, whoever creates the attempt applies it. |
 | Photo upload | `foundation/ui/PhotoUpload.tsx` | Posted to the old backend's `/api/upload_photos/{id}`. The component takes an `upload` function now, and nothing supplies one yet. |
 
+## The station library
+
+Five things the retiring station screens did that `platform-api` has no answer
+for. The first is a decision rather than an omission and the rest are holes.
+
+| What | Where | Today |
+|---|---|---|
+| The candidate brief, patient information and management plan | `capabilities/stations/StationDetail.tsx` | `LibraryStationRead` carries no `content` **on purpose**: the library is browsable by every signed-in user, and the content is the brief, the examiner's context and the marking guidance — reading it before sitting the station is reading the answers. The attempt is frozen server-side and the worker fetches it by id, so the scenario never travels through the browser at all. The old client's "Reading time" and "Management" tabs (`user/ManagementScreen.tsx`, the four `*DoctorScreen`s) therefore have nothing to render and are not ported. `AttemptRunner` already takes a `brief` and shows it during the reading phase; the day a candidate-scoped brief read exists, that prop is where it lands. |
+| `GET /api/v1/stations/{station_id}` | `findLibraryStation` in `capabilities/stations/api.ts` | There is no per-station read for a learner — every one of them is an authoring route under `/orgs/{slug}/…` or `/platform/…`, gated on permissions a candidate does not have. A station opened by link is found by walking the browse list, bounded at twenty pages. It works and it is cheap, because a row is a title and two ids, but a shared link to a station beyond that is a "we could not find that station". |
+| Searching the library | `useStationLibrary.ts` | `browse_library` takes `exam_code`, `cursor` and `limit`. The search box filters what has been paged in, which is why "Load more" stays offered while a term is typed. A `q` on the endpoint would make it a real search. |
+| Flagging a station | not ported | The old detail screen had a flag button posting to `/api/flag_station`, which put a station in front of the content team. There is no equivalent, and no `flagged_stations` on `/me`. |
+| Attempts used, out of the exam's limit | not ported | The old header read `ALLOWED_STATION_ATTEMPTS` against `user.station_progress`. `ExamRead.station_attempt_limit` is the numerator's half; nothing serves how many of them a person has used on a given station, so the counter is left off rather than shown wrong. |
+| Live marking during a consultation | not ported | `live/LiveCoveragePanel.tsx` and `LiveCoverageFeed.tsx` subscribed to `/api/live-coverage-stream` and showed competencies as they were covered. `GET /api/v1/attempts/{id}/stream` pushes `AttemptRead` snapshots until the attempt is marked — the right stream, without the coverage frames. Adding a `coverage` event to it is what this needs; the feed is worth bringing back, because it is the one thing in the old runner people asked for by name. |
+
+## Shape disagreements — station comments
+
+`POST /api/v1/stations/{id}/comments` takes an `audience`, which is an
+organisation **id**. A capability is given `orgSlug` by the surface context and
+deliberately nothing richer, so `StationComments` takes the id as a prop the
+way `Discussion` does — the arm supplies it, as `domains/assess/OrgDiscussion`
+already shows. Mounted with no prop, as the shared `/stations` route mounts it
+today, a comment is public. An institution wanting its own thread is a
+four-line wrapper in `domains/assess`, not a change here.
+
+`PostRead` carries `author_id` and no display name, so a comment shows its date
+and its likes and not who wrote it. The old station comments showed a username.
+
 ## The one that blocks a whole screen
 
 **Consumer performance analytics.** The four exam dashboards draw three things

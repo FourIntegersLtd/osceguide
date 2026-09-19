@@ -1,3 +1,8 @@
-export { StationLibrary } from "@/capabilities/stations/StationLibrary";
+export { StationLibrary, type StationLibraryProps } from "@/capabilities/stations/StationLibrary";
+export { StationPicker, type StationPickerProps } from "@/capabilities/stations/StationPicker";
+export { StationDetail } from "@/capabilities/stations/StationDetail";
+export { StationConsultation } from "@/capabilities/stations/StationConsultation";
+export { StationComments } from "@/capabilities/stations/StationComments";
+export { libraryHref, practiseHref, stationHref } from "@/capabilities/stations/routes";
 export { stationsCapability } from "@/capabilities/stations/capability";
 export * from "@/capabilities/stations/api";
