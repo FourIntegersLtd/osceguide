@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SessionProvider } from "@/foundation/session";
+import { ToastHost } from "@/foundation/ui";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +20,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en-GB">
       <body>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          {/*
+            One toast stack for the whole app. At the root rather than per
+            shell because a toast outlives the screen that raised it: "results
+            released" has to survive the navigation that follows it.
+          */}
+          <ToastHost>{children}</ToastHost>
+        </SessionProvider>
       </body>
     </html>
   );

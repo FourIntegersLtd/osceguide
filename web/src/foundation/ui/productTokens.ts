@@ -13,9 +13,9 @@
  * as it does today.
  */
 /** * Shared Tailwind class strings for B2C app surfaces. * Primary CTAs: classic landing blue (`Button variant="primary"` / `b2cButtonPrimary`). * Links / accents: `b2c-primary`, `b2cLink`. * * See `.cursor/rules/b2c-design-language.mdc`. */
-import { getButtonClassName } from "@/foundation/ui/Button";
+import { getButtonClassName } from "@/foundation/ui/buttonStyles";
 import { getCardSurfaceClasses } from "@/foundation/ui/Card";
-import { getInputClassName } from "@/foundation/ui/Input";
+import { getInputClassName } from "@/foundation/ui/inputStyles";
 const b2cIconFocus =
   "focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1 rounded-md";
 export const b2cIconButton = `inline-flex h-11 w-11 shrink-0 sm:h-9 sm:w-9 items-center justify-center rounded-md border border-b2c-border bg-osce-surface text-b2c-text-secondary hover:bg-b2c-secondary disabled:pointer-events-none disabled:opacity-50 ${b2cIconFocus}`;
@@ -42,7 +42,7 @@ export const b2cAboutCard = b2cCardShell;
 export const b2cSectionIconChipBase =
   "inline-flex shrink-0 items-center justify-center rounded-md";
 
-/** @deprecated Use `B2CSectionIconBadge` from `@/components/shared/ui/B2CSectionIconBadge`. */
+/** @deprecated Use `B2CSectionIconBadge` from `@/foundation/ui/B2CSectionIconBadge`. */
 export const b2cAboutIconWell =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-osce-accent-muted text-osce-accent";
 export const SCA_ABOUT_MODAL_WIDTH = "600px";

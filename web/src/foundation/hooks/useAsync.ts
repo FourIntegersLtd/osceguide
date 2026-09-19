@@ -73,7 +73,14 @@ function asError(cause: unknown): Error {
 }
 
 /** The sentence to show a person for a failure. Never the raw exception. */
-export function errorMessage(error: Error | null): string {
+/**
+ * What to show a person when something failed.
+ *
+ * Takes `unknown` because that is what a `catch` binding is, and a helper
+ * whose whole purpose is handling failure should not make its callers narrow
+ * the type first.
+ */
+export function errorMessage(error: unknown): string {
   if (!error) return "";
   if (error instanceof PlatformTransportError) {
     return "We could not reach the server. Check your connection and try again.";

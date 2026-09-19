@@ -8,8 +8,8 @@
  * primary and B2B's accent. Same colours, opposite frequency. Merging them
  * would mean picking one arm's reading and quietly restyling the other.
  */
-import { getCardSurfaceClasses } from "@/foundation/ui";
-import { getInputClassName } from "@/foundation/ui";
+import { getCardSurfaceClasses } from "@/foundation/ui/Card";
+import { getInputClassName } from "@/foundation/ui/inputStyles";
 /** * Shared Tailwind class strings for B2B surfaces (Cursor-inspired tokens in tailwind `b2b-*`). * Primary CTAs: black (`B2BButton variant="commit"`). * Accent / links: blue (`b2b-accent`, `B2BButton variant="primary"`). * Note this is the inverse of B2C, where blue is the ordinary primary and black is reserved for the one committing action on a screen. * Here black is the default and blue the exception — 92 call sites to 8. * * Modals: use `@/b2b/components/ui/B2BModal` For B2B dialogs (`chrome="titlebar"` For confirms, `chrome="plain"` For * large custom bodies). Do not import the legacy B2C `Modal` Under `src/b2b`. * * Session data: for the common session + trainees + stations + staff bundle, see `b2bPrefetchSessionBundle` In * `@/b2b/lib/api/b2bSessionBundle`. */ const b2bIconFocus =
   "focus:outline-none focus:ring-2 focus:ring-b2b-headline/10 focus:ring-offset-1 rounded-md"; /** Apply on UI portaled to `document.body` So B2B design tokens resolve. */
 export const b2bPortalRoot = "b2b-app b2b-portal";

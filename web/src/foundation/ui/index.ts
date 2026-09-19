@@ -41,3 +41,67 @@ export type {
   ToastItem,
   ToastTone,
 } from "@/foundation/ui/toast";
+
+/* ------------------------------------------------------------------------
+ * The retiring client's own primitives, brought across with the screens that
+ * use them. They name the product palette in `osceTokens.css` directly, which
+ * is why a ported screen still looks exactly as it does today. New code should
+ * reach for the semantic primitives above.
+ * --------------------------------------------------------------------- */
+export { B2CEmptyState } from "@/foundation/ui/B2CEmptyState";
+export { B2CErrorState, B2CInlineError } from "@/foundation/ui/B2CErrorState";
+export { B2CFormField } from "@/foundation/ui/B2CFormField";
+export { B2CGroupedSection, B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
+export { B2CMonoEyebrow } from "@/foundation/ui/B2CMonoEyebrow";
+export { B2CPageHeader, type B2CPageHeaderProps } from "@/foundation/ui/B2CPageHeader";
+export {
+  B2CPanelCard,
+  B2CPanelCardHeaderIcon,
+  B2CPanelCardHeader,
+  B2CPanelCardBody,
+  B2CPanelCardFooter,
+} from "@/foundation/ui/B2CPanelCard";
+export {
+  B2CSectionIconBadge,
+  type B2CSectionIconTone,
+  type B2CSectionIconBadgeSize,
+} from "@/foundation/ui/B2CSectionIconBadge";
+export {
+  B2CSegmentedTabs,
+  type B2CSegmentedTabItem,
+  type B2CSegmentedTabsProps,
+} from "@/foundation/ui/B2CSegmentedTabs";
+export { B2CSkeleton } from "@/foundation/ui/B2CSkeleton";
+export { default as Back } from "@/foundation/ui/Back";
+export { default as Confetti } from "@/foundation/ui/Confetti";
+export { default as LoadingSpinner } from "@/foundation/ui/LoadingSpinner";
+export { default as MarkdownRenderer } from "@/foundation/ui/MarkdownRenderer";
+export { default as Pagination } from "@/foundation/ui/Pagination";
+export { default as PhotoUpload, type PhotoUploadResult } from "@/foundation/ui/PhotoUpload";
+export { default as StationCompletionProgressBar } from "@/foundation/ui/ProgressBar";
+export { default as Timer, FINAL_COUNTDOWN_SECONDS } from "@/foundation/ui/Timer";
+export { default as UnauthorizedAccess } from "@/foundation/ui/UnauthorizedAccess";
+export { default as DeepgramLogo } from "@/foundation/ui/DeepgramLogo";
+export { linkifyOptions } from "@/foundation/ui/Linkify";
+
+/* Toasts: the provider goes at the root, `useToast` anywhere below it. */
+export { B2CToastProvider as ToastHost } from "@/foundation/ui/B2CToastProvider";
+export { B2CToastViewport } from "@/foundation/ui/B2CToastViewport";
+export { B2CToastCard } from "@/foundation/ui/B2CToastCard";
+export * from "@/foundation/ui/AboutInfo";
+
+/* Modals. One overlay, one focus trap, one place Escape is handled. */
+export { default as Modal } from "@/foundation/ui/Modal";
+export { default as ConfirmModal, type ConfirmModalProps } from "@/foundation/ui/ConfirmModal";
+export { default as LeaveConfirmModal } from "@/foundation/ui/LeaveConfirmModal";
+export { default as CookiesConsentModal } from "@/foundation/ui/CookiesConsentModal";
+export {
+  default as DeleteConfirmationModal,
+  type DeleteConfirmationModalPropType,
+} from "@/foundation/ui/DeleteConfirmationModal";
+export * from "@/foundation/ui/ModalContent";
+export * from "@/foundation/ui/ModalSection";
+
+/* The product's class-name vocabularies, for ported screens. */
+export * as productTokens from "@/foundation/ui/productTokens";
+export * as b2bTokens from "@/foundation/ui/b2bTokens";
