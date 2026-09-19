@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Team" };
 export default async function TeamPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   return (
-    <RequireCapability permission="org.team.manage">
+    <RequireCapability permission="manage_team">
       <Team orgSlug={orgSlug} />
     </RequireCapability>
   );

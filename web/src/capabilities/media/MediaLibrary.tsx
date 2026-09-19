@@ -15,7 +15,7 @@ import {
 } from "@/capabilities/media/api";
 
 const KIND_ICON: Record<MediaKind, typeof LuPresentation> = {
-  slide: LuPresentation,
+  slide_deck: LuPresentation,
   summary: LuFileText,
   blog: LuNewspaper,
   podcast: LuHeadphones,

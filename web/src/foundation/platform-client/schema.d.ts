@@ -144,6 +144,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attempts/{attempt_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Attempt
+         * @description The attempt, pushed until it is marked.
+         *
+         *     Marking is a background job taking a minute or two of model time, so the
+         *     page has to learn it finished. This replaces b2c's feedback-status
+         *     stream, its poller and the second poller behind that.
+         */
+        get: operations["attempts_stream_attempt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attempts/{attempt_id}/transcript": {
         parameters: {
             query?: never;
@@ -354,6 +378,30 @@ export interface paths {
         put?: never;
         /** Switch Workspace */
         post: operations["tenancy_switch_workspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Checkout
+         * @description Begin paying for a plan.
+         *
+         *     The client names a plan code and never a price or an amount: b2c matched
+         *     the pence paid against a hardcoded table, so a price change broke
+         *     purchases after the card was charged.
+         */
+        post: operations["billing_start_checkout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -902,6 +950,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/practice-sessions/{session_id}/voice-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Voice Token
+         * @description A way into the room the pair were matched into.
+         *
+         *     `practice_sessions.room_name` has been written since the slice landed and
+         *     nothing could mint a token for it, so two people could be paired and then
+         *     had nowhere to meet.
+         */
+        post: operations["peer_practice_voice_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/receipts": {
         parameters: {
             query?: never;
@@ -938,6 +1010,30 @@ export interface paths {
          *     anybody holding it can read.
          */
         get: operations["billing_read_receipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/receipts/{receipt_id}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Receipt Document
+         * @description The receipt as something to print, keep or send to an accountant.
+         *
+         *     Served inline rather than as a download: a browser can print it to PDF,
+         *     and a `Content-Disposition: attachment` would stop somebody simply
+         *     looking at it.
+         */
+        get: operations["billing_read_receipt_document"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1137,6 +1233,34 @@ export interface paths {
         put?: never;
         /** Start Attempt */
         post: operations["station_sets_start_attempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Debrief
+         * @description Talk through an attempt you have already made.
+         *
+         *     Its own route rather than a flag on the one above, because it is a
+         *     different act with a different limit and a different refusal: a debrief is
+         *     *about* an earlier attempt, and `nothing_to_debrief` is what you get for
+         *     asking to discuss a station you have not sat.
+         *
+         *     `start_entry_attempt(debrief=True)` has been written and tested since the
+         *     slice landed, and nothing called it — the b2c debrief had no way in.
+         */
+        post: operations["station_sets_start_debrief"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4000,6 +4124,14 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /**
+         * CheckoutStarted
+         * @description Where to send the customer. Nothing is granted until the webhook.
+         */
+        CheckoutStarted: {
+            /** Checkout Url */
+            checkout_url: string;
+        };
         /** ChunkPost */
         ChunkPost: {
             /** Attempt Id */
@@ -4787,7 +4919,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "cannot_claim_own_post" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_webhook" | "invalid_workflow" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_editable" | "media_not_found" | "membership_exists" | "membership_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "peer_session_not_found" | "peer_session_not_open" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_webhook" | "invalid_workflow" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_editable" | "media_not_found" | "membership_exists" | "membership_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -6340,6 +6472,14 @@ export interface components {
             items?: components["schemas"]["SlotReviewRead"][];
             summary: components["schemas"]["SlotRagSummary"];
         };
+        /**
+         * StartCheckout
+         * @description Which plan to buy. A code, never a price: the plan row owns the price.
+         */
+        StartCheckout: {
+            /** Plan Code */
+            plan_code: string;
+        };
         /** StartSession */
         StartSession: {
             /** Extras */
@@ -7134,6 +7274,22 @@ export interface components {
         };
         /**
          * RoomGrant
+         * @description What a browser needs to join a peer session's room.
+         *
+         *     This slice's own shape rather than `voice`'s or `sittings`', for the
+         *     reason those two do not share one either: a wire contract belongs to the
+         *     routes that serve it.
+         */
+        app__features__peer_practice__schemas__RoomGrant: {
+            /** Room */
+            room: string;
+            /** Server Url */
+            server_url: string;
+            /** Token */
+            token: string;
+        };
+        /**
+         * RoomGrant
          * @description What a browser needs to join a circuit's room, and nothing more.
          *
          *     A candidate taking their place before their station starts, or an examiner
@@ -7589,6 +7745,69 @@ export interface operations {
             };
         };
     };
+    attempts_stream_attempt: {
+        parameters: {
+            query?: {
+                /** @description A stream ticket from POST /auth/stream-ticket */
+                ticket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `AttemptRead` each time the state changes, and `ping` every 25 seconds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["AttemptRead"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_yours */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     attempts_read_transcript: {
         parameters: {
             query?: never;
@@ -7805,6 +8024,15 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description legacy_exchange_unavailable */
             503: {
                 headers: {
@@ -7854,6 +8082,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -7922,6 +8159,15 @@ export interface operations {
             };
             /** @description invalid_input */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8124,6 +8370,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_start_checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartCheckout"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutStarted"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description plan_not_available */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description checkout_failed */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -9545,6 +9851,73 @@ export interface operations {
             };
         };
     };
+    peer_practice_voice_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__features__peer_practice__schemas__RoomGrant"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description practice_session_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description practice_session_ended */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description voice_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     billing_list_my_receipts: {
         parameters: {
             query?: never;
@@ -9610,6 +9983,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_read_receipt_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receipt, as HTML. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description receipt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10111,6 +10533,74 @@ export interface operations {
                 };
             };
             /** @description attempt_limit_reached, set_locked */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    station_sets_start_debrief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                set_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartedAttempt"];
+                };
+            };
+            /** @description unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_entitled */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description set_not_found, set_entry_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_limit_reached, nothing_to_debrief */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13849,6 +14339,15 @@ export interface operations {
             };
             /** @description forbidden, organization_suspended */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description trainee_not_found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

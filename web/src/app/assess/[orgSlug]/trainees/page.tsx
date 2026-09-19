@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Trainees" };
 export default async function TraineesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   return (
-    <RequireCapability permission="org.trainees.read">
+    <RequireCapability permission="read_org">
       <Trainees orgSlug={orgSlug} />
     </RequireCapability>
   );

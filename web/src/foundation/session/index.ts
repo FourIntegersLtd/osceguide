@@ -1,5 +1,6 @@
 export { SessionProvider, useSession } from "@/foundation/session/SessionProvider";
 export { RequireSession, RequireCapability } from "@/foundation/session/guards";
+export { PERMISSIONS, type Permission } from "@/foundation/session/permissions";
 export {
   can,
   isPlatformAdmin,

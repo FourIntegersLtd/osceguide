@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3100",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3100",
     "lint": "eslint .",
     "types": "tsc --noEmit",
     "test": "node --import ./scripts/register-test-loader.mjs --test \"src/**/*.test.ts\"",
-    "platform:types": "openapi-typescript ../backend/platform-api/openapi.json -o src/foundation/platform-client/schema.d.ts",
+    "platform:types": "openapi-typescript ../backend-tutor-memory/platform-api/openapi.json -o src/foundation/platform-client/schema.d.ts",
     "ci": "npm run types && npm run lint && npm test"
   },
   "dependencies": {

@@ -20,10 +20,10 @@ export function AssessShell({ orgSlug, children }: { orgSlug: string; children: 
     { key: "sittings", label: "Sittings", href: `/assess/${orgSlug}/sittings`, icon: LuCalendarDays },
   ];
 
-  if (can(session, "org.trainees.read")) {
+  if (can(session, "read_org")) {
     nav.push({ key: "trainees", label: "Trainees", href: `/assess/${orgSlug}/trainees`, icon: LuUsers });
   }
-  if (can(session, "org.team.manage")) {
+  if (can(session, "manage_team")) {
     nav.push({ key: "team", label: "Team", href: `/assess/${orgSlug}/team`, icon: LuUserCog });
   }
 

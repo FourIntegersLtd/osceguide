@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Spinner } from "@/foundation/ui";
 import { useSession } from "@/foundation/session/SessionProvider";
 import { can } from "@/foundation/session/types";
+import type { Permission } from "@/foundation/session/permissions";
 
 function Resolving() {
   return (
@@ -45,7 +46,7 @@ export function RequireCapability({
   children,
   fallback,
 }: {
-  permission: string;
+  permission: Permission;
   children: ReactNode;
   fallback?: ReactNode;
 }) {

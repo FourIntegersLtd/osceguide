@@ -46,7 +46,7 @@ export function MediaItemView({ slug }: { slug: string }) {
 
 /** One switch on `kind`, so adding a fifth kind is one case rather than a new screen. */
 function MediaBody({ item }: { item: MediaItem }) {
-  if (item.kind === "slide") return <Deck item={item} />;
+  if (item.kind === "slide_deck") return <Deck item={item} />;
   if (item.kind === "podcast") return <Episode item={item} />;
   return <Prose item={item} />;
 }

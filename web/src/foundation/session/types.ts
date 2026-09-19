@@ -1,4 +1,5 @@
 import type { components } from "@/foundation/platform-client";
+import type { Permission } from "@/foundation/session/permissions";
 
 export type PlatformUser = components["schemas"]["UserRead"];
 export type PlatformMembership =
@@ -32,7 +33,7 @@ export interface SessionState {
 }
 
 /** Whether the backend grants this permission in the active workspace. */
-export function can(session: Session | null, permission: string): boolean {
+export function can(session: Session | null, permission: Permission): boolean {
   return session?.capabilities.can[permission] === true;
 }
 

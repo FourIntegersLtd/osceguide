@@ -10,11 +10,12 @@ export type MediaPage = components["schemas"]["Page_MediaRead_"];
  * — four kinds across four exams — with the same publish-and-read logic copied
  * into each. That is why this is a list and not four modules.
  */
-export const MEDIA_KINDS = ["slide", "summary", "blog", "podcast"] as const;
+// The backend's spelling (`media/domain.py`), not a display name.
+export const MEDIA_KINDS = ["slide_deck", "summary", "blog", "podcast"] as const;
 export type MediaKind = (typeof MEDIA_KINDS)[number];
 
 export const MEDIA_KIND_LABELS: Record<MediaKind, { one: string; many: string }> = {
-  slide: { one: "Slide deck", many: "Slide decks" },
+  slide_deck: { one: "Slide deck", many: "Slide decks" },
   summary: { one: "Summary", many: "Summaries" },
   blog: { one: "Article", many: "Articles" },
   podcast: { one: "Episode", many: "Episodes" },

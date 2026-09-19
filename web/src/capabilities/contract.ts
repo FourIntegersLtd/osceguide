@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { Permission } from "@/foundation/session";
 import type { Surface } from "@/capabilities/surface";
 
 /**
@@ -32,7 +33,7 @@ export interface CapabilityModule {
    * like this, and entitlement is enforced per item by the API rather than by
    * hiding the section.
    */
-  permission: string | null;
+  permission: Permission | null;
   /** Path under the surface's base, e.g. `/help`. */
   path: string;
   /** Rendered by the route file that mounts it. */
