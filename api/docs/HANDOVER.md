@@ -118,7 +118,11 @@ rendered prompt, stream turns, deliver a transcript, and read a scored result.
 A supervisor can create a sitting, build a circuit, start it, dispatch an agent,
 switch turns, end a consultation, append latecomers and end the circuit.
 
-## What is missing, in the order I would do it
+## What is missing
+
+> The platform console gap listed below closed on 2026-09-19: see
+> `docs/SUPPORT-RUNBOOK.md` and ADR 0020 for what support can now see and do.
+, in the order I would do it
 
 1. **The rest of the streaming.** The console and the trainee portal are pushed
    (ADR 0015); b2c's other four SSE endpoints — the practice queue, human-practice

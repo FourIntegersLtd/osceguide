@@ -335,6 +335,7 @@ wording of the rubric that produced it.
 | `system_prompt` | `text not null` | the marking instructions; was a `.txt` file in the engine |
 | `pacing` | `jsonb not null` | the consultation clock: four marks in seconds |
 | `result_schema_override` | `jsonb null` | escape hatch for a shape the derivation cannot express; normally null |
+| `marking_layout` | `jsonb null` | examiner / structured human review UI (`StationStructure`); required on publish for platform catalogue rubrics |
 | `status` | `varchar(32) not null default 'draft'` | `draft` → `published` → `archived` |
 | `published_at/by` | `timestamptz null`, `uuid null` → `users.id` SET NULL | |
 | `archived_at/by` | `timestamptz null`, `uuid null` → `users.id` SET NULL | |
@@ -708,7 +709,7 @@ A scheduled event an organisation holds.
 | `mode` | `varchar(16) not null default 'training'` | `training` \| `exam` — the B2B exam arm |
 | `sitting_type` | `varchar(32) not null default 'group_training'` | |
 | `status` | `varchar(32) not null default 'scheduled'` | `scheduled` → `in_progress` when a circuit starts → `completed` when every circuit on it has ended (D-7). A circuit that was never started holds it open; ending that circuit outright is what closes the sitting |
-| `feedback_template_version_id` | `uuid **not null**` → `feedback_template_versions.id` RESTRICT | b2b refuses to create a session without a published feedback template bound, and the column says so rather than a service check |
+| `rubric_version_id` | `uuid **not null**` → `rubric_versions.id` RESTRICT | resolved from the sitting's `programme_id` at create time: the programme's exam must name a published rubric version. Replaces the former `feedback_template_version_id` binding |
 
 ### `circuits`
 | Field | Type | Notes |
