@@ -6094,6 +6094,33 @@
         "title": "Page[PlatformEntitlementRead]",
         "type": "object"
       },
+      "Page_PlatformPaymentRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformPaymentRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[PlatformPaymentRead]",
+        "type": "object"
+      },
       "Page_PracticeSessionRead_": {
         "properties": {
           "items": {
@@ -6308,6 +6335,33 @@
           "items"
         ],
         "title": "Page[StationTemplateRead]",
+        "type": "object"
+      },
+      "Page_StripeEventRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StripeEventRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[StripeEventRead]",
         "type": "object"
       },
       "Page_TrackingReference_": {
@@ -7263,6 +7317,152 @@
           "users"
         ],
         "title": "PlatformOverview",
+        "type": "object"
+      },
+      "PlatformPaymentRead": {
+        "description": "A payment as the console reads it: raw amounts, both references, what it bought.",
+        "properties": {
+          "amount_tax_pence": {
+            "title": "Amount Tax Pence",
+            "type": "integer"
+          },
+          "amount_total_pence": {
+            "title": "Amount Total Pence",
+            "type": "integer"
+          },
+          "checkout_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkout Session Id"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Email"
+          },
+          "entitlement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitlement Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "format": "date-time",
+            "title": "Paid At",
+            "type": "string"
+          },
+          "plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Code"
+          },
+          "plan_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Ends At"
+          },
+          "plan_starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Starts At"
+          },
+          "receipt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Id"
+          },
+          "receipt_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Url"
+          },
+          "stripe_payment_intent_id": {
+            "title": "Stripe Payment Intent Id",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "receipt_id",
+          "stripe_payment_intent_id",
+          "checkout_session_id",
+          "amount_total_pence",
+          "amount_tax_pence",
+          "currency",
+          "paid_at",
+          "plan_code",
+          "plan_starts_at",
+          "plan_ends_at",
+          "entitlement_id",
+          "receipt_url",
+          "customer_email"
+        ],
+        "title": "PlatformPaymentRead",
         "type": "object"
       },
       "PlatformUserDetail": {
@@ -9798,6 +9998,92 @@
           "expires_in"
         ],
         "title": "StreamTicket",
+        "type": "object"
+      },
+      "StripeEventRead": {
+        "description": "One webhook delivery from the ledger, with the fields support reads\nout of the payload rather than the whole document.",
+        "properties": {
+          "customer_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Email"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "payment_intent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Intent Id"
+          },
+          "price_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Id"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "event_type",
+          "received_at",
+          "processed_at",
+          "failure",
+          "customer_email",
+          "price_id",
+          "payment_intent_id"
+        ],
+        "title": "StripeEventRead",
         "type": "object"
       },
       "SubmitSlotReview": {
@@ -27033,6 +27319,100 @@
         ]
       }
     },
+    "/api/v1/platform/billing/events": {
+      "get": {
+        "description": "The webhook ledger, newest first. With `failed_only`, the reconcile queue.",
+        "operationId": "billing_list_billing_events",
+        "parameters": [
+          {
+            "description": "Only deliveries recorded but never applied",
+            "in": "query",
+            "name": "failed_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only deliveries recorded but never applied",
+              "title": "Failed Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_StripeEventRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Billing Events",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/platform/exams": {
       "post": {
         "description": "A new platform exam, as a draft \u2014 the consumer catalogue.\n\nThe table starts empty and stays that way until somebody writes one. There\nis no seed: four exams used to be inserted by a migration and mirrored by a\ntuple in this slice, and a fifth needed both changed and shipped.",
@@ -31616,6 +31996,81 @@
         ]
       }
     },
+    "/api/v1/platform/users/{user_id}/billing-events": {
+      "get": {
+        "description": "Every webhook delivery that named this person's address, applied or\nrefused. A refused one with a `failure` is the \"paid but no access\" case.",
+        "operationId": "billing_list_user_billing_events_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_StripeEventRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List User Billing Events For Support",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/platform/users/{user_id}/entitlements": {
       "get": {
         "description": "Every grant this person has held \u2014 purchase, institution, trial, admin \u2014\nwith `live` computed now and revoked ones kept, because \"your access ended\non the 3rd\" is the answer support is usually looking for.",
@@ -31688,6 +32143,81 @@
         "summary": "List User Entitlements For Support",
         "tags": [
           "entitlements"
+        ]
+      }
+    },
+    "/api/v1/platform/users/{user_id}/payments": {
+      "get": {
+        "description": "This person's payments, newest first, with what each one bought.",
+        "operationId": "billing_list_user_payments_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PlatformPaymentRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List User Payments For Support",
+        "tags": [
+          "billing"
         ]
       }
     },
