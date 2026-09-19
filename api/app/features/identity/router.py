@@ -52,6 +52,7 @@ async def register(
         password=body.password,
         settings=settings,
         now=clock.now(),
+        exam_code=body.exam_code,
     )
 
 

@@ -39,6 +39,18 @@ class AttemptMismatch(Conflict):
     default_message = "That payload belongs to a different attempt"
 
 
+class AttemptNotFinished(Conflict):
+    """The review was asked for while the consultation was still to come.
+
+    A separate code from `invalid_attempt_state` because the client acts on it:
+    the review tab is offered as soon as the station is open and must say "not
+    yet" rather than "something went wrong".
+    """
+
+    code = "attempt_not_finished"
+    default_message = "This attempt has not finished, so there is nothing to review yet"
+
+
 class AttemptNotYours(Forbidden):
     code = "attempt_not_yours"
     default_message = "That attempt belongs to someone else"

@@ -169,9 +169,9 @@ async def test_an_unknown_address_queues_nothing(client: AsyncClient, db_session
     assert queued == []
 
 
-
 async def test_a_person_may_set_their_exam_date_and_reading_arrangement(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     """Two fields the ported screens needed and had nowhere to read."""
     token = await make_actor("amara@example.com")
@@ -197,11 +197,68 @@ async def test_a_person_may_set_their_exam_date_and_reading_arrangement(
 
 
 async def test_an_impossible_reading_arrangement_is_refused(
-    client: AsyncClient, make_actor  # type: ignore[no-untyped-def]
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
     token = await make_actor("amara@example.com")
     for bad in (-10, 500):
-        refused = await client.patch(
-            "/api/v1/me", json={"extra_reading_percent": bad}, headers=bearer(token)
-        )
+        refused = await client.patch("/api/v1/me", json={"extra_reading_percent": bad}, headers=bearer(token))
         assert refused.status_code == 422, refused.text
+
+
+async def test_registering_records_the_exam_the_account_is_for(client: AsyncClient) -> None:
+    """The per-exam landing pages carry it into the form.
+
+    This is what replaces the retiring client's per-exam subdomains: on one
+    domain there is nothing in the request to say which exam somebody came to
+    sit, and a trial account holds no entitlement to infer it from.
+    """
+    response = await register(client, exam_code="plab")
+
+    assert response.status_code == 201
+    assert response.json()["user"]["exam_code"] == "plab"
+
+
+async def test_registering_without_an_exam_is_allowed(client: AsyncClient) -> None:
+    """An institution's member gets their exams from the organisation."""
+    response = await register(client)
+
+    assert response.status_code == 201
+    assert response.json()["user"]["exam_code"] is None
+
+
+async def test_an_unknown_exam_at_sign_up_is_not_a_refusal(client: AsyncClient) -> None:
+    """Stored as given: this slice sits below `catalog` and may not resolve one.
+
+    It grants nothing either — `GET /me/dashboard` filters it through the
+    published catalogue, so a code naming no exam yields no current exam rather
+    than a dead option. Tested here so the layering is a decision rather than
+    an oversight.
+    """
+    response = await register(client, exam_code="mrcp")
+
+    assert response.status_code == 201
+    assert response.json()["user"]["exam_code"] == "mrcp"
+
+
+async def test_a_person_may_change_the_exam_their_account_is_for(client: AsyncClient) -> None:
+    created = await register(client, exam_code="sca")
+    token = created.json()["access_token"]
+
+    response = await client.patch("/api/v1/me", json={"exam_code": "casc"}, headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.json()["exam_code"] == "casc"
+
+
+async def test_changing_one_field_leaves_the_exam_alone(client: AsyncClient) -> None:
+    """`model_fields_set`, not the whole body: a screen that edits a name must
+    not silently clear which exam somebody is sitting."""
+    created = await register(client, exam_code="sca")
+    token = created.json()["access_token"]
+
+    response = await client.patch("/api/v1/me", json={"name": "Renamed"}, headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Renamed"
+    assert response.json()["exam_code"] == "sca"

@@ -16,7 +16,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import errors, repository
+from app.features.attempts import errors, repository, repository_slots
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
@@ -130,7 +130,8 @@ async def recent_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: i
     used to read this slice's results table directly to find out.
     """
     rows, _ = await repository.list_for_user(session, user_id, limit=limit)
-    return [_ref(row, has_result=bool(await transcripts.results_for(session, row.id))) for row in rows]
+    marked = await transcripts.attempt_ids_with_results(session, [row.id for row in rows])
+    return [_ref(row, has_result=row.id in marked) for row in rows]
 
 
 async def evaluated_for_user(
@@ -174,7 +175,7 @@ async def live_attempts_for_slots(
     issued per attempt, the attempt is created by the supervisor's dispatch,
     and until this the portal never told the candidate which one was theirs.
     """
-    rows = await repository.live_attempts_for_slots(session, list(slot_ids))
+    rows = await repository_slots.live_attempts_for_slots(session, list(slot_ids))
     return {row.slot_id: _ref(row) for row in rows if row.slot_id is not None}
 
 
@@ -185,7 +186,7 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
     recording and a marking, and deleting the slot under one would either take
     it with it or fail on the foreign key at the end of the request.
     """
-    return await repository.slots_with_attempts(session, list(slot_ids))
+    return await repository_slots.slots_with_attempts(session, list(slot_ids))
 
 
 async def count_consultations(session: AsyncSession) -> int:

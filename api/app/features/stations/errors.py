@@ -79,3 +79,11 @@ class StationTemplateNotFound(NotFound):
 class StationTemplateVersionNotFound(NotFound):
     code = "station_template_version_not_found"
     default_message = "No such station template version"
+
+
+# Re-exported, not redefined: browsing another exam's library is refused with
+# the same code starting an attempt in it is, and two classes with one code
+# would drift.
+from app.features.entitlements.errors import NotEntitled  # noqa: E402
+
+__all__ = ["NotEntitled"]

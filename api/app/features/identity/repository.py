@@ -29,6 +29,7 @@ async def create_user(
     password_hash: str | None,
     is_platform_admin: bool = False,
     must_change_password: bool = False,
+    exam_code: str | None = None,
 ) -> User:
     user = User(
         email=normalize_email(email),
@@ -36,6 +37,7 @@ async def create_user(
         password_hash=password_hash,
         is_platform_admin=is_platform_admin,
         must_change_password=must_change_password,
+        exam_code=exam_code,
     )
     session.add(user)
     # Flushed and refreshed here so the caller gets the generated id and the
@@ -205,6 +207,7 @@ async def update_profile(
     exam_date: date | None,
     extra_reading_percent: int | None,
     clear_exam_date: bool,
+    exam_code: str | None = None,
 ) -> User | None:
     """Write only what was sent.
 
@@ -219,6 +222,8 @@ async def update_profile(
         user.name = name
     if extra_reading_percent is not None:
         user.extra_reading_percent = extra_reading_percent
+    if exam_code is not None:
+        user.exam_code = exam_code
     if clear_exam_date:
         user.exam_date = None
     elif exam_date is not None:

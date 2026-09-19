@@ -51,3 +51,11 @@ class UnknownExamError(NotFound):
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+# Re-exported, not redefined: offering or claiming a slot runs the same
+# entitlement check starting an attempt does, and two classes with one code
+# would drift.
+from app.features.entitlements.errors import NotEntitled  # noqa: E402
+
+__all__ = ["NotEntitled"]

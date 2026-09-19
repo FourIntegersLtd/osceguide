@@ -69,6 +69,17 @@ the same transaction as the row they concern. `service_invitations.invite_user`
 is what `tenancy` and `roster` call for an address with no account: the token it
 mails is an ordinary reset token, so `password-reset/confirm` finishes the job.
 
+## The exam an account is for
+`users.exam_code` is set at sign-up and changed on `PATCH /me`. The retiring
+client took it from the hostname — `sca.osceguide.com` — so a person only ever
+saw one exam and the product had no switcher at all; on one domain it has to be
+recorded.
+
+A code rather than a foreign key, and unvalidated here, because this slice sits
+below `catalog` and may not resolve one. It grants nothing: what somebody may
+open is `entitlements`' answer, and `entitlements.service_access` filters this
+through the published catalogue, so a code naming no exam yields nothing.
+
 ## Cross-slice dependencies
 None. `tenancy` reads users through this slice's service; this slice never reads
 `tenancy`. Memberships reach the token because the login service asks `tenancy` for

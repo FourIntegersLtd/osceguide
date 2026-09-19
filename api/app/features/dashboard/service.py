@@ -21,6 +21,7 @@ from app.features.dashboard.schemas import (
     SetSummary,
 )
 from app.features.entitlements import service as entitlements
+from app.features.entitlements import service_access as entitlement_access
 from app.features.station_sets import service as station_sets
 
 RECENT_LIMIT = 10
@@ -61,8 +62,16 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
             last_attempt_at=max(filter(None, [current.last_attempt_at, attempt.created_at]), default=None),
         )
 
+    # Which exams this person may open. The rule is `entitlements`' own, and
+    # three screens ask it — this one, the station library and the study
+    # library — so it is asked through that slice's service rather than
+    # rebuilt here.
+    access = await entitlement_access.exam_access_for(session, user_id, now=now)
+
     return Dashboard(
         user_id=user_id,
+        exam_codes=list(access.codes),
+        current_exam_code=access.current,
         entitlements=[
             EntitlementSummary(exam_code=g.exam_code, source=g.source, ends_at=g.ends_at, live=g.live)
             for g in grants

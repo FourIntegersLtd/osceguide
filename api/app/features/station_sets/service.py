@@ -30,8 +30,17 @@ async def create_set(
     name: str,
     exam_code: str,
     station_version_ids: list[uuid.UUID],
+    now: datetime,
 ) -> SetRead:
+    """Build a practice session out of stations.
+
+    Gated on the same entitlement the attempt is. Without it somebody could
+    build a whole session for an exam they do not hold and only be refused at
+    the first station — a dead end the client walks them into rather than a
+    refusal it can explain.
+    """
     exam = await resolve_exam(session, exam_code)
+    await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
     row = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
     entries = await repository.add_entries(session, row.id, station_version_ids=station_version_ids)
     return _set_read(row, exam.code, entries)

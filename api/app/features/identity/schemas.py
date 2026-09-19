@@ -37,6 +37,11 @@ class UserRead(BaseModel):
     # screen that needs them already reads it.
     exam_date: date | None = None
     extra_reading_percent: int = 0
+    # Which exam this account is for, chosen at sign-up. A preference, not a
+    # grant: what somebody may open is decided by their entitlements, and this
+    # is not resolved against the catalogue here because `identity` sits below
+    # it. `GET /me/dashboard` is what turns it into an exam somebody can use.
+    exam_code: str | None = None
 
 
 class UpdateMe(BaseModel):
@@ -45,6 +50,7 @@ class UpdateMe(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     exam_date: date | None = None
     extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
+    exam_code: str | None = Field(default=None, min_length=1, max_length=32)
 
 
 class TokenPair(BaseModel):
@@ -73,6 +79,11 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=512)
+    # Which exam they came to sit. The per-exam landing pages carry it into the
+    # form, which is how the retiring client's per-exam subdomains are replaced
+    # on one domain. Optional, because an institution's member registers
+    # without one and gets their exams from the organisation.
+    exam_code: str | None = Field(default=None, min_length=1, max_length=32)
 
 
 class LoginRequest(BaseModel):

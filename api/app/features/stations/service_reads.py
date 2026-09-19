@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import service as catalog
+from app.features.entitlements import service_access
 from app.features.stations import repository
 from app.features.stations.schemas import LibraryStationRead
 
@@ -69,17 +70,37 @@ async def browse_library(
     exam_code: str | None,
     limit: int,
     cursor: dict[str, Any] | None,
+    user_id: uuid.UUID | None = None,
+    now: datetime | None = None,
+    all_exams: bool = False,
 ) -> tuple[list[LibraryStationRead], str | None]:
-    """The published platform library, for anybody signed in.
+    """The published platform library, scoped to the exams the caller may open.
 
     The `owner_kind = 'platform'` half of the table had no reader at all: a
     consumer could build a practice set only out of station version ids they
     had no way to discover. An unpublished station is not in the library, and
     neither is any organisation's own — those are behind the org routes.
+
+    It answered with every exam's stations at once, which is what put an "all
+    exams" filter on a screen in a product where somebody holds one exam. A
+    named `exam_code` must be one the caller may open; without one they get
+    theirs. `all_exams` is the staff console, which curates the whole
+    catalogue and passes it explicitly rather than by omission.
     """
     exam_id = None
     if exam_code is not None:
+        if user_id is not None and now is not None and not all_exams:
+            await service_access.require_exam_access(session, user_id, exam_code=exam_code, now=now)
         exam_id = (await catalog.resolve_exam(session, exam_code)).id
+    elif user_id is not None and now is not None and not all_exams:
+        # No exam named: theirs, rather than everybody's.
+        access = await service_access.exam_access_for(session, user_id, now=now)
+        if access.current is None:
+            # Nothing they may open, so nothing to browse. An empty page rather
+            # than a refusal: a brand-new account with no exam chosen is not an
+            # error, it just has no library yet.
+            return [], None
+        exam_id = (await catalog.resolve_exam(session, access.current)).id
 
     rows, next_cursor = await repository.list_platform_library(
         session, limit=limit, cursor=cursor, exam_id=exam_id
@@ -106,6 +127,40 @@ async def browse_library(
             )
         )
     return out, next_cursor
+
+
+@dataclass(frozen=True)
+class VersionMaterial:
+    """One station version's document, for a caller that already holds the id.
+
+    Deliberately *not* lifecycle-checked the way `runnable_station` is. That
+    one answers "may this be run now", and archiving a station must not make a
+    consultation somebody already sat unreadable: a candidate reads back the
+    station as it was, and the version they sat is frozen on their attempt.
+    """
+
+    version_id: uuid.UUID
+    station_id: uuid.UUID
+    title: str
+    exam_id: uuid.UUID
+    content: dict[str, Any]
+
+
+async def version_material(
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
+) -> VersionMaterial | None:
+    """The document behind a station version, scoped to who may see it."""
+    found = await repository.version_for_attempt(session, org_id, version_id)
+    if found is None:
+        return None
+    version, station = found
+    return VersionMaterial(
+        version_id=version.id,
+        station_id=station.id,
+        title=station.title,
+        exam_id=station.exam_id,
+        content=dict(version.content or {}),
+    )
 
 
 # What a doctor is shown *after* a consultation, and nothing else. The rest of

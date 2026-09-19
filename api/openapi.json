@@ -278,6 +278,189 @@
         "title": "AssistantTranscriptPost",
         "type": "object"
       },
+      "AttemptBriefRead": {
+        "description": "The reading-time screen, keyed on the attempt rather than the station.\n\nOn the attempt because that is what the entitlement check has already been\nmade against: `LibraryStationRead` deliberately carries no content, since\nthe library is browsable by everyone and the brief is part of the exam.\nOnce somebody has started a station, the brief is theirs to read.",
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "doctor_information": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DoctorInformationRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/PatientIdentityRead"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateScenarioRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "set_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Entry Id"
+          },
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          },
+          "station_title": {
+            "title": "Station Title",
+            "type": "string"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "kind",
+          "status",
+          "exam_code",
+          "station_id",
+          "station_version_id",
+          "station_title",
+          "patient"
+        ],
+        "title": "AttemptBriefRead",
+        "type": "object"
+      },
+      "AttemptHistoryItem": {
+        "description": "One row of \"what have I sat\", with its station named.\n\n`has_result` rather than a status the client has to interpret: \"is there\nfeedback to open\" is the only question every screen listing these asks.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "has_result": {
+            "default": false,
+            "title": "Has Result",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "set_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Entry Id"
+          },
+          "station_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Id"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          },
+          "station_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Version Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "exam_code",
+          "created_at"
+        ],
+        "title": "AttemptHistoryItem",
+        "type": "object"
+      },
       "AttemptRead": {
         "properties": {
           "completed_at": {
@@ -363,6 +546,105 @@
           "created_at"
         ],
         "title": "AttemptRead",
+        "type": "object"
+      },
+      "AttemptReviewRead": {
+        "description": "The management step: what the candidate should have covered.",
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "management_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManagementPlanRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "patient_information": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PatientReviewRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateScenarioRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "set_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Entry Id"
+          },
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          },
+          "station_title": {
+            "title": "Station Title",
+            "type": "string"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "teaching": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StationTeachingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "attempt_id",
+          "kind",
+          "status",
+          "exam_code",
+          "station_id",
+          "station_version_id",
+          "station_title"
+        ],
+        "title": "AttemptReviewRead",
         "type": "object"
       },
       "AudienceIn": {
@@ -666,6 +948,94 @@
           "decision"
         ],
         "title": "CandidateReport",
+        "type": "object"
+      },
+      "CandidateScenarioRead": {
+        "additionalProperties": true,
+        "description": "Candidate-facing keys that sit flat on the document rather than in a block.\n\nOrtho's stations are shaped this way: an interview or a trauma list rather\nthan a consultation, so the brief is a scenario and a set of images.",
+        "properties": {
+          "additional_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Additional Image Urls",
+            "type": "array"
+          },
+          "background_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Overview"
+          },
+          "clinical_scenario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinical Scenario"
+          },
+          "clinical_scenario_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinical Scenario Title"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "patient_list_for_candidate": {
+            "items": {
+              "$ref": "#/components/schemas/PrioritisationPatientRead"
+            },
+            "title": "Patient List For Candidate",
+            "type": "array"
+          },
+          "radiograph_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radiograph Image Url"
+          },
+          "station_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Type"
+          }
+        },
+        "title": "CandidateScenarioRead",
         "type": "object"
       },
       "Capabilities": {
@@ -2402,11 +2772,29 @@
       "Dashboard": {
         "description": "Replaces seven calls on the SCA dashboard alone.\n\nThe legacy screen fans out to four RAG endpoints, a weekly trend and two\nmarketplace lists, then joins them in the browser.",
         "properties": {
+          "current_exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Exam Code"
+          },
           "entitlements": {
             "items": {
               "$ref": "#/components/schemas/EntitlementSummary"
             },
             "title": "Entitlements",
+            "type": "array"
+          },
+          "exam_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exam Codes",
             "type": "array"
           },
           "progress": {
@@ -2668,6 +3056,107 @@
           "stale_agents_removed"
         ],
         "title": "DispatchResult",
+        "type": "object"
+      },
+      "DoctorInformationRead": {
+        "additionalProperties": true,
+        "description": "The candidate's brief: what the doctor has in front of them.",
+        "properties": {
+          "current_medications": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Current Medications",
+            "type": "array"
+          },
+          "doctor_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Identity"
+          },
+          "doctor_task": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Task"
+          },
+          "past_medical_history": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Past Medical History",
+            "type": "array"
+          },
+          "patient_biodata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Biodata"
+          },
+          "patient_information": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Patient Information",
+            "type": "array"
+          },
+          "photos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "recent_investigations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recent Investigations",
+            "type": "array"
+          },
+          "recent_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recent Notes",
+            "type": "array"
+          },
+          "social_history": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Social History",
+            "type": "array"
+          },
+          "task_instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Instructions"
+          }
+        },
+        "title": "DoctorInformationRead",
         "type": "object"
       },
       "DomainScore": {
@@ -2951,6 +3440,7 @@
               "assistant_tools_not_available",
               "attempt_limit_reached",
               "attempt_mismatch",
+              "attempt_not_finished",
               "attempt_not_found",
               "attempt_not_joinable",
               "attempt_not_ready",
@@ -3743,6 +4233,35 @@
         "title": "Interventions",
         "type": "object"
       },
+      "InterviewQuestionRead": {
+        "additionalProperties": true,
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          }
+        },
+        "title": "InterviewQuestionRead",
+        "type": "object"
+      },
       "JoinQueue": {
         "properties": {
           "audience": {
@@ -4144,12 +4663,142 @@
         "title": "LogoutRequest",
         "type": "object"
       },
+      "ManagementPlanRead": {
+        "additionalProperties": true,
+        "description": "The model answer, readable once the consultation is over.",
+        "properties": {
+          "additional_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Notes"
+          },
+          "assessment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assessment",
+            "type": "array"
+          },
+          "differential_diagnosis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Differential Diagnosis",
+            "type": "array"
+          },
+          "examination_findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Examination Findings",
+            "type": "array"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "follow_up": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up"
+          },
+          "further_investigations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Further Investigations",
+            "type": "array"
+          },
+          "health_education": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Health Education",
+            "type": "array"
+          },
+          "ice": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ice",
+            "type": "array"
+          },
+          "immediate_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Immediate Actions",
+            "type": "array"
+          },
+          "non_pharmacological_treatment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Non Pharmacological Treatment",
+            "type": "array"
+          },
+          "pharmacological_treatment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pharmacological Treatment",
+            "type": "array"
+          },
+          "safety_netting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Netting"
+          },
+          "social_concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Social Concerns",
+            "type": "array"
+          }
+        },
+        "title": "ManagementPlanRead",
+        "type": "object"
+      },
       "MediaRead": {
+        "description": "One piece of study material.\n\n`content` is the body \u2014 the slide deck, the summary, the article \u2014 and it\nis the paid half. It is `None` for a reader who does not hold the exam it\nbelongs to, and `locked` says which of the two happened, so the client can\nshow the upgrade prompt the retiring app showed rather than an empty page.\n\nEverything else is deliberately public: the landing page's article rail and\na shared link both need a title and a summary without a token.",
         "properties": {
           "content": {
-            "additionalProperties": true,
-            "title": "Content",
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
           },
           "exam_code": {
             "anyOf": [
@@ -4170,6 +4819,11 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
           },
           "published_at": {
             "anyOf": [
@@ -4213,7 +4867,6 @@
           "slug",
           "title",
           "summary",
-          "content",
           "exam_code",
           "status",
           "published_at"
@@ -4921,6 +5574,33 @@
         "title": "Page[AssessmentResultRead]",
         "type": "object"
       },
+      "Page_AttemptHistoryItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[AttemptHistoryItem]",
+        "type": "object"
+      },
       "Page_AuditRead_": {
         "properties": {
           "items": {
@@ -5603,6 +6283,85 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PatientIdentityRead": {
+        "description": "Who the candidate is about to speak to, for the consultation header.",
+        "properties": {
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "name_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Line"
+          }
+        },
+        "title": "PatientIdentityRead",
+        "type": "object"
+      },
+      "PatientReviewRead": {
+        "description": "The patient's side, as a candidate may read it afterwards.\n\nNot a passthrough: `persona`, `opening_sentence`, `expanded_history` and\nthe hidden question list are how the patient is played, and they stay on\nthe server. What is here is what the old management screen showed \u2014 the\nbiodata line and the ideas, concerns and expectations the candidate was\nsupposed to draw out.",
+        "properties": {
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "expectation": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expectation",
+            "type": "array"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "idea": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Idea",
+            "type": "array"
+          },
+          "patient_biodata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Biodata"
+          }
+        },
+        "title": "PatientReviewRead",
+        "type": "object"
+      },
       "PeerSessionRead": {
         "properties": {
           "exam_code": {
@@ -5842,6 +6601,47 @@
           "ended_at"
         ],
         "title": "PracticeSessionRead",
+        "type": "object"
+      },
+      "PrioritisationPatientRead": {
+        "additionalProperties": true,
+        "description": "One patient on an Ortho prioritisation list.",
+        "properties": {
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          }
+        },
+        "title": "PrioritisationPatientRead",
         "type": "object"
       },
       "ProgrammeRead": {
@@ -6253,6 +7053,19 @@
             "format": "email",
             "title": "Email",
             "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
           },
           "name": {
             "maxLength": 200,
@@ -7825,6 +8638,159 @@
         "title": "StationReport",
         "type": "object"
       },
+      "StationTeachingRead": {
+        "additionalProperties": true,
+        "description": "Ortho's flat teaching keys: the debrief material for a non-consultation station.",
+        "properties": {
+          "breaking_bad_news_framework": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaking Bad News Framework"
+          },
+          "communication_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Communication Themes",
+            "type": "array"
+          },
+          "consent_approach": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Approach"
+          },
+          "examination_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Examination Overview"
+          },
+          "examiner_additional_info": {
+            "items": {
+              "$ref": "#/components/schemas/PrioritisationPatientRead"
+            },
+            "title": "Examiner Additional Info",
+            "type": "array"
+          },
+          "history_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Overview"
+          },
+          "interview_questions": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewQuestionRead"
+            },
+            "title": "Interview Questions",
+            "type": "array"
+          },
+          "investigations_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investigations Overview"
+          },
+          "key_concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Concerns",
+            "type": "array"
+          },
+          "key_learning_points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Learning Points",
+            "type": "array"
+          },
+          "management_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Management Overview"
+          },
+          "portfolio_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Portfolio Themes",
+            "type": "array"
+          },
+          "professional_conduct_topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Professional Conduct Topics",
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "type": "string"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "suggested_order": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Order"
+          },
+          "suggested_order_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Order Overview"
+          }
+        },
+        "title": "StationTeachingRead",
+        "type": "object"
+      },
       "StationTemplateRead": {
         "properties": {
           "exam_code": {
@@ -8781,6 +9747,19 @@
       "UpdateMe": {
         "description": "What a person may change about themselves. Absent means \"leave it\".",
         "properties": {
+          "exam_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
           "exam_date": {
             "anyOf": [
               {
@@ -8993,6 +9972,17 @@
           "email": {
             "title": "Email",
             "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
           },
           "exam_date": {
             "anyOf": [
@@ -10209,6 +11199,107 @@
         ]
       }
     },
+    "/api/v1/attempts/{attempt_id}/brief": {
+      "get": {
+        "description": "What the candidate reads before the patient is called.\n\nKeyed on the attempt, not the station: the library's own read carries no\ncontent on purpose, because browsing is open to everybody and the brief is\npart of the exam. Having started the station is what makes it readable.",
+        "operationId": "attempts_read_brief",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptBriefRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_ready",
+            "x-codes": [
+              "attempt_not_ready"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Brief",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
     "/api/v1/attempts/{attempt_id}/result": {
       "get": {
         "description": "A page rather than one result: re-scoring under a new policy adds beside\nthe old, so a candidate's history stays readable.",
@@ -10292,6 +11383,108 @@
           }
         ],
         "summary": "Read Results",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/review": {
+      "get": {
+        "description": "The model answer: the patient's ideas and concerns, and the plan.\n\nRefused until the consultation is over \u2014 before that it is the answer to\nthe station being sat.",
+        "operationId": "attempts_read_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_ready, attempt_not_finished",
+            "x-codes": [
+              "attempt_not_ready",
+              "attempt_not_finished"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Review",
         "tags": [
           "attempts"
         ]
@@ -12709,8 +13902,9 @@
                 }
               }
             },
-            "description": "audience_not_yours",
+            "description": "not_entitled, audience_not_yours",
             "x-codes": [
+              "not_entitled",
               "audience_not_yours"
             ]
           },
@@ -12883,6 +14077,19 @@
             "description": "unauthenticated",
             "x-codes": [
               "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
             ]
           },
           "404": {
@@ -13088,6 +14295,122 @@
         "summary": "Record Activity",
         "tags": [
           "tutor-memory"
+        ]
+      }
+    },
+    "/api/v1/me/attempts": {
+      "get": {
+        "description": "Everything this person has sat, newest first.\n\nThe two filters answer the two questions the screens ask: every attempt at\none station, and every attempt at one entry of a practice set.",
+        "operationId": "attempts_list_my_attempts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "station_version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Station Version Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "set_entry_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Set Entry Id"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AttemptHistoryItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Attempts",
+        "tags": [
+          "attempts"
         ]
       }
     },
@@ -14515,6 +15838,19 @@
               "unauthenticated"
             ]
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
+            ]
+          },
           "404": {
             "content": {
               "application/json": {
@@ -14583,6 +15919,19 @@
             "description": "unauthenticated",
             "x-codes": [
               "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
             ]
           },
           "404": {
@@ -15089,7 +16438,7 @@
     },
     "/api/v1/media": {
       "get": {
-        "description": "Published material, to anybody.\n\nNo token: a bearer was required here, so a signed-out visitor could not\nread the landing page's own article rail and a shared link to an article\nasked them to sign in first. Everything this returns is published, which is\nwhat published means.",
+        "description": "Published material: the titles to anybody, the bodies to subscribers.\n\nNo token required, because a signed-out visitor still needs the landing\npage's article rail and a shared link still needs to say what it points at.\nWhat a token changes is `content`: the slide decks and the A to Z are the\npaid half of the product and used to come back in full to anyone who asked,\nsigned in or not.",
         "operationId": "media_list_published",
         "parameters": [
           {
@@ -15177,6 +16526,11 @@
             ]
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List Published",
         "tags": [
           "media"
@@ -15272,6 +16626,7 @@
     },
     "/api/v1/media-search": {
       "get": {
+        "description": "Over the material this reader holds, not the whole library.",
         "operationId": "media_search",
         "parameters": [
           {
@@ -15522,7 +16877,7 @@
     },
     "/api/v1/media/{slug}": {
       "get": {
-        "description": "A draft is 404 to everyone but an admin: its existence is not public.\n\nReadable without a token, for the same reason the listing is \u2014 but a token,\nwhen there is one, still decides whether a draft exists.",
+        "description": "A draft is 404 to everyone but an admin: its existence is not public.\n\nReadable without a token, for the same reason the listing is \u2014 but a token\ndecides two things: whether a draft exists at all, and whether the body\ncomes with it. `locked` says which, so the client can offer the upgrade\nrather than render an empty article.",
         "operationId": "media_read_by_slug",
         "parameters": [
           {
@@ -24218,8 +25573,9 @@
                 }
               }
             },
-            "description": "audience_not_yours",
+            "description": "not_entitled, audience_not_yours",
             "x-codes": [
+              "not_entitled",
               "audience_not_yours"
             ]
           },
@@ -28293,7 +29649,7 @@
     },
     "/api/v1/stations": {
       "get": {
-        "description": "The published platform library, which nothing could read before.\n\nEvery signed-in user, because the library is the product: a consumer builds\na practice set from it and an institution draws on it to build a circuit.\nThe rows carry no station content \u2014 see `LibraryStationRead`.",
+        "description": "The published platform library, scoped to what the caller may open.\n\nEvery signed-in user, because the library is the product: a consumer builds\na practice set from it and an institution draws on it to build a circuit.\nThe rows carry no station content \u2014 see `LibraryStationRead`.\n\nA platform admin browses the whole catalogue, because curating it is their\njob. Everybody else gets their own exam, and asking for another is refused\nrather than answered \u2014 the retiring client had one exam per deployment and\nno picker at all.",
         "operationId": "stations_browse_library",
         "parameters": [
           {
@@ -28365,6 +29721,19 @@
             "description": "unauthenticated",
             "x-codes": [
               "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
             ]
           },
           "404": {

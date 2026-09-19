@@ -41,6 +41,10 @@ class UserRef:
     email: str
     name: str
     created_at: datetime
+    # Which exam this account is for. Here rather than looked up per screen:
+    # the dashboard turns it into the exam everything opens on, and it is the
+    # only answer a trial account — which holds no entitlement — has.
+    exam_code: str | None = None
 
 
 # Bound by `main.py` to `roster`, which sits above this slice. An institution
@@ -78,6 +82,7 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         must_change_password=user.must_change_password,
         exam_date=user.exam_date,
         extra_reading_percent=user.extra_reading_percent,
+        exam_code=user.exam_code,
         memberships=[
             MembershipRead(
                 org_id=m.org_id,
@@ -95,8 +100,22 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
 
 
 async def register(
-    session: AsyncSession, *, email: str, name: str, password: str, settings: Settings, now: datetime
+    session: AsyncSession,
+    *,
+    email: str,
+    name: str,
+    password: str,
+    settings: Settings,
+    now: datetime,
+    exam_code: str | None = None,
 ) -> AuthResult:
+    """Open an account, optionally saying which exam it is for.
+
+    The exam is stored as given rather than checked against the catalogue:
+    this slice sits below `catalog` and may not call it. Nothing is granted by
+    it either — it says which exam the screens should open on, and a code that
+    resolves to nothing simply leaves them with no current exam.
+    """
     try:
         validate_password(password)
     except WeakPassword as exc:
@@ -104,7 +123,7 @@ async def register(
     if await repository.user_by_email(session, email) is not None:
         raise EmailTaken()
     user = await repository.create_user(
-        session, email=email, name=name, password_hash=hash_password(password)
+        session, email=email, name=name, password_hash=hash_password(password), exam_code=exam_code
     )
     await _announce_registration(session, user.id, user.email)
     tokens = await issue(session, user, settings=settings, now=now, memberships=[])
@@ -144,6 +163,7 @@ async def update_me(
         name=body.name,
         exam_date=body.exam_date,
         extra_reading_percent=body.extra_reading_percent,
+        exam_code=body.exam_code,
         # A PATCH that cannot tell "not mentioned" from "set to nothing" makes
         # clearing an exam date impossible.
         clear_exam_date="exam_date" in fields_sent and body.exam_date is None,
@@ -182,7 +202,13 @@ async def user_ref_by_id(session: AsyncSession, user_id: uuid.UUID) -> UserRef |
 
 
 def _ref(user: User) -> UserRef:
-    return UserRef(id=user.id, email=user.email, name=user.name, created_at=user.created_at)
+    return UserRef(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        created_at=user.created_at,
+        exam_code=user.exam_code,
+    )
 
 
 async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, UserRef]:

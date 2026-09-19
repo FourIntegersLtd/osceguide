@@ -42,11 +42,15 @@ class UnknownExamError(NotFound):
     default_message = "No such exam"
 
 
-# Re-exported, not copied: the code is the contract, and `voice` owns it.
+# Re-exported, not copied: the code is the contract, and the slice named owns
+# it. Queueing for a peer session runs the same entitlement check starting an
+# attempt does, so `not_entitled` is part of this slice's vocabulary.
+from app.features.entitlements.errors import NotEntitled  # noqa: E402
 from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 
 __all__ = [
     "AlreadyQueued",
+    "NotEntitled",
     "QueueEntryNotFound",
     "SessionAlreadyEnded",
     "SessionNotFound",

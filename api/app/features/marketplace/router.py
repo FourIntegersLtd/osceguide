@@ -48,15 +48,22 @@ async def list_open_slots(
     "/marketplace/slots",
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(errors.UnknownExamError, Unauthenticated, InvalidAudience, AudienceNotYours),
+    responses=error_responses(
+        errors.UnknownExamError,
+        errors.NotEntitled,
+        Unauthenticated,
+        InvalidAudience,
+        AudienceNotYours,
+    ),
 )
 async def offer_slot(
-    body: schemas.CreatePost, principal: CurrentPrincipal, session: Session
+    body: schemas.CreatePost, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.PostRead:
     return await service.offer_slot(
         session,
         owner_user_id=principal.user_id,
         exam_code=body.exam_code,
+        now=clock.now(),
         starts_at=body.starts_at,
         duration_minutes=body.duration_minutes,
         note=body.note,
@@ -73,6 +80,7 @@ async def offer_slot(
         errors.PostNotFound,
         errors.PostUnavailableError,
         errors.CannotClaimOwnPostError,
+        errors.NotEntitled,
     ),
 )
 async def claim_slot(

@@ -7,6 +7,7 @@ accumulates during and after a session change for different reasons.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -113,4 +114,17 @@ async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[Asse
 
 async def scored_policy_versions(session: AsyncSession, attempt_id: uuid.UUID) -> set[str]:
     stmt = select(AssessmentResult.policy_version).where(AssessmentResult.attempt_id == attempt_id)
+    return set((await session.execute(stmt)).scalars())
+
+
+async def attempt_ids_with_results(session: AsyncSession, attempt_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these attempts have been marked, in one query.
+
+    `recent_for_user` asks this per row, which is the N+1 every listing of
+    attempts would otherwise repeat: a page of twenty attempts is twenty-one
+    queries, and each of them loads whole payload documents to count them.
+    """
+    if not attempt_ids:
+        return set()
+    stmt = select(AssessmentResult.attempt_id).where(AssessmentResult.attempt_id.in_(list(attempt_ids)))
     return set((await session.execute(stmt)).scalars())

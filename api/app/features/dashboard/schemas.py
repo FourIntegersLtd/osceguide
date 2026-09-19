@@ -56,6 +56,15 @@ class Dashboard(BaseModel):
     progress: list[ExamProgress] = Field(default_factory=list)
     recent_attempts: list[RecentAttempt] = Field(default_factory=list)
     sets: list[SetSummary] = Field(default_factory=list)
+    # Which exams this person may open, and which one their screens start on.
+    # Answered here so no screen has to guess: the retiring client took it from
+    # the subdomain, and without it four screens each derived a different
+    # answer from a different source and offered a picker over the whole
+    # catalogue. `exam_codes` holds only live access plus the exam the account
+    # was opened for; see
+    # `entitlements.domain_access`.
+    exam_codes: list[str] = Field(default_factory=list)
+    current_exam_code: str | None = None
 
 
 class PerformanceSummary(BaseModel):

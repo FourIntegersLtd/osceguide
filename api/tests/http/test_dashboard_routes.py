@@ -105,3 +105,72 @@ async def test_the_dashboard_is_only_your_own(
 async def test_the_dashboard_needs_a_token(client: AsyncClient) -> None:
     response = await client.get("/api/v1/me/dashboard")
     assert response.status_code == 401
+
+
+async def test_the_dashboard_says_which_exams_may_be_opened(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """One answer, so no screen has to guess.
+
+    Four screens each derived their own from a different source — attempts, the
+    whole catalogue, whichever exam sorted first — and offered a picker over
+    exams nobody had bought.
+    """
+    token = await a_learner(db_session, make_actor, "exams@example.com")
+    await db_session.commit()
+
+    response = await client.get("/api/v1/me/dashboard", headers=bearer(token))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["exam_codes"] == ["sca"]
+    assert body["current_exam_code"] == "sca"
+
+
+async def test_a_lapsed_subscriber_is_offered_no_exam(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Revoking does not delete, so the row is still on `/me/entitlements`.
+
+    Reading exam codes off that list without checking `live` is what would give
+    a lapsed subscriber the same library as a paying one.
+    """
+    token = await make_actor("lapsed@example.com")
+    user = await identity_repo.user_by_email(db_session, "lapsed@example.com")
+    assert user is not None
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    await ent_repo.grant(
+        session=db_session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source="purchase",
+        ends_at=datetime.now(UTC) - timedelta(days=1),
+    )
+    await db_session.commit()
+
+    body = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
+
+    assert body["entitlements"], "the expired row is still reported"
+    assert body["entitlements"][0]["live"] is False
+    assert body["exam_codes"] == []
+    assert body["current_exam_code"] is None
+
+
+async def test_a_trial_account_opens_on_the_exam_it_signed_up_for(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Somebody inside their free trial holds no grant at all."""
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
+    token = await make_actor("trial@example.com")
+    await ensure_exam(db_session, "plab")
+    await db_session.execute(update(User).where(User.email == "trial@example.com").values(exam_code="plab"))
+    await db_session.commit()
+
+    body = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
+
+    assert body["exam_codes"] == ["plab"]
+    assert body["current_exam_code"] == "plab"

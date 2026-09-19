@@ -12,11 +12,19 @@ from app.core.db import SessionOpenerDep, get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.features.attempts import errors, schemas, service, service_reads, service_stream
+from app.features.attempts import (
+    errors,
+    schemas,
+    schemas_material,
+    service,
+    service_material,
+    service_reads,
+    service_stream,
+)
 
 router = APIRouter(tags=["attempts"])
 
@@ -129,6 +137,84 @@ async def read_results(
         is_admin=principal.is_platform_admin,
     )
     return Page(items=items, next_cursor=None)
+
+
+@router.get(
+    "/attempts/{attempt_id}/brief",
+    response_model=schemas_material.AttemptBriefRead,
+    responses=error_responses(
+        Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, errors.AttemptNotReady
+    ),
+)
+async def read_brief(
+    attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas_material.AttemptBriefRead:
+    """What the candidate reads before the patient is called.
+
+    Keyed on the attempt, not the station: the library's own read carries no
+    content on purpose, because browsing is open to everybody and the brief is
+    part of the exam. Having started the station is what makes it readable.
+    """
+    return await service_material.read_brief(
+        session,
+        attempt_id,
+        requester_id=principal.user_id,
+        is_admin=principal.is_platform_admin,
+    )
+
+
+@router.get(
+    "/attempts/{attempt_id}/review",
+    response_model=schemas_material.AttemptReviewRead,
+    responses=error_responses(
+        Unauthenticated,
+        errors.AttemptNotFound,
+        errors.AttemptNotYours,
+        errors.AttemptNotReady,
+        errors.AttemptNotFinished,
+    ),
+)
+async def read_review(
+    attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas_material.AttemptReviewRead:
+    """The model answer: the patient's ideas and concerns, and the plan.
+
+    Refused until the consultation is over — before that it is the answer to
+    the station being sat.
+    """
+    return await service_material.read_review(
+        session,
+        attempt_id,
+        requester_id=principal.user_id,
+        is_admin=principal.is_platform_admin,
+    )
+
+
+@router.get(
+    "/me/attempts",
+    response_model=Page[schemas_material.AttemptHistoryItem],
+    responses=error_responses(Unauthenticated),
+)
+async def list_my_attempts(
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    station_version_id: uuid.UUID | None = None,
+    set_entry_id: uuid.UUID | None = None,
+) -> Page[schemas_material.AttemptHistoryItem]:
+    """Everything this person has sat, newest first.
+
+    The two filters answer the two questions the screens ask: every attempt at
+    one station, and every attempt at one entry of a practice set.
+    """
+    return await service_material.list_history(
+        session,
+        user_id=principal.user_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        station_version_id=station_version_id,
+        set_entry_id=set_entry_id,
+    )
 
 
 @router.get(

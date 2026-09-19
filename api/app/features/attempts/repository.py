@@ -8,7 +8,6 @@ worker-facing reads take an attempt id because that is all a worker is given.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -56,19 +55,6 @@ async def create_attempt(
 
 async def attempt_by_id(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt | None:
     return (await session.execute(select(Attempt).where(Attempt.id == attempt_id))).scalar_one_or_none()
-
-
-async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> list[Attempt]:
-    """The one unfailed attempt on each of these slots, for a screen that lists them."""
-    if not slot_ids:
-        return []
-    stmt = select(Attempt).where(Attempt.slot_id.in_(list(slot_ids)), Attempt.status != "failed")
-    return list((await session.execute(stmt)).scalars())
-
-
-async def live_attempt_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> Attempt | None:
-    stmt = select(Attempt).where(Attempt.slot_id == slot_id, Attempt.status != "failed")
-    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def set_status(
@@ -123,9 +109,24 @@ async def latest_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -
 
 
 async def list_for_user(
-    session: AsyncSession, user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    station_version_id: uuid.UUID | None = None,
+    set_entry_id: uuid.UUID | None = None,
 ) -> tuple[list[Attempt], str | None]:
+    """This person's attempts, newest first, optionally narrowed to one station.
+
+    The filters are what the screens listing attempts ask: every attempt at one
+    station, and every attempt at one entry of a practice set.
+    """
     stmt = select(Attempt).where(Attempt.user_id == user_id)
+    if station_version_id is not None:
+        stmt = stmt.where(Attempt.station_version_id == station_version_id)
+    if set_entry_id is not None:
+        stmt = stmt.where(Attempt.set_entry_id == set_entry_id)
     return await keyset_page(
         session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
     )
@@ -160,34 +161,6 @@ async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.
     return int(set_stations or 0), int(completed or 0)
 
 
-async def fail_live_attempt_for_slot(
-    session: AsyncSession, slot_id: uuid.UUID, *, at: datetime, reason: str
-) -> None:
-    """Fail whatever is still live on this slot, and make it visible.
-
-    Flushed here because the insert that follows has to see it: the partial
-    unique index on `(slot_id) where status <> 'failed'` would otherwise refuse
-    the new attempt.
-    """
-    live = await live_attempt_for_slot(session, slot_id)
-    if live is None:
-        return
-    await set_status(session, live.id, status=Status.FAILED, at=at, reason=reason)
-    await session.flush()
-
-
-async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:
-    """The exam a previous attempt on this slot ran under.
-
-    Reused on re-dispatch so a retry is marked against the same framework as
-    the recording it replaces.
-    """
-    stmt = (
-        select(Attempt.exam_id).where(Attempt.slot_id == slot_id).order_by(Attempt.created_at.desc()).limit(1)
-    )
-    return (await session.execute(stmt)).scalar_one_or_none()
-
-
 async def exam_for_station_version(session: AsyncSession, station_version_id: uuid.UUID) -> uuid.UUID | None:
     """The exam a station belongs to, read through its version.
 
@@ -199,13 +172,6 @@ async def exam_for_station_version(session: AsyncSession, station_version_id: uu
         "JOIN stations s ON s.id = v.station_id WHERE v.id = :version_id"
     )
     return (await session.execute(stmt, {"version_id": station_version_id})).scalar_one_or_none()
-
-
-async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
-    if not slot_ids:
-        return set()
-    stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()
-    return {row for row in (await session.execute(stmt)).scalars() if row is not None}
 
 
 async def evaluated_for_user(

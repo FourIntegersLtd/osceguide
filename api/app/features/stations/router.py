@@ -28,22 +28,34 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/stations",
     response_model=Page[schemas.LibraryStationRead],
-    responses=error_responses(Unauthenticated, errors.UnknownExamError),
+    responses=error_responses(Unauthenticated, errors.UnknownExamError, errors.NotEntitled),
 )
 async def browse_library(
     principal: CurrentPrincipal,
     session: Session,
+    clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
     exam_code: str | None = None,
 ) -> Page[schemas.LibraryStationRead]:
-    """The published platform library, which nothing could read before.
+    """The published platform library, scoped to what the caller may open.
 
     Every signed-in user, because the library is the product: a consumer builds
     a practice set from it and an institution draws on it to build a circuit.
     The rows carry no station content — see `LibraryStationRead`.
+
+    A platform admin browses the whole catalogue, because curating it is their
+    job. Everybody else gets their own exam, and asking for another is refused
+    rather than answered — the retiring client had one exam per deployment and
+    no picker at all.
     """
     items, next_cursor = await service_reads.browse_library(
-        session, exam_code=exam_code, limit=page.limit, cursor=page.cursor
+        session,
+        exam_code=exam_code,
+        limit=page.limit,
+        cursor=page.cursor,
+        user_id=principal.user_id,
+        now=clock.now(),
+        all_exams=principal.is_platform_admin,
     )
     return Page(items=items, next_cursor=next_cursor)
 

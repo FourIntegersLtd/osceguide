@@ -42,7 +42,7 @@ beside the rubric they narrow).
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/v1/stations` | bearer | platform library, cursor-paginated, `?exam_code=`; **no station content** — browsing is not reading the answers |
+| GET | `/api/v1/stations` | bearer | platform library, cursor-paginated; **no station content** — browsing is not reading the answers. Scoped to the exams the caller may open: `?exam_code=` must be one of them (`not_entitled`, 403), and omitting it gives theirs rather than everybody's. A platform admin browses the whole catalogue |
 | GET | `/api/v1/orgs/{org_slug}/stations` | org member | the org's own plus the library |
 | POST | `/api/v1/orgs/{org_slug}/stations` | org admin | |
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions` | org admin | seeded from the latest published |

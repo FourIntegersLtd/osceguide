@@ -41,13 +41,21 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     # ported with nowhere to read it from.
     exam_date: Mapped[date | None] = mapped_column(Date)
 
+    # Which exam this account is for, chosen at sign-up. The retiring client
+    # read it off the hostname, so a person only ever saw one exam and there
+    # was no switcher in the product at all.
+    #
+    # A code, not a foreign key: this slice sits below `catalog` and cannot
+    # resolve one. It is a preference and not a grant — what somebody may open
+    # is their entitlements' answer, and an unresolvable code yields no current
+    # exam rather than access to anything.
+    exam_code: Mapped[str | None] = mapped_column(String(32))
+
     # An access arrangement, as a percentage of extra reading time. The old
     # client carried a bare `needs_extra_reading_time` boolean and applied a
     # fixed amount inside the timer component; a percentage says what was
     # actually granted, and 25 is what a bare "yes" used to mean.
-    extra_reading_percent: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    extra_reading_percent: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
 
 class UserIdentity(Base, UUIDPrimaryKey, Timestamps):

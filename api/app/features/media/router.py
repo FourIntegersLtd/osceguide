@@ -27,18 +27,27 @@ Index = Annotated[VectorIndex, Depends(service.get_vector_index)]
 )
 async def list_published(
     session: Session,
+    principal: MaybePrincipal,
+    clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
     kind: Annotated[str | None, Query()] = None,
 ) -> Page[schemas.MediaRead]:
-    """Published material, to anybody.
+    """Published material: the titles to anybody, the bodies to subscribers.
 
-    No token: a bearer was required here, so a signed-out visitor could not
-    read the landing page's own article rail and a shared link to an article
-    asked them to sign in first. Everything this returns is published, which is
-    what published means.
+    No token required, because a signed-out visitor still needs the landing
+    page's article rail and a shared link still needs to say what it points at.
+    What a token changes is `content`: the slide decks and the A to Z are the
+    paid half of the product and used to come back in full to anyone who asked,
+    signed in or not.
     """
     items, next_cursor = await service.list_published(
-        session, kind=kind, limit=page.limit, cursor=page.cursor
+        session,
+        kind=kind,
+        limit=page.limit,
+        cursor=page.cursor,
+        unlocked=await service.unlocked_exam_ids(
+            session, principal.user_id if principal else None, now=clock.now()
+        ),
     )
     return Page(items=items, next_cursor=next_cursor)
 
@@ -48,14 +57,23 @@ async def list_published(
     response_model=schemas.MediaRead,
     responses=error_responses(errors.ItemNotFound),
 )
-async def read_by_slug(slug: str, principal: MaybePrincipal, session: Session) -> schemas.MediaRead:
+async def read_by_slug(
+    slug: str, principal: MaybePrincipal, session: Session, clock: ClockDep
+) -> schemas.MediaRead:
     """A draft is 404 to everyone but an admin: its existence is not public.
 
-    Readable without a token, for the same reason the listing is — but a token,
-    when there is one, still decides whether a draft exists.
+    Readable without a token, for the same reason the listing is — but a token
+    decides two things: whether a draft exists at all, and whether the body
+    comes with it. `locked` says which, so the client can offer the upgrade
+    rather than render an empty article.
     """
     return await service.read_by_slug(
-        session, slug, viewer_is_admin=bool(principal and principal.is_platform_admin)
+        session,
+        slug,
+        viewer_is_admin=bool(principal and principal.is_platform_admin),
+        unlocked=await service.unlocked_exam_ids(
+            session, principal.user_id if principal else None, now=clock.now()
+        ),
     )
 
 
@@ -68,9 +86,16 @@ async def search(
     principal: CurrentPrincipal,
     session: Session,
     index: Index,
+    clock: ClockDep,
     q: Annotated[str, Query(description="What to search for")],
 ) -> Page[schemas.SearchHit]:
-    items = await service.search(session, query=q, index=index)
+    """Over the material this reader holds, not the whole library."""
+    items = await service.search(
+        session,
+        query=q,
+        index=index,
+        unlocked=await service.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
+    )
     return Page(items=items, next_cursor=None)
 
 
