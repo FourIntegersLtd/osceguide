@@ -89,3 +89,22 @@ class StripeEventRead(BaseModel):
     customer_email: str | None
     price_id: str | None
     payment_intent_id: str | None
+
+
+class RecordManualPayment(BaseModel):
+    """A payment that did not come through Stripe — a bank transfer, a sponsor,
+    a comped seat — recorded so it grants access, mints a receipt and counts
+    like any other. Without a reference one is minted as `manual:<id>`."""
+
+    plan_code: str = Field(min_length=1, max_length=32)
+    stripe_payment_intent_id: str | None = Field(default=None, min_length=1, max_length=100)
+    amount_total_pence: int | None = Field(default=None, ge=0)
+    paid_at: datetime | None = None
+    note: str = Field(min_length=1, max_length=500)
+
+
+class RefundRequest(BaseModel):
+    """Record-only: the money is returned in the Stripe dashboard. This revokes
+    what the payment bought and says so in the audit log; the payment row stays."""
+
+    reason: str = Field(min_length=1, max_length=500)

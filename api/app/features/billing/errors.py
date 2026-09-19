@@ -94,3 +94,13 @@ class PayerNotFound(NotFound):
 
     code = "user_not_found"
     default_message = "No such account"
+
+
+class BillingEventNotFound(NotFound):
+    code = "billing_event_not_found"
+    default_message = "No such webhook delivery"
+
+
+class PaymentNotFound(NotFound):
+    code = "payment_not_found"
+    default_message = "No such payment"

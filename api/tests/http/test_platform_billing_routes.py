@@ -93,3 +93,154 @@ async def test_the_ledger_pages_newest_first_and_only_an_admin_reads_it(
     missing = await client.get(f"/api/v1/platform/users/{uuid.uuid4()}/payments", headers=bearer(root))
     assert missing.status_code == 404
     assert missing.json()["code"] == "user_not_found"
+
+
+# --------------------------------------------------------------------------
+# The fixes
+# --------------------------------------------------------------------------
+
+
+async def test_a_refused_delivery_is_replayed_once_the_person_has_registered(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    assert (await post_event(client, checkout_event("evt_late", "late@example.com"))).status_code == 422
+
+    still = await client.post("/api/v1/platform/billing/events/evt_late/replay", headers=bearer(root))
+    assert still.status_code == 422, "nothing has changed, so the same refusal"
+    assert still.json()["code"] == "invalid_webhook"
+
+    await a_customer(db_session, "late@example.com")
+    replayed = await client.post("/api/v1/platform/billing/events/evt_late/replay", headers=bearer(root))
+    assert replayed.status_code == 200, replayed.text
+    assert replayed.json()["status"] == "applied"
+    user = await identity_repo.user_by_email(db_session, "late@example.com")
+    assert user is not None
+    payments = await client.get(f"/api/v1/platform/users/{user.id}/payments", headers=bearer(root))
+    assert len(payments.json()["items"]) == 1
+    events = await client.get(f"/api/v1/platform/users/{user.id}/billing-events", headers=bearer(root))
+    assert events.json()["items"][0]["processed_at"] is not None
+    assert events.json()["items"][0]["failure"] is None
+
+    again = await client.post("/api/v1/platform/billing/events/evt_late/replay", headers=bearer(root))
+    assert again.json()["status"] == "already_applied"
+    assert (
+        len(
+            (await client.get(f"/api/v1/platform/users/{user.id}/payments", headers=bearer(root))).json()[
+                "items"
+            ]
+        )
+        == 1
+    )
+
+    audit = await client.get("/api/v1/platform/audit?action=billing.event_replayed", headers=bearer(root))
+    assert sorted(row["meta"]["outcome"] for row in audit.json()["items"]) == [
+        "already_applied",
+        "applied",
+        "invalid_webhook",
+    ], "the refused replay is on the record too"
+    assert (
+        await client.post("/api/v1/platform/billing/events/nope/replay", headers=bearer(root))
+    ).status_code == 404
+
+
+async def test_a_payment_that_did_not_come_through_stripe_grants_like_one_that_did(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    await a_customer(db_session, "sponsored@example.com")
+    user = await identity_repo.user_by_email(db_session, "sponsored@example.com")
+    assert user is not None
+    # Read once: a refused request below rolls the harness back and expires
+    # the row, and reading it afterwards would be a synchronous lazy load.
+    user_id = user.id
+
+    recorded = await client.post(
+        f"/api/v1/platform/users/{user_id}/payments",
+        json={"plan_code": "one_month", "note": "bank transfer ref 4471"},
+        headers=bearer(root),
+    )
+    assert recorded.status_code == 201, recorded.text
+    body = recorded.json()
+    assert body["plan_code"] == "one_month"
+    assert body["amount_total_pence"] == 2499
+    assert body["stripe_payment_intent_id"].startswith("manual:")
+    assert body["receipt_id"]
+    assert body["entitlement_id"]
+    grants = await client.get(f"/api/v1/platform/users/{user_id}/entitlements", headers=bearer(root))
+    assert [(g["source"], g["live"]) for g in grants.json()["items"]] == [("purchase", True)]
+
+    explicit = {
+        "plan_code": "one_month",
+        "stripe_payment_intent_id": "pi_by_hand",
+        "note": "x",
+        "amount_total_pence": 0,
+    }
+    assert (
+        await client.post(f"/api/v1/platform/users/{user_id}/payments", json=explicit, headers=bearer(root))
+    ).status_code == 201
+    duplicate = await client.post(
+        f"/api/v1/platform/users/{user_id}/payments", json=explicit, headers=bearer(root)
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["code"] == "payment_already_recorded"
+    no_plan = await client.post(
+        f"/api/v1/platform/users/{user_id}/payments",
+        json={"plan_code": "lifetime", "note": "x"},
+        headers=bearer(root),
+    )
+    assert no_plan.status_code == 404
+    assert no_plan.json()["code"] == "plan_not_available"
+
+
+async def test_a_refund_withdraws_the_access_and_keeps_the_sale(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    await a_customer(db_session, "refunded@example.com")
+    await post_event(client, checkout_event("evt_refund", "refunded@example.com"))
+    user = await identity_repo.user_by_email(db_session, "refunded@example.com")
+    assert user is not None
+    [payment] = (await client.get(f"/api/v1/platform/users/{user.id}/payments", headers=bearer(root))).json()[
+        "items"
+    ]
+
+    refunded = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/refund",
+        json={"reason": "changed their mind"},
+        headers=bearer(root),
+    )
+    assert refunded.status_code == 200, refunded.text
+    assert refunded.json()["entitlement_id"] == payment["entitlement_id"], (
+        "the sale still says what it bought"
+    )
+    [grant] = (
+        await client.get(f"/api/v1/platform/users/{user.id}/entitlements", headers=bearer(root))
+    ).json()["items"]
+    assert grant["live"] is False
+    assert grant["revoked_at"] is not None
+    assert (
+        len(
+            (await client.get(f"/api/v1/platform/users/{user.id}/payments", headers=bearer(root))).json()[
+                "items"
+            ]
+        )
+        == 1
+    )
+
+    twice = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/refund", json={"reason": "again"}, headers=bearer(root)
+    )
+    assert twice.status_code == 200
+    revocations = await client.get("/api/v1/platform/audit?action=entitlement.revoked", headers=bearer(root))
+    assert len(revocations.json()["items"]) == 1
+    refunds = await client.get("/api/v1/platform/audit?action=billing.refund_recorded", headers=bearer(root))
+    assert len(refunds.json()["items"]) == 2
+    assert (
+        await client.post(
+            f"/api/v1/platform/payments/{uuid.uuid4()}/refund", json={"reason": "x"}, headers=bearer(root)
+        )
+    ).status_code == 404

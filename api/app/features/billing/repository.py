@@ -205,3 +205,8 @@ async def events_for_email(session: AsyncSession, email: str) -> list[StripeEven
 
 async def payment_by_id(session: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
     return (await session.execute(select(Payment).where(Payment.id == payment_id))).scalar_one_or_none()
+
+
+async def payment_by_intent(session: AsyncSession, intent_id: str) -> Payment | None:
+    stmt = select(Payment).where(Payment.stripe_payment_intent_id == intent_id)
+    return (await session.execute(stmt)).scalar_one_or_none()

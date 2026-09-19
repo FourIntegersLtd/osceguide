@@ -10,14 +10,15 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
+from app.core.ports import ClockDep
 from app.core.tenancy import PlatformAdmin
-from app.features.billing import errors, schemas, service_platform
+from app.features.billing import errors, schemas, service_platform, service_platform_actions
 
 router = APIRouter(tags=["billing"])
 
@@ -68,3 +69,76 @@ async def list_billing_events(
         session, failed_only=failed_only, limit=page.limit, cursor=page.cursor
     )
     return Page(items=items, next_cursor=next_cursor)
+
+
+@router.post(
+    "/platform/billing/events/{event_id}/replay",
+    response_model=schemas.WebhookResult,
+    responses=error_responses(
+        Forbidden,
+        errors.BillingEventNotFound,
+        errors.InvalidWebhook,
+        errors.UnknownPlanError,
+        errors.UnknownExamError,
+    ),
+)
+async def replay_billing_event(
+    event_id: str, admin: PlatformAdmin, session: Session, clock: ClockDep
+) -> schemas.WebhookResult:
+    """Apply a refused delivery again, once its cause is fixed. `already_applied`
+    for one that went through; the same refusal, and a new audit row, for one
+    whose cause is not fixed yet."""
+    result = await service_platform_actions.replay_event(session, event_id, actor=admin, now=clock.now())
+    return schemas.WebhookResult(**result)
+
+
+@router.post(
+    "/platform/users/{user_id}/payments",
+    response_model=schemas.PlatformPaymentRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(
+        Forbidden,
+        errors.PayerNotFound,
+        errors.PlanNotAvailable,
+        errors.PaymentAlreadyRecorded,
+        errors.UnknownPlanError,
+        errors.UnknownExamError,
+    ),
+)
+async def record_manual_payment(
+    user_id: uuid.UUID,
+    body: schemas.RecordManualPayment,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.PlatformPaymentRead:
+    """Record a payment that did not come through Stripe, granting what it bought."""
+    return await service_platform_actions.record_manual_payment(
+        session,
+        user_id,
+        plan_code=body.plan_code,
+        intent_id=body.stripe_payment_intent_id,
+        amount_total_pence=body.amount_total_pence,
+        paid_at=body.paid_at,
+        note=body.note,
+        actor=admin,
+        now=clock.now(),
+    )
+
+
+@router.post(
+    "/platform/payments/{payment_id}/refund",
+    response_model=schemas.PlatformPaymentRead,
+    responses=error_responses(Forbidden, errors.PaymentNotFound),
+)
+async def record_refund(
+    payment_id: uuid.UUID,
+    body: schemas.RefundRequest,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.PlatformPaymentRead:
+    """Withdraw what a refunded payment bought. The money moves in Stripe; the row stays."""
+    return await service_platform_actions.refund(
+        session, payment_id, reason=body.reason, actor=admin, now=clock.now()
+    )
