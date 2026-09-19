@@ -1,4 +1,4 @@
-export { OrgDashboard } from "@/domains/assess/OrgDashboard";
+export { OrgDashboard, LiveBoard } from "@/domains/assess/dashboard";
 export { Sittings } from "@/domains/assess/Sittings";
 export { SittingDetail } from "@/domains/assess/SittingDetail";
 export { CircuitRunner } from "@/domains/assess/sessions";

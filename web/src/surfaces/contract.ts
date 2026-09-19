@@ -30,6 +30,7 @@ export type ScreenName =
   | "newSitting"
   | "newCircuit"
   | "circuitConsole"
+  | "live"
   | "slotReview"
   | "trainees"
   | "team"

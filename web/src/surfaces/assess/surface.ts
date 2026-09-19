@@ -1,4 +1,4 @@
-import { LuCalendarDays, LuGauge, LuUserCog, LuUsers } from "react-icons/lu";
+import { LuCalendarDays, LuGauge, LuRadio, LuUserCog, LuUsers } from "react-icons/lu";
 import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -14,6 +14,12 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
     { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
     { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
   ];
+  /* The exam-day board is for the people who run circuits, and it names every
+   * candidate on them — which is why the backend gates it on staff rather than
+   * on being able to read the organisation. */
+  if (can("run_circuits")) {
+    items.push({ key: "live", label: "Now running", href: href("/live"), icon: LuRadio });
+  }
   if (can("read_org")) {
     items.push({ key: "trainees", label: "Trainees", href: href("/trainees"), icon: LuUsers });
   }
@@ -31,6 +37,7 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "newSitting",
   "newCircuit",
   "circuitConsole",
+  "live",
   "sittingResults",
   "slotReview",
   "trainees",

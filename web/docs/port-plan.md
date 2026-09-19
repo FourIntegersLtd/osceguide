@@ -140,10 +140,21 @@ concurrency on a decision.
 
 **J13 · Institution: dashboard, live board, reporting** is next.
 
-**J13 · Institution: dashboard, live board, reporting** —
+**J13 · Institution: dashboard, live board, reporting** — **done.**
 `b2b/components/features/dashboard` (0.8k) → `domains/assess/dashboard/`.
-Org dashboard, the live board and its stream, the sitting report, cohort view.
-**Needs J9** for the roster shapes it reads.
+
+The two old dashboards — an administrator's and a supervisor's, chosen by
+reading a role string — are one screen whose parts are chosen by what
+`/me/capabilities` grants, so somebody who is both sees both halves.
+
+The exam-day board is new: `GET /orgs/{slug}/live` and its stream were among
+the endpoints nothing called, and they answer the question the old client could
+not — "how is this morning going" — which used to be answered by walking
+between rooms. Rows are ordered by trouble and then by whoever runs out of time
+first, and a consultation running with nothing recording it is on the board
+while it happens rather than discovered afterwards.
+
+The sitting report and the cohort view landed with J12.
 
 **J14 · Trainee and practice arms** — `b2b/components/features/{trainee,
 practice}` (4.1k) → `domains/assess/trainee/`. A rostered trainee's sittings,

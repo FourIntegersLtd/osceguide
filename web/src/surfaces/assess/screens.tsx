@@ -3,6 +3,7 @@
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   CircuitRunner,
+  LiveBoard,
   MyResult,
   NewCircuit,
   NewSitting,
@@ -44,6 +45,10 @@ function AssessNewSitting(props: ScreenProps) {
 
 function AssessNewCircuit(props: ScreenProps) {
   return <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />;
+}
+
+function AssessLiveBoard(props: ScreenProps) {
+  return <LiveBoard orgSlug={slugOf(props)} />;
 }
 
 function AssessCircuitRunner(props: ScreenProps) {
@@ -91,6 +96,7 @@ export const assessScreens: ScreenMap = {
   newSitting: AssessNewSitting,
   newCircuit: AssessNewCircuit,
   circuitConsole: AssessCircuitRunner,
+  live: AssessLiveBoard,
   sittingResults: AssessResults,
   slotReview: AssessSlotReview,
   trainees: AssessTrainees,

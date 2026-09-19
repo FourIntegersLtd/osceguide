@@ -4,7 +4,7 @@ import { Discussion } from "@/capabilities/community";
 import { useSession } from "@/foundation/session";
 import { useAsync } from "@/foundation/hooks";
 import { AsyncBoundary } from "@/foundation/ui";
-import { readOrgDashboard } from "@/domains/assess/api";
+import { readOrgDashboard } from "@/domains/assess/dashboard";
 import { useSurface } from "@/capabilities";
 
 /**

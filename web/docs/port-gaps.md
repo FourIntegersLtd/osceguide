@@ -764,3 +764,33 @@ It is the fourth asymmetry named in `api/scope.ts`, beside programmes, the
 brief and version deletion: `examListPath(scope)`. `drafts=true` goes with an
 organisation's listing, where it narrows to that institution's own rows; the
 platform listing decides by who is asking, so the query is not sent there.
+
+## The institution dashboard and the exam-day board
+
+### "Ready to run" counts an organisation's own stations only
+
+`OrgSetup.stations_authored` is `count_stations(org_id) > 0`, which counts what
+this institution has **authored**. An organisation that runs the platform's
+catalogue — a legitimate and probably common way to use this — has none of its
+own, so `ready_to_run` stays false and the dashboard offers "continue setting
+up" to somebody already running examinations. The seeded demo org is exactly
+that case.
+
+The screen does not paper over it: the step says the count is of your own
+cases, and the tile is labelled "Your stations" rather than "Stations". The fix
+is the backend's — either count adopted catalogue stations towards it, or say
+`stations_available` and mean it.
+
+### The board has no history
+
+`GET /orgs/{slug}/live` is what is running *now*. There is no "what happened
+this morning" — a circuit that has ended leaves the board and is only findable
+through its sitting. For an exam-day post-mortem that is the sitting report,
+which is a different question asked a different way.
+
+### Nothing links a supervisor to the person who assigned them
+
+`SupervisorCircuitRow` says which circuits this person supervises; there is no
+route the other way, so an administrator cannot see who is covering what
+without opening each circuit. The live board names the supervisor per running
+circuit, which covers the exam-day case and not the planning one.

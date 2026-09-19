@@ -1,0 +1,146 @@
+import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
+
+/**
+ * What the institution's home screen works out from what it is given.
+ *
+ * The old dashboard derived all of this in the browser from five separate
+ * listings, each of which could fail on its own — so a failed fetch read as
+ * "you have no trainees" and the setup checklist told people to do work they
+ * had already done. One request answers it now, and these are the judgements
+ * left over.
+ */
+
+export interface SetupStep {
+  key: string;
+  done: boolean;
+  label: string;
+  hint: string;
+  /** Surface-relative; the caller runs it through `hrefFor`. */
+  path: string;
+}
+
+/**
+ * The steps to a first examination, in the order they have to happen.
+ *
+ * `ready_to_run` is the backend's judgement and not a count assembled here, so
+ * the screen cannot disagree with what the API will accept.
+ */
+export function setupSteps(setup: OrgSetup): SetupStep[] {
+  return [
+    {
+      key: "team",
+      done: setup.team_invited,
+      label: "Invite your team",
+      hint: "Somebody has to be able to supervise a circuit while it runs.",
+      path: "/team",
+    },
+    {
+      key: "trainees",
+      done: setup.trainees_added,
+      label: "Add your trainees",
+      hint: "The people who will sit your examinations and training sessions.",
+      path: "/trainees",
+    },
+    {
+      key: "stations",
+      done: setup.stations_authored,
+      label: "Author a station",
+      hint: "This counts your own cases only — adopting the platform's catalogue does not satisfy it.",
+      path: "/authoring",
+    },
+    {
+      key: "template",
+      done: setup.feedback_template_published,
+      label: "Publish a feedback template",
+      hint: "A sitting cannot exist without a published template bound to it.",
+      path: "/authoring",
+    },
+  ];
+}
+
+/** The one thing to do next, or null when there is nothing left. */
+export function nextStep(setup: OrgSetup): SetupStep | null {
+  return setupSteps(setup).find((step) => !step.done) ?? null;
+}
+
+export function setupProgress(setup: OrgSetup): { done: number; total: number; percent: number } {
+  const steps = setupSteps(setup);
+  const done = steps.filter((step) => step.done).length;
+  return {
+    done,
+    total: steps.length,
+    percent: steps.length === 0 ? 100 : Math.round((done / steps.length) * 100),
+  };
+}
+
+/**
+ * The line under the organisation's name.
+ *
+ * One sentence that says what to do, rather than five cards competing to be
+ * the next step.
+ */
+export function dashboardLead(data: OrgDashboard): string {
+  if (!data.setup.ready_to_run) {
+    const { done, total } = setupProgress(data.setup);
+    const left = total - done;
+    return `${left} step${left === 1 ? "" : "s"} left before you can run your first examination.`;
+  }
+  if (data.counts.sittings === 0) {
+    return "Everything is set up. Schedule a sitting to assess somebody.";
+  }
+  return "Your programmes, people and examinations.";
+}
+
+/* ------------------------------------------------------------------------
+ * The exam-day board.
+ * --------------------------------------------------------------------- */
+
+/** Where one circuit is, in a phrase. */
+export function circuitStatus(circuit: LiveCircuit): string {
+  if (circuit.paused) return "Paused";
+  if (circuit.phase === "break") return "Between stations";
+  if (circuit.phase === "reading") return "Reading time";
+  if (circuit.phase === "simulation") return "Consultation";
+  return "Running";
+}
+
+/**
+ * Whether a station is running with nothing recording it.
+ *
+ * The board carries the attempt so this is visible while it is happening
+ * rather than discovered when somebody goes looking for a transcript.
+ */
+export function recordingMissing(circuit: LiveCircuit): boolean {
+  if (circuit.phase !== "simulation") return false;
+  if (!circuit.attempt_id) return true;
+  return circuit.attempt_status === "failed";
+}
+
+/** Rows a human should look at first: trouble, then the clock. */
+export function boardOrder(circuits: LiveCircuit[]): LiveCircuit[] {
+  return circuits.slice().sort((a, b) => {
+    const trouble = weight(b) - weight(a);
+    if (trouble !== 0) return trouble;
+    // Then whoever runs out of time first.
+    const left = (a.remaining_seconds ?? Number.MAX_SAFE_INTEGER) -
+      (b.remaining_seconds ?? Number.MAX_SAFE_INTEGER);
+    if (left !== 0) return left;
+    return a.circuit_name.localeCompare(b.circuit_name);
+  });
+}
+
+function weight(circuit: LiveCircuit): number {
+  let score = 0;
+  if ((circuit.alerts ?? []).length > 0) score += 2;
+  if (recordingMissing(circuit)) score += 2;
+  if (circuit.paused) score += 1;
+  return score;
+}
+
+export function candidatesLabel(circuit: LiveCircuit): string {
+  const people = circuit.candidates ?? [];
+  if (people.length === 0) return "Nobody on this circuit";
+  const names = people.map((person) => person.name ?? person.email ?? "Candidate");
+  if (names.length <= 2) return names.join(" and ");
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+}

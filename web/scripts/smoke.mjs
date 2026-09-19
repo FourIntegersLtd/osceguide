@@ -276,6 +276,17 @@ async function main() {
         expect: (p) => must(Array.isArray(p.items), "not a page"),
       });
     }
+    // The exam-day board and the supervisor's own circuits: both were unwired
+    // until the dashboard screens were ported, so both are worth watching.
+    await step("org live board", `/api/v1/orgs/${slug}/live`, {
+      expect: (p) => {
+        must(Array.isArray(p.circuits), "not a board");
+        must(typeof p.as_of === "string", "no as_of to count down from");
+      },
+    });
+    await step("supervisor circuits", `/api/v1/orgs/${slug}/supervisor/circuits`, {
+      expect: (p) => must(Array.isArray(p.items), "not a list"),
+    });
     const sittings = await step("org sittings", `/api/v1/orgs/${slug}/sittings`);
     const sittingId = sittings?.items?.[0]?.id;
     if (sittingId) {

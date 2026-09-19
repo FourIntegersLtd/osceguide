@@ -1,7 +1,6 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { RoomGrant } from "@/foundation/livekit";
 
-export type OrgDashboard = components["schemas"]["OrgDashboard"];
 export type Sitting = components["schemas"]["SittingRead"];
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
 export type MySittings = components["schemas"]["MySittings"];
@@ -9,10 +8,6 @@ export type MySitting = components["schemas"]["MySitting"];
 export type Trainee = components["schemas"]["TraineeRead"];
 
 const org = (slug: string) => `/api/v1/orgs/${encodeURIComponent(slug)}`;
-
-export function readOrgDashboard(slug: string, signal?: AbortSignal): Promise<OrgDashboard> {
-  return platformRequest<OrgDashboard>(`${org(slug)}/dashboard`, { signal });
-}
 
 export function listSittings(slug: string, signal?: AbortSignal): Promise<SittingPage> {
   return platformRequest<SittingPage>(`${org(slug)}/sittings`, { signal });
