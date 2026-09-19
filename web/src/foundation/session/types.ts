@@ -29,7 +29,8 @@ export interface SessionState {
   ready: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
-  selectWorkspace: (orgSlug: string) => Promise<void>;
+  /** `null` is the person's own practice. */
+  selectWorkspace: (orgSlug: string | null) => Promise<void>;
 }
 
 /** Whether the backend grants this permission in the active workspace. */

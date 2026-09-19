@@ -18,13 +18,16 @@ describe("capability registry", () => {
     assert.ok(train.includes("community"));
   });
 
-  it("prefixes hrefs with the surface's base path", () => {
-    const [consumer] = capabilitiesFor("train").filter((c) => c.id === "media");
-    const [institution] = capabilitiesFor("assess", { orgSlug: "kings" }).filter(
+  it("prefixes hrefs with the base path the shell hands it", () => {
+    // Same capability, same path, two workspaces. It never learns which.
+    const [consumer] = capabilitiesFor("train", { basePath: "/app/me" }).filter(
       (c) => c.id === "media",
     );
-    assert.equal(consumer?.href, "/library");
-    assert.equal(institution?.href, "/assess/kings/library");
+    const [institution] = capabilitiesFor("assess", { basePath: "/app/kings" }).filter(
+      (c) => c.id === "media",
+    );
+    assert.equal(consumer?.href, "/app/me/library");
+    assert.equal(institution?.href, "/app/kings/library");
   });
 
   it("hides a capability the backend has not granted", () => {

@@ -1,4 +1,4 @@
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@/foundation/ui/cn";
 
 interface LogoProps {
   variant?: "light" | "dark" | "ink";

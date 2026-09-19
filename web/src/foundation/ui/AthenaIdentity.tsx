@@ -2,11 +2,11 @@
 
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@/foundation/ui/cn";
 import {
   b2cBodyTextMuted,
   b2cGroupedRowTitle,
-} from "@/b2c/theme/b2cUi";
+} from "@/foundation/ui/productTokens";
 
 /** Help-section Athena asset. single source of truth. */
 export const ATHENA_IMAGE_SRC = "/images/athena.png";

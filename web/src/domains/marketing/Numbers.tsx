@@ -1,20 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchLandingStats } from "@/domains/marketing/support/landingStats";
+import { fetchLandingStats, type LandingStats } from "@/domains/marketing/support/landingStats";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
-
-interface StatsData {
-  all_consultations: number;
-  all_debriefs: number;
-  all_feedback: number;
-}
 
 const statCards = [
   {
     label: "Consultations completed",
-    getValue: (stats: StatsData | null) => stats?.all_consultations ?? 0,
+    getValue: (stats: LandingStats | null) => stats?.all_consultations ?? 0,
   },
   {
     label: "Minutes of practice",
@@ -23,11 +17,11 @@ const statCards = [
   },
   {
     label: "Debriefs completed",
-    getValue: (stats: StatsData | null) => stats?.all_debriefs ?? 0,
+    getValue: (stats: LandingStats | null) => stats?.all_debriefs ?? 0,
   },
   {
     label: "AI feedback reports generated",
-    getValue: (stats: StatsData | null) => stats?.all_feedback ?? 0,
+    getValue: (stats: LandingStats | null) => stats?.all_feedback ?? 0,
   },
 ] as const;
 
@@ -49,7 +43,7 @@ function StatSkeleton() {
 
 function Numbers() {
   const { type } = useLandingVariant();
-  const [stats, setStats] = useState<StatsData | null>(null);
+  const [stats, setStats] = useState<LandingStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
@@ -58,7 +52,7 @@ function Numbers() {
       const data = await fetchLandingStats();
       // The band is hidden rather than shown with zeroes when there are no
       // figures: an empty statistics section reads as a broken page.
-      if (data) setStats(data as StatsData);
+      if (data) setStats(data);
       else setFailed(true);
       setLoading(false);
     };

@@ -102,10 +102,9 @@ const PLOT = { left: 36, right: 312, top: 12, bottom: 150 } as const;
 /** Monotone-ish cubic through evenly spaced points, with flat control handles. */
 function areaPath(points: Array<{ x: number; y: number }>): string {
   return points.reduce((path, point, index) => {
-    if (index === 0) {
-      return `M ${point.x},${point.y}`;
-    }
     const previous = points[index - 1];
+    // Only the first point has no predecessor, and it opens the path.
+    if (!previous) return `M ${point.x},${point.y}`;
     const midX = (previous.x + point.x) / 2;
     return `${path} C ${midX},${previous.y} ${midX},${point.y} ${point.x},${point.y}`;
   }, "");
@@ -122,11 +121,20 @@ function CategoryChart({
     categories.length > 1
       ? (PLOT.right - PLOT.left) / (categories.length - 1)
       : 0;
-  const points = categories.map((category, index) => ({
+  /*
+   * Category and position together, rather than two arrays indexed in step.
+   * Reading `points[index]` inside a pass over `categories` is a silent
+   * dependency on the two staying the same length; one array of pairs cannot
+   * come apart.
+   */
+  const plotted = categories.map((category, index) => ({
+    category,
     x: PLOT.left + index * step,
     y: PLOT.bottom - (category.value / axisMax) * (PLOT.bottom - PLOT.top),
   }));
-  const line = areaPath(points);
+  const line = areaPath(plotted);
+  const first = plotted[0];
+  const last = plotted[plotted.length - 1];
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => ({
     value: Math.round(axisMax * fraction),
     y: PLOT.bottom - fraction * (PLOT.bottom - PLOT.top),
@@ -178,10 +186,12 @@ function CategoryChart({
         </g>
       ))}
 
-      <path
-        d={`${line} L ${points[points.length - 1].x},${PLOT.bottom} L ${points[0].x},${PLOT.bottom} Z`}
-        fill="url(#landing-progress-area)"
-      />
+      {first && last && (
+        <path
+          d={`${line} L ${last.x},${PLOT.bottom} L ${first.x},${PLOT.bottom} Z`}
+          fill="url(#landing-progress-area)"
+        />
+      )}
       <path
         d={line}
         fill="none"
@@ -190,9 +200,9 @@ function CategoryChart({
         strokeLinecap="round"
       />
 
-      {points.map((point, index) => (
+      {plotted.map((point) => (
         <circle
-          key={index}
+          key={point.category.labelLines.join(" ")}
           cx={point.x}
           cy={point.y}
           r="3"
@@ -200,21 +210,17 @@ function CategoryChart({
         />
       ))}
 
-      {categories.map((category, index) => (
+      {plotted.map(({ category, x }) => (
         <text
           key={category.labelLines.join(" ")}
-          x={points[index].x}
+          x={x}
           y={PLOT.bottom + 18}
           textAnchor="middle"
           fontSize="9"
           fill={b2cDesignTokens.ink[500]}
         >
           {category.labelLines.map((line, lineIndex) => (
-            <tspan
-              key={line}
-              x={points[index].x}
-              dy={lineIndex === 0 ? 0 : 11}
-            >
+            <tspan key={line} x={x} dy={lineIndex === 0 ? 0 : 11}>
               {line}
             </tspan>
           ))}

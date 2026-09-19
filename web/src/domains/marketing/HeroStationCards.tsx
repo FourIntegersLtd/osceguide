@@ -48,7 +48,9 @@ export function HeroStationCards({ items }: HeroStationCardsProps) {
         <div className="relative flex flex-col gap-3 p-5 sm:gap-4 sm:p-6">
           {" "}
           {items.map(({ label, icon: Icon }, i) => {
-            const style = CARD_STYLES[i % CARD_STYLES.length];
+            // Cycles through the palette; the modulo keeps it in range, and
+            // the fallback is what tells the compiler so.
+            const style = CARD_STYLES[i % CARD_STYLES.length] ?? CARD_STYLES[0];
             return (
               <div
                 key={label}

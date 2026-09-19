@@ -35,8 +35,9 @@ export function withReferralParams(
   { search, context, appType }: WithReferralParamsOptions = {},
 ): string {
   if (!href.startsWith("/") || href.startsWith("//")) return href;
-  const [pathAndQuery, hash] = href.split("#");
-  const [path, existingQuery = ""] = pathAndQuery.split("?");
+  // `split` always yields a first piece, but the compiler cannot see it.
+  const [pathAndQuery = href, hash] = href.split("#");
+  const [path = pathAndQuery, existingQuery = ""] = pathAndQuery.split("?");
   const target = new URLSearchParams(existingQuery);
   const source = new URLSearchParams(
     search?.startsWith("?") ? search.slice(1) : (search ?? ""),

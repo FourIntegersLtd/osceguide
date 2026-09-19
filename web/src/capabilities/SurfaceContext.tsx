@@ -2,12 +2,18 @@
 
 import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
-import { surfaceBasePath, type Surface } from "@/capabilities/surface";
+import type { Surface } from "@/capabilities/surface";
 
 export interface SurfaceContextValue {
   surface: Surface;
-  /** The organisation whose workspace this is, when the surface has one. */
+  /** The organisation whose workspace this is, or null for a personal one. */
   orgSlug: string | null;
+  /**
+   * Everything this surface's screens hang off, e.g. `/app/me` or
+   * `/app/kings`. Passed in by the shell rather than computed here: the
+   * capabilities tier must not know the shape of the route tree.
+   */
+  basePath: string;
   /** Prefix a capability-relative path with the surface's base. */
   hrefFor: (path: string) => string;
 }
@@ -25,16 +31,18 @@ const SurfaceContext = createContext<SurfaceContextValue | null>(null);
 export function SurfaceProvider({
   surface,
   orgSlug = null,
+  basePath,
   children,
 }: {
   surface: Surface;
   orgSlug?: string | null;
+  basePath: string;
   children: ReactNode;
 }) {
-  const value = useMemo<SurfaceContextValue>(() => {
-    const base = surfaceBasePath(surface, orgSlug);
-    return { surface, orgSlug, hrefFor: (path: string) => `${base}${path}` };
-  }, [surface, orgSlug]);
+  const value = useMemo<SurfaceContextValue>(
+    () => ({ surface, orgSlug, basePath, hrefFor: (path: string) => `${basePath}${path}` }),
+    [surface, orgSlug, basePath],
+  );
 
   return <SurfaceContext.Provider value={value}>{children}</SurfaceContext.Provider>;
 }

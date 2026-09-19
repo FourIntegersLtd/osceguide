@@ -1,19 +1,31 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
-import { cn } from "@/foundation/ui/cn";
-import { buttonClassName, type ButtonSize, type ButtonVariant } from "@/foundation/ui/buttonStyles";
+import { getButtonClassName } from "@/foundation/ui/Button";
+import type { ButtonStyleProps } from "@/foundation/ui/Button";
 
-export interface ButtonLinkProps extends ComponentProps<typeof Link> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-}
+type ButtonLinkProps = ComponentProps<typeof Link> &
+  Omit<ButtonStyleProps, "themeType"> & {
+    themeType?: ButtonStyleProps["themeType"];
+  };
 
-/**
- * A link that looks like a button.
- *
- * Separate from `Button` rather than a polymorphic `as` prop: a navigation is a
- * link and must stay one for middle-click, open-in-new-tab and the keyboard.
- */
-export function ButtonLink({ variant = "primary", size = "md", className, ...rest }: ButtonLinkProps) {
-  return <Link className={cn(buttonClassName(variant, size), className)} {...rest} />;
+export function ButtonLink({
+  variant = "primary",
+  size = "md",
+  fullWidth = false,
+  themeType = "b2c",
+  className,
+  ...props
+}: ButtonLinkProps) {
+  return (
+    <Link
+      className={getButtonClassName({
+        themeType,
+        variant,
+        size,
+        fullWidth,
+        className,
+      })}
+      {...props}
+    />
+  );
 }

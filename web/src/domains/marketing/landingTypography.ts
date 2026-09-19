@@ -1,4 +1,4 @@
-import { buttonClassName } from "@/foundation/ui";
+import { getButtonClassName } from "@/foundation/ui";
 import type { LandingThemeVariant } from "./landingTheme";
 import { landingAccent, landingFocusRing } from "./landingTheme";
 
@@ -76,17 +76,17 @@ export function createLandingType(_variant: LandingTypographyVariant) {
       "font-landing-body text-sm text-landing-ink-body transition-colors hover:text-osce-ink-900",
     navContact:
       "font-landing-body text-sm font-medium text-landing-ink-body transition-colors hover:text-osce-ink-900",
-    navCtaPrimary: buttonClassName({
+    navCtaPrimary: getButtonClassName({
       variant: "primary",
       size: "md",
       className: `group w-full gap-2 sm:w-auto ${landingAccent.btn}`,
     }),
-    navCtaSecondary: buttonClassName({
+    navCtaSecondary: getButtonClassName({
       variant: "outline",
       size: "md",
       className: "w-full sm:w-auto",
     }),
-    ctaPrimary: buttonClassName({
+    ctaPrimary: getButtonClassName({
       variant: "primary",
       size: "hero",
       className: `group sm:w-auto ${landingAccent.btn}`,

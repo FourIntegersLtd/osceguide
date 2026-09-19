@@ -128,11 +128,15 @@ function InstallPrompt() {
     isStandalone ||
     dismissed ||
     !isMobile ||
-    needsDashboardOnboarding(
-      appType,
-      user?.user_id,
-      user?.station_progress?.length ?? 0,
-    )
+    /*
+     * The old consumer user object carried `user_id` and an inlined
+     * `station_progress` array; the platform's `/me` carries neither — progress
+     * is its own endpoint. Passing 0 means "no attempts yet", which is the
+     * conservative reading: a brand-new person still gets the onboarding, and
+     * somebody mid-course sees the prompt once more rather than never.
+     * Tracked in docs/port-gaps.md.
+     */
+    needsDashboardOnboarding(appType, user?.id, 0)
   ) {
     return null
   }

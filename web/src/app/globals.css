@@ -1,3 +1,4 @@
+@import "../foundation/ui/osceTokens.css";
 @import "../foundation/ui/tokens.css";
 
 @tailwind base;

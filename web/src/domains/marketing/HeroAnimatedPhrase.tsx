@@ -40,7 +40,10 @@ export function HeroAnimatedPhrase({
     return () => clearInterval(timer);
   }, [intervalMs, phrases.length]);
 
+  // The modulo keeps the index in range, but the compiler cannot see that;
+  // rendering nothing is the right answer for an empty list either way.
   const phrase = phrases[phraseIndex];
+  if (!phrase) return null;
 
   return (
     <span className="relative inline-block overflow-hidden align-bottom">

@@ -24,6 +24,7 @@ export default defineConfig([
       "boundaries/include": ["src/**/*.{ts,tsx}"],
       "boundaries/elements": [
         { type: "app", pattern: "src/app/**" },
+        { type: "middleware", pattern: "src/middleware.ts" },
         { type: "surface", pattern: "src/surfaces/**" },
         { type: "domain", mode: "full", pattern: "src/domains/*/**", capture: ["arm"] },
         { type: "capability", mode: "full", pattern: "src/capabilities/*/**", capture: ["name"] },
@@ -49,6 +50,9 @@ export default defineConfig([
               from: ["surface"],
               allow: ["domain", "capability", "capability-root", "foundation"],
             },
+            // Middleware answers retiring URLs, so it reads the redirect table
+            // and nothing else.
+            { from: ["middleware"], allow: ["foundation"] },
             // An arm may use capabilities and the foundation, and itself.
             {
               from: ["domain"],
@@ -59,11 +63,14 @@ export default defineConfig([
                 "foundation",
               ],
             },
-            // Hire is a shell over Assess (ADR 0001), so it alone may reach across.
-            {
-              from: [["domain", { arm: "hire" }]],
-              allow: [["domain", { arm: "assess" }]],
-            },
+            /*
+             * No arm reaches into another. Hire used to need an exception
+             * here — it is the Assess screens with different wording — and it
+             * no longer does: Hire is a *manifest* that declares
+             * `screensFrom: "assess"`, resolved in `surfaces/screens.ts`,
+             * which is a tier that is allowed to see both. An exception that
+             * is no longer needed is one fewer place for a real leak to hide.
+             */
             // The rule that matters: capabilities know nothing about arms.
             {
               from: ["capability", "capability-root"],
@@ -85,6 +92,41 @@ export default defineConfig([
         },
       ],
       "@typescript-eslint/no-explicit-any": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/foundation/platform-client",
+              /*
+               * The request function itself, not the whole module: a sign-in
+               * page calling `login` and a screen reading `hasCode` off an
+               * error are both fine. What is not fine is a component issuing
+               * its own request, which is how the retiring consumer client
+               * ended up with seventy components calling axios inline, each
+               * with its own loading and error handling, none testable.
+               */
+              importNames: ["platformRequest", "setPlatformTokenSource"],
+              message:
+                "Requests belong in an api.ts, not in a component. Export a named function from your tier's api.ts and call that.",
+            },
+          ],
+        },
+      ],
+      /*
+       * In-app links are built with `hrefFor` from the surface context, never
+       * spelled out. A literal `/app/...` in a component is a link that points
+       * at whichever workspace the author happened to be thinking about; ADR
+       * 0002 exists because those accumulated.
+       */
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/^\\/(app|b2b|assess|hire|platform)\\//]",
+          message:
+            "Do not spell a route prefix. Use `hrefFor()` from the surface context, or `foundation/routing` if this really is about the route space.",
+        },
+      ],
       "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
       /*
        * The React Compiler would rather data came from a data layer than an
@@ -100,6 +142,39 @@ export default defineConfig([
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/refs": "warn",
     },
+  },
+  {
+    /*
+     * Where talking to the backend is the job.
+     *
+     * An `api.ts` exists precisely to be the one place a tier makes requests,
+     * and `foundation` is the client itself plus the hooks that drive it. The
+     * rule is about *components* reaching past them.
+     */
+    files: [
+      "src/**/api.ts",
+      "src/**/api/**/*.ts",
+      "src/foundation/**/*.{ts,tsx}",
+      "src/domains/marketing/support/*.ts",
+    ],
+    rules: { "no-restricted-imports": "off" },
+  },
+  {
+    /*
+     * Where the route space is the subject.
+     *
+     * `foundation/routing` owns the grammar in ADR 0002 and has to name it;
+     * the marketing pages link to public addresses that are not workspace
+     * paths at all; and a test asserting a redirect must be able to write the
+     * path it is asserting.
+     */
+    files: [
+      "src/foundation/routing/**/*.ts",
+      "src/middleware.ts",
+      "src/**/*.test.ts",
+      "src/domains/marketing/**/*.{ts,tsx}",
+    ],
+    rules: { "no-restricted-syntax": "off" },
   },
   {
     // Generated from the backend's OpenAPI document. Never edited by hand.

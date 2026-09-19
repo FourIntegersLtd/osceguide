@@ -6706,10 +6706,18 @@ export interface components {
             /** Items */
             items?: components["schemas"]["SupervisorCircuitRow"][];
         };
-        /** SwitchWorkspace */
+        /**
+         * SwitchWorkspace
+         * @description Which workspace to re-issue the token against.
+         *
+         *     `None` means the person's own practice. That is a real destination, not an
+         *     absence: somebody who belongs to an institution still has their own
+         *     entitlements and their own attempts, and without this there is no way back
+         *     to them once an organisation is active.
+         */
         SwitchWorkspace: {
             /** Org Slug */
-            org_slug: string;
+            org_slug?: string | null;
         };
         /** TimingIn */
         TimingIn: {
@@ -7134,9 +7142,9 @@ export interface components {
             /** Access Token */
             access_token: string;
             /** Active Org Slug */
-            active_org_slug: string;
+            active_org_slug: string | null;
             /** Active Role */
-            active_role: string;
+            active_role: string | null;
             /** Expires In */
             expires_in: number;
             /**
@@ -7238,6 +7246,8 @@ export interface components {
             org_name?: string | null;
             /** Org Slug */
             org_slug: string;
+            /** Org Type */
+            org_type?: string | null;
             /** Role */
             role: string;
             /** Surface */

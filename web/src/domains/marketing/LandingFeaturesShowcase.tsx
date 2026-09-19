@@ -420,6 +420,9 @@ export function LandingFeaturesShowcase({
   sessionTitle = "SCA practise session",
 }: LandingFeaturesShowcaseProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0);
+  // Resolved once. The index is only ever set from this list, so the fallback
+  // is unreachable — it is here so the three reads below need no guard each.
+  const activeSlide = SHOWCASE_SLIDES[activeIndex] ?? SHOWCASE_SLIDES[0];
 
   useEffect(() => {
     const timer = setInterval(
@@ -440,11 +443,11 @@ export function LandingFeaturesShowcase({
         <div
           className={`${SHOWCASE_VIEWPORT_CLASS} [perspective:1200px]`}
           aria-live="polite"
-          aria-label={`Product showcase: ${SHOWCASE_SLIDES[activeIndex].label}`}
+          aria-label={`Product showcase: ${activeSlide.label}`}
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={SHOWCASE_SLIDES[activeIndex].id}
+              key={activeSlide.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -462,7 +465,7 @@ export function LandingFeaturesShowcase({
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-3 py-2.5 sm:px-5 sm:py-3">
           <p className="landing-showcase-chrome-label min-w-0 truncate font-landing-body font-medium text-neutral-700 sm:text-sm">
-            {SHOWCASE_SLIDES[activeIndex].label}
+            {activeSlide.label}
           </p>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {SHOWCASE_SLIDES.map((slide, index) => (

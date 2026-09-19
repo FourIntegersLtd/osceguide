@@ -1,6 +1,21 @@
-export { SurfaceShell, type NavItem, type SurfaceShellProps } from "@/surfaces/SurfaceShell";
-export { TrainShell } from "@/surfaces/TrainShell";
-export { AssessShell } from "@/surfaces/AssessShell";
-export { TraineeShell } from "@/surfaces/TraineeShell";
-export { PlatformShell } from "@/surfaces/PlatformShell";
-export { HireShell } from "@/surfaces/HireShell";
+export { SurfaceShell, type SurfaceShellProps } from "@/surfaces/SurfaceShell";
+export { WorkspaceSwitcher } from "@/surfaces/WorkspaceSwitcher";
+export {
+  ALL_SURFACES,
+  SURFACE_MANIFESTS,
+  ownsScreen,
+  surfaceForKind,
+  surfaceForWorkspace,
+  surfaceManifest,
+} from "@/surfaces/registry";
+export { screenComponent, screensFor } from "@/surfaces/screens";
+export { resolveWorkspace, workspacesFor } from "@/surfaces/resolveWorkspace";
+export type {
+  NavContext,
+  NavItem,
+  ScreenMap,
+  ScreenName,
+  ScreenProps,
+  ShellProps,
+  SurfaceManifest,
+} from "@/surfaces/contract";

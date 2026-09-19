@@ -82,7 +82,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const selectWorkspace = useCallback(
-    async (orgSlug: string) => {
+    async (orgSlug: string | null) => {
       await apiSwitchWorkspace(orgSlug);
       // The new token carries the new active membership, so everything derived
       // from it has to be re-read rather than patched locally.

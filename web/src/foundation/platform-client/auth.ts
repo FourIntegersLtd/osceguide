@@ -234,7 +234,14 @@ export async function logout(): Promise<void> {
 }
 
 /** Move to another workspace, re-minting the token with it active. */
-export async function switchWorkspace(orgSlug: string): Promise<AuthResult> {
+/**
+ * Re-mint the token against another workspace.
+ *
+ * `null` is a person's own practice, which is a destination rather than an
+ * absence: somebody in a cohort still has their own entitlements and their own
+ * attempts. Without it, joining an institution was a one-way door.
+ */
+export async function switchWorkspace(orgSlug: string | null): Promise<AuthResult> {
   const result = await platformRequest<AuthResult>("/api/v1/auth/switch-workspace", {
     method: "POST",
     body: { org_slug: orgSlug },

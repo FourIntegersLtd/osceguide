@@ -10,9 +10,11 @@ const MENTION = "@OSCEGuide";
 
 function getInitials(name: string): string {
   const withoutTitle = name.replace(/^Dr\.?\s+/i, "").trim();
-  const parts = withoutTitle.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  const parts = withoutTitle.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0];
+  const last = parts[parts.length - 1]?.[0];
+  if (parts.length >= 2 && first && last) {
+    return (first + last).toUpperCase();
   }
   const letters = withoutTitle.replace(/[^A-Za-z]/g, "");
   return (letters.slice(0, 2) || withoutTitle.slice(0, 2)).toUpperCase();

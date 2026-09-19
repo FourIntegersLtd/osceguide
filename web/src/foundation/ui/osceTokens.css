@@ -1,0 +1,151 @@
+/* ════════════════════════════════════════════════════════════════════════
+ * The OSCE Guide palette, brought across from the retiring client.
+ *
+ * These are the product's actual colours — the ones on the screens people use
+ * today — and the port keeps them exactly. `tokens.css` beside this file holds
+ * the small semantic set the new primitives read (`bg-canvas`, `text-ink`) and
+ * the per-surface overrides that skin an arm; this holds the full ramp the
+ * ported screens name directly.
+ *
+ * Keep in sync with the `osce` groups in tailwind.config.ts.
+ * ════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Ink ramp — cool clinical neutrals */
+  --osce-ink-900: #101828;
+  --osce-ink-800: #1d2939;
+  --osce-ink-700: #344054;
+  --osce-ink-600: #475467;
+  --osce-ink-500: #667085;
+  --osce-ink-400: #98a2b3;
+
+  /* Surfaces */
+  --osce-canvas: #f7f8fa;
+  --osce-surface: #ffffff;
+  --osce-surface-inset: #fcfcfd;
+  --osce-nav-active: #f2f4f7;
+
+  /* Borders — depth is a 1px rule, not a shadow */
+  --osce-border: #e4e7ec;
+  --osce-border-light: #f2f4f7;
+
+  /* Accent — the one token that never drifted */
+  --osce-accent: #2563eb;
+  --osce-accent-hover: #1d4ed8;
+  --osce-accent-muted: #eff6ff;
+  --osce-accent-subtle: #dbeafe;
+  --osce-accent-light: #3b82f6;
+
+  /* Semantic: success / warning / danger / info */
+  /* Filled success surfaces — "copied" buttons, confirmed states. The other
+   * families already have a fill: danger uses --osce-danger/-hover, and
+   * warning uses --osce-warning-icon. */
+  --osce-success-solid: #059669;
+  --osce-success-solid-hover: #047857;
+
+  --osce-success-bg: #ecfdf5;
+  --osce-success-border: #a7f3d0;
+  --osce-success-text: #047857;
+  --osce-success-icon: #10b981;
+
+  --osce-warning-bg: #fffbeb;
+  --osce-warning-border: #fde68a;
+  --osce-warning-text: #b45309;
+  --osce-warning-icon: #f59e0b;
+
+  --osce-danger: #ef4444;
+  --osce-danger-hover: #dc2626;
+  --osce-danger-bg: #fef2f2;
+  --osce-danger-border: #fecaca;
+  --osce-danger-text: #b91c1c;
+  --osce-danger-icon: #ef4444;
+
+  --osce-info-bg: var(--osce-accent-muted);
+  --osce-info-border: var(--osce-accent-subtle);
+  --osce-info-text: var(--osce-accent-hover);
+  --osce-info-icon: var(--osce-accent);
+
+  /* Feedback bands — scores only, never chrome */
+  --osce-band-competent: #15803d;
+  --osce-band-competent-bg: #dcfce7;
+  --osce-band-competent-border: #86efac;
+  --osce-band-developing: #b45309;
+  --osce-band-developing-bg: #fef3c7;
+  --osce-band-developing-border: #fcd34d;
+  --osce-band-development: #b91c1c;
+  --osce-band-development-bg: #fee2e2;
+  --osce-band-development-border: #fca5a5;
+
+
+  /*
+   * Reading tones — tinted surfaces for long-form clinical content.
+   *
+   * Colour here encodes the STAGE OF THE CONSULTATION, so the same kind of
+   * content is the same colour in SCA, PLAB, CASC, Ortho and the B2B review
+   * view. That consistency is the point: a tint that means something is
+   * worth reading twice, a tint that is merely different is noise.
+   *
+   * Every toned card also carries an icon and a title, so colour is never
+   * the only channel — which matters for the safety/management pair under
+   * colour-vision deficiency.
+   */
+  /* history — history taking, social concerns, ICE */
+  --osce-tone-history-bg: #eff6ff;
+  --osce-tone-history-header: #dbeafe;
+  --osce-tone-history-border: #bfdbfe;
+  --osce-tone-history-text: #1e40af;
+  --osce-tone-history-body: #1e3a8a;
+  /* examination — examination findings, investigations */
+  --osce-tone-examination-bg: #f0fdfa;
+  --osce-tone-examination-header: #ccfbf1;
+  --osce-tone-examination-border: #99f6e4;
+  --osce-tone-examination-text: #115e59;
+  --osce-tone-examination-body: #134e4a;
+  /* reasoning — differential diagnosis, assessment */
+  --osce-tone-reasoning-bg: #f5f3ff;
+  --osce-tone-reasoning-header: #ede9fe;
+  --osce-tone-reasoning-border: #ddd6fe;
+  --osce-tone-reasoning-text: #5b21b6;
+  --osce-tone-reasoning-body: #4c1d95;
+  /* management — management plan, medication, treatment */
+  --osce-tone-management-bg: #f0fdf4;
+  --osce-tone-management-header: #dcfce7;
+  --osce-tone-management-border: #bbf7d0;
+  --osce-tone-management-text: #166534;
+  --osce-tone-management-body: #14532d;
+  /* safety — red flags, immediate actions, safety-net */
+  --osce-tone-safety-bg: #fef2f2;
+  --osce-tone-safety-header: #fee2e2;
+  --osce-tone-safety-border: #fecaca;
+  --osce-tone-safety-text: #991b1b;
+  --osce-tone-safety-body: #7f1d1d;
+  /* education — patient education, advice, notes */
+  --osce-tone-education-bg: #fffbeb;
+  --osce-tone-education-header: #fef3c7;
+  --osce-tone-education-border: #fde68a;
+  --osce-tone-education-text: #92400e;
+  --osce-tone-education-body: #78350f;
+
+  /*
+   * Live session video chrome. The only dark surface in the product — video
+   * tiles need near-black behind a camera feed, which the light ink ramp
+   * cannot express. Teal is the AI-patient accent, saturated for legibility
+   * on black rather than the light `examination` reading tone.
+   */
+  --osce-video-bg: #09090b;
+  --osce-video-bg-raised: #18181b;
+  --osce-video-inactive: #52525b;
+  --osce-video-accent: #14b8a6;
+  --osce-video-accent-ring: #5eead4;
+  --osce-video-accent-ink: #99f6e4;
+
+  /* Radius scale */
+  --osce-radius-sm: 6px;
+  --osce-radius-md: 8px;
+  --osce-radius-lg: 10px;
+  --osce-radius-xl: 16px;
+
+  /*
+   * No card elevation token: cards are flat, and depth is a 1px border.
+   * Floating surfaces (modals, toasts, dropdowns) carry their own shadow.
+   */
+}

@@ -441,7 +441,7 @@ export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
   const partner = usePartnerContext();
   const { type } = useLandingVariant();
   const examKey = APP_TYPE_TO_EXAM[appType];
-  const examConfig = EXAM_CONFIGS[examKey] as ExamConfig | undefined;
+  const examConfig = examKey ? (EXAM_CONFIGS[examKey] as ExamConfig | undefined) : undefined;
 
   if (!examConfig?.plans) {
     return null;

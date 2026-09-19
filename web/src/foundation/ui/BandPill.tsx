@@ -1,9 +1,9 @@
-import { cn } from "@/shared/lib/utils";
+import { cn } from "@/foundation/ui/cn";
 import {
   b2cBandPillCompetent,
   b2cBandPillDeveloping,
   b2cBandPillDevelopment,
-} from "@/b2c/theme/b2cUi";
+} from "@/foundation/ui/productTokens";
 
 export type B2CBandVariant = "competent" | "developing" | "development";
 

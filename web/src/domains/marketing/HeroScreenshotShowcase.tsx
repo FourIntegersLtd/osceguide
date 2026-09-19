@@ -24,7 +24,7 @@ type HeroScreenshotTab = {
   icon: typeof HiOutlinePresentationChartLine;
 };
 
-const HERO_SCREENSHOT_TABS: HeroScreenshotTab[] = [
+const HERO_SCREENSHOT_TABS = [
   {
     id: "dashboard",
     label: "Dashboard",
@@ -61,13 +61,13 @@ const HERO_SCREENSHOT_TABS: HeroScreenshotTab[] = [
     height: 1888,
     icon: navIcon("marketplace"),
   },
-];
+] satisfies readonly [HeroScreenshotTab, ...HeroScreenshotTab[]];
 
 export function HeroScreenshotShowcase() {
+  // The tuple type above is what makes `[0]` a tab rather than a maybe-tab.
   const [activeId, setActiveId] = useState(HERO_SCREENSHOT_TABS[0].id);
   const activeTab =
-    HERO_SCREENSHOT_TABS.find((tab) => tab.id === activeId) ??
-    HERO_SCREENSHOT_TABS[0];
+    HERO_SCREENSHOT_TABS.find((tab) => tab.id === activeId) ?? HERO_SCREENSHOT_TABS[0];
 
   return (
     <div className="mx-auto w-full">

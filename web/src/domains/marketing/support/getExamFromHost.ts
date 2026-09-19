@@ -22,7 +22,7 @@ function examFromHostname(hostname: string, baseDomain: string): string | null {
     return null;
   }
   const subdomain = labels[0];
-  if (IGNORED_SUBDOMAINS.has(subdomain)) {
+  if (!subdomain || IGNORED_SUBDOMAINS.has(subdomain)) {
     return null;
   }
   return subdomain;

@@ -1,5 +1,5 @@
 import type { CapabilityModule, MountedCapability } from "@/capabilities/contract";
-import { surfaceBasePath, type Surface } from "@/capabilities/surface";
+import type { Surface } from "@/capabilities/surface";
 import { helpCapability } from "@/capabilities/help/capability";
 import { mediaCapability } from "@/capabilities/media/capability";
 import { stationsCapability } from "@/capabilities/stations/capability";
@@ -26,7 +26,11 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
 export interface MountOptions {
   /** From `/me/capabilities`. A capability with a permission is hidden without it. */
   can?: Record<string, boolean>;
-  orgSlug?: string | null;
+  /**
+   * What the surface's hrefs hang off, e.g. `/app/kings`. The shell knows it;
+   * this tier must not, or a capability could reconstruct the route tree.
+   */
+  basePath?: string;
   /** Include capabilities marked `hidden`. Off by default; nav does not want them. */
   includeHidden?: boolean;
 }
@@ -38,15 +42,14 @@ export interface MountOptions {
  */
 export function capabilitiesFor(
   surface: Surface,
-  { can = {}, orgSlug = null, includeHidden = false }: MountOptions = {},
+  { can = {}, basePath = "", includeHidden = false }: MountOptions = {},
 ): MountedCapability[] {
-  const base = surfaceBasePath(surface, orgSlug);
   return CAPABILITIES.filter((capability) => {
     if (!capability.surfaces.includes(surface)) return false;
     if (capability.hidden && !includeHidden) return false;
     if (capability.permission && can[capability.permission] !== true) return false;
     return true;
-  }).map((capability) => ({ ...capability, href: `${base}${capability.path}` }));
+  }).map((capability) => ({ ...capability, href: `${basePath}${capability.path}` }));
 }
 
 export function capabilityById(id: string): CapabilityModule | undefined {
