@@ -38,8 +38,26 @@ export function authoringScope(surface: string, orgSlug: string | null): Authori
   throw new Error("Authoring needs an organisation or the staff surface");
 }
 
-/* Three asymmetries in the backend, named rather than discovered at runtime.
+/* Four asymmetries in the backend, named rather than discovered at runtime.
  * `docs/port-gaps.md` carries the detail. */
+
+/**
+ * Where exams are *listed*.
+ *
+ * The one place the scope is not simply a prefix. `/platform/exams` is
+ * POST-only: the platform's listing is the unscoped `/exams`, which already
+ * answers a platform admin with the catalogue's drafts included and answers
+ * everybody else without them. Writing it as a prefix put a GET on a POST-only
+ * route, and the staff console's Exams section showed a 405 where the
+ * catalogue should be.
+ *
+ * `drafts` goes with the organisation's listing only, where it narrows to that
+ * institution's own rows. The platform listing decides by who is asking, so
+ * passing it there would be a query the backend ignores.
+ */
+export function examListPath(scope: AuthoringScope): string {
+  return scope.kind === "platform" ? "/api/v1/exams" : `${scope.base}/exams`;
+}
 
 /** Programmes are an institution's own grouping; the catalogue has none. */
 export const supportsProgrammes = (s: AuthoringScope) => s.kind === "org";

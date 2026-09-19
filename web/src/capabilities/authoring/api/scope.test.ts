@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   authoringScope,
+  examListPath,
   supportsBrief,
   supportsProgrammes,
   supportsVersionDelete,
@@ -46,5 +47,15 @@ describe("authoring scope", () => {
       assert.equal(supports(org), true);
       assert.equal(supports(platform), false);
     }
+  });
+});
+
+describe("the exam listing", () => {
+  it("is the unscoped catalogue for staff, because /platform/exams is POST-only", () => {
+    assert.equal(examListPath(authoringScope("platform", null)), "/api/v1/exams");
+  });
+
+  it("is the organisation's own for a workspace", () => {
+    assert.equal(examListPath(authoringScope("assess", "kings")), "/api/v1/orgs/kings/exams");
   });
 });

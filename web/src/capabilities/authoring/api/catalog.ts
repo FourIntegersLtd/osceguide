@@ -1,7 +1,7 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
 import type { Exam, Programme } from "@/capabilities/authoring/api/scope";
-import { pathId } from "@/capabilities/authoring/api/scope";
+import { examListPath, pathId } from "@/capabilities/authoring/api/scope";
 
 type S = components["schemas"];
 
@@ -12,7 +12,12 @@ export function listExams(
   params: { drafts?: boolean } = {},
   signal?: AbortSignal,
 ): Promise<S["Page_ExamRead_"]> {
-  return platformRequest(`${scope.base}/exams`, { query: { drafts: params.drafts }, signal });
+  return platformRequest(examListPath(scope), {
+    // The platform listing decides by who is asking; only an organisation's
+    // takes `drafts`.
+    query: { drafts: scope.kind === "org" ? params.drafts : undefined },
+    signal,
+  });
 }
 
 export function createExam(

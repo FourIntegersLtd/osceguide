@@ -751,18 +751,16 @@ one, and the screen treats that as "no ranking here" rather than as a failure.
 A training circuit is people practising, and ranking them against each other
 would turn practice into an assessment nobody agreed to sit.
 
-### Found while running the smoke script, and not fixed here
+### The platform's exam listing is not the platform's prefix
 
-`scripts/smoke.mjs` reports **`platform exams — 405`**. The authoring
-capability lists every collection as `${scope.base}/<thing>`, and for the
-platform scope that makes the exam listing `GET /api/v1/platform/exams` —
-which is **POST-only**. The platform's exam listing is `GET /api/v1/exams`,
-which already returns the platform's drafts to a platform admin and an
-institution's own exams never. So the staff console's Exams section shows an
-error where it should show the catalogue.
+`GET /api/v1/platform/exams` does not exist — that path is POST-only, and the
+platform's listing is the unscoped `GET /api/v1/exams`, which returns the
+catalogue's drafts to a platform admin and to nobody else. The authoring
+capability spells every path as the scope plus a name, so it put a GET on the
+POST-only route and the staff console's Exams section showed a 405 instead of
+the catalogue. `scripts/smoke.mjs` is what found it.
 
-Left alone deliberately: it belongs to J10's capability and J15's staff
-console, not to results and reviews, and quietly reaching into another job's
-files is how two agents collide. It is a one-line change in
-`capabilities/authoring/api/catalog.ts` — the listing needs the unscoped path
-when the scope is the platform.
+It is the fourth asymmetry named in `api/scope.ts`, beside programmes, the
+brief and version deletion: `examListPath(scope)`. `drafts=true` goes with an
+organisation's listing, where it narrows to that institution's own rows; the
+platform listing decides by who is asking, so the query is not sent there.

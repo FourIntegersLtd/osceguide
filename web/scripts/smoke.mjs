@@ -268,7 +268,10 @@ async function main() {
     });
 
     for (const [label, path] of AUTHORING_LISTINGS) {
-      await step(`platform ${label}`, `/api/v1/platform/${path}`, {
+      // Exams are the one listing that is not the scope plus a name:
+      // `/platform/exams` is POST-only and the catalogue is unscoped.
+      const listing = path === "exams" ? "/api/v1/exams" : `/api/v1/platform/${path}`;
+      await step(`platform ${label}`, listing, {
         allow: [403],
         expect: (p) => must(Array.isArray(p.items), "not a page"),
       });
