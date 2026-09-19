@@ -99,7 +99,7 @@ unwired endpoints — the single biggest block of unused backend.
 ### Wave 2 — after the job it names
 
 Wave 1 is done: J1–J10 all landed, and so did the backend's `GET /me/performance`
-(B1). J11 below is done too.
+(B1). J11 and J12 below are done too; J13 is next.
 
 **J11 · Institution: the live session runner** — **done.**
 `b2b/components/features/sessions` (15.2k, 94 files) → `domains/assess/sessions/`
@@ -119,13 +119,26 @@ video tiles (the observer token is subscribe-only by construction, and nothing
 in this product publishes video), the reading brief, and the whole LiveKit timer
 data channel — the clock is the server's now.
 
-**J12 · Institution: results and reviews** — `b2b/components/features/feedback`
-+ the reviews screens (2k) → `domains/assess/results/`. GP lead review, finalise,
-sign-off, release. **J11 has landed**, so the slot navigation this hangs off is
-there: every station row in `StationProgressList` links to its review. The
-circuit-level finalise is already wired from the runner; what is left here is
-the GP lead's own review, the sign-off and the release.
-**Next job.**
+**J12 · Institution: results and reviews** — **done.**
+`b2b/components/features/feedback` + the reviews screens (2k) →
+`domains/assess/results/` (eight files). The sitting report carries the whole
+examination in one request, so the old cohort summary, candidate pack per
+person and probe per slot are one screen with disclosures.
+
+Wired: the GP lead's review (revisioned, with the conflict refusal surfaced),
+the slot's agreed ratings, the cohort ranking, and the decision workflow as a
+PUT that actually saves.
+
+Three things in the rebuilt screens did not work and now do — recording a
+decision was a POST against a PUT route, "borderline" was offered against a
+four-value enum, and the evidence a release is re-checked against was never
+sent, so that safeguard compared two empty objects. There is also no
+`GET .../reviews/mine`, which the old screen called anyway: a reviewer's own
+draft never came back. All in `port-gaps.md`, with what the backend still owes:
+a bulk release, a notification on release, a cohort export, and optimistic
+concurrency on a decision.
+
+**J13 · Institution: dashboard, live board, reporting** is next.
 
 **J13 · Institution: dashboard, live board, reporting** —
 `b2b/components/features/dashboard` (0.8k) → `domains/assess/dashboard/`.

@@ -671,3 +671,98 @@ warning about nothing. The runner offers no structural edit: adding a latecomer
 is `append-trainees`, which the backend gates on the circuit being live and in
 training mode instead. The screen that rebuilds a circuit is where this
 belongs.
+
+## Results and reviews (institution)
+
+The sitting report carries the whole examination in one request, so most of
+what the retiring client assembled by hand — a cohort summary, a candidate
+pack per person, a probe per slot — is one screen with disclosures. What
+follows is what the backend does not offer, and the handful of places the
+rebuilt screens were wrong about it.
+
+### Three things that did not work at all
+
+Named because they were in this repo, not the old one, and each was a silent
+failure rather than a visible one:
+
+- **Recording a decision was a POST.** `save_decision` is a **PUT**; the POST
+  answered 405 and the screen reported it as a generic failure, so nothing in
+  this client had ever recorded a decision.
+- **"Borderline" is not an outcome.** `SaveDecision.assessment_outcome` is
+  `pass | fail | inconclusive | withheld`. The rebuilt screen offered
+  borderline, which 422s — and the two unresolved outcomes it was standing in
+  for mean different things: `inconclusive` is "not enough was assessed",
+  `withheld` is "decided and not being released".
+- **The evidence was never sent.** Release re-checks that the marking a
+  decision was signed off against has not moved, by fingerprinting `evidence`
+  at sign-off and comparing at release. Sending none made it compare two empty
+  objects and pass every time — so a station re-marked between sign-off and
+  release would have sent a candidate an outcome nobody approved. The screen
+  now sends the candidate's per-station marking, sorted so the same marking
+  always hashes the same.
+
+### There is no read for your own slot review
+
+`/orgs/{slug}/slots/{id}/reviews/mine` is a **PUT and nothing else**. The
+rebuilt screen called it as a GET, got 405, caught it, and rendered an empty
+form — so a reviewer's saved draft never came back and a second visit
+overwrote it. `SlotReview` now finds its own review in
+`GET /slots/{id}/reviews` by matching `submitted_by` against the signed-in
+user. A `GET .../reviews/mine` would make that a direct read; it is a small
+thing and it was a real data-loss bug.
+
+### A decision has no optimistic concurrency
+
+`SaveGpLeadReview` takes a `revision` and refuses a stale save — two leads with
+the same station open cannot overwrite each other. `SaveDecision` takes no such
+field, so two administrators editing the same candidate's decision silently
+overwrite one another. Every save is a new revision and nothing is lost from
+the record, but the last writer wins and neither is told. The retiring client
+sent an `expectedRevision`; there is nothing on this backend to send it to.
+
+### Releasing: no bulk route, and no notification
+
+- Release is one candidate at a time. The screen releases everything signed off
+  and not yet out, one request each, and names anyone the backend refuses
+  rather than reporting a count that hides them.
+- The old bulk release had a **"Notify candidates"** checkbox. Nothing on
+  `POST .../decision/release` takes one, and `notifications` is a separate
+  slice this screen does not reach into. A released result is visible when the
+  candidate next looks.
+
+### No cohort export
+
+The old cohort report had **"Export readout"**, which downloaded the ranking as
+markdown. There is no export route. The ranking is also computed per request
+here rather than cached, so the old "Refresh ranking" button has nothing to do.
+
+### `recruitment_outcome` is not shown
+
+The decision record carries one, and the backend checks the two outcomes
+against each other so a failed candidate cannot be recorded as appointed. It is
+deliberately not on this screen: Assess is an examination arm and records an
+assessment. The hire arm is a contract, not a separate product — see the ADR —
+and whatever renders it is where that field belongs.
+
+### Ranking is exam-only, by design
+
+`GET /sittings/{id}/cohort` answers 422 `not_an_exam_sitting` for a training
+one, and the screen treats that as "no ranking here" rather than as a failure.
+A training circuit is people practising, and ranking them against each other
+would turn practice into an assessment nobody agreed to sit.
+
+### Found while running the smoke script, and not fixed here
+
+`scripts/smoke.mjs` reports **`platform exams — 405`**. The authoring
+capability lists every collection as `${scope.base}/<thing>`, and for the
+platform scope that makes the exam listing `GET /api/v1/platform/exams` —
+which is **POST-only**. The platform's exam listing is `GET /api/v1/exams`,
+which already returns the platform's drafts to a platform admin and an
+institution's own exams never. So the staff console's Exams section shows an
+error where it should show the catalogue.
+
+Left alone deliberately: it belongs to J10's capability and J15's staff
+console, not to results and reviews, and quietly reaching into another job's
+files is how two agents collide. It is a one-line change in
+`capabilities/authoring/api/catalog.ts` — the listing needs the unscoped path
+when the scope is the platform.

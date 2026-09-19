@@ -281,7 +281,34 @@ async function main() {
         // screen relied on the list carrying them until this caught it.
         expect: (p) => must(Array.isArray(p.circuits), "no circuits on the detail"),
       });
-      await step("sitting report", `/api/v1/orgs/${slug}/sittings/${sittingId}/report`);
+      const report = await step("sitting report", `/api/v1/orgs/${slug}/sittings/${sittingId}/report`, {
+        expect: (p) => {
+          must(p.totals && Array.isArray(p.candidates), "unexpected shape");
+          // The evidence a release is checked against is built from these.
+          for (const candidate of p.candidates) {
+            must(Array.isArray(candidate.stations), "a candidate with no stations array");
+          }
+        },
+      });
+      // Ranked review order. A training sitting answers 422, which the screen
+      // reads as "no ranking here" — so both outcomes are an answer.
+      await step("sitting cohort", `/api/v1/orgs/${slug}/sittings/${sittingId}/cohort`, {
+        allow: [422],
+        expect: (p) => must(Array.isArray(p.candidates), "not a cohort"),
+      });
+      const slotId = report?.candidates?.[0]?.stations?.[0]?.slot_id;
+      if (slotId) {
+        await step("slot reviews", `/api/v1/orgs/${slug}/slots/${slotId}/reviews`, {
+          // A reviewer's own review is found in here by `submitted_by`: there
+          // is no GET for `reviews/mine`, only a PUT.
+          expect: (p) => must(Array.isArray(p.items) && p.summary, "unexpected shape"),
+        });
+        await step("gp lead review", `/api/v1/orgs/${slug}/slots/${slotId}/gp-lead-review`, {
+          // 404 is "nobody has written one", which is the usual case.
+          allow: [404],
+          expect: (p) => must(typeof p.revision === "number", "no revision to save against"),
+        });
+      }
       const circuitId = detail?.circuits?.[0]?.id;
       if (circuitId) {
         await step("circuit console", `/api/v1/orgs/${slug}/circuits/${circuitId}/console`, {

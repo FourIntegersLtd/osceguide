@@ -174,29 +174,11 @@ export function createCircuit(
 /* ---------- marking ---------- */
 
 export type SlotReview = components["schemas"]["SlotReviewRead"];
-export type SlotReviews = components["schemas"]["SlotReviewsRead"];
-
-export function readSlotReviews(
-  slug: string,
-  slotId: string,
-  signal?: AbortSignal,
-): Promise<SlotReviews> {
-  return platformRequest<SlotReviews>(`${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews`, {
-    signal,
-  });
-}
-
-/** My own review of a slot, which is the one I may edit. */
-export function readMyReview(
-  slug: string,
-  slotId: string,
-  signal?: AbortSignal,
-): Promise<SlotReview | null> {
-  return platformRequest<SlotReview | null>(
-    `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
-    { signal },
-  );
-}
+/*
+ * `mine` is a PUT and nothing else: there is no read for one's own review, so
+ * a screen finds it in the slot's review list by the id on it. See
+ * `docs/port-gaps.md`.
+ */
 
 /**
  * Save or submit a review.
@@ -233,53 +215,6 @@ export function readMyResult(sittingId: string, signal?: AbortSignal): Promise<T
 export function acknowledgeResult(sittingId: string): Promise<void> {
   return platformRequest<void>(
     `/api/v1/me/results/${encodeURIComponent(sittingId)}/acknowledge`,
-    { method: "POST" },
-  );
-}
-
-export type SittingReport = components["schemas"]["SittingReport"];
-export type CandidateReport = components["schemas"]["CandidateReport"];
-
-export function readSittingReport(
-  slug: string,
-  sittingId: string,
-  signal?: AbortSignal,
-): Promise<SittingReport> {
-  return platformRequest<SittingReport>(
-    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/report`,
-    { signal },
-  );
-}
-
-/**
- * Record or revise a decision.
- *
- * Revisions are append-only, enforced by a database trigger: a correction is a
- * new revision superseding the old, so what was considered survives and the
- * record is still defensible months later.
- */
-export function recordDecision(
-  slug: string,
-  sittingId: string,
-  traineeId: string,
-  input: { assessmentOutcome: string; rationale: string },
-) {
-  return platformRequest<unknown>(
-    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/decision`,
-    { method: "POST", body: { assessment_outcome: input.assessmentOutcome, rationale: input.rationale } },
-  );
-}
-
-export function signOffDecision(slug: string, sittingId: string, traineeId: string) {
-  return platformRequest<unknown>(
-    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/decision/sign-off`,
-    { method: "POST" },
-  );
-}
-
-export function releaseDecision(slug: string, sittingId: string, traineeId: string) {
-  return platformRequest<unknown>(
-    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/decision/release`,
     { method: "POST" },
   );
 }

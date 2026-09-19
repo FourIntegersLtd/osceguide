@@ -3,14 +3,22 @@
 import { useCallback, useMemo, useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, Card, PageHeader, Spinner, cn } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useSession } from "@/foundation/session";
 import { readResult } from "@/capabilities/attempt-runner";
 import { FeedbackView, normaliseFeedback, RAG_LABEL, type Rag } from "@/capabilities/feedback";
-import { readMyReview, saveReview } from "@/domains/assess/api";
+import { saveReview } from "@/domains/assess/api";
+import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
+import type { SlotReviews } from "@/domains/assess/results";
 
 const GRADES: Rag[] = ["R", "A", "G"];
 
 /**
- * A supervisor's marking, beside the machine's.
+ * A station, marked three ways.
+ *
+ * An observer's own review, the lead's authoritative one, and what everybody
+ * who watched agreed — beside the machine's marking. The retiring client had
+ * the first of those and the platform had no screen for the other two at all,
+ * so a GP lead's review existed on the backend and nothing could write one.
  *
  * The domains to score are derived from the feedback the engine actually
  * produced for this attempt, not from a list held here — which is how the old
@@ -28,13 +36,25 @@ export function SlotReview({
   slotId: string;
   attemptId: string | null;
 }) {
+  /*
+   * One read of the reviews, not two.
+   *
+   * There is no `GET .../reviews/mine` on the backend — only a PUT — so the
+   * rebuilt screen's call for it answered 405 on every load and the catch
+   * swallowed it, which meant a reviewer's own saved draft never came back.
+   * The list carries every review with who wrote it, so mine is the one with
+   * my id on it.
+   */
+  const { session } = useSession();
+  const userId = session?.user.id ?? null;
+
   const state = useAsync(
     async (signal) => {
-      const [result, mine] = await Promise.all([
+      const [result, reviews] = await Promise.all([
         attemptId ? readResult(attemptId, signal).catch(() => null) : Promise.resolve(null),
-        readMyReview(orgSlug, slotId, signal).catch(() => null),
+        readSlotReviews(orgSlug, slotId, signal),
       ]);
-      return { result, mine };
+      return { result, reviews };
     },
     [orgSlug, slotId, attemptId],
   );
@@ -48,7 +68,8 @@ export function SlotReview({
             orgSlug={orgSlug}
             slotId={slotId}
             payload={data.result?.payload ?? null}
-            initial={data.mine}
+            reviews={data.reviews}
+            initial={(data.reviews.items ?? []).find((item) => item.submitted_by === userId) ?? null}
             onSaved={state.reload}
           />
         )}
@@ -61,18 +82,25 @@ function Editor({
   orgSlug,
   slotId,
   payload,
+  reviews,
   initial,
   onSaved,
 }: {
   orgSlug: string;
   slotId: string;
   payload: Record<string, unknown> | null;
+  reviews: SlotReviews;
   initial: { field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
   const domains = useMemo(
     () => (payload ? normaliseFeedback(payload).groups.map((group) => ({ key: group.key, label: group.label, machine: group.score })) : []),
     [payload],
+  );
+
+  const labels = useMemo(
+    () => Object.fromEntries(domains.map((domain) => [domain.key, domain.label])),
+    [domains],
   );
 
   const [scores, setScores] = useState<Record<string, Rag>>(() => {
@@ -182,6 +210,17 @@ function Editor({
               </div>
             )}
           </div>
+        </Card>
+
+        {/* The lead's review is one per station and the observers' are one
+            each, so they are separate panels rather than tabs of the same
+            thing — a reviewer should be able to see both at once. */}
+        <Card title="The lead's review" description="One per station, and the one that counts.">
+          <GpLeadReview orgSlug={orgSlug} slotId={slotId} domains={domains} />
+        </Card>
+
+        <Card title="What the reviewers agreed">
+          <SlotReviewers reviews={reviews} labelFor={(key: string) => labels[key] ?? key} />
         </Card>
       </div>
 

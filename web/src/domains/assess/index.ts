@@ -8,7 +8,7 @@ export { Team } from "@/domains/assess/team";
 export { NewSitting } from "@/domains/assess/NewSitting";
 export { SlotReview } from "@/domains/assess/SlotReview";
 export { NewCircuit } from "@/domains/assess/NewCircuit";
-export { Results } from "@/domains/assess/Results";
+export { Results } from "@/domains/assess/results";
 export { MyResult } from "@/domains/assess/MyResult";
 export { OrgDiscussion } from "@/domains/assess/OrgDiscussion";
 export * from "@/domains/assess/api";
