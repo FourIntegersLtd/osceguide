@@ -130,13 +130,27 @@ def error_codes() -> list[str]:
     return sorted(found)
 
 
+# The code every bearer route can answer with once an account is deactivated:
+# `core.auth` refuses the token on its next request, whatever the route. Named
+# here rather than in `auth` because this module cannot import that one, and
+# `error_responses` declares it wherever `Unauthenticated` is declared.
+ACCOUNT_DEACTIVATED_CODE = "account_suspended"
+
+
 def error_responses(*errors: type[AppError]) -> dict[int | str, dict[str, Any]]:
-    """Build the `responses=` mapping for a route so OpenAPI documents its errors."""
+    """Build the `responses=` mapping for a route so OpenAPI documents its errors.
+
+    Declaring `Unauthenticated` also declares the deactivated-account refusal:
+    a route that needs a bearer can meet one, and the frontend's generated
+    types have to know the code to sign the person out cleanly.
+    """
     out: dict[int | str, dict[str, Any]] = {}
     for err in errors:
         entry = out.setdefault(err.status, {"model": ErrorResponse, "description": ""})
         codes = entry.setdefault("x-codes", [])
         codes.append(err.code)
+        if err is Unauthenticated and ACCOUNT_DEACTIVATED_CODE not in codes:
+            codes.append(ACCOUNT_DEACTIVATED_CODE)
         entry["description"] = ", ".join(codes)
     return out
 

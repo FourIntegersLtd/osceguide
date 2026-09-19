@@ -171,3 +171,39 @@ async def test_the_account_search_can_be_narrowed_to_console_users(client: Async
 
     others = await client.get("/api/v1/platform/users?platform_admin=false", headers=bearer(root))
     assert "plain@example.com" in {row["email"] for row in others.json()["items"]}
+
+
+async def test_deactivating_an_account_ends_its_sessions_now(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Not at the next refresh: the access token is refused on its next request."""
+    from tests.http.test_identity_routes import register
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    registered = (await register(client, email="leaver@example.com")).json()
+    access, refresh = registered["access_token"], registered["refresh_token"]
+    assert (await client.get("/api/v1/me", headers=bearer(access))).status_code == 200
+    user_id = registered["user"]["id"]
+
+    gone = await client.patch(
+        f"/api/v1/platform/users/{user_id}", json={"status": "deactivated"}, headers=bearer(root)
+    )
+    assert gone.status_code == 200, gone.text
+
+    refused = await client.get("/api/v1/me", headers=bearer(access))
+    assert refused.status_code == 401
+    assert refused.json()["code"] == "account_suspended"
+    assert (await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})).status_code == 401
+
+    history = await client.get(f"/api/v1/platform/users/{user_id}/audit", headers=bearer(root))
+    assert history.json()["items"][0]["action"] == "user.deactivated"
+
+    back = await client.patch(
+        f"/api/v1/platform/users/{user_id}", json={"status": "active"}, headers=bearer(root)
+    )
+    assert back.status_code == 200
+    history = await client.get(f"/api/v1/platform/users/{user_id}/audit", headers=bearer(root))
+    assert sorted(row["action"] for row in history.json()["items"]) == [
+        "user.deactivated",
+        "user.reactivated",
+    ]
+    # The old sessions stay ended; signing in again is how they come back.
+    assert (await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})).status_code == 401

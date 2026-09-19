@@ -32,7 +32,7 @@ from app.features.tenancy.schemas import (
     UpdatePlatformUser,
     UserSummary,
 )
-from app.features.tenancy.service_platform import platform_audit_read
+from app.features.tenancy.service_platform_audit import platform_audit_read
 
 
 def _user_summary(user: accounts.SupportUser) -> UserSummary:
@@ -121,19 +121,39 @@ async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDe
 
 
 async def update_user(
-    session: AsyncSession, user_id: uuid.UUID, *, changes: UpdatePlatformUser, actor: Principal
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    changes: UpdatePlatformUser,
+    actor: Principal,
+    now: datetime,
 ) -> PlatformUserDetail:
-    await _require(session, user_id)
+    """Correct a field, or deactivate the account.
+
+    Deactivating ends the person's sessions here and now: every refresh chain
+    is revoked, and `core.auth` refuses their access token on its next
+    request. Before this the status was written and nothing read it until the
+    next refresh, so a deactivated account kept working for up to fifteen
+    minutes — and longer if it never refreshed.
+    """
+    before = await _require(session, user_id)
     values = changes.model_dump(exclude_unset=True)
     if values:
         if await accounts.update_user(session, user_id, **values) is None:
             raise UserNotFound()
+        action = "user.updated"
+        status = values.get("status")
+        if status == "deactivated" and before.status != "deactivated":
+            await identity.end_sessions(session, user_id, now=now, reason="deactivated_by_admin")
+            action = "user.deactivated"
+        elif status == "active" and before.status != "active":
+            action = "user.reactivated"
         await repository.write_audit(
             session,
             org_id=None,
             actor_user_id=actor.user_id,
             actor_email=actor.email,
-            action="user.updated",
+            action=action,
             target_type="user",
             target_id=str(user_id),
             summary=", ".join(f"{key}={value}" for key, value in sorted(values.items())),

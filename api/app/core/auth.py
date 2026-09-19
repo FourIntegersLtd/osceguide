@@ -24,7 +24,10 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.account_status import refuse_if_deactivated
+from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated
 from app.core.settings import Settings, get_settings
 
@@ -150,10 +153,12 @@ async def get_principal(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Principal:
     if credentials is None or not credentials.credentials:
         raise Unauthenticated()
     principal = decode_access_token(credentials.credentials, settings=settings)
+    await refuse_if_deactivated(session, principal.user_id)
     if principal.must_change_password:
         _refuse_unless_password_route(request)
     return principal
@@ -184,6 +189,7 @@ async def get_principal_if_present(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Principal | None:
     """Whoever is calling, or nobody.
 
@@ -199,6 +205,7 @@ async def get_principal_if_present(
     if credentials is None or not credentials.credentials:
         return None
     principal = decode_access_token(credentials.credentials, settings=settings)
+    await refuse_if_deactivated(session, principal.user_id)
     if principal.must_change_password:
         _refuse_unless_password_route(request)
     return principal

@@ -234,3 +234,16 @@ async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_ad
     if refreshed is None:
         raise UserNotFound()
     return _ref(refreshed)
+
+
+async def account_status(session: AsyncSession, user_id: uuid.UUID) -> str | None:
+    """Bound into `core.auth`, which refuses a token for a deactivated account
+    on its next request rather than its next refresh."""
+    user = await repository.user_by_id(session, user_id)
+    return None if user is None else user.status
+
+
+async def end_sessions(session: AsyncSession, user_id: uuid.UUID, *, now: datetime, reason: str) -> None:
+    """Revoke every refresh chain this person holds. Deactivating an account
+    has to end its sessions; the token check above ends its access."""
+    await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason=reason)

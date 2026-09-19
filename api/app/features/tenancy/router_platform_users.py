@@ -80,9 +80,13 @@ async def update_user(
     body: schemas.UpdatePlatformUser,
     admin: PlatformAdmin,
     session: Session,
+    clock: ClockDep,
 ) -> schemas.PlatformUserDetail:
-    """Correct a name or exam, or deactivate the account."""
-    return await service_platform_users.update_user(session, user_id, changes=body, actor=admin)
+    """Correct a name or exam, or deactivate the account — which ends its
+    sessions now, not at the next refresh."""
+    return await service_platform_users.update_user(
+        session, user_id, changes=body, actor=admin, now=clock.now()
+    )
 
 
 @router.put(
