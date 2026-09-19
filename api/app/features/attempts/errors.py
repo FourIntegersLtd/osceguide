@@ -66,3 +66,11 @@ class UnknownExamError(NotFound):
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+class UserNotFound(NotFound):
+    """No such account. The code `tenancy` and `identity` answer with, because
+    the console switches on it."""
+
+    code = "user_not_found"
+    default_message = "No such account"

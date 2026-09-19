@@ -52,6 +52,8 @@ and the job that scores a delivered transcript.
 | GET | `/api/v1/attempts/{id}/review` | owner or org admin | The model answer — the patient's ideas and concerns, and the management plan. `attempt_not_finished` (409) until the interaction is over |
 | GET | `/api/v1/me/attempts` | bearer | This person's attempts, newest first. `station_version_id` and `set_entry_id` narrow it |
 | GET | `/api/v1/attempts/{id}/stream` | stream ticket | The attempt, pushed until it is marked. Replaces b2c's feedback-status stream and the two pollers behind it |
+| GET | `/api/v1/platform/users/{id}/attempts` | platform admin | One person's attempts with their marking state: transcript delivered, results, the newest scoring job. `?status=` narrows |
+| GET | `/api/v1/platform/attempts/{id}` | platform admin | The support detail: frozen definition present, turns received, every scoring job ever queued |
 | GET | `/api/worker/attempts/{id}` | worker secret | `{attempt, scenario}`, no evaluation policy |
 | POST | `/api/worker/attempts/{id}/transcript-chunks` | worker secret | idempotent |
 | POST | `/api/worker/attempts/{id}/transcript` | worker secret | exactly once; enqueues scoring |
@@ -63,7 +65,8 @@ stores one `assessment_results` row. Idempotent on `(attempt_id, policy_version)
 ## Cross-slice dependencies
 Calls `catalog` to resolve an exam, `stations` to resolve a scenario and to read
 back the document behind one, and `entitlements` to decide whether an attempt
-may start.
+may start. The platform console's reads ask `health.service_jobs` what the
+queue holds for an attempt and `identity` whether the account exists.
 
 ## What a candidate may read of a station
 `station_versions.content` is one document holding both the brief and the

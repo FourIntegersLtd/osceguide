@@ -6013,6 +6013,33 @@
         "title": "Page[PlanRead]",
         "type": "object"
       },
+      "Page_PlatformAttemptRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAttemptRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[PlatformAttemptRead]",
+        "type": "object"
+      },
       "Page_PlatformAuditRead_": {
         "properties": {
           "items": {
@@ -6625,6 +6652,348 @@
           "exam_code"
         ],
         "title": "PlanRead",
+        "type": "object"
+      },
+      "PlatformAttemptDetail": {
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "definition_frozen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition Frozen At"
+          },
+          "exam_id": {
+            "format": "uuid",
+            "title": "Exam Id",
+            "type": "string"
+          },
+          "failed_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed Reason"
+          },
+          "has_definition": {
+            "title": "Has Definition",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/ScoringJobRead"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          },
+          "result_policy_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Result Policy Versions",
+            "type": "array"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "scoring_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoringJobRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "station_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Version Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transcript_complete": {
+            "title": "Transcript Complete",
+            "type": "boolean"
+          },
+          "transcript_delivered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript Delivered At"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "exam_id",
+          "station_version_id",
+          "room_name",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "user_id",
+          "org_id",
+          "failed_reason",
+          "transcript_complete",
+          "transcript_delivered_at",
+          "result_policy_versions",
+          "scoring_job",
+          "has_definition",
+          "definition_frozen_at",
+          "chunk_count",
+          "jobs"
+        ],
+        "title": "PlatformAttemptDetail",
+        "type": "object"
+      },
+      "PlatformAttemptRead": {
+        "description": "An attempt, with the state a support question turns on.\n\n`scoring_job` is the newest marking job for it, or None when nothing was\never queued \u2014 which with a complete transcript is itself the diagnosis.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "exam_id": {
+            "format": "uuid",
+            "title": "Exam Id",
+            "type": "string"
+          },
+          "failed_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed Reason"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          },
+          "result_policy_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Result Policy Versions",
+            "type": "array"
+          },
+          "room_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Name"
+          },
+          "scoring_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoringJobRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "station_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Version Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transcript_complete": {
+            "title": "Transcript Complete",
+            "type": "boolean"
+          },
+          "transcript_delivered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript Delivered At"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "exam_id",
+          "station_version_id",
+          "room_name",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "user_id",
+          "org_id",
+          "failed_reason",
+          "transcript_complete",
+          "transcript_delivered_at",
+          "result_policy_versions",
+          "scoring_job"
+        ],
+        "title": "PlatformAttemptRead",
         "type": "object"
       },
       "PlatformAuditRead": {
@@ -7874,6 +8243,55 @@
           }
         },
         "title": "SceneRequest",
+        "type": "object"
+      },
+      "ScoringJobRead": {
+        "description": "One marking job as the queue holds it.",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Version"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "attempts",
+          "policy_version",
+          "scheduled_at"
+        ],
+        "title": "ScoringJobRead",
         "type": "object"
       },
       "SearchHit": {
@@ -26252,6 +26670,81 @@
         ]
       }
     },
+    "/api/v1/platform/attempts/{attempt_id}": {
+      "get": {
+        "description": "Everything support needs about one attempt: the frozen definition's\npresence, how many turns arrived, and every marking job ever queued.",
+        "operationId": "attempts_read_attempt_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAttemptDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Attempt For Support",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
     "/api/v1/platform/audit": {
       "get": {
         "description": "Who changed what, across every organisation and the platform itself.",
@@ -30752,6 +31245,130 @@
         "summary": "Update User",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/users/{user_id}/attempts": {
+      "get": {
+        "description": "One person's attempts, newest first, each saying whether its transcript\narrived, whether it was marked, and what the queue holds for it.",
+        "operationId": "attempts_list_user_attempts_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only attempts in this state",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(created|running|interaction_complete|evaluated|failed)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only attempts in this state",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PlatformAttemptRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List User Attempts For Support",
+        "tags": [
+          "attempts"
         ]
       }
     },

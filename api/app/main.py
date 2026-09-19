@@ -32,6 +32,7 @@ from app.features import health
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
 from app.features.attempts.router import router as attempts_router
+from app.features.attempts.router_platform import router as platform_attempts_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
 from app.features.catalog.router import router as catalog_router
@@ -99,6 +100,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(station_templates_router)
     router.include_router(platform_stations_router)
     router.include_router(attempts_router)
+    router.include_router(platform_attempts_router)
     router.include_router(entitlements_router)
     router.include_router(voice_router)
     router.include_router(sittings_router)

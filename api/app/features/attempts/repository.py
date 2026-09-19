@@ -116,17 +116,21 @@ async def list_for_user(
     cursor: dict[str, Any] | None = None,
     station_version_id: uuid.UUID | None = None,
     set_entry_id: uuid.UUID | None = None,
+    status: Status | None = None,
 ) -> tuple[list[Attempt], str | None]:
     """This person's attempts, newest first, optionally narrowed to one station.
 
     The filters are what the screens listing attempts ask: every attempt at one
-    station, and every attempt at one entry of a practice set.
+    station, every attempt at one entry of a practice set, and — for the
+    support console — every attempt stuck in one status.
     """
     stmt = select(Attempt).where(Attempt.user_id == user_id)
     if station_version_id is not None:
         stmt = stmt.where(Attempt.station_version_id == station_version_id)
     if set_entry_id is not None:
         stmt = stmt.where(Attempt.set_entry_id == set_entry_id)
+    if status is not None:
+        stmt = stmt.where(Attempt.status == str(status))
     return await keyset_page(
         session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
     )

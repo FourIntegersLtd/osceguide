@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts.models import AssessmentResult, Transcript, TranscriptMessage
@@ -57,6 +57,23 @@ async def seen_message_ids(session: AsyncSession, attempt_id: uuid.UUID) -> set[
 async def transcript_for(session: AsyncSession, attempt_id: uuid.UUID) -> Transcript | None:
     stmt = select(Transcript).where(Transcript.attempt_id == attempt_id)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def transcripts_for(
+    session: AsyncSession, attempt_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, Transcript]:
+    """The delivery records for a page of attempts, keyed by attempt."""
+    if not attempt_ids:
+        return {}
+    stmt = select(Transcript).where(Transcript.attempt_id.in_(list(attempt_ids)))
+    return {row.attempt_id: row for row in (await session.execute(stmt)).scalars()}
+
+
+async def chunk_count(session: AsyncSession, attempt_id: uuid.UUID) -> int:
+    stmt = (
+        select(func.count()).select_from(TranscriptMessage).where(TranscriptMessage.attempt_id == attempt_id)
+    )
+    return int((await session.execute(stmt)).scalar_one())
 
 
 async def mark_transcript_complete(
@@ -128,3 +145,20 @@ async def attempt_ids_with_results(session: AsyncSession, attempt_ids: Sequence[
         return set()
     stmt = select(AssessmentResult.attempt_id).where(AssessmentResult.attempt_id.in_(list(attempt_ids)))
     return set((await session.execute(stmt)).scalars())
+
+
+async def policy_versions_for(
+    session: AsyncSession, attempt_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, list[str]]:
+    """Which policy versions each of these attempts has been marked under."""
+    if not attempt_ids:
+        return {}
+    stmt = (
+        select(AssessmentResult.attempt_id, AssessmentResult.policy_version)
+        .where(AssessmentResult.attempt_id.in_(list(attempt_ids)))
+        .order_by(AssessmentResult.scored_at)
+    )
+    out: dict[uuid.UUID, list[str]] = {}
+    for attempt_id, version in (await session.execute(stmt)).all():
+        out.setdefault(attempt_id, []).append(version)
+    return out
