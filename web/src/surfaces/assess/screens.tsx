@@ -1,6 +1,7 @@
 "use client";
 
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
+import { StationConsultation } from "@/capabilities/stations";
 import {
   CircuitRunner,
   LiveBoard,
@@ -98,6 +99,10 @@ function AssessAttempt({ params }: ScreenProps) {
   return <StationRecord attemptId={params?.attemptId ?? ""} />;
 }
 
+function AssessPracticeStation({ params }: ScreenProps) {
+  return <StationConsultation stationId={params?.stationId ?? ""} />;
+}
+
 /**
  * Borrowed wholesale by Hire, which declares `screensFrom: "assess"`.
  *
@@ -121,4 +126,5 @@ export const assessScreens: ScreenMap = {
   myResult: AssessMyResult,
   myPractice: AssessMyPractice,
   attempt: AssessAttempt,
+  practiceStation: AssessPracticeStation,
 };

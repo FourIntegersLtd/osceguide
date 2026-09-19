@@ -69,6 +69,18 @@ describe("legacy redirects", () => {
     }
   });
 
+  it("sends an old Access bookmark to the Settings tab that replaced it", () => {
+    /*
+     * Both spellings: the retiring client's root-level `/access`, and the one
+     * platform-web itself served for a few weeks before billing moved back
+     * under Settings. The second was found by opening it in a browser, where
+     * it 404ed — the exact table only covered the first.
+     */
+    assert.equal(destination("/access"), "/app/me/settings?tab=payments");
+    assert.equal(destination("/app/me/access"), "/app/me/settings?tab=payments");
+    assert.equal(destination("/app/kings/access"), "/app/kings/settings?tab=payments");
+  });
+
   it("settles after one hop", () => {
     // Following a redirect must never produce another one, or the browser
     // gives up with ERR_TOO_MANY_REDIRECTS and the page is simply gone.
@@ -77,7 +89,13 @@ describe("legacy redirects", () => {
       assert.ok(once, `${from} should redirect`);
       assert.equal(legacyDestination(once), null, `${from} → ${once} → redirects again`);
     }
-    for (const sample of ["/b2b/kings/sessions", "/b2b/platform/users", "/assess/kings", "/hire/acme"]) {
+    for (const sample of [
+      "/b2b/kings/sessions",
+      "/b2b/platform/users",
+      "/assess/kings",
+      "/hire/acme",
+      "/app/me/access",
+    ]) {
       const once = legacyDestination(sample);
       assert.ok(once);
       assert.equal(legacyDestination(once), null, `${sample} → ${once} → redirects again`);

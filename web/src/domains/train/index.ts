@@ -1,5 +1,7 @@
 export { ExamDashboard } from "@/domains/train/dashboard";
-export { Mocks, MockDetail, MockStationRunner } from "@/domains/train/mocks";
-export { AttemptResult } from "@/domains/train/AttemptResult";
-export { useExam } from "@/domains/train/useExam";
+export { Mocks, MockDetail, MockEnd } from "@/domains/train/mocks";
+export { SetStation } from "@/domains/train/station/SetStation";
+export { PracticeStation } from "@/domains/train/station/PracticeStation";
+export { AttemptLanding } from "@/domains/train/station/AttemptLanding";
+export type { StationStep } from "@/domains/train/station/StationChrome";
 export * from "@/domains/train/api";

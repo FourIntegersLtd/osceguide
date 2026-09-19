@@ -45,8 +45,21 @@ export interface AttemptSessionInput {
    * Assess starts a circuit slot. The runner must not know which, or it would
    * need a branch per arm and stop being a capability — so the caller supplies
    * the one call that differs and everything after it is shared.
+   *
+   * Optional when `attemptId` is given: the consumer station screen creates
+   * the attempt as soon as the station is opened, because the brief it reads
+   * during the reading period *is* the attempt's, and then there is nothing
+   * left to create when the patient is called.
    */
-  start: () => Promise<StartedAttemptRef>;
+  start?: () => Promise<StartedAttemptRef>;
+  /**
+   * An attempt that already exists, to run rather than create.
+   *
+   * A reload during a station must not burn a second attempt against the
+   * exam's limit — the backend counts one at creation — so the screen keeps
+   * the id and hands it back here.
+   */
+  attemptId?: string | null;
   /** Skipped when zero, which is what a debrief and a peer session want. */
   readingSeconds: number;
   onEnded?: (attemptId: string) => void;
@@ -84,12 +97,20 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
     setPhase("connecting");
     setError(null);
     try {
-      // The attempt is created first and frozen server-side; the worker then
-      // fetches it by id. Nothing about the scenario travels through the
-      // browser, so a tampered payload cannot change what is assessed.
-      const created = await inputRef.current.start();
-      setAttempt(created);
-      setGrant(await attemptVoiceToken(created.id));
+      /*
+       * The attempt is frozen server-side and the worker fetches it by id.
+       * Nothing about the scenario travels through the browser, so a tampered
+       * payload cannot change what is assessed.
+       *
+       * It may already exist — the consumer screen creates it when the station
+       * opens, so the reading period has a brief to show — in which case this
+       * mints a token for it rather than creating a second one.
+       */
+      const { attemptId, start } = inputRef.current;
+      const running = attemptId ? { id: attemptId } : await start?.();
+      if (!running) throw new Error("This station has no attempt to run.");
+      setAttempt(running);
+      setGrant(await attemptVoiceToken(running.id));
       setPhase("live");
     } catch (cause) {
       fail(cause);
@@ -113,8 +134,9 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
 
   const abandon = useCallback(async () => {
     setGrant(null);
+    const id = attempt?.id ?? inputRef.current.attemptId ?? null;
     try {
-      if (attempt) await abandonAttempt(attempt.id);
+      if (id) await abandonAttempt(id);
     } catch {
       // An attempt that cannot be abandoned is left for the backend to expire;
       // blocking the candidate on it would be worse than a stale row.

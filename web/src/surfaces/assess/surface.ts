@@ -77,6 +77,12 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
    * decides whose attempts a person may open.
    */
   "attempt",
+  /*
+   * Sitting a library station alone. Train runs its four-step station screen
+   * here; an institution runs self practice, which is the same act with a
+   * different thing owed afterwards.
+   */
+  "practiceStation",
 ];
 
 export const assessSurface: SurfaceManifest = {

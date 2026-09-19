@@ -4,6 +4,14 @@ import type { RoomGrant } from "@/foundation/livekit";
 export type Attempt = components["schemas"]["AttemptRead"];
 export type AssessmentResult = components["schemas"]["AssessmentResultRead"];
 export type Transcript = components["schemas"]["TranscriptRead"];
+export type AttemptBrief = components["schemas"]["AttemptBriefRead"];
+export type AttemptReview = components["schemas"]["AttemptReviewRead"];
+export type AttemptHistoryItem = components["schemas"]["AttemptHistoryItem"];
+export type DoctorInformation = components["schemas"]["DoctorInformationRead"];
+export type CandidateScenario = components["schemas"]["CandidateScenarioRead"];
+export type ManagementPlan = components["schemas"]["ManagementPlanRead"];
+export type PatientReview = components["schemas"]["PatientReviewRead"];
+export type StationTeaching = components["schemas"]["StationTeachingRead"];
 
 /**
  * The kinds of attempt, which are all one row in one table.
@@ -52,11 +60,29 @@ export function abandonAttempt(attemptId: string): Promise<void> {
   });
 }
 
-export function readResult(attemptId: string, signal?: AbortSignal): Promise<AssessmentResult> {
-  return platformRequest<AssessmentResult>(
+/**
+ * Every marking this attempt has, oldest first.
+ *
+ * A page, not one result: re-scoring under a new policy writes beside the old
+ * one so a candidate's history stays readable. This was typed as a single
+ * result and read `.payload` off the page, which is `undefined` — so the
+ * institution's slot review and the consumer's feedback screen both rendered
+ * an empty marking and neither failed.
+ */
+export async function readResults(
+  attemptId: string,
+  signal?: AbortSignal,
+): Promise<AssessmentResult[]> {
+  const page = await platformRequest<components["schemas"]["Page_AssessmentResultRead_"]>(
     `/api/v1/attempts/${encodeURIComponent(attemptId)}/result`,
     { signal },
   );
+  return page.items;
+}
+
+/** The marking to show when an attempt has several: the most recent. */
+export function latestResult(results: AssessmentResult[]): AssessmentResult | null {
+  return results[results.length - 1] ?? null;
 }
 
 export function readTranscript(attemptId: string, signal?: AbortSignal): Promise<Transcript> {
@@ -64,4 +90,63 @@ export function readTranscript(attemptId: string, signal?: AbortSignal): Promise
     `/api/v1/attempts/${encodeURIComponent(attemptId)}/transcript`,
     { signal },
   );
+}
+
+/**
+ * The candidate's brief, keyed on the attempt rather than the station.
+ *
+ * The library's own read carries no content on purpose — browsing is open to
+ * everybody and the brief is part of the exam — so this is the only way a
+ * candidate sees what is in front of the doctor. Readable from the moment the
+ * attempt exists, which is what makes the reading period possible.
+ */
+export function readAttemptBrief(attemptId: string, signal?: AbortSignal): Promise<AttemptBrief> {
+  return platformRequest<AttemptBrief>(
+    `/api/v1/attempts/${encodeURIComponent(attemptId)}/brief`,
+    { signal },
+  );
+}
+
+/**
+ * The model answer: the patient's ideas and concerns, and the management plan.
+ *
+ * Refused with `attempt_not_finished` (409) until the consultation is over,
+ * because before that it is the answer to the station being sat.
+ */
+export function readAttemptReview(
+  attemptId: string,
+  signal?: AbortSignal,
+): Promise<AttemptReview> {
+  return platformRequest<AttemptReview>(
+    `/api/v1/attempts/${encodeURIComponent(attemptId)}/review`,
+    { signal },
+  );
+}
+
+/**
+ * What this person has sat, newest first.
+ *
+ * The listing three screens were doing without: the transcript picker, the
+ * feedback history and the practice set's station table all count or list
+ * attempts, and the only list that existed was the ten most recent inlined on
+ * the dashboard.
+ */
+export function listMyAttempts(
+  params: {
+    stationVersionId?: string | null;
+    setEntryId?: string | null;
+    limit?: number;
+    cursor?: string | null;
+  } = {},
+  signal?: AbortSignal,
+): Promise<{ items: AttemptHistoryItem[]; next_cursor?: string | null }> {
+  return platformRequest("/api/v1/me/attempts", {
+    query: {
+      station_version_id: params.stationVersionId ?? undefined,
+      set_entry_id: params.setEntryId ?? undefined,
+      limit: params.limit,
+      cursor: params.cursor ?? undefined,
+    },
+    signal,
+  });
 }

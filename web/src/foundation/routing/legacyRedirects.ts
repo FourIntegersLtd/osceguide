@@ -87,6 +87,17 @@ export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
   { pattern: /^\/debriefs(\/.+)$/, to: `/app/${PERSONAL_SLUG}/debriefs$1` },
   { pattern: /^\/feedbacks(\/.+)$/, to: `/app/${PERSONAL_SLUG}/feedbacks$1` },
   { pattern: /^\/community\/(.+)$/, to: `/app/${PERSONAL_SLUG}/discussion/$1` },
+  /*
+   * `/app/<workspace>/access` was a destination of platform-web's own for a
+   * few weeks, rendering the Settings panel that shows what somebody has
+   * bought. It is a Settings tab now.
+   *
+   * Listed here as well as in the exact table because the exact one only
+   * covers the retiring client's root-level `/access`; anybody who bookmarked
+   * a workspace URL in the meantime would have got a 404, which is what
+   * driving the real app turned up.
+   */
+  { pattern: /^\/app\/([^/]+)\/access$/, to: "/app/$1/settings?tab=payments" },
 ];
 
 const EXACT = new Map(CONSUMER_REDIRECTS.map((r) => [r.from, r.to]));

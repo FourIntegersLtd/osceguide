@@ -49,17 +49,18 @@ half of **SSO** (the discovery half landed — see below).
 
 ## The station library
 
-Five things the retiring station screens did that `platform-api` has no answer
-for. The first is a decision rather than an omission and the rest are holes.
+Four things the retiring station screens did that `platform-api` has no answer
+for. The first row used to be the biggest of them and is now served.
 
 | What | Where | Today |
 |---|---|---|
-| The candidate brief, patient information and management plan | `capabilities/stations/StationDetail.tsx` | `LibraryStationRead` carries no `content` **on purpose**: the library is browsable by every signed-in user, and the content is the brief, the examiner's context and the marking guidance — reading it before sitting the station is reading the answers. The attempt is frozen server-side and the worker fetches it by id, so the scenario never travels through the browser at all. The old client's "Reading time" and "Management" tabs (`user/ManagementScreen.tsx`, the four `*DoctorScreen`s) therefore have nothing to render and are not ported. `AttemptRunner` already takes a `brief` and shows it during the reading phase; the day a candidate-scoped brief read exists, that prop is where it lands. |
+| The candidate brief, patient information and management plan | `capabilities/attempt-runner/material/` | **Served.** `LibraryStationRead` still carries no `content` — the library is browsable by every signed-in user and the content is the brief and the marking guidance — but a candidate reads their own station through their *attempt*: `GET /attempts/{id}/brief` from the moment it is created, and `GET /attempts/{id}/review` once the consultation is over. How the patient is played (persona, opening line, expanded history) and the examiner's context never leave the server at all. |
 | `GET /api/v1/stations/{station_id}` | `findLibraryStation` in `capabilities/stations/api.ts` | There is no per-station read for a learner — every one of them is an authoring route under `/orgs/{slug}/…` or `/platform/…`, gated on permissions a candidate does not have. A station opened by link is found by walking the browse list, bounded at twenty pages. It works and it is cheap, because a row is a title and two ids, but a shared link to a station beyond that is a "we could not find that station". |
 | Searching the library | `useStationLibrary.ts` | `browse_library` takes `exam_code`, `cursor` and `limit`. The search box filters what has been paged in, which is why "Load more" stays offered while a term is typed. A `q` on the endpoint would make it a real search. |
 | Flagging a station | not ported | The old detail screen had a flag button posting to `/api/flag_station`, which put a station in front of the content team. There is no equivalent, and no `flagged_stations` on `/me`. |
-| Attempts used, out of the exam's limit | not ported | The old header read `ALLOWED_STATION_ATTEMPTS` against `user.station_progress`. `ExamRead.station_attempt_limit` is the numerator's half; nothing serves how many of them a person has used on a given station, so the counter is left off rather than shown wrong. |
+| Attempts used, out of the exam's limit | **Served for a session's station.** | `EntryRead.attempts` and `ExamRead.station_attempt_limit` are the pill's two halves, and the station screen shows them. Free practice from the library has no counter, because the limit is counted per set entry and a library station is not one. |
 | Live marking during a consultation | not ported | `live/LiveCoveragePanel.tsx` and `LiveCoverageFeed.tsx` subscribed to `/api/live-coverage-stream` and showed competencies as they were covered. `GET /api/v1/attempts/{id}/stream` pushes `AttemptRead` snapshots until the attempt is marked — the right stream, without the coverage frames. Adding a `coverage` event to it is what this needs; the feed is worth bringing back, because it is the one thing in the old runner people asked for by name. |
+| Station photos on legacy hosts | `material/StationBrief.tsx` | Rendered with a plain `<img>` rather than `next/image`. The URLs are absolute, on hosts this app does not configure, and an unconfigured host is a build-time error in `next/image` rather than a slow picture. Adding `remotePatterns` for the image hosts would let it back. |
 
 ## Shape disagreements — station comments
 
@@ -257,18 +258,11 @@ The screens are ported and the marking and the transcript are served. What the
 backend does not have is a way to *list* any of it, and a debrief that is not
 about a mock's station.
 
-**No attempt history.** There is no `GET /me/attempts`. The only list of a
-person's attempts is `recent_attempts` on `GET /me/dashboard`, and it is
-capped at ten with no cursor, so `capabilities/transcripts` shows the last ten
-consultations and nothing older. The retiring screen listed one station's
-transcripts from a query string, so this is more than it had — but a paged
-`/me/attempts` is what the Transcripts page actually wants, and the same
-endpoint would answer "my feedback history" for the mocks screens.
-
-**A transcript row carries no station.** `RecentAttempt` has an exam code, a
-kind, a status and a date, but not the station's title, so the list reads
-`SCA · Mock station` where the old one read the station's name. Every row
-would otherwise need its own `/attempts/{id}` and then a station-version read.
+**Attempt history — served.** `GET /me/attempts` is the paged listing three
+screens were doing without, and each row names its station. It answers "every
+time I have sat this one" for the transcript picker and the feedback history,
+and "how many has this entry produced" for the session's station table, which
+had hard-coded "No transcripts yet" for the whole port.
 
 **Debriefs are readable only through the tutor's memory.** There is no
 `GET /debriefs/{id}` and no debriefs collection: `DebriefSummaryRead` reaches a
@@ -281,9 +275,22 @@ rule the result already has, would fix both.
 
 **A debrief needs a station set.** `POST /me/station-sets/{set}/entries/{entry}/debriefs`
 is the only way to start one, so a free-practice attempt — the kind a consumer
-makes from the station library — cannot be debriefed at all. The backend
-already keys a debrief on `source_attempt_id`; a `POST /attempts/{id}/debriefs`
-would make the button work everywhere the feedback does.
+makes from the station library — cannot be debriefed at all. The station
+screen's feedback step therefore shows Start Debrief only for a session's
+station. The backend already keys a debrief on `source_attempt_id`; a
+`POST /attempts/{id}/debriefs` would make the button work everywhere the
+feedback does.
+
+**"Practice as Patient" is still not ported**, for the reason below: it is a
+practice session rather than a debrief, so it belongs with peer practice.
+
+**No feedback-ready notification once you leave the page.** The retiring client
+kept a shell-level watcher (`PendingFeedbackContext` and an SSE hook) so a
+toast found you wherever you were when a marking landed. The station screen
+polls while its marking modal is open and the session-complete screen re-reads
+statuses, which covers the two moments somebody is actually waiting — but walk
+away mid-marking and nothing tells you. `GET /attempts/{id}/stream` is the
+event; what is missing is something above the arms listening to it.
 
 **An examiner cannot yet read a candidate's attempt.** `FeedbackView`,
 `AttemptFeedback` and `TranscriptView` ask nothing about who is reading — that

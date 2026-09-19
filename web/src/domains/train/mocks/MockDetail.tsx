@@ -12,8 +12,7 @@ import {
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listExams } from "@/capabilities/stations";
-import { loadStationCatalogue, readDashboard, readSet } from "@/domains/train/api";
-import { MockComplete } from "@/domains/train/mocks/MockComplete";
+import { loadStationCatalogue, readSet } from "@/domains/train/api";
 import { MockRules } from "@/domains/train/mocks/MockRules";
 import { MockStationsTable, type StationRow } from "@/domains/train/mocks/MockStationsTable";
 import { entriesInOrder, sessionMinutes } from "@/domains/train/mocks/model";
@@ -34,10 +33,9 @@ export function MockDetail({ setId }: { setId: string }) {
       const set = await readSet(setId, signal);
       // Entries carry a station version id and no title, so the library is the
       // lookup. One request for the exam beats one per entry.
-      const [library, exams, dashboard] = await Promise.all([
+      const [library, exams] = await Promise.all([
         loadStationCatalogue(set.exam_code, signal),
         listExams(signal),
-        readDashboard(signal),
       ]);
       const titles = new Map(library.map((station) => [station.version_id, station.title]));
       const rows: StationRow[] = entriesInOrder(set).map((entry) => ({
@@ -45,11 +43,7 @@ export function MockDetail({ setId }: { setId: string }) {
         title: titles.get(entry.station_version_id) ?? "Station",
       }));
       const exam = exams.items.find((item) => item.code === set.exam_code) ?? null;
-      const stationsCompleted = (dashboard.progress ?? []).reduce(
-        (total, progress) => total + progress.evaluated,
-        0,
-      );
-      return { set, rows, exam, stationsCompleted };
+      return { set, rows, exam };
     },
     [setId],
   );
@@ -57,7 +51,7 @@ export function MockDetail({ setId }: { setId: string }) {
   return (
     <div className={productTokens.b2cPageColumn}>
       <AsyncBoundary state={state}>
-        {({ set, rows, exam, stationsCompleted }) => {
+        {({ set, rows, exam }) => {
           const attempted = set.attempted_entries > 0;
           const duration = sessionMinutes(
             set.total_entries,
@@ -72,10 +66,6 @@ export function MockDetail({ setId }: { setId: string }) {
           return (
             <div className="space-y-6">
               <B2CPageHeader title={set.name} back={{ href: hrefFor("/mocks") }} />
-
-              {set.completed_at !== null && !set.locked ? (
-                <MockComplete set={set} rows={rows} stationsCompleted={stationsCompleted} />
-              ) : null}
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:w-2/3">
                 <B2CPanelCard>

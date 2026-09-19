@@ -1,0 +1,218 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { hasCode } from "@/foundation/platform-client";
+import {
+  listMyAttempts,
+  readAttemptBrief,
+  readAttemptReview,
+  type AttemptBrief,
+  type AttemptReview,
+} from "@/capabilities/attempt-runner";
+
+export type StationAction = "attempt" | "review";
+
+export interface StationAttempt {
+  attemptId: string | null;
+  brief: AttemptBrief | null;
+  review: AttemptReview | null;
+  loading: boolean;
+  error: Error | null;
+  /**
+   * True when this station has been sat as many times as the exam allows.
+   *
+   * Not an error: the station is still readable, it just cannot be started
+   * again. The screen shows it in review rather than a red banner, which is
+   * what the retiring client did with its "Completed" pill.
+   */
+  exhausted: boolean;
+  /** Re-read the review once the consultation has finished. */
+  reload: () => void;
+}
+
+/**
+ * The attempt this station screen is showing, and the station behind it.
+ *
+ * The attempt is created when the screen opens rather than when the patient is
+ * called, because the reading period reads *its* brief: the library's own read
+ * carries no station content on purpose, so there is nothing to show until an
+ * attempt exists to ask about.
+ *
+ * That makes a reload dangerous — the backend counts an attempt against the
+ * exam's limit at creation — so the id is kept in `sessionStorage` under the
+ * station being sat, and a reload picks the same one back up. Session storage
+ * rather than local: it belongs to this tab's sitting of this station, and a
+ * second tab is a second attempt, which is the truth.
+ */
+export function useStationAttempt({
+  key,
+  action,
+  create,
+  attemptIdFromUrl,
+  stationVersionId,
+  setEntryId,
+}: {
+  /** Identifies the station being sat, for the remembered attempt. */
+  key: string;
+  action: StationAction;
+  /** How this station starts an attempt. Only called in `attempt` mode. */
+  create: () => Promise<{ id: string }>;
+  /** An explicit attempt to review, from the query string. */
+  attemptIdFromUrl?: string | null;
+  stationVersionId?: string | null;
+  setEntryId?: string | null;
+}): StationAttempt {
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [brief, setBrief] = useState<AttemptBrief | null>(null);
+  const [review, setReview] = useState<AttemptReview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [exhausted, setExhausted] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  /*
+   * One creation per station, however many times the effect runs.
+   *
+   * React re-invokes effects in development, and the `sessionStorage` guard
+   * cannot catch that: both runs read an empty key before either writes one,
+   * so two attempts were created and the exam's limit lost a go on every page
+   * load. Found by opening the station in a browser — the attempt listing had
+   * two `created` rows for one visit.
+   */
+  const creating = useRef<Promise<{ id: string }> | null>(null);
+  const createdFor = useRef<string | null>(null);
+
+  const reload = useCallback(() => setReloadKey((n) => n + 1), []);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setError(null);
+    setExhausted(false);
+
+    void (async () => {
+      try {
+        let id: string | null;
+        let reviewing = action === "review";
+
+        if (reviewing) {
+          id = attemptIdFromUrl ?? (await latestFinished({ stationVersionId, setEntryId }));
+        } else {
+          id = remembered(key);
+          if (!id) {
+            if (createdFor.current !== key) {
+              createdFor.current = key;
+              creating.current = create();
+            }
+            try {
+              id = (await creating.current!).id;
+            } catch (cause) {
+              // Out of goes. The station is still theirs to read back, so this
+              // falls through to the review rather than refusing the screen.
+              if (!hasCode(cause, "attempt_limit_reached", "set_locked")) throw cause;
+              createdFor.current = null;
+              creating.current = null;
+              if (live) setExhausted(true);
+              reviewing = true;
+              id = await latestFinished({ stationVersionId, setEntryId });
+            }
+          }
+        }
+
+        if (!live) return;
+        if (!id) {
+          // Review mode with nothing sat yet. Not an error: the tabs show
+          // their own empty states.
+          setAttemptId(null);
+          setBrief(null);
+          setReview(null);
+          return;
+        }
+
+        if (!reviewing) remember(key, id);
+        setAttemptId(id);
+
+        const [briefResult, reviewResult] = await Promise.all([
+          readAttemptBrief(id).catch(() => null),
+          reviewing
+            ? readAttemptReview(id).catch((cause) => {
+                // Still being marked, or the candidate walked out before the
+                // consultation. Neither is an error worth a red banner.
+                if (hasCode(cause, "attempt_not_finished")) return null;
+                throw cause;
+              })
+            : Promise.resolve(null),
+        ]);
+        if (!live) return;
+        setBrief(briefResult);
+        setReview(reviewResult);
+      } catch (cause) {
+        if (live) setError(cause instanceof Error ? cause : new Error(String(cause)));
+      } finally {
+        if (live) setLoading(false);
+      }
+    })();
+
+    return () => {
+      live = false;
+    };
+    // `create` is a new closure every render in most callers; the station key
+    // is what actually identifies the work.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, action, attemptIdFromUrl, stationVersionId, setEntryId, reloadKey]);
+
+  return { attemptId, brief, review, loading, error, exhausted, reload };
+}
+
+/**
+ * The most recent **finished** attempt at this station.
+ *
+ * Not simply the most recent: opening a station creates one, so the newest is
+ * usually the one being sat right now, and reviewing it answers
+ * `attempt_not_finished` and shows an empty management tab. Found in a
+ * browser, where clicking from the consultation into Management showed
+ * nothing at all.
+ *
+ * Falls back to the newest of any kind so that a station with only an
+ * in-progress attempt still names one, rather than the screen claiming
+ * nothing has ever been sat.
+ */
+async function latestFinished(params: {
+  stationVersionId?: string | null;
+  setEntryId?: string | null;
+}): Promise<string | null> {
+  const page = await listMyAttempts({ ...params, limit: 25 });
+  const finished = page.items.find((item) => FINISHED.has(item.status));
+  return finished?.id ?? page.items[0]?.id ?? null;
+}
+
+/** An attempt with something to review: the consultation is over, either way. */
+const FINISHED = new Set(["interaction_complete", "evaluated", "failed"]);
+
+const KEY = "osceguide.station-attempt";
+
+function remembered(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(`${KEY}.${key}`);
+  } catch {
+    return null;
+  }
+}
+
+function remember(key: string, attemptId: string): void {
+  try {
+    window.sessionStorage.setItem(`${KEY}.${key}`, attemptId);
+  } catch {
+    // Storage is blocked. A reload will start a second attempt, which is worse
+    // than this but not worth refusing to run the station over.
+  }
+}
+
+/** Forget the remembered attempt, once it has been finished. */
+export function forgetStationAttempt(key: string): void {
+  try {
+    window.sessionStorage.removeItem(`${KEY}.${key}`);
+  } catch {
+    // Nothing to do; a stale key only costs a reused id on a finished attempt,
+    // which the backend refuses anyway.
+  }
+}

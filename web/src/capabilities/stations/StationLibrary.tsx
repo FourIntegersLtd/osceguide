@@ -3,10 +3,9 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { LibraryBrowse } from "@/capabilities/stations/LibraryBrowse";
-import { StationConsultation } from "@/capabilities/stations/StationConsultation";
 import { StationDetail } from "@/capabilities/stations/StationDetail";
 import { StationPicker, type StationPickerProps } from "@/capabilities/stations/StationPicker";
-import { PRACTISE_PARAM, STATION_PARAM } from "@/capabilities/stations/routes";
+import { STATION_PARAM } from "@/capabilities/stations/routes";
 
 export type StationLibraryProps = Partial<StationPickerProps>;
 
@@ -50,6 +49,5 @@ function LibraryRoute() {
   const stationId = params.get(STATION_PARAM);
 
   if (!stationId) return <LibraryBrowse />;
-  if (params.get(PRACTISE_PARAM)) return <StationConsultation stationId={stationId} />;
   return <StationDetail stationId={stationId} />;
 }

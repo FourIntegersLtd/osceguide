@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, Card, PageHeader, Spinner, cn } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
-import { readResult } from "@/capabilities/attempt-runner";
+import { latestResult, readResults } from "@/capabilities/attempt-runner";
 import { FeedbackView, normaliseFeedback, RAG_LABEL, type Rag } from "@/capabilities/feedback";
 import { saveReview } from "@/domains/assess/api";
 import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
@@ -51,7 +51,11 @@ export function SlotReview({
   const state = useAsync(
     async (signal) => {
       const [result, reviews] = await Promise.all([
-        attemptId ? readResult(attemptId, signal).catch(() => null) : Promise.resolve(null),
+        attemptId
+          ? readResults(attemptId, signal)
+              .then(latestResult)
+              .catch(() => null)
+          : Promise.resolve(null),
         readSlotReviews(orgSlug, slotId, signal),
       ]);
       return { result, reviews };

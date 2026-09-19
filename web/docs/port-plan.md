@@ -337,10 +337,24 @@ One answer from the backend, one switcher, no per-screen selectors — and the
 backend now refuses browsing, queueing, offering a slot or building a set for
 an exam somebody does not hold, where only `POST /attempts` checked before.
 
-**The station flow is not the old one, and is next.** The old screen is one
-tabbed container — 1. Reading time, 2. Consultation, 3. Management, 4. Feedback
-— with a timer, per-exam doctor information, a two-column consultation, a
-management plan and a marking modal. `AttemptRunner` shows no brief at all,
-there is no management step, and feedback is a separate page. The backend reads
-it needs are done (`/attempts/{id}/brief`, `/attempts/{id}/review`,
-`GET /me/attempts`); the screen is the work.
+**The station flow — done.** The old screen is one tabbed container — 1.
+Reading time, 2. Consultation, 3. Management, 4. Feedback — and it is that
+again: `domains/train/station/`, over three new pieces in `attempt-runner`
+(`StationBrief` per exam, `ManagementPlan`, the two-column `ConsultationScreen`
+and its panel) which the institution arms can mount too. The timer is the
+foundation's, persisted per attempt.
+
+The attempt is created when the station *opens* rather than when the patient is
+called, because the brief is read off the attempt — which is what makes it the
+candidate's to see. That is the one real design change, and it is why
+`useStationAttempt` keeps the id in `sessionStorage`.
+
+`/mocks/{id}/complete` is back, with the feedback-status list the old MockEnd
+had. `AttemptResult` and `MockStationRunner` are deleted.
+
+**Three things driving the real app caught that CI did not:** opening a station
+created *two* attempts (React re-invokes effects; the storage guard could not
+see the race), reviewing one picked the newest attempt rather than the newest
+*finished* one and so showed an empty Management tab, and `/app/me/access`
+404ed because the redirect table only covered the pre-workspace spelling — and
+then double-encoded its query when it did match.

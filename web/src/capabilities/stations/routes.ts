@@ -11,8 +11,6 @@
 
 /** The query key naming the station a detail view is about. */
 export const STATION_PARAM = "station";
-/** Present when the candidate is in the consultation rather than reading. */
-export const PRACTISE_PARAM = "practise";
 
 type HrefFor = (path: string) => string;
 
@@ -24,6 +22,16 @@ export function stationHref(hrefFor: HrefFor, stationId: string): string {
   return `${libraryHref(hrefFor)}?${STATION_PARAM}=${encodeURIComponent(stationId)}`;
 }
 
+/**
+ * Sitting a station is an arm's screen, not this capability's.
+ *
+ * It used to be another query parameter on the library, rendering one
+ * consultation component for everybody. What happens when somebody sits a
+ * station genuinely differs by arm — a consumer runs the four-step station
+ * screen with its brief, management plan and feedback; an institution's
+ * trainee runs self practice — so the arm answers `practiceStation` and this
+ * only says where to send them.
+ */
 export function practiseHref(hrefFor: HrefFor, stationId: string): string {
-  return `${stationHref(hrefFor, stationId)}&${PRACTISE_PARAM}=1`;
+  return hrefFor(`/stations/${encodeURIComponent(stationId)}/practise`);
 }

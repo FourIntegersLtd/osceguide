@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HiArrowRight, HiChevronUp } from "react-icons/hi2";
 import { Alert, Button, cn, productTokens } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
+import { listMyAttempts } from "@/capabilities/attempt-runner";
 import { startSetDebrief } from "@/domains/train/api";
 import type { SetEntry, StationSet } from "@/domains/train/api";
 
@@ -18,11 +19,10 @@ export interface StationRow {
 /**
  * The stations in a session, with where each one is up to.
  *
- * The expander is the old client's, and so are its two empty states. What is
- * behind them is not: `platform-api` has no listing of a person's past
- * attempts, so there is no count of transcripts or feedbacks to link to — see
- * `docs/port-gaps.md`. The row still opens, still says what is there, and the
- * shape is ready for the endpoint.
+ * The expander is the old client's, and now so is what is behind it: the row
+ * counts this entry's transcripts and markings and links to them. It said "No
+ * transcripts yet" unconditionally for the whole port, because there was no
+ * listing of a person's attempts to count; `GET /me/attempts` is that listing.
  */
 export function MockStationsTable({
   set,
@@ -44,11 +44,7 @@ export function MockStationsTable({
 
   const attemptHref = (entryId: string) => hrefFor(`/mocks/${set.id}/stations/${entryId}`);
 
-  /**
-   * "Review Last Attempt" was a link to a stored review page. There is no
-   * attempt listing to link to, so the equivalent act — go back over the
-   * station you sat — is a debrief, which the API does serve.
-   */
+  /** Talk the attempt through with the tutor, out loud. */
   const talkItThrough = async (entryId: string) => {
     setBusyEntryId(entryId);
     setError(null);
@@ -70,6 +66,20 @@ export function MockStationsTable({
 
   const actions = (entry: SetEntry, fullWidth: boolean) => (
     <>
+      {entry.attempts !== 0 && (
+        <Button
+          type="button"
+          variant="secondary"
+          fullWidth={fullWidth}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            router.push(`${attemptHref(entry.id)}?action=review&tab=management`);
+          }}
+        >
+          Review Last Attempt
+        </Button>
+      )}
       {!set.locked && entry.attempts < attemptLimit && (
         <Button
           type="button"
@@ -103,16 +113,7 @@ export function MockStationsTable({
     </>
   );
 
-  const expansion = (
-    <div className="flex items-center gap-3">
-      <div className="flex min-w-[200px] items-center justify-center gap-2 rounded-md bg-b2c-secondary px-5 py-2.5 text-osce-body text-b2c-text-muted">
-        No transcripts yet
-      </div>
-      <div className="flex min-w-[200px] items-center justify-center gap-2 rounded-md bg-b2c-secondary px-5 py-2.5 text-osce-body text-b2c-text-muted">
-        No feedbacks yet
-      </div>
-    </div>
-  );
+  const expansion = (entry: SetEntry) => <EntryHistory setId={set.id} entry={entry} />;
 
   return (
     <div>
@@ -185,7 +186,7 @@ export function MockStationsTable({
                   <tr>
                     <td colSpan={4} className="bg-b2c-surface-muted px-6 py-4">
                       <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
-                        {expansion}
+                        {expansion(entry)}
                       </div>
                     </td>
                   </tr>
@@ -249,5 +250,52 @@ export function MockStationsTable({
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * What this station has produced: its transcripts and its markings.
+ *
+ * Both counts were hard-coded empty states for the whole port — there was no
+ * listing of a person's attempts to count. Each links back into the station
+ * screen, which is where both are actually read.
+ */
+function EntryHistory({ setId, entry }: { setId: string; entry: SetEntry }) {
+  const { hrefFor } = useSurface();
+  const state = useAsync(
+    (signal) => listMyAttempts({ setEntryId: entry.id, limit: 25 }, signal),
+    [entry.id],
+  );
+
+  const stationHref = hrefFor(`/mocks/${setId}/stations/${entry.id}`);
+  const attempts = state.data?.items ?? [];
+  const marked = attempts.filter((item) => item.has_result).length;
+
+  return (
+    <div className="flex items-center gap-3">
+      <Pill
+        href={attempts.length > 0 ? `${stationHref}?action=review&tab=simulation` : null}
+        label={
+          attempts.length > 0 ? `All previous Transcripts (${attempts.length})` : "No transcripts yet"
+        }
+      />
+      <Pill
+        href={marked > 0 ? `${stationHref}?action=review&tab=feedback` : null}
+        label={marked > 0 ? `All previous Feedbacks (${marked})` : "No feedbacks yet"}
+      />
+    </div>
+  );
+}
+
+function Pill({ href, label }: { href: string | null; label: string }) {
+  const className =
+    "flex min-w-[200px] items-center justify-center gap-2 rounded-md bg-b2c-secondary px-5 py-2.5 text-osce-body";
+  if (!href) {
+    return <div className={cn(className, "text-b2c-text-muted")}>{label}</div>;
+  }
+  return (
+    <Link href={href} className={cn(className, "text-osce-accent hover:text-osce-accent-hover")}>
+      {label}
+    </Link>
   );
 }

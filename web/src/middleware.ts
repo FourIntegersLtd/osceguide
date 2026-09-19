@@ -19,7 +19,20 @@ export function middleware(request: NextRequest) {
   if (!destination) return NextResponse.next();
 
   const url = request.nextUrl.clone();
-  url.pathname = destination;
+  /*
+   * A destination may carry a query of its own — `/access` now points at the
+   * Settings tab that replaced it — and assigning the whole string to
+   * `pathname` percent-encodes the `?`, which lands on a 404 with a literal
+   * "%3Ftab=payments" in the address bar. Found by following the redirect in a
+   * browser.
+   *
+   * The destination's query wins over the incoming one: it is the half that
+   * says which screen, and nothing sends a query to these old addresses.
+   */
+  const separator = destination.indexOf("?");
+  url.pathname = separator === -1 ? destination : destination.slice(0, separator);
+  if (separator !== -1) url.search = destination.slice(separator + 1);
+
   // 307 rather than 308: these are moves we may revise while the two clients
   // run side by side, and a permanent redirect is cached by browsers forever.
   return NextResponse.redirect(url, 307);
