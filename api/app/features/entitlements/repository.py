@@ -70,3 +70,14 @@ async def by_id_for_org(
 
 async def revoke(session: AsyncSession, entitlement_id: uuid.UUID, *, at: datetime) -> None:
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=at))
+
+
+async def by_id(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement | None:
+    """Unscoped: for the platform console, which reads across every owner."""
+    return (
+        await session.execute(select(Entitlement).where(Entitlement.id == entitlement_id))
+    ).scalar_one_or_none()
+
+
+async def set_ends_at(session: AsyncSession, entitlement_id: uuid.UUID, *, ends_at: datetime | None) -> None:
+    await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(ends_at=ends_at))
