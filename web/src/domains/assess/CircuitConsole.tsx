@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { LuChevronRight, LuCirclePause, LuCirclePlay, LuRefreshCw, LuSquare } from "react-icons/lu";
 import { Alert, AsyncBoundary, Badge, Button, Card, PageHeader, Spinner, cn } from "@/foundation/ui";
 import { errorMessage, useAsync, useEventStream } from "@/foundation/hooks";
+import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import {
   circuitActions,
@@ -199,6 +201,15 @@ function Console({
 }
 
 function SlotRow({ slot }: { slot: ConsoleSlot }) {
+  const { hrefFor } = useSurface();
+  // Marking opens once there is something to mark. Offering it before the
+  // station has run is how a reviewer ends up filling in a rubric for a
+  // consultation nobody had.
+  const markable = slot.started_at !== null;
+  const reviewHref = hrefFor(
+    `/slots/${slot.id}/review${slot.attempt_id ? `?attempt=${slot.attempt_id}` : ""}`,
+  );
+
   return (
     <li
       className={cn(
@@ -220,6 +231,14 @@ function SlotRow({ slot }: { slot: ConsoleSlot }) {
       <div className="flex items-center gap-2">
         {slot.has_review && <Badge tone="accent">Marked</Badge>}
         <Badge tone={statusTone(slot.status)}>{slot.status}</Badge>
+        {markable && (
+          <Link
+            href={reviewHref}
+            className="rounded-control border border-border-strong px-2.5 py-1 text-sm text-ink hover:bg-surface-raised"
+          >
+            {slot.has_review ? "Review" : "Mark"}
+          </Link>
+        )}
       </div>
     </li>
   );

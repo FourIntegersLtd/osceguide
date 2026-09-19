@@ -93,6 +93,146 @@ export function listMemberships(slug: string, signal?: AbortSignal) {
   });
 }
 
+export type Programme = components["schemas"]["ProgrammeRead"];
+export type FeedbackTemplate = components["schemas"]["FeedbackTemplateRead"];
+
+export function listProgrammes(slug: string, signal?: AbortSignal) {
+  return platformRequest<components["schemas"]["Page_ProgrammeRead_"]>(
+    `${org(slug)}/programmes`,
+    { signal },
+  );
+}
+
+export function listFeedbackTemplates(slug: string, signal?: AbortSignal) {
+  return platformRequest<components["schemas"]["Page_FeedbackTemplateRead_"]>(
+    `${org(slug)}/feedback-templates`,
+    { signal },
+  );
+}
+
+export function listTemplateVersions(slug: string, templateId: string, signal?: AbortSignal) {
+  return platformRequest<components["schemas"]["FeedbackTemplateVersionRead"][]>(
+    `${org(slug)}/feedback-templates/${encodeURIComponent(templateId)}/versions`,
+    { signal },
+  );
+}
+
+/** A sitting cannot exist without a published feedback template bound to it. */
+export function createSitting(
+  slug: string,
+  input: {
+    name: string;
+    mode: "training" | "exam";
+    programmeId: string | null;
+    feedbackTemplateVersionId: string;
+    scheduledFor: string | null;
+  },
+): Promise<Sitting> {
+  return platformRequest<Sitting>(`${org(slug)}/sittings`, {
+    method: "POST",
+    body: {
+      name: input.name,
+      mode: input.mode,
+      sitting_type: input.mode === "exam" ? "examination" : "group_training",
+      programme_id: input.programmeId,
+      feedback_template_version_id: input.feedbackTemplateVersionId,
+      scheduled_for: input.scheduledFor,
+    },
+  });
+}
+
+/* ---------- marking ---------- */
+
+export type SlotReview = components["schemas"]["SlotReviewRead"];
+export type SlotReviews = components["schemas"]["SlotReviewsRead"];
+
+export function readSlotReviews(
+  slug: string,
+  slotId: string,
+  signal?: AbortSignal,
+): Promise<SlotReviews> {
+  return platformRequest<SlotReviews>(`${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews`, {
+    signal,
+  });
+}
+
+/** My own review of a slot, which is the one I may edit. */
+export function readMyReview(
+  slug: string,
+  slotId: string,
+  signal?: AbortSignal,
+): Promise<SlotReview | null> {
+  return platformRequest<SlotReview | null>(
+    `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
+    { signal },
+  );
+}
+
+/**
+ * Save or submit a review.
+ *
+ * `draft` is savable as often as you like; `submitted` is the assertion. The
+ * backend refuses a submit that has not scored what the sitting's template
+ * requires, so the frontend does not re-derive that rule.
+ */
+export function saveReview(
+  slug: string,
+  slotId: string,
+  input: { fieldValues: Record<string, unknown>; notes: string | null; status: "draft" | "submitted" },
+): Promise<SlotReview> {
+  return platformRequest<SlotReview>(
+    `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
+    {
+      method: "PUT",
+      body: { field_values: input.fieldValues, notes: input.notes, status: input.status },
+    },
+  );
+}
+
+/* ---------- results ---------- */
+
+export type TraineeResult = components["schemas"]["TraineeResultRead"];
+
+export function readMyResult(sittingId: string, signal?: AbortSignal): Promise<TraineeResult> {
+  return platformRequest<TraineeResult>(
+    `/api/v1/me/results/${encodeURIComponent(sittingId)}`,
+    { signal },
+  );
+}
+
+export function acknowledgeResult(sittingId: string): Promise<void> {
+  return platformRequest<void>(
+    `/api/v1/me/results/${encodeURIComponent(sittingId)}/acknowledge`,
+    { method: "POST" },
+  );
+}
+
+export function recordDecision(
+  slug: string,
+  sittingId: string,
+  traineeId: string,
+  input: { assessmentOutcome: string; rationale: string },
+) {
+  return platformRequest<unknown>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/decision`,
+    { method: "POST", body: { assessment_outcome: input.assessmentOutcome, rationale: input.rationale } },
+  );
+}
+
+export function signOffDecision(slug: string, sittingId: string, traineeId: string) {
+  return platformRequest<unknown>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/decision/sign-off`,
+    { method: "POST" },
+  );
+}
+
+export function releaseDecision(slug: string, sittingId: string, traineeId: string) {
+  return platformRequest<unknown>(
+    `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/decision/release`,
+    { method: "POST" },
+  );
+}
+
 /* ---------- the trainee's side ---------- */
 
 export function readMySittings(signal?: AbortSignal): Promise<MySittings> {

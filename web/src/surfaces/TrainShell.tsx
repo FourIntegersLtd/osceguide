@@ -6,7 +6,7 @@ import { SurfaceShell, type NavItem } from "@/surfaces/SurfaceShell";
 
 /** Train's own destinations. Study material, stations and discussion come from the registry. */
 const NAV: NavItem[] = [
-  { key: "home", label: "Home", href: "/", icon: LuHouse },
+  { key: "home", label: "Home", href: "/practice", icon: LuHouse },
   { key: "mocks", label: "Mocks", href: "/mocks", icon: LuLayers },
 ];
 

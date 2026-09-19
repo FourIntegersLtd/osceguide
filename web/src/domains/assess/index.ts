@@ -4,5 +4,7 @@ export { SittingDetail } from "@/domains/assess/SittingDetail";
 export { CircuitConsole } from "@/domains/assess/CircuitConsole";
 export { TraineeHome } from "@/domains/assess/TraineeHome";
 export { Trainees, Team } from "@/domains/assess/Roster";
+export { NewSitting } from "@/domains/assess/NewSitting";
+export { SlotReview } from "@/domains/assess/SlotReview";
 export { OrgDiscussion } from "@/domains/assess/OrgDiscussion";
 export * from "@/domains/assess/api";
