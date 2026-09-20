@@ -1,16 +1,20 @@
 """The errors the read models can answer with.
 
-Both are `sittings`': a console for a circuit that is not this organisation's,
+Three are borrowed: a console for a circuit that is not this organisation's,
 or a report for a sitting that is not, is the same refusal, with the same
 code, as asking for that circuit or sitting directly. Re-exported rather than
 redefined so the frontend keeps one code to switch on, and so the router
-stays inside the rule that it imports only its own slice.
+stays inside the rule that it imports only its own slice. `unknown_exam` is
+`catalog`'s, here for the same reason: naming an exam that does not exist on
+the performance chart is the same refusal as naming it anywhere else.
 """
 
 from __future__ import annotations
 
 from app.core.errors import InvalidInput
+from app.features.catalog.errors import UnknownExamError
 from app.features.sittings.errors import CircuitNotFound, SittingNotFound
+from app.features.tenancy.errors import UserNotFound
 
 
 class NotAnExamSitting(InvalidInput):
@@ -26,4 +30,5 @@ class NotAnExamSitting(InvalidInput):
     default_message = "A cohort summary is only produced for an exam sitting"
 
 
-__all__ = ["CircuitNotFound", "NotAnExamSitting", "SittingNotFound"]
+# `user_not_found` is `tenancy`'s, for the directory's per-account read.
+__all__ = ["CircuitNotFound", "NotAnExamSitting", "SittingNotFound", "UnknownExamError", "UserNotFound"]

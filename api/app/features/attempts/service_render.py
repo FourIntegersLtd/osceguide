@@ -24,8 +24,8 @@ from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY
 from app.features.attempts.models import Attempt
 from app.features.attempts.renderer import build_renderer
 from app.features.catalog import service as catalog
-from app.features.rubrics import service_feedback as feedback
 from app.features.rubrics import service_marking as rubrics
+from app.features.sittings import service as sittings_service
 from app.features.stations import service as stations
 
 log = get_logger(__name__)
@@ -107,16 +107,18 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
 async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) -> dict[str, Any] | None:
     """The rubric this attempt will be marked against, frozen onto it.
 
-    The exam's own rubric, unless the attempt belongs to a sitting whose
-    feedback template narrows it — an institution marking its own trainees on
-    a subset of the platform's domains.
+    Slot attempts use the sitting's bound rubric version; everything else uses
+    the exam's published rubric.
 
     A missing or unpublished rubric is not fatal here: the session still runs
     and is still recorded. It is `enqueue_scoring` that refuses to queue a
     marking it cannot perform, which is the right place for that refusal.
     """
-    binding = await _feedback_binding(session, attempt)
-    rubric_version_id = binding[0] if binding else exam.rubric_version_id
+    rubric_version_id = exam.rubric_version_id
+    if attempt.slot_id is not None:
+        bound = await sittings_service.rubric_version_for_slot(session, attempt.org_id, attempt.slot_id)
+        if bound is not None:
+            rubric_version_id = bound
     if rubric_version_id is None:
         log.warning("attempt has no rubric to be marked against", attempt_id=str(attempt.id))
         return None
@@ -125,18 +127,8 @@ async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) 
             session,
             attempt.org_id,
             rubric_version_id=rubric_version_id,
-            field_selection=binding[1] if binding else None,
+            field_selection=None,
         )
     except AppError as exc:
         log.warning("rubric unavailable for attempt", attempt_id=str(attempt.id), reason=str(exc))
         return None
-
-
-async def _feedback_binding(
-    session: AsyncSession, attempt: Attempt
-) -> tuple[uuid.UUID, dict[str, Any] | None] | None:
-    """What a sitting's feedback template narrows this attempt's marking to."""
-    version_id = getattr(attempt, "feedback_template_version_id", None)
-    if version_id is None:
-        return None
-    return await feedback.rubric_binding_for(session, attempt.org_id, version_id)

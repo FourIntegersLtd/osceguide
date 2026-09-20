@@ -81,6 +81,7 @@ async def add_version(
     system_prompt: str,
     pacing: dict[str, Any],
     result_schema_override: dict[str, Any] | None = None,
+    marking_layout: dict[str, Any] | None = None,
 ) -> RubricVersion:
     row = RubricVersion(
         rubric_id=rubric_id,
@@ -90,6 +91,7 @@ async def add_version(
         system_prompt=system_prompt,
         pacing=pacing,
         result_schema_override=result_schema_override,
+        marking_layout=marking_layout,
     )
     session.add(row)
     await session.flush()
@@ -150,6 +152,7 @@ async def set_version_body(
     system_prompt: str,
     pacing: dict[str, Any],
     result_schema_override: dict[str, Any] | None,
+    marking_layout: dict[str, Any] | None,
 ) -> None:
     await session.execute(
         update(RubricVersion)
@@ -159,6 +162,7 @@ async def set_version_body(
             system_prompt=system_prompt,
             pacing=pacing,
             result_schema_override=result_schema_override,
+            marking_layout=marking_layout,
         )
     )
 

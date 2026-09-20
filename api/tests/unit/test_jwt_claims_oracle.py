@@ -23,7 +23,7 @@ from __future__ import annotations
 import uuid
 
 from app.core.auth import Membership, Principal
-from app.features.tenancy import service
+from app.features.tenancy import service, service_workspace
 from app.features.tenancy.domain import MembershipRef, pick_default_workspace
 
 INSTITUTION = MembershipRef(org_slug="asterix", role="institution_admin", org_type="institution")
@@ -101,7 +101,7 @@ def test_the_active_membership_decides_the_role_not_the_account() -> None:
         ),
         active_org_slug="kings",
     )
-    capabilities = service.capabilities_for(principal)
+    capabilities = service_workspace.capabilities_for(principal)
 
     assert capabilities.active_role == "trainee"
     assert capabilities.can["read_org"] is True
@@ -127,7 +127,7 @@ def test_platform_administration_is_an_account_flag_not_a_membership() -> None:
         active_org_slug=None,
         is_platform_admin=True,
     )
-    capabilities = service.capabilities_for(principal)
+    capabilities = service_workspace.capabilities_for(principal)
 
     assert capabilities.can["administer_platform"] is True
     assert capabilities.can["manage_team"] is False

@@ -14,6 +14,8 @@ dashboard makes five, four of which exist only to produce a count.
 ## Use cases
 - As a **consumer**, I open the app and see my access, my progress and where I
   left off, in one request.
+- As a **consumer**, I see how I am doing at one exam — per domain, overall and
+  over time — so I know what to practise next.
 - As an **institution admin**, I see what my organisation has set up and what
   is still missing, without downloading four lists to count them.
 - As a **supervisor**, I see the circuits assigned to me.
@@ -44,6 +46,7 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/me/dashboard` | bearer | entitlements, per-exam progress, recent attempts, sets |
+| GET | `/api/v1/me/performance` | bearer | per-domain scores, pass/fail/critical rates and a trend for one exam; `?exam_code=`, defaulting to the last attempted; `unknown_exam` (404) |
 | GET | `/api/v1/me/sittings` | bearer | what a trainee is rostered onto, whether each slot is joinable, its `attempt_id` once dispatched, and the server clock |
 | GET | `/api/v1/orgs/{org_slug}/dashboard` | org member | counts, setup state, recent sittings |
 | GET | `/api/v1/orgs/{org_slug}/supervisor/circuits` | org member | the circuits assigned to the caller |
@@ -54,6 +57,9 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | GET | `/api/v1/orgs/{org_slug}/live` | org staff | every circuit running now, with its clock, its progress and its alerts |
 | GET | `/api/v1/orgs/{org_slug}/live/stream` | org staff | the same payload, pushed (SSE) |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream` | org member | the same payload, pushed (SSE) |
+| GET | `/api/v1/platform/directory` | platform admin | the account directory: every account with the facts beside it (signed in, paid, last plan, live access, attempts); `?q=` email or name, `?exam_code=` chosen or held live, `?status=`, `?access=paid\|trial\|not_started`, `?plan_code=` |
+| GET | `/api/v1/platform/directory/summary` | platform admin | per published exam: accounts, and how many paid, on trial, not started; plus the unassigned |
+| GET | `/api/v1/platform/directory/users/{id}` | platform admin | one account's directory row; `user_not_found` (404) |
 
 ## Jobs
 None. Anything expensive enough to need caching belongs behind Redis here rather
@@ -86,10 +92,37 @@ not a cookie and not the access token.
 
 ## Cross-slice dependencies
 Reads `entitlements`, `attempts`, `station_sets`, `sittings`, `stations`,
-`roster`, `reviews`, `tenancy` and `identity` through their services. Sits at
-the top of the layer order and nothing depends on it.
+`roster`, `reviews`, `catalog`, `rubrics`, `billing`, `tenancy` and `identity`
+through their services. Sits at the top of the layer order and nothing depends
+on it.
+
+The account directory (`service_platform_users.py`) is here for the same
+reason as the rest: the retiring B2C admin's user list had seven columns and
+each is a different slice's fact. `tenancy` owns `GET /platform/users` and
+sits below four of those slices, so it cannot answer "has this person paid?".
+The page comes from `identity`, is enriched with one bulk read per slice, and
+the facets another slice owns (paid, on trial, on a plan, entitled to an exam)
+are handed to `identity` as sets of ids rather than joined across tables.
 
 The one error it can answer with, `circuit_not_found`, is `sittings`',
 re-exported by `errors.py`: asking for the console of a circuit that is not
 yours is the same refusal as asking for the circuit, and the frontend should
 not have two codes for it.
+
+## Performance
+`performance.py` reads the marking engine's document into a score per domain
+and `service_performance.py` aggregates those across somebody's marked
+attempts at one exam. The arithmetic is `reviews`' throughout — the majority
+rating per domain, ties resolved downward, domains equally weighted — because
+an institution ranks its cohort on those numbers and a person's own dashboard
+must not quietly use different ones.
+
+"Pass" is stated once, as `service_performance.PASS_SCORE`: no seeded rubric
+carries a pass mark, so an attempt passes when its score is at least an amber
+(66.0). Passes and fails therefore sum to one, and a red anywhere is reported
+separately, because a passing attempt can still hold a competency worth a
+conversation.
+
+The rubric's domains come from the marking snapshot rather than from a read of
+the rubric, so the ids used here are the keys the result document actually
+carries. An exam with nothing marked yet is an empty answer, not a 404.

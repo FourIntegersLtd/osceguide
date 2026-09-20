@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -6,6 +7,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from app.core import account_status
 from app.core.auth import (
     CurrentPrincipal,
     Membership,
@@ -14,6 +16,7 @@ from app.core.auth import (
     issue_access_token,
     require_worker_secret,
 )
+from app.core.db import get_session
 from app.core.errors import Unauthenticated, register_error_handlers
 from app.core.settings import Settings, get_settings
 from tests.support.tokens import bearer, mint_token
@@ -53,6 +56,12 @@ def _app() -> FastAPI:
     app = FastAPI()
     register_error_handlers(app)
 
+    async def no_database() -> AsyncIterator[None]:
+        # No account-status lookup is bound here, so the session is never used.
+        yield None
+
+    app.dependency_overrides[get_session] = no_database
+
     @app.get("/me")
     async def me(principal: CurrentPrincipal) -> dict[str, str]:
         return {"email": principal.email}
@@ -64,7 +73,10 @@ def _app() -> FastAPI:
     return app
 
 
-async def test_principal_dependency_requires_bearer() -> None:
+async def test_principal_dependency_requires_bearer(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Another test in the process may have built the real app and bound the
+    # account-status lookup; this app has no database for it to ask.
+    monkeypatch.setattr(account_status, "_lookup", [])
     async with AsyncClient(transport=ASGITransport(app=_app()), base_url="http://t") as c:
         assert (await c.get("/me")).status_code == 401
         ok = await c.get("/me", headers=bearer(mint_token(email="x@y.com")))

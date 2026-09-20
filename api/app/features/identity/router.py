@@ -52,6 +52,7 @@ async def register(
         password=body.password,
         settings=settings,
         now=clock.now(),
+        exam_code=body.exam_code,
     )
 
 
@@ -226,12 +227,3 @@ async def change_password(
         now=clock.now(),
     )
     return schemas.Accepted()
-
-
-@router.get("/me", response_model=schemas.UserRead, responses=error_responses(Unauthenticated))
-async def read_me(
-    principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
-    memberships_for: MembershipsFor,
-) -> schemas.UserRead:
-    return await service.read_me(session, principal=principal, memberships_for=memberships_for)

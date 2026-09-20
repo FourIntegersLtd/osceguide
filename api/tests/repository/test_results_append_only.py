@@ -22,7 +22,7 @@ async def a_revision(db_session: AsyncSession) -> uuid.UUID:
     org = await tenancy_repo.create_organization(db_session, slug="ao", name="AO")
     version = await published_feedback_version(db_session, org.id)
     await db_session.flush()
-    sitting = Sitting(org_id=org.id, name="S", mode="exam", feedback_template_version_id=version.id)
+    sitting = Sitting(org_id=org.id, name="S", mode="exam", rubric_version_id=version.id)
     trainee = Trainee(org_id=org.id, email="ao@example.com")
     db_session.add_all([sitting, trainee])
     await db_session.flush()

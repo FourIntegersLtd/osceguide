@@ -107,6 +107,43 @@ async def test_the_console_grants_and_revokes_itself(
     assert revoked.status_code == 200, revoked.text
 
 
+async def test_inviting_by_email_grants_the_console(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+
+    invited = await client.post(
+        "/api/v1/platform/admins",
+        json={"email": "teammate@osceguide.com"},
+        headers=bearer(root),
+    )
+    assert invited.status_code == 200, invited.text
+    body = invited.json()
+    assert body["invited"] is True
+    assert body["user"]["email"] == "teammate@osceguide.com"
+    assert body["user"]["is_platform_admin"] is True
+
+    admins = await client.get("/api/v1/platform/admins", headers=bearer(root))
+    assert "teammate@osceguide.com" in {row["email"] for row in admins.json()}
+
+
+async def test_inviting_somebody_who_already_has_the_console_is_a_refusal(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.identity import repository as identity_repo
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await make_actor("dup@osceguide.com", platform_admin=True)
+    user = await identity_repo.user_by_email(db_session, "dup@osceguide.com")
+    assert user is not None
+
+    again = await client.post(
+        "/api/v1/platform/admins",
+        json={"email": "dup@osceguide.com"},
+        headers=bearer(root),
+    )
+    assert again.status_code == 409
+    assert again.json()["code"] == "platform_admin_exists"
+
+
 async def test_granting_to_nobody_is_a_refusal(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor("root@osceguide.com", platform_admin=True)
     response = await client.put(
@@ -155,3 +192,55 @@ async def test_every_console_route_is_refused_to_an_org_admin(client: AsyncClien
             call(path, json=body, headers=bearer(owner)) if body else call(path, headers=bearer(owner))
         )
         assert response.status_code == 403, f"{method} {path} returned {response.status_code}"
+
+
+async def test_the_account_search_can_be_narrowed_to_console_users(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The team screen used to guess who was an admin from the whole list."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await make_actor("plain@example.com")
+
+    admins = await client.get("/api/v1/platform/users?platform_admin=true", headers=bearer(root))
+    assert admins.status_code == 200, admins.text
+    emails = {row["email"] for row in admins.json()["items"]}
+    assert "root@osceguide.com" in emails
+    assert "plain@example.com" not in emails
+    assert all(row["is_platform_admin"] for row in admins.json()["items"])
+
+    others = await client.get("/api/v1/platform/users?platform_admin=false", headers=bearer(root))
+    assert "plain@example.com" in {row["email"] for row in others.json()["items"]}
+
+
+async def test_deactivating_an_account_ends_its_sessions_now(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Not at the next refresh: the access token is refused on its next request."""
+    from tests.http.test_identity_routes import register
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    registered = (await register(client, email="leaver@example.com")).json()
+    access, refresh = registered["access_token"], registered["refresh_token"]
+    assert (await client.get("/api/v1/me", headers=bearer(access))).status_code == 200
+    user_id = registered["user"]["id"]
+
+    gone = await client.patch(
+        f"/api/v1/platform/users/{user_id}", json={"status": "deactivated"}, headers=bearer(root)
+    )
+    assert gone.status_code == 200, gone.text
+
+    refused = await client.get("/api/v1/me", headers=bearer(access))
+    assert refused.status_code == 401
+    assert refused.json()["code"] == "account_suspended"
+    assert (await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})).status_code == 401
+
+    history = await client.get(f"/api/v1/platform/users/{user_id}/audit", headers=bearer(root))
+    assert history.json()["items"][0]["action"] == "user.deactivated"
+
+    back = await client.patch(
+        f"/api/v1/platform/users/{user_id}", json={"status": "active"}, headers=bearer(root)
+    )
+    assert back.status_code == 200
+    history = await client.get(f"/api/v1/platform/users/{user_id}/audit", headers=bearer(root))
+    assert sorted(row["action"] for row in history.json()["items"]) == [
+        "user.deactivated",
+        "user.reactivated",
+    ]
+    # The old sessions stay ended; signing in again is how they come back.
+    assert (await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})).status_code == 401

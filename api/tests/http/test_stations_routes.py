@@ -30,6 +30,25 @@ async def seed_org(client: AsyncClient, make_actor, slug: str = "kings") -> uuid
     return uuid.UUID(response.json()["id"])
 
 
+async def a_browser(db_session, make_actor, email: str, *, exam_code: str = "sca") -> str:  # type: ignore[no-untyped-def]
+    """Somebody who may browse one exam's library.
+
+    The library is scoped to the exams a person may open, so a browser needs
+    one. This uses the account's own exam rather than an entitlement, which is
+    the trial case — the one that has to keep working, because somebody has to
+    be able to see the library before they can buy anything in it.
+    """
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
+    token = await make_actor(email)
+    await ensure_exam(db_session, exam_code)
+    await db_session.execute(update(User).where(User.email == email).values(exam_code=exam_code))
+    await db_session.flush()
+    return token
+
+
 async def member(make_actor, org_id: uuid.UUID, slug: str, role: str) -> str:  # type: ignore[no-untyped-def]
     return await make_actor(
         f"{role}-{slug}@example.com",
@@ -243,7 +262,7 @@ async def a_library_station(
 async def test_the_library_lists_published_platform_stations(
     client: AsyncClient, make_actor, db_session
 ) -> None:  # type: ignore[no-untyped-def]
-    token = await make_actor("browser@example.com")
+    token = await a_browser(db_session, make_actor, "browser@example.com")
     await a_library_station(db_session, "Chest pain")
     await a_library_station(db_session, "Headache")
 
@@ -260,7 +279,7 @@ async def test_the_library_never_returns_station_content(client: AsyncClient, ma
     guidance. A candidate may discover a station and bind its version; they may
     not read it before sitting it.
     """
-    token = await make_actor("browser@example.com")
+    token = await a_browser(db_session, make_actor, "browser@example.com")
     await a_library_station(db_session, "Chest pain")
 
     row = (await client.get("/api/v1/stations", headers=bearer(token))).json()["items"][0]
@@ -277,6 +296,17 @@ async def test_the_library_excludes_drafts_and_org_stations(
     await make_station(client, admin)  # an org's own, published or not
     await a_library_station(db_session, "Still drafting", published=False)
     await a_library_station(db_session, "Ready")
+    # The library is scoped to the exams somebody may open, and an org's admin
+    # is a person like any other here — their organisation's stations come from
+    # the org routes, not this one.
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
+    await db_session.execute(
+        update(User).where(User.email == "owner-kings@example.com").values(exam_code="sca")
+    )
+    await db_session.flush()
 
     titles = {
         row["title"] for row in (await client.get("/api/v1/stations", headers=bearer(admin))).json()["items"]
@@ -287,7 +317,7 @@ async def test_the_library_excludes_drafts_and_org_stations(
 
 
 async def test_the_library_filters_by_exam(client: AsyncClient, make_actor, db_session) -> None:  # type: ignore[no-untyped-def]
-    token = await make_actor("browser@example.com")
+    token = await a_browser(db_session, make_actor, "browser@example.com", exam_code="casc")
     await a_library_station(db_session, "A GP case", exam_code="sca")
     await a_library_station(db_session, "A psych case", exam_code="casc")
 
@@ -297,11 +327,80 @@ async def test_the_library_filters_by_exam(client: AsyncClient, make_actor, db_s
 
 
 async def test_the_library_refuses_an_unknown_exam(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
-    """Never defaulted: b2c fell back to `sca` and marked CASC with a GP rubric."""
-    token = await make_actor("browser@example.com")
+    """Never defaulted: b2c fell back to `sca` and marked CASC with a GP rubric.
+
+    A platform admin, because they are the one caller who may name any exam;
+    for everybody else an exam they do not hold is refused before it is
+    resolved, which is the test below.
+    """
+    token = await make_actor("browser@example.com", platform_admin=True)
     response = await client.get("/api/v1/stations?exam_code=nonsense", headers=bearer(token))
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_exam"
+
+
+async def test_the_library_is_scoped_to_the_exams_you_may_open(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """No exam named means yours, not everybody's.
+
+    The retiring client had one exam per deployment and no picker at all. This
+    route answered with every exam's stations at once, which is what put an
+    "all exams" filter on a screen in a product where holding one exam is the
+    norm — over a catalogue including exams nobody had bought.
+    """
+    token = await a_browser(db_session, make_actor, "gp@example.com", exam_code="sca")
+    await a_library_station(db_session, "A GP case", exam_code="sca")
+    await a_library_station(db_session, "A psych case", exam_code="casc")
+
+    titles = {
+        row["title"] for row in (await client.get("/api/v1/stations", headers=bearer(token))).json()["items"]
+    }
+
+    assert "A GP case" in titles
+    assert "A psych case" not in titles
+
+
+async def test_browsing_an_exam_you_do_not_hold_is_refused(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Refused rather than answered empty: an empty list reads as "no stations yet"."""
+    token = await a_browser(db_session, make_actor, "gp2@example.com", exam_code="sca")
+    await ensure_exam(db_session, "casc")
+    await a_library_station(db_session, "A psych case", exam_code="casc")
+
+    response = await client.get("/api/v1/stations?exam_code=casc", headers=bearer(token))
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "not_entitled"
+
+
+async def test_a_platform_admin_browses_the_whole_catalogue(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Curating the library is their job, and they hold no entitlements at all."""
+    token = await make_actor("staff@example.com", platform_admin=True)
+    await a_library_station(db_session, "A GP case", exam_code="sca")
+    await a_library_station(db_session, "A psych case", exam_code="casc")
+
+    titles = {
+        row["title"] for row in (await client.get("/api/v1/stations", headers=bearer(token))).json()["items"]
+    }
+
+    assert {"A GP case", "A psych case"} <= titles
+
+
+async def test_somebody_with_no_exam_at_all_gets_an_empty_library(
+    client: AsyncClient, make_actor, db_session
+) -> None:
+    """A brand-new account is not an error, it just has nothing yet."""
+    token = await make_actor("blank@example.com")
+    await a_library_station(db_session, "A GP case", exam_code="sca")
+
+    response = await client.get("/api/v1/stations", headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.json()["items"] == []
 
 
 async def test_the_library_needs_a_token(client: AsyncClient) -> None:

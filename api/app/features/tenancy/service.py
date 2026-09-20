@@ -10,17 +10,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership as TokenMembership
-from app.core.auth import Principal, issue_access_token
-from app.core.settings import Settings
-from app.core.tenancy import OrgRef, OrgSuspended
+from app.core.auth import Principal
+from app.core.tenancy import OrgRef
 from app.features.tenancy import domain, repository
-from app.features.tenancy.errors import NotAMember, OrgNotFound, OrgSlugTaken
-from app.features.tenancy.schemas import (
-    AuditRead,
-    Capabilities,
-    OrganizationRead,
-    WorkspaceToken,
-)
+from app.features.tenancy.errors import OrgNotFound, OrgSlugTaken
+from app.features.tenancy.schemas import AuditRead, OrganizationRead
 
 # Re-exported so routers can build their access dependencies without importing
 # the domain module directly: the service is the slice's public face.
@@ -57,8 +51,8 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
 
     Returns the token's shape, not the table's: a mapped row would drag lazy
     relationships into a JWT, and the claims carry only what authorisation
-    needs — org, slug, role, surface. `org_name` rides along for `GET /me` and
-    is deliberately not a claim.
+    needs — org, slug, role, surface. `org_name` and `org_type` ride along for
+    `GET /me` and are deliberately not claims.
     """
     return [
         TokenMembership(
@@ -67,6 +61,7 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
             role=row.role,
             surface=row.product_surface,
             org_name=org.name,
+            org_type=org.org_type,
         )
         for row, org in await repository.live_memberships_with_orgs(session, user_id)
     ]
@@ -156,68 +151,10 @@ async def list_audit(
     ], next_cursor
 
 
-# --- workspace and capabilities --------------------------------------------
-
-
-async def switch_workspace(
-    session: AsyncSession, *, principal: Principal, org_slug: str, settings: Settings, now: datetime
-) -> WorkspaceToken:
-    """Re-issue the token against another workspace.
-
-    The memberships are read from the database, never copied from the presented
-    token. Copying them made this a renewal machine: a revoked member or a
-    demoted admin could call it every fourteen minutes and keep authority they
-    no longer had, indefinitely, which is exactly what the fifteen-minute token
-    exists to prevent. The organisation's status is checked here for the same
-    reason.
-    """
-    memberships = await memberships_for_token(session, principal.user_id)
-    target = domain.resolve_workspace(
-        [domain.MembershipRef(org_slug=m.org_slug, role=m.role, surface=m.surface) for m in memberships],
-        org_slug,
-    )
-    if target is None:
-        raise NotAMember()
-
-    org = await repository.organization_by_slug(session, target.slug)
-    if org is None:
-        raise OrgNotFound()
-    if not domain.org_permits_access(org.status) and not principal.is_platform_admin:
-        raise OrgSuspended()
-
-    switched = Principal(
-        user_id=principal.user_id,
-        email=principal.email,
-        memberships=tuple(memberships),
-        active_org_slug=target.slug,
-        is_platform_admin=principal.is_platform_admin,
-        must_change_password=principal.must_change_password,
-    )
-    return WorkspaceToken(
-        access_token=issue_access_token(switched, settings=settings, now=now),
-        expires_in=settings.jwt_access_ttl_seconds,
-        active_org_slug=target.slug,
-        active_role=target.role,
-    )
-
-
-def capabilities_for(principal: Principal) -> Capabilities:
-    active = principal.active_membership
-    role = active.role if active else None
-    return Capabilities(
-        user_id=principal.user_id,
-        is_platform_admin=principal.is_platform_admin,
-        active_org_slug=principal.active_org_slug,
-        active_role=role,
-        can={
-            "read_org": domain.may_read_org(role),
-            "manage_team": domain.is_org_admin(role),
-            "run_circuits": domain.is_org_admin(role) or domain.is_assigned_staff(role),
-            "sign_off_results": domain.is_institution_admin(role),
-            "administer_platform": principal.is_platform_admin,
-        },
-    )
-
+# Choosing a workspace and reading what the chooser may do live in
+# `service_workspace.py`, which imports from here. The router calls that module
+# directly rather than going through a re-export, so the dependency runs one
+# way and there is no import cycle to work around.
 
 # --- mapping ---------------------------------------------------------------
 
@@ -230,4 +167,6 @@ def _org_read(org: Any) -> OrganizationRead:
         org_type=org.org_type,
         status=org.status,
         created_at=org.created_at,
+        contract_starts_at=org.contract_starts_at,
+        contract_ends_at=org.contract_ends_at,
     )

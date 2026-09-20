@@ -56,6 +56,57 @@ class Dashboard(BaseModel):
     progress: list[ExamProgress] = Field(default_factory=list)
     recent_attempts: list[RecentAttempt] = Field(default_factory=list)
     sets: list[SetSummary] = Field(default_factory=list)
+    # Which exams this person may open, and which one their screens start on.
+    # Answered here so no screen has to guess: the retiring client took it from
+    # the subdomain, and without it four screens each derived a different
+    # answer from a different source and offered a picker over the whole
+    # catalogue. `exam_codes` holds only live access plus the exam the account
+    # was opened for; see
+    # `entitlements.domain_access`.
+    exam_codes: list[str] = Field(default_factory=list)
+    current_exam_code: str | None = None
+
+
+class PerformanceSummary(BaseModel):
+    """How the marked attempts divide, as rates rather than counts.
+
+    Rates because the chart draws bands, and because a candidate with four
+    attempts and one with forty should read the same way.
+    """
+
+    pass_rate: float
+    fail_rate: float
+    critical_rate: float
+
+
+class DomainScore(BaseModel):
+    """One bar of the radar: a rubric domain, averaged across the attempts."""
+
+    id: str
+    label: str
+    score: float
+
+
+class TrendPoint(BaseModel):
+    """One attempt, in the order it was sat."""
+
+    date: datetime
+    score: float
+
+
+class Performance(BaseModel):
+    """The charts on the consumer exam dashboard, in one call.
+
+    The legacy screen asks four RAG endpoints and a weekly trend for this and
+    joins them in the browser. `exam_code` is null only when the caller named
+    no exam and has never attempted one — there is no exam to report on, and
+    an empty string would be a code.
+    """
+
+    exam_code: str | None = None
+    summary: PerformanceSummary
+    domains: list[DomainScore] = Field(default_factory=list)
+    trend: list[TrendPoint] = Field(default_factory=list)
 
 
 class MySlot(BaseModel):

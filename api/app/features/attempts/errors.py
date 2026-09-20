@@ -39,6 +39,18 @@ class AttemptMismatch(Conflict):
     default_message = "That payload belongs to a different attempt"
 
 
+class AttemptNotFinished(Conflict):
+    """The review was asked for while the consultation was still to come.
+
+    A separate code from `invalid_attempt_state` because the client acts on it:
+    the review tab is offered as soon as the station is open and must say "not
+    yet" rather than "something went wrong".
+    """
+
+    code = "attempt_not_finished"
+    default_message = "This attempt has not finished, so there is nothing to review yet"
+
+
 class AttemptNotYours(Forbidden):
     code = "attempt_not_yours"
     default_message = "That attempt belongs to someone else"
@@ -49,8 +61,25 @@ class InvalidAttemptState(Conflict):
     default_message = "The attempt is not in a state that allows this"
 
 
+class AttemptInProgress(Conflict):
+    """Deleting a station's progress was refused because one attempt at it is
+    still mid-consultation. Its own code, because the console says "wait for
+    it to end, or fail it" rather than "something went wrong"."""
+
+    code = "attempt_in_progress"
+    default_message = "One attempt at this station is still running; end it first"
+
+
 class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError`; the code is the shared contract."""
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+class UserNotFound(NotFound):
+    """No such account. The code `tenancy` and `identity` answer with, because
+    the console switches on it."""
+
+    code = "user_not_found"
+    default_message = "No such account"

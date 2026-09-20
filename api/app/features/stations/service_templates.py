@@ -18,7 +18,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import raise_mapped
+from app.core.errors import InvalidInput, raise_mapped
+from app.features.stations.station_validator import (
+    validate_generation_policy,
+    validate_station_structure,
+)
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import exam_code_by_id, resolve_exam
 from app.features.stations import domain, errors
@@ -26,6 +30,15 @@ from app.features.stations import repository_templates as repository
 from app.features.stations.models import StationTemplate, StationTemplateVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationTemplateRead, StationTemplateVersionRead
+
+
+def _ensure_valid_structure(structure: dict[str, Any], *, org_id: uuid.UUID | None) -> None:
+    ok, errs = validate_station_structure(structure)
+    if not ok:
+        raise InvalidInput(f"Template structure invalid: {errs}")
+    policy_errs = validate_generation_policy(structure, org_id=org_id)
+    if policy_errs:
+        raise InvalidInput(f"Template generation settings invalid: {policy_errs}")
 
 
 async def create_template(
@@ -37,6 +50,7 @@ async def create_template(
     structure: dict[str, Any],
 ) -> StationTemplateRead:
     """A template and its first draft version, ready to edit or publish."""
+    _ensure_valid_structure(structure, org_id=org_id)
     exam_id = None
     code = None
     if exam_code:
@@ -94,6 +108,7 @@ async def edit_version(
         domain.ensure_editable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
+    _ensure_valid_structure(structure, org_id=org_id)
     await repository.set_template_version_structure(session, org_id, row.id, structure=structure)
     return _version_read(await _version(session, org_id, template_id, version))
 
@@ -120,6 +135,40 @@ async def publish_version(
         session, org_id, latest.id, status=str(status), at=now, by=actor_id
     )
     return _version_read(await _version(session, org_id, template_id, latest.version))
+
+
+async def archive_version(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    template_id: uuid.UUID,
+    version: int,
+    *,
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> StationTemplateVersionRead:
+    row = await _version(session, org_id, template_id, version)
+    try:
+        new_status = domain.archive(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.set_template_version_status(
+        session, org_id, row.id, status=str(new_status), at=now, by=actor_id
+    )
+    return _version_read(await _version(session, org_id, template_id, version))
+
+
+async def delete_version(
+    session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
+) -> None:
+    """Throw away a draft. When it was the template's only row, remove the template too."""
+    row = await _version(session, org_id, template_id, version)
+    try:
+        domain.ensure_deletable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.delete_template_version(session, org_id, row.id)
+    if not await repository.template_versions(session, org_id, template_id):
+        await repository.delete_template(session, org_id, template_id)
 
 
 async def bindable_version(

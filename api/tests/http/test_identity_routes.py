@@ -10,6 +10,8 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from tests.support.tokens import bearer
+
 pytestmark = pytest.mark.db
 
 REGISTER = {"email": "new@example.com", "name": "New Person", "password": "correct horse battery"}
@@ -165,3 +167,98 @@ async def test_an_unknown_address_queues_nothing(client: AsyncClient, db_session
     await client.post("/api/v1/auth/password-reset", json={"email": "ghost@example.com"})
     queued = list((await db_session.execute(select(OutboundMessage))).scalars())
     assert queued == []
+
+
+async def test_a_person_may_set_their_exam_date_and_reading_arrangement(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+) -> None:
+    """Two fields the ported screens needed and had nowhere to read."""
+    token = await make_actor("amara@example.com")
+
+    saved = await client.patch(
+        "/api/v1/me",
+        json={"exam_date": "2026-11-03", "extra_reading_percent": 25},
+        headers=bearer(token),
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["exam_date"] == "2026-11-03"
+    assert saved.json()["extra_reading_percent"] == 25
+
+    # A PATCH writes only what it was sent.
+    renamed = await client.patch("/api/v1/me", json={"name": "Amara O."}, headers=bearer(token))
+    assert renamed.json()["name"] == "Amara O."
+    assert renamed.json()["exam_date"] == "2026-11-03"
+
+    # And "set to nothing" is distinguishable from "not mentioned".
+    cleared = await client.patch("/api/v1/me", json={"exam_date": None}, headers=bearer(token))
+    assert cleared.json()["exam_date"] is None
+    assert cleared.json()["extra_reading_percent"] == 25
+
+
+async def test_an_impossible_reading_arrangement_is_refused(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+) -> None:
+    token = await make_actor("amara@example.com")
+    for bad in (-10, 500):
+        refused = await client.patch("/api/v1/me", json={"extra_reading_percent": bad}, headers=bearer(token))
+        assert refused.status_code == 422, refused.text
+
+
+async def test_registering_records_the_exam_the_account_is_for(client: AsyncClient) -> None:
+    """The per-exam landing pages carry it into the form.
+
+    This is what replaces the retiring client's per-exam subdomains: on one
+    domain there is nothing in the request to say which exam somebody came to
+    sit, and a trial account holds no entitlement to infer it from.
+    """
+    response = await register(client, exam_code="plab")
+
+    assert response.status_code == 201
+    assert response.json()["user"]["exam_code"] == "plab"
+
+
+async def test_registering_without_an_exam_is_allowed(client: AsyncClient) -> None:
+    """An institution's member gets their exams from the organisation."""
+    response = await register(client)
+
+    assert response.status_code == 201
+    assert response.json()["user"]["exam_code"] is None
+
+
+async def test_an_unknown_exam_at_sign_up_is_not_a_refusal(client: AsyncClient) -> None:
+    """Stored as given: this slice sits below `catalog` and may not resolve one.
+
+    It grants nothing either — `GET /me/dashboard` filters it through the
+    published catalogue, so a code naming no exam yields no current exam rather
+    than a dead option. Tested here so the layering is a decision rather than
+    an oversight.
+    """
+    response = await register(client, exam_code="mrcp")
+
+    assert response.status_code == 201
+    assert response.json()["user"]["exam_code"] == "mrcp"
+
+
+async def test_a_person_may_change_the_exam_their_account_is_for(client: AsyncClient) -> None:
+    created = await register(client, exam_code="sca")
+    token = created.json()["access_token"]
+
+    response = await client.patch("/api/v1/me", json={"exam_code": "casc"}, headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.json()["exam_code"] == "casc"
+
+
+async def test_changing_one_field_leaves_the_exam_alone(client: AsyncClient) -> None:
+    """`model_fields_set`, not the whole body: a screen that edits a name must
+    not silently clear which exam somebody is sitting."""
+    created = await register(client, exam_code="sca")
+    token = created.json()["access_token"]
+
+    response = await client.patch("/api/v1/me", json={"name": "Renamed"}, headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Renamed"
+    assert response.json()["exam_code"] == "sca"

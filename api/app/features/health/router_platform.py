@@ -1,0 +1,61 @@
+"""The platform console's view of the machinery. `PlatformAdmin` only.
+
+`/health` is public and says whether the platform is up. These say whether it
+is *working*: what the queue holds, whether a worker has been seen, and which
+jobs failed — the row a support question about a missing feedback ends at.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.db import get_session
+from app.core.errors import Forbidden, error_responses
+from app.core.redis import get_redis
+from app.core.tenancy import PlatformAdmin
+from app.features.health import schemas, service_platform
+
+router = APIRouter(tags=["health"])
+
+Session = Annotated[AsyncSession, Depends(get_session)]
+
+STATUS_PATTERN = "^(todo|doing|succeeded|failed|cancelled|aborting|aborted)$"
+
+
+@router.get(
+    "/platform/health",
+    response_model=schemas.PlatformHealth,
+    responses=error_responses(Forbidden),
+)
+async def read_platform_health(admin: PlatformAdmin, session: Session) -> schemas.PlatformHealth:
+    """The liveness report, the queue by status, and when a worker last checked in."""
+    _ = admin
+    return await service_platform.platform_health(session, get_redis())
+
+
+@router.get(
+    "/platform/jobs",
+    response_model=schemas.JobsPage,
+    responses=error_responses(Forbidden),
+)
+async def list_jobs(
+    admin: PlatformAdmin,
+    session: Session,
+    status: Annotated[str | None, Query(pattern=STATUS_PATTERN)] = None,
+    task: Annotated[str | None, Query(description="A task name, such as `score_attempt`")] = None,
+    before_id: Annotated[int | None, Query(ge=1, description="Continue from a previous page")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> schemas.JobsPage:
+    """The queue, newest first. `status=failed` is what to look at when something is missing.
+
+    No retry route: a failed job is re-queued through the thing it was about —
+    `POST /platform/attempts/{id}/rescore` for a marking — so the retry is
+    checked against the current state rather than replayed blind.
+    """
+    _ = admin
+    return await service_platform.list_jobs(
+        session, status=status, task_name=task, before_id=before_id, limit=limit
+    )

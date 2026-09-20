@@ -40,9 +40,24 @@ recomputed on every request and stored nowhere.
 | GET | `/api/v1/orgs/{org_slug}/entitlements` | org admin | what the institution has granted, revoked included |
 | POST | `/api/v1/orgs/{org_slug}/entitlements` | org admin | grants by email, source `org_grant`; `user_not_found` (404), `unknown_exam` (404) |
 | POST | `/api/v1/orgs/{org_slug}/entitlements/{id}/revoke` | org admin | `entitlement_not_found` (404); the row stays |
+| GET | `/api/v1/platform/users/{id}/entitlements` | platform admin | every grant the person has held, with source, `source_ref`, `granted_by` and `live`; `user_not_found` (404) |
 
 ## Jobs
 None. `billing` writes entitlements through this slice's service.
+
+## Which exams a person may open
+`service.require` answers "may this one attempt start". `service_access` answers
+the broader question every screen asks first — which exams to show at all — and
+`domain_access.exam_access` is that rule, kept pure because it decides a
+disclosure.
+
+Live grants first, then the exam the account was opened for (which is all a
+trial account has), everything filtered through the published catalogue. What
+somebody has *attempted* is deliberately not a source: access lapses, and an
+exam they can no longer open should stop being offered.
+
+Three slices ask it — the dashboard, the station library and the study library
+— which is why it lives here rather than beside whichever one needed it first.
 
 ## Cross-slice dependencies
 Calls `catalog` to resolve an exam and `identity` to resolve a grantee by email.

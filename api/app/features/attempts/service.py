@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import domain, errors, repository
+from app.features.attempts import domain, errors, repository, repository_slots
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
     AttemptRead,
@@ -58,7 +58,7 @@ async def start_attempt(
         user_id=user_id,
         exam_id=exam.id,
         now=now,
-        trial=await _trial_state(session, user_id=user_id, exam_id=exam.id),
+        trial=await trial_state_for(session, user_id=user_id, exam_id=exam.id),
     )
 
     attempt = await repository.create_attempt(
@@ -91,7 +91,29 @@ async def _ensure_runnable(
         raise errors.StationNotFound()
 
 
-async def _trial_state(
+async def require_entitlement(
+    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, now: datetime
+) -> None:
+    """The gate `POST /attempts` applies, for the slices that sit above this one.
+
+    Peer practice, the marketplace and practice sets all have to ask the same
+    question, and all of them are above `entitlements` but need the trial
+    counts only this slice can produce. One function so the free trial is one
+    rule: a caller that reached for `entitlements.require` directly would pass
+    `trial=None`, `decide` skips the trial branch entirely when it is None, and
+    a brand-new account would be refused outright — which is exactly the bug
+    the trial rule had before it was wired.
+    """
+    await entitlements.require(
+        session,
+        user_id=user_id,
+        exam_id=exam_id,
+        now=now,
+        trial=await trial_state_for(session, user_id=user_id, exam_id=exam_id),
+    )
+
+
+async def trial_state_for(
     session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> entitlements.TrialState | None:
     """What the free-trial rule needs to know about this person.
@@ -100,6 +122,11 @@ async def _trial_state(
     so cannot count attempts. That seam is why the rule went unwired: the
     argument defaulted to None, `decide` skips the trial branch entirely when
     it is None, and a brand-new account was refused outright.
+
+    Public because the other things somebody may do on their free trial —
+    queueing for a peer session, offering a slot, building a practice set —
+    have to apply the same rule, and each of them sits above this slice. A
+    caller that built its own would be a second definition of the free trial.
     """
     user = await identity.user_ref_by_id(session, user_id)
     if user is None:
@@ -162,10 +189,10 @@ async def restart_for_slot(
     No entitlement check: a trainee sitting an exam their institution
     scheduled is not buying anything.
     """
-    live = await repository.live_attempt_for_slot(session, slot_id)
-    await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason="redispatched")
+    live = await repository_slots.live_attempt_for_slot(session, slot_id)
+    await repository_slots.fail_live_attempt_for_slot(session, slot_id, at=now, reason="redispatched")
 
-    exam_id = await repository.exam_for_slot_attempt(session, slot_id) if live else None
+    exam_id = await repository_slots.exam_for_slot_attempt(session, slot_id) if live else None
     return await repository.create_attempt(
         session,
         kind="exam_slot",
@@ -188,7 +215,7 @@ async def fail_live_for_slot(
     is failed rather than deleted, so what happened the first time survives
     beside the retry, and the partial unique index will accept the new one.
     """
-    await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason=reason)
+    await repository_slots.fail_live_attempt_for_slot(session, slot_id, at=now, reason=reason)
 
 
 async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:

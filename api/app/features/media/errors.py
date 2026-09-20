@@ -33,6 +33,16 @@ class EmptyQueryError(InvalidInput):
     default_message = "Type something to search for"
 
 
+class InvalidListStatusError(InvalidInput):
+    code = "invalid_media_status"
+    default_message = "Status must be draft, published, or all"
+
+
+class NotDeletableError(Conflict):
+    code = "media_not_deletable"
+    default_message = "Only drafts can be deleted"
+
+
 class SlugTaken(Conflict):
     code = "slug_taken"
     default_message = "Something with that title already exists"

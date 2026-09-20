@@ -56,6 +56,7 @@ Owns no tables. The decisions are pure and live in `domain.py`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/attempts/{id}/voice-token` | owner | `attempt_not_joinable` (409), `voice_unavailable` (503) |
+| GET | `/api/v1/platform/voice/capacity` | platform admin | Cloud slots held against the metered cap; a count, never a reservation. `active: null` means Redis could not say, which is also what routes sessions self-hosted |
 
 `grant_for_room` has no route of its own: it is how `sittings` mints the
 candidate's and the examiner's tokens for a circuit's room, which are served

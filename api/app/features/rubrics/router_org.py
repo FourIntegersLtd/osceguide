@@ -68,6 +68,7 @@ async def create_org_rubric(
         system_prompt=body.system_prompt,
         pacing=body.pacing,
         result_schema_override=body.result_schema_override,
+        marking_layout=body.marking_layout,
     )
 
 
@@ -104,6 +105,7 @@ async def edit_org_version(
         system_prompt=body.system_prompt,
         pacing=body.pacing,
         result_schema_override=body.result_schema_override,
+        marking_layout=body.marking_layout,
     )
 
 

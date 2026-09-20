@@ -29,16 +29,23 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     "/peer-practice/queue",
     response_model=schemas.QueueStatus,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(errors.UnknownExamError, Unauthenticated, InvalidAudience, AudienceNotYours),
+    responses=error_responses(
+        errors.UnknownExamError,
+        errors.NotEntitled,
+        Unauthenticated,
+        InvalidAudience,
+        AudienceNotYours,
+    ),
 )
 async def join_queue(
-    body: schemas.JoinQueue, principal: CurrentPrincipal, session: Session
+    body: schemas.JoinQueue, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.QueueStatus:
     """Joining twice returns the place you already hold rather than a second one."""
     return await service.join_queue(
         session,
         user_id=principal.user_id,
         exam_code=body.exam_code,
+        now=clock.now(),
         audience=body.audience.to_audience(),
     )
 

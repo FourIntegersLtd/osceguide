@@ -87,3 +87,20 @@ class CheckoutFailed(Unavailable):
 
     code = "checkout_failed"
     default_message = "We could not start the checkout. Try again in a moment."
+
+
+class PayerNotFound(NotFound):
+    """No such account. The code every slice answers with for a missing person."""
+
+    code = "user_not_found"
+    default_message = "No such account"
+
+
+class BillingEventNotFound(NotFound):
+    code = "billing_event_not_found"
+    default_message = "No such webhook delivery"
+
+
+class PaymentNotFound(NotFound):
+    code = "payment_not_found"
+    default_message = "No such payment"

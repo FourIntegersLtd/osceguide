@@ -178,19 +178,27 @@ async def accept_transcript(
             # A late delivery for an attempt already scored or failed: the
             # turns are kept, the status is not walked backwards.
             return
-        await repository.set_status(
-            session,
-            attempt_id,
-            status=target,
-            at=now,
-            reason=None if transcript.complete else "incomplete_transcript",
-        )
         if target is domain.Status.INTERACTION_COMPLETE:
-            # Enqueued in this transaction, so the work and the record of it
-            # being owed commit together. b2c spawned a thread and b2b a daemon
-            # thread, so a deploy mid-generation stranded the attempt forever.
-            await enqueue_scoring(session, attempt, now=now)
-            # Announced after the marking is queued, in the same transaction,
-            # so whatever else this attempt is owed lands with it or not at all.
-            if _on_interaction_complete is not None:
-                await _on_interaction_complete(session, attempt)
+            await complete_interaction(session, attempt, now=now)
+        else:
+            await repository.set_status(
+                session, attempt_id, status=target, at=now, reason="incomplete_transcript"
+            )
+
+
+async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:
+    """The consultation is over: record it, queue the marking, tell whoever listens.
+
+    One function for the two ways it happens — the worker delivering the
+    transcript, and support salvaging one the worker never finished — so the
+    salvage cannot forget a step the delivery takes.
+    """
+    await repository.set_status(session, attempt.id, status=domain.Status.INTERACTION_COMPLETE, at=now)
+    # Enqueued in this transaction, so the work and the record of it being
+    # owed commit together. b2c spawned a thread and b2b a daemon thread, so a
+    # deploy mid-generation stranded the attempt forever.
+    await enqueue_scoring(session, attempt, now=now)
+    # Announced after the marking is queued, in the same transaction, so
+    # whatever else this attempt is owed lands with it or not at all.
+    if _on_interaction_complete is not None:
+        await _on_interaction_complete(session, attempt)

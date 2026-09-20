@@ -1,6 +1,8 @@
-"""The platform console: what the people who run the product can see and do.
+"""The platform console: the organisations, as the people who run the product see them.
 
-Deliberately the only place in the API that reads across tenants. Everything
+Deliberately one of the two places in the API that read across tenants — the
+other is `service_platform_users`, split off at the file cap along the line
+between an organisation and a person. Everything
 else takes an `org_id` obtained by proving membership; these functions take
 none, which is why every route that reaches them is behind `PlatformAdmin` and
 why they live in a module named for what they are.
@@ -14,7 +16,7 @@ them. Suspension is the reversible mechanism and it is what this offers.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,11 +27,16 @@ from app.features.tenancy import domain, repository, repository_platform
 from app.features.tenancy.errors import OrgNotFound
 from app.features.tenancy.schemas import (
     OrganizationRead,
+    OrgAtRisk,
     PlatformOverview,
+    RenewContract,
     UpdateOrganization,
-    UserSummary,
 )
 from app.features.tenancy.service import _org_read
+
+# How far ahead "ending soon" looks. Thirty days is what b2b's console used
+# for its at-risk list, and a renewal conversation takes about that long.
+ENDING_SOON = timedelta(days=30)
 
 
 async def list_organizations(
@@ -100,44 +107,79 @@ async def restore_organization(
     return _org_read(refreshed)
 
 
-async def search_users(
-    session: AsyncSession, *, query: str | None, limit: int, cursor: dict[str, Any] | None
-) -> tuple[list[UserSummary], str | None]:
-    """Find an account by email, for the people who answer support."""
-    refs, next_cursor = await identity.search_users(session, query=query, limit=limit, cursor=cursor)
-    return [UserSummary(id=r.id, email=r.email, name=r.name, created_at=r.created_at) for r in refs], (
-        next_cursor
-    )
+async def overview(session: AsyncSession, *, now: datetime) -> PlatformOverview:
+    """The numbers the console opens with, and the organisations to look at first.
 
-
-async def set_platform_admin(
-    session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool, actor: Principal
-) -> UserSummary:
-    """Grant or revoke the console itself.
-
-    Audited without an organisation: this is a platform act, and the audit log
-    is where "who made whom an administrator" has to be answerable from.
+    Counts, not lists — except `at_risk`, which is the one list the console
+    exists to show: suspended, lapsed and not yet swept, or ending within
+    thirty days. b2b's console had this; the port opened on two integers.
     """
-    user = await identity.set_platform_admin(session, user_id, is_admin=is_admin)
-    await repository.write_audit(
-        session,
-        org_id=None,
-        actor_user_id=actor.user_id,
-        actor_email=actor.email,
-        action="platform_admin.granted" if is_admin else "platform_admin.revoked",
-        target_type="user",
-        target_id=str(user_id),
-        summary=user.email,
-    )
-    return UserSummary(id=user.id, email=user.email, name=user.name, created_at=user.created_at)
-
-
-async def overview(session: AsyncSession) -> PlatformOverview:
-    """The numbers the console opens with, counted rather than listed."""
     return PlatformOverview(
         organizations=await repository.count_organizations(session),
         users=await identity.count_users(session),
+        organizations_by_status=await repository_platform.count_organizations_by_status(session),
+        at_risk=await _at_risk(session, now=now),
     )
+
+
+async def _at_risk(session: AsyncSession, *, now: datetime) -> list[OrgAtRisk]:
+    statuses = sorted(domain.ACTIVE_ORG_STATUSES | {"suspended"})
+    out: list[OrgAtRisk] = []
+    for org in await repository_platform.organizations_in_statuses(session, statuses=statuses):
+        if org.status == "suspended":
+            reason = "suspended"
+        elif domain.contract_lapsed(org.contract_ends_at, now=now):
+            reason = "contract_lapsed"
+        elif org.contract_ends_at is not None and org.contract_ends_at <= now + ENDING_SOON:
+            reason = "contract_ending"
+        else:
+            continue
+        out.append(
+            OrgAtRisk(
+                slug=org.slug,
+                name=org.name,
+                status=org.status,
+                contract_ends_at=org.contract_ends_at,
+                reason=reason,
+            )
+        )
+    return out
+
+
+async def renew_contract(
+    session: AsyncSession, org_id: uuid.UUID, *, terms: RenewContract, actor: Principal, now: datetime
+) -> OrganizationRead:
+    """Record new contract dates and, unless told otherwise, lift the suspension.
+
+    The lapse sweep suspends; this is its inverse, in one step. A renewal
+    written as a `PATCH` of the date and then a `restore` is two steps, and
+    the second is the one that gets forgotten with a customer waiting.
+    """
+    org = await repository.organization_by_id(session, org_id)
+    if org is None:
+        raise OrgNotFound()
+    values: dict[str, Any] = {"contract_ends_at": terms.contract_ends_at}
+    if terms.contract_starts_at is not None:
+        values["contract_starts_at"] = terms.contract_starts_at
+    await repository.update_organization(session, org_id, **values)
+    restored = terms.restore and org.status == "suspended"
+    if restored:
+        await repository.set_organization_status(
+            session, org_id, status="active", suspended_at=None, suspended_by=None
+        )
+    await repository.write_audit(
+        session,
+        org_id=org_id,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action="organization.contract_renewed",
+        at=now,
+        target_type="organization",
+        target_id=str(org_id),
+        summary=f"Ends {terms.contract_ends_at:%Y-%m-%d}" + ("; restored" if restored else ""),
+        meta={"contract_ends_at": terms.contract_ends_at.isoformat(), "restored": restored},
+    )
+    return _org_read(await repository.organization_by_id(session, org_id))
 
 
 async def suspend_lapsed_organizations(session: AsyncSession, *, now: datetime) -> list[str]:

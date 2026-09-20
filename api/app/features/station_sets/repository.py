@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -87,3 +88,60 @@ async def list_for_owner(
     return await keyset_page(
         session, stmt, sort_col=StationSet.created_at, id_col=StationSet.id, limit=limit, cursor=cursor
     )
+
+
+async def entries_for_owner_by_versions(
+    session: AsyncSession, owner_user_id: uuid.UUID, version_ids: Collection[uuid.UUID]
+) -> list[StationSetEntry]:
+    """Every entry across this person's sets that points at one of these versions."""
+    if not version_ids:
+        return []
+    stmt = (
+        select(StationSetEntry)
+        .join(StationSet, StationSet.id == StationSetEntry.set_id)
+        .where(
+            StationSet.owner_user_id == owner_user_id,
+            StationSetEntry.station_version_id.in_(list(version_ids)),
+        )
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+def _owned_entry_ids(owner_user_id: uuid.UUID, version_ids: Collection[uuid.UUID]) -> Any:
+    return (
+        select(StationSetEntry.id)
+        .join(StationSet, StationSet.id == StationSetEntry.set_id)
+        .where(
+            StationSet.owner_user_id == owner_user_id,
+            StationSetEntry.station_version_id.in_(list(version_ids)),
+        )
+        .scalar_subquery()
+    )
+
+
+async def reset_counters(
+    session: AsyncSession, owner_user_id: uuid.UUID, version_ids: Collection[uuid.UUID]
+) -> int:
+    """Set the attempt and debrief counters back to zero on every matching
+    entry — what the old console's "reset attempts" did to `station_progress`."""
+    if not version_ids:
+        return 0
+    result = await session.execute(
+        update(StationSetEntry)
+        .where(StationSetEntry.id.in_(_owned_entry_ids(owner_user_id, version_ids)))
+        .values(attempts=0, debrief_attempts=0, last_attempt_at=None)
+    )
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
+async def remove_entries(
+    session: AsyncSession, owner_user_id: uuid.UUID, version_ids: Collection[uuid.UUID]
+) -> int:
+    """Take the station out of every one of this person's sets. The attempts
+    that pointed at the entries must already be gone: they `RESTRICT`."""
+    if not version_ids:
+        return 0
+    result = await session.execute(
+        delete(StationSetEntry).where(StationSetEntry.id.in_(_owned_entry_ids(owner_user_id, version_ids)))
+    )
+    return int(getattr(result, "rowcount", 0) or 0)

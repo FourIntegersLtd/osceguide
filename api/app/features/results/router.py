@@ -35,7 +35,9 @@ async def read_decision(
 @router.put(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision",
     response_model=schemas.DecisionRead,
-    responses=error_responses(Forbidden, errors.IncompatibleOutcomesError, errors.InvalidWorkflowError),
+    responses=error_responses(
+        Forbidden, errors.TraineeNotFound, errors.IncompatibleOutcomesError, errors.InvalidWorkflowError
+    ),
 )
 async def save_decision(
     sitting_id: uuid.UUID,

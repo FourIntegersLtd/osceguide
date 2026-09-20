@@ -72,6 +72,20 @@ def transition(current: Status, target: Status) -> Status:
     return target
 
 
+# What a candidate may read back about their own attempt.
+#
+# The management plan and the patient's ideas, concerns and expectations are
+# the model answer: showing them before the consultation is showing the answer,
+# so the review read is refused until the interaction is over. `failed` is here
+# because abandoning writes it — somebody who walked out still sat the station
+# and may read what they missed.
+REVIEWABLE = frozenset({Status.INTERACTION_COMPLETE, Status.EVALUATED, Status.FAILED})
+
+
+def is_reviewable(status: Status) -> bool:
+    return status in REVIEWABLE
+
+
 # Walking away is only possible while there is something to walk away from.
 # Once the interaction is complete the transcript exists and is being marked:
 # that attempt is finished, and "abandoning" it would throw away a recording

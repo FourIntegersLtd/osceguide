@@ -77,6 +77,9 @@ class RubricVersion(Base, UUIDPrimaryKey, Timestamps):
     pacing: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     # For a result shape the derivation cannot express. Normally null.
     result_schema_override: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Examiner / structured human marking UI (sections and blocks). Same version
+    # as the AI marking model above — not a separate feedback template row.
+    marking_layout: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

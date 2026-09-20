@@ -40,9 +40,11 @@ async def create_rubric(
     system_prompt: str,
     pacing: dict[str, Any],
     result_schema_override: dict[str, Any] | None = None,
+    marking_layout: dict[str, Any] | None = None,
 ) -> RubricRead:
     """A rubric and its first draft version, ready to edit or publish."""
     parsed, checked_pacing = _validated(structure, pacing)
+    _validate_marking_layout(marking_layout)
     rubric = await repository.create_rubric(session, org_id, title=title)
     version = await repository.add_version(
         session,
@@ -53,6 +55,7 @@ async def create_rubric(
         system_prompt=system_prompt,
         pacing=checked_pacing,
         result_schema_override=result_schema_override,
+        marking_layout=marking_layout,
     )
     return _rubric_read(rubric, [version])
 
@@ -100,6 +103,7 @@ async def add_version(
         result_schema_override=dict(source.result_schema_override)
         if source and source.result_schema_override
         else None,
+        marking_layout=dict(source.marking_layout) if source and source.marking_layout else None,
     )
     return _version_read(version)
 
@@ -114,6 +118,7 @@ async def edit_version(
     system_prompt: str,
     pacing: dict[str, Any],
     result_schema_override: dict[str, Any] | None,
+    marking_layout: dict[str, Any] | None,
 ) -> RubricVersionRead:
     row = await _version(session, org_id, rubric_id, version)
     try:
@@ -121,6 +126,7 @@ async def edit_version(
             lifecycle.VersionRef(number=row.version, status=lifecycle.Status(row.status))
         )
         parsed, checked_pacing = _validated(structure, pacing)
+        _validate_marking_layout(marking_layout)
     except Exception as exc:  # noqa: BLE001 — mapped to the error carrying its status
         raise_mapped(exc, REFUSALS)
     await repository.set_version_body(
@@ -131,6 +137,7 @@ async def edit_version(
         system_prompt=system_prompt,
         pacing=checked_pacing,
         result_schema_override=result_schema_override,
+        marking_layout=marking_layout,
     )
     await session.refresh(row)
     return _version_read(row)
@@ -157,6 +164,10 @@ async def publish_version(
         domain.validate_pacing(row.pacing)
         if not (row.system_prompt or "").strip():
             raise domain.InvalidRubric("A rubric cannot be published without marking instructions.")
+        if org_id is None and not row.marking_layout:
+            raise domain.InvalidRubric(
+                "Platform catalogue rubrics need an examiner marking layout before publish."
+            )
     except Exception as exc:  # noqa: BLE001
         raise_mapped(exc, REFUSALS)
     await repository.set_version_status(session, org_id, row.id, status=status, at=now, by=actor_id)
@@ -193,6 +204,13 @@ def _validated(
         return domain.parse_structure(structure), domain.validate_pacing(pacing)
     except domain.InvalidRubric as exc:
         raise errors.InvalidRubricError(str(exc)) from exc
+
+
+def _validate_marking_layout(marking_layout: dict[str, Any] | None) -> None:
+    if marking_layout is None:
+        return
+    if not isinstance(marking_layout, dict) or not marking_layout.get("sections"):
+        raise errors.InvalidRubricError("A marking layout must include sections.")
 
 
 async def _own_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> Rubric:
@@ -241,5 +259,6 @@ def _version_read(version: RubricVersion) -> RubricVersionRead:
         system_prompt=version.system_prompt,
         pacing=dict(version.pacing or {}),
         result_schema=schema,
+        marking_layout=dict(version.marking_layout) if version.marking_layout else None,
         published_at=version.published_at,
     )

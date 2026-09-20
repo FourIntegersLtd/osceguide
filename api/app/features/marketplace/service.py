@@ -18,6 +18,7 @@ from app.core.audience import (
     ensure_may_address,
 )
 from app.core.errors import AppError, raise_mapped
+from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.marketplace import domain, errors, repository
@@ -43,9 +44,18 @@ async def offer_slot(
     starts_at: datetime,
     duration_minutes: int,
     note: str | None,
+    now: datetime,
     audience: Audience = PUBLIC,
 ) -> PostRead:
+    """Offer to practise with somebody, at a time.
+
+    Gated on the same entitlement an attempt is, free trial included: a slot is
+    an arrangement to sit a station with a real partner, which is the paid
+    product rather than an advert for it. Offering one for an exam you do not
+    hold would also put it in front of people who do.
+    """
     exam = await resolve_exam(session, exam_code)
+    await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
     ensure_may_address(audience, await audiences_for(session, owner_user_id))
     row = await repository.create_post(
         session,
@@ -68,6 +78,9 @@ async def claim_slot(
     at the same moment serialise here: the second waits, then reads the status
     the first wrote and is told the slot is gone. Checking without the lock
     means both see `available` and both believe they won.
+
+    Entitlement is checked after the audience, and for the same reason it is
+    checked at all: claiming puts somebody in a live room for that exam.
     """
     post = await repository.lock_post(session, post_id)
     if post is None:
@@ -76,6 +89,8 @@ async def claim_slot(
         # Not found rather than forbidden: a slot offered inside an institution
         # must not be discoverable by anyone holding its id.
         raise errors.PostNotFound()
+
+    await attempts.require_entitlement(session, user_id=claimer_user_id, exam_id=post.exam_id, now=now)
 
     try:
         domain.ensure_claimable(_state(post), claimer_id=str(claimer_user_id), now=now)

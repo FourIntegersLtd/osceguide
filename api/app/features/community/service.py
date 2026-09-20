@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -182,6 +182,14 @@ async def list_station_comments(
 ) -> list[PostRead]:
     viewer = await audiences_for(session, viewer_id)
     rows = await repository.list_station_comments(session, station_id, viewer=viewer)
+    return await _read_many(session, rows, viewer_id=viewer_id)
+
+
+async def list_moderation_queue(
+    session: AsyncSession, *, viewer_id: uuid.UUID, days: int = 7, limit: int = 100
+) -> list[PostRead]:
+    since = datetime.now(tz=UTC) - timedelta(days=days)
+    rows = await repository.list_recent_for_moderation(session, since=since, limit=limit)
     return await _read_many(session, rows, viewer_id=viewer_id)
 
 

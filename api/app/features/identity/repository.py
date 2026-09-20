@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
-from typing import Any
+from datetime import date, datetime
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import keyset_page
 from app.features.identity.domain import normalize_email
 from app.features.identity.models import (
     PasswordResetToken,
@@ -29,6 +27,7 @@ async def create_user(
     password_hash: str | None,
     is_platform_admin: bool = False,
     must_change_password: bool = False,
+    exam_code: str | None = None,
 ) -> User:
     user = User(
         email=normalize_email(email),
@@ -36,6 +35,7 @@ async def create_user(
         password_hash=password_hash,
         is_platform_admin=is_platform_admin,
         must_change_password=must_change_password,
+        exam_code=exam_code,
     )
     session.add(user)
     # Flushed and refreshed here so the caller gets the generated id and the
@@ -82,6 +82,19 @@ async def link_identity(
 async def identity_by_subject(session: AsyncSession, provider: str, subject: str) -> UserIdentity | None:
     stmt = select(UserIdentity).where(UserIdentity.provider == provider, UserIdentity.subject == subject)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def consumer_legacy_ids(session: AsyncSession, user_id: uuid.UUID) -> dict[str, str]:
+    """Firestore `user_id` per exam (`tenant_slug`), for the staff console."""
+    stmt = select(UserIdentity.tenant_slug, UserIdentity.subject).where(
+        UserIdentity.user_id == user_id,
+        UserIdentity.provider == "consumer",
+    )
+    out: dict[str, str] = {}
+    for slug, subject in (await session.execute(stmt)).all():
+        key = str(slug or "unknown").lower()
+        out[key] = str(subject)
+    return out
 
 
 # --- refresh chains --------------------------------------------------------
@@ -172,26 +185,34 @@ async def users_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> 
     return list((await session.execute(stmt)).scalars())
 
 
-async def search_users(
-    session: AsyncSession, *, query: str | None, limit: int, cursor: dict[str, Any] | None = None
-) -> tuple[list[User], str | None]:
-    """People, by a fragment of their email. For platform support only.
+async def update_profile(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    name: str | None,
+    exam_date: date | None,
+    extra_reading_percent: int | None,
+    clear_exam_date: bool,
+    exam_code: str | None = None,
+) -> User | None:
+    """Write only what was sent.
 
-    Not scoped to anything, which is why the only route that reaches it is
-    behind `PlatformAdmin`: this is the one place in the API that can see
-    across every tenant at once.
+    `None` means "leave it" for every field, which is why clearing an exam date
+    needs its own flag: a PATCH that cannot distinguish "not mentioned" from
+    "set to nothing" makes one of the two impossible.
     """
-    stmt = select(User)
-    if query:
-        stmt = stmt.where(User.email.ilike(f"%{query.strip()}%"))
-    return await keyset_page(
-        session, stmt, sort_col=User.created_at, id_col=User.id, limit=limit, cursor=cursor
-    )
-
-
-async def count_users(session: AsyncSession) -> int:
-    return int((await session.execute(select(func.count()).select_from(User))).scalar_one())
-
-
-async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool) -> None:
-    await session.execute(update(User).where(User.id == user_id).values(is_platform_admin=is_admin))
+    user = await session.get(User, user_id)
+    if user is None:
+        return None
+    if name is not None:
+        user.name = name
+    if extra_reading_percent is not None:
+        user.extra_reading_percent = extra_reading_percent
+    if exam_code is not None:
+        user.exam_code = exam_code
+    if clear_exam_date:
+        user.exam_date = None
+    elif exam_date is not None:
+        user.exam_date = exam_date
+    await session.flush()
+    return user

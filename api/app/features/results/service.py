@@ -41,6 +41,10 @@ async def save_draft(
     A new revision rather than an edit: the table is append-only, so the history
     of what was considered survives.
     """
+    # Before anything is written: the foreign key would catch a bad id, but as
+    # an unhandled integrity error rather than a refusal the caller can read.
+    await roster.ensure_trainee(session, org_id, trainee_id)
+
     latest = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if latest and latest.workflow_state == "released":
         raise_mapped(domain.InvalidWorkflow("A released result cannot be redrafted."), _REFUSALS)

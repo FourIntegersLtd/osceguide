@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import CurrentPrincipal
+from app.core.auth import CurrentPrincipal, MaybePrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
@@ -23,28 +23,51 @@ Index = Annotated[VectorIndex, Depends(service.get_vector_index)]
 @router.get(
     "/media",
     response_model=Page[schemas.MediaRead],
-    responses=error_responses(errors.UnknownExamError, Unauthenticated, errors.UnknownMediaKindError),
+    responses=error_responses(errors.UnknownExamError, errors.UnknownMediaKindError),
 )
 async def list_published(
-    principal: CurrentPrincipal,
     session: Session,
+    principal: MaybePrincipal,
+    clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
     kind: Annotated[str | None, Query()] = None,
+    status: Annotated[
+        str | None,
+        Query(description="Authoring filter: draft, published, or all (platform admin only)."),
+    ] = None,
 ) -> Page[schemas.MediaRead]:
-    items, next_cursor = await service.list_published(
-        session, kind=kind, limit=page.limit, cursor=page.cursor
+    """Published material: the titles to anybody, the bodies to subscribers.
+
+    No token required, because a signed-out visitor still needs the landing
+    page's article rail and a shared link still needs to say what it points at.
+    What a token changes is `content`: the slide decks and the A to Z are the
+    paid half of the product and used to come back in full to anyone who asked,
+    signed in or not.
+    """
+    is_admin = bool(principal and principal.is_platform_admin)
+    unlocked = await service.unlocked_exam_ids(
+        session, principal.user_id if principal else None, now=clock.now()
+    )
+    items, next_cursor = await service.list_catalog(
+        session,
+        kind=kind,
+        limit=page.limit,
+        cursor=page.cursor,
+        status=status,
+        viewer_is_admin=is_admin,
+        unlocked=unlocked,
     )
     return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(
-    "/media/{slug}",
+    "/media/by-id/{item_id}",
     response_model=schemas.MediaRead,
-    responses=error_responses(Unauthenticated, errors.ItemNotFound),
+    responses=error_responses(Unauthenticated, Forbidden, errors.ItemNotFound),
 )
-async def read_by_slug(slug: str, principal: CurrentPrincipal, session: Session) -> schemas.MediaRead:
-    """A draft is 404 to everyone but an admin: its existence is not public."""
-    return await service.read_by_slug(session, slug, viewer_is_admin=principal.is_platform_admin)
+async def read_by_id(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> schemas.MediaRead:
+    """Staff authoring: read any row by primary key, including drafts."""
+    return await service.read_by_id(session, item_id, viewer_is_admin=True)
 
 
 @router.get(
@@ -56,10 +79,64 @@ async def search(
     principal: CurrentPrincipal,
     session: Session,
     index: Index,
+    clock: ClockDep,
     q: Annotated[str, Query(description="What to search for")],
 ) -> Page[schemas.SearchHit]:
-    items = await service.search(session, query=q, index=index)
+    """Over the material this reader holds, not the whole library."""
+    items = await service.search(
+        session,
+        query=q,
+        index=index,
+        unlocked=await service.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
+    )
     return Page(items=items, next_cursor=None)
+
+
+@router.get(
+    "/media/lookup",
+    response_model=schemas.MediaRead,
+    responses=error_responses(errors.ItemNotFound),
+)
+async def read_by_slug_lookup(
+    principal: MaybePrincipal,
+    session: Session,
+    clock: ClockDep,
+    slug: Annotated[str, Query(min_length=1, description="The item's canonical slug")],
+) -> schemas.MediaRead:
+    """Same as `GET /media/{slug}`; query form avoids path-encoding edge cases in clients."""
+    return await service.read_by_slug(
+        session,
+        slug,
+        viewer_is_admin=bool(principal and principal.is_platform_admin),
+        unlocked=await service.unlocked_exam_ids(
+            session, principal.user_id if principal else None, now=clock.now()
+        ),
+    )
+
+
+@router.get(
+    "/media/{slug}",
+    response_model=schemas.MediaRead,
+    responses=error_responses(errors.ItemNotFound),
+)
+async def read_by_slug(
+    slug: str, principal: MaybePrincipal, session: Session, clock: ClockDep
+) -> schemas.MediaRead:
+    """A draft is 404 to everyone but an admin: its existence is not public.
+
+    Readable without a token, for the same reason the listing is — but a token
+    decides two things: whether a draft exists at all, and whether the body
+    comes with it. `locked` says which, so the client can offer the upgrade
+    rather than render an empty article.
+    """
+    return await service.read_by_slug(
+        session,
+        slug,
+        viewer_is_admin=bool(principal and principal.is_platform_admin),
+        unlocked=await service.unlocked_exam_ids(
+            session, principal.user_id if principal else None, now=clock.now()
+        ),
+    )
 
 
 @router.post(
@@ -95,8 +172,22 @@ async def update(
     item_id: uuid.UUID, body: schemas.UpdateMedia, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
     return await service.update(
-        session, item_id, title=body.title, summary=body.summary, content=body.content
+        session,
+        item_id,
+        title=body.title,
+        summary=body.summary,
+        content=body.content,
+        editor_is_admin=True,
     )
+
+
+@router.delete(
+    "/media/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotDeletableError),
+)
+async def delete_draft(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> None:
+    await service.delete_draft(session, item_id)
 
 
 @router.post(

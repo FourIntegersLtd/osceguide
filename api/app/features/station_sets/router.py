@@ -21,7 +21,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/me/station-sets",
     response_model=Page[schemas.SetRead],
-    responses=error_responses(errors.UnknownExamError, Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, errors.NotEntitled, Unauthenticated),
 )
 async def list_sets(
     principal: CurrentPrincipal, session: Session, page: Annotated[CursorParams, Depends()]
@@ -38,10 +38,10 @@ async def list_sets(
     "/me/station-sets",
     response_model=schemas.SetRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(errors.UnknownExamError, Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, errors.NotEntitled, Unauthenticated),
 )
 async def create_set(
-    body: schemas.CreateSet, principal: CurrentPrincipal, session: Session
+    body: schemas.CreateSet, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.SetRead:
     return await service.create_set(
         session,
@@ -49,6 +49,7 @@ async def create_set(
         name=body.name,
         exam_code=body.exam_code,
         station_version_ids=body.station_version_ids,
+        now=clock.now(),
     )
 
 

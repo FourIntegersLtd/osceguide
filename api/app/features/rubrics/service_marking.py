@@ -59,6 +59,7 @@ async def marking_snapshot(
     version = await published_version(session, org_id, rubric_version_id)
     rubric = await repository.readable_rubric(session, org_id, version.rubric_id)
     structure = domain.narrow_structure(domain.parse_structure(version.structure), field_selection)
+    layout = dict(version.marking_layout) if version.marking_layout else None
     return {
         "framework": domain.framework_payload(
             framework_id=str(version.id),
@@ -70,7 +71,16 @@ async def marking_snapshot(
         ),
         "system_prompt": version.system_prompt,
         "pacing": dict(version.pacing or {}),
+        "marking_layout": layout,
     }
+
+
+async def reviewable_domains_for_version(
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
+) -> set[str]:
+    """Every scoring domain on a published rubric version."""
+    version = await published_version(session, org_id, version_id)
+    return set(domain.scoring_domain_ids(domain.parse_structure(version.structure)))
 
 
 def reviewable_domains(field_selection: dict[str, Any] | None) -> set[str]:

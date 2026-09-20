@@ -57,6 +57,33 @@ async def update_item(session: AsyncSession, item_id: uuid.UUID, **values: Any) 
     await session.execute(update(MediaItem).where(MediaItem.id == item_id).values(**values))
 
 
+async def list_catalog(
+    session: AsyncSession,
+    *,
+    kind: str | None,
+    statuses: tuple[str, ...] | None,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+) -> tuple[list[MediaItem], str | None]:
+    stmt = select(MediaItem)
+    if statuses is None:
+        stmt = stmt.where(MediaItem.status == "published")
+    elif len(statuses) == 1:
+        stmt = stmt.where(MediaItem.status == statuses[0])
+    else:
+        stmt = stmt.where(MediaItem.status.in_(statuses))
+    if kind:
+        stmt = stmt.where(MediaItem.kind == kind)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=MediaItem.created_at,
+        id_col=MediaItem.id,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
 async def list_published(
     session: AsyncSession,
     *,
@@ -64,9 +91,10 @@ async def list_published(
     limit: int,
     cursor: dict[str, Any] | None = None,
 ) -> tuple[list[MediaItem], str | None]:
-    stmt = select(MediaItem).where(MediaItem.status == "published")
-    if kind:
-        stmt = stmt.where(MediaItem.kind == kind)
-    return await keyset_page(
-        session, stmt, sort_col=MediaItem.created_at, id_col=MediaItem.id, limit=limit, cursor=cursor
-    )
+    return await list_catalog(session, kind=kind, statuses=None, limit=limit, cursor=cursor)
+
+
+async def delete_item(session: AsyncSession, item_id: uuid.UUID) -> None:
+    row = await by_id(session, item_id)
+    if row is not None:
+        await session.delete(row)

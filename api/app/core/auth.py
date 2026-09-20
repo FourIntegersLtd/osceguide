@@ -24,7 +24,10 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.account_status import refuse_if_deactivated
+from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated
 from app.core.settings import Settings, get_settings
 
@@ -41,6 +44,12 @@ class Membership:
     # reads it, and a renamed organisation would otherwise show its old name
     # for the life of every token already issued. Filled by the tenancy lookup.
     org_name: str | None = None
+    # Also display only, and for the same reason. The frontend picks which
+    # workspace shell to render from this — an institution examines a cohort, a
+    # partner watches a funnel — and that is a presentation choice, never an
+    # authorisation one. Baking it into a claim would freeze it for fifteen
+    # minutes after an organisation changed what it is.
+    org_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -144,10 +153,12 @@ async def get_principal(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Principal:
     if credentials is None or not credentials.credentials:
         raise Unauthenticated()
     principal = decode_access_token(credentials.credentials, settings=settings)
+    await refuse_if_deactivated(session, principal.user_id)
     if principal.must_change_password:
         _refuse_unless_password_route(request)
     return principal
@@ -172,6 +183,35 @@ def _refuse_unless_password_route(request: Request) -> None:
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_principal)]
+
+
+async def get_principal_if_present(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Principal | None:
+    """Whoever is calling, or nobody.
+
+    For the handful of reads that are genuinely public but answer differently
+    to somebody signed in — a published article is readable by a visitor, and
+    its unpublished draft is readable by the admin writing it.
+
+    A *bad* token is still a refusal. "No credentials" and "credentials that do
+    not decode" are different: treating the second as anonymous would turn an
+    expired session into a silent downgrade, and the caller would see a public
+    answer where they expected theirs.
+    """
+    if credentials is None or not credentials.credentials:
+        return None
+    principal = decode_access_token(credentials.credentials, settings=settings)
+    await refuse_if_deactivated(session, principal.user_id)
+    if principal.must_change_password:
+        _refuse_unless_password_route(request)
+    return principal
+
+
+MaybePrincipal = Annotated[Principal | None, Depends(get_principal_if_present)]
 
 
 async def require_worker_secret(

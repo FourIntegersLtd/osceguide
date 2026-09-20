@@ -62,14 +62,12 @@ async def a_circuit(
 
 
 async def a_sitting(client: AsyncClient, admin: str, slug: str, *, mode: str = "exam") -> dict:
-    template_version = await a_template_version(client, admin, slug)
+    from tests.support.sittings import add_programme, create_sitting_body
+
+    programme_id = await add_programme(client, admin, org_slug=slug)
     created = await client.post(
         f"/api/v1/orgs/{slug}/sittings",
-        json={
-            "name": "Finals",
-            "feedback_template_version_id": str(template_version),
-            "mode": mode,
-        },
+        json=create_sitting_body(name="Finals", programme_id=programme_id, mode=mode),
         headers=bearer(admin),
     )
     assert created.status_code == 201, created.text
@@ -101,7 +99,7 @@ async def test_the_org_dashboard_counts_without_listing(
         "trainees": 1,
         "stations": 1,
         "staff": 1,
-        "published_feedback_templates": 1,
+        "programmes_with_markable_exam": 1,
         "sittings": 1,
     }
     assert body["setup"]["ready_to_run"] is True
@@ -115,7 +113,7 @@ async def test_an_empty_org_is_told_what_it_is_missing(client: AsyncClient, make
         "trainees_added": False,
         "stations_authored": False,
         "team_invited": True,
-        "feedback_template_published": False,
+        "programme_exam_rubric_ready": False,
         "ready_to_run": False,
     }
 

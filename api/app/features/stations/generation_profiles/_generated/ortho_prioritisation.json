@@ -1,0 +1,22 @@
+{
+  "profileKey": "ortho.prioritisation",
+  "label": "Ortho ST3 prioritisation",
+  "examCode": "ortho",
+  "orthoStationType": "prioritisation",
+  "blockHints": {
+    "station_id": "Unique identifier for this station",
+    "station_name": "Name of the station/scenario",
+    "station_type": "Type of ortho station (clinical, communication, prioritisation)",
+    "created_at": "Creation timestamp",
+    "created_by": "Creator identifier",
+    "clinical_scenario_title": "Concise case title (e.g., 'Trauma List Prioritisation')",
+    "clinical_scenario": "High-level scenario text shown to the candidate, e.g. 'Your consultant has requested you to organise the trauma list for the following day...'",
+    "background_overview": "Background context combining theatre and patient information in prose. Example: 'You are in an MTC with allied specialties available. There is a CEPOD list overnight; XR is available only on the full-day list. All patients are in hospital, consented, marked and swabbed. Patient #6 awaits USS to confirm collection.'",
+    "patient_list_for_candidate": "Tabular list presented to candidate",
+    "examiner_additional_info": "Parallel list with expanded details/bullets per patient number",
+    "suggested_order_overview": "Short overview introducing the management rationale before the detailed list order. Example: 'Prioritise septic and time-critical cases first, align NOF THA within BOAST timelines on the hip list, and schedule cases requiring XR on the full-day list. Manage diabetic optimization and imaging dependencies in parallel.'",
+    "suggested_order": "Recommended ordering across CEPOD, full-day list, and half-day list with brief justifications",
+    "interview_questions": "Q&A pairs to probe candidate's prioritisation reasoning. Common questions: 1. 'How would you prioritise these patients?' 2. 'Why would you put patient X first/on the CEPOD list?' 3. 'What factors influenced your decision?' 4. 'How does BOAST guidance affect your list order?' 5. 'What would you do if XR wasn't available on the full-day list?' 6. 'How would you manage the diabetic patient's optimization?' \nAnswers should reference: guidelines (BOAST, NICE, BPT), time targets (<24h, <36h), clinical priorities (sepsis, NV compromise), resource constraints (XR, specialist surgeon)",
+    "approved": "Whether this station has been approved for use"
+  }
+}

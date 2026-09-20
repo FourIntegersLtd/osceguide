@@ -6,9 +6,12 @@ from app.core.errors import Conflict, NotFound
 # this slice's error vocabulary even though the class belongs to `entitlements`.
 # Re-exported rather than redefined: two classes with one code would drift, and
 # the router documents what it can actually return.
+from app.features.attempts.errors import AttemptInProgress, UserNotFound
 from app.features.entitlements.errors import NotEntitled
 
-__all__ = ["NotEntitled"]
+# `AttemptInProgress` and `UserNotFound` are what deleting a station's
+# progress can answer, and both belong to `attempts`, which does the deleting.
+__all__ = ["AttemptInProgress", "NotEntitled", "UserNotFound"]
 
 
 class SetNotFound(NotFound):
@@ -48,3 +51,11 @@ class UnknownExamError(NotFound):
 
     code = "unknown_exam"
     default_message = "No such exam"
+
+
+class StationNotFound(NotFound):
+    """Mirrors `stations.errors.StationNotFound` and shares its code, for the
+    console routes that name a station by id."""
+
+    code = "station_not_found"
+    default_message = "No such station"

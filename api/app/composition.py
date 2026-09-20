@@ -20,6 +20,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.account_status import bind_account_status
 from app.core.audience import bind_viewer_audiences
 from app.core.auth import bind_password_gate
 from app.core.memberships import bind_membership_lookup
@@ -29,7 +30,11 @@ from app.features.assistant.service_seams import bind_assistant_hooks
 from app.features.attempts.service_worker import bind_interaction_complete_hook
 from app.features.billing.service import count_payments_for_users
 from app.features.growth.service import bind_purchase_counter
-from app.features.identity.service import bind_registration_hook, may_call_with_temporary_password
+from app.features.identity.service import (
+    account_status,
+    bind_registration_hook,
+    may_call_with_temporary_password,
+)
 from app.features.identity.service_sessions import bind_default_workspace
 from app.features.media.index import bind_vector_index
 from app.features.reviews.service import slot_has_review
@@ -74,6 +79,9 @@ def bind_seams() -> None:
     # A temporary password reaches only the routes that replace it. The rule is
     # `identity`'s; the enforcement point is core's `get_principal`.
     bind_password_gate(may_call_with_temporary_password)
+    # A deactivated account is refused on its next request, not its next
+    # refresh. `identity` owns the status; the enforcement point is core's.
+    bind_account_status(account_status)
     bind_org_lookup(org_ref_by_slug)
     bind_org_access_policy(org_permits_access)
     # `reviews` sits above `sittings`, so the edit lock cannot ask it directly.

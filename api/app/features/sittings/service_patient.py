@@ -59,13 +59,6 @@ async def dispatch_patient(
         station_version_id=slot.station_version_id,
         room_name=room,
         now=now,
-        # What the sitting said its reviewers mark against. Carried on the
-        # attempt because `attempts` cannot walk up to the sitting to find it,
-        # so without this an institution's narrowing was ignored and its
-        # trainees were marked on the platform's full rubric.
-        feedback_template_version_id=await repository.feedback_template_version_for_slot(
-            session, org_id, slot.id
-        ),
     )
     agent_name, removed = await voice.dispatch_agent_into_room(
         agents=agents,

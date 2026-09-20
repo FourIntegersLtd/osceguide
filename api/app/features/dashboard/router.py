@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ from app.features.dashboard import (
     service_cohort,
     service_console,
     service_org,
+    service_performance,
     service_report,
     service_streams,
     service_trainee,
@@ -53,6 +54,32 @@ async def read_dashboard(principal: CurrentPrincipal, session: Session, clock: C
     has no tables and no domain module.
     """
     return await service.build(session, principal.user_id, now=clock.now())
+
+
+@router.get(
+    "/me/performance",
+    response_model=schemas.Performance,
+    responses=error_responses(Unauthenticated, errors.UnknownExamError),
+)
+async def read_performance(
+    principal: CurrentPrincipal,
+    session: Session,
+    exam_code: Annotated[
+        str | None,
+        Query(description="Which exam to report on. Defaults to the most recently attempted one."),
+    ] = None,
+) -> schemas.Performance:
+    """How this person is doing at one exam: per domain, overall, over time.
+
+    Separate from `/me/dashboard` because it is a different question over a
+    different set of rows — the marked attempts at one exam — and a screen that
+    only lists access and recent attempts should not pay for reading every
+    result document.
+
+    An exam with nothing marked yet is an empty answer, not a refusal: that is
+    the dashboard's empty state, and a 404 would make it read as an error.
+    """
+    return await service_performance.build(session, principal.user_id, exam_code=exam_code)
 
 
 @router.get(

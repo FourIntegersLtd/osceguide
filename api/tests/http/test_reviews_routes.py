@@ -57,7 +57,6 @@ async def a_slot(
     template_version = await published_feedback_version(
         db_session,
         org_id,
-        field_selection={"domains": list(domains)},
         structure=rubric_with_domains(*domains) if domains else None,
     )
     station = Station(owner_kind="org", org_id=org_id, exam_id=exam.id, title="S")
@@ -73,7 +72,7 @@ async def a_slot(
         org_id=org_id,
         name="S",
         mode="exam",
-        feedback_template_version_id=template_version.id,
+        rubric_version_id=template_version.id,
     )
     db_session.add(sitting)
     await db_session.flush()

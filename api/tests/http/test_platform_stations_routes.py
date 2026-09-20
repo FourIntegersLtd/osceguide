@@ -100,8 +100,11 @@ async def test_a_platform_admin_authors_and_publishes_a_library_station(
     )
     assert published.status_code == 200, published.text
 
-    # And it is in the library every organisation draws on.
-    library = await client.get("/api/v1/stations", headers=bearer(await make_actor("t@example.com")))
+    # And it is in the library every organisation draws on. Browsed as the
+    # admin: the library is scoped to the exams a reader may open, and a
+    # brand-new account holds none, so a fresh token would prove nothing about
+    # whether the station was published.
+    library = await client.get("/api/v1/stations", headers=bearer(admin))
     assert [s["title"] for s in library.json()["items"]] == ["COPD exacerbation"]
 
 

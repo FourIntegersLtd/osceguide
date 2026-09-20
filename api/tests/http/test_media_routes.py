@@ -141,3 +141,160 @@ async def test_search_does_not_leak_an_unpublished_item(
     reader = await make_actor("m-stale-reader@example.com")
     response = await client.get("/api/v1/media-search?q=Stale", headers=bearer(reader))
     assert response.json()["items"] == []
+
+
+# --------------------------------------------------------------------------
+# Who may read the body
+#
+# The A to Z and the slide decks are the paid half of the consumer product and
+# these routes returned them in full to anybody who asked — no token at all on
+# the listing, and a token on the single read only to decide whether a *draft*
+# existed. The titles stay public, because the landing page needs them and a
+# shared link has to say what it points at; the body does not.
+# --------------------------------------------------------------------------
+
+
+async def an_exam_item(client: AsyncClient, admin: str, *, exam_code: str, title: str = "SCA Deck") -> dict:
+    created = await client.post(
+        "/api/v1/media",
+        json={
+            "kind": "slide_deck",
+            "title": title,
+            "summary": "What to revise.",
+            "content": {"slides": ["Angina", "Reflux"]},
+            "exam_code": exam_code,
+        },
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    published = await client.post(f"/api/v1/media/{created.json()['id']}/publish", headers=bearer(admin))
+    assert published.status_code == 200, published.text
+    return created.json()
+
+
+async def test_material_for_an_exam_is_locked_without_a_live_entitlement(
+    client: AsyncClient, make_actor, db_session, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-lock@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    item = await an_exam_item(client, admin, exam_code="sca")
+
+    reader = await make_actor("m-lock-reader@example.com")
+    response = await client.get(f"/api/v1/media/{item['slug']}", headers=bearer(reader))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    # Found, named, and not readable: the client shows the upgrade prompt the
+    # retiring app showed rather than an empty article.
+    assert body["title"] == "SCA Deck"
+    assert body["locked"] is True
+    assert body["content"] is None
+    assert "Angina" not in str(body)
+
+
+async def test_a_subscriber_reads_the_body(
+    client: AsyncClient, make_actor, db_session, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.entitlements import repository as ent_repo
+    from app.features.identity import repository as identity_repo
+    from tests.support.catalog import create_exam, ensure_exam
+
+    admin = await make_actor("m-paid@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    item = await an_exam_item(client, admin, exam_code="sca")
+
+    reader = await make_actor("m-paid-reader@example.com")
+    user = await identity_repo.user_by_email(db_session, "m-paid-reader@example.com")
+    assert user is not None
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    await ent_repo.grant(
+        session=db_session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source="purchase",
+        ends_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    await db_session.commit()
+
+    body = (await client.get(f"/api/v1/media/{item['slug']}", headers=bearer(reader))).json()
+
+    assert body["locked"] is False
+    assert body["content"] == {"slides": ["Angina", "Reflux"]}
+
+
+async def test_a_signed_out_visitor_gets_titles_but_no_body(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    """The listing stays open, which is why the body had to stop being in it.
+
+    A bearer was deliberately dropped from these routes so the landing page's
+    article rail and shared links work signed out. That made every slide deck
+    world-readable.
+    """
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-anon@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    item = await an_exam_item(client, admin, exam_code="sca")
+
+    response = await client.get(f"/api/v1/media/{item['slug']}")
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "SCA Deck"
+    assert response.json()["content"] is None
+    assert response.json()["locked"] is True
+
+
+async def test_free_material_is_never_locked(client: AsyncClient, make_actor, index: FakeVectorIndex) -> None:  # type: ignore[no-untyped-def]
+    """An item belonging to no exam is free material, and stays open to all."""
+    admin = await make_actor("m-free@osceguide.com", platform_admin=True)
+    item = await draft(client, admin, title="Welcome To OSCE Guide")
+    await client.post(f"/api/v1/media/{item['id']}/publish", headers=bearer(admin))
+
+    body = (await client.get(f"/api/v1/media/{item['slug']}")).json()
+
+    assert body["locked"] is False
+    assert body["content"] is not None
+
+
+async def test_the_listing_locks_the_same_way(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-list@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    await an_exam_item(client, admin, exam_code="sca", title="Locked Deck")
+
+    reader = await make_actor("m-list-reader@example.com")
+    items = (await client.get("/api/v1/media", headers=bearer(reader))).json()["items"]
+
+    locked = [row for row in items if row["title"] == "Locked Deck"]
+    assert locked, "the item is still listed"
+    assert locked[0]["locked"] is True
+    assert locked[0]["content"] is None
+
+
+async def test_a_platform_admin_reads_bodies_on_the_listing(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    """The episode player loads its playlist from GET /media, not the slug read.
+
+    A slug read already unlocks for staff. If the listing stayed locked, the
+    page would show the title and 'this episode has no audio attached yet'.
+    """
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-admin-list@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    item = await an_exam_item(client, admin, exam_code="sca", title="SCA Deck For Staff")
+
+    listed = (await client.get("/api/v1/media?kind=slide_deck", headers=bearer(admin))).json()["items"]
+    row = next(entry for entry in listed if entry["id"] == item["id"])
+    assert row["locked"] is False
+    assert row["content"] == {"slides": ["Angina", "Reflux"]}

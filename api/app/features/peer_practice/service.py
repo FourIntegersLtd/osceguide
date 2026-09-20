@@ -18,6 +18,7 @@ from app.core.audience import (
 from app.core.events import publish_after_commit, user_topic
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
+from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.peer_practice import domain, errors, repository
@@ -30,9 +31,20 @@ MATCHED = "practice.matched"
 
 
 async def join_queue(
-    session: AsyncSession, *, user_id: uuid.UUID, exam_code: str, audience: Audience = PUBLIC
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    exam_code: str,
+    now: datetime,
+    audience: Audience = PUBLIC,
 ) -> QueueStatus:
     """Take a place in the queue, or keep the one you have.
+
+    Practising with another person is paid access like any other: it is a live
+    room with a real partner in it. The gate is the same one `POST /attempts`
+    uses, free trial included, so somebody inside their fourteen days may still
+    do this and a lapsed subscriber may not.
+
 
     Joining twice is not an error worth refusing outright — it is somebody
     tapping a button again — so it returns the place they already hold. One
@@ -41,6 +53,7 @@ async def join_queue(
     them in two queues at once.
     """
     exam = await resolve_exam(session, exam_code)
+    await attempts.require_entitlement(session, user_id=user_id, exam_id=exam.id, now=now)
     ensure_may_address(audience, await audiences_for(session, user_id))
     existing = await repository.live_entry(session, user_id, exam.id)
     # Re-read on a losing race rather than failing: two taps arriving together

@@ -57,6 +57,14 @@ redis.call('ZADD', key, expiry, room)
 return {1, count + 1}
 """
 
+# Count what is held, dropping expired rooms first, without holding anything.
+# For the console: `try_reserve` answers "may this room run" by taking a slot,
+# which is the wrong question for somebody only looking.
+ACTIVE = """
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', tonumber(ARGV[1]))
+return redis.call('ZCARD', KEYS[1])
+"""
+
 RELEASE = """
 local removed = redis.call('ZREM', KEYS[1], ARGV[1])
 return {removed, redis.call('ZCARD', KEYS[1])}
@@ -173,3 +181,14 @@ async def slots_free(settings: Settings, room: str) -> bool:
     if not settings.livekit_cloud_overflow_enabled:
         return True
     return (await try_reserve(settings, room)).reserved
+
+
+async def active_slots() -> int | None:
+    """How many Cloud sessions are held right now; None when Redis cannot say."""
+    if get_redis() is None:
+        return None
+    try:
+        return int(await _run(ACTIVE, int(time.time())))
+    except Exception:  # noqa: BLE001 - a count nobody acts on automatically
+        log.warning("cloud slot count failed", exc_info=True)
+        return None

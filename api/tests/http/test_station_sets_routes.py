@@ -137,14 +137,17 @@ async def test_someone_elses_set_is_not_found(
     assert response.json()["code"] == "set_not_found"
 
 
-async def test_a_set_without_an_entitlement_cannot_be_attempted(
+async def test_a_set_cannot_be_built_for_an_exam_you_do_not_hold(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    """The set is the learner's; running a station still needs access.
+    """Refused when the session is built, not at its first station.
 
-    Aged past the trial window on purpose. This used to pass with a brand-new
-    account only because the free trial never ran — and a new learner trying
-    three stations is exactly who the trial is for.
+    The gate used to sit only on the attempt, so somebody without access could
+    name a session, pick its stations and be turned away at the first one — a
+    dead end the client walks them into rather than a refusal it can explain.
+
+    Aged past the trial window on purpose. A brand-new account is exactly who
+    the free trial is for, and this route honours it.
     """
     from sqlalchemy import update
 
@@ -158,6 +161,34 @@ async def test_a_set_without_an_entitlement_cannot_be_attempted(
     )
     await db_session.flush()
     version = await a_station_version(db_session)
+
+    response = await client.post(
+        "/api/v1/me/station-sets",
+        json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+        headers=bearer(token),
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "not_entitled"
+
+
+async def test_a_set_built_before_access_lapsed_cannot_be_attempted(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The set is still the learner's; running a station needs access now.
+
+    The realistic case for the gate on the attempt: a subscriber builds a
+    session, their subscription ends, and the session is still sitting there.
+    Revoking does not delete the entitlement row, so the refusal depends on
+    `live` rather than on the row's absence.
+    """
+    from sqlalchemy import update
+
+    from app.features.entitlements.models import Entitlement
+    from app.features.identity.models import User
+
+    token = await a_learner(client, db_session, make_actor, "lapsing@example.com")
+    version = await a_station_version(db_session)
     created = (
         await client.post(
             "/api/v1/me/station-sets",
@@ -165,10 +196,29 @@ async def test_a_set_without_an_entitlement_cannot_be_attempted(
             headers=bearer(token),
         )
     ).json()
+    assert "id" in created, created
+
+    # Their subscription ends, and the account is too old for the trial to
+    # catch them.
+    user = await identity_repo.user_by_email(db_session, "lapsing@example.com")
+    assert user is not None
+    await db_session.execute(
+        update(Entitlement)
+        .where(Entitlement.user_id == user.id)
+        .values(ends_at=datetime.now(UTC) - timedelta(days=1))
+    )
+    await db_session.execute(
+        update(User)
+        .where(User.email == "lapsing@example.com")
+        .values(created_at=datetime.now(UTC) - timedelta(days=30))
+    )
+    await db_session.flush()
+
     response = await client.post(
         f"/api/v1/me/station-sets/{created['id']}/entries/{created['entries'][0]['id']}/attempts",
         headers=bearer(token),
     )
+
     assert response.status_code == 403
     assert response.json()["code"] == "not_entitled"
 

@@ -57,7 +57,7 @@ async def a_running_morning(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "Finals", "feedback_template_version_id": str(template), "mode": "exam"},
+            json={"name": "Finals", "programme_id": str(template), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()

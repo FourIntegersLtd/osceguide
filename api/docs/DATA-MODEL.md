@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-63 tables across 21 slices. Every table's classes live in `app/features/<slice>/models.py`
+66 tables across 23 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -92,11 +92,15 @@ names both.
 | `is_platform_admin` | `bool not null default false` | |
 | `must_change_password` | `bool not null default false` | gates all but `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED` |
 | `last_login_at` | `timestamptz null` | |
+| `exam_date` | `date null` | when they sit the real thing; the consumer dashboard counts down to it |
+| `extra_reading_percent` | `int not null default 0` | an access arrangement, as a percentage of extra reading time. CHECK 0–100. Applies to their own practice, never to a circuit's clock — one clock serves everybody on it |
 
 Domain: `MIN_PASSWORD_LENGTH = 12`.
 
 ### `user_identities`
-An external provider's handle on a user: Clerk today, others later.
+An external provider's handle on a user: Clerk today, others later. **Written by
+nothing yet** — the repository functions exist and have no callers, because no
+SSO flow has been built. See `organization_sso` below.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -106,6 +110,56 @@ An external provider's handle on a user: Clerk today, others later.
 | `tenant_slug` | `varchar(100) null` | for provider-side tenancy |
 
 UNIQUE `(provider, subject)`.
+
+### `organization_sso`
+One organisation's sign-in arrangement. At most one row per organisation.
+
+Replaces a hostname allow-list that was compiled into the browser bundle, with
+the tenant slug, the button's wording and the "no password form here" rule
+beside it.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | UNIQUE |
+| `provider` | `varchar(32) not null` | `clerk` or `entra`. Named before either is built, so a row says what it expects |
+| `issuer` | `varchar(255) null` | the broker's own identity. Not a secret |
+| `enabled` | `bool not null default false` | |
+| `sso_only` | `bool not null default false` | hides the password form. CHECK `NOT sso_only OR enabled` — otherwise one checkbox leaves nobody a way in |
+| `sign_in_label` | `varchar(80) null` | null takes the provider's default rather than rendering a button with no words |
+| `default_exam_code` | `varchar(32) null` | which exam a white-label site lands on |
+
+**Nothing verifies an identity yet.** `sso_only` is a display rule, not an
+enforcement one.
+
+### `organization_sso_bindings`
+A host, or an email domain, that means one organisation.
+
+| Field | Type | Notes |
+|---|---|---|
+| `sso_id` | `uuid not null` → `organization_sso.id` CASCADE | |
+| `kind` | `varchar(16) not null` | CHECK `host` or `email_domain` |
+| `value` | `citext not null` | stored as a `Host:` header will arrive: lower-cased, no scheme, path or port |
+
+UNIQUE `(kind, value)` — across the whole platform, not within an organisation.
+A hostname belongs to exactly one, and two rows claiming `nhs.net` would make
+home-realm discovery a coin toss.
+
+### `site_messages`
+Somebody wrote to us from the public site, or from inside the product.
+
+| Field | Type | Notes |
+|---|---|---|
+| `kind` | `varchar(32) not null` | CHECK `contact` or `product_feedback`. Separate because they are read by different people |
+| `name` | `varchar(120) null` | |
+| `email` | `citext null` | required for `contact` (in the domain, not the column): somebody asking a question has to be answerable |
+| `subject` | `varchar(200) null` | |
+| `body` | `text not null` | |
+| `user_id` | `uuid null` → `users.id` SET NULL | set when the sender was signed in; null says nothing about whether they have an account |
+| `source` | `varchar(200) null` | which screen the feedback is about |
+| `handled_at` | `timestamptz null` | |
+| `handled_by` | `uuid null` → `users.id` SET NULL | |
+
+INDEX `(kind, created_at)` — the inbox reads one kind at a time, newest first.
 
 ### `refresh_chains`
 One sign-in, from which a series of refresh tokens is issued.
@@ -281,6 +335,7 @@ wording of the rubric that produced it.
 | `system_prompt` | `text not null` | the marking instructions; was a `.txt` file in the engine |
 | `pacing` | `jsonb not null` | the consultation clock: four marks in seconds |
 | `result_schema_override` | `jsonb null` | escape hatch for a shape the derivation cannot express; normally null |
+| `marking_layout` | `jsonb null` | examiner / structured human review UI (`StationStructure`); required on publish for platform catalogue rubrics |
 | `status` | `varchar(32) not null default 'draft'` | `draft` → `published` → `archived` |
 | `published_at/by` | `timestamptz null`, `uuid null` → `users.id` SET NULL | |
 | `archived_at/by` | `timestamptz null`, `uuid null` → `users.id` SET NULL | |
@@ -654,7 +709,7 @@ A scheduled event an organisation holds.
 | `mode` | `varchar(16) not null default 'training'` | `training` \| `exam` — the B2B exam arm |
 | `sitting_type` | `varchar(32) not null default 'group_training'` | |
 | `status` | `varchar(32) not null default 'scheduled'` | `scheduled` → `in_progress` when a circuit starts → `completed` when every circuit on it has ended (D-7). A circuit that was never started holds it open; ending that circuit outright is what closes the sitting |
-| `feedback_template_version_id` | `uuid **not null**` → `feedback_template_versions.id` RESTRICT | b2b refuses to create a session without a published feedback template bound, and the column says so rather than a service check |
+| `rubric_version_id` | `uuid **not null**` → `rubric_versions.id` RESTRICT | resolved from the sitting's `programme_id` at create time: the programme's exam must name a published rubric version. Replaces the former `feedback_template_version_id` binding |
 
 ### `circuits`
 | Field | Type | Notes |

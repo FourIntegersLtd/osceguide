@@ -12,7 +12,7 @@ from app.core.auth import Membership
 from app.features.voice.service import get_room_agents
 from tests.support.catalog import create_exam
 from tests.support.fakes import FakeRoomAgents
-from tests.support.rubrics import create_rubric, rubric_with_domains
+from tests.support.sittings import add_programme, create_sitting_body
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -66,31 +66,14 @@ async def published_station(client: AsyncClient, admin: str, slug: str, title: s
     return published.json()["id"]
 
 
+async def a_programme(client: AsyncClient, admin: str, slug: str = "kings") -> uuid.UUID:
+    """A programme naming the platform SCA exam — required to schedule a sitting."""
+    return await add_programme(client, admin, org_slug=slug)
+
+
 async def a_template_version(client: AsyncClient, admin: str, slug: str = "kings") -> uuid.UUID:
-    """A published feedback template, which a sitting cannot exist without.
-
-    Created over HTTP: for a while the only way to get one was to insert the
-    row by hand, which is how nobody noticed no organisation could.
-
-    A template narrows a rubric, so there has to be one to narrow, and the
-    selection has to name domains it actually has.
-    """
-    rubric = await create_rubric(client, admin, org_slug=slug, structure=rubric_with_domains("communication"))
-    created = await client.post(
-        f"/api/v1/orgs/{slug}/feedback-templates",
-        json={
-            "title": "Rubric",
-            "rubric_version_id": rubric["version_id"],
-            "field_selection": {"domains": ["communication"]},
-        },
-        headers=bearer(admin),
-    )
-    assert created.status_code == 201, created.text
-    published = await client.post(
-        f"/api/v1/orgs/{slug}/feedback-templates/{created.json()['id']}/publish", headers=bearer(admin)
-    )
-    assert published.status_code == 200, published.text
-    return uuid.UUID(published.json()["id"])
+    """Backward-compatible alias used by other HTTP tests."""
+    return await a_programme(client, admin, slug=slug)
 
 
 async def a_trainee(db_session: AsyncSession, email: str) -> uuid.UUID:
@@ -110,7 +93,7 @@ async def test_a_sitting_is_created_against_a_published_template(
         "/api/v1/orgs/kings/sittings",
         json={
             "name": "Mock exam",
-            "feedback_template_version_id": str(template_version),
+            "programme_id": str(template_version),
             "mode": "exam",
         },
         headers=bearer(admin),
@@ -130,7 +113,7 @@ async def test_an_exam_circuit_puts_one_candidate_through_every_station(
             "/api/v1/orgs/kings/sittings",
             json={
                 "name": "Finals",
-                "feedback_template_version_id": str(template_version),
+                "programme_id": str(template_version),
                 "mode": "exam",
             },
             headers=bearer(admin),
@@ -166,7 +149,7 @@ async def test_an_exam_circuit_refuses_two_candidates(
             "/api/v1/orgs/kings/sittings",
             json={
                 "name": "Finals",
-                "feedback_template_version_id": str(template_version),
+                "programme_id": str(template_version),
                 "mode": "exam",
             },
             headers=bearer(admin),
@@ -198,7 +181,7 @@ async def test_timing_is_clamped_by_the_api_not_the_browser(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template_version), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()
@@ -225,7 +208,7 @@ async def test_a_circuit_can_be_started_and_ended(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template_version), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()
@@ -277,7 +260,7 @@ async def test_jumping_to_a_station_is_allowed_in_an_exam(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template_version), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()
@@ -311,56 +294,31 @@ async def test_another_orgs_sittings_are_invisible(
     template_version = await a_template_version(client, kings_admin)
     await client.post(
         "/api/v1/orgs/kings/sittings",
-        json={"name": "Private", "feedback_template_version_id": str(template_version)},
+        json=create_sitting_body(name="Private", programme_id=template_version),
         headers=bearer(kings_admin),
     )
     response = await client.get("/api/v1/orgs/guys/sittings", headers=bearer(guys_admin))
     assert response.json()["items"] == []
 
 
-async def test_a_sitting_cannot_be_created_against_a_draft_template(
+async def test_a_sitting_requires_a_programme(
     client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
 ) -> None:  # type: ignore[no-untyped-def]
-    """S1. The route advertised this error and nothing raised it.
-
-    `feedback_template_version_id` is NOT NULL, which made the invariant look
-    enforced — but a foreign key only says the row exists, not that it is
-    published. A sitting bound to a draft rubric means candidates are marked
-    against a form somebody was still editing.
-    """
     _, admin = await org_with_admin(client, make_actor)
-    rubric = await create_rubric(client, admin, org_slug="kings")
-    created = await client.post(
-        "/api/v1/orgs/kings/feedback-templates",
-        json={
-            "title": "Half-written",
-            "rubric_version_id": rubric["version_id"],
-            "field_selection": {"paths": []},
-        },
-        headers=bearer(admin),
-    )
-    assert created.status_code == 201, created.text
-    draft_id = created.json()["versions"][0]["id"]
 
     response = await client.post(
         "/api/v1/orgs/kings/sittings",
-        json={
-            "name": "Too early",
-            "feedback_template_version_id": draft_id,
-            "mode": "exam",
-            "sitting_type": "mock",
-        },
+        json={"name": "Too early", "mode": "exam", "sitting_type": "mock"},
         headers=bearer(admin),
     )
 
-    assert response.status_code == 409, response.text
-    assert response.json()["code"] == "feedback_template_not_published"
+    assert response.status_code == 422
 
 
-async def test_a_sitting_cannot_be_created_against_another_orgs_template(
+async def test_a_sitting_cannot_use_another_orgs_programme(
     client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
 ) -> None:  # type: ignore[no-untyped-def]
-    """Resolving the template by id alone would be a global lookup."""
+    """Resolving the programme by id alone must stay org-scoped."""
     _, kings_admin = await org_with_admin(client, make_actor, "kings")
     _, guys_admin = await org_with_admin(client, make_actor, "guys")
     kings_template = await a_template_version(client, kings_admin)
@@ -369,7 +327,7 @@ async def test_a_sitting_cannot_be_created_against_another_orgs_template(
         "/api/v1/orgs/guys/sittings",
         json={
             "name": "Not mine",
-            "feedback_template_version_id": str(kings_template),
+            "programme_id": str(kings_template),
             "mode": "exam",
             "sitting_type": "mock",
         },
@@ -393,7 +351,7 @@ async def a_started_circuit(
             "/api/v1/orgs/kings/sittings",
             json={
                 "name": "Practice afternoon",
-                "feedback_template_version_id": str(template_version),
+                "programme_id": str(template_version),
                 "mode": "training",
             },
             headers=bearer(admin),
@@ -580,7 +538,7 @@ async def test_trainees_cannot_be_appended_to_an_exam_circuit(
             "/api/v1/orgs/kings/sittings",
             json={
                 "name": "Finals",
-                "feedback_template_version_id": str(template_version),
+                "programme_id": str(template_version),
                 "mode": "exam",
             },
             headers=bearer(admin),
@@ -623,7 +581,7 @@ async def test_a_revoked_trainee_cannot_be_put_on_a_circuit(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template_version), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()
@@ -659,7 +617,7 @@ async def test_somebody_not_on_the_roster_at_all_is_still_examinable(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template_version), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template_version), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()
@@ -685,7 +643,7 @@ async def a_circuit_to_edit(client: AsyncClient, make_actor, db_session: AsyncSe
             "/api/v1/orgs/kings/sittings",
             json={
                 "name": "S",
-                "feedback_template_version_id": str(template_version),
+                "programme_id": str(template_version),
                 "mode": "training",
             },
             headers=bearer(admin),

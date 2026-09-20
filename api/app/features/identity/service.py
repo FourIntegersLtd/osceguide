@@ -6,14 +6,13 @@ import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership, Principal
 from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
-from app.features.identity import repository
+from app.features.identity import repository, repository_platform
 from app.features.identity.domain import WeakPassword, may_call, validate_password
 from app.features.identity.errors import (
     EmailTaken,
@@ -22,7 +21,7 @@ from app.features.identity.errors import (
     WeakPasswordError,
 )
 from app.features.identity.models import User
-from app.features.identity.schemas import AuthResult, MembershipRead, UserRead
+from app.features.identity.schemas import AuthResult, MembershipRead, UpdateMe, UserRead
 from app.features.identity.service_sessions import default_workspace_slug, issue
 from app.features.identity.tokens import (
     hash_password,
@@ -41,6 +40,10 @@ class UserRef:
     email: str
     name: str
     created_at: datetime
+    # Which exam this account is for. Here rather than looked up per screen:
+    # the dashboard turns it into the exam everything opens on, and it is the
+    # only answer a trial account — which holds no entitlement — has.
+    exam_code: str | None = None
 
 
 # Bound by `main.py` to `roster`, which sits above this slice. An institution
@@ -76,11 +79,15 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         name=user.name,
         is_platform_admin=user.is_platform_admin,
         must_change_password=user.must_change_password,
+        exam_date=user.exam_date,
+        extra_reading_percent=user.extra_reading_percent,
+        exam_code=user.exam_code,
         memberships=[
             MembershipRead(
                 org_id=m.org_id,
                 org_slug=m.org_slug,
                 org_name=m.org_name,
+                org_type=m.org_type,
                 role=m.role,
                 surface=m.surface,
             )
@@ -92,8 +99,22 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
 
 
 async def register(
-    session: AsyncSession, *, email: str, name: str, password: str, settings: Settings, now: datetime
+    session: AsyncSession,
+    *,
+    email: str,
+    name: str,
+    password: str,
+    settings: Settings,
+    now: datetime,
+    exam_code: str | None = None,
 ) -> AuthResult:
+    """Open an account, optionally saying which exam it is for.
+
+    The exam is stored as given rather than checked against the catalogue:
+    this slice sits below `catalog` and may not call it. Nothing is granted by
+    it either — it says which exam the screens should open on, and a code that
+    resolves to nothing simply leaves them with no current exam.
+    """
     try:
         validate_password(password)
     except WeakPassword as exc:
@@ -101,7 +122,7 @@ async def register(
     if await repository.user_by_email(session, email) is not None:
         raise EmailTaken()
     user = await repository.create_user(
-        session, email=email, name=name, password_hash=hash_password(password)
+        session, email=email, name=name, password_hash=hash_password(password), exam_code=exam_code
     )
     await _announce_registration(session, user.id, user.email)
     tokens = await issue(session, user, settings=settings, now=now, memberships=[])
@@ -112,6 +133,40 @@ async def read_me(
     session: AsyncSession, *, principal: Principal, memberships_for: MembershipLookup
 ) -> UserRead:
     user = await repository.user_by_id(session, principal.user_id)
+    if user is None:
+        raise InvalidCredentials()
+    memberships = await memberships_for(session, principal.user_id)
+    return user_read(user, memberships)
+
+
+async def update_me(
+    session: AsyncSession,
+    *,
+    principal: Principal,
+    body: UpdateMe,
+    fields_sent: set[str],
+    memberships_for: MembershipLookup,
+) -> UserRead:
+    """Change what is a person's own to change.
+
+    `extra_reading_percent` is an access arrangement and a person sets their
+    own, because what it affects is their own practice. It is **not** applied
+    to an institution's examination: a circuit's clock is one clock for
+    everybody on it, and extending it for one candidate would extend it for
+    the rest. Whoever grants an accommodation in an examination hall does it
+    to the circuit's timing. See `docs/port-gaps.md`.
+    """
+    user = await repository.update_profile(
+        session,
+        principal.user_id,
+        name=body.name,
+        exam_date=body.exam_date,
+        extra_reading_percent=body.extra_reading_percent,
+        exam_code=body.exam_code,
+        # A PATCH that cannot tell "not mentioned" from "set to nothing" makes
+        # clearing an exam date impossible.
+        clear_exam_date="exam_date" in fields_sent and body.exam_date is None,
+    )
     if user is None:
         raise InvalidCredentials()
     memberships = await memberships_for(session, principal.user_id)
@@ -146,7 +201,13 @@ async def user_ref_by_id(session: AsyncSession, user_id: uuid.UUID) -> UserRef |
 
 
 def _ref(user: User) -> UserRef:
-    return UserRef(id=user.id, email=user.email, name=user.name, created_at=user.created_at)
+    return UserRef(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        created_at=user.created_at,
+        exam_code=user.exam_code,
+    )
 
 
 async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, UserRef]:
@@ -159,22 +220,8 @@ async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID])
     return {row.id: _ref(row) for row in rows}
 
 
-async def search_users(
-    session: AsyncSession, *, query: str | None, limit: int, cursor: dict[str, Any] | None
-) -> tuple[list[UserRef], str | None]:
-    """Find a person by a fragment of their email. Platform support only.
-
-    Exposed for `tenancy`'s console, which sits above this slice. The only
-    caller is behind `PlatformAdmin`: this is the one read in the API that
-    crosses every tenant at once, and it belongs to the people who answer
-    "somebody cannot sign in" rather than to any organisation.
-    """
-    rows, next_cursor = await repository.search_users(session, query=query, limit=limit, cursor=cursor)
-    return [_ref(row) for row in rows], next_cursor
-
-
 async def count_users(session: AsyncSession) -> int:
-    return await repository.count_users(session)
+    return await repository_platform.count_users(session)
 
 
 async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool) -> UserRef:
@@ -182,5 +229,21 @@ async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_ad
     user = await repository.user_by_id(session, user_id)
     if user is None:
         raise UserNotFound()
-    await repository.set_platform_admin(session, user_id, is_admin=is_admin)
-    return _ref(user)
+    await repository_platform.set_platform_admin(session, user_id, is_admin=is_admin)
+    refreshed = await repository.user_by_id(session, user_id)
+    if refreshed is None:
+        raise UserNotFound()
+    return _ref(refreshed)
+
+
+async def account_status(session: AsyncSession, user_id: uuid.UUID) -> str | None:
+    """Bound into `core.auth`, which refuses a token for a deactivated account
+    on its next request rather than its next refresh."""
+    user = await repository.user_by_id(session, user_id)
+    return None if user is None else user.status
+
+
+async def end_sessions(session: AsyncSession, user_id: uuid.UUID, *, now: datetime, reason: str) -> None:
+    """Revoke every refresh chain this person holds. Deactivating an account
+    has to end its sessions; the token check above ends its access."""
+    await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason=reason)

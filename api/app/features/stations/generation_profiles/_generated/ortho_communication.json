@@ -1,0 +1,23 @@
+{
+  "profileKey": "ortho.communication",
+  "label": "Ortho ST3 communication",
+  "examCode": "ortho",
+  "orthoStationType": "communication",
+  "blockHints": {
+    "station_id": "Unique identifier",
+    "station_name": "Station name/title",
+    "station_type": "Type of ortho station (clinical, communication, prioritisation)",
+    "created_at": "Creation timestamp",
+    "created_by": "Creator identifier",
+    "clinical_scenario_title": "Concise title (e.g., 'Complication Post Procedure')",
+    "clinical_scenario": "Communication scenario. MUST transform: patient age/name/gender, procedure details, family context, complication type. Keep core theme (e.g., consent + complication disclosure). Example transform: '13yo Emma, metalwork removal, radial artery injury' → '15yo James, ACL reconstruction, femoral nerve neuropraxia'",
+    "communication_themes": "Core communication skills being assessed. Examples: 'Consent (pediatric)', 'Breaking bad news (SPIKES)', 'Duty of candour', 'Documentation', 'Reflection and learning', 'Family communication', 'Gillick competence'",
+    "consent_approach": "Structured consent process if station involves consent. REPHRASE from source. Include: rapport building, procedure explanation, benefits, risks (specific to procedure), questions, understanding check, obtaining signature. Specify consent form type (Form 1/2/3/4).",
+    "breaking_bad_news_framework": "Framework for delivering difficult news (typically SPIKES protocol). PRESERVE framework structure (Setting, Perception, Invitation, Knowledge, Empathy, Summarize) but REPHRASE application to scenario. Include specific dialogue examples adapted to the new scenario.",
+    "professional_conduct_topics": "Professional/ethical topics covered. Examples: 'Duty of candour', 'Documentation requirements', 'Team communication', 'Reflection (PBA/journal)', 'Learning from complications', 'GMC Good Medical Practice', 'Consent capacity assessment'",
+    "interview_questions": "Q&A pairs covering communication skills. Common questions: 1. Consent process ('How would you consent this patient?') 2. Legal concepts ('What is Gillick competence?', 'What consent form?') 3. Breaking bad news ('How would you tell the family about the complication?') 4. Documentation ('How do you document this?') 5. Reflection ('How would you prevent this in future?') 6. Professional duty ('What is duty of candour?') \nREPHRASE questions and answers. PRESERVE: SPIKES structure, Gillick definition, duty of candour definition, GMC standards, consent form types, documentation requirements.",
+    "key_learning_points": "Summary of key communication principles. Examples: 'SPIKES protocol for breaking bad news', 'Gillick competence vs Fraser guidelines', 'Duty of candour - disclosure, apology, support, documentation', 'Consent Form 2 for minors', 'Reflection through PBA/portfolio entries'",
+    "references": "Relevant guidance/references. Examples: 'GMC Good Medical Practice', 'GMC Consent Guidance', 'Duty of Candour (Health and Social Care Act 2008)', 'Gillick v West Norfolk (1985)', 'RCS England consent guidance'",
+    "approved": "Whether this station has been approved for use"
+  }
+}

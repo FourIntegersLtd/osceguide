@@ -321,3 +321,53 @@ async def test_an_ended_session_has_no_room_to_join(
     )
     assert response.status_code == 409
     assert response.json()["code"] == "practice_session_ended"
+
+
+async def test_a_lapsed_subscriber_cannot_queue(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Practising with somebody is paid access, not a free front door.
+
+    It is a live room with a real partner in it, so it is gated on the same
+    entitlement `POST /attempts` is. This had no check at all: a queue place
+    and a match were available to anybody with a token, for any exam.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
+    token = await make_actor("lapsed-peer@example.com")
+    # Past the free trial, which a brand-new account is inside — and which this
+    # route honours, so the refusal has to come from somebody the trial does
+    # not cover.
+    await db_session.execute(
+        update(User)
+        .where(User.email == "lapsed-peer@example.com")
+        .values(created_at=datetime.now(UTC) - timedelta(days=30))
+    )
+    await db_session.flush()
+
+    response = await client.post(
+        "/api/v1/peer-practice/queue", json={"exam_code": "sca"}, headers=bearer(token)
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "not_entitled"
+
+
+async def test_somebody_on_their_free_trial_may_still_queue(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The trial is three stations and fourteen days, and it covers this.
+
+    Worth its own test: the gate takes a `TrialState` and `decide` skips the
+    trial branch entirely when it is None, so a caller that forgot to build one
+    would refuse every new account and look like a working gate.
+    """
+    token = await make_actor("fresh-peer@example.com")
+
+    response = await client.post(
+        "/api/v1/peer-practice/queue", json={"exam_code": "sca"}, headers=bearer(token)
+    )
+
+    assert response.status_code == 201, response.text

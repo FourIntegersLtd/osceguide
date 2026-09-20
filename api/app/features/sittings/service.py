@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.roster import service as roster
-from app.features.rubrics import service_feedback as rubrics
+from app.features.sittings import domain_binding
 from app.features.sittings import domain, domain_run, errors, repository
 from app.features.sittings.models import Circuit, Sitting
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
@@ -39,21 +39,20 @@ async def create_sitting(
     org_id: uuid.UUID,
     *,
     name: str,
-    feedback_template_version_id: uuid.UUID,
     mode: str,
     sitting_type: str,
     scheduled_for: datetime | None,
-    programme_id: uuid.UUID | None,
+    programme_id: uuid.UUID,
 ) -> SittingRead:
-    # S1: the rubric must exist, belong to this org, and be published. The
-    # NOT NULL foreign key only guarantees the first of those.
-    await rubrics.published_feedback_template(session, org_id, feedback_template_version_id)
+    rubric_version_id = await domain_binding.rubric_version_for_programme(
+        session, org_id, programme_id
+    )
 
     row = await repository.create_sitting(
         session,
         org_id,
         name=name,
-        feedback_template_version_id=feedback_template_version_id,
+        rubric_version_id=rubric_version_id,
         mode=mode,
         sitting_type=sitting_type,
         scheduled_for=scheduled_for,
@@ -174,8 +173,8 @@ async def slot_is_in_org(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid
     return await repository.slot_by_id(session, org_id, slot_id) is not None
 
 
-async def feedback_template_version_for_slot(
+async def rubric_version_for_slot(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> uuid.UUID | None:
-    """Which rubric a slot is marked against (R-1), for `reviews`."""
-    return await repository.feedback_template_version_for_slot(session, org_id, slot_id)
+    """Which rubric version a slot is marked against (R-1), for `reviews`."""
+    return await repository.rubric_version_for_slot(session, org_id, slot_id)

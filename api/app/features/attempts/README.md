@@ -48,7 +48,16 @@ and the job that scores a delivered transcript.
 | GET | `/api/v1/attempts/{id}` | owner or org admin | |
 | GET | `/api/v1/attempts/{id}/transcript` | owner or org admin | |
 | GET | `/api/v1/attempts/{id}/result` | owner or org admin | |
+| GET | `/api/v1/attempts/{id}/brief` | owner or org admin | The candidate's reading-time brief. Readable from `created`: the attempt exists before the reading period does |
+| GET | `/api/v1/attempts/{id}/review` | owner or org admin | The model answer — the patient's ideas and concerns, and the management plan. `attempt_not_finished` (409) until the interaction is over |
+| GET | `/api/v1/me/attempts` | bearer | This person's attempts, newest first. `station_version_id` and `set_entry_id` narrow it |
 | GET | `/api/v1/attempts/{id}/stream` | stream ticket | The attempt, pushed until it is marked. Replaces b2c's feedback-status stream and the two pollers behind it |
+| GET | `/api/v1/platform/users/{id}/attempts` | platform admin | One person's attempts with their marking state: transcript delivered, results, the newest scoring job. `?status=` narrows |
+| GET | `/api/v1/platform/attempts/{id}` | platform admin | The support detail: frozen definition present, turns received, every scoring job ever queued |
+
+The console's per-station view of a person's attempts, and the one delete this
+table has (`service_platform_progress.py`), are routed from `station_sets`,
+which owns the counter beside them.
 | GET | `/api/worker/attempts/{id}` | worker secret | `{attempt, scenario}`, no evaluation policy |
 | POST | `/api/worker/attempts/{id}/transcript-chunks` | worker secret | idempotent |
 | POST | `/api/worker/attempts/{id}/transcript` | worker secret | exactly once; enqueues scoring |
@@ -58,5 +67,20 @@ and the job that scores a delivered transcript.
 stores one `assessment_results` row. Idempotent on `(attempt_id, policy_version)`.
 
 ## Cross-slice dependencies
-Calls `catalog` to resolve an exam, `stations` to resolve a scenario, and
-`entitlements` to decide whether an attempt may start.
+Calls `catalog` to resolve an exam, `stations` to resolve a scenario and to read
+back the document behind one, and `entitlements` to decide whether an attempt
+may start. The platform console's reads ask `health.service_jobs` what the
+queue holds for an attempt and `identity` whether the account exists.
+
+## What a candidate may read of a station
+`station_versions.content` is one document holding both the brief and the
+answers, so `service_material` splits it rather than passing it through:
+`doctor_information` and the flat candidate keys before the consultation, the
+management plan and the patient's ideas, concerns and expectations after it.
+How the patient is played — the persona, the opening line, the expanded history
+— never leaves the server at all, and neither does the examiner's context.
+
+This is why `stations.LibraryStationRead` carries no `content`: browsing the
+library is open to every signed-in user, while these reads are owner-only and
+are reached only through an attempt, which the entitlement gate has already
+allowed.

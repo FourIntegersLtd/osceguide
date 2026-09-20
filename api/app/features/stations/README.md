@@ -11,6 +11,16 @@ Firestore to read the platform library. Here a station has an `owner_kind` of
 `platform` or `org`, so an attempt points at one column rather than a union of
 sources, and nothing has to read another product's database.
 
+## AI generation (template-bound)
+
+Station **Generate draft** uses:
+
+- `structure.generation.profileKey` — exam profile (`sca.station`, `plab.station`, …) with system prompt from B2C `shared_prompts` and per-block hints exported from B2C Pydantic `Field(description=…)` (`generation_profiles/_generated/`).
+- Optional `structure.generation.systemPromptAppend` and org-only `systemPromptOverride` when `profileKey` is `custom`.
+- Per-block `generationHint` (LLM-only) and author `placeholder` (appended to profile hints when `generationHint` is empty).
+
+Catalog: `GET /api/v1/station-generation-profiles`. Detail responses return **effective** `blockHints` (exported profile JSON + `template_block_hint_supplements.py` for template-only field ids + `platform_overrides.py` where stricter). Re-export hints after B2C model changes: `poetry run python scripts/export_station_generation_profiles.py`.
+
 ## Use cases
 - As a **platform admin**, I author a station template and a library station, and
   publish both.
@@ -42,7 +52,7 @@ beside the rubric they narrow).
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/v1/stations` | bearer | platform library, cursor-paginated, `?exam_code=`; **no station content** — browsing is not reading the answers |
+| GET | `/api/v1/stations` | bearer | platform library, cursor-paginated; **no station content** — browsing is not reading the answers. Scoped to the exams the caller may open: `?exam_code=` must be one of them (`not_entitled`, 403), and omitting it gives theirs rather than everybody's. A platform admin browses the whole catalogue |
 | GET | `/api/v1/orgs/{org_slug}/stations` | org member | the org's own plus the library |
 | POST | `/api/v1/orgs/{org_slug}/stations` | org admin | |
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions` | org admin | seeded from the latest published |

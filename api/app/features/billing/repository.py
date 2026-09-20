@@ -6,10 +6,11 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import keyset_page
 from app.features.billing.models import Payment, Plan, StripeEvent
 
 
@@ -166,3 +167,46 @@ async def plan_by_code(session: AsyncSession, code: str) -> Plan | None:
 
 async def plan_by_id(session: AsyncSession, plan_id: uuid.UUID) -> Plan | None:
     return (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+
+
+async def list_events(
+    session: AsyncSession, *, failed_only: bool, limit: int, cursor: dict[str, Any] | None = None
+) -> tuple[list[StripeEvent], str | None]:
+    """The webhook ledger, newest first. `failed_only` is the reconcile queue:
+    deliveries recorded but never applied."""
+    stmt = select(StripeEvent)
+    if failed_only:
+        stmt = stmt.where(StripeEvent.processed_at.is_(None), StripeEvent.failure.is_not(None))
+    return await keyset_page(
+        session, stmt, sort_col=StripeEvent.received_at, id_col=StripeEvent.id, limit=limit, cursor=cursor
+    )
+
+
+def _payload_email(field: str) -> Any:
+    payload = StripeEvent.payload
+    return func.lower(payload["data"]["object"][field].astext)
+
+
+async def events_for_email(session: AsyncSession, email: str) -> list[StripeEvent]:
+    """Every delivery naming this address, newest first.
+
+    Read from the payload, which is why it is kept: a payment for an address
+    that had no account at the time is exactly the one support is asked about.
+    """
+    wanted = email.strip().lower()
+    details = func.lower(StripeEvent.payload["data"]["object"]["customer_details"]["email"].astext)
+    stmt = (
+        select(StripeEvent)
+        .where(or_(_payload_email("customer_email") == wanted, details == wanted))
+        .order_by(StripeEvent.received_at.desc())
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def payment_by_id(session: AsyncSession, payment_id: uuid.UUID) -> Payment | None:
+    return (await session.execute(select(Payment).where(Payment.id == payment_id))).scalar_one_or_none()
+
+
+async def payment_by_intent(session: AsyncSession, intent_id: str) -> Payment | None:
+    stmt = select(Payment).where(Payment.stripe_payment_intent_id == intent_id)
+    return (await session.execute(stmt)).scalar_one_or_none()

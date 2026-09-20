@@ -28,7 +28,8 @@ class SittingRef:
     sitting_type: str
     status: str
     scheduled_for: datetime | None
-    feedback_template_version_id: uuid.UUID
+    rubric_version_id: uuid.UUID
+    programme_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)

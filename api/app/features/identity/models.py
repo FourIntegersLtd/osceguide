@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +35,28 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # When they are sitting the real thing. The consumer dashboard counts down
+    # to it, and the exam-wishes prompt appears in the week before; both were
+    # ported with nowhere to read it from.
+    exam_date: Mapped[date | None] = mapped_column(Date)
+
+    # Which exam this account is for, chosen at sign-up. The retiring client
+    # read it off the hostname, so a person only ever saw one exam and there
+    # was no switcher in the product at all.
+    #
+    # A code, not a foreign key: this slice sits below `catalog` and cannot
+    # resolve one. It is a preference and not a grant — what somebody may open
+    # is their entitlements' answer, and an unresolvable code yields no current
+    # exam rather than access to anything.
+    exam_code: Mapped[str | None] = mapped_column(String(32))
+
+    # An access arrangement, as a percentage of extra reading time. The old
+    # client carried a bare `needs_extra_reading_time` boolean and applied a
+    # fixed amount inside the timer component; a percentage says what was
+    # actually granted, and 25 is what a bare "yes" used to mean.
+    extra_reading_percent: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    consumer_role: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'user'"))
 
 
 class UserIdentity(Base, UUIDPrimaryKey, Timestamps):

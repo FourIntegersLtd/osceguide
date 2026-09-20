@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -13,6 +14,8 @@ class OrganizationRead(BaseModel):
     org_type: str
     status: str
     created_at: datetime
+    contract_starts_at: datetime | None = None
+    contract_ends_at: datetime | None = None
 
 
 class UpdateOrganization(BaseModel):
@@ -35,6 +38,32 @@ class UserSummary(BaseModel):
     email: str
     name: str
     created_at: datetime
+    is_platform_admin: bool = False
+    # `active` or `deactivated`. Was missing from the detail too, so the
+    # console's Deactivate button could never say which state it was in.
+    status: str = "active"
+
+
+class UpdatePlatformUser(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    exam_code: str | None = Field(default=None, min_length=1, max_length=32)
+    status: str | None = Field(default=None, pattern="^(active|deactivated)$")
+    exam_date: date | None = None
+    # An access arrangement: 25 is what the old client's bare "yes" meant.
+    extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
+
+
+class PlatformUserDetail(UserSummary):
+    """Support view: memberships and account flags the list row omits."""
+
+    must_change_password: bool = False
+    last_login_at: datetime | None = None
+    exam_code: str | None = None
+    exam_date: date | None = None
+    extra_reading_percent: int = 0
+    consumer_role: str = "user"
+    legacy_consumer_ids: dict[str, str] = Field(default_factory=dict)
+    memberships: list[MembershipRead] = Field(default_factory=list)
 
 
 class SetPlatformAdmin(BaseModel):
@@ -43,9 +72,45 @@ class SetPlatformAdmin(BaseModel):
     is_platform_admin: bool
 
 
+class InvitePlatformAdmin(BaseModel):
+    email: EmailStr
+
+
+class PlatformAdminInviteRead(BaseModel):
+    user: UserSummary
+    # True when the account was created and emailed a link to choose a password.
+    invited: bool = False
+
+
+class OrgAtRisk(BaseModel):
+    """An organisation the console should look at before it looks at anything else."""
+
+    slug: str
+    name: str
+    status: str
+    contract_ends_at: datetime | None
+    # `suspended`, `contract_lapsed` (ended, not yet swept) or `contract_ending`
+    # (within thirty days).
+    reason: str
+
+
 class PlatformOverview(BaseModel):
     organizations: int
     users: int
+    organizations_by_status: dict[str, int] = Field(default_factory=dict)
+    at_risk: list[OrgAtRisk] = Field(default_factory=list)
+
+
+class RenewContract(BaseModel):
+    """New dates, and whether a suspension should lift with them.
+
+    One call rather than a `PATCH` and a `restore`: a renewal that sets the
+    date and forgets to restore leaves a paying customer locked out.
+    """
+
+    contract_starts_at: datetime | None = None
+    contract_ends_at: datetime
+    restore: bool = True
 
 
 class CreateOrganization(BaseModel):
@@ -78,15 +143,23 @@ class UpdateMembership(BaseModel):
 
 
 class SwitchWorkspace(BaseModel):
-    org_slug: str
+    """Which workspace to re-issue the token against.
+
+    `None` means the person's own practice. That is a real destination, not an
+    absence: somebody who belongs to an institution still has their own
+    entitlements and their own attempts, and without this there is no way back
+    to them once an organisation is active.
+    """
+
+    org_slug: str | None = None
 
 
 class WorkspaceToken(BaseModel):
     access_token: str
     token_type: str = "bearer"  # noqa: S105 - a scheme name, not a secret
     expires_in: int
-    active_org_slug: str
-    active_role: str
+    active_org_slug: str | None
+    active_role: str | None
 
 
 class AuditRead(BaseModel):
@@ -97,6 +170,18 @@ class AuditRead(BaseModel):
     target_id: str | None
     summary: str | None
     at: datetime
+
+
+class PlatformAuditRead(AuditRead):
+    """An audit row as the console reads it across every organisation.
+
+    `org_id` is None for the platform's own acts; `meta` is whatever the
+    action recorded beyond its summary, such as the old and new value.
+    """
+
+    org_id: uuid.UUID | None
+    actor_user_id: uuid.UUID | None
+    meta: dict[str, Any] | None = None
 
 
 class Capabilities(BaseModel):

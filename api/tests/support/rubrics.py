@@ -26,6 +26,11 @@ PACING: dict[str, int] = {
 
 SYSTEM_PROMPT = "You are marking a consultation. Fill every field of the schema."
 
+MINIMAL_MARKING_LAYOUT: dict[str, Any] = {
+    "schemaVersion": 1,
+    "sections": [{"id": "sec_main", "title": "Marking", "blocks": []}],
+}
+
 MINIMAL_RUBRIC: dict[str, Any] = {
     "scale": ["R", "A", "G"],
     "domains": [
@@ -112,14 +117,17 @@ async def create_rubric(
     exam or a feedback template should name.
     """
     base = "/api/v1/platform/rubrics" if org_slug is None else f"/api/v1/orgs/{org_slug}/rubrics"
+    payload: dict[str, Any] = {
+        "title": title,
+        "structure": structure or MINIMAL_RUBRIC,
+        "system_prompt": SYSTEM_PROMPT,
+        "pacing": PACING,
+    }
+    if org_slug is None:
+        payload["marking_layout"] = MINIMAL_MARKING_LAYOUT
     response = await client.post(
         base,
-        json={
-            "title": title,
-            "structure": structure or MINIMAL_RUBRIC,
-            "system_prompt": SYSTEM_PROMPT,
-            "pacing": PACING,
-        },
+        json=payload,
         headers=bearer(token),
     )
     assert response.status_code == 201, response.text
@@ -194,24 +202,16 @@ def rubric_with_domains(*domain_ids: str) -> dict[str, Any]:
     }
 
 
-async def published_feedback_version(
+async def published_rubric_version(
     session: Any,
     org_id: Any,
     *,
-    field_selection: dict[str, Any] | None = None,
     structure: dict[str, Any] | None = None,
 ) -> Any:
-    """A published feedback template version an org may bind to a sitting.
-
-    Built through the services rather than by hand: a template names the rubric
-    version it narrows now, so constructing the rows directly means knowing
-    about `owner_kind`, the check constraint and the FK. Tests that only need
-    "a sitting can exist" should not have to.
-    """
+    """A published platform rubric version an org may bind via a programme."""
     from datetime import UTC, datetime
 
     from app.features.rubrics import service as rubric_service
-    from app.features.rubrics import service_feedback
 
     now = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
     rubric = await rubric_service.create_rubric(
@@ -221,16 +221,18 @@ async def published_feedback_version(
         structure=structure or MINIMAL_RUBRIC,
         system_prompt=SYSTEM_PROMPT,
         pacing=PACING,
+        marking_layout=MINIMAL_MARKING_LAYOUT,
     )
-    published = await rubric_service.publish_version(session, None, rubric.id, 1, actor_id=None, now=now)
-    template = await service_feedback.create_feedback_template(
-        session,
-        org_id,
-        title="R",
-        rubric_version_id=published.id,
-        field_selection=field_selection or {},
-    )
-    version = await service_feedback.publish_feedback_template(
-        session, org_id, template.id, actor_id=None, now=now
-    )
-    return version
+    return await rubric_service.publish_version(session, None, rubric.id, 1, actor_id=None, now=now)
+
+
+async def published_feedback_version(
+    session: Any,
+    org_id: Any,
+    *,
+    field_selection: dict[str, Any] | None = None,
+    structure: dict[str, Any] | None = None,
+) -> Any:
+    """Deprecated alias: returns a published rubric version (no feedback template)."""
+    _ = field_selection
+    return await published_rubric_version(session, org_id, structure=structure)
