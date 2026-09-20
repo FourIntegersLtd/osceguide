@@ -14,6 +14,7 @@ build/
 logs/
 .coverage
 htmlcov/
+:memory:.ses
 
 # Model benchmark output: full transcripts per run, regenerated on demand.
 runs/

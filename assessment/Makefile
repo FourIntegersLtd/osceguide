@@ -31,7 +31,7 @@ download-files:
 
 ## gunicorn /health + one supervised worker subprocess (OSCE_LIVEKIT_WORKER)
 start: $(START_PREREQS)
-	$(RUN) gunicorn hosting.supervisor:application --bind 0.0.0.0:$(PORT) \
+	$(RUN) gunicorn hosting.supervisor:application --config hosting/gunicorn_config.py --bind 0.0.0.0:$(PORT) \
 		--workers 1 --threads 2 --worker-class gthread --timeout 300 --keep-alive 5 --graceful-timeout 30
 
 start-assessment:

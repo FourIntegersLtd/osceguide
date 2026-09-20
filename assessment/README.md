@@ -79,6 +79,19 @@ as defaults (`GPT_LIVE_MAX_SECONDS`, `GPT_LIVE_HARD_WARNING_SECONDS`,
 them); everything else runs on the pipeline. Run it with
 `make dev-assistant`, or `OSCE_LIVEKIT_WORKER=assistant make start`.
 
+Local practice needs both worker families: run `make dev-assessment` and
+`make dev-assistant` in separate terminals. For supervised processes, use
+`make start-assessment` and `PORT=8081 make start-assistant`. Each supervisor
+starts its agent on boot, without waiting for a request to `/health`.
+
+When development shares a LiveKit project with deployed workers, use distinct
+agent names. For example, set the local platform API's `LIVEKIT_AGENT_NAMESPACE`
+to `dev-alice`, and this project's `LIVEKIT_ASSESSMENT_AGENT_NAME` and
+`LIVEKIT_ASSISTANT_AGENT_NAME` to `dev-alice-assessment-self-hosted` and
+`dev-alice-assistant-self-hosted`. Restart both workers and the API after
+changing these settings. Shared agent names let a deployed worker accept a
+local session whose bootstrap exists only on the developer's machine.
+
 ## Speech settings
 
 Model ids, voices and the spoken style used by both workers are deployment
