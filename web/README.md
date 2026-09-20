@@ -103,8 +103,36 @@ make start                    # :8002
 # 2. this
 npm install
 cp .env.example .env.local
-npm run dev                   # :3100
+npm run dev                   # :3100 (Turbopack — faster local navigation)
+# npm run dev:webpack         # fallback if Turbopack mis-resolves @/b2b imports
 ```
+
+### Local dev performance
+
+Slow `npm run dev`, long first **Compiling…**, or heavy navigation usually means
+the workspace shell was pulling too much JavaScript into one chunk. The app now:
+
+- loads each arm's **screen map on demand** (`loadScreenComponent` in
+  `src/surfaces/screens.ts`) instead of static-importing every domain from the
+  layout;
+- keeps **nav footers** in `src/surfaces/navFooters.ts` so `SurfaceShell` never
+  imports the screen registry;
+- **lazy-loads help** (LiveKit) via `LazyHelpPanel` on institution-style shells,
+  matching `LazyB2CHelpDock` on train.
+
+Staff routes already avoided `SurfaceShell` — see `src/app/staff/layout.tsx`.
+
+**Tips**
+
+- Prefer `npm run dev` (Turbopack). Use `npm run dev:webpack` when debugging
+  `@/b2b` resolution from `frontend/src/b2b`.
+- `predev` / `prebuild` symlink `frontend/node_modules` → this app's
+  `node_modules` so legacy `frontend/src/b2b` imports resolve npm packages.
+- Avoid running legacy `frontend/` dev at the same time if watchers feel hot.
+- Rough startup timing: `node scripts/measure-dev-startup.mjs` (Turbopack) or
+  pass `--webpack`.
+- `npm test` includes `devPerfImports.test.ts`, which fails if the workspace
+  shell regresses to a static `screens.ts` import.
 
 Port 3100, not 3000, so the retiring `frontend/` can run at the same time. The
 API's `CORS_ORIGINS` must list `http://localhost:3100`.
@@ -140,6 +168,13 @@ default self-hosted mode it asks for `assessment-self-hosted`. The worker
 registers under `LIVEKIT_ASSESSMENT_AGENT_NAME`, which is that same string in
 `assessment-platform/.env`. If they differ, a candidate joins a room and nobody
 comes.
+
+If local and deployed workers share the LiveKit project, set the API's
+`LIVEKIT_AGENT_NAMESPACE` to a unique development prefix, and prepend that
+prefix plus `-` to both worker agent names. Run the assistant worker as well
+as the assessment worker: Practice as Patient uses the consulting-doctor role
+on `assistant`, while debrief uses `assessment`. See
+`../assessment-platform/README.md` for the paired startup commands.
 
 ```bash
 cd ../assessment-platform && make dev-assessment

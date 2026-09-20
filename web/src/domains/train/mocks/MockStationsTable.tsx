@@ -1,20 +1,26 @@
 "use client";
 
-import { Fragment, useState } from "react";
 import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiArrowRight, HiChevronUp } from "react-icons/hi2";
-import { Alert, Button, cn, productTokens } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { HiChevronUp } from "react-icons/hi2";
+import Table, {
+  type FetchPageParams,
+  type FetchPageResult,
+} from "@/foundation/table/Table";
+import { Button, cn } from "@/foundation/ui";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listMyAttempts } from "@/capabilities/attempt-runner";
-import { startSetDebrief } from "@/domains/train/api";
 import type { SetEntry, StationSet } from "@/domains/train/api";
 
 export interface StationRow {
   entry: SetEntry;
   title: string;
 }
+
+type StationTableRow = StationRow & { position: number; id: string };
 
 /**
  * The stations in a session, with where each one is up to.
@@ -36,27 +42,11 @@ export function MockStationsTable({
   const router = useRouter();
   const { hrefFor } = useSurface();
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const [busyEntryId, setBusyEntryId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const toggleRow = (entryId: string) =>
     setExpandedRows((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
 
   const attemptHref = (entryId: string) => hrefFor(`/mocks/${set.id}/stations/${entryId}`);
-
-  /** Talk the attempt through with the tutor, out loud. */
-  const talkItThrough = async (entryId: string) => {
-    setBusyEntryId(entryId);
-    setError(null);
-    try {
-      const started = await startSetDebrief(set.id, entryId);
-      router.push(hrefFor(`/debriefs/${started.attempt_id}`));
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusyEntryId(null);
-    }
-  };
 
   const attemptsLabel = (entry: SetEntry) =>
     entry.attempts >= attemptLimit ? "Completed" : `${entry.attempts}/${attemptLimit} attempts`;
@@ -93,162 +83,107 @@ export function MockStationsTable({
           Start New Attempt
         </Button>
       )}
-      {entry.attempts !== 0 && (
-        <Button
-          type="button"
-          variant="secondary"
-          fullWidth={fullWidth}
-          disabled={busyEntryId === entry.id}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void talkItThrough(entry.id);
-          }}
-          className="gap-2"
-        >
-          {busyEntryId === entry.id ? "Starting…" : "Talk Through Last Attempt"}
-          <HiArrowRight className="h-4 w-4" />
-        </Button>
-      )}
     </>
   );
 
-  const expansion = (entry: SetEntry) => <EntryHistory setId={set.id} entry={entry} />;
+  const pool = useMemo(
+    () => rows.map((row, index) => ({ ...row, position: index + 1, id: row.entry.id })),
+    [rows],
+  );
+
+  const fetchPage = useCallback(
+    async (params: FetchPageParams): Promise<FetchPageResult<StationTableRow>> => {
+      let filtered = pool;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = pool.filter((row) => row.title.toLowerCase().includes(q));
+      }
+      const start = (params.page - 1) * params.perPage;
+      const end = start + params.perPage;
+      return {
+        items: filtered.slice(start, end),
+        totalCount: filtered.length,
+      };
+    },
+    [pool],
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "Station",
+        key: "position" as keyof StationTableRow,
+        priority: "detail" as const,
+        render: (row: StationTableRow) => (
+          <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
+            {row.position}
+          </span>
+        ),
+      },
+      {
+        header: "Station name",
+        key: "title" as keyof StationTableRow,
+        priority: "primary" as const,
+        render: (row: StationTableRow) => (
+          <div className="flex items-center gap-2">
+            <HiChevronUp
+              className={cn(
+                "h-5 w-5 shrink-0 transition-transform",
+                expandedRows[row.entry.id] && "rotate-180",
+              )}
+              aria-hidden
+            />
+            <Link
+              href={attemptHref(row.entry.id)}
+              className={cn(b2cTableCellText, "text-osce-ink-900 hover:text-osce-accent")}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {row.title}
+            </Link>
+          </div>
+        ),
+      },
+      {
+        header: "Attempts",
+        key: "entry" as keyof StationTableRow,
+        render: (row: StationTableRow) => (
+          <span className={cn("text-osce-data", attemptsClass(row.entry), b2cTableCellText)}>
+            {attemptsLabel(row.entry)}
+          </span>
+        ),
+      },
+      {
+        header: "Action",
+        key: "entry" as keyof StationTableRow,
+        priority: "secondary" as const,
+        render: (row: StationTableRow) => (
+          <div className="flex items-center gap-3" onClick={(event) => event.stopPropagation()}>
+            {actions(row.entry, false)}
+          </div>
+        ),
+      },
+    ],
+    [attemptHref, attemptLimit, expandedRows, set.locked],
+  );
 
   return (
     <div>
-      {error ? (
-        <Alert tone="danger" className="mb-3">
-          {error}
-        </Alert>
-      ) : null}
-
-      {/* Desktop Table View */}
-      <div className="hidden overflow-x-auto rounded-lg border border-b2c-border lg:block">
-        <table data-b2c-table="" className="min-w-full divide-y divide-b2c-border">
-          <thead className={productTokens.b2cTableThead}>
-            <tr>
-              <th className={`min-w-[100px] px-6 py-3 text-left ${productTokens.b2cTableHeader}`}>
-                Station
-              </th>
-              <th className={`min-w-[200px] px-6 py-3 text-left ${productTokens.b2cTableHeader}`}>
-                Station Name
-              </th>
-              <th className={`min-w-[150px] px-6 py-3 text-left ${productTokens.b2cTableHeader}`}>
-                Attempts
-              </th>
-              <th className={`min-w-[150px] px-6 py-3 text-left ${productTokens.b2cTableHeader}`}>
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-b2c-border bg-osce-surface">
-            {rows.map(({ entry, title }, index) => (
-              <Fragment key={entry.id}>
-                <tr
-                  className="cursor-pointer transition-colors hover:bg-b2c-surface-muted"
-                  onClick={() => toggleRow(entry.id)}
-                >
-                  <td className={cn("whitespace-nowrap px-6 py-4", productTokens.b2cTableCell)}>
-                    <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
-                      {index + 1}
-                    </span>
-                  </td>
-                  <td className={cn("whitespace-nowrap px-6 py-4", productTokens.b2cTableCell)}>
-                    <div className="flex items-center gap-2">
-                      <HiChevronUp
-                        className={cn(
-                          "h-5 w-5 transition-transform",
-                          expandedRows[entry.id] && "rotate-180",
-                        )}
-                      />
-                      <Link
-                        href={attemptHref(entry.id)}
-                        className="text-osce-ink-900 hover:text-osce-accent"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {title}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className={cn("whitespace-nowrap px-6 py-4", productTokens.b2cTableCell)}>
-                    <div className="flex items-center">
-                      <span className={cn("text-osce-data", attemptsClass(entry))}>
-                        {attemptsLabel(entry)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className={cn("whitespace-nowrap px-6 py-4", productTokens.b2cTableCell)}>
-                    <div className="flex items-center gap-3">{actions(entry, false)}</div>
-                  </td>
-                </tr>
-                {expandedRows[entry.id] && (
-                  <tr>
-                    <td colSpan={4} className="bg-b2c-surface-muted px-6 py-4">
-                      <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
-                        {expansion(entry)}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="space-y-4 lg:hidden">
-        {rows.map(({ entry, title }, index) => (
-          <div
-            key={entry.id}
-            className="overflow-hidden rounded-none border border-b2c-border bg-osce-surface"
-          >
-            <div
-              className="cursor-pointer p-5 transition-colors hover:bg-b2c-surface-muted"
-              onClick={() => toggleRow(entry.id)}
-            >
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-body font-medium text-osce-ink-900">
-                    {index + 1}
-                  </span>
-                  <HiChevronUp
-                    className={cn(
-                      "h-5 w-5 text-b2c-text-muted transition-transform",
-                      expandedRows[entry.id] && "rotate-180",
-                    )}
-                  />
-                </div>
-                <span className={cn("text-osce-body font-medium", attemptsClass(entry))}>
-                  {attemptsLabel(entry)}
-                </span>
-              </div>
-
-              <Link
-                href={attemptHref(entry.id)}
-                className="text-osce-body font-medium text-osce-ink-900 transition-colors hover:text-osce-accent"
-                onClick={(event) => event.stopPropagation()}
-              >
-                {title}
-              </Link>
-            </div>
-
-            <div className="space-y-3 px-5 pb-5">{actions(entry, true)}</div>
-
-            {expandedRows[entry.id] && (
-              <div className="space-y-3 border-t border-b2c-border bg-b2c-surface-muted px-5 pb-5 pt-3">
-                <div className="flex items-center justify-center gap-2 rounded-md bg-b2c-secondary px-4 py-3 text-osce-body text-b2c-text-muted">
-                  No transcripts yet
-                </div>
-                <div className="flex items-center justify-center gap-2 rounded-md bg-b2c-secondary px-4 py-3 text-osce-body text-b2c-text-muted">
-                  No feedbacks yet
-                </div>
-              </div>
-            )}
+      <Table<StationTableRow>
+        fetchPage={fetchPage}
+        columns={columns}
+        idField="id"
+        nameField="title"
+        showSearch={false}
+        showPagination={pool.length > 10}
+        defaultItemsPerPage={25}
+        isRowExpanded={(row) => Boolean(expandedRows[row.entry.id])}
+        onRowActivate={(row) => toggleRow(row.entry.id)}
+        renderExpandedRow={(row) => (
+          <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <EntryHistory setId={set.id} entry={row.entry} />
           </div>
-        ))}
-      </div>
+        )}
+      />
     </div>
   );
 }

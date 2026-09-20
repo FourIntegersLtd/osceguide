@@ -55,7 +55,7 @@ function Pagination({
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="border rounded px-2 py-1 text-osce-body"
+          className="rounded-md border border-b2c-border bg-osce-surface px-2 py-1 text-osce-body text-osce-ink-900"
         >
           {" "}
           <option value="10">10</option> <option value="20">20</option>{" "}

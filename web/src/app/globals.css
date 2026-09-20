@@ -19,6 +19,16 @@
   html {
     -webkit-text-size-adjust: 100%;
   }
+  /*
+   * Preflight sets `border-color: currentColor`. Body ink is near-black, so a
+   * `border` without a colour token paints as a black rule. Default to the
+   * grey hairline; explicit `border-*` utilities still override.
+   */
+  *,
+  ::before,
+  ::after {
+    @apply border-border;
+  }
   body {
     @apply bg-canvas text-ink antialiased;
   }
@@ -1390,5 +1400,55 @@ h6 {
   .osce-modal-scrim,
   .osce-modal-panel-enter {
     animation: none;
+  }
+}
+/* Template builder: a section or drawer coming into view. */
+@keyframes osce-builder-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.osce-builder-in {
+  animation: osce-builder-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .osce-builder-in {
+    animation: none;
+  }
+}
+
+/* Shared B2B dialogs (`@/b2b/components/ui/B2BModal`) rendered on this
+   surface. Colour tokens live on `:root` in osceTokens.css; these rules
+   cover the dialog chrome the retiring `b2b-globals.css` is not here to
+   supply. */
+.b2b-portal {
+  background-color: var(--osce-surface);
+  color: var(--osce-ink-700);
+}
+dialog.b2b-modal {
+  background-color: var(--osce-surface);
+  color: var(--osce-ink-700);
+}
+dialog.b2b-modal:not([open]) {
+  display: none !important;
+}
+dialog.b2b-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+dialog.b2b-modal::backdrop {
+  background-color: rgba(16, 24, 40, 0.45);
+  -webkit-backdrop-filter: blur(10px) saturate(0.9);
+  backdrop-filter: blur(10px) saturate(0.9);
+  animation: osce-builder-in 180ms ease-out both;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  dialog.b2b-modal::backdrop {
+    background-color: rgba(16, 24, 40, 0.65);
   }
 }

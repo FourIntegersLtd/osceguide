@@ -1,7 +1,6 @@
 "use client";
 
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
-import { StationConsultation } from "@/capabilities/stations";
 import {
   CircuitRunner,
   LiveBoard,
@@ -12,6 +11,7 @@ import {
   OrgDashboard,
   Results,
   SelfPractice,
+  SelfPracticeStation,
   SittingDetail,
   Sittings,
   SlotReview,
@@ -99,8 +99,24 @@ function AssessAttempt({ params }: ScreenProps) {
   return <StationRecord attemptId={params?.attemptId ?? ""} />;
 }
 
-function AssessPracticeStation({ params }: ScreenProps) {
-  return <StationConsultation stationId={params?.stationId ?? ""} />;
+function AssessPracticeStation({ params, workspace }: ScreenProps) {
+  const orgSlug = workspace.orgSlug ?? "";
+  return (
+    <SelfPracticeStation
+      orgSlug={orgSlug}
+      stationId={params?.stationId ?? ""}
+      action={params?.action === "review" ? "review" : "attempt"}
+      step={
+        params?.tab === "patient" ||
+        params?.tab === "simulation" ||
+        params?.tab === "management" ||
+        params?.tab === "feedback"
+          ? params.tab
+          : undefined
+      }
+      attemptId={params?.attempt || null}
+    />
+  );
 }
 
 /**

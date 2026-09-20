@@ -35,6 +35,7 @@ export function ConsultationScreen({
   asideTone = "primary",
   sticky = true,
   showTerms = true,
+  coverage,
 }: {
   panel: ReactNode;
   aside: ReactNode;
@@ -44,6 +45,7 @@ export function ConsultationScreen({
   /** Off in review, where there is no live room to keep within reach. */
   sticky?: boolean;
   showTerms?: boolean;
+  coverage?: ReactNode;
 }) {
   return (
     <div className="mb-8 lg:h-[75vh]">
@@ -76,6 +78,7 @@ export function ConsultationScreen({
             {asideTitle}
           </B2CPanelCardHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>
+          {coverage}
         </B2CPanelCard>
       </div>
 

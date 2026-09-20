@@ -1,11 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HiOutlineCog6Tooth,
-  HiOutlineRectangleStack,
-  HiOutlineSquare3Stack3D,
-} from "react-icons/hi2";
 import { AsyncBoundary, B2CPageHeader, B2CSegmentedTabs } from "@/foundation/ui";
 import type { B2CSegmentedTabItem } from "@/foundation/ui";
 import { CombineStations } from "@/domains/train/mocks/CombineStations";
@@ -16,33 +11,9 @@ import { useMockWorkspace } from "@/domains/train/mocks/useMockWorkspace";
 type MockTab = "setup" | "combine" | "sessions";
 
 const TABS: B2CSegmentedTabItem<MockTab>[] = [
-  {
-    id: "setup",
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <HiOutlineCog6Tooth className="h-4 w-4" aria-hidden />
-        Setup
-      </span>
-    ),
-  },
-  {
-    id: "combine",
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <HiOutlineSquare3Stack3D className="h-4 w-4" aria-hidden />
-        Combine Stations
-      </span>
-    ),
-  },
-  {
-    id: "sessions",
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <HiOutlineRectangleStack className="h-4 w-4" aria-hidden />
-        Your Sessions
-      </span>
-    ),
-  },
+  { id: "setup", label: "Setup" },
+  { id: "combine", label: "Combine Stations" },
+  { id: "sessions", label: "Your Sessions" },
 ];
 
 /**
@@ -67,7 +38,6 @@ export function Mocks() {
       <B2CPageHeader title="Practice" />
 
       <B2CSegmentedTabs
-        className="mb-4 sm:mb-6"
         items={TABS}
         value={activeTab}
         onChange={setActiveTab}

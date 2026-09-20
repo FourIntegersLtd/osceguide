@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { platformRequest } from "@/foundation/platform-client";
 import type { components } from "@/foundation/platform-client";
+import { EXAM_SELECTION_EVENT, readExamSelection, rememberExamSelection, normalizeExamCode } from "./examSelection";
 import { useSession } from "@/foundation/session/SessionProvider";
 
 type Dashboard = components["schemas"]["Dashboard"];
@@ -48,6 +49,7 @@ export function useCurrentExam(): CurrentExam {
   useEffect(() => {
     if (status !== "authenticated" || !userId) {
       setCodes([]);
+      setChosen(null);
       setServerCurrent(null);
       setLoading(status === "loading");
       return;
@@ -59,7 +61,7 @@ export function useCurrentExam(): CurrentExam {
         if (!live) return;
         setCodes(data.exam_codes ?? []);
         setServerCurrent(data.current_exam_code ?? null);
-        setChosen(remembered(userId));
+        setChosen(readExamSelection(userId));
       })
       .catch(() => {
         // An exam nobody can name is better than one invented: every screen
@@ -79,48 +81,29 @@ export function useCurrentExam(): CurrentExam {
     };
   }, [status, userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const sync = () => setChosen(readExamSelection(userId));
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(EXAM_SELECTION_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(EXAM_SELECTION_EVENT, sync);
+    };
+  }, [userId]);
+
   const setCode = useCallback(
     (code: string) => {
       setChosen(code);
-      remember(userId, code);
+      if (userId) rememberExamSelection(userId, code);
     },
     [userId],
   );
 
-  // A remembered choice only counts while they still hold that exam: access
-  // lapses, and the switcher must not keep opening on something now refused.
-  const code = useMemo(() => {
-    if (chosen && codes.includes(chosen)) return chosen;
-    return serverCurrent ?? codes[0] ?? null;
-  }, [chosen, codes, serverCurrent]);
+  // Landing-page selection is navigation context, not an entitlement grant.
+  // The API checks access whenever a practice session is started.
+  const code = chosen ?? serverCurrent ?? normalizeExamCode(session?.user.exam_code) ?? codes[0] ?? null;
 
   return { codes, code, loading, setCode };
-}
-
-const KEY = "osceguide.exam";
-
-/**
- * Keyed by person, because two accounts share one browser more often here than
- * anywhere else — a trainee signing in on a shared machine — and inheriting the
- * previous one's exam would be silent and wrong.
- *
- * Wrapped because `localStorage` itself throws in a private window and in
- * contexts that block site data, not just when it is empty.
- */
-function remembered(userId: string): string | null {
-  try {
-    return window.localStorage.getItem(`${KEY}.${userId}`);
-  } catch {
-    return null;
-  }
-}
-
-function remember(userId: string | null, code: string): void {
-  if (!userId) return;
-  try {
-    window.localStorage.setItem(`${KEY}.${userId}`, code);
-  } catch {
-    // A preference that cannot be stored is not an error worth surfacing; the
-    // choice still holds for this page.
-  }
 }

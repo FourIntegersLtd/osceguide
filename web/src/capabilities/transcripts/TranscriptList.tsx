@@ -1,17 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useMemo } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
-import { AsyncBoundary, cn, productTokens } from "@/foundation/ui";
+import Table, {
+  type FetchPageParams,
+  type FetchPageResult,
+} from "@/foundation/table/Table";
+import { AsyncBoundary, cn } from "@/foundation/ui";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
   formatAttemptDate,
   kindLabel,
   listTranscribableAttempts,
+  type RecentAttempt,
 } from "@/capabilities/transcripts/api";
 
-const { b2cTableCell, b2cTableHeader, b2cTableThead } = productTokens;
+type TranscriptRow = RecentAttempt & { rowNumber: number };
 
 /**
  * Every consultation this person can read back.
@@ -26,7 +33,6 @@ const { b2cTableCell, b2cTableHeader, b2cTableThead } = productTokens;
  * their own consultations from the same component and the same call.
  */
 export function TranscriptList() {
-  const { hrefFor } = useSurface();
   const state = useAsync((signal) => listTranscribableAttempts(signal), []);
 
   return (
@@ -41,50 +47,98 @@ export function TranscriptList() {
             "A transcript is saved each time you complete a consultation. Sit a station and it appears here.",
         }}
       >
-        {(attempts) => (
-          <div className="overflow-x-auto rounded-lg border">
-            <table data-b2c-table="" className="min-w-full divide-y divide-b2c-border">
-              <thead className={b2cTableThead}>
-                <tr>
-                  <th className={`px-6 py-3 text-left ${b2cTableHeader}`}>#</th>
-                  <th className={`px-6 py-3 text-left ${b2cTableHeader}`}>Date</th>
-                  <th className={`px-6 py-3 text-left ${b2cTableHeader}`}>Session</th>
-                  <th className={`px-6 py-3 text-left ${b2cTableHeader}`}>Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-b2c-border bg-osce-surface">
-                {attempts.map((attempt, index) => (
-                  <tr key={attempt.id} className="transition-colors hover:bg-b2c-surface-muted">
-                    <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
-                      <span className="rounded-full bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
-                        {index + 1}
-                      </span>
-                    </td>
-                    <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
-                      {formatAttemptDate(attempt.created_at)}
-                    </td>
-                    <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
-                      {attempt.exam_code.toUpperCase()} · {kindLabel(attempt.kind)}
-                    </td>
-                    <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
-                      <Link
-                        href={hrefFor(`/transcripts/${attempt.id}`)}
-                        className="group flex cursor-pointer items-center space-x-2"
-                      >
-                        <span className="font-medium text-osce-accent">View details</span>
-                        <HiOutlineArrowRight
-                          className="h-4 w-4 text-osce-accent transition-transform group-hover:translate-x-1"
-                          aria-hidden
-                        />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {(attempts) => <TranscriptTable attempts={attempts} />}
       </AsyncBoundary>
     </div>
+  );
+}
+
+function TranscriptTable({ attempts }: { attempts: RecentAttempt[] }) {
+  const { hrefFor } = useSurface();
+
+  const numbered = useMemo(
+    () => attempts.map((attempt, index) => ({ ...attempt, rowNumber: index + 1 })),
+    [attempts],
+  );
+
+  const fetchPage = useCallback(
+    async (params: FetchPageParams): Promise<FetchPageResult<TranscriptRow>> => {
+      let filtered = numbered;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = numbered.filter(
+          (attempt) =>
+            formatAttemptDate(attempt.created_at).toLowerCase().includes(q) ||
+            attempt.exam_code.toLowerCase().includes(q) ||
+            kindLabel(attempt.kind).toLowerCase().includes(q),
+        );
+      }
+      const start = (params.page - 1) * params.perPage;
+      const end = start + params.perPage;
+      return {
+        items: filtered.slice(start, end),
+        totalCount: filtered.length,
+      };
+    },
+    [numbered],
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "#",
+        key: "rowNumber" as keyof TranscriptRow,
+        priority: "detail" as const,
+        render: (attempt: TranscriptRow) => (
+          <span className="rounded-full bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
+            {attempt.rowNumber}
+          </span>
+        ),
+      },
+      {
+        header: "Date",
+        key: "created_at" as keyof TranscriptRow,
+        render: (attempt: TranscriptRow) => (
+          <span className={b2cTableCellText}>{formatAttemptDate(attempt.created_at)}</span>
+        ),
+      },
+      {
+        header: "Session",
+        key: "exam_code" as keyof TranscriptRow,
+        priority: "primary" as const,
+        render: (attempt: TranscriptRow) => (
+          <span className={b2cTableCellText}>
+            {attempt.exam_code.toUpperCase()} · {kindLabel(attempt.kind)}
+          </span>
+        ),
+      },
+      {
+        header: "Action",
+        key: "id" as keyof TranscriptRow,
+        render: (attempt: TranscriptRow) => (
+          <Link
+            href={hrefFor(`/transcripts/${attempt.id}`)}
+            className={cn("group flex cursor-pointer items-center space-x-2", b2cTableCellText)}
+          >
+            <span className="font-medium text-osce-accent">View details</span>
+            <HiOutlineArrowRight
+              className="h-4 w-4 text-osce-accent transition-transform group-hover:translate-x-1"
+              aria-hidden
+            />
+          </Link>
+        ),
+      },
+    ],
+    [hrefFor],
+  );
+
+  return (
+    <Table<TranscriptRow>
+      fetchPage={fetchPage}
+      columns={columns}
+      idField="id"
+      nameField="exam_code"
+      searchPlaceholder="Search by date, exam or session type…"
+    />
   );
 }

@@ -1,4 +1,13 @@
 import type { Config } from "tailwindcss";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const platformRoot = path.dirname(fileURLToPath(import.meta.url));
+const b2bContent = path.join(platformRoot, "../frontend/src/b2b/**/*.{ts,tsx}");
+const sharedContent = path.join(
+  platformRoot,
+  "../frontend/src/shared/**/*.{ts,tsx}",
+);
 
 /**
  * Two palettes, on purpose.
@@ -15,7 +24,18 @@ import type { Config } from "tailwindcss";
  * using them; new code should reach for the semantic set.
  */
 const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
+  content: [
+    "./src/**/*.{ts,tsx}",
+    // The `@/b2b` and `@/shared` aliases resolve into the retiring client.
+    // Anything imported from there is rendered here, so its classes must be
+    // scanned here too, or a `w-[248px]` on a shared component silently
+    // never exists in this app's CSS.
+    // Dev perf: this widens Tailwind's scan (~500 files). Drop these globs
+    // once authoring no longer imports from `frontend/src/b2b` (use a safelist
+    // for any remaining arbitrary utilities).
+    b2bContent,
+    sharedContent,
+  ],
   theme: {
     extend: {
       colors: {
@@ -24,7 +44,7 @@ const config: Config = {
         surface: "rgb(var(--color-surface) / <alpha-value>)",
         "surface-raised": "rgb(var(--color-surface-raised) / <alpha-value>)",
         border: "rgb(var(--color-border) / <alpha-value>)",
-        "border-strong": "rgb(var(--color-border-strong) / <alpha-value>)",
+        "border-strong": "rgb(var(--color-border) / <alpha-value>)",
         ink: "rgb(var(--color-ink) / <alpha-value>)",
         "ink-muted": "rgb(var(--color-ink-muted) / <alpha-value>)",
         "ink-subtle": "rgb(var(--color-ink-subtle) / <alpha-value>)",
@@ -201,8 +221,8 @@ const config: Config = {
           },
           navActive: "var(--b2c-nav-active)",
           border: {
-            DEFAULT: "var(--b2c-border)",
-            light: "var(--b2c-border-light)",
+            DEFAULT: "var(--b2c-border, var(--osce-border))",
+            light: "var(--b2c-border-light, var(--osce-border-light))",
           },
           text: {
             primary: "var(--b2c-text-primary)",
@@ -254,7 +274,7 @@ const config: Config = {
           canvas: "var(--b2b-canvas)",
           surface: "var(--b2b-surface)",
           cream: "var(--b2b-cream)",
-          border: "var(--b2b-border)",
+          border: "var(--b2b-border, var(--osce-border))",
           subtle: "var(--b2b-subtle)",
           beige: "var(--b2b-beige)",
           headline: "var(--b2b-headline)",
@@ -325,6 +345,10 @@ const config: Config = {
             },
           },
         },
+      },
+      /* Preflight uses this for uncoloured `border` — not currentColor/ink. */
+      borderColor: {
+        DEFAULT: "rgb(var(--color-border) / <alpha-value>)",
       },
       
       fontSize: {

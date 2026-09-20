@@ -54,7 +54,8 @@ export function withReferralParams(
     if (context.utmCampaign) target.set(UTM_PARAM_CAMPAIGN, context.utmCampaign);
     if (context.refId) target.set(REF_ID_PARAM, context.refId);
   }
-  if (appType && !target.has(APP_TYPE_PARAM)) target.set(APP_TYPE_PARAM, appType);
+  const selectedExam = appType || source.get(APP_TYPE_PARAM) || context?.exam;
+  if (selectedExam && !target.has(APP_TYPE_PARAM)) target.set(APP_TYPE_PARAM, selectedExam);
 
   const query = target.toString();
   return `${path}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;

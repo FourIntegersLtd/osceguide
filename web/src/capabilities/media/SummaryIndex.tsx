@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
-import { LuArrowDownAZ, LuStethoscope } from "react-icons/lu";
+import { LuStethoscope } from "react-icons/lu";
 import {
   B2CEmptyState,
   B2CPanelCard,
@@ -46,24 +46,8 @@ export function SummaryIndex({
     <div className="space-y-8 text-left">
       <B2CSegmentedTabs
         items={[
-          {
-            id: "az",
-            label: (
-              <span className="inline-flex items-center gap-1.5">
-                <LuArrowDownAZ className="h-4 w-4" aria-hidden />
-                A to Z
-              </span>
-            ),
-          },
-          {
-            id: "specialty",
-            label: (
-              <span className="inline-flex items-center gap-1.5">
-                <LuStethoscope className="h-4 w-4" aria-hidden />
-                Specialty
-              </span>
-            ),
-          },
+          { id: "az", label: "A to Z" },
+          { id: "specialty", label: "Specialty" },
         ]}
         value={view}
         onChange={switchView}
@@ -78,35 +62,73 @@ export function SummaryIndex({
         />
       ) : null}
 
-      <div className="flex flex-wrap gap-3 sm:gap-4">
-        {keys.map((key) => {
-          const selected = open === key;
-          const count = groups[key]?.length ?? 0;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setOpen(selected ? null : key)}
-              className={cn(
-                view === "az" ? t.b2cPickerChipLetter : t.b2cPickerChipSpecialty,
-                selected && t.b2cPickerChipSelected,
-              )}
-              aria-pressed={selected}
-              aria-label={
-                view === "az"
-                  ? `Letter ${key}, ${count} topics`
-                  : `${key}, ${count} topics`
-              }
-            >
-              {key}
-            </button>
-          );
-        })}
-      </div>
+      <div className="lg:flex lg:items-start lg:gap-10">
+        {view === "az" && keys.length > 0 ? (
+          <nav
+            aria-label="Jump to letter"
+            className={cn(
+              "mb-2 hidden shrink-0 lg:sticky lg:top-24 lg:block lg:w-10",
+              t.b2cScrollY,
+              "lg:max-h-[min(70vh,28rem)]",
+            )}
+          >
+            <ul className="flex flex-col gap-0.5">
+              {keys.map((key) => {
+                const selected = open === key;
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      onClick={() => setOpen(selected ? null : key)}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-colors",
+                        selected
+                          ? "bg-osce-accent text-white"
+                          : "text-osce-ink-500 hover:bg-b2c-surface-muted hover:text-osce-ink-900",
+                      )}
+                      aria-pressed={selected}
+                    >
+                      {key}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        ) : null}
 
-      {open && groups[open] ? (
-        <OpenGroup heading={open} items={groups[open]} hrefFor={hrefFor} />
-      ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
+            {keys.map((key) => {
+              const selected = open === key;
+              const count = groups[key]?.length ?? 0;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setOpen(selected ? null : key)}
+                  className={cn(
+                    view === "az" ? t.b2cPickerChipLetter : t.b2cPickerChipSpecialty,
+                    selected && t.b2cPickerChipSelected,
+                  )}
+                  aria-pressed={selected}
+                  aria-label={
+                    view === "az"
+                      ? `Letter ${key}, ${count} topics`
+                      : `${key}, ${count} topics`
+                  }
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+
+          {open && groups[open] ? (
+            <OpenGroup heading={open} items={groups[open]} hrefFor={hrefFor} />
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

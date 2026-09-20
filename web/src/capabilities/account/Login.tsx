@@ -6,6 +6,8 @@ import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Button } from "@/foundation/ui";
 import { login } from "@/foundation/platform-client";
+import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
+import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import {
   authButtonPrimary,
@@ -42,6 +44,7 @@ type LoginField = "email" | "password";
 export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const examCode = normalizeExamCode(searchParams.get("appType"));
   const { refresh } = useSession();
 
   const [formData, setFormData] = useState({
@@ -67,12 +70,13 @@ export default function Login() {
 
     setIsSubmitting(true);
     try {
-      await login(result.data.email, result.data.password);
+      const authenticated = await login(result.data.email, result.data.password);
+      rememberExamSelection(authenticated.user.id, examCode);
       await refresh();
       const returnTo = sanitizeReturnTo(searchParams.get("next") ?? searchParams.get("returnTo"));
       // Keep the button pending; the page is about to change. `/app` decides
       // which workspace, from where they were last.
-      router.replace(returnTo ?? "/app");
+      router.replace(returnTo ?? (examCode ? `/app/${PERSONAL_SLUG}` : "/app"));
     } catch (error) {
       const mapped = mapAuthApiError<LoginField>(
         error,
@@ -165,7 +169,7 @@ export default function Login() {
         </p>
         <p className={authFooterLink}>
           Don&apos;t have an account?{" "}
-          <Link href="/register" className={authLink}>
+          <Link href={examAuthHref("/register", examCode)} className={authLink}>
             Create account
           </Link>
         </p>

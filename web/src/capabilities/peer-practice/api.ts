@@ -28,18 +28,49 @@ export type PracticeSessionPage = components["schemas"]["Page_PracticeSessionRea
 
 /* ---------- the marketplace ---------- */
 
+const MARKETPLACE_PAGE_SIZE = 100;
+const MARKETPLACE_MAX_PAGES = 6;
+
 export function listSlots(
-  params: { cursor?: string | null; orgId?: string | null },
+  params: {
+    cursor?: string | null;
+    orgId?: string | null;
+    examCode?: string | null;
+    limit?: number;
+  },
   signal?: AbortSignal,
 ): Promise<SlotPage> {
   return platformRequest<SlotPage>("/api/v1/marketplace/slots", {
     query: {
       cursor: params.cursor ?? undefined,
+      limit: params.limit ?? undefined,
+      exam_code: params.examCode ?? undefined,
       visibility: params.orgId ? "organisation" : undefined,
       audience_org_id: params.orgId ?? undefined,
     },
     signal,
   });
+}
+
+/** Every slot for one exam, like the retiring client's unpaginated posts list. */
+export async function listAllSlots(
+  params: { orgId?: string | null; examCode?: string | null },
+  signal?: AbortSignal,
+): Promise<Slot[]> {
+  const items: Slot[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < MARKETPLACE_MAX_PAGES; page += 1) {
+    const result = await listSlots(
+      { ...params, cursor, limit: MARKETPLACE_PAGE_SIZE },
+      signal,
+    );
+    items.push(...result.items);
+    cursor = result.next_cursor ?? null;
+    if (!cursor) break;
+  }
+
+  return items;
 }
 
 export function offerSlot(input: {
@@ -81,14 +112,48 @@ export function withdrawSlot(postId: string): Promise<void> {
   });
 }
 
-export function listMyPeerSessions(signal?: AbortSignal): Promise<PeerSessionPage> {
-  return platformRequest<PeerSessionPage>("/api/v1/me/peer-sessions", { signal });
+export function listMyPosts(signal?: AbortSignal): Promise<SlotPage> {
+  return platformRequest<SlotPage>("/api/v1/me/marketplace/posts", { signal });
+}
+
+export function listMyPeerSessions(
+  params: { cursor?: string | null; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<PeerSessionPage> {
+  return platformRequest<PeerSessionPage>("/api/v1/me/peer-sessions", {
+    query: {
+      cursor: params.cursor ?? undefined,
+      limit: params.limit ?? undefined,
+    },
+    signal,
+  });
+}
+
+export async function listAllMyPeerSessions(signal?: AbortSignal): Promise<PeerSession[]> {
+  const items: PeerSession[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < MARKETPLACE_MAX_PAGES; page += 1) {
+    const result = await listMyPeerSessions({ cursor, limit: MARKETPLACE_PAGE_SIZE }, signal);
+    items.push(...result.items);
+    cursor = result.next_cursor ?? null;
+    if (!cursor) break;
+  }
+
+  return items;
 }
 
 /** Open ten minutes before the appointed hour; `peer_session_not_open` before that. */
 export function joinPeerSession(sessionId: string): Promise<PeerSession> {
   return platformRequest<PeerSession>(
     `/api/v1/me/peer-sessions/${encodeURIComponent(sessionId)}/join`,
+    { method: "POST" },
+  );
+}
+
+export function cancelPeerSession(sessionId: string): Promise<void> {
+  return platformRequest<void>(
+    `/api/v1/me/peer-sessions/${encodeURIComponent(sessionId)}/cancel`,
     { method: "POST" },
   );
 }
@@ -143,6 +208,41 @@ export function readPracticeSession(
   return platformRequest<PracticeSession>(
     `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}`,
     { signal },
+  );
+}
+
+export function practiceSessionStreamPath(sessionId: string): string {
+  return `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/stream`;
+}
+
+export function recordPracticePresence(sessionId: string): Promise<PracticeSession> {
+  return platformRequest<PracticeSession>(
+    `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/presence`,
+    { method: "POST" },
+  );
+}
+
+export function submitPracticeFeedback(
+  sessionId: string,
+  input: { rating: number; comment?: string | null },
+): Promise<PracticeSession> {
+  return platformRequest<PracticeSession>(
+    `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/feedback`,
+    { method: "POST", body: input },
+  );
+}
+
+export function reportPracticeAbuse(sessionId: string, message: string): Promise<void> {
+  return platformRequest<void>(
+    `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/report-abuse`,
+    { method: "POST", body: { message } },
+  );
+}
+
+export function reportPracticeNoShow(sessionId: string, message?: string | null): Promise<void> {
+  return platformRequest<void>(
+    `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/report-no-show`,
+    { method: "POST", body: { message: message ?? null } },
   );
 }
 

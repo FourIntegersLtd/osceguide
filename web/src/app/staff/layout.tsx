@@ -1,29 +1,33 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { RequireCapability, RequireSession } from "@/foundation/session";
-import { SurfaceShell, surfaceManifest } from "@/surfaces";
+import { surfaceManifest } from "@/surfaces";
+import { ShellFallback } from "@/surfaces/ShellFallback";
+
+const PlatformStaffShell = dynamic(
+  () =>
+    import("@/surfaces/platform/PlatformStaffShell").then((mod) => ({
+      default: mod.PlatformStaffShell,
+    })),
+  { loading: () => <ShellFallback /> },
+);
+
+const staffManifest = surfaceManifest("platform");
 
 /**
  * The OSCE Guide staff console.
  *
- * Outside the workspace grammar on purpose: nobody belongs to the platform the
- * way they belong to an organisation, so there is no slug to address it by and
- * no switcher entry for it. It is reached by a permission the backend grants.
- *
- * Both gates, and in this order. `RequireSession` sends a signed-out visitor
- * to sign in and back; `RequireCapability` then tells a signed-in person who
- * is not staff that this is not theirs. Without the first, an anonymous
- * visitor got the console's frame and a refusal card inside it — which shows
- * them the shape of a screen they should not know exists, and gives them no
- * way to sign in as somebody who may see it.
+ * Uses `PlatformStaffShell` directly (not `SurfaceShell`) so staff routes do not
+ * pull the institution/consumer shell code into the dev bundle.
  */
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <RequireSession>
-      <SurfaceShell manifest={surfaceManifest("platform")} workspace={null} basePath="/staff">
+      <PlatformStaffShell manifest={staffManifest} basePath="/staff">
         <RequireCapability permission="administer_platform">{children}</RequireCapability>
-      </SurfaceShell>
+      </PlatformStaffShell>
     </RequireSession>
   );
 }

@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, Button, getInputClassName } from "@/foundation/ui";
+import { HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
+import { Alert, getInputClassName } from "@/foundation/ui";
+import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import {
+  AuthoringIconAction,
+  AuthoringRowActions,
+} from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
+import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
 import { useAsync } from "@/foundation/hooks";
 import {
   addProgramme,
@@ -37,21 +44,21 @@ export function ProgrammesSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-osce-body text-b2b-mid">
-          Group this institution&apos;s sittings under one exam.
-        </p>
-        <Button
-          themeType="b2b"
-          variant="commit"
-          size="sm"
-          className="gap-2"
-          onClick={() => setAdding(true)}
-        >
-          <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Add programme
-        </Button>
-      </div>
+      <AuthoringSectionLead
+        action={
+          <AuthoringButton
+            variant="commit"
+            size="sm"
+            className="gap-2"
+            onClick={() => setAdding(true)}
+          >
+            <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+            Add programme
+          </AuthoringButton>
+        }
+      >
+        Group this institution&apos;s sittings under one exam.
+      </AuthoringSectionLead>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
@@ -66,46 +73,39 @@ export function ProgrammesSection() {
           description: "Add a programme for each exam you run sittings against.",
         }}
       >
-        {items.map((programme) => (
-          <div
-            key={programme.id}
-            className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-osce-body font-medium text-b2b-headline">
-                {programme.exam_name}
-              </p>
-              <p className="mt-0.5 truncate text-osce-caption text-b2b-mid">
-                {programme.exam_code} · {programme.source}
-                {programme.exam_owner_kind === "platform" ? " · OSCE Guide exam" : ""}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {items.map((programme) => {
+          const active = programme.status === "active";
+          const statusBusy = action.busy === `status:${programme.id}`;
+          return (
+            <AuthoringListRow
+              key={programme.id}
+              title={programme.exam_name}
+              meta={`${programme.exam_code} · ${programme.source}${programme.exam_owner_kind === "platform" ? " · OSCE Guide exam" : ""}`}
+            >
               <StatusBadge status={programme.status} />
-              <Button
-                themeType="b2b"
-                variant="secondary"
-                size="xs"
-                disabled={action.busy !== null}
-                onClick={() =>
-                  void action.run(`status:${programme.id}`, () =>
-                    updateProgramme(
-                      scope,
-                      programme.id,
-                      programme.status === "active" ? "retired" : "active",
-                    ),
-                  )
-                }
-              >
-                {action.busy === `status:${programme.id}`
-                  ? "Saving…"
-                  : programme.status === "active"
-                    ? "Retire"
-                    : "Reactivate"}
-              </Button>
-            </div>
-          </div>
-        ))}
+              <AuthoringRowActions>
+                <AuthoringIconAction
+                  variant={active ? "warning" : "primary"}
+                  label={active ? "Retire" : "Reactivate"}
+                  busy={statusBusy}
+                  busyLabel="Saving…"
+                  disabled={action.busy !== null}
+                  onClick={() =>
+                    void action.run(`status:${programme.id}`, () =>
+                      updateProgramme(scope, programme.id, active ? "retired" : "active"),
+                    )
+                  }
+                >
+                  {active ? (
+                    <HiOutlineNoSymbol className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <HiOutlineArrowPath className="h-4 w-4" aria-hidden />
+                  )}
+                </AuthoringIconAction>
+              </AuthoringRowActions>
+            </AuthoringListRow>
+          );
+        })}
       </ListCard>
 
       <AuthoringDialog

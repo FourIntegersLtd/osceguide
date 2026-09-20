@@ -1,11 +1,6 @@
 import type { ComponentType } from "react";
 import type { Surface } from "@/capabilities";
-import type { ScreenMap, ScreenName, SurfaceManifest } from "@/surfaces/contract";
-import { TrainNavFooter } from "@/surfaces/train/TrainNavFooter";
-import { assessScreens } from "@/surfaces/assess/screens";
-import { partnerScreens } from "@/surfaces/partner/screens";
-import { platformScreens } from "@/surfaces/platform/screens";
-import { trainScreens } from "@/surfaces/train/screens";
+import type { ScreenMap, ScreenName, ScreenProps, SurfaceManifest } from "@/surfaces/contract";
 
 /**
  * What each arm renders at each arm-owned page.
@@ -15,38 +10,56 @@ import { trainScreens } from "@/surfaces/train/screens";
  * navigation without a renderer. This file is the other half, and it is
  * deliberately nothing but a lookup.
  *
+ * Screen maps are loaded per arm on demand so dev compiles do not pull every
+ * domain into the workspace layout chunk.
+ *
  * Hire is absent on purpose. It declares `screensFrom: "assess"`, and
  * `screensFor` follows that, so there is one screen map for the two arms
  * rather than two that drift.
  */
-const OWN_SCREENS: Partial<Record<Surface, ScreenMap>> = {
-  train: trainScreens,
-  assess: assessScreens,
-  partner: partnerScreens,
-  platform: platformScreens,
+const SCREEN_LOADERS: Partial<Record<Surface, () => Promise<ScreenMap>>> = {
+  train: () => import("@/surfaces/train/screens").then((mod) => mod.trainScreens),
+  assess: () => import("@/surfaces/assess/screens").then((mod) => mod.assessScreens),
+  partner: () => import("@/surfaces/partner/screens").then((mod) => mod.partnerScreens),
+  platform: () => import("@/surfaces/platform/screens").then((mod) => mod.platformScreens),
 };
 
-export function screensFor(manifest: SurfaceManifest): ScreenMap {
-  const id = manifest.screensFrom ?? manifest.id;
-  return OWN_SCREENS[id] ?? {};
+const screenMapCache = new Map<Surface, Promise<ScreenMap>>();
+
+function screenMapKey(manifest: SurfaceManifest): Surface {
+  return manifest.screensFrom ?? manifest.id;
 }
 
-export function screenComponent(manifest: SurfaceManifest, name: ScreenName) {
-  return screensFor(manifest)[name];
+export function loadScreensFor(manifest: SurfaceManifest): Promise<ScreenMap> {
+  const id = screenMapKey(manifest);
+  const loader = SCREEN_LOADERS[id];
+  if (!loader) return Promise.resolve({});
+
+  const cached = screenMapCache.get(id);
+  if (cached) return cached;
+
+  const pending = loader();
+  screenMapCache.set(id, pending);
+  return pending;
 }
 
-/**
- * What an arm renders under its navigation, if anything.
- *
- * Here rather than on the manifest for the same reason the screens are: a
- * component in the manifest would put React in a file the registry test reads
- * without a renderer. Only the consumer arm has one, where it carries the
- * upgrade button, the person's name and which exam they are sitting.
- */
-const NAV_FOOTERS: Partial<Record<Surface, ComponentType>> = {
-  train: TrainNavFooter,
-};
+export async function loadScreenComponent(
+  manifest: SurfaceManifest,
+  name: ScreenName,
+): Promise<ComponentType<ScreenProps> | undefined> {
+  const map = await loadScreensFor(manifest);
+  return map[name];
+}
 
-export function navFooterFor(manifest: SurfaceManifest): ComponentType | undefined {
-  return NAV_FOOTERS[manifest.screensFrom ?? manifest.id];
+/** @deprecated Prefer `loadScreensFor` — sync lookup forces every arm's map into the bundle. */
+export async function screensFor(manifest: SurfaceManifest): Promise<ScreenMap> {
+  return loadScreensFor(manifest);
+}
+
+/** @deprecated Prefer `loadScreenComponent`. */
+export async function screenComponent(
+  manifest: SurfaceManifest,
+  name: ScreenName,
+): Promise<ComponentType<ScreenProps> | undefined> {
+  return loadScreenComponent(manifest, name);
 }

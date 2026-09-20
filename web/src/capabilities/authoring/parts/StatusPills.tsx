@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Badge, type BadgeTone } from "@/foundation/ui";
 
 /**
  * The publish state of a versioned thing, in the words the old screens used.
@@ -21,61 +21,51 @@ export function PublishStatusLine({
   archivedOnly?: boolean;
 }) {
   return (
-    <div className="mt-2 space-y-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        {kindLabel ? (
-          <span className="rounded-md bg-b2b-cream px-2 py-0.5 text-osce-caption font-medium text-b2b-mid">
-            {kindLabel}
-          </span>
-        ) : null}
-        {published ? (
-          <Pill className="bg-b2b-success-bg text-b2b-success-text ring-b2b-success-border/40">
-            Live · v{published.version}
-          </Pill>
-        ) : (
-          <Pill className="bg-b2b-warning-bg text-b2b-warning-text ring-b2b-warning-border/40">
-            Not live
-          </Pill>
-        )}
-        {draft ? (
-          <Pill className="bg-b2b-cream text-b2b-graphite ring-b2b-border">
-            Draft · v{draft.version}
-          </Pill>
-        ) : null}
-        {archivedOnly ? (
-          <Pill className="bg-b2b-subtle text-b2b-graphite ring-b2b-border">Archived only</Pill>
-        ) : null}
-      </div>
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      {kindLabel ? (
+        <Badge tone="neutral" size="xs">
+          {kindLabel}
+        </Badge>
+      ) : null}
+      {published ? (
+        <Badge tone="success" size="sm" dot>
+          Live · v{published.version}
+        </Badge>
+      ) : (
+        <Badge tone="warning" size="sm" dot>
+          Not live
+        </Badge>
+      )}
+      {draft ? (
+        <Badge tone="neutral" size="sm">
+          Draft · v{draft.version}
+        </Badge>
+      ) : null}
+      {archivedOnly ? (
+        <Badge tone="default" size="sm">
+          Archived only
+        </Badge>
+      ) : null}
     </div>
   );
 }
 
-function Pill({ className, children }: { className: string; children: ReactNode }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-osce-caption font-semibold ring-1 ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
+const DRAFT_BADGE = { label: "Draft", tone: "warning" as const };
 
-const DRAFT_BADGE = { label: "Draft", className: "bg-b2b-cream text-b2b-graphite" };
-
-const STATION_STATUS: Record<string, { label: string; className: string }> = {
-  published: { label: "Published", className: "bg-b2b-success-bg text-b2b-success-text" },
-  archived: { label: "Archived", className: "bg-b2b-subtle text-b2b-graphite" },
+const ROW_STATUS: Record<string, { label: string; tone: BadgeTone }> = {
+  published: { label: "Published", tone: "success" },
+  active: { label: "Active", tone: "success" },
   draft: DRAFT_BADGE,
+  retired: { label: "Retired", tone: "default" },
+  archived: { label: "Archived", tone: "default" },
 };
 
-/** A version's own status, as the station rows showed it. */
+/** A row's own status — published, draft, retired, archived, or active. */
 export function StatusBadge({ status }: { status: string | undefined }) {
-  const badge = STATION_STATUS[status ?? "draft"] ?? DRAFT_BADGE;
+  const badge = ROW_STATUS[status ?? "draft"] ?? DRAFT_BADGE;
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-osce-caption font-semibold ring-1 ring-b2b-border ${badge.className}`}
-    >
+    <Badge tone={badge.tone} size="sm" dot>
       {badge.label}
-    </span>
+    </Badge>
   );
 }

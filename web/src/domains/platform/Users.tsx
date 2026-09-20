@@ -1,246 +1,154 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, ConfirmModal } from "@/foundation/ui";
-import { LuShieldCheck, LuUsers } from "react-icons/lu";
+import { useState } from "react";
+import type { IconType } from "react-icons";
+import { LuCreditCard, LuUserRound, LuUsers } from "react-icons/lu";
+import { AsyncBoundary, Card } from "@/foundation/ui";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
-import {
-  PlatformFilterBar,
-  PlatformFilterSearch,
-} from "@/domains/platform/PlatformFilterBar";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { searchUsers, setPlatformAdmin, type User } from "@/domains/platform/api";
-import { LoadMore, Row, RowList, Section } from "@/domains/platform/chrome";
-import { formatDay } from "@/domains/platform/support";
+import { listPlans } from "@/capabilities/account/api";
+import {
+  readDirectorySummary,
+  type DirectoryFilters as Filters,
+  type DirectorySummary,
+} from "@/domains/platform/api";
+import { DirectoryFilters } from "@/domains/platform/users/DirectoryFilters";
+import { UserGroup } from "@/domains/platform/users/UserGroup";
+import { directoryListingTotal, groupTitle } from "@/domains/platform/users/vocabulary";
+
+const NONE: Filters = { q: null, examCode: null, status: null, access: null, planCode: null };
 
 /**
- * Finding an account, for the people who answer "I cannot sign in".
+ * The account directory: everyone, grouped by exam, with the retiring B2C
+ * admin's columns and filters.
  *
- * Two of the retiring console's screens in one. `/platform/users` was a search
- * and `/platform/team` was the list of people who run this console; there is
- * Rows link to a support detail screen when `GET /platform/users/{id}` is
- * available. `UserSummary.is_platform_admin` is shown when the API sends it.
+ * That console had a page per exam because each exam was its own database.
+ * Here an account is one row whatever it holds, so the exams are groups on
+ * one screen, each paging on its own, and the counts across the top come
+ * from one summary call rather than from having loaded everybody.
  */
 export function Users() {
   const { hrefFor } = useSurface();
+  const [filters, setFilters] = useState<Filters>(NONE);
   const [term, setTerm] = useState("");
-  const [query, setQuery] = useState("");
-  const [extra, setExtra] = useState<{ query: string; rows: User[]; cursor: string | null }>({
-    query: "",
-    rows: [],
-    cursor: null,
-  });
-  const [paging, setPaging] = useState(false);
-  const [pageError, setPageError] = useState<Error | null>(null);
-  /** What this session has just changed, so a row can say so. `null` is unknown. */
-  const [changed, setChanged] = useState<Record<string, boolean>>({});
+  const summary = useAsync((signal) => readDirectorySummary(signal), []);
+  const plans = useAsync(
+    async (signal) => (await listPlans(signal)).items.map((plan) => plan.code),
+    [],
+  );
 
-  const state = useAsync((signal) => searchUsers({ q: query }, signal), [query]);
-
-  const appended = extra.query === query ? extra.rows : [];
-  const cursor = extra.query === query && extra.rows.length > 0
-    ? extra.cursor
-    : (state.data?.next_cursor ?? null);
-
-  const loadMore = useCallback(async () => {
-    if (!cursor) return;
-    setPaging(true);
-    setPageError(null);
-    try {
-      const page = await searchUsers({ q: query, cursor });
-      setExtra((current) => ({
-        query,
-        rows: [...(current.query === query ? current.rows : []), ...page.items],
-        cursor: page.next_cursor ?? null,
-      }));
-    } catch (cause) {
-      setPageError(cause instanceof Error ? cause : new Error(String(cause)));
-    } finally {
-      setPaging(false);
-    }
-  }, [cursor, query]);
+  const clear = () => {
+    setTerm("");
+    setFilters(NONE);
+  };
 
   return (
     <div className="flex flex-col gap-8">
-      <PlatformPageHeader title="Users" description="Everyone with an account, across every organisation." icon={LuUsers} />
+      <PlatformPageHeader
+        title="Users"
+        description="Everyone with an account, grouped by the exam they are here for."
+        icon={LuUsers}
+      />
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          setExtra({ query: term.trim(), rows: [], cursor: null });
-          setQuery(term.trim());
-        }}
-      >
-        <PlatformFilterBar>
-          <PlatformFilterSearch
-            value={term}
-            onChange={setTerm}
-            placeholder="Search by email"
-            aria-label="Search users by email"
-          />
-        </PlatformFilterBar>
-      </form>
-
-      <Section title="Accounts">
-        <AsyncBoundary
-          state={state}
-          isEmpty={(page) => page.items.length === 0}
-          empty={{
-            title: "No accounts match",
-            description: "Try part of the address rather than the whole of it.",
-          }}
-        >
-          {(page) => (
-            <div className="flex flex-col gap-3">
-              <RowList>
-                {[...page.items, ...appended].map((user) => (
-                  <UserRow
-                    key={user.id}
-                    user={user}
-                    profileHref={hrefFor(`/users/${user.id}`)}
-                    justChanged={changed[user.id]}
-                    onChanged={(isAdmin) =>
-                      setChanged((current) => ({ ...current, [user.id]: isAdmin }))
-                    }
-                  />
-                ))}
-              </RowList>
-              {pageError ? <Alert tone="danger">{errorMessage(pageError)}</Alert> : null}
-              <LoadMore cursor={cursor} busy={paging} onLoad={() => void loadMore()} />
-            </div>
-          )}
-        </AsyncBoundary>
-      </Section>
+      <AsyncBoundary state={summary}>
+        {(counts) => (
+          <>
+            <SummaryStrip summary={counts} />
+            <DirectoryFilters
+              exams={counts.exams}
+              plans={plans.data ?? []}
+              filters={filters}
+              term={term}
+              onTerm={setTerm}
+              onChange={setFilters}
+            />
+            <Groups summary={counts} filters={filters} hrefFor={hrefFor} onClear={clear} />
+          </>
+        )}
+      </AsyncBoundary>
     </div>
   );
 }
 
-/**
- * One account, and the one thing this console can do to it.
- *
- * Both acts sit behind a disclosure rather than on the row. Granting this is
- * the most dangerous button in the product — it hands somebody every
- * organisation — and a list of eighteen people should not carry eighteen of
- * them a click away from a mis-tap.
- *
- * `justChanged` is what this session did, not what is stored — there is
- * nothing to read. It is deliberately not persisted or assumed on load: a
- * badge that survived a refresh would be a claim the backend never made.
- */
-function UserRow({
-  user,
-  profileHref,
-  justChanged,
-  onChanged,
+function Groups({
+  summary,
+  filters,
+  hrefFor,
+  onClear,
 }: {
-  user: User;
-  profileHref: string;
-  justChanged: boolean | undefined;
-  onChanged: (isAdmin: boolean) => void;
+  summary: DirectorySummary;
+  filters: Filters;
+  hrefFor: (path: string) => string;
+  onClear: () => void;
 }) {
-  const toast = useToast();
-  const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const confirm = useCallback(async () => {
-    if (pending === null) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await setPlatformAdmin(user.id, pending);
-      onChanged(pending);
-      toast.success(
-        pending
-          ? `${user.email} can now open this console`
-          : `${user.email} can no longer open this console`,
-        "They must sign in again for it to take effect.",
-      );
-      setPending(null);
-      setOpen(false);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  }, [pending, user.id, user.email, onChanged, toast]);
-
+  if (filters.examCode) {
+    const exam = summary.exams.find((entry) => entry.code === filters.examCode);
+    return (
+      <UserGroup
+        title={exam ? groupTitle(exam.code, exam.name, exam.users) : filters.examCode.toUpperCase()}
+        filters={filters}
+        hrefFor={hrefFor}
+        totalCount={directoryListingTotal(summary, filters)}
+        onClear={onClear}
+      />
+    );
+  }
+  // Busiest exam first, and the exams nobody is on yet as one line rather
+  // than a run of empty cards above the people who are actually here.
+  const populated = summary.exams.filter((exam) => exam.users > 0).sort((a, b) => b.users - a.users);
+  const empty = summary.exams.filter((exam) => exam.users === 0);
   return (
     <>
-      <Row className="flex-col items-stretch sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <Link href={profileHref} className="truncate text-sm font-medium text-ink hover:text-accent">
-              {user.email}
-            </Link>
-            <p className="truncate text-xs text-ink-subtle">
-              {user.name || "No name"} · joined {formatDay(user.created_at)}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {user.is_platform_admin ? (
-              <Badge tone="success">
-                <LuShieldCheck className="mr-1 h-3 w-3" aria-hidden />
-                Console
-              </Badge>
-            ) : null}
-            {justChanged !== undefined ? (
-              <Badge tone={justChanged ? "success" : "neutral"}>
-                <LuShieldCheck className="mr-1 h-3 w-3" aria-hidden />
-                {justChanged ? "Granted" : "Revoked"}
-              </Badge>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={open}
-              onClick={() => setOpen((current) => !current)}
-            >
-              {open ? "Close" : "Console access"}
-            </Button>
-          </div>
-        </div>
-
-        {open ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 sm:mt-0 sm:w-full">
-            <p className="min-w-0 flex-1 text-xs text-ink-subtle">
-              Grant or revoke staff console access. For memberships and password reset, open the
-              profile.
-            </p>
-            <Link href={profileHref}>
-              <Button variant="ghost" size="sm">Profile</Button>
-            </Link>
-            <Button variant="secondary" size="sm" onClick={() => setPending(true)}>
-              Grant
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setPending(false)}>
-              Revoke
-            </Button>
-          </div>
-        ) : null}
-      </Row>
-
-      <ConfirmModal
-        isOpen={pending !== null}
-        onCancel={() => {
-          setPending(null);
-          setError(null);
-        }}
-        onConfirm={() => void confirm()}
-        isLoading={busy}
-        error={error}
-        tone={pending === false ? "danger" : "default"}
-        title={pending ? "Grant the staff console?" : "Revoke the staff console?"}
-        confirmText={pending ? "Grant" : "Revoke"}
-        message={
-          pending
-            ? `${user.email} will be able to see and change every organisation on the platform.`
-            : `${user.email} will lose this console. Their memberships of individual organisations are untouched.`
-        }
+      {populated.map((exam) => (
+        <UserGroup
+          key={exam.code}
+          title={groupTitle(exam.code, exam.name, exam.users)}
+          description={`${exam.paid} paid · ${exam.trial} on trial · ${exam.not_started} not started`}
+          filters={{ ...filters, examCode: exam.code }}
+          hrefFor={hrefFor}
+          totalCount={directoryListingTotal(summary, { ...filters, examCode: exam.code })}
+          onClear={onClear}
+        />
+      ))}
+      <UserGroup
+        title={`No exam chosen · ${summary.unassigned}`}
+        description="Accounts naming no exam and holding no live access. Staff accounts sit here too."
+        filters={{ ...filters, examCode: null, unassigned: true }}
+        hrefFor={hrefFor}
+        totalCount={directoryListingTotal(summary, { ...filters, examCode: null, unassigned: true })}
+        onClear={onClear}
       />
+      {empty.length > 0 ? (
+        <Card padding="md">
+          <p className="text-sm text-ink-muted">
+            Nobody yet on {empty.map((exam) => exam.name || exam.code.toUpperCase()).join(", ")}.
+          </p>
+        </Card>
+      ) : null}
     </>
+  );
+}
+
+function SummaryStrip({ summary }: { summary: DirectorySummary }) {
+  const paid = summary.exams.reduce((sum, exam) => sum + exam.paid, 0);
+  const trial = summary.exams.reduce((sum, exam) => sum + exam.trial, 0);
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Stat label="Accounts" value={summary.total} icon={LuUsers} />
+      <Stat label="Paid" value={paid} icon={LuCreditCard} />
+      <Stat label="On trial" value={trial} icon={LuUserRound} />
+    </div>
+  );
+}
+
+function Stat({ label, value, icon: Icon }: { label: string; value: number; icon: IconType }) {
+  return (
+    <Card padding="md">
+      <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-ink-subtle">
+        <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold text-ink">{value}</p>
+    </Card>
   );
 }

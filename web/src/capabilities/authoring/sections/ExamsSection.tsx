@@ -1,8 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, Button } from "@/foundation/ui";
+import {
+  HiOutlineArrowUpTray,
+  HiOutlineNoSymbol,
+  HiOutlinePencilSquare,
+  HiOutlinePlusCircle,
+} from "react-icons/hi2";
+import { Alert } from "@/foundation/ui";
+import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import {
+  AuthoringIconAction,
+  AuthoringRowActions,
+} from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
 import { useAsync } from "@/foundation/hooks";
 import {
   createExam,
@@ -55,8 +66,7 @@ export function ExamsSection() {
           />
           Drafts only
         </label>
-        <Button
-          themeType="b2b"
+        <AuthoringButton
           variant="commit"
           size="sm"
           className="gap-2"
@@ -67,7 +77,7 @@ export function ExamsSection() {
         >
           <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
           Create exam
-        </Button>
+        </AuthoringButton>
       </div>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
@@ -85,63 +95,72 @@ export function ExamsSection() {
             : "Create an exam, attach a rubric version, then publish it to run sittings against it.",
         }}
       >
-        {items.map((exam) => (
-          <div
-            key={exam.id}
-            className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-osce-body font-medium text-b2b-headline">{exam.name}</p>
-              <p className="mt-0.5 truncate text-osce-caption text-b2b-mid">
-                {exam.code} · {Math.round(exam.default_reading_seconds / 60)} min reading ·{" "}
-                {Math.round(exam.default_simulation_seconds / 60)} min station
-                {exam.owner_kind === "platform" ? " · OSCE Guide" : ""}
-                {exam.partner_pilot ? " · partner pilot" : ""}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {items.map((exam) => {
+          const locked = exam.owner_kind === "platform" && scope.kind === "org";
+          const publishBusy = action.busy === `publish:${exam.id}`;
+          const retireBusy = action.busy === `retire:${exam.id}`;
+          return (
+            <AuthoringListRow
+              key={exam.id}
+              title={exam.name}
+              meta={`${exam.code} · ${Math.round(exam.default_reading_seconds / 60)} min reading · ${Math.round(exam.default_simulation_seconds / 60)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`}
+            >
               <StatusBadge status={exam.status} />
-              <Button
-                themeType="b2b"
-                variant="secondary"
-                size="xs"
-                disabled={exam.owner_kind === "platform" && scope.kind === "org"}
-                onClick={() => {
-                  setForm({
-                    code: exam.code,
-                    name: exam.name,
-                    reading: String(exam.default_reading_seconds),
-                    simulation: String(exam.default_simulation_seconds),
-                    attempts: String(exam.station_attempt_limit),
-                    partnerPilot: exam.partner_pilot,
-                    rubricVersionId: exam.rubric_version_id ?? "",
-                  });
-                  setEditing(exam);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                themeType="b2b"
-                variant="commit"
-                size="xs"
-                disabled={exam.status === "published" || action.busy !== null}
-                onClick={() => void action.run(`publish:${exam.id}`, () => publishExam(scope, exam.id))}
-              >
-                {action.busy === `publish:${exam.id}` ? "Publishing…" : "Publish"}
-              </Button>
-              <Button
-                themeType="b2b"
-                variant="secondary"
-                size="xs"
-                disabled={exam.status === "retired" || action.busy !== null}
-                onClick={() => void action.run(`retire:${exam.id}`, () => retireExam(scope, exam.id))}
-              >
-                {action.busy === `retire:${exam.id}` ? "Retiring…" : "Retire"}
-              </Button>
-            </div>
-          </div>
-        ))}
+              <AuthoringRowActions>
+                <AuthoringIconAction
+                  label={
+                    locked
+                      ? "OSCE Guide exams are edited in the staff catalogue"
+                      : "Edit"
+                  }
+                  disabled={locked}
+                  onClick={() => {
+                    setForm({
+                      code: exam.code,
+                      name: exam.name,
+                      reading: String(exam.default_reading_seconds),
+                      simulation: String(exam.default_simulation_seconds),
+                      attempts: String(exam.station_attempt_limit),
+                      partnerPilot: exam.partner_pilot,
+                      rubricVersionId: exam.rubric_version_id ?? "",
+                    });
+                    setEditing(exam);
+                  }}
+                >
+                  <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
+                </AuthoringIconAction>
+                {exam.status !== "published" ? (
+                  <AuthoringIconAction
+                    variant="primary"
+                    label="Publish"
+                    busy={publishBusy}
+                    busyLabel="Publishing…"
+                    disabled={action.busy !== null}
+                    onClick={() =>
+                      void action.run(`publish:${exam.id}`, () => publishExam(scope, exam.id))
+                    }
+                  >
+                    <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
+                  </AuthoringIconAction>
+                ) : null}
+                {exam.status !== "retired" ? (
+                  <AuthoringIconAction
+                    variant="warning"
+                    label="Retire"
+                    busy={retireBusy}
+                    busyLabel="Retiring…"
+                    disabled={action.busy !== null}
+                    onClick={() =>
+                      void action.run(`retire:${exam.id}`, () => retireExam(scope, exam.id))
+                    }
+                  >
+                    <HiOutlineNoSymbol className="h-4 w-4" aria-hidden />
+                  </AuthoringIconAction>
+                ) : null}
+              </AuthoringRowActions>
+            </AuthoringListRow>
+          );
+        })}
       </ListCard>
 
       <AuthoringDialog

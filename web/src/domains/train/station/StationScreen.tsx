@@ -1,4 +1,5 @@
 "use client";
+import { LiveCoveragePanel } from "@/capabilities/attempt-runner/coverage/LiveCoveragePanel";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,11 +26,15 @@ import {
   ConsultationScreen,
   ManagementPlanView,
   StationBrief,
+  consultationPatientFromBrief,
   useAttemptSession,
 } from "@/capabilities/attempt-runner";
+import { readResults } from "@/capabilities/attempt-runner";
 import { MarkingModal } from "@/domains/train/station/MarkingModal";
 import { FeedbackStep } from "@/domains/train/station/FeedbackStep";
 import { TranscriptStep } from "@/domains/train/station/TranscriptStep";
+import { SimulationTimeUpModal } from "@/domains/train/station/SimulationTimeUpModal";
+import { useStationUrl } from "@/domains/train/station/useStationUrl";
 import {
   STEP_LABELS,
   StationHeader,
@@ -42,15 +47,20 @@ import {
   useStationAttempt,
   type StationAction,
 } from "@/domains/train/station/useStationAttempt";
+import {
+  useOptionalPendingFeedback,
+  feedbackReviewHref,
+} from "@/capabilities/pending-feedback";
+
+export type StationSource =
+  | { kind: "set"; setId: string; entryId: string }
+  | { kind: "practice"; stationId: string }
+  | { kind: "self_practice"; orgSlug: string; stationId: string };
 
 export interface StationScreenProps {
-  /** Identifies the station being sat, and how to start it. */
-  source:
-    | { kind: "set"; setId: string; entryId: string }
-    | { kind: "practice"; stationId: string };
+  source: StationSource;
   action: StationAction;
   step?: StationStep;
-  /** A particular past attempt to review, rather than the most recent. */
   attemptId?: string | null;
   stationVersionId?: string | null;
   examCode: string;
@@ -60,30 +70,15 @@ export interface StationScreenProps {
   total: number;
   attemptsUsed: number | null;
   attemptLimit: number | null;
-  /** Start this station's attempt. Called once, when the screen opens. */
   createAttempt: () => Promise<{ id: string }>;
-  /** Where "Next station" goes, or null on the last one. */
   nextHref: string | null;
-  /** Where "Complete session" goes. */
   completeHref: string | null;
+  /** For flagging — library station id when known. */
+  flagStationId?: string | null;
 }
 
-/**
- * One station, from the brief to the feedback.
- *
- * The retiring client's `NewStationDetail`, which is one screen with four
- * numbered steps: read the notes, talk to the patient, then — once it is
- * over — compare against the model answer and read the marking. The platform
- * had none of that: a generic runner with no brief at all (nothing served one),
- * no management step, and feedback on a separate page somebody had to be
- * navigated to.
- *
- * What is genuinely different here is that the attempt is created when the
- * screen opens rather than when the patient is called, because the brief is
- * read *off the attempt* — that is what makes it the candidate's to see.
- * `useStationAttempt` keeps the id across a reload so a refresh does not spend
- * a second go.
- */
+type EndReason = "manual" | "timer" | null;
+
 export function StationScreen(props: StationScreenProps) {
   const {
     source,
@@ -100,56 +95,204 @@ export function StationScreen(props: StationScreenProps) {
     createAttempt,
     nextHref,
     completeHref,
+    flagStationId,
   } = props;
 
   const router = useRouter();
   const { hrefFor } = useSurface();
+  const { replace: replaceUrl } = useStationUrl();
+  const pendingFeedback = useOptionalPendingFeedback();
 
   const [step, setStep] = useState<StationStep>(initialStep ?? "patient");
   const [confirmingStart, setConfirmingStart] = useState(false);
   const [readingUp, setReadingUp] = useState(false);
   const [marking, setMarking] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const [simulationTimeUp, setSimulationTimeUp] = useState(false);
+  const [completeSessionConfirm, setCompleteSessionConfirm] = useState(false);
+  const [isCompletingSession, setIsCompletingSession] = useState(false);
+  const [hasFeedbackReady, setHasFeedbackReady] = useState(false);
+  const [finishedAttemptId, setFinishedAttemptId] = useState<string | null>(null);
+
   const pendingHref = useRef<string | null>(null);
+  const endReasonRef = useRef<EndReason>(null);
+  const hasConsultedRef = useRef(false);
+  const timeUpHandledRef = useRef(false);
+  const pendingKeyRef = useRef<string | null>(null);
 
   const stationKey =
-    source.kind === "set" ? `${source.setId}:${source.entryId}` : `practice:${source.stationId}`;
+    source.kind === "set"
+      ? `${source.setId}:${source.entryId}`
+      : source.kind === "practice"
+        ? `practice:${source.stationId}`
+        : `self:${source.orgSlug}:${source.stationId}`;
 
   const attempt = useStationAttempt({
     key: stationKey,
-    action,
+    action: finishedAttemptId ? "review" : action,
     create: createAttempt,
-    attemptIdFromUrl: attemptFromUrl,
+    attemptIdFromUrl: finishedAttemptId ?? attemptFromUrl,
     stationVersionId,
     setEntryId: source.kind === "set" ? source.entryId : null,
   });
 
+  const registerBackgroundMarking = useCallback(() => {
+    if (!pendingFeedback || !hasConsultedRef.current || !attempt.attemptId) return;
+    const reviewHref =
+      source.kind === "set"
+        ? hrefFor(feedbackReviewHref(source.setId, source.entryId, attempt.attemptId))
+        : source.kind === "practice"
+          ? hrefFor(
+              `/stations/${source.stationId}/practise?action=review&tab=feedback&attempt=${attempt.attemptId}`,
+            )
+          : hrefFor(`/attempts/${attempt.attemptId}`);
+
+    const key = `${stationKey}:${attempt.attemptId}`;
+    pendingKeyRef.current = key;
+    pendingFeedback.register({
+      key,
+      attemptId: attempt.attemptId,
+      stationLabel: total > 1 ? `Station ${index + 1}` : "Station",
+      reviewHref,
+    });
+    pendingFeedback.release(key);
+  }, [pendingFeedback, attempt.attemptId, source, hrefFor, stationKey, index, total]);
+
+  const handleSessionEnded = useCallback(() => {
+    forgetStationAttempt(stationKey);
+    const reason = endReasonRef.current;
+    endReasonRef.current = null;
+    const isLast = nextHref === null;
+
+    if (reason === "timer") {
+      if (!isLast) {
+        registerBackgroundMarking();
+        setSimulationTimeUp(true);
+        return;
+      }
+      if (!hasConsultedRef.current) {
+        if (completeHref) router.push(completeHref);
+        return;
+      }
+      setMarking(true);
+      return;
+    }
+
+    setMarking(true);
+  }, [nextHref, completeHref, router, stationKey, registerBackgroundMarking]);
+
   const session = useAttemptSession({
     attemptId: attempt.attemptId,
-    readingSeconds: 0, // The step tabs are the reading period, not the hook's.
-    onEnded: () => {
-      forgetStationAttempt(stationKey);
-      setMarking(true);
-    },
+    readingSeconds: 0,
+    onEnded: handleSessionEnded,
   });
 
-  // Nothing left to sit means there is nothing to sit *now*: the station reads
-  // back like a review, which is what the retiring client's "Completed" pill
-  // meant. Refusing the screen outright would hide a station somebody has
-  // already paid for and sat.
-  const effectiveAction = attempt.exhausted ? "review" : action;
+  const effectiveAction = attempt.exhausted || finishedAttemptId ? "review" : action;
   const steps = stepsFor(effectiveAction);
   const live = session.phase === "connecting" || session.phase === "live";
 
-  // Moving to the consultation step is what calls the patient. The old client
-  // had the same coupling and it is the right one: a candidate who has clicked
-  // through to step two has said they are ready.
+  useEffect(() => {
+    if (session.phase === "live") hasConsultedRef.current = true;
+  }, [session.phase]);
+
+  useEffect(() => {
+    if (!attempt.attemptId || effectiveAction !== "review") return;
+    let live = true;
+    void readResults(attempt.attemptId).then((results) => {
+      if (live) setHasFeedbackReady(results.length > 0);
+    }).catch(() => {
+      if (live) setHasFeedbackReady(false);
+    });
+    return () => {
+      live = false;
+    };
+  }, [attempt.attemptId, effectiveAction, attempt.review]);
+
+  const setStepAndUrl = useCallback(
+    (next: StationStep) => {
+      setStep(next);
+      replaceUrl({ step: next, action: effectiveAction, attemptId: attempt.attemptId });
+    },
+    [replaceUrl, effectiveAction, attempt.attemptId],
+  );
+
   const enterConsultation = useCallback(() => {
-    setStep("simulation");
+    setStepAndUrl("simulation");
     setConfirmingStart(false);
     setReadingUp(false);
-    if (effectiveAction === "attempt" && session.phase === "idle") void session.startConsultation();
-  }, [effectiveAction, session]);
+  }, [setStepAndUrl]);
+
+  const handleTabChange = useCallback(
+    (next: StationStep) => {
+      if (next === "simulation" && effectiveAction === "attempt" && step === "patient") {
+        setConfirmingStart(true);
+        return;
+      }
+      setStepAndUrl(next);
+    },
+    [effectiveAction, step, setStepAndUrl],
+  );
+
+  const endActiveConsultation = useCallback(async () => {
+    if (live) {
+      endReasonRef.current = "manual";
+      await session.end();
+    }
+  }, [live, session]);
+
+  const handleSimulationTimeUp = useCallback(async () => {
+    if (timeUpHandledRef.current) return;
+    timeUpHandledRef.current = true;
+    endReasonRef.current = "timer";
+    if (live) await session.end();
+    else handleSessionEnded();
+  }, [live, session, handleSessionEnded]);
+
+  const handleNextStation = useCallback(async () => {
+    await endActiveConsultation();
+    if (effectiveAction === "attempt") registerBackgroundMarking();
+    if (nextHref) router.push(nextHref);
+  }, [endActiveConsultation, effectiveAction, registerBackgroundMarking, nextHref, router]);
+
+  const finishWithoutFeedback = useCallback(() => {
+    pendingFeedback?.pushNotice({
+      tone: "info",
+      title: `No consultation recorded for Station ${index + 1}`,
+      message:
+        "The simulation wasn't started, so there is nothing to mark. You can attempt the station again from the station page.",
+    });
+    if (completeHref) router.push(completeHref);
+  }, [pendingFeedback, index, completeHref, router]);
+
+  const executeCompletionProcess = useCallback(() => {
+    registerBackgroundMarking();
+    setMarking(true);
+  }, [registerBackgroundMarking]);
+
+  const handleCompleteSessionIntent = useCallback(() => {
+    setCompleteSessionConfirm(true);
+  }, []);
+
+  const confirmCompleteSession = useCallback(async () => {
+    if (isCompletingSession) return;
+    setIsCompletingSession(true);
+    setCompleteSessionConfirm(false);
+    setReadingUp(false);
+    if (!hasConsultedRef.current) {
+      finishWithoutFeedback();
+      setIsCompletingSession(false);
+      return;
+    }
+    await endActiveConsultation();
+    executeCompletionProcess();
+    setIsCompletingSession(false);
+  }, [
+    isCompletingSession,
+    finishWithoutFeedback,
+    endActiveConsultation,
+    executeCompletionProcess,
+  ]);
 
   const leaveTo = useCallback(
     (href: string) => {
@@ -163,13 +306,30 @@ export function StationScreen(props: StationScreenProps) {
     [live, router],
   );
 
-  // A consultation in progress must survive a stray click on "Next station",
-  // and must not survive the browser being closed silently.
   useEffect(() => {
     if (!live) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const interceptLink = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const anchor = target?.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin || url.href === window.location.href) return;
+      event.preventDefault();
+      event.stopPropagation();
+      pendingHref.current = url.pathname + url.search + url.hash;
+      setLeaving(true);
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    document.addEventListener("click", interceptLink, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", interceptLink, true);
+    };
   }, [live]);
 
   if (attempt.loading) {
@@ -184,11 +344,10 @@ export function StationScreen(props: StationScreenProps) {
     return <Alert tone="danger">{errorMessage(attempt.error)}</Alert>;
   }
 
-  // A tab from the URL that this action does not offer — `management` on a
-  // station being sat — falls back rather than rendering nothing.
   const activeStep = steps.includes(step) ? step : steps[0]!;
   const isLast = nextHref === null;
   const onReading = activeStep === "patient" && effectiveAction === "attempt";
+  const demoteStationNav = onReading || activeStep === "feedback";
 
   return (
     <div className="flex flex-col">
@@ -197,10 +356,16 @@ export function StationScreen(props: StationScreenProps) {
         total={total}
         attemptsUsed={attemptsUsed}
         attemptLimit={attemptLimit}
+        flagStationId={flagStationId}
       />
 
       <div className="flex flex-col items-center justify-between lg:flex-row">
-        <StationTabs steps={steps} active={activeStep} onChange={setStep} />
+        <StationTabs
+          steps={steps}
+          active={activeStep}
+          onChange={handleTabChange}
+          feedbackReady={hasFeedbackReady}
+        />
 
         {effectiveAction === "attempt" && attempt.attemptId && (
           <div className="mt-4 lg:mt-0">
@@ -209,7 +374,7 @@ export function StationScreen(props: StationScreenProps) {
                 duration={readingSeconds}
                 stationId={attempt.attemptId}
                 timerType="doctor"
-                onTimeUp={() => setReadingUp(true)}
+                onTimeUp={enterConsultation}
               />
             )}
             {activeStep === "simulation" && (
@@ -217,7 +382,7 @@ export function StationScreen(props: StationScreenProps) {
                 duration={simulationSeconds}
                 stationId={attempt.attemptId}
                 timerType="simulation"
-                onTimeUp={() => void session.end()}
+                onTimeUp={() => void handleSimulationTimeUp()}
                 onFinalCountdown={session.warnTimeRemaining}
               />
             )}
@@ -228,8 +393,14 @@ export function StationScreen(props: StationScreenProps) {
       <div className="mb-4 mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3 lg:mt-6">
         <Button
           type="button"
-          variant={onReading ? "secondary" : "primary"}
-          onClick={() => leaveTo(isLast ? (completeHref ?? hrefFor("/mocks")) : nextHref!)}
+          variant={demoteStationNav ? "secondary" : "primary"}
+          onClick={() =>
+            isLast
+              ? handleCompleteSessionIntent()
+              : onReading
+                ? leaveTo(nextHref!)
+                : handleNextStation()
+          }
           disabled={live}
           className={cn(
             "w-full gap-2 sm:w-auto",
@@ -276,8 +447,10 @@ export function StationScreen(props: StationScreenProps) {
             <Alert tone="info">There is no written brief for this station.</Alert>
           ))}
 
-        {activeStep === "simulation" && (
+        {(activeStep === "simulation" || live) && (
+          <div hidden={activeStep !== "simulation"}>
           <ConsultationScreen
+            coverage={effectiveAction === "attempt" ? <LiveCoveragePanel attemptId={attempt.attemptId} isLive={session.phase === "live"} /> : undefined}
             sticky={effectiveAction === "attempt"}
             showTerms={effectiveAction === "attempt"}
             asideTitle={effectiveAction === "attempt" ? "Doctor information" : "Transcription"}
@@ -287,10 +460,7 @@ export function StationScreen(props: StationScreenProps) {
               <ConsultationPanel
                 session={session}
                 durationSeconds={simulationSeconds}
-                patient={{
-                  name: attempt.brief?.patient.name_line || "Your patient",
-                  detail: attempt.brief?.station_title,
-                }}
+                patient={consultationPatientFromBrief(attempt.brief)}
                 disabledReason={
                   attempt.exhausted
                     ? "You have used every attempt at this station."
@@ -313,6 +483,7 @@ export function StationScreen(props: StationScreenProps) {
               )
             }
           />
+          </div>
         )}
 
         {activeStep === "management" &&
@@ -331,24 +502,46 @@ export function StationScreen(props: StationScreenProps) {
             setId={source.kind === "set" ? source.setId : null}
             entryId={source.kind === "set" ? source.entryId : null}
             stationVersionId={stationVersionId ?? attempt.brief?.station_version_id ?? null}
+            brief={attempt.brief}
+            review={attempt.review}
           />
         )}
       </div>
 
       <ConfirmModal
         isOpen={confirmingStart}
-        onCancel={() => setConfirmingStart(false)}
+        onCancel={() => {
+          setConfirmingStart(false);
+        }}
         onConfirm={enterConsultation}
         closeOnBack={false}
         message="Start the consultation now? Reading time ends and the consultation timer starts immediately."
       />
 
       <ConfirmModal
-        isOpen={readingUp && !marking}
+        isOpen={readingUp && !marking && !completeSessionConfirm}
         onCancel={() => setReadingUp(false)}
         onConfirm={enterConsultation}
         message="Reading time is up. Moving you on to the consultation."
         cancelButton={false}
+      />
+
+      <ConfirmModal
+        title="End session"
+        isOpen={completeSessionConfirm}
+        onCancel={() => setCompleteSessionConfirm(false)}
+        onConfirm={() => void confirmCompleteSession()}
+        message="This ends the session and starts marking your consultation. If you haven't started the simulation yet, cancel and press Start simulation first."
+      />
+
+      <SimulationTimeUpModal
+        isOpen={simulationTimeUp}
+        isLastStation={isLast}
+        onNext={() => {
+          setSimulationTimeUp(false);
+          if (isLast && completeHref) router.push(completeHref);
+          else if (nextHref) router.push(nextHref);
+        }}
       />
 
       <MarkingModal
@@ -357,11 +550,15 @@ export function StationScreen(props: StationScreenProps) {
         examCode={props.examCode}
         onReady={() => {
           setMarking(false);
-          attempt.reload();
+          setFinishedAttemptId(attempt.attemptId);
+          setHasFeedbackReady(true);
           setStep("feedback");
+          replaceUrl({ step: "feedback", action: "review", attemptId: attempt.attemptId });
+          if (pendingKeyRef.current) pendingFeedback?.resolve(pendingKeyRef.current);
         }}
         onSkip={() => {
           setMarking(false);
+          if (pendingKeyRef.current) pendingFeedback?.release(pendingKeyRef.current);
           if (completeHref) router.push(completeHref);
         }}
       />
@@ -369,8 +566,10 @@ export function StationScreen(props: StationScreenProps) {
       <LeaveConfirmModal
         isOpen={leaving}
         title="Leave this consultation?"
-        message="The consultation is still running. If you leave now it will be ended and sent for marking."
+        message="The station will end now and you'll get feedback on what you've said so far. You can't resume it."
         leaveText="End and leave"
+        stayText="Stay"
+        isLeaving={isLeavingRoom}
         onStay={() => {
           pendingHref.current = null;
           setLeaving(false);
@@ -378,7 +577,11 @@ export function StationScreen(props: StationScreenProps) {
         onLeave={() => {
           const href = pendingHref.current;
           setLeaving(false);
+          setIsLeavingRoom(true);
+          endReasonRef.current = "manual";
           void session.end().then(() => {
+            setIsLeavingRoom(false);
+            if (effectiveAction === "attempt") registerBackgroundMarking();
             if (href) router.push(href);
           });
         }}
@@ -387,5 +590,4 @@ export function StationScreen(props: StationScreenProps) {
   );
 }
 
-/** Exported for the step labels the route files use in their page titles. */
 export { STEP_LABELS };

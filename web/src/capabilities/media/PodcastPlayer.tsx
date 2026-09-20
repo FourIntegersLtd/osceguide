@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   HiOutlineChevronDown,
   HiOutlineChevronLeft,
@@ -65,10 +65,17 @@ export function PodcastPlayer({
    * a race it usually won. Changing the `src` is what needs the reload, so it
    * happens when the element reports the new source can play.
    */
-  const go = (next: number) => {
+  const go = (next: number, autoplay = false) => {
     if (next < 0 || next >= episodes.length) return;
     onIndexChange(next);
+    if (autoplay) setIsPlaying(true);
   };
+
+  useEffect(() => {
+    if (!isPlaying || !audioRef.current?.src) return;
+    const element = audioRef.current;
+    void element.play().catch(() => setIsPlaying(false));
+  }, [index, isPlaying]);
 
   return (
     <ModalContent>
@@ -94,8 +101,8 @@ export function PodcastPlayer({
             src={current.url}
             autoPlay={isPlaying}
             onEnded={() => {
-              setIsPlaying(false);
-              if (canGoNext) go(index + 1);
+              if (canGoNext) go(index + 1, true);
+              else setIsPlaying(false);
             }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}

@@ -1,14 +1,15 @@
 "use client";
 
 import "@livekit/components-styles";
-import { useCallback, useRef } from "react";
+import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
-import { DisconnectReason, type Room } from "livekit-client";
+import { DisconnectReason, Room } from "livekit-client";
 import type { RoomGrant } from "@/foundation/livekit/types";
 
 export interface VoiceRoomProps {
   grant: RoomGrant | null;
+  className?: string;
   children: ReactNode;
   /** Called once the room is up. */
   onConnected?: (room: Room) => void;
@@ -17,6 +18,8 @@ export interface VoiceRoomProps {
   onError?: (error: Error) => void;
   /** Publish the microphone. False for an observer. */
   audio?: boolean;
+  /** Publish camera video for human rooms. */
+  video?: boolean;
 }
 
 /**
@@ -30,13 +33,15 @@ export interface VoiceRoomProps {
  */
 export function VoiceRoom({
   grant,
+  className,
   children,
   onConnected,
   onDisconnected,
   onError,
   audio = true,
+  video = false,
 }: VoiceRoomProps) {
-  const roomRef = useRef<Room | null>(null);
+  const [room] = useState(() => new Room());
 
   const handleDisconnected = useCallback(
     (reason?: DisconnectReason) => {
@@ -54,20 +59,18 @@ export function VoiceRoom({
 
   return (
     <LiveKitRoom
+      className={className}
+      room={room}
       token={grant?.token}
       serverUrl={grant?.server_url}
       connect={Boolean(grant)}
       audio={audio}
-      video={false}
+      video={video}
       onConnected={() => {
-        if (roomRef.current) onConnected?.(roomRef.current);
+        onConnected?.(room);
       }}
       onDisconnected={handleDisconnected}
       onError={(error) => onError?.(error)}
-      // The ref gives callers the room for data messages without a context read.
-      ref={(node: unknown) => {
-        roomRef.current = (node as { room?: Room } | null)?.room ?? null;
-      }}
     >
       <RoomAudioRenderer />
       {children}

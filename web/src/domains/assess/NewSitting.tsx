@@ -5,49 +5,26 @@ import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, Button, Card, Input, PageHeader, Spinner, cn } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { createSitting, listFeedbackTemplates, listProgrammes } from "@/domains/assess/api";
+import { createSitting, listProgrammes } from "@/domains/assess/api";
 
-/**
- * Schedule a sitting.
- *
- * The only genuinely required choice is the feedback template version: the
- * backend binds it with a NOT NULL foreign key, so a sitting cannot exist
- * without one and marking can never be undefined after the fact. Only
- * published versions are offered, because only those can be bound.
- */
+/** Schedule a sitting against a programme (exam + published rubric). */
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
 
-  const options = useAsync(
-    async (signal) => {
-      const [programmes, templates] = await Promise.all([
-        listProgrammes(orgSlug, signal),
-        listFeedbackTemplates(orgSlug, signal),
-      ]);
-      // Templates carry their versions inline. Only published ones can be
-      // bound, so an org with templates but nothing published must be told
-      // that rather than shown an empty select.
-      return {
-        programmes: programmes.items,
-        templates: templates.items.map((template) => ({
-          template,
-          versions: (template.versions ?? []).filter((version) => version.status === "published"),
-        })),
-      };
-    },
+  const programmes = useAsync(
+    (signal) => listProgrammes(orgSlug, signal).then((page) => page.items),
     [orgSlug],
   );
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Schedule a sitting" description="An examination or a training session." />
-      <AsyncBoundary state={options}>
-        {(data) => (
+      <AsyncBoundary state={programmes}>
+        {(items) => (
           <Form
             orgSlug={orgSlug}
-            programmes={data.programmes}
-            templates={data.templates}
+            programmes={items}
             onCreated={(id) => router.push(hrefFor(`/sittings/${id}`))}
           />
         )}
@@ -56,37 +33,23 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
   );
 }
 
-type TemplateOption = {
-  template: { id: string; title: string };
-  versions: { id: string; version: number }[];
-};
-
 function Form({
   orgSlug,
   programmes,
-  templates,
   onCreated,
 }: {
   orgSlug: string;
-  programmes: { id: string; exam_name: string; status: string }[];
-  templates: TemplateOption[];
+  programmes: { id: string; exam_name: string; exam_code: string; status: string }[];
   onCreated: (sittingId: string) => void;
 }) {
-  const bindable = useMemo(
-    () =>
-      templates.flatMap(({ template, versions }) =>
-        versions.map((version) => ({
-          id: version.id,
-          label: `${template.title} · v${version.version}`,
-        })),
-      ),
-    [templates],
+  const activeProgrammes = useMemo(
+    () => programmes.filter((programme) => programme.status === "active"),
+    [programmes],
   );
 
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"training" | "exam">("training");
-  const [programmeId, setProgrammeId] = useState<string>(programmes[0]?.id ?? "");
-  const [versionId, setVersionId] = useState<string>(bindable[0]?.id ?? "");
+  const [programmeId, setProgrammeId] = useState<string>(activeProgrammes[0]?.id ?? "");
   const [scheduledFor, setScheduledFor] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -100,8 +63,7 @@ function Form({
         const sitting = await createSitting(orgSlug, {
           name: name.trim(),
           mode,
-          programmeId: programmeId || null,
-          feedbackTemplateVersionId: versionId,
+          programmeId,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
         });
         onCreated(sitting.id);
@@ -111,17 +73,19 @@ function Form({
         setBusy(false);
       }
     },
-    [orgSlug, name, mode, programmeId, versionId, scheduledFor, onCreated],
+    [orgSlug, name, mode, programmeId, scheduledFor, onCreated],
   );
 
-  if (bindable.length === 0) {
+  if (activeProgrammes.length === 0) {
     return (
-      <Alert tone="warning" title="Publish a feedback template first">
-        A sitting is bound to a published feedback template version, so marking can never be
-        undefined afterwards. Publish one and come back.
+      <Alert tone="warning" title="Add a programme first">
+        A sitting is bound to a programme whose exam has a published rubric. Add an active programme
+        under Authoring and come back.
       </Alert>
     );
   }
+
+  const selected = activeProgrammes.find((p) => p.id === programmeId) ?? activeProgrammes[0];
 
   return (
     <Card>
@@ -167,21 +131,18 @@ function Form({
           label="Programme"
           value={programmeId}
           onChange={setProgrammeId}
-          options={[
-            { value: "", label: "No programme" },
-            ...programmes.map((programme) => ({
-              value: programme.id,
-              label: `${programme.exam_name}${programme.status === "active" ? "" : ` (${programme.status})`}`,
-            })),
-          ]}
+          options={activeProgrammes.map((programme) => ({
+            value: programme.id,
+            label: `${programme.exam_name} (${programme.exam_code})`,
+          }))}
         />
 
-        <Select
-          label="Feedback template"
-          value={versionId}
-          onChange={setVersionId}
-          options={bindable.map((option) => ({ value: option.id, label: option.label }))}
-        />
+        {selected ? (
+          <p className="text-sm text-ink-muted">
+            Marking uses the published rubric bound to {selected.exam_name}. You do not pick a
+            separate feedback template.
+          </p>
+        ) : null}
 
         <Input
           label="Scheduled for"
@@ -192,7 +153,7 @@ function Form({
         />
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={busy || name.trim().length === 0}>
+          <Button type="submit" disabled={busy || name.trim().length === 0 || !programmeId}>
             {busy ? <Spinner label="Creating" /> : "Create sitting"}
           </Button>
         </div>

@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import Table, {
+  type FetchPageParams,
+  type FetchPageResult,
+} from "@/foundation/table/Table";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { cn } from "@/foundation/ui/cn";
 import { errorMessage } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
@@ -13,9 +19,6 @@ import {
   sortTrainees,
   traineeCountLabel,
 } from "@/domains/assess/roster/support";
-
-const TABLE_CLASS = "min-w-full w-full divide-y divide-b2b-border";
-const CELL = "px-4 py-3 text-osce-body align-middle";
 
 /**
  * Who the organisation examines.
@@ -66,6 +69,89 @@ export function TraineesPanel({
     }
   }
 
+  const fetchPage = useCallback(
+    async (params: FetchPageParams): Promise<FetchPageResult<Trainee>> => {
+      let filtered = rows;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = rows.filter(
+          (trainee) =>
+            displayName(trainee).toLowerCase().includes(q) ||
+            trainee.email.toLowerCase().includes(q) ||
+            cohortName(cohorts, trainee.cohort_id).toLowerCase().includes(q),
+        );
+      }
+      const start = (params.page - 1) * params.perPage;
+      const end = start + params.perPage;
+      return {
+        items: filtered.slice(start, end),
+        totalCount: filtered.length,
+      };
+    },
+    [cohorts, rows],
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "Name",
+        key: "first_name" as keyof Trainee,
+        priority: "primary" as const,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "font-medium text-osce-ink-900")}>
+            {trainee.first_name || trainee.last_name ? displayName(trainee) : "None"}
+          </span>
+        ),
+      },
+      {
+        header: "Email",
+        key: "email" as keyof Trainee,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "text-b2b-graphite")}>{trainee.email}</span>
+        ),
+      },
+      {
+        header: "Group",
+        key: "cohort_id" as keyof Trainee,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
+            {cohortName(cohorts, trainee.cohort_id)}
+          </span>
+        ),
+      },
+      {
+        header: "Access",
+        key: "id" as keyof Trainee,
+        render: (trainee: Trainee) =>
+          accessActive(trainee) ? (
+            <span className="text-osce-caption font-medium text-b2b-success-text">Active</span>
+          ) : (
+            <span className="text-osce-caption font-medium text-b2b-warning-text/90">Revoked</span>
+          ),
+      },
+      {
+        header: "Actions",
+        key: "user_id" as keyof Trainee,
+        priority: "detail" as const,
+        render: (trainee: Trainee) =>
+          canManage ? (
+            <Button
+              themeType="b2b"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setError(null);
+                setPending(trainee);
+              }}
+            >
+              {accessActive(trainee) ? "Revoke" : "Restore"}
+            </Button>
+          ) : null,
+      },
+    ],
+    [canManage, cohorts],
+  );
+
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -82,68 +168,15 @@ export function TraineesPanel({
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       <p className={b2bTokens.b2bEyebrow}>{traineeCountLabel(rows.length)}</p>
 
-      <div className={b2bTokens.b2bGroupedShell}>
-        <div className={b2bTokens.b2bTableScroll}>
-          <table className={TABLE_CLASS}>
-            <thead>
-              <tr>
-                {["Name", "Email", "Group", "Access", ""].map((header, index) => (
-                  <th
-                    key={header || index}
-                    scope="col"
-                    className="px-4 py-2 text-left text-osce-caption font-medium text-b2b-mid"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-b2b-border">
-              {rows.map((trainee) => (
-                <tr key={trainee.id}>
-                  <td className={`${CELL} min-w-[8rem]`}>
-                    <span className="font-medium text-b2b-headline">
-                      {trainee.first_name || trainee.last_name
-                        ? displayName(trainee)
-                        : "None"}
-                    </span>
-                  </td>
-                  <td className={`${CELL} min-w-[11rem] text-b2b-graphite`}>{trainee.email}</td>
-                  <td className={`${CELL} min-w-[6rem] text-b2b-mid`}>
-                    {cohortName(cohorts, trainee.cohort_id)}
-                  </td>
-                  <td className={`${CELL} min-w-[5rem]`}>
-                    {accessActive(trainee) ? (
-                      <span className="text-osce-caption font-medium text-b2b-success-text">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-osce-caption font-medium text-b2b-warning-text/90">
-                        Revoked
-                      </span>
-                    )}
-                  </td>
-                  <td className={`${CELL} text-right`}>
-                    {canManage ? (
-                      <Button
-                        themeType="b2b"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setError(null);
-                          setPending(trainee);
-                        }}
-                      >
-                        {accessActive(trainee) ? "Revoke" : "Restore"}
-                      </Button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Table<Trainee>
+        fetchPage={fetchPage}
+        columns={columns}
+        idField="id"
+        nameField="email"
+        searchPlaceholder="Search trainees…"
+        showPagination={rows.length > 10}
+        defaultItemsPerPage={25}
+      />
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">

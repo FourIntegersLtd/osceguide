@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { HiOutlineCalendar } from "react-icons/hi2";
+import { HiOutlineCalendar, HiOutlineClock } from "react-icons/hi2";
 import { B2CPanelCard, B2CPanelCardBody, cn, productTokens as t } from "@/foundation/ui";
-import { bodyMarkdown, type MediaItem } from "@/capabilities/media/api";
+import { bodyMarkdown, contentUpdatedAt, type MediaItem } from "@/capabilities/media/api";
 import { Prose } from "@/capabilities/media/Prose";
 import { formatPublished, leadsWithHeading, readMinutes } from "@/capabilities/media/support/text";
+import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
 
 /**
  * An article.
@@ -25,9 +26,11 @@ export function ArticleView({
 }) {
   const body = bodyMarkdown(item);
   const published = formatPublished(item.published_at);
+  const updatedRaw = contentUpdatedAt(item);
+  const updated = updatedRaw ? formatPublished(updatedRaw) : null;
   const backLink = (
-    <Link href={hrefFor("/library")} className={cn("inline-block", t.b2cLink)}>
-      ← All articles
+    <Link href={hrefFor(studyListPath("blog"))} className={cn("inline-block", t.b2cLink)}>
+      ← {STUDY_KIND_LABEL.blog}
     </Link>
   );
 
@@ -47,11 +50,18 @@ export function ArticleView({
             <h1 className={cn("mt-3", t.b2cPageTitle)}>{item.title}</h1>
           ) : null}
 
-          {published ? (
+          {published || updated ? (
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-osce-meta text-b2c-text-muted">
-              <span className="flex items-center gap-1.5">
-                <HiOutlineCalendar aria-hidden /> Published {published}
-              </span>
+              {published ? (
+                <span className="flex items-center gap-1.5">
+                  <HiOutlineCalendar aria-hidden /> Published {published}
+                </span>
+              ) : null}
+              {updated ? (
+                <span className="flex items-center gap-1.5">
+                  <HiOutlineClock aria-hidden /> Updated {updated}
+                </span>
+              ) : null}
             </div>
           ) : null}
         </header>

@@ -1,5 +1,7 @@
 "use client";
 
+import { PracticeOptions } from "@/capabilities/peer-practice/PracticeOptions";
+
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import { AsyncBoundary, B2CPanelCard, B2CPanelCardBody, B2CPanelCardHeader, LoadingSpinner } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
@@ -58,6 +60,7 @@ export function MockEnd({ setId }: { setId: string }) {
     <AsyncBoundary state={state}>
       {({ set, rows, attempts, stationsCompleted }) => (
         <div className="space-y-6">
+          <PracticeOptions />
           <MockComplete set={set} rows={rows} stationsCompleted={stationsCompleted} />
 
           <B2CPanelCard className="mt-0">

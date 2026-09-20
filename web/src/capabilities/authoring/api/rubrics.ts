@@ -34,6 +34,7 @@ export function createRubric(
     structure: Json;
     pacing: Json;
     result_schema_override?: Json | null;
+    marking_layout?: Json | null;
   },
 ): Promise<Rubric> {
   return platformRequest(`${scope.base}/rubrics`, { method: "POST", body });
@@ -52,6 +53,7 @@ export function editRubricVersion(
     structure: Json;
     pacing: Json;
     result_schema_override?: Json | null;
+    marking_layout?: Json | null;
   },
 ): Promise<RubricVersion> {
   return platformRequest(`${scope.base}/rubrics/${pathId(rubric)}/versions/${version}`, {

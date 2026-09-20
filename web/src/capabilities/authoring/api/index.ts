@@ -17,8 +17,6 @@ export {
   type StationVersion,
   type StationTemplate,
   type StationTemplateVersion,
-  type FeedbackTemplate,
-  type FeedbackTemplateVersion,
   type Rubric,
   type RubricVersion,
   type Exam,
@@ -27,7 +25,9 @@ export {
 
 export {
   listStations,
+  listAllStations,
   createStation,
+  autogenerateStationDraft,
   addStationVersion,
   editStationVersion,
   deleteStationVersion,
@@ -42,11 +42,8 @@ export {
   publishStationTemplate,
   addStationTemplateVersion,
   editStationTemplateVersion,
-  listFeedbackTemplates,
-  createFeedbackTemplate,
-  publishFeedbackTemplate,
-  addFeedbackTemplateVersion,
-  editFeedbackTemplateVersion,
+  deleteStationTemplateVersion,
+  archiveStationTemplateVersion,
 } from "@/capabilities/authoring/api/templates";
 
 export {

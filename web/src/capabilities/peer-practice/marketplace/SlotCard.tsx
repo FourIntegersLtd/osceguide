@@ -3,17 +3,21 @@
 import { HiOutlineVideoCamera } from "react-icons/hi2";
 import { Button } from "@/foundation/ui";
 import { b2cCard, b2cGhostButton } from "@/foundation/ui/productTokens";
+import { useSession } from "@/foundation/session";
 import type { Slot } from "@/capabilities/peer-practice/api";
 import { clockTime, isPast, shortDate } from "@/capabilities/peer-practice/support/time";
 
+function getInitial(name: string) {
+  return (name || "?").charAt(0).toUpperCase();
+}
+
+function atHandle(username: string | null | undefined, fallback: string) {
+  const raw = (username || fallback).replace(/^@/, "");
+  return `@${raw}`;
+}
+
 /**
- * One offered slot.
- *
- * The four display states are the retiring card's, unchanged — Available,
- * Scheduled, Completed, Expired — because they are what a reader recognises.
- * What changed underneath is where they come from: a status and one instant,
- * rather than a status plus a calendar date plus a wall-clock time that three
- * components each re-assembled their own way.
+ * One offered slot — same four display states and copy as B2C `AvailabilityPostCard`.
  */
 export function SlotCard({
   slot,
@@ -26,6 +30,9 @@ export function SlotCard({
   onWithdraw?: (postId: string) => void;
   isClaiming?: boolean;
 }) {
+  const { session } = useSession();
+  const currentUserId = session?.user.id ?? null;
+
   const past = isPast(slot.starts_at);
   const claimed = slot.status === "claimed";
   const available = slot.status === "available" && !past;
@@ -48,8 +55,13 @@ export function SlotCard({
         ? "Past session"
         : "No longer available";
 
-  // `platform-api` answers with ids, not display names — see docs/port-gaps.md.
-  const posterDisplay = slot.is_mine ? "You" : "A colleague";
+  const posterDisplay = slot.is_mine ? "You" : atHandle(slot.owner_username, "Anonymous");
+  const claimerDisplay =
+    slot.claimed_by_user_id && currentUserId && slot.claimed_by_user_id === currentUserId
+      ? "You"
+      : atHandle(slot.claimed_by_username, "Partner");
+
+  const scheduleLine = `${shortDate(slot.starts_at)}, ${clockTime(slot.starts_at)}`;
 
   return (
     <div className="w-full min-w-0">
@@ -86,17 +98,19 @@ export function SlotCard({
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-osce-accent-subtle font-medium text-osce-accent">
-                {slot.is_mine ? "Y" : "C"}
+                {getInitial(slot.is_mine ? "You" : slot.owner_username || "Anonymous")}
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-b2c-secondary font-medium text-b2c-text-secondary">
-                ?
+                {claimed ? getInitial(slot.claimed_by_username || "P") : "?"}
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-osce-ink-900">{posterDisplay}</p>
+              <p className="truncate font-medium text-osce-ink-900">
+                {claimed ? `${posterDisplay} · ${claimerDisplay}` : posterDisplay}
+              </p>
               <p className="text-b2c-text-muted">
                 {completed
-                  ? "Session completed"
+                  ? " Session completed"
                   : scheduled
                     ? "Session booked"
                     : "Video practice"}
@@ -105,19 +119,33 @@ export function SlotCard({
           </div>
 
           <div className="rounded-lg bg-b2c-surface-muted p-3 text-b2c-text-secondary">
-            <p className="mt-0.5">
-              {slot.note && available
-                ? slot.note
-                : scheduled
-                  ? "Session scheduled:"
-                  : slot.is_mine
-                    ? "I am looking for a practice partner."
-                    : "A colleague is looking for a practice partner."}
-            </p>
-            <p className="font-medium text-b2c-text-secondary">
-              {shortDate(slot.starts_at)}, {clockTime(slot.starts_at)} ·{" "}
-              {slot.duration_minutes} minutes · {slot.exam_code.toUpperCase()}
-            </p>
+            {completed ? (
+              <>
+                <p className="mt-0.5">
+                  {slot.is_mine
+                    ? `You practiced with ${claimerDisplay}`
+                    : slot.claimed_by_user_id && currentUserId && slot.claimed_by_user_id === currentUserId
+                      ? `You practiced with ${posterDisplay}`
+                      : `${posterDisplay} practiced with ${claimerDisplay}`}
+                </p>
+                <p className="font-medium text-b2c-text-secondary">
+                  {slot.note?.trim() ? slot.note : "Video practice session finished"}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-0.5">
+                  {slot.note && available
+                    ? slot.note
+                    : scheduled
+                      ? "Session scheduled:"
+                      : slot.is_mine
+                        ? "I am looking for a practice partner."
+                        : `${atHandle(slot.owner_username, "User")} is looking for a practice partner.`}
+                </p>
+                <p className="font-medium text-b2c-text-secondary">{scheduleLine}</p>
+              </>
+            )}
           </div>
 
           {available && !slot.is_mine && !expired && (

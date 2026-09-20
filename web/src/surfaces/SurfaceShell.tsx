@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createElement, useCallback, useMemo, useState } from "react";
@@ -13,11 +14,37 @@ import {
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
 } from "@/capabilities";
-import { HelpPanel, type HelpNavItem } from "@/capabilities/help";
+import type { HelpNavItem } from "@/capabilities/help/HelpPanel";
+import { LazyHelpPanel } from "@/capabilities/help/LazyHelpPanel";
+import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
-import { navFooterFor } from "@/surfaces/screens";
+import { navFooterFor } from "@/surfaces/navFooters";
 import { WorkspaceSwitcher } from "@/surfaces/WorkspaceSwitcher";
+import { ShellFallback } from "@/surfaces/ShellFallback";
 import type { Workspace } from "@/foundation/routing";
+
+const TrainConsumerShell = dynamic(
+  () =>
+    import("@/surfaces/train/TrainConsumerShell").then((mod) => ({
+      default: mod.TrainConsumerShell,
+    })),
+  { loading: () => <ShellFallback /> },
+);
+
+const PlatformStaffShell = dynamic(
+  () =>
+    import("@/surfaces/platform/PlatformStaffShell").then((mod) => ({
+      default: mod.PlatformStaffShell,
+    })),
+  { loading: () => <ShellFallback /> },
+);
+import {
+  b2cNavLinkActive,
+  b2cNavLinkInactive,
+  b2cNavSectionLabel,
+  b2cPageColumn,
+  b2cShellMain,
+} from "@/foundation/ui/productTokens";
 
 export interface SurfaceShellProps {
   manifest: SurfaceManifest;
@@ -44,6 +71,9 @@ export interface SurfaceShellProps {
  * institution screen without anybody scripting it.
  */
 export function SurfaceShell({ manifest, workspace, basePath, children }: SurfaceShellProps) {
+  const isTrainConsumer = manifest.id === "train" && workspace !== null;
+  const isPlatformStaff = manifest.id === "platform" && workspace === null;
+
   const { session, signOut } = useSession();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -100,14 +130,17 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
           href={item.href}
           onClick={() => setMenuOpen(false)}
           aria-current={active ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-2.5 rounded-control px-3 py-2 text-sm transition-colors",
-            active
-              ? "bg-accent-subtle font-medium text-accent"
-              : "text-ink-muted hover:bg-surface-raised hover:text-ink",
-          )}
+          className={active ? b2cNavLinkActive : b2cNavLinkInactive}
         >
-          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          {Icon && (
+            <Icon
+              className={cn(
+                "h-5 w-5 shrink-0",
+                active ? "text-osce-ink-900" : "text-b2c-text-muted",
+              )}
+              aria-hidden
+            />
+          )}
           {item.label}
         </Link>
       );
@@ -121,6 +154,22 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
     () => items.map((item) => ({ key: item.key, label: item.label, path: item.href })),
     [items],
   );
+
+  if (isTrainConsumer && workspace) {
+    return (
+      <TrainConsumerShell manifest={manifest} workspace={workspace} basePath={basePath}>
+        {children}
+      </TrainConsumerShell>
+    );
+  }
+
+  if (isPlatformStaff) {
+    return (
+      <PlatformStaffShell manifest={manifest} basePath={basePath}>
+        {children}
+      </PlatformStaffShell>
+    );
+  }
 
   return (
     <SurfaceProvider
@@ -137,7 +186,7 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
          * is inside this.
          */
         data-b2c-shell=""
-        className="flex min-h-screen bg-canvas text-ink"
+        className="flex min-h-screen bg-b2c-surface-muted font-sans text-osce-body text-osce-ink-900 antialiased"
       >
         <a
           href="#main"
@@ -178,7 +227,7 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
 
             {groups.sections.map((group) => (
               <div key={group.section} className="mt-4 first:mt-0">
-                <p className="px-3 pb-1.5 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-muted">
+                <p className={b2cNavSectionLabel}>
                   {group.label}
                 </p>
                 <div className="flex flex-col gap-0.5">{group.items.map(renderItem)}</div>
@@ -217,12 +266,14 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
             </div>
           </header>
 
-          <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8">
-            <div className="mx-auto w-full max-w-6xl">{children}</div>
+          <main id="main" data-b2c-scroll="" className={cn(b2cShellMain, "flex min-w-0 flex-1 flex-col")}>
+            <div className={b2cPageColumn}>
+              <PendingFeedbackProvider>{children}</PendingFeedbackProvider>
+            </div>
           </main>
         </div>
 
-        <HelpPanel navItems={helpNav} />
+        <LazyHelpPanel navItems={helpNav} />
       </div>
     </SurfaceProvider>
   );

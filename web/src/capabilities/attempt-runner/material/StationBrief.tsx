@@ -5,16 +5,15 @@ import {
   HiOutlineBeaker,
   HiOutlineCamera,
   HiOutlineClipboardDocumentList,
-  HiOutlineClock,
   HiOutlineDocumentText,
   HiOutlineHeart,
   HiOutlineIdentification,
-  HiOutlinePhoto,
   HiOutlineUser,
   HiOutlineUserCircle,
   HiOutlineUserGroup,
 } from "react-icons/hi2";
 import { Modal } from "@/foundation/ui";
+import OrthoDoctorScreen from "./OrthoDoctorScreen";
 import type { AttemptBrief } from "@/capabilities/attempt-runner/api";
 import {
   DoctorInfoBulletList,
@@ -25,11 +24,8 @@ import {
 /**
  * What the candidate reads before the patient is called.
  *
- * The retiring client had four of these, one per exam, each importing the same
- * three layout parts and differing only in which sections it drew. They are
- * one component picking a section list by exam code, because that is all the
- * difference ever was — and because a fifth exam should be a case here rather
- * than a fifth file.
+ * Preserve each exam's candidate layout. Ortho also selects between clinical,
+ * prioritisation, communication and portfolio station formats.
  *
  * `embedded` is the consultation screen's right-hand column, where the brief
  * stays visible while the candidate talks; standalone is the reading period.
@@ -38,7 +34,7 @@ export function StationBrief({
   brief,
   embedded = false,
 }: {
-  brief: AttemptBrief;
+  brief: Pick<AttemptBrief, "exam_code" | "doctor_information" | "scenario">;
   embedded?: boolean;
 }) {
   const doctor = brief.doctor_information;
@@ -47,18 +43,15 @@ export function StationBrief({
   // Ortho's stations are an interview or a trauma list rather than a
   // consultation, so the candidate's material sits flat on the document beside
   // the doctor block instead of inside it.
-  if (scenario && (scenario.clinical_scenario || scenario.patient_list_for_candidate?.length)) {
+  if (brief.exam_code === "ortho") {
     return (
-      <DoctorInfoShell embedded={embedded} title="Station information">
-        <OrthoSections brief={brief} />
-      </DoctorInfoShell>
+      <OrthoDoctorScreen currentStation={brief.scenario} embedded={embedded} />
     );
   }
 
   // PLAB and CASC brief the candidate on a role and a task; SCA hands them a
-  // set of notes. Which one this is comes from the station rather than from a
-  // branch on the exam code, so an exam that writes both gets both.
-  const roleAndTask = doctor?.doctor_identity || doctor?.doctor_task || doctor?.task_instructions;
+  // set of notes. Match the exam's original reading screen.
+  const roleAndTask = brief.exam_code === "plab" || brief.exam_code === "casc";
 
   return (
     <DoctorInfoShell
@@ -76,8 +69,13 @@ export function StationBrief({
 }
 
 /** PLAB and CASC: who you are, what you know, what you are asked to do. */
-function RoleAndTaskSections({ brief }: { brief: AttemptBrief }) {
+function RoleAndTaskSections({ brief }: { brief: Pick<AttemptBrief, "exam_code" | "doctor_information" | "scenario"> }) {
   const doctor = brief.doctor_information;
+  if (brief.exam_code === "casc") {
+    return <DoctorInfoSection title="Your Role" icon={HiOutlineUserCircle} iconTone="primary">
+      <p>{doctor?.doctor_task}</p>
+    </DoctorInfoSection>;
+  }
   return (
     <>
       {(doctor?.doctor_identity || doctor?.doctor_task) && (
@@ -104,7 +102,7 @@ function RoleAndTaskSections({ brief }: { brief: AttemptBrief }) {
 }
 
 /** SCA: the notes in front of a GP, in the order the old screen drew them. */
-function NotesSections({ brief }: { brief: AttemptBrief }) {
+function NotesSections({ brief }: { brief: Pick<AttemptBrief, "exam_code" | "doctor_information" | "scenario"> }) {
   const doctor = brief.doctor_information;
   if (!doctor) return null;
 
@@ -142,61 +140,6 @@ function NotesSections({ brief }: { brief: AttemptBrief }) {
           <DoctorInfoBulletList items={doctor.recent_investigations} />
         </DoctorInfoSection>
       ) : null}
-    </>
-  );
-}
-
-/** Ortho: a scenario, a list of patients to prioritise, or a radiograph. */
-function OrthoSections({ brief }: { brief: AttemptBrief }) {
-  const scenario = brief.scenario;
-  if (!scenario) return null;
-
-  const patients = scenario.patient_list_for_candidate ?? [];
-
-  return (
-    <>
-      {(scenario.clinical_scenario || scenario.background_overview) && (
-        <DoctorInfoSection
-          title={scenario.clinical_scenario_title || "Scenario"}
-          icon={HiOutlineDocumentText}
-          iconTone="primary"
-        >
-          <p>{scenario.clinical_scenario || scenario.background_overview}</p>
-        </DoctorInfoSection>
-      )}
-
-      {patients.length > 0 && (
-        <DoctorInfoSection title="Patient List" icon={HiOutlineUserGroup} iconTone="emerald">
-          <ul className="space-y-2">
-            {patients.map((patient, index) => (
-              <li key={index}>
-                {[
-                  patient.number != null ? `Patient ${patient.number}` : null,
-                  patient.age != null ? `${patient.age}y` : null,
-                  patient.gender,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </li>
-            ))}
-          </ul>
-        </DoctorInfoSection>
-      )}
-
-      <Photos
-        urls={[
-          ...(scenario.radiograph_image_url ? [scenario.radiograph_image_url] : []),
-          ...(scenario.additional_image_urls ?? []),
-        ]}
-        title="Radiograph"
-        icon={HiOutlinePhoto}
-      />
-
-      {scenario.duration_minutes != null && (
-        <DoctorInfoSection title="Duration" icon={HiOutlineClock} iconTone="amber">
-          <p>{scenario.duration_minutes} minutes</p>
-        </DoctorInfoSection>
-      )}
     </>
   );
 }

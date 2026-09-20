@@ -6,6 +6,7 @@ import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { AsyncBoundary, productTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
+import { listMyAttempts } from "@/capabilities/attempt-runner";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
 
 const { b2cCard, b2cGroupedRow, b2cGroupedRowSubtitle, b2cGroupedRowTitle } = productTokens;
@@ -13,19 +14,32 @@ const { b2cCard, b2cGroupedRow, b2cGroupedRowSubtitle, b2cGroupedRowTitle } = pr
 /**
  * The debriefs someone has had.
  *
- * `attemptId` narrows it to one station's, which is how the retiring client
- * showed it — as a tab beside that station's feedback. Left out, it is the
- * whole history, because the backend keys debriefs on the attempt and not on
- * the station, so "this station's debriefs" is a filter rather than a call.
+ * Station/set scope includes every source consultation, not just the latest
+ * attempt. Without that scope, attemptId narrows to one consultation; with
+ * neither it shows the learner's complete history.
  */
-export function DebriefHistory({ attemptId }: { attemptId?: string } = {}) {
+export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
+  attemptId?: string;
+  stationVersionId?: string | null;
+  entryId?: string | null;
+} = {}) {
   const { hrefFor } = useSurface();
   const state = useAsync(
     async (signal) => {
       const debriefs = await listDebriefs(signal);
-      return attemptId ? debriefs.filter((debrief) => debrief.attempt_id === attemptId) : debriefs;
+      if (stationVersionId || entryId) {
+        const sources = new Set<string>();
+        let cursor: string | null | undefined;
+        do {
+          const page = await listMyAttempts({ stationVersionId, setEntryId: entryId, limit: 100, cursor }, signal);
+          page.items.forEach((item) => sources.add(item.id));
+          cursor = page.next_cursor;
+        } while (cursor && !signal.aborted);
+        return debriefs.filter((debrief) => debrief.source_attempt_id && sources.has(debrief.source_attempt_id));
+      }
+      return attemptId ? debriefs.filter((debrief) => debrief.source_attempt_id === attemptId) : debriefs;
     },
-    [attemptId],
+    [attemptId, stationVersionId, entryId],
   );
 
   return (

@@ -1,48 +1,21 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { HiChevronRight, HiOutlineSparkles } from "react-icons/hi2";
-import { Alert, AsyncBoundary, ButtonLink, b2bTokens } from "@/foundation/ui";
+import { AsyncBoundary, ButtonLink, b2bTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { AttemptRunner, createAttempt } from "@/capabilities/attempt-runner";
-import { listExams, type Exam } from "@/capabilities/stations";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
-import { practisable, readingBrief } from "@/domains/assess/trainee/support";
+import { practisable } from "@/domains/assess/trainee/support";
 
 /**
- * An organisation's own stations, sat alone.
- *
- * The retiring arm had three screens for this — self practice inside a
- * trainee's workspace, a direct-practice home and its station list for a
- * partner's account — with three API modules behind them and their own mock
- * runner, timers and feedback tabs. They differ only in whose library is
- * listed, which is the organisation's in every case, so this is one screen.
- *
- * Everything between "start" and "ended" is `capabilities/attempt-runner`: the
- * reading clock, the microphone check, the room, the patient tile, the
- * wind-down cue and the hang-up. All this adds is the one call that differs —
- * `POST /attempts` with the station's published version — which is why it is a
- * hundred lines rather than the eighteen files it replaces.
- *
- * The platform's own library is a different list and already has a screen: the
- * stations capability, mounted on this arm.
+ * An organisation's own stations, sat alone — list only; the four-step runner
+ * lives on `practiceStation` like consumer library practise.
  */
 export function SelfPractice({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
-  const [chosen, setChosen] = useState<OrgStation | null>(null);
   const state = useAsync((signal) => listOrgStations(orgSlug, signal), [orgSlug]);
-  const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
-
-  if (chosen) {
-    return (
-      <Consultation
-        station={chosen}
-        exam={exams.data?.find((item) => item.code === chosen.exam_code) ?? null}
-        onLeave={() => setChosen(null)}
-      />
-    );
-  }
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
@@ -60,26 +33,24 @@ export function SelfPractice({ orgSlug }: { orgSlug: string }) {
         </ButtonLink>
       </header>
 
-      <AsyncBoundary state={state} isEmpty={(stations) => practisable(stations).length === 0}
+      <AsyncBoundary
+        state={state}
+        isEmpty={(stations) => practisable(stations).length === 0}
         empty={{
           title: "No published stations yet",
           description:
             "Your organisation has not published any station cases. Until it does, the platform library is still open to you.",
         }}
       >
-        {(stations) => <StationList stations={stations} onChoose={setChosen} />}
+        {(stations) => <StationList stations={stations} />}
       </AsyncBoundary>
     </div>
   );
 }
 
-function StationList({
-  stations,
-  onChoose,
-}: {
-  stations: readonly OrgStation[];
-  onChoose: (station: OrgStation) => void;
-}) {
+function StationList({ stations }: { stations: readonly OrgStation[] }) {
+  const router = useRouter();
+  const { hrefFor } = useSurface();
   const rows = useMemo(() => practisable(stations), [stations]);
   const withheld = stations.length - rows.length;
 
@@ -93,7 +64,9 @@ function StationList({
           <button
             key={station.id}
             type="button"
-            onClick={() => onChoose(station)}
+            onClick={() =>
+              router.push(hrefFor(`/stations/${station.id}/practise?action=attempt`))
+            }
             className={`${b2bTokens.b2bGroupedRow} w-full text-left`}
           >
             <span className={`${b2bTokens.b2bIconChipBase} ${b2bTokens.b2bChipHueClasses.amber}`}>
@@ -116,72 +89,5 @@ function StationList({
         </p>
       ) : null}
     </section>
-  );
-}
-
-/**
- * One station, run.
- *
- * `self_practice` rather than `practice` because the backend's `attempts.Kind`
- * distinguishes them: a practice attempt is a consumer's own, and this one is
- * sat inside an organisation and carries its `org_id`. Which of the two a row
- * is decides whose station library it was allowed to draw on, so the kind is
- * not cosmetic.
- */
-function Consultation({
-  station,
-  exam,
-  onLeave,
-}: {
-  station: OrgStation;
-  exam: Exam | null;
-  onLeave: () => void;
-}) {
-  const { hrefFor } = useSurface();
-  const [finished, setFinished] = useState<string | null>(null);
-
-  // Thrown, not caught: `useAttemptSession` owns the failure and renders it
-  // beside the retry, which is the only place a candidate can act on it.
-  const start = useCallback(async () => {
-    const attempt = await createAttempt({
-      examCode: station.exam_code,
-      kind: "self_practice",
-      stationVersionId: station.current_version_id,
-    });
-    return { id: attempt.id };
-  }, [station]);
-
-  if (finished) {
-    return (
-      <div className="flex w-full min-w-0 flex-col gap-4">
-        <Alert tone="success" title="Consultation finished">
-          Your feedback is being marked. It appears on the station record as soon as it is ready.
-        </Alert>
-        <div className="flex flex-wrap gap-2">
-          <ButtonLink themeType="b2b" variant="commit" href={hrefFor(`/attempts/${finished}`)}>
-            Read your feedback
-          </ButtonLink>
-          <button type="button" className={b2bTokens.b2bGhostButton} onClick={onLeave}>
-            Practise another station
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex w-full min-w-0 flex-col gap-4">
-      <button type="button" onClick={onLeave} className={`self-start ${b2bTokens.b2bLinkMuted}`}>
-        Leave and go back to the list
-      </button>
-      <AttemptRunner
-        start={start}
-        onEnded={setFinished}
-        stationTitle={station.title}
-        brief={readingBrief(station)}
-        readingSeconds={exam?.default_reading_seconds ?? 0}
-        simulationSeconds={exam?.default_simulation_seconds ?? 600}
-      />
-    </div>
   );
 }

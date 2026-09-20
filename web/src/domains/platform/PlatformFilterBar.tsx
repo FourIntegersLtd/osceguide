@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { HiOutlineChevronDown } from "react-icons/hi2";
+import { HiOutlineChevronDown, HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import { cn } from "@/foundation/ui/cn";
 import {
   platformStaffFilterBox,
@@ -18,15 +18,37 @@ const ghostSearchClass =
 /** Right-aligned filter row — matches BMJ partner dashboard `DashboardFilterBar`. */
 export function PlatformFilterBar({
   children,
+  leading,
+  trailing,
   className,
+  boxClassName,
 }: {
   children: ReactNode;
+  /** Optional summary line (e.g. result count) on the left. */
+  leading?: ReactNode;
+  /** Primary action beside the filter box (e.g. New station). */
+  trailing?: ReactNode;
   className?: string;
+  boxClassName?: string;
 }) {
   return (
     <section className={cn(platformStaffFilterSection, className)}>
-      <div className="flex justify-end">
-        <div className={platformStaffFilterBox}>{children}</div>
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          leading ? "sm:flex-row sm:items-center sm:justify-between" : "sm:flex-row sm:items-center sm:justify-end",
+        )}
+      >
+        {leading ? <div className="min-w-0 shrink-0">{leading}</div> : null}
+        <div
+          className={cn(
+            "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-end",
+            leading ? "w-full sm:w-auto sm:flex-1" : "w-full",
+          )}
+        >
+          <div className={cn(platformStaffFilterBox, "sm:max-w-3xl", boxClassName)}>{children}</div>
+          {trailing ? <div className="flex shrink-0 items-center justify-end">{trailing}</div> : null}
+        </div>
       </div>
     </section>
   );
@@ -89,13 +111,17 @@ export function PlatformFilterSearch({
       )}
     >
       <span className="sr-only">{label}</span>
+      <HiOutlineMagnifyingGlass
+        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
+        aria-hidden
+      />
       <input
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className={ghostSearchClass}
+        className={cn(ghostSearchClass, "pl-8")}
       />
     </label>
   );

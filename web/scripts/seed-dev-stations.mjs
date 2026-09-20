@@ -12,8 +12,12 @@
  * documents (`frontend/src/b2c/types/station`). Idempotent by title.
  *
  *   node scripts/seed-dev-stations.mjs --email you@example.com --password ...
+ *   node scripts/seed-dev-stations.mjs --clean --title "Hip pain in a runner"
  *
  * The account must be a platform admin: these are platform-library stations.
+ *
+ * `--clean` runs `clean-dev-library.mjs` with `--dev` plus any `--title` flags
+ * you pass (archives published junk; does not delete rows).
  */
 
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
@@ -128,7 +132,27 @@ const PLAB = {
 
 const STATIONS = [SCA, PLAB];
 
+async function runClean() {
+  const { spawnSync } = await import("node:child_process");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const extra = process.argv.filter((_, i, a) => a[i - 1] === "--title");
+  const args = ["scripts/clean-dev-library.mjs", "--dev", ...extra.flatMap((t) => ["--title", t])];
+  if (process.argv.includes("--dry-run")) args.push("--dry-run");
+  const email = arg("email", EMAIL);
+  const password = arg("password", PASSWORD);
+  args.push("--email", email, "--password", password);
+  const result = spawnSync(process.execPath, args, { stdio: "inherit", cwd: root });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
 async function main() {
+  if (process.argv.includes("--clean")) {
+    await runClean();
+    return;
+  }
+
   const auth = await call("/api/v1/auth/login", {
     method: "POST",
     body: { email: EMAIL, password: PASSWORD },

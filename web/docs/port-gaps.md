@@ -57,7 +57,7 @@ for. The first row used to be the biggest of them and is now served.
 | The candidate brief, patient information and management plan | `capabilities/attempt-runner/material/` | **Served.** `LibraryStationRead` still carries no `content` — the library is browsable by every signed-in user and the content is the brief and the marking guidance — but a candidate reads their own station through their *attempt*: `GET /attempts/{id}/brief` from the moment it is created, and `GET /attempts/{id}/review` once the consultation is over. How the patient is played (persona, opening line, expanded history) and the examiner's context never leave the server at all. |
 | `GET /api/v1/stations/{station_id}` | `findLibraryStation` in `capabilities/stations/api.ts` | There is no per-station read for a learner — every one of them is an authoring route under `/orgs/{slug}/…` or `/platform/…`, gated on permissions a candidate does not have. A station opened by link is found by walking the browse list, bounded at twenty pages. It works and it is cheap, because a row is a title and two ids, but a shared link to a station beyond that is a "we could not find that station". |
 | Searching the library | `useStationLibrary.ts` | `browse_library` takes `exam_code`, `cursor` and `limit`. The search box filters what has been paged in, which is why "Load more" stays offered while a term is typed. A `q` on the endpoint would make it a real search. |
-| Flagging a station | not ported | The old detail screen had a flag button posting to `/api/flag_station`, which put a station in front of the content team. There is no equivalent, and no `flagged_stations` on `/me`. |
+| Flagging a station | `StationHeader` + `POST /me/station-flags` | The runner shows the flag control again. The route accepts a report today; persisting flags for the content team and returning them on `/me` is still open. |
 | Attempts used, out of the exam's limit | **Served for a session's station.** | `EntryRead.attempts` and `ExamRead.station_attempt_limit` are the pill's two halves, and the station screen shows them. Free practice from the library has no counter, because the limit is counted per set entry and a library station is not one. |
 | Live marking during a consultation | not ported | `live/LiveCoveragePanel.tsx` and `LiveCoverageFeed.tsx` subscribed to `/api/live-coverage-stream` and showed competencies as they were covered. `GET /api/v1/attempts/{id}/stream` pushes `AttemptRead` snapshots until the attempt is marked — the right stream, without the coverage frames. Adding a `coverage` event to it is what this needs; the feed is worth bringing back, because it is the one thing in the old runner people asked for by name. |
 | Station photos on legacy hosts | `material/StationBrief.tsx` | Rendered with a plain `<img>` rather than `next/image`. The URLs are absolute, on hosts this app does not configure, and an unconfigured host is a build-time error in `next/image` rather than a slow picture. Adding `remotePatterns` for the image hosts would let it back. |
@@ -273,18 +273,14 @@ trainee's debrief even though the debrief capability is mounted on Assess. A
 `GET /attempts/{id}/debrief` keyed on the attempt, with the same visibility
 rule the result already has, would fix both.
 
-**A debrief needs a station set.** `POST /me/station-sets/{set}/entries/{entry}/debriefs`
-is the only way to start one, so a free-practice attempt — the kind a consumer
-makes from the station library — cannot be debriefed at all. The station
-screen's feedback step therefore shows Start Debrief only for a session's
-station. The backend already keys a debrief on `source_attempt_id`; a
-`POST /attempts/{id}/debriefs` would make the button work everywhere the
-feedback does.
+**Mock debrief — served.** `POST /me/station-sets/{set}/entries/{entry}/debriefs`
+is wired on platform-api and on the station feedback step (`DebriefChooseModal`).
 
-**"Practice as Patient" is still not ported**, for the reason below: it is a
-practice session rather than a debrief, so it belongs with peer practice.
+**Library debrief — still open.** Free practice has no set entry, so the
+feedback step explains that `POST /attempts/{id}/debriefs` is needed before
+Start Debrief works there too.
 
-**No feedback-ready notification once you leave the page.** The retiring client
+**Feedback-ready notification — partially served (see `capabilities/pending-feedback`).** The retiring client
 kept a shell-level watcher (`PendingFeedbackContext` and an SSE hook) so a
 toast found you wherever you were when a marking landed. The station screen
 polls while its marking modal is open and the session-complete screen re-reads
@@ -302,11 +298,16 @@ see their org's reviews but not the machine's mark or the words that produced
 it. Widening the visibility rule to a member of the organisation the attempt's
 slot belongs to is the whole of it.
 
-**"Practice as Patient" is not a debrief.** The retiring debrief modal offered
-a second choice beside the debrief: run the same case from the patient's side
-with the tutor as the doctor. On the platform that is a practice session
-(`/me/practice-sessions`), not a debrief, so it belongs with peer practice
-rather than in `capabilities/debrief`. Nothing mounts it yet.
+**"Practice as Patient" is wired through assistant voice, with limited script
+detail.** The retiring debrief modal offered a second choice beside the
+debrief: run the same case from the patient's side with Athena as the doctor.
+Platform-web now starts this as an assistant session (`athena-doctor`) and uses
+the assistant `voice-token`, not a debrief attempt. The left script panel uses
+the already-loaded attempt brief plus `GET /attempts/{id}/review`, so station
+patient information, biodata and ICE are available. `PatientReviewRead`
+intentionally does not expose the hidden actor history, opening sentence or
+persona. Full History/Persona parity needs a dedicated owner-safe
+roleplay-script read if product wants that shown after the attempt.
 
 ## Shape disagreements
 
@@ -369,20 +370,35 @@ and exported from `capabilities/account`:
 | `src/app/app/[workspace]/achievements/page.tsx` | `Achievements` | The old `/achievements` route. |
 | `src/app/staff/settings/page.tsx` | `Settings` | **Done.** The staff console is outside the workspace grammar and has its own route tree, so `surfaces: ["…", "platform"]` on the capability does not reach it by itself and the route file is written out. The nav entry needed nothing: `SurfaceShell` appends `capabilitiesFor(manifest.id, …)` to every arm's own items, so Settings and Authoring appear on `/staff` from the capability registry. Checked in a browser against a live API in J15. |
 
-### The old `users/` folder is the staff console, not an account screen
+### The old `users/` folder is the staff console — and is now served
 
-`b2c/components/shared/users` (1,395 lines) is an administrator looking at
-somebody else: a filterable list with plan-type facets and bulk hard delete,
-and a detail screen that edits another person's plan dates, flips `has_paid`,
-resets individual station progress and deletes stations from their history.
+`b2c/components/shared/users` (1,395 lines) was an administrator looking at
+somebody else: a per-exam list with plan-type facets, and a detail screen that
+edited another person's plan dates, flipped `has_paid`, reset a station's
+attempt counter and deleted a station from their history.
 
-None of that is an account capability — a capability may not know it is
-standing in the staff arm, and this screen is *only* ever the staff arm. It is
-also almost entirely unservable: `platform-api` has `GET /platform/users` and
-`PUT /platform/users/{id}/platform-admin` and nothing else. There is no
-per-user read, no plan write, no progress reset, no delete. It belongs to **J15
-(staff console)** with the endpoints it needs, and is recorded here so it is
-not mistaken for something J8 dropped.
+**2026-09-19: ported to `domains/platform` as the account directory and the
+account detail's Profile, Stations and Account tabs.** The columns and filters
+are served by `GET /platform/directory` and `…/directory/summary` (dashboard
+slice — every column is a different slice's fact, and `tenancy` sits below
+four of them), the two station actions by `POST /platform/users/{id}/stations/
+{station_id}/reset-attempts` and `…/delete-progress` (station_sets slice, which
+owns the counter the old console reset). Both are audited. What the old
+screen's flags meant is now read from what happened — a payment, a live grant,
+a live sign-in — rather than flipped by hand, so Paid / Unpaid and Active /
+Inactive are not buttons here: the acts are on Billing and Entitlements.
+
+Still not there, and recorded so it is not mistaken for dropped:
+
+| What | Today |
+|---|---|
+| Hard delete of an account, and the bulk delete (which the old list had disabled) | No delete; deactivation is the off switch. See "Deleting a tenant is gone" for the reason. |
+| The "completed" tick per station | No such flag; a station is done when an attempt is `evaluated`, which the row shows. |
+| Flagged stations | No `flagged_stations` on the platform — the same gap "Flagging a station" records above. |
+| Referral code and earnings on the detail | `GET /me/referrals` is a person's own read; no console read of it. |
+| Terms-of-service agreement date | Not recorded on `platform-api`. |
+| The prev / next user pager | Fetched a thousand users to index into; not ported. |
+| Booked mocks | Not a platform concept. |
 
 ### `domains/train/Access.tsx` reads receipts wrongly
 
@@ -456,79 +472,54 @@ unreachable without it.
 
 ## Peer practice — the marketplace and the paired session
 
-`b2c/components/shared/{marketplace,human-practice}` (41 files, 7.2k lines) is
-now `capabilities/peer-practice`. The queue half is whole: joining, the live
-pairing stream, the match, the room and ending a session all go through
-`platform-api`. The marketplace half stops one step short of the call, and the
-session itself has nothing to read during it. Both are backend work, not
-frontend work, and neither is a guess — the routes simply do not exist.
+The train shell now mounts `PeerPracticeProvider`: the SSE queue, minimized
+indicator, match prompt and joinable booking prompt survive page navigation.
+Dashboard and mock completion use `PracticeOptions`; organisation mounting
+retains a scoped provider. Queue storage is isolated by user, exam and audience,
+restores through the status endpoint, and listens for cross-tab changes. Join
+checks for an existing active session before taking another queue place.
 
-### No way into an arranged session's room
+Marketplace post/claim success changes tabs, failed posts retain form values,
+claim loading stays in the confirmation, and cancelling a booking refreshes the
+list. Local date/time rendering and the **10-minute** join window are preserved.
+Upcoming prompts refresh every 30 seconds and on focus; queue updates use SSE.
 
-`POST /api/v1/me/peer-sessions/{id}/join` validates the ten-minute window and
-answers with the session, and `marketplace/service.py` has written
-`peer_sessions.room_name` since the slice landed — but nothing mints a token
-for that room. The queue half has exactly this route
-(`/me/practice-sessions/{id}/voice-token`), added for the same reason: two
-people were being paired and had nowhere to meet.
+### Session parity implemented
 
-Today **Join Session** checks the person in and says so, and points them at
-Live Practice for a room they can actually enter. A
-`POST /me/peer-sessions/{id}/voice-token` alongside the one `peer_practice`
-already has is the whole of the fix.
+The full-screen runner uses the API's `current_phase` and `phase_ends_at`.
+Delayed reads cannot rewind a later phase. Local/remote human camera tracks and
+microphone/camera controls replace `AgentTile`, including reconnect and device
+error states. Consultation/debrief use the 3/5 video, 2/5 material layout at
+large breakpoints. The six-minute warning, consultation time-up prompt,
+partner-joined sound, alarm, end confirmation, no-show and abuse reports, rating
+and comment feedback, and manual requeue are present. End and feedback failures
+remain visible instead of pretending the action succeeded.
 
-### The session has no station
+Preparation now uses the structured station brief and patient History / ICE &
+Concerns / Persona components. The peer API exposes the frozen structured
+material, withholding patient information from the doctor until review and
+management/teaching until debrief. Waiting and preparation have no call panel;
+the human video call connects at consultation. The SSE client resolves the
+same-origin proxy URL and handles named snapshot events, keeping both roles on
+the server phase. Camera/microphone access requires HTTPS or localhost.
 
-`PracticeSessionRead` carries an exam code, a role, a room and two timestamps.
-It does not carry the station the pair are practising, so four screens from the
-old runner have no content to render and are not ported:
+### Backend differences still requiring parity work
 
-| What it showed | Needed |
+| Legacy behavior | Current behavior and remaining work |
 |---|---|
-| The doctor's reading brief (per-exam screens) | A station on the practice session |
-| The patient's roleplay script — history, ICE, persona | The same |
-| The debrief's management plan | The same |
-| The station name in the session header | The same |
+| Two-minute match acceptance and decline/requeue | The global prompt counts down 120 seconds; Accept opens the runner. Not now/timeout calls the existing end-session endpoint, closing the immediately paired room. Acceptance and deadline persist across refresh/tabs. This is **not** backend pending acceptance: add a decline/requeue protocol for exact parity and automatic recovery of the other participant. |
+| Partner-left versus abandoned reason | The stream exposes ended status, without end actor/reason or live disconnect presence. The UI says the session ended and offers feedback or “Join queue again”; it cannot reliably identify who left or automatically abandon a disconnected peer. |
+| Optional rating and “Would practise again?” | Platform requires a 1–5 rating. Although the schema contains `would_practice_again`, the router/service do not save it. The UI submits only the rating/comment the endpoint stores. Feedback currently occupies shared session columns, so per-participant feedback also needs backend work. |
+| Recording, transcript and doctor AI feedback poller | Still P-1. No recording/egress, scoring or feedback-result endpoint is available for peer sessions; no AI feedback readiness is invented. |
+| Automatic requeue | The completed/ended screen provides manual “Join queue again”. It checks for an active session first. |
+| Partner and poster usernames | Current marketplace schemas and cards support supplied usernames. Cards fall back to “A colleague” when absent; the runtime session still exposes only a partner id. |
+| Queue join partner-unavailable error | The queue API has no equivalent code. The match prompt detects an ended room and shows “Partner unavailable”; claim conflicts retain the API error in the confirmation modal. |
+| Leaderboard | Skipped; already commented out in legacy. |
 
-The pairing job picks no station at all, so this starts further back than the
-schema: `peer_practice` would have to choose one when it makes the pair, the
-way `attempts` freezes a scenario when it creates an attempt.
-
-### No phase clock
-
-The retiring runner ran reading, consultation and debrief off a single
-`preparation_started_at`, recomputing all three phases inside a one-second
-interval — the browser deciding when an exam ends. `platform-api` owns
-`started_at` and `ended_at` for a practice session and nothing between them.
-
-The session screen shows **elapsed** time, which is true, rather than a
-countdown nobody is keeping. `phase_ends_at` and `remaining_seconds` on a
-practice session — the columns `sittings` already has — would give this the
-server-owned clock the rest of the product uses.
-
-### Smaller ones, each a route that does not exist
-
-| What the old screen did | Today |
-|---|---|
-| Session feedback after a peer session (would you practise again, 1–5 stars, free text) | Not ported. No endpoint. It fed the matcher's reputation signal. |
-| Report a no-show while waiting for a partner | Not ported. |
-| Report abuse or harassment during a session | Not ported — and this one is a safety control, so it is the first of these worth building. |
-| Requeue after a partner leaves or declines | Not ported. The person leaves the session and joins the queue again. |
-| Cancel an arranged session | The card's **Cancel** explains that it is not available and points at withdrawing the slot. `DELETE /marketplace/slots/{id}` covers the poster; the claimer has nothing. |
-| Accept or decline a match within two minutes | Not ported. `peer_practice` pairs both people directly, so there is no offer to answer — which also removes the auto-decline, the cancelled-session modal and the localStorage keys the old client kept per exam. |
-| Queue expiry after ten minutes | Queue entries are `waiting`, `matched` or `left`; nothing expires them, so the "No Match Found" modal has no event to fire on. |
-| The leaderboard by sessions completed | Not ported. Already commented out in the retiring screen. |
-| Consultation recording and transcript (`start-egress`, `consultation-ended`) | Not ported — `peer_practice/README.md` names it as open question P-1. |
-
-### Shape disagreements
-
-| What | How it is handled |
-|---|---|
-| Partner and poster names | `PostRead` and `PeerSessionRead` carry user **ids**, not usernames, and there is no public profile endpoint. Every `@username` in the old cards reads "You" or "A colleague". Two ids on a card are not worth a join; a display name on these two shapes is. |
-| A slot was a calendar date plus a wall-clock time plus a timezone | It is one `starts_at` instant, rendered in the reader's own zone. This fixes a real bug rather than losing anything: a slot offered at 19:00 in London read as 19:00 in Lagos. |
-| The join window | The old card said twenty minutes and the new backend opens the session at ten (`marketplace/domain.py`). The copy says ten, so the button does not 409 on a person who believed it. |
-| Exam and session length | The old app was one exam per deployment and a fixed thirty minutes. Both are asked for now, because a slot and a queue place are addressed to an exam. |
-| The partner's tile | `foundation/livekit`'s `AgentTile` reads `useVoiceAssistant`, which is an agent's state. A human partner renders in it but its status line is about an agent that is not there. A participant tile beside it in `foundation/livekit` is the fix, and it is foundation work rather than this capability's. |
+Browser parity still needs two entitled accounts and configured LiveKit to test
+both roles for SCA, PLAB, CASC and Ortho. Automated timing tests cover all four
+exam contracts and join boundaries; they do not prove two-way video or backend
+match/expiry delivery. The API remains authoritative for entitlement and audience.
 
 ## The team and the roster (institution)
 
@@ -971,9 +962,12 @@ remove both the duplicate and the poller.
 > immediate deactivation. `domains/platform` wires all of it: the account's
 > Attempts, Entitlements, Billing and History tabs, `/staff/attempts/[id]`,
 > `/staff/billing`, `/staff/audit` and `/staff/ops`. See
-> `platform-api/docs/SUPPORT-RUNBOOK.md`. Still open: backend search on the
-> directory, the org hierarchy, LLM generation keys, and the SSO and
-> contact-inbox screens.
+> `platform-api/docs/SUPPORT-RUNBOOK.md`. **Later that day** the old B2C user
+> console came across too: `/staff/users` is the account directory grouped by
+> exam (`GET /platform/directory`), and the detail gained Stations (reset
+> attempts, delete progress), an Account tab read from facts, and exam date
+> and extra reading time on Profile. Still open: the org hierarchy, LLM
+> generation keys, and the SSO and contact-inbox screens.
 
 
 `b2b/components/features/platform` (9 files, 2.3k lines) is now
@@ -1066,8 +1060,25 @@ the organisation screen offers. This is not a gap to fill.
 | Revoking one person's access to one organisation | not ported | `b2bPlatformRevokeOrgAccess` / `…Restore`. That is `POST /orgs/{slug}/memberships/{id}/revoke`, which is `OrgAdmin` — not on the platform support routes. |
 | A user's memberships, last login, and whether they must change their password | `domains/platform/UserDetail.tsx` | Wired to `GET /platform/users/{id}` when served. Search rows show `is_platform_admin` when `UserSummary` carries it. |
 | Platform org member list and audit from the console | `OrganizationDetail.tsx` | Wired to `GET /platform/organizations/{slug}/memberships` and `…/audit` when platform-api serves them; org-scoped routes still 403 for a console-only admin. |
-| LLM content generation | `capabilities/staff-media/MediaAuthoringHome.tsx` | `POST /platform/generate/*` — needs generation routes and keys on the deployment. |
+| LLM + AV production (staff) | `capabilities/staff-media/MediaDetailScreen.tsx` | Draft text: `POST /api/v1/platform/generate/*`. Summary podcast / slide AV / episode audio: `media_production` (`generate-podcast`, `regenerate-av`, `generate-audio`) via procrastinate — needs `OPENAI_API_KEY`, `CARTESIA_API_KEY`, AWS S3, ffmpeg on workers. B2C Flask pipelines unchanged. |
 | Moderation queue | `capabilities/staff-moderation/` | `GET /platform/moderation/posts` — not on every platform-api build yet. |
 | Searching or filtering the directory on the backend | `Organizations.tsx` | `GET /platform/organizations` takes `status`, `cursor` and `limit`. The type filter and the search box work over what has been paged in, which is why the whole directory is walked (25 pages of 100). Past that it silently searches less than everything. |
 | The organisation hierarchy | `Organizations.tsx` | The old directory showed an institution's parent partner, from `parentOrgId`. `OrganizationRead` has no parent, so a row shows its type and not who it sits under. |
 | Filtering the audit log by actor | not ported | Part of the audit gap above. The org-scoped log takes `cursor` and `limit` only, so even where it is readable there is no actor or action filter — `domains/assess/team`'s History tab has the same limit. |
+
+## Help dock parity
+
+The train help dock now uses the B2C article browser (topics, search, categories,
+article Markdown, related guides and Back), SCA knowledge-chat suggestions and
+conversation, and live voice transcription. Guides use `/api/v1/help/*`, backed
+by the versioned B2C help seed rather than the nonexistent legacy Flask routes.
+The knowledge chat uses platform summary retrieval and respects the caller's
+exam access, including the fourteen-day trial. It requires indexed summary
+content and configured OpenAI; live generated answers have not been verified.
+
+Desktop “Guide me on screen” uses the ported B2C screenshot, pointer, progress,
+scroll/click RPCs and Guide me / Navigate for me controls. It passes the help
+intent and screen-guidance flag through the assistant session extras. The same
+UI-guidance feature flag and desktop breakpoint apply. End-to-end voice and
+screen guidance still require a configured LiveKit assistant worker. Published
+legacy Firestore help changes beyond the seed are not automatically synced.

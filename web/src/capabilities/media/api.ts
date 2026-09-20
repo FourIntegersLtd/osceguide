@@ -1,6 +1,8 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
+import { b2cDeckSlides } from "@/capabilities/media/b2cDeckSlides";
 
-export type MediaItem = components["schemas"]["MediaRead"];
+export type MediaItem =
+  components["schemas"]["app__features__media__schemas__MediaRead"];
 export type MediaPage = components["schemas"]["Page_MediaRead_"];
 
 /**
@@ -65,8 +67,22 @@ export async function listAllMedia(
   return items;
 }
 
+function normalizeMediaSlug(slug: string): string {
+  const trimmed = slug.trim();
+  if (!trimmed) return trimmed;
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
 export function readMedia(slug: string, signal?: AbortSignal): Promise<MediaItem> {
-  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(slug)}`, { signal });
+  const normalized = normalizeMediaSlug(slug);
+  return platformRequest<MediaItem>("/api/v1/media/lookup", {
+    query: { slug: normalized },
+    signal,
+  });
 }
 
 export type SearchHit = components["schemas"]["SearchHit"];
@@ -76,6 +92,93 @@ export function searchMedia(q: string, signal?: AbortSignal) {
     query: { q },
     signal,
   });
+}
+
+/**
+ * Vector search first; if nothing matches (empty index, missing key, or no
+ * embeddings yet), fall back to title/summary substring over the catalogue —
+ * the behaviour the retiring A-to-Z search had before pgvector.
+ */
+function substringSearchHits(items: MediaItem[], normalized: string): SearchHit[] {
+  return items
+    .filter((item) => {
+      const body = bodyMarkdown(item);
+      const haystack = `${item.title} ${item.summary ?? ""} ${body ?? ""}`.toLowerCase();
+      return haystack.includes(normalized);
+    })
+    .slice(0, 20)
+    .map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      slug: item.slug,
+      title: item.title,
+      score: 1,
+    }));
+}
+
+export async function searchMediaWithFallback(
+  q: string,
+  options: { examCode?: string | null; kind?: MediaKind | null } = {},
+  signal?: AbortSignal,
+): Promise<components["schemas"]["Page_SearchHit_"]> {
+  const trimmed = q.trim();
+  const normalized = trimmed.toLowerCase();
+  if (!normalized) return { items: [], next_cursor: null };
+
+  const kind = options.kind ?? null;
+  const examFilter = options.examCode ?? null;
+
+  /** Per-tab search matches the retiring client: substring over that kind's list. */
+  if (kind) {
+    const catalogue = await listAllMedia(kind, signal);
+    const scoped = filterMediaByExam(catalogue, examFilter);
+    return { items: substringSearchHits(scoped, normalized), next_cursor: null };
+  }
+
+  let vectorItems: SearchHit[] = [];
+  try {
+    const page = await searchMedia(trimmed, signal);
+    vectorItems = page.items;
+  } catch {
+    vectorItems = [];
+  }
+  if (vectorItems.length > 0) return { items: vectorItems, next_cursor: null };
+
+  const catalogue = await listAllMedia(null, signal);
+  const scoped = filterMediaByExam(catalogue, examFilter);
+  return { items: substringSearchHits(scoped, normalized), next_cursor: null };
+}
+
+/** Items for the current exam, like the old client scoped lists by `app_type`. */
+export function filterMediaByExam(items: MediaItem[], examCode: string | null): MediaItem[] {
+  if (!examCode) return items;
+  const code = examCode.toLowerCase();
+  return items.filter((item) => !item.exam_code || item.exam_code.toLowerCase() === code);
+}
+
+/**
+ * The episodes the player should actually offer.
+ *
+ * The page item is read by slug (body included for staff and subscribers). The
+ * playlist is `GET /media?kind=podcast`, which can omit this row (a cursor that
+ * skips same-timestamp imports) or strip `content` (a listing that locked the
+ * body). Overlay the page item so the episode you opened still has its URL,
+ * then drop rows with no audio so the playlist is not 101 silent slots.
+ */
+export function podcastSeries(
+  listed: MediaItem[],
+  pageItem: MediaItem,
+  examCode: string | null,
+): MediaItem[] {
+  const scoped = filterMediaByExam(listed, examCode);
+  const merged = scoped.map((entry) =>
+    entry.id === pageItem.id && audioUrl(entry) === null ? pageItem : entry,
+  );
+  if (!merged.some((entry) => entry.id === pageItem.id)) {
+    merged.unshift(pageItem);
+  }
+  const withAudio = merged.filter((entry) => audioUrl(entry) !== null);
+  return withAudio.length > 0 ? withAudio : [pageItem];
 }
 
 /**
@@ -92,8 +195,16 @@ export interface DeckSlide {
   image_url?: string;
 }
 
+function contentRecord(item: MediaItem): Record<string, unknown> {
+  const raw = item.content;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  return {};
+}
+
 function field(item: MediaItem, ...names: string[]): unknown {
-  const content = item.content as Record<string, unknown>;
+  const content = contentRecord(item);
   for (const name of names) {
     if (content[name] !== undefined && content[name] !== null) return content[name];
   }
@@ -111,19 +222,29 @@ function stringList(item: MediaItem, ...names: string[]): string[] {
 }
 
 export function deckSlides(item: MediaItem): DeckSlide[] {
-  const slides = (item.content as { slides?: unknown }).slides;
-  return Array.isArray(slides) ? (slides as DeckSlide[]) : [];
+  const content = contentRecord(item);
+  const slides = content.slides;
+  if (!Array.isArray(slides) || slides.length === 0) return [];
+  return b2cDeckSlides(content);
 }
 
 export function bodyMarkdown(item: MediaItem): string | null {
-  const body = (item.content as { body_md?: unknown; body?: unknown }).body_md ??
-    (item.content as { body?: unknown }).body;
+  const content = contentRecord(item);
+  const body = content.body_md ?? content.body;
   return typeof body === "string" ? body : null;
 }
 
 export function audioUrl(item: MediaItem): string | null {
-  const url = (item.content as { audio_url?: unknown }).audio_url;
-  return typeof url === "string" ? url : null;
+  return stringField(item, "audio_url", "podcast_url");
+}
+
+/** Sidebar grouping for the podcast tab when items lack a dedicated series field. */
+export function podcastGroupLabel(item: MediaItem): string {
+  return (
+    stringField(item, "series_title", "series", "show_name") ??
+    (item.exam_code ? item.exam_code.toUpperCase() : null) ??
+    "Episodes"
+  );
 }
 
 /**
@@ -139,7 +260,11 @@ export function deckVideoUrl(item: MediaItem): string | null {
 
 /** The "About" tab, which falls back to the list summary rather than sitting empty. */
 export function aboutText(item: MediaItem): string | null {
-  return stringField(item, "about") ?? (item.summary?.trim() ? item.summary : null);
+  return (
+    stringField(item, "about") ??
+    stringField(item, "topic") ??
+    (item.summary?.trim() ? item.summary : null)
+  );
 }
 
 /** A summary's podcast, which on the old client hung off the summary itself. */
@@ -153,11 +278,27 @@ export interface SummarySection {
 }
 
 /**
+ * Whether this summary uses the B2C A-to-Z shape (lists in `content`), not
+ * plain markdown only.
+ */
+export function isStructuredSummary(item: MediaItem): boolean {
+  const content = contentRecord(item);
+  return (
+    "red_flags" in content ||
+    "examinations" in content ||
+    "brief_management" in content ||
+    "psychosocial_aspects" in content ||
+    podcastUrl(item) !== null
+  );
+}
+
+/**
  * The three clinical sections of an A-to-Z summary.
  *
- * Returns an empty list when the item carries none of them, which is how a
- * summary published as plain markdown falls through to the prose reader
- * instead of rendering three empty cards.
+ * On the retiring client the detail page always drew three cards (Red flags,
+ * Examinations, Management) even when a list was empty. When the payload is
+ * structured, all three are returned; otherwise an empty list falls through to
+ * the prose reader.
  */
 export function summarySections(item: MediaItem): SummarySection[] {
   const sections: SummarySection[] = [
@@ -165,6 +306,7 @@ export function summarySections(item: MediaItem): SummarySection[] {
     { key: "examinations", items: stringList(item, "examinations") },
     { key: "brief_management", items: stringList(item, "brief_management") },
   ];
+  if (isStructuredSummary(item)) return sections;
   return sections.some((section) => section.items.length > 0) ? sections : [];
 }
 
@@ -183,4 +325,17 @@ export function specialtiesOf(item: MediaItem): string[] {
   const one = stringField(item, "specialty");
   const many = stringList(item, "specialties");
   return many.length > 0 ? many : one ? [one] : [];
+}
+
+/** B2C blogs stored `updated_at` on the document, not on `MediaRead`. */
+export function contentUpdatedAt(item: MediaItem): string | null {
+  return stringField(item, "updated_at");
+}
+
+/** Slide list rows on the retiring client showed `slides_count` from Firestore. */
+export function deckSlidesCount(item: MediaItem): number | null {
+  const raw = field(item, "slides_count");
+  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return raw;
+  const slides = deckSlides(item);
+  return slides.length > 0 ? slides.length : null;
 }

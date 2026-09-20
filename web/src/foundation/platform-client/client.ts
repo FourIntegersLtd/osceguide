@@ -18,9 +18,16 @@ import {
  */
 
 export function platformApiUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_PLATFORM_API_URL?.trim() || "http://127.0.0.1:8002";
-  return raw.replace(/\/+$/, "");
+  // Browser: always same-origin `/api/v1` (proxied in dev — see next.config.ts).
+  // `NEXT_PUBLIC_PLATFORM_API_URL` is for SSR and tooling only; using it in the
+  // browser crosses origins (e.g. :3100 → :8002) and breaks sign-in when CORS
+  // is not configured for the dev port.
+  if (typeof window !== "undefined") return "";
+  const explicit = process.env.NEXT_PUBLIC_PLATFORM_API_URL?.trim();
+  if (explicit) return explicit.replace(/\/+$/, "");
+  const server =
+    process.env.PLATFORM_API_URL?.trim() || process.env.NEXT_PUBLIC_PLATFORM_API_URL?.trim();
+  return (server || "http://127.0.0.1:8002").replace(/\/+$/, "");
 }
 
 type TokenSource = () => string | null | Promise<string | null>;
@@ -69,12 +76,37 @@ function withQuery(path: string, query: RequestOptions["query"]): string {
   return qs ? `${path}?${qs}` : path;
 }
 
+function apiUnreachableDevMessage(status: number): string {
+  return (
+    `Request failed (${status}) — platform-api was not reached. ` +
+    "Use http://localhost:3100 (not :3000). " +
+    "Start the API: cd backend/platform-api && make start. " +
+    "In platform-web/.env.local set PLATFORM_API_URL=http://127.0.0.1:8002 and restart npm run dev:webpack."
+  );
+}
+
+function apiUnreachableMessage(status: number): string | null {
+  if (process.env.NODE_ENV !== "development") return null;
+  if (status === 404 || status === 500 || status === 502 || status === 503) {
+    return apiUnreachableDevMessage(status);
+  }
+  return null;
+}
+
 function asErrorBody(status: number, payload: unknown): PlatformErrorBody {
   if (payload && typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
     if (typeof obj.code === "string" && typeof obj.message === "string") {
       return obj as unknown as PlatformErrorBody;
     }
+    const unreachable = apiUnreachableMessage(status);
+    if (unreachable) {
+      return { code: "internal_error", message: unreachable };
+    }
+  }
+  const unreachable = apiUnreachableMessage(status);
+  if (unreachable) {
+    return { code: "internal_error", message: unreachable };
   }
   // A proxy, a gateway or a crash before the app's error handler ran. Shaped
   // like an `ErrorResponse` so callers have one thing to handle, and given a

@@ -88,7 +88,8 @@ and `roster`.
 
 **J10 · Authoring** — `b2b/components/features/{content,stations,templates,
 feedback}` + `b2c/components/admin` + `shared/aiauto` (9.9k) → a new
-`capabilities/authoring/`. Stations, station templates, feedback templates,
+`capabilities/authoring/`. Stations, station templates, rubrics (AI structure +
+examiner `marking_layout`), exams, and org programmes.
 rubrics, exams, programmes. **One implementation for institution, partner and
 staff**: the backend serves the same shapes under `/orgs/{slug}/…` and
 `/platform/…`, and the capability takes its scope from `SurfaceContext`. 55

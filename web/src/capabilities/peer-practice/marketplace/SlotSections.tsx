@@ -42,10 +42,8 @@ function SectionHeading({ children }: { children: string }) {
  * Every slot, grouped the way the retiring screen grouped them.
  *
  * Available, then Scheduled, then Completed — most recent first inside each.
- * `GET /marketplace/slots` answers with the open ones today, so the last two
- * sections are usually empty; they stay because the grouping is the screen's
- * shape, and a claimed slot appearing in the listing should land in the right
- * place rather than at the top of Available.
+ * The client loads the full feed (available + claimed) for the current exam,
+ * then splits it here the way the retiring B2C screen did.
  */
 export function SlotSections({ slots, actions }: { slots: Slot[]; actions: SlotActions }) {
   const claimed = slots.filter((slot) => slot.status === "claimed");
@@ -58,7 +56,7 @@ export function SlotSections({ slots, actions }: { slots: Slot[]; actions: SlotA
     return (
       <B2CEmptyState
         icon={HiOutlineCalendarDays}
-        title="No availability posts yet"
+        title="No open slots right now"
         description="Be the first to post your availability!"
       />
     );

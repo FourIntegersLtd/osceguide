@@ -41,7 +41,7 @@ function console_(over: {
       sitting_type: "group_training",
       status: "in_progress",
       scheduled_for: null,
-      feedback_template_version_id: "ftv",
+      rubric_version_id: "rv",
     },
     circuit: {
       id: "c1",

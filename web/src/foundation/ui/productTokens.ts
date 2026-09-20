@@ -271,8 +271,12 @@ export const b2cDropdownItem =
   "block w-full px-3 py-2.5 text-left text-osce-body text-osce-ink-900 transition hover:bg-b2c-surface-muted";
 export const b2cSegmentedControl =
   "flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x border-b border-b2c-border pb-2";
+/** Standard gap below a page-level tab row (matches Settings, Community, Mocks). */
+export const b2cSegmentedTabsSpacing = "mb-6 sm:mb-8";
+export const b2cSegmentedTabIconRow = "inline-flex items-center gap-1.5";
+export const b2cSegmentedTabIcon = "h-4 w-4 shrink-0";
 export const b2cSegmentedTab =
-  "inline-flex shrink-0 items-center justify-center rounded-md border border-transparent px-3 py-2.5 text-osce-body font-medium leading-snug whitespace-nowrap transition-colors sm:px-3.5 sm:py-2";
+  "inline-flex shrink-0 items-center justify-center rounded-md border border-transparent px-3 py-2.5 text-osce-data font-medium leading-snug whitespace-nowrap transition-colors sm:px-3.5 sm:py-2";
 export const b2cSegmentedTabLabel = "inline-block";
 export const b2cSegmentedTabActive = `${b2cSegmentedTab} border-b2c-border bg-osce-surface text-osce-ink-900 shadow-[0_1px_2px_rgba(16,24,40,0.04)]`;
 export const b2cSegmentedTabInactive = `${b2cSegmentedTab} text-b2c-text-muted hover:bg-osce-surface/70 hover:text-osce-ink-900`;
@@ -289,21 +293,22 @@ export const b2cBandPillDeveloping =
 export const b2cBandPillDevelopment =
   `${b2cBandPillBase} border-osce-band-developmentBorder bg-osce-band-developmentBg text-osce-band-development`;
 /** Sidebar — solid white surface, distinct from muted content canvas */
-export const b2cNavShell = "bg-osce-surface border-b2c-border-light";
+export const b2cNavShell =
+  "bg-osce-surface border-b2c-border-light font-sans text-osce-data antialiased";
 /** Fixed mobile top bar — matches sidebar surface */
 export const b2cNavMobileBar =
   "bg-osce-surface border-b border-[#EDF1F5]";
 export const b2cNavSectionLabel =
   "mb-2.5 px-2 font-mono text-osce-micro font-medium uppercase tracking-[0.13em] text-b2c-text-muted";
 export const b2cNavLink =
-  "relative flex items-center gap-3 rounded-[7px] px-[11px] py-3 text-osce-body sm:py-2.5 font-normal leading-none transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-osce-accent-subtle focus-visible:ring-offset-2";
+  "relative flex items-center gap-3 rounded-[7px] px-[11px] py-2.5 text-osce-data font-normal leading-snug transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-osce-accent-subtle focus-visible:ring-offset-2 sm:py-2";
 export const b2cNavLinkActive = `${b2cNavLink} bg-osce-navActive font-medium text-osce-ink-900`;
 export const b2cNavLinkInactive = `${b2cNavLink} text-[#344054] hover:bg-osce-navActive hover:text-osce-ink-900`;
 export const b2cNavNewPill =
   "rounded px-1.5 py-1 font-mono text-osce-micro font-medium uppercase tracking-[0.06em] text-osce-accent-hover bg-osce-accent-muted";
 /** Sidebar upgrade — solid primary; blue reserved for intentional CTAs only. */
 export const b2cNavUpgradeButton =
-  "inline-flex w-full items-center justify-center gap-2 rounded-md border border-transparent bg-osce-accent px-4 py-2.5 text-osce-body font-medium text-white transition-colors hover:bg-osce-accent-hover focus:outline-none focus:ring-2 focus:ring-osce-accent/20";
+  "inline-flex w-full items-center justify-center gap-2 rounded-md border border-transparent bg-osce-accent px-4 py-2 text-osce-data font-medium text-white transition-colors hover:bg-osce-accent-hover focus:outline-none focus:ring-2 focus:ring-osce-accent/20";
 export const b2cNavUpgradeButtonIcon =
   `${b2cNavUpgradeButton} h-11 !px-0`;
 /** Chip visuals only — no positioning, so it can be portalled to the body. */

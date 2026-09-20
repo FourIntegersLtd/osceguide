@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input } from "@/foundation/ui";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Button, Input, Modal } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { provisionOrganization, type Organization } from "@/domains/platform/api";
 import { ORG_TYPES, slugify } from "@/domains/platform/support";
@@ -16,10 +16,12 @@ import { ORG_TYPES, slugify } from "@/domains/platform/support";
  * seated on the organisation's own screen, by address, and the backend emails
  * them a link. See `docs/port-gaps.md`.
  */
-export function ProvisionPanel({
+export function ProvisionForm({
   onProvisioned,
+  onCancel,
 }: {
   onProvisioned: (organization: Organization) => void;
+  onCancel?: () => void;
 }) {
   const toast = useToast();
   const [name, setName] = useState("");
@@ -55,57 +57,96 @@ export function ProvisionPanel({
   );
 
   return (
-    <Card title="Provision an organisation">
-      <form onSubmit={submit} className="flex max-w-lg flex-col gap-3 p-5">
-        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
-        <Input
-          label="Name"
-          required
-          value={name}
-          onChange={(event) => {
-            const next = event.target.value;
-            setName(next);
-            // The slug follows the name until somebody edits it themselves.
-            if (!slugEdited) setSlug(slugify(next));
-          }}
-        />
+      <Input
+        label="Name"
+        required
+        value={name}
+        onChange={(event) => {
+          const next = event.target.value;
+          setName(next);
+          if (!slugEdited) setSlug(slugify(next));
+        }}
+      />
 
-        <Input
-          label="Slug"
-          required
-          value={slug}
-          onChange={(event) => {
-            setSlugEdited(true);
-            setSlug(event.target.value);
-          }}
-          hint="Appears in every URL for this workspace. It cannot be changed afterwards."
-        />
+      <Input
+        label="Slug"
+        required
+        value={slug}
+        onChange={(event) => {
+          setSlugEdited(true);
+          setSlug(event.target.value);
+        }}
+        hint="Appears in every URL for this workspace. It cannot be changed afterwards."
+      />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-osce-meta font-medium text-osce-ink-700">Type</span>
-          <select
-            value={orgType}
-            onChange={(event) => setOrgType(event.target.value)}
-            className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
-          >
-            {ORG_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-          <span className="text-osce-meta text-b2c-text-muted">
-            An employer is an institution running exam-mode sittings, not a third kind.
-          </span>
-        </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-osce-meta font-medium text-osce-ink-700">Type</span>
+        <select
+          value={orgType}
+          onChange={(event) => setOrgType(event.target.value)}
+          className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
+        >
+          {ORG_TYPES.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-osce-meta text-b2c-text-muted">
+          An employer is an institution running exam-mode sittings, not a third kind.
+        </span>
+      </label>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={busy || !name.trim() || !slug.trim()}>
-            {busy ? "Provisioning…" : "Provision"}
+      <div className="flex justify-end gap-2 pt-1">
+        {onCancel ? (
+          <Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>
+            Cancel
           </Button>
-        </div>
-      </form>
-    </Card>
+        ) : null}
+        <Button type="submit" disabled={busy || !name.trim() || !slug.trim()}>
+          {busy ? "Provisioning…" : "Provision"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function ProvisionModal({
+  open,
+  onClose,
+  onProvisioned,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onProvisioned: (organization: Organization) => void;
+}) {
+  const [formKey, setFormKey] = useState(0);
+
+  useEffect(() => {
+    if (open) setFormKey((key) => key + 1);
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <Modal
+      onClose={onClose}
+      title="Provision an organisation"
+      width="min(32rem, 96vw)"
+    >
+      <div className="p-4 lg:p-6">
+        <ProvisionForm
+          key={formKey}
+          onCancel={onClose}
+          onProvisioned={(organization) => {
+            onProvisioned(organization);
+            onClose();
+          }}
+        />
+      </div>
+    </Modal>
   );
 }

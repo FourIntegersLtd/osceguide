@@ -16,7 +16,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listAllOrganizations, type Organization } from "@/domains/platform/api";
 import { Row, RowList, Section, StatusBadge } from "@/domains/platform/chrome";
-import { ProvisionPanel } from "@/domains/platform/ProvisionPanel";
+import { ProvisionModal } from "@/domains/platform/ProvisionPanel";
 import { ORG_STATUSES, ORG_TYPES, matchesSearch } from "@/domains/platform/support";
 
 type TypeFilter = "all" | string;
@@ -54,23 +54,19 @@ export function Organizations() {
         description="Institutions and partners. Both run sittings; the mode is what differs."
         icon={LuBuilding2}
         actions={
-          <Button
-            variant={provisioning ? "secondary" : "primary"}
-            onClick={() => setProvisioning((open) => !open)}
-          >
-            {provisioning ? "Cancel" : "Provision"}
+          <Button variant="primary" onClick={() => setProvisioning(true)}>
+            Provision
           </Button>
         }
       />
 
-      {provisioning ? (
-        <ProvisionPanel
-          onProvisioned={() => {
-            setProvisioning(false);
-            state.reload();
-          }}
-        />
-      ) : null}
+      <ProvisionModal
+        open={provisioning}
+        onClose={() => setProvisioning(false)}
+        onProvisioned={() => {
+          state.reload();
+        }}
+      />
 
       <PlatformFilterBar>
         <PlatformFilterSelect

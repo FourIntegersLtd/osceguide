@@ -1,9 +1,7 @@
 "use client";
 
-import { LuSearch } from "react-icons/lu";
-import { cn } from "@/foundation/ui";
-import { b2cInputBase } from "@/foundation/ui/productTokens";
 import type { StationLibraryState } from "@/capabilities/stations/useStationLibrary";
+import { SectionSearchField } from "@/foundation/ui";
 
 /**
  * The one way into a library of a few hundred scenarios: a word from the title.
@@ -17,19 +15,12 @@ import type { StationLibraryState } from "@/capabilities/stations/useStationLibr
  */
 export function StationFilters({ library }: { library: StationLibraryState }) {
   return (
-    <label className="relative block">
-      <span className="sr-only">Search stations by name</span>
-      <LuSearch
-        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-b2c-text-muted"
-        aria-hidden
-      />
-      <input
-        type="search"
-        value={library.search}
-        onChange={(event) => library.setSearch(event.target.value)}
-        placeholder="Search stations by name..."
-        className={cn(b2cInputBase, "pl-9")}
-      />
-    </label>
+    <SectionSearchField
+      value={library.search}
+      onChange={library.setSearch}
+      placeholder="Search stations by name..."
+      ariaLabel="Search stations by name"
+      maxWidthClass="max-w-md"
+    />
   );
 }

@@ -6,6 +6,8 @@ import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Button } from "@/foundation/ui";
 import { register } from "@/foundation/platform-client";
+import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
+import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
@@ -41,7 +43,7 @@ export default function Register() {
    * arrives at the site root signs up without an exam and gets one when they
    * buy, or from the organisation that rostered them.
    */
-  const examCode = useSearchParams().get("appType");
+  const examCode = normalizeExamCode(useSearchParams().get("appType"));
 
   const [formData, setFormData] = useState({
     username: "",
@@ -73,14 +75,15 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      await register({
+      const authenticated = await register({
         email: result.data.email,
         password: result.data.password,
         name: result.data.username,
         examCode,
       });
+      rememberExamSelection(authenticated.user.id, examCode);
       await refresh();
-      router.replace("/app");
+      router.replace(examCode ? `/app/${PERSONAL_SLUG}` : "/app");
     } catch (error) {
       const mapped = mapAuthApiError<RegisterField>(
         error,
@@ -182,7 +185,7 @@ export default function Register() {
 
       <p className={authFooterLink}>
         Already have an account?{" "}
-        <Link href="/login" className={authLink}>
+        <Link href={examAuthHref("/login", examCode)} className={authLink}>
           Sign in
         </Link>
       </p>

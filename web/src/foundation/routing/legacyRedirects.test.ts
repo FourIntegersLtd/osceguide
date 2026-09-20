@@ -11,7 +11,9 @@ describe("legacy redirects", () => {
   it("moves the old consumer root paths under the personal workspace", () => {
     assert.equal(destination("/dashboard"), "/app/me/dashboard");
     assert.equal(destination("/mocks"), "/app/me/mocks");
-    assert.equal(destination("/library"), "/app/me/library");
+    assert.equal(destination("/library"), "/app/me/summary");
+    assert.equal(destination("/slides"), "/app/me/slides");
+    assert.equal(destination("/summary"), "/app/me/summary");
   });
 
   it("keeps both spellings of the dashboard alive", () => {

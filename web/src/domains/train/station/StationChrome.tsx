@@ -1,7 +1,11 @@
 "use client";
 
-import { HiOutlineChevronDown, HiOutlineChevronRight } from "react-icons/hi2";
+import { useState } from "react";
+import { HiOutlineChatBubbleLeftRight, HiOutlineChevronDown, HiOutlineChevronRight } from "react-icons/hi2";
+import { LuFlag } from "react-icons/lu";
 import { Back, cn, productTokens } from "@/foundation/ui";
+import { useToast } from "@/foundation/hooks";
+import { flagStation } from "@/capabilities/stations/flagStation";
 import type { StationAction } from "@/domains/train/station/useStationAttempt";
 
 export type StationStep = "patient" | "simulation" | "management" | "feedback";
@@ -39,14 +43,37 @@ export function StationHeader({
   total,
   attemptsUsed,
   attemptLimit,
+  flagStationId,
 }: {
   index: number;
   total: number;
   attemptsUsed: number | null;
   attemptLimit: number | null;
+  flagStationId?: string | null;
 }) {
+  const toast = useToast();
+  const [flagged, setFlagged] = useState(false);
   const completed =
     attemptsUsed !== null && attemptLimit !== null && attemptsUsed >= attemptLimit;
+
+  const onFlag = async () => {
+    if (!flagStationId) return;
+    try {
+      await flagStation(flagStationId);
+      setFlagged(true);
+      toast.show({
+        tone: "success",
+        title: "Station flagged",
+        message: "Thanks. Our team will take a look at this station.",
+      });
+    } catch {
+      toast.show({
+        tone: "error",
+        title: "We couldn't flag this station",
+        message: "Please try again in a moment.",
+      });
+    }
+  };
 
   return (
     <div className="mb-4 flex flex-col gap-4">
@@ -55,17 +82,35 @@ export function StationHeader({
         <h1 className={productTokens.b2cPageTitle}>
           {total > 1 ? `Station ${index + 1} of ${total}` : "Station"}
         </h1>
-        {attemptsUsed !== null && attemptLimit !== null && (
-          <span className="rounded-full bg-b2c-secondary px-3 py-1 text-osce-body text-b2c-text-secondary">
-            {completed ? (
-              <span className="font-medium text-osce-success-text">Completed</span>
-            ) : (
-              <>
-                Attempts: {attemptsUsed}/{attemptLimit}
-              </>
-            )}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {attemptsUsed !== null && attemptLimit !== null && (
+            <span className="rounded-full bg-b2c-secondary px-3 py-1 text-osce-body text-b2c-text-secondary">
+              {completed ? (
+                <span className="font-medium text-osce-success-text">Completed</span>
+              ) : (
+                <>
+                  Attempts: {attemptsUsed}/{attemptLimit}
+                </>
+              )}
+            </span>
+          )}
+          {flagStationId ? (
+            <button
+              type="button"
+              onClick={() => void onFlag()}
+              aria-pressed={flagged}
+              aria-label="Flag this station for review"
+              title="Flag this station for review"
+            >
+              <LuFlag
+                className={cn(
+                  "h-4 w-4 transition-colors md:h-5 md:w-5",
+                  flagged ? "text-osce-danger" : "text-b2c-text-muted hover:text-osce-danger",
+                )}
+              />
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -76,10 +121,12 @@ export function StationTabs({
   steps,
   active,
   onChange,
+  feedbackReady = false,
 }: {
   steps: StationStep[];
   active: StationStep;
   onChange: (step: StationStep) => void;
+  feedbackReady?: boolean;
 }) {
   return (
     <>
@@ -134,6 +181,12 @@ export function StationTabs({
                 {STEP_NUMBER[step]}
               </span>
               <span className="font-medium text-osce-ink-900">{STEP_LABELS[step]}</span>
+              {step === "feedback" && feedbackReady ? (
+                <HiOutlineChatBubbleLeftRight className="h-4 w-4 text-osce-accent" aria-hidden />
+              ) : null}
+              {step === "feedback" && feedbackReady ? (
+                <span className="h-2 w-2 rounded-full bg-osce-success-icon" aria-hidden />
+              ) : null}
               {(step === "patient" || step === "management") && (
                 <HiOutlineChevronRight className="h-4 w-4 text-b2c-text-muted" aria-hidden />
               )}

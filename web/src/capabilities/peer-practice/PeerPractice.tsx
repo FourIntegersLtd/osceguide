@@ -17,7 +17,8 @@ import { listExams } from "@/capabilities/stations";
 import {
   claimSlot,
   listPracticeSessions,
-  listSlots,
+  listMyPosts,
+  listAllSlots,
   offerSlot,
   withdrawSlot,
   type Slot,
@@ -39,9 +40,9 @@ import {
 import { MySlots, SlotSections } from "@/capabilities/peer-practice/marketplace/SlotSections";
 import { UpcomingSessions } from "@/capabilities/peer-practice/marketplace/UpcomingSessions";
 import { LivePracticeButton } from "@/capabilities/peer-practice/queue/LivePracticeButton";
-import { PeerSessionScreen } from "@/capabilities/peer-practice/session/PeerSessionScreen";
-import { useQueue } from "@/capabilities/peer-practice/support/useQueue";
 import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/time";
+
+import { PeerPracticeProvider, usePeerPractice } from "./PeerPracticeProvider";
 
 /**
  * Practise with another person.
@@ -58,6 +59,14 @@ import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/tim
  * is what lets an institution have this without a second implementation.
  */
 export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
+  const shared = usePeerPractice();
+  if (!shared || shared.orgId !== orgId) return <PeerPracticeProvider orgId={orgId}><PeerPracticeContent orgId={orgId} /></PeerPracticeProvider>;
+  return <PeerPracticeContent orgId={orgId} />;
+}
+function PeerPracticeContent({ orgId }: { orgId: string | null }) {
+  const shared = usePeerPractice()!;
+  const queue = shared.queue;
+  const setChosenSessionId = shared.openSession;
   const [tab, setTab] = useState<MarketplaceTab>("available");
   const [reloadKey, setReloadKey] = useState(0);
   const [offering, setOffering] = useState(false);
@@ -68,17 +77,21 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
   const [posting, setPosting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [chosenSessionId, setChosenSessionId] = useState<string | null>(null);
 
   // The exam is the app's, not this screen's. There used to be a dropdown
   // here over every published exam, which offered to pair somebody for an exam
   // they had never bought — and `POST /peer-practice/queue` now refuses that.
   const { code: activeExam } = useCurrentExam();
   const exams = useAsync((signal) => listExams(signal), []);
-  const slots = useAsync((signal) => listSlots({ orgId }, signal), [orgId, reloadKey]);
+  const slots = useAsync(
+    async (signal) => {
+      const items = await listAllSlots({ orgId, examCode: activeExam || null }, signal);
+      return { items, next_cursor: null };
+    },
+    [orgId, activeExam, reloadKey],
+  );
+  const myPosts = useAsync((signal) => listMyPosts(signal), [reloadKey]);
   const mySessions = useAsync((signal) => listPracticeSessions(signal), [reloadKey]);
-  const queue = useQueue(orgId);
-
   // Still read, but only to put a name on the exam rather than to choose one.
   const examLabel =
     (exams.data?.items ?? []).find((exam) => exam.code === activeExam)?.name ??
@@ -87,19 +100,7 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
   // that one rather than the catalogue.
   const offerableExams = activeExam ? [{ code: activeExam, name: examLabel }] : [];
 
-  // A match is the one thing that takes over the screen: both people are
-  // waiting on each other, so there is nothing else worth looking at. Read
-  // from the queue rather than copied into state by an effect, so the room
-  // appears on the frame the match arrives on.
-  const openSessionId = chosenSessionId ?? queue.matchedSessionId;
-
   const live = (mySessions.data?.items ?? []).find((session) => session.status !== "ended");
-
-  const leaveSession = useCallback(() => {
-    setChosenSessionId(null);
-    queue.reset();
-    setReloadKey((key) => key + 1);
-  }, [queue]);
 
   const post = useCallback(
     async (input: OfferSlotInput) => {
@@ -112,19 +113,20 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
         setSuccess("Availability posted successfully!");
         setTab("myPosts");
         setReloadKey((key) => key + 1);
+        shared.refresh();
       } catch (cause) {
         setFailure(errorMessage(cause));
       } finally {
         setPosting(false);
       }
     },
-    [orgId],
+    [orgId, shared],
   );
 
   const confirmClaim = useCallback(async () => {
     const slot = claiming;
     if (!slot) return;
-    setClaiming(null);
+    if (claimingId) return;
     setClaimingId(slot.id);
     setSuccess(null);
     setFailure(null);
@@ -133,6 +135,7 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
       setSuccess(
         `Session booked! You will practice on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`,
       );
+      setClaiming(null);
       setTab("upcoming");
     } catch (cause) {
       setFailure(errorMessage(cause));
@@ -141,8 +144,9 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
       // Always refresh: the slot is gone either way, whether we took it or
       // somebody beat us to it by a fraction of a second.
       setReloadKey((key) => key + 1);
+        shared.refresh();
     }
-  }, [claiming]);
+  }, [claiming, claimingId, shared]);
 
   const confirmWithdraw = useCallback(async () => {
     const postId = withdrawing;
@@ -157,18 +161,15 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
       setFailure(errorMessage(cause));
     } finally {
       setReloadKey((key) => key + 1);
+        shared.refresh();
     }
-  }, [withdrawing]);
+  }, [withdrawing, shared]);
 
   const actions = {
-    onClaim: setClaiming,
+    onClaim: (slot: Slot) => { setFailure(null); setClaiming(slot); },
     onWithdraw: setWithdrawing,
     claimingId,
   };
-
-  if (openSessionId) {
-    return <PeerSessionScreen sessionId={openSessionId} onLeave={leaveSession} />;
-  }
 
   return (
     <div className="w-full pb-24">
@@ -178,6 +179,7 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
         icon={HiOutlineCalendarDays}
       />
 
+      {!activeExam && <Alert tone="info" className="mb-4">Choose an available exam in your account to post availability. For Live Practice, choose your exam in the dialog.</Alert>}
       {success && <Alert tone="success" className="mb-4">{success}</Alert>}
       {failure && <Alert tone="danger" className="mb-4">{failure}</Alert>}
 
@@ -194,8 +196,15 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
         </Alert>
       )}
 
-      <div className="mb-4 flex min-w-0 flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <B2CSegmentedTabs items={MARKETPLACE_TABS} value={tab} onChange={setTab} aria-label="Marketplace" />
+      <div className="mb-6 flex min-w-0 flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
+        <B2CSegmentedTabs
+          compact
+          className="min-w-0 flex-1"
+          items={MARKETPLACE_TABS}
+          value={tab}
+          onChange={setTab}
+          aria-label="Marketplace"
+        />
 
         {tab === "available" && (
           <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
@@ -204,7 +213,8 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
               type="button"
               variant="primary"
               size="md"
-              onClick={() => setOffering(true)}
+              onClick={() => { setFailure(null); setOffering(true); }}
+              disabled={!activeExam}
               className="w-full gap-1.5 sm:w-auto"
             >
               <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" />
@@ -220,23 +230,24 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
 
       <div id={`tab-panel-${tab}`} role="tabpanel">
         {tab === "upcoming" ? (
-          <UpcomingSessions reloadKey={reloadKey} />
-        ) : (
+          <UpcomingSessions
+            reloadKey={reloadKey}
+            onOpenPracticeSession={setChosenSessionId}
+          />
+        ) : tab === "available" ? (
           <AsyncBoundary state={slots} isEmpty={() => false}>
-            {(page) =>
-              tab === "available" ? (
-                <SlotSections slots={page.items} actions={actions} />
-              ) : (
-                <MySlots slots={page.items} actions={actions} />
-              )
-            }
+            {(page) => <SlotSections slots={page.items} actions={actions} />}
+          </AsyncBoundary>
+        ) : (
+          <AsyncBoundary state={myPosts} isEmpty={() => false}>
+            {(page) => <MySlots slots={page.items} actions={actions} />}
           </AsyncBoundary>
         )}
       </div>
 
       {offering && (
         <Modal
-          onClose={() => setOffering(false)}
+          onClose={() => !posting && setOffering(false)}
           width={OFFER_SLOT_MODAL_WIDTH}
           height="fit-content"
         >
@@ -244,6 +255,7 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
             exams={offerableExams}
             onSubmit={post}
             isLoading={posting}
+            error={failure}
             onCancel={() => setOffering(false)}
           />
         </Modal>
@@ -251,9 +263,10 @@ export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
 
       <ClaimConfirmationModal
         slot={claiming}
+        error={failure}
         isClaiming={claimingId !== null}
         onConfirm={() => void confirmClaim()}
-        onCancel={() => setClaiming(null)}
+        onCancel={() => !claimingId && setClaiming(null)}
       />
 
       {explaining && <MarketplaceHowItWorksModal onClose={() => setExplaining(false)} />}

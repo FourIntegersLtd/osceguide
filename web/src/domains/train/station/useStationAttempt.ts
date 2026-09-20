@@ -132,7 +132,7 @@ export function useStationAttempt({
         setAttemptId(id);
 
         const [briefResult, reviewResult] = await Promise.all([
-          readAttemptBrief(id).catch(() => null),
+          readAttemptBrief(id),
           reviewing
             ? readAttemptReview(id).catch((cause) => {
                 // Still being marked, or the candidate walked out before the
@@ -181,8 +181,9 @@ async function latestFinished(params: {
   setEntryId?: string | null;
 }): Promise<string | null> {
   const page = await listMyAttempts({ ...params, limit: 25 });
-  const finished = page.items.find((item) => FINISHED.has(item.status));
-  return finished?.id ?? page.items[0]?.id ?? null;
+  const consultations = page.items.filter((item) => item.kind !== "debrief");
+  const finished = consultations.find((item) => FINISHED.has(item.status));
+  return finished?.id ?? consultations[0]?.id ?? null;
 }
 
 /** An attempt with something to review: the consultation is over, either way. */

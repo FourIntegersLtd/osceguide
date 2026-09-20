@@ -1,8 +1,9 @@
 "use client";
 
+import { PracticeOptions } from "@/capabilities/peer-practice/PracticeOptions";
+
 import { useState } from "react";
-import { HiOutlineMicrophone } from "react-icons/hi2";
-import { AsyncBoundary, B2CEmptyState, ButtonLink, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, ButtonLink } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -23,7 +24,6 @@ import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
 import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
 import { InsightsList } from "@/domains/train/dashboard/InsightsList";
 import { PerformanceSummary } from "@/domains/train/dashboard/PerformanceSummary";
-import { PracticeSections } from "@/domains/train/dashboard/PracticeSections";
 import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
 import { configFor } from "@/domains/train/dashboard/examConfig";
@@ -46,9 +46,7 @@ export function ExamDashboard() {
   const state = useAsync((signal) => readDashboard(signal), []);
 
   return (
-    <div className={productTokens.b2cPageColumn}>
-      <AsyncBoundary state={state}>{(data) => <DashboardBody data={data} />}</AsyncBoundary>
-    </div>
+    <AsyncBoundary state={state}>{(data) => <DashboardBody data={data} />}</AsyncBoundary>
   );
 }
 
@@ -91,20 +89,6 @@ function DashboardBody({ data }: { data: DashboardData }) {
         }
       />
 
-      {config.sections.firstStation && attempts === 0 ? (
-        <B2CEmptyState
-          icon={HiOutlineMicrophone}
-          title="Ready for your first station?"
-          description="Practise a consultation with an AI patient. It takes about 12 minutes, and your scores will appear here once it's marked."
-          action={
-            <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
-              Choose a station
-            </ButtonLink>
-          }
-          className="mb-5 py-10"
-        />
-      ) : null}
-
       <AsyncBoundary state={performanceState}>
         {({ performance }) => (
           <ExamSections
@@ -116,8 +100,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
         )}
       </AsyncBoundary>
 
-      <PracticeSections data={data} />
-
+          <PracticeOptions />
       <AboutModal config={config} active={about} onClose={() => setAbout(null)} />
     </>
   );

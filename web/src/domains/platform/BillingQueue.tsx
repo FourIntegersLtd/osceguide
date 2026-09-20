@@ -2,17 +2,15 @@
 
 import { useState } from "react";
 import { LuReceipt } from "react-icons/lu";
-import { AsyncBoundary, Button } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { Button } from "@/foundation/ui";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
-import { listBillingEvents } from "@/domains/platform/support/api";
-import { RowList } from "@/domains/platform/chrome";
-import { EventRow } from "@/domains/platform/user/BillingTab";
+import { PlatformBillingEventsTable } from "@/domains/platform/billing/BillingEventsTable";
 
 /** The webhook ledger; refused deliveries first, because they are the queue. */
 export function BillingQueue() {
   const [failedOnly, setFailedOnly] = useState(true);
-  const state = useAsync((signal) => listBillingEvents({ failedOnly, limit: 100 }, signal), [failedOnly]);
+  const [reloadKey, setReloadKey] = useState(0);
+
   return (
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
@@ -25,15 +23,15 @@ export function BillingQueue() {
           </Button>
         }
       />
-      <AsyncBoundary state={state} isEmpty={(p) => p.items.length === 0} empty={{ title: "Nothing to reconcile", description: "Every delivery was applied." }}>
-        {(page) => (
-          <RowList>
-            {page.items.map((event) => (
-              <EventRow key={event.event_id} event={event} onChanged={state.reload} />
-            ))}
-          </RowList>
-        )}
-      </AsyncBoundary>
+      <PlatformBillingEventsTable
+        key={`${failedOnly}-${reloadKey}`}
+        failedOnly={failedOnly}
+        onChanged={() => setReloadKey((k) => k + 1)}
+        empty={{
+          title: "Nothing to reconcile",
+          description: "Every delivery was applied.",
+        }}
+      />
     </div>
   );
 }

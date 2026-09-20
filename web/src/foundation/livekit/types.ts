@@ -14,13 +14,13 @@ export interface RoomGrant {
 /** The agent states LiveKit reports, in the words a candidate should read. */
 export const AGENT_STATE_LABEL: Record<string, string> = {
   disconnected: "Not connected",
-  connecting: "Connecting…",
-  initializing: "Getting ready…",
-  "pre-connect-buffering": "Getting ready…",
-  listening: "Listening",
-  thinking: "Thinking…",
-  speaking: "Speaking",
-  failed: "The agent could not join",
+  connecting: "Connecting to the patient…",
+  initializing: "Getting the patient ready…",
+  "pre-connect-buffering": "Getting the patient ready…",
+  listening: "The patient is listening",
+  thinking: "The patient is thinking…",
+  speaking: "The patient is speaking",
+  failed: "The patient couldn't join",
 };
 
 export function agentStateLabel(state: string | undefined): string {

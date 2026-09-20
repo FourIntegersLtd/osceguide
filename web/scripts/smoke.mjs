@@ -54,7 +54,6 @@ async function step(label, path, { method = "GET", body, expect, allow = [] } = 
 const AUTHORING_LISTINGS = [
   ["stations", "stations"],
   ["station templates", "station-templates"],
-  ["feedback templates", "feedback-templates"],
   ["rubrics", "rubrics"],
   ["exams", "exams"],
 ];
@@ -79,6 +78,12 @@ async function main() {
 
   await step("who am I", "/api/v1/me", {
     expect: (p) => must(typeof p.email === "string", "no email"),
+  });
+
+  await step("station flag endpoint", "/api/v1/me/station-flags", {
+    method: "POST",
+    body: { station_id: "00000000-0000-0000-0000-000000000001" },
+    allow: [204, 404],
   });
 
   // The permission names the shells and guards branch on. A rename here
@@ -357,6 +362,26 @@ async function main() {
     });
     await step("platform users", "/api/v1/platform/users?q=dev&limit=5", {
       allow: [403],
+      expect: (p) => must(Array.isArray(p.items), "not a page"),
+    });
+    await step("platform admins", "/api/v1/platform/admins", {
+      allow: [403, 404],
+      expect: (p) => must(Array.isArray(p), "not a list"),
+    });
+    await step("platform moderation queue", "/api/v1/platform/moderation/posts?days=7&limit=10", {
+      allow: [403, 404],
+      expect: (p) => must(Array.isArray(p.items), "not a page"),
+    });
+    await step("growth funnel bmj", "/api/v1/growth/partners/bmj/funnel", {
+      allow: [403, 404],
+      expect: (p) => must(typeof p.arrivals === "number", "unexpected funnel"),
+    });
+    await step("platform org memberships support", `/api/v1/platform/organizations/${slug}/memberships?limit=5`, {
+      allow: [403, 404],
+      expect: (p) => must(Array.isArray(p.items), "not a page"),
+    });
+    await step("platform org audit support", `/api/v1/platform/organizations/${slug}/audit?limit=5`, {
+      allow: [403, 404],
       expect: (p) => must(Array.isArray(p.items), "not a page"),
     });
     await step("staff reads one organisation", `/api/v1/orgs/${slug}`, {

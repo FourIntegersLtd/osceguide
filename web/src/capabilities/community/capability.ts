@@ -1,4 +1,4 @@
-import { LuMessagesSquare } from "react-icons/lu";
+import { HiOutlineUsers } from "react-icons/hi2";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -10,11 +10,11 @@ import type { CapabilityModule } from "@/capabilities/contract";
  */
 export const communityCapability: CapabilityModule = {
   id: "community",
-  title: "Discussion",
+  title: "Community",
   description: "Ask the community a question, and answer other people's.",
   surfaces: ["train", "assess"],
   permission: null,
   section: "connect",
   path: "/discussion",
-  icon: LuMessagesSquare,
+  icon: HiOutlineUsers,
 };

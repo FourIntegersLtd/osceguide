@@ -2,15 +2,9 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  HiOutlineAcademicCap,
-  HiOutlineAdjustmentsHorizontal,
-  HiOutlineCreditCard,
-  HiOutlineGift,
-  HiOutlineSparkles,
-  HiOutlineUser,
-} from "react-icons/hi2";
 import { B2CSegmentedTabs, type B2CSegmentedTabItem } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
+import { PlatformTabbedScreen } from "@/domains/platform/PlatformTabbedScreen";
 import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
 import ExamPanel from "@/capabilities/account/settings/ExamPanel";
@@ -37,13 +31,13 @@ const VALID_TABS: SettingsTab[] = [
  * a nav item of its own for a while, rendering the same panel — one screen in
  * two places, neither of them canonical.
  */
-const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
-  { id: "profile", label: "Profile", icon: HiOutlineUser },
-  { id: "preferences", label: "Preferences", icon: HiOutlineAdjustmentsHorizontal },
-  { id: "exam", label: "Exam", icon: HiOutlineAcademicCap },
-  { id: "payments", label: "Payments", icon: HiOutlineCreditCard },
-  { id: "referrals", label: "Referrals", icon: HiOutlineGift },
-  { id: "memory", label: "Memory", icon: HiOutlineSparkles },
+const TABS: { id: SettingsTab; label: string }[] = [
+  { id: "profile", label: "Profile" },
+  { id: "preferences", label: "Preferences" },
+  { id: "exam", label: "Exam" },
+  { id: "payments", label: "Payments" },
+  { id: "referrals", label: "Referrals" },
+  { id: "memory", label: "Memory" },
 ];
 
 /**
@@ -95,33 +89,46 @@ function SettingsFrame({
   tab: SettingsTab;
   onChange: (tab: SettingsTab) => void;
 }) {
-  const items: B2CSegmentedTabItem<SettingsTab>[] = TABS.map(({ id, label, icon: Icon }) => ({
+  const { surface } = useSurface();
+  const items: B2CSegmentedTabItem<SettingsTab>[] = TABS.map(({ id, label }) => ({
     id,
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <Icon className="h-4 w-4" aria-hidden />
-        {label}
-      </span>
-    ),
+    label,
   }));
+
+  const panels = (
+    <>
+      {tab === "profile" ? <ProfilePanel /> : null}
+      {tab === "preferences" ? <PreferencesPanel /> : null}
+      {tab === "exam" ? <ExamPanel /> : null}
+      {tab === "payments" ? <AccessPanel /> : null}
+      {tab === "referrals" ? <ReferralsPanel /> : null}
+      {tab === "memory" ? <TutorMemoryPanel /> : null}
+    </>
+  );
+
+  if (surface === "platform") {
+    return (
+      <PlatformTabbedScreen
+        title="Settings"
+        tabs={items}
+        value={tab}
+        onChange={onChange}
+        ariaLabel="Settings"
+      >
+        {panels}
+      </PlatformTabbedScreen>
+    );
+  }
 
   return (
     <div>
       <B2CSegmentedTabs
-        className="mb-8"
         items={items}
         value={tab}
         onChange={onChange}
         aria-label="Settings"
       />
-      <div>
-        {tab === "profile" ? <ProfilePanel /> : null}
-        {tab === "preferences" ? <PreferencesPanel /> : null}
-        {tab === "exam" ? <ExamPanel /> : null}
-        {tab === "payments" ? <AccessPanel /> : null}
-        {tab === "referrals" ? <ReferralsPanel /> : null}
-        {tab === "memory" ? <TutorMemoryPanel /> : null}
-      </div>
+      <div>{panels}</div>
     </div>
   );
 }

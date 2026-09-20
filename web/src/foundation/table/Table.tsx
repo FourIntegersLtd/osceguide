@@ -1,7 +1,7 @@
 "use client";
 
 import { HiOutlineMagnifyingGlass, HiOutlineTrash, HiOutlineXMark } from "react-icons/hi2";
-import React, { useState, useEffect, useCallback, type ReactNode } from "react";
+import React, { Fragment, useState, useEffect, useCallback, type ReactNode } from "react";
 import Pagination from "@/foundation/ui/Pagination";
 import {
   b2cCard,
@@ -17,8 +17,10 @@ import {
 } from "@/foundation/ui/ModalContent";
 import { Button } from "@/foundation/ui/Button";
 import { cn } from "@/foundation/ui/cn";
+import { getInputClassName } from "@/foundation/ui/inputStyles";
 import { errorMessage as getErrorMessage } from "@/foundation/hooks";
 import { B2CErrorState } from "@/foundation/ui/B2CErrorState";
+import { EmptyState } from "@/foundation/ui/EmptyState";
 
 export interface FetchPageParams {
   page: number;
@@ -66,6 +68,29 @@ interface TablePropsBase<T> {
   /** Optional helper text under the title */
   description?: ReactNode;
   className?: string;
+  /** When false, hides the search field (default true). */
+  showSearch?: boolean;
+  /**
+   * Parent-owned search (e.g. `AuthoringCatalogFilterBar`). When `onSearchChange` is set,
+   * the built-in search row is hidden unless `showSearch` is explicitly true.
+   */
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  /** When false, hides pagination controls (default true). */
+  showPagination?: boolean;
+  /** Initial page size in fetchPage mode (default 10). */
+  defaultItemsPerPage?: number;
+  /** Optional second row under a data row (e.g. expander content). */
+  renderExpandedRow?: (item: T) => ReactNode;
+  isRowExpanded?: (item: T) => boolean;
+  /** Whole-row click (e.g. toggle expander). Link/button cells should stop propagation. */
+  onRowActivate?: (item: T) => void;
+  /** Shown when a fetch or controlled load returns no rows. */
+  empty?: {
+    title: ReactNode;
+    description?: ReactNode;
+    action?: ReactNode;
+  };
 }
 
 /** When fetchPage is provided, Table owns all pagination state and logic. Parent just provides the fetch. */
@@ -151,8 +176,8 @@ function TableSearchForm({
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
-    <form onSubmit={onSubmit}>
-      <div className="relative">
+    <div className="flex w-full justify-end">
+      <form onSubmit={onSubmit} className="relative w-full max-w-md" role="search">
         <HiOutlineMagnifyingGlass
           className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
           aria-hidden
@@ -160,7 +185,10 @@ function TableSearchForm({
         <input
           type="search"
           placeholder={searchPlaceholder}
-          className="w-full appearance-none rounded-md border border-b2c-border bg-osce-surface py-2.5 pl-10 pr-24 text-left text-osce-body text-osce-ink-900 outline-none placeholder:text-b2c-text-muted focus:border-osce-accent focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+          className={cn(
+            getInputClassName(),
+            "appearance-none pl-10 pr-24 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
+          )}
           value={searchQuery}
           onChange={onInputChange}
         />
@@ -184,8 +212,8 @@ function TableSearchForm({
             </>
           ) : null}
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
 
@@ -216,12 +244,18 @@ function TableCards<T extends object>({
   idField,
   nameField,
   onDelete,
+  renderExpandedRow,
+  isRowExpanded,
+  onRowActivate,
 }: {
   data: T[];
   columns: Column<T>[];
   idField: keyof T;
   nameField: keyof T;
   onDelete?: (id: string, name: string) => void;
+  renderExpandedRow?: (item: T) => ReactNode;
+  isRowExpanded?: (item: T) => boolean;
+  onRowActivate?: (item: T) => void;
 }) {
   const primary =
     columns.find((column) => column.priority === "primary") ?? columns[0];
@@ -234,7 +268,24 @@ function TableCards<T extends object>({
       {data.map((item, index) => (
         <div
           key={rowKey(item, idField, index)}
-          className={cn(b2cCard, "min-w-0 p-4")}
+          className={cn(
+            b2cCard,
+            "min-w-0 p-4",
+            onRowActivate && "cursor-pointer",
+          )}
+          onClick={onRowActivate ? () => onRowActivate(item) : undefined}
+          onKeyDown={
+            onRowActivate
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onRowActivate(item);
+                  }
+                }
+              : undefined
+          }
+          role={onRowActivate ? "button" : undefined}
+          tabIndex={onRowActivate ? 0 : undefined}
         >
           {primary ? (
             <div className={cn("min-w-0 break-words", b2cFieldValue)}>
@@ -279,6 +330,15 @@ function TableCards<T extends object>({
               </button>
             </div>
           ) : null}
+
+          {renderExpandedRow && isRowExpanded?.(item) ? (
+            <div
+              className="mt-3 border-t border-b2c-border pt-3"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {renderExpandedRow(item)}
+            </div>
+          ) : null}
         </div>
       ))}
     </div>
@@ -295,6 +355,9 @@ function TableGrid<T extends object>({
   onSelectAll,
   selectedItems,
   onSelectAllArg,
+  renderExpandedRow,
+  isRowExpanded,
+  onRowActivate,
 }: {
   data: T[];
   columns: Column<T>[];
@@ -305,7 +368,12 @@ function TableGrid<T extends object>({
   selectedItems?: Set<string>;
   /** When set, onSelectAll is called with this (e.g. data.map id) for fetchPage mode */
   onSelectAllArg?: string[];
+  renderExpandedRow?: (item: T) => ReactNode;
+  isRowExpanded?: (item: T) => boolean;
+  onRowActivate?: (item: T) => void;
 }) {
+  const colSpan = columns.length + (onDelete ? 1 : 0);
+
   return (
     <>
       <TableCards
@@ -314,6 +382,9 @@ function TableGrid<T extends object>({
         idField={idField}
         nameField={nameField}
         onDelete={onDelete}
+        renderExpandedRow={renderExpandedRow}
+        isRowExpanded={isRowExpanded}
+        onRowActivate={onRowActivate}
       />
 
       <div
@@ -365,37 +436,58 @@ function TableGrid<T extends object>({
         </thead>
         <tbody className="divide-y divide-b2c-border bg-osce-surface">
           {data.map((item, index) => {
+            const expanded = Boolean(
+              renderExpandedRow && isRowExpanded?.(item),
+            );
             return (
-              <tr
-                key={rowKey(item, idField, index)}
-                className="transition-colors hover:bg-b2c-surface-muted"
-              >
-                {columns.map((column, colIndex) => (
-                  <td
-                    key={colIndex}
-                    className={cn("whitespace-nowrap px-4 py-3", b2cTableCell)}
-                  >
-                    {renderCell(column, item)}
-                  </td>
-                ))}
-                {onDelete ? (
-                  <td className={cn("px-4 py-3 text-right", b2cTableCell)}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onDelete(
-                          String(item[idField]),
-                          String(item[nameField]),
-                        )
-                      }
-                      className="text-b2c-text-muted hover:text-osce-danger"
-                      aria-label="Delete"
+              <Fragment key={rowKey(item, idField, index)}>
+                <tr
+                  className={cn(
+                    "transition-colors hover:bg-b2c-surface-muted",
+                    onRowActivate && "cursor-pointer",
+                  )}
+                  onClick={
+                    onRowActivate ? () => onRowActivate(item) : undefined
+                  }
+                >
+                  {columns.map((column, colIndex) => (
+                    <td
+                      key={colIndex}
+                      className={cn("whitespace-nowrap px-4 py-3", b2cTableCell)}
                     >
-                      <HiOutlineTrash className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
+                      {renderCell(column, item)}
+                    </td>
+                  ))}
+                  {onDelete ? (
+                    <td className={cn("px-4 py-3 text-right", b2cTableCell)}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onDelete(
+                            String(item[idField]),
+                            String(item[nameField]),
+                          )
+                        }
+                        className="text-b2c-text-muted hover:text-osce-danger"
+                        aria-label="Delete"
+                      >
+                        <HiOutlineTrash className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  ) : null}
+                </tr>
+                {expanded ? (
+                  <tr>
+                    <td
+                      colSpan={colSpan}
+                      className="bg-b2c-surface-muted px-4 py-3"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {renderExpandedRow?.(item)}
+                    </td>
+                  </tr>
                 ) : null}
-              </tr>
+              </Fragment>
             );
           })}
         </tbody>
@@ -417,9 +509,21 @@ function TableInner<T extends object>(props: TableProps<T>) {
     title,
     description,
     className = "",
+    showSearch = true,
+    showPagination = true,
+    renderExpandedRow,
+    isRowExpanded,
+    onRowActivate,
+    empty,
+    search: controlledSearch,
+    onSearchChange,
   } = props;
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchExternallyOwned = controlledSearch !== undefined;
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const searchQuery = searchExternallyOwned ? controlledSearch : internalSearchQuery;
+  const setSearchQuery = onSearchChange ?? setInternalSearchQuery;
+  const effectiveShowSearch = searchExternallyOwned ? showSearch === true : showSearch;
 
   if (isFetchPageMode(props)) {
     return (
@@ -428,6 +532,9 @@ function TableInner<T extends object>(props: TableProps<T>) {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         searchPlaceholder={searchPlaceholder}
+        showSearch={effectiveShowSearch}
+        showPagination={showPagination}
+        empty={empty}
       />
     );
   }
@@ -463,37 +570,48 @@ function TableInner<T extends object>(props: TableProps<T>) {
 
   return (
     <TableShell title={title} description={description} className={className}>
-      <TableSearchForm
-        searchQuery={searchQuery}
-        searchPlaceholder={searchPlaceholder}
-        onSubmit={handleSearch}
-        onClear={handleClearSearch}
-        onInputChange={handleSearchInputChange}
-      />
+      {effectiveShowSearch ? (
+        <TableSearchForm
+          searchQuery={searchQuery}
+          searchPlaceholder={searchPlaceholder}
+          onSubmit={handleSearch}
+          onClear={handleClearSearch}
+          onInputChange={handleSearchInputChange}
+        />
+      ) : null}
       {loading ? (
         <div className="py-4 text-center" role="status">
           <span className="text-osce-body text-b2c-text-secondary">Loading…</span>
         </div>
       ) : null}
-      <TableGrid<T>
-        data={data}
-        columns={columns}
-        idField={idField}
-        nameField={nameField}
-        onDelete={onDelete}
-        onSelectAll={onSelectAll}
-        selectedItems={selectedItems}
-        onSelectAllArg={data.map((item) => String(item[idField]))}
-      />
-      <Pagination
-        currentPage={currentPage}
-        totalItems={totalItems}
-        itemsPerPage={itemsPerPage}
-        onPageChange={onPageChange}
-        onItemsPerPageChange={onItemsPerPageChange}
-        cursorMode={cursorMode}
-        hasMore={hasMore}
-      />
+      {!loading && data.length === 0 && empty ? (
+        <EmptyState title={empty.title} description={empty.description} action={empty.action} />
+      ) : (
+        <TableGrid<T>
+          data={data}
+          columns={columns}
+          idField={idField}
+          nameField={nameField}
+          onDelete={onDelete}
+          onSelectAll={onSelectAll}
+          selectedItems={selectedItems}
+          onSelectAllArg={data.map((item) => String(item[idField]))}
+          renderExpandedRow={renderExpandedRow}
+          isRowExpanded={isRowExpanded}
+          onRowActivate={onRowActivate}
+        />
+      )}
+      {showPagination && data.length > 0 ? (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={onPageChange}
+          onItemsPerPageChange={onItemsPerPageChange}
+          cursorMode={cursorMode}
+          hasMore={hasMore}
+        />
+      ) : null}
     </TableShell>
   );
 }
@@ -504,6 +622,9 @@ function TableWithPagination<T extends object>(
     searchQuery: string;
     setSearchQuery: (q: string) => void;
     searchPlaceholder: string;
+    showSearch: boolean;
+    showPagination: boolean;
+    empty?: TablePropsBase<T>["empty"];
   },
 ) {
   const {
@@ -520,12 +641,19 @@ function TableWithPagination<T extends object>(
     title,
     description,
     className = "",
+    showSearch,
+    showPagination,
+    defaultItemsPerPage = 10,
+    renderExpandedRow,
+    isRowExpanded,
+    onRowActivate,
+    empty,
   } = props;
 
   const [data, setData] = useState<T[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(defaultItemsPerPage);
   const [totalItems, setTotalItems] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [isCursorMode, setIsCursorMode] = useState(false);
@@ -557,7 +685,7 @@ function TableWithPagination<T extends object>(
         }
         if (result.nextCursor !== undefined && result.hasMore !== undefined) {
           setHasMore(result.hasMore ?? false);
-          setIsCursorMode(true);
+          setIsCursorMode(result.totalCount == null);
           if (result.hasMore && result.nextCursor != null) {
             setCursorForPage((prev) => ({
               ...prev,
@@ -640,13 +768,15 @@ function TableWithPagination<T extends object>(
 
   return (
     <TableShell title={title} description={description} className={className}>
-      <TableSearchForm
-        searchQuery={searchQuery}
-        searchPlaceholder={searchPlaceholder}
-        onSubmit={handleSearch}
-        onClear={handleClearSearch}
-        onInputChange={handleSearchInputChange}
-      />
+      {showSearch ? (
+        <TableSearchForm
+          searchQuery={searchQuery}
+          searchPlaceholder={searchPlaceholder}
+          onSubmit={handleSearch}
+          onClear={handleClearSearch}
+          onInputChange={handleSearchInputChange}
+        />
+      ) : null}
       {loading ? (
         <div className="py-4 text-center" role="status">
           <span className="text-osce-body text-b2c-text-secondary">Loading…</span>
@@ -667,26 +797,35 @@ function TableWithPagination<T extends object>(
           }
         />
       ) : null}
-      <TableGrid<T>
-        data={data}
-        columns={columns}
-        idField={idField}
-        nameField={nameField}
-        onDelete={onDelete}
-        onSelectAll={onSelectAll}
-        selectedItems={selectedItems}
-        onSelectAllArg={data.map((item) => String(item[idField]))}
-      />
-      <Pagination
-        currentPage={currentPage}
-        totalItems={displayTotalItems}
-        itemsPerPage={itemsPerPage}
-        onPageChange={handlePageChange}
-        onItemsPerPageChange={handleItemsPerPageChange}
-        cursorMode={isCursorMode}
-        hasMore={hasMore}
-        knownTotal={hasKnownTotalFromApi}
-      />
+      {!loading && !fetchError && data.length === 0 && empty ? (
+        <EmptyState title={empty.title} description={empty.description} action={empty.action} />
+      ) : (
+        <TableGrid<T>
+          data={data}
+          columns={columns}
+          idField={idField}
+          nameField={nameField}
+          onDelete={onDelete}
+          onSelectAll={onSelectAll}
+          selectedItems={selectedItems}
+          onSelectAllArg={data.map((item) => String(item[idField]))}
+          renderExpandedRow={renderExpandedRow}
+          isRowExpanded={isRowExpanded}
+          onRowActivate={onRowActivate}
+        />
+      )}
+      {showPagination && data.length > 0 ? (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={displayTotalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          cursorMode={isCursorMode}
+          hasMore={hasMore}
+          knownTotal={hasKnownTotalFromApi}
+        />
+      ) : null}
     </TableShell>
   );
 }

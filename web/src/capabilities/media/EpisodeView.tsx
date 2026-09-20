@@ -4,24 +4,23 @@ import { useState } from "react";
 import {
   AsyncBoundary,
   B2CPageHeader,
-  B2CPanelCard,
-  B2CPanelCardBody,
   cn,
   productTokens as t,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { audioUrl, bodyMarkdown, listAllMedia, type MediaItem } from "@/capabilities/media/api";
-import { PodcastPlayer, type Episode } from "@/capabilities/media/PodcastPlayer";
-import { Prose } from "@/capabilities/media/Prose";
+import { useCurrentExam } from "@/foundation/session";
+import {
+  audioUrl,
+  listAllMedia,
+  podcastSeries,
+  type MediaItem,
+} from "@/capabilities/media/api";
+import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
+import { EpisodePanel } from "@/capabilities/media/EpisodePanel";
+import type { Episode } from "@/capabilities/media/PodcastPlayer";
 
 /**
- * A podcast episode.
- *
- * On the retiring client an episode had no page: it was audio hanging off a
- * summary, reachable only through a modal on that summary. A `podcast` row is
- * study material in its own right here, so it has an address, a description
- * and the series beside it — and the player itself is the same component the
- * summary's modal uses.
+ * A podcast episode (legacy `/library` path redirects to `/podcast?episode=`).
  */
 export function EpisodeView({
   item,
@@ -30,48 +29,47 @@ export function EpisodeView({
   item: MediaItem;
   hrefFor: (path: string) => string;
 }) {
+  const { code: examCode } = useCurrentExam();
   const state = useAsync((signal) => listAllMedia("podcast", signal), []);
   const [index, setIndex] = useState<number | null>(null);
-  const notes = bodyMarkdown(item);
 
   return (
     <div className="w-full text-left">
-      <B2CPageHeader
-        title={item.title}
-        subtitle={item.summary ?? undefined}
-        back={{ href: hrefFor("/library"), label: "Study material" }}
-      />
+      <AsyncBoundary state={state}>
+        {(items) => {
+          const series = podcastSeries(items, item, examCode);
+          const fallback = Math.max(
+            0,
+            series.findIndex((entry) => entry.id === item.id),
+          );
+          const currentIndex = index ?? fallback;
+          const current = series[currentIndex] ?? item;
+          const episodes: Episode[] = series.map((entry) => ({
+            id: entry.id,
+            title: entry.title,
+            url: audioUrl(entry),
+          }));
 
-      <div className={cn("mt-6 space-y-6", t.b2cProseMeasureWide)}>
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardBody>
-            <AsyncBoundary state={state}>
-              {(items) => {
-                const series = items.length > 0 ? items : [item];
-                const episodes: Episode[] = series.map((entry) => ({
-                  id: entry.id,
-                  title: entry.title,
-                  url: audioUrl(entry),
-                }));
-                const fallback = Math.max(
-                  0,
-                  episodes.findIndex((entry) => entry.id === item.id),
-                );
-                return (
-                  <PodcastPlayer
-                    episodes={episodes}
-                    index={index ?? fallback}
-                    onIndexChange={setIndex}
-                    heading="meta"
-                  />
-                );
-              }}
-            </AsyncBoundary>
-          </B2CPanelCardBody>
-        </B2CPanelCard>
+          return (
+            <>
+              <B2CPageHeader
+                title={current.title}
+                subtitle={current.summary ?? undefined}
+                back={{ href: hrefFor(studyListPath("podcast")), label: STUDY_KIND_LABEL.podcast }}
+              />
 
-        {notes ? <Prose content={notes} /> : null}
-      </div>
+              <div className={cn("mt-6", t.b2cProseMeasureWide)}>
+                <EpisodePanel
+                  episodes={episodes}
+                  index={currentIndex}
+                  onIndexChange={setIndex}
+                  current={current}
+                />
+              </div>
+            </>
+          );
+        }}
+      </AsyncBoundary>
     </div>
   );
 }

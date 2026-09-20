@@ -49,11 +49,11 @@ export function setupSteps(setup: OrgSetup): SetupStep[] {
       path: "/authoring",
     },
     {
-      key: "template",
-      done: setup.feedback_template_published,
-      label: "Publish a feedback template",
-      hint: "A sitting cannot exist without a published template bound to it.",
-      path: "/authoring",
+      key: "programme",
+      done: setup.programme_exam_rubric_ready,
+      label: "Add a programme",
+      hint: "A sitting binds to a programme whose exam has a published rubric.",
+      path: "/authoring/programmes",
     },
   ];
 }

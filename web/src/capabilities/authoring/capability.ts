@@ -28,4 +28,5 @@ export const authoringCapability: CapabilityModule = {
   permission: ["read_org", "administer_platform"],
   path: "/authoring",
   icon: LuPencilRuler,
+  section: "catalogue",
 };

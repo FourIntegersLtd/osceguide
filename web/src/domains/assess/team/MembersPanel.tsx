@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import Table, {
+  type FetchPageParams,
+  type FetchPageResult,
+} from "@/foundation/table/Table";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { cn } from "@/foundation/ui/cn";
 import { errorMessage } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import {
@@ -20,9 +26,6 @@ import {
   sortMembers,
   staffCountLabel,
 } from "@/domains/assess/team/support";
-
-const TABLE_CLASS = "min-w-full w-full divide-y divide-b2b-border";
-const CELL = "px-4 py-3 text-osce-body align-middle";
 
 type Pending =
   | { kind: "role"; member: Membership }
@@ -86,6 +89,84 @@ export function MembersPanel({
     }
   }
 
+  const fetchPage = useCallback(
+    async (params: FetchPageParams): Promise<FetchPageResult<Membership>> => {
+      let filtered = rows;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = rows.filter(
+          (member) =>
+            (member.email?.toLowerCase().includes(q) ?? false) ||
+            roleLabel(member.role).toLowerCase().includes(q) ||
+            member.user_id.toLowerCase().includes(q),
+        );
+      }
+      const start = (params.page - 1) * params.perPage;
+      const end = start + params.perPage;
+      return {
+        items: filtered.slice(start, end),
+        totalCount: filtered.length,
+      };
+    },
+    [rows],
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "Email",
+        key: "email" as keyof Membership,
+        priority: "primary" as const,
+        render: (member: Membership) => (
+          <div className={b2cTableCellText}>
+            <span className="font-medium text-osce-ink-900">
+              {member.email ?? "Account without a listed address"}
+            </span>
+            {member.email ? null : (
+              <span className="ml-2 font-mono text-osce-caption text-b2b-icon">
+                {member.user_id.slice(0, 8)}
+              </span>
+            )}
+            {member.invited ? (
+              <span className="ml-2 text-osce-caption text-b2b-mid">Invited</span>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        header: "Role",
+        key: "role" as keyof Membership,
+        render: (member: Membership) => (
+          <span className={cn(b2cTableCellText, "text-b2b-graphite")}>{roleLabel(member.role)}</span>
+        ),
+      },
+      {
+        header: "Access",
+        key: "id" as keyof Membership,
+        render: (member: Membership) =>
+          isActive(member) ? (
+            <span className="text-osce-caption font-medium text-b2b-success-text">Active</span>
+          ) : (
+            <span className="text-osce-caption font-medium text-b2b-warning-text/90">Revoked</span>
+          ),
+      },
+      {
+        header: "Actions",
+        key: "user_id" as keyof Membership,
+        priority: "detail" as const,
+        render: (member: Membership) =>
+          canManage ? (
+            <RowActions
+              member={member}
+              lastAdmin={isLastAdmin(member, rows)}
+              onAction={open}
+            />
+          ) : null,
+      },
+    ],
+    [canManage, rows],
+  );
+
   if (rows.length === 0) {
     return (
       <EmptyState
@@ -100,70 +181,15 @@ export function MembersPanel({
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       <p className={b2bTokens.b2bEyebrow}>{staffCountLabel(rows.length)}</p>
 
-      <div className={b2bTokens.b2bGroupedShell}>
-        <div className={b2bTokens.b2bTableScroll}>
-          <table className={TABLE_CLASS}>
-            <thead>
-              <tr>
-                {["Email", "Role", "Access", ""].map((header, index) => (
-                  <th
-                    key={header || index}
-                    scope="col"
-                    className="px-4 py-2 text-left text-osce-caption font-medium text-b2b-mid"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-b2b-border">
-              {rows.map((member) => (
-                <tr key={member.id}>
-                  <td className={`${CELL} min-w-[12rem]`}>
-                    {/* The list endpoint does not carry the address — only the
-                        invite response does (see docs/port-gaps.md) — so a row
-                        says so rather than printing a raw uuid as a name. */}
-                    <span className="font-medium text-b2b-headline">
-                      {member.email ?? "Account without a listed address"}
-                    </span>
-                    {member.email ? null : (
-                      <span className="ml-2 font-mono text-osce-caption text-b2b-icon">
-                        {member.user_id.slice(0, 8)}
-                      </span>
-                    )}
-                    {member.invited ? (
-                      <span className="ml-2 text-osce-caption text-b2b-mid">Invited</span>
-                    ) : null}
-                  </td>
-                  <td className={`${CELL} min-w-[6rem] text-b2b-graphite`}>
-                    {roleLabel(member.role)}
-                  </td>
-                  <td className={`${CELL} min-w-[5rem]`}>
-                    {isActive(member) ? (
-                      <span className="text-osce-caption font-medium text-b2b-success-text">
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-osce-caption font-medium text-b2b-warning-text/90">
-                        Revoked
-                      </span>
-                    )}
-                  </td>
-                  <td className={`${CELL} text-right`}>
-                    {canManage ? (
-                      <RowActions
-                        member={member}
-                        lastAdmin={isLastAdmin(member, rows)}
-                        onAction={open}
-                      />
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Table<Membership>
+        fetchPage={fetchPage}
+        columns={columns}
+        idField="id"
+        nameField="email"
+        searchPlaceholder="Search staff…"
+        showPagination={rows.length > 10}
+        defaultItemsPerPage={25}
+      />
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">

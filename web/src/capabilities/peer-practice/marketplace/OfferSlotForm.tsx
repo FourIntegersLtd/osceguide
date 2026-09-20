@@ -44,12 +44,14 @@ export function OfferSlotForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  error,
   availabilityLabel = "I am available to practice on",
 }: {
   exams: ExamOption[];
   onSubmit: (input: OfferSlotInput) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  error?: string | null;
   availabilityLabel?: string;
 }) {
   const [examCode, setExamCode] = useState(exams[0]?.code ?? "");
@@ -96,9 +98,6 @@ export function OfferSlotForm({
       durationMinutes: duration,
       note: note.trim() || null,
     });
-    setDay("");
-    setTime("");
-    setNote("");
   };
 
   const requestSummary =
@@ -214,7 +213,7 @@ export function OfferSlotForm({
         />
       </FormStep>
 
-      <B2CInlineError message={validationError} />
+      <B2CInlineError message={validationError ?? error} />
 
       <div className="space-y-3 border-t border-b2c-border pt-5">
         {requestSummary ? (
@@ -234,7 +233,7 @@ export function OfferSlotForm({
           <Button type="button" variant="secondary" size="md" onClick={onCancel} disabled={isLoading} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" variant="commit" size="md" disabled={isLoading || !day || !time} className="w-full sm:w-auto">
+          <Button type="submit" variant="primary" size="md" disabled={isLoading || !examCode || !day || !time} className="w-full sm:w-auto">
             {isLoading ? "Posting..." : "Select & continue"}
           </Button>
         </div>

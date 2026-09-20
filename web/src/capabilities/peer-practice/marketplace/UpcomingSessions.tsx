@@ -5,8 +5,9 @@ import { Alert, AsyncBoundary, Button, ConfirmModal } from "@/foundation/ui";
 import { b2cCard, b2cMutedBand } from "@/foundation/ui/productTokens";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
+  cancelPeerSession,
   joinPeerSession,
-  listMyPeerSessions,
+  listAllMyPeerSessions,
   type PeerSession,
 } from "@/capabilities/peer-practice/api";
 import {
@@ -26,30 +27,42 @@ import {
  * could disagree. It reloads itself now, and the parent asks for a reload
  * rather than owning one.
  */
-export function UpcomingSessions({ reloadKey }: { reloadKey: number }) {
-  const state = useAsync((signal) => listMyPeerSessions(signal), [reloadKey]);
+export function UpcomingSessions({
+  reloadKey,
+  onOpenPracticeSession,
+}: {
+  reloadKey: number;
+  onOpenPracticeSession?: (practiceSessionId: string) => void;
+}) {
+  const state = useAsync(async (signal) => {
+    const items = await listAllMyPeerSessions(signal);
+    return { items, next_cursor: null };
+  }, [reloadKey]);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [joining, setJoining] = useState<string | null>(null);
 
-  const join = useCallback(async (session: PeerSession) => {
-    setJoining(session.id);
-    setNotice(null);
-    setFailure(null);
-    try {
-      await joinPeerSession(session.id);
-      // The backend opens the session and names its room, but mints no token
-      // for one — see docs/port-gaps.md. Saying so is better than a button
-      // that appears to work and drops the person nowhere.
-      setNotice(
-        "You are checked in. Joining the call for an arranged session is not available yet — use Live Practice to be paired into a room now.",
-      );
-    } catch (cause) {
-      setFailure(errorMessage(cause));
-    } finally {
-      setJoining(null);
-    }
-  }, []);
+  const join = useCallback(
+    async (session: PeerSession) => {
+      setJoining(session.id);
+      setNotice(null);
+      setFailure(null);
+      try {
+        const updated = await joinPeerSession(session.id);
+        const practiceId = updated.practice_session_id;
+        if (practiceId && onOpenPracticeSession) {
+          onOpenPracticeSession(practiceId);
+          return;
+        }
+        setFailure("Could not start the practice room. Please try again.");
+      } catch (cause) {
+        setFailure(errorMessage(cause));
+      } finally {
+        setJoining(null);
+      }
+    },
+    [onOpenPracticeSession],
+  );
 
   return (
     <div className="space-y-4">
@@ -57,24 +70,51 @@ export function UpcomingSessions({ reloadKey }: { reloadKey: number }) {
       {failure && <Alert tone="danger">{failure}</Alert>}
       <AsyncBoundary
         state={state}
-        isEmpty={(page) => page.items.every((session) => !isShown(session))}
+        isEmpty={(page) => page.items.length === 0}
         empty={{
-          title: "No upcoming sessions",
-          description: "Claim a slot from the Available sessions to schedule a session!",
+          title: "No sessions yet",
+          description: "Claim a slot from All Sessions to arrange your next practice session.",
         }}
       >
-        {(page) => (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            {page.items.filter(isShown).map((session) => (
-              <UpcomingSessionCard
-                key={session.id}
-                session={session}
-                onJoin={join}
-                isJoining={joining === session.id}
-              />
-            ))}
-          </div>
-        )}
+        {(page) => {
+          const upcoming = page.items.filter(isShown);
+          const past = page.items.filter((session) => !isShown(session));
+          return (
+            <div className="space-y-8">
+              {upcoming.length > 0 && (
+                <section>
+                  <h3 className="mb-3 text-osce-body font-semibold text-osce-ink-900">Upcoming</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                    {upcoming.map((session) => (
+                      <UpcomingSessionCard
+                        key={session.id}
+                        session={session}
+                        onJoin={join}
+                        isJoining={joining === session.id}
+                        onCancelled={state.reload}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {past.length > 0 && (
+                <section>
+                  <h3 className="mb-3 text-osce-body font-semibold text-osce-ink-900">Past</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                    {past.map((session) => (
+                      <PastSessionCard key={session.id} session={session} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {upcoming.length === 0 && past.length > 0 && (
+                <p className="text-osce-body text-b2c-text-secondary">
+                  You have no future sessions. Post availability or claim a slot to practise with a colleague.
+                </p>
+              )}
+            </div>
+          );
+        }}
       </AsyncBoundary>
     </div>
   );
@@ -82,20 +122,40 @@ export function UpcomingSessions({ reloadKey }: { reloadKey: number }) {
 
 function isShown(session: PeerSession): boolean {
   if (session.status === "cancelled" || session.status === "completed") return false;
-  return !joinWindowClosed(session.starts_at);
+  return session.status === "active" || !joinWindowClosed(session.starts_at);
+}
+
+function PastSessionCard({ session }: { session: PeerSession }) {
+  const partner = session.partner_username ? `@${session.partner_username}` : "A colleague";
+  return (
+    <div className={`flex w-full min-w-0 flex-col p-3 text-osce-body sm:p-5 ${b2cCard}`}>
+      <p className="text-osce-body text-b2c-text-muted">Practice session with</p>
+      <p className="mt-1 font-semibold text-osce-ink-900">{partner}</p>
+      <p className="mt-1 text-b2c-text-secondary">
+        {longDate(session.starts_at)} at {meridiemTime(session.starts_at)}
+      </p>
+      <p className="mt-2 text-osce-caption text-b2c-text-muted">
+        {session.exam_code.toUpperCase()}
+        {session.user_role ? ` · You were the ${session.user_role}` : ""}
+      </p>
+    </div>
+  );
 }
 
 function UpcomingSessionCard({
   session,
   onJoin,
   isJoining,
+  onCancelled,
 }: {
   session: PeerSession;
   onJoin: (session: PeerSession) => void;
   isJoining: boolean;
+  onCancelled: () => void;
 }) {
   const [now, setNow] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   // The clock is read in an effect rather than during render, so the server and
   // the browser agree on the first frame; until it lands, measure from the
@@ -108,7 +168,7 @@ function UpcomingSessionCard({
 
   const reference = now ?? new Date(session.starts_at).getTime();
   const active = session.status === "active";
-  const ready = active || canJoin(session.starts_at, reference);
+  const ready = active || (now !== null && canJoin(session.starts_at, reference) && !joinWindowClosed(session.starts_at, reference));
   const until = timeUntilJoin(session.starts_at, reference);
 
   return (
@@ -130,7 +190,9 @@ function UpcomingSessionCard({
 
       <div className="mb-3">
         <p className="leading-relaxed text-osce-ink-900">
-          <span className="font-semibold">A colleague</span>
+          <span className="font-semibold">
+            {session.partner_username ? `@${session.partner_username}` : "A colleague"}
+          </span>
         </p>
         <p className="mt-1 text-b2c-text-secondary">
           {longDate(session.starts_at)} at {meridiemTime(session.starts_at)}
@@ -148,8 +210,16 @@ function UpcomingSessionCard({
         </div>
       )}
 
+      {cancelError && (
+        <Alert tone="danger" className="mb-2">
+          {cancelError}
+        </Alert>
+      )}
+
       <div className="mt-auto flex flex-col items-stretch justify-between gap-3 border-t border-b2c-border pt-3 sm:flex-row sm:items-center sm:gap-2">
         <div className="flex items-center gap-2 text-osce-caption text-b2c-text-muted">
+          <span>You are the {session.user_role}</span>
+          <span>·</span>
           <span>{session.exam_code.toUpperCase()}</span>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -175,12 +245,17 @@ function UpcomingSessionCard({
       <ConfirmModal
         isOpen={confirming}
         onCancel={() => setConfirming(false)}
-        onConfirm={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          void cancelPeerSession(session.id).then(onCancelled).catch(() => {
+            setCancelError("Could not cancel this session. Try again or contact your partner.");
+          });
+        }}
         title="Cancel session?"
         tone="danger"
-        message="Cancelling an arranged session is not available yet. Let your partner know directly, and withdraw the slot if it was yours."
-        confirmText="I understand"
-        cancelButton={false}
+        message="Your partner will no longer see this session as booked. This cannot be undone."
+        confirmText="Cancel session"
+        cancelText="Keep session"
       />
     </div>
   );

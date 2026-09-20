@@ -16,10 +16,12 @@ import { useSurface } from "@/capabilities/SurfaceContext";
 import {
   MEDIA_KINDS,
   MEDIA_KIND_LABELS,
+  filterMediaByExam,
   listAllMedia,
   type MediaItem,
   type MediaKind,
 } from "@/capabilities/media/api";
+import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid } from "@/capabilities/media/MediaCard";
 import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
@@ -64,6 +66,7 @@ const EMPTY: Record<Filter, { title: string; description: string }> = {
  */
 export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind | null }) {
   const { hrefFor } = useSurface();
+  const { code: examCode } = useCurrentExam();
   const [filter, setFilter] = useState<Filter>(initialKind ?? "all");
   const [term, setTerm] = useState("");
   const [query, setQuery] = useState("");
@@ -88,9 +91,10 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
           event.preventDefault();
           if (term.trim() !== "") setQuery(term.trim());
         }}
-        className="relative mb-8 mt-6"
+        className="mb-8 mt-6 flex justify-end"
         role="search"
       >
+        <div className="relative w-full max-w-md">
         <HiOutlineMagnifyingGlass
           className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
           aria-hidden
@@ -120,28 +124,25 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
             </button>
           ) : null}
         </div>
+        </div>
       </form>
 
       {query ? (
-        <MediaSearchResults query={query} hrefFor={hrefFor} onClear={clearSearch} />
+        <MediaSearchResults
+          query={query}
+          examCode={examCode}
+          hrefFor={hrefFor}
+          onClear={clearSearch}
+        />
       ) : (
         <>
           <B2CSegmentedTabs
-            className="mb-8"
             items={[
               { id: "all", label: "Everything" },
-              ...MEDIA_KINDS.map((option) => {
-                const Icon = MEDIA_KIND_ICON[option];
-                return {
-                  id: option,
-                  label: (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icon className="h-4 w-4" aria-hidden />
-                      {MEDIA_KIND_LABELS[option].many}
-                    </span>
-                  ),
-                };
-              }),
+              ...MEDIA_KINDS.map((option) => ({
+                id: option,
+                label: MEDIA_KIND_LABELS[option].many,
+              })),
             ]}
             value={filter}
             onChange={setFilter}
@@ -149,19 +150,24 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
           />
 
           <AsyncBoundary state={state}>
-            {(items) =>
-              items.length === 0 ? (
+            {(items) => {
+              const scoped = filterMediaByExam(items, examCode);
+              return scoped.length === 0 ? (
                 <B2CEmptyState
                   icon={filter === "all" ? undefined : MEDIA_KIND_ICON[filter]}
                   title={EMPTY[filter].title}
-                  description={EMPTY[filter].description}
+                  description={
+                    items.length > 0 && examCode
+                      ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
+                      : EMPTY[filter].description
+                  }
                 />
               ) : filter === "summary" ? (
-                <SummaryIndex items={items} hrefFor={hrefFor} />
+                <SummaryIndex items={scoped} hrefFor={hrefFor} />
               ) : (
-                <PagedGrid items={items} hrefFor={hrefFor} />
-              )
-            }
+                <PagedGrid items={scoped} hrefFor={hrefFor} />
+              );
+            }}
           </AsyncBoundary>
         </>
       )}

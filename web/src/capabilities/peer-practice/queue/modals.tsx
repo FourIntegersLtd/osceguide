@@ -30,11 +30,15 @@ export function LivePracticeModal({
   onClose,
   onStartNow,
   isJoiningQueue,
+  canStart = true,
+  children,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onStartNow: () => void;
   isJoiningQueue: boolean;
+  canStart?: boolean;
+  children?: React.ReactNode;
 }) {
   if (!isOpen) return null;
   return (
@@ -46,14 +50,15 @@ export function LivePracticeModal({
       <ModalContent>
         <ModalLead
           title="Live practice"
-          description="We'll look for an available colleague. You can get matched immediately and start a video session."
+          description="We'll search for a practice partner for up to 10 minutes. You can get matched immediately and start a video session."
           icon={<HiOutlineUsers className="h-4 w-4" />}
         />
+        {children}
         <ModalFooterActions>
           <ModalSecondaryButton onClick={onClose} disabled={isJoiningQueue}>
             Cancel
           </ModalSecondaryButton>
-          <ModalPrimaryButton onClick={onStartNow} disabled={isJoiningQueue} className="gap-2">
+          <ModalPrimaryButton onClick={onStartNow} disabled={isJoiningQueue || !canStart} className="gap-2">
             {isJoiningQueue ? (
               <>
                 <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
@@ -94,11 +99,11 @@ export function QueueWaitingModal({
   const position = status?.position ?? null;
 
   return (
-    <Modal width="500px" height="fit-content" title="Finding a practice partner" onClose={onKeepWaiting}>
+    <Modal width="500px" height="fit-content" title="Searching for a practice partner…" onClose={onKeepWaiting}>
       <ModalContent>
         <ModalLead
-          title="Finding a practice partner"
-          description="Looking for another user to practice with..."
+          title="Searching for a practice partner…"
+          description="We’ll search for up to 10 minutes. You can cancel your search or keep waiting in the background."
           icon={<HiOutlineArrowPath className="h-4 w-4 animate-spin" />}
         />
 
@@ -137,11 +142,27 @@ export function QueueWaitingModal({
 
         <ModalFooterActions className="flex-col md:flex-row">
           <ModalSecondaryButton onClick={onCancel} className="w-full whitespace-normal md:flex-1">
-            Cancel &amp; Try AI Practice
+            Cancel search
           </ModalSecondaryButton>
           <ModalPrimaryButton onClick={onKeepWaiting} className="w-full whitespace-normal md:flex-1">
             Keep waiting in the background
           </ModalPrimaryButton>
+        </ModalFooterActions>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+export function QueueExpiredModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal width="420px" height="fit-content" onClose={onClose}>
+      <ModalContent>
+        <ModalLead
+          title="No match found"
+          description="Nobody was available in the last ten minutes. You can try Live Practice again or post a time in the marketplace."
+        />
+        <ModalFooterActions>
+          <ModalPrimaryButton onClick={onClose}>OK</ModalPrimaryButton>
         </ModalFooterActions>
       </ModalContent>
     </Modal>
@@ -215,9 +236,11 @@ export function PeerPracticeInfoModal({
   onStartPractice,
   isLoading,
   onClose,
+  canStart = true,
 }: {
   onStartPractice: () => void;
   isLoading: boolean;
+  canStart?: boolean;
   onClose: () => void;
 }) {
   return (
@@ -264,7 +287,7 @@ export function PeerPracticeInfoModal({
               </>,
               <>
                 <strong className="font-medium text-osce-ink-900">Video:</strong> Allow your
-                microphone · the consultation begins immediately
+                microphone and camera · prepare together before the consultation
               </>,
               <>
                 <strong className="font-medium text-osce-ink-900">Ending:</strong> Either of you can
@@ -275,7 +298,7 @@ export function PeerPracticeInfoModal({
         </ModalSection>
 
         <ModalFooterActions>
-          <ModalPrimaryButton onClick={onStartPractice} disabled={isLoading} className="gap-2">
+          <ModalPrimaryButton onClick={onStartPractice} disabled={isLoading || !canStart} className="gap-2">
             <HiOutlineUsers className="h-3.5 w-3.5 shrink-0" />
             {isLoading ? "Starting..." : "Start practice session"}
           </ModalPrimaryButton>

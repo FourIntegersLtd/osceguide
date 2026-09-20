@@ -9,6 +9,7 @@ import { FeedbackCategories } from "@/capabilities/feedback/FeedbackCategories";
 import { FeedbackClinicalAnalysis } from "@/capabilities/feedback/FeedbackClinicalAnalysis";
 import { FeedbackLiveCoverage } from "@/capabilities/feedback/FeedbackLiveCoverage";
 import { FeedbackPriorityAreas } from "@/capabilities/feedback/FeedbackPriorityAreas";
+import { ExamFeedback, feedbackExam } from "@/capabilities/feedback/exams/ExamFeedback";
 
 /**
  * One scored attempt, rendered.
@@ -21,8 +22,8 @@ import { FeedbackPriorityAreas } from "@/capabilities/feedback/FeedbackPriorityA
  * meant.
  *
  * `payload` is the assessment result's payload exactly as the engine wrote it.
- * Everything framework-specific about reading it lives in `model.ts`, so the
- * four exams — and the fifth nobody has written yet — come through here.
+ * Known numeric/boolean exam schemas use their original exam views; SCA and
+ * other RAG-shaped payloads use the structural reader in `model.ts`.
  */
 export function FeedbackView({
   payload,
@@ -32,6 +33,7 @@ export function FeedbackView({
   className?: string;
 }) {
   const feedback = useMemo(() => normaliseFeedback(payload), [payload]);
+  if (feedbackExam(payload)) return <section className={className}><ExamFeedback payload={payload} /></section>;
   const isEmpty =
     feedback.groups.length === 0 &&
     feedback.priorities.length === 0 &&

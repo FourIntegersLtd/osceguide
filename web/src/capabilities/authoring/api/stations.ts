@@ -7,6 +7,9 @@ type S = components["schemas"];
 
 /* ---------------------------------------------------------------- stations */
 
+const STATION_PAGE_LIMIT = 100;
+const STATION_MAX_PAGES = 25;
+
 export function listStations(
   scope: AuthoringScope,
   params: { cursor?: string | null; limit?: number } = {},
@@ -15,6 +18,29 @@ export function listStations(
   return platformRequest(`${scope.base}/stations`, {
     query: { cursor: params.cursor ?? undefined, limit: params.limit },
     signal,
+  });
+}
+
+/** Walk cursors until the library is in memory — same pattern as org roster lists. */
+export async function listAllStations(scope: AuthoringScope, signal?: AbortSignal): Promise<Station[]> {
+  const items: Station[] = [];
+  let cursor: string | null = null;
+  for (let index = 0; index < STATION_MAX_PAGES; index += 1) {
+    const page = await listStations(scope, { limit: STATION_PAGE_LIMIT, cursor }, signal);
+    items.push(...(page.items as Station[]));
+    cursor = page.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  return items;
+}
+
+export function autogenerateStationDraft(
+  scope: AuthoringScope,
+  body: { prompt: string; template_version_id: string },
+): Promise<{ suggested_title: string; content: Record<string, unknown> }> {
+  return platformRequest(`${scope.base}/stations/autogenerate-draft`, {
+    method: "POST",
+    body,
   });
 }
 

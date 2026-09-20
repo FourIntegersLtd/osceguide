@@ -3,10 +3,20 @@ import type { AuthoringScope, Json } from "@/capabilities/authoring/api/scope";
 import type {
   StationTemplate,
   StationTemplateVersion,
-  FeedbackTemplate,
-  FeedbackTemplateVersion,
 } from "@/capabilities/authoring/api/scope";
 import { pathId } from "@/capabilities/authoring/api/scope";
+import { toPlatformStructure } from "@/b2b/lib/stations/blockRoles";
+import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+
+/**
+ * platform-api's renderer reads a flat `blocks` list with a `role` per block
+ * and a template-level `layout`; the editor works in `sections`. Send both,
+ * so the document round-trips through the editor and renders by role.
+ */
+function platformStructure(structure: Json | undefined): Json | undefined {
+  if (!structure || typeof structure !== "object" || !("sections" in structure)) return structure;
+  return toPlatformStructure(structure as unknown as StationStructure) as unknown as Json;
+}
 
 type S = components["schemas"];
 
@@ -23,7 +33,10 @@ export function createStationTemplate(
   scope: AuthoringScope,
   body: { title: string; exam_code?: string | null; structure?: Json },
 ): Promise<StationTemplate> {
-  return platformRequest(`${scope.base}/station-templates`, { method: "POST", body });
+  return platformRequest(`${scope.base}/station-templates`, {
+    method: "POST",
+    body: { ...body, structure: platformStructure(body.structure) },
+  });
 }
 
 export function publishStationTemplate(
@@ -52,52 +65,27 @@ export function editStationTemplateVersion(
 ): Promise<StationTemplateVersion> {
   return platformRequest(`${scope.base}/station-templates/${pathId(template)}/versions/${version}`, {
     method: "PATCH",
-    body: { structure },
+    body: { structure: platformStructure(structure) },
   });
 }
 
-/* ------------------------------------------------------ feedback templates */
-
-export function listFeedbackTemplates(
-  scope: AuthoringScope,
-  signal?: AbortSignal,
-): Promise<S["Page_FeedbackTemplateRead_"]> {
-  return platformRequest(`${scope.base}/feedback-templates`, { signal });
-}
-
-export function createFeedbackTemplate(
-  scope: AuthoringScope,
-  body: { title: string; rubric_version_id: string; field_selection?: Json },
-): Promise<FeedbackTemplate> {
-  return platformRequest(`${scope.base}/feedback-templates`, { method: "POST", body });
-}
-
-export function publishFeedbackTemplate(
-  scope: AuthoringScope,
-  template: string,
-): Promise<FeedbackTemplateVersion> {
-  return platformRequest(`${scope.base}/feedback-templates/${pathId(template)}/publish`, {
-    method: "POST",
-  });
-}
-
-export function addFeedbackTemplateVersion(
-  scope: AuthoringScope,
-  template: string,
-): Promise<FeedbackTemplateVersion> {
-  return platformRequest(`${scope.base}/feedback-templates/${pathId(template)}/versions`, {
-    method: "POST",
-  });
-}
-
-export function editFeedbackTemplateVersion(
+export function deleteStationTemplateVersion(
   scope: AuthoringScope,
   template: string,
   version: number,
-  field_selection: Json,
-): Promise<FeedbackTemplateVersion> {
-  return platformRequest(`${scope.base}/feedback-templates/${pathId(template)}/versions/${version}`, {
-    method: "PATCH",
-    body: { field_selection },
+): Promise<void> {
+  return platformRequest(`${scope.base}/station-templates/${pathId(template)}/versions/${version}`, {
+    method: "DELETE",
   });
+}
+
+export function archiveStationTemplateVersion(
+  scope: AuthoringScope,
+  template: string,
+  version: number,
+): Promise<StationTemplateVersion> {
+  return platformRequest(
+    `${scope.base}/station-templates/${pathId(template)}/versions/${version}/archive`,
+    { method: "POST" },
+  );
 }

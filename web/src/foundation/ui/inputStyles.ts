@@ -25,9 +25,8 @@ const sizeClasses: Record<InputSize, string> = {
  * built from this, so inputs, selects and textareas match across the app and
  * the B2B workspace.
  *
- * The focus treatment is deliberate: `outline-none` on its own removes the
- * only focus indicator keyboard users have, so it is always paired with a
- * visible 2px ring. Do not reintroduce `focus:ring-0`.
+ * Focus is a single accent border. A ring on top of the border reads as a
+ * double outline; keep `outline-none` paired with `focus:border-osce-accent`.
  */
 export function getInputClassName({
   size = "md",
@@ -37,10 +36,10 @@ export function getInputClassName({
     "w-full rounded-osce-sm border bg-osce-surface text-osce-ink-900",
     "placeholder:text-osce-ink-400",
     "disabled:cursor-not-allowed disabled:bg-osce-canvas disabled:text-osce-ink-500",
-    "focus:outline-none focus:ring-2",
+    "focus:outline-none",
     invalid
-      ? "border-osce-danger-border focus:border-osce-danger focus:ring-osce-danger-bg"
-      : "border-osce-border focus:border-osce-accent focus:ring-osce-accent-subtle",
+      ? "border-osce-danger-border focus:border-osce-danger"
+      : "border-osce-border focus:border-osce-accent",
     sizeClasses[size],
   );
 }

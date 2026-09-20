@@ -1,4 +1,4 @@
-import { LuHandshake } from "react-icons/lu";
+import { RiUserCommunityFill } from "react-icons/ri";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -11,11 +11,11 @@ import type { CapabilityModule } from "@/capabilities/contract";
  */
 export const peerPracticeCapability: CapabilityModule = {
   id: "peer-practice",
-  title: "Practise with someone",
+  title: "Marketplace",
   description: "Be paired with another candidate, now or at a time you arrange.",
   surfaces: ["train"],
   permission: null,
   section: "connect",
   path: "/peers",
-  icon: LuHandshake,
+  icon: RiUserCommunityFill,
 };

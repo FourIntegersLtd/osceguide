@@ -11,7 +11,8 @@ import {
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
 } from "@/capabilities";
-import { B2CHelpDock, type HelpNavItem } from "@/capabilities/help/B2CHelpDock";
+import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
+import type { HelpNavItem } from "@/capabilities/help/B2CHelpDock";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { PlatformSidebar } from "@/surfaces/platform/PlatformSidebar";
 import type { Workspace } from "@/foundation/routing";
@@ -107,7 +108,7 @@ export function PlatformStaffShell({ manifest, basePath, children }: PlatformSta
           <div className={b2cPageColumn}>{children}</div>
         </main>
 
-        <B2CHelpDock
+        <LazyB2CHelpDock
           navItems={helpNav}
           isExpanded={helpExpanded}
           setIsExpanded={setHelpExpanded}

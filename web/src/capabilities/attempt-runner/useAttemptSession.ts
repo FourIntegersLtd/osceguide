@@ -33,6 +33,7 @@ export interface AttemptSession {
   /** Give up before the consultation began. */
   abandon: () => Promise<void>;
   attachRoom: (room: Room | null) => void;
+  reportError: (cause: unknown) => void;
   /** Tell the agent to wind down. Sent once, near the end. */
   warnTimeRemaining: (secondsLeft: number) => void;
 }
@@ -79,11 +80,15 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const attemptRef = useRef<StartedAttemptRef | null>(null);
+  const startingRef = useRef(false);
+  const endingRef = useRef(false);
   const warned = useRef<Set<number>>(new Set());
   const inputRef = useRef(input);
   inputRef.current = input;
 
   const fail = useCallback((cause: unknown) => {
+    setGrant(null);
     setError(cause instanceof Error ? cause : new Error(String(cause)));
     setPhase("failed");
   }, []);
@@ -94,6 +99,8 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   }, []);
 
   const startConsultation = useCallback(async () => {
+    if (startingRef.current || endingRef.current) return;
+    startingRef.current = true;
     setPhase("connecting");
     setError(null);
     try {
@@ -107,17 +114,22 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
        * mints a token for it rather than creating a second one.
        */
       const { attemptId, start } = inputRef.current;
-      const running = attemptId ? { id: attemptId } : await start?.();
+      const running = attemptId ? { id: attemptId } : attemptRef.current ?? await start?.();
       if (!running) throw new Error("This station has no attempt to run.");
+      attemptRef.current = running;
       setAttempt(running);
       setGrant(await attemptVoiceToken(running.id));
       setPhase("live");
     } catch (cause) {
       fail(cause);
+    } finally {
+      startingRef.current = false;
     }
   }, [fail]);
 
   const end = useCallback(async () => {
+    if (endingRef.current) return;
+    endingRef.current = true;
     setPhase("ending");
     // Clearing the grant is what disconnects: LiveKitRoom reconnects on the
     // next render while it still has credentials.
@@ -143,6 +155,8 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
     }
     setPhase("idle");
     setAttempt(null);
+    attemptRef.current = null;
+    endingRef.current = false;
   }, [attempt]);
 
   const attachRoom = useCallback((room: Room | null) => {
@@ -176,6 +190,7 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
     end,
     abandon,
     attachRoom,
+    reportError: fail,
     warnTimeRemaining,
   };
 }

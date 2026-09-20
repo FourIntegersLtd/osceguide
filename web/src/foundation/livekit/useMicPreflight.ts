@@ -7,7 +7,7 @@ export type MicStatus = "checking" | "ready" | "denied" | "missing" | "insecure"
 export interface MicPreflight {
   status: MicStatus;
   /** Ask the browser for permission. Safe to call from a click handler. */
-  request: () => Promise<void>;
+  request: () => Promise<boolean>;
   message: string | null;
 }
 
@@ -53,14 +53,18 @@ export function useMicPreflight(enabled = true): MicPreflight {
   }, []);
 
   const request = useCallback(async () => {
+    if (!window.isSecureContext) { setStatus("insecure"); return false; }
+    if (!navigator.mediaDevices?.getUserMedia) { setStatus("missing"); return false; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       // Released immediately: holding it lights the recording indicator while
       // the candidate is still reading the brief.
       stream.getTracks().forEach((track) => track.stop());
       setStatus("ready");
+      return true;
     } catch (cause) {
       setStatus(cause instanceof DOMException && cause.name === "NotFoundError" ? "missing" : "denied");
+      return false;
     }
   }, []);
 

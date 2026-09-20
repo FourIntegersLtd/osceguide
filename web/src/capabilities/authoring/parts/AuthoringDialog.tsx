@@ -4,21 +4,18 @@ import type { ReactNode } from "react";
 import {
   Alert,
   Modal,
-  ModalContent,
   ModalCommitButton,
   ModalDangerButton,
   ModalFooterActions,
+  ModalPrimaryButton,
   ModalSecondaryButton,
   ModalTitle,
+  ModalContent,
 } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
 
 /**
  * The one dialog shape authoring uses.
- *
- * Every authoring modal in the retiring client was a title, a body, an inline
- * error and a Cancel/commit footer — and each of the three trees had its own
- * copy, with three different paddings. One component, so a change to the
- * footer is a change everywhere.
  */
 export function AuthoringDialog({
   open,
@@ -33,6 +30,7 @@ export function AuthoringDialog({
   onClose,
   onCommit,
   children,
+  width = "42rem",
 }: {
   open: boolean;
   title: string;
@@ -46,15 +44,26 @@ export function AuthoringDialog({
   onClose: () => void;
   onCommit: () => void;
   children?: ReactNode;
+  width?: string;
 }) {
+  const { surface } = useSurface();
+
   if (!open) return null;
-  const Commit = tone === "danger" ? ModalDangerButton : ModalCommitButton;
+
+  const Commit =
+    tone === "danger"
+      ? ModalDangerButton
+      : surface === "platform"
+        ? ModalPrimaryButton
+        : ModalCommitButton;
+  const leadClass =
+    surface === "platform" ? "text-b2c-text-muted" : "text-b2b-mid";
 
   return (
-    <Modal onClose={busy ? undefined : onClose} title={title} width="42rem">
+    <Modal onClose={busy ? undefined : onClose} title={title} width={width}>
       <ModalContent>
         <ModalTitle>{title}</ModalTitle>
-        {lead ? <p className="mt-1 text-osce-body text-b2b-mid">{lead}</p> : null}
+        {lead ? <p className={`mt-1 text-osce-body ${leadClass}`}>{lead}</p> : null}
         <div className="mt-4 space-y-4">{children}</div>
         {error ? (
           <Alert tone="danger" className="mt-4">

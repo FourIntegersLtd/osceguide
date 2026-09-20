@@ -16,8 +16,9 @@ export {
   DoctorInfoShell,
 } from "@/capabilities/attempt-runner/material/DoctorInfoLayout";
 export { ConsultationScreen } from "@/capabilities/attempt-runner/consultation/ConsultationScreen";
+export { ConsultationPanel } from "@/capabilities/attempt-runner/consultation/ConsultationPanel";
 export {
-  ConsultationPanel,
-  type PatientIdentity,
-} from "@/capabilities/attempt-runner/consultation/ConsultationPanel";
+  consultationPatientFromBrief,
+  type ConsultationPatient,
+} from "@/capabilities/attempt-runner/consultation/patientIdentity";
 export * from "@/capabilities/attempt-runner/api";

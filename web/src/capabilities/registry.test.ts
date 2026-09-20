@@ -10,24 +10,26 @@ describe("capability registry", () => {
     // these back to `train`, this fails rather than the institution quietly
     // losing a section.
     const assess = capabilitiesFor("assess").map((capability) => capability.id);
-    assert.ok(assess.includes("media"), "study material should mount on assess");
+    assert.ok(assess.includes("study-a-to-z"), "study material should mount on assess");
     assert.ok(assess.includes("community"), "discussion should mount on assess");
 
     const train = capabilitiesFor("train").map((capability) => capability.id);
-    assert.ok(train.includes("media"));
+    assert.ok(train.includes("study-slides"));
     assert.ok(train.includes("community"));
+    assert.ok(!train.includes("stations"), "station library is institution nav only");
+    assert.ok(!train.includes("media"), "combined library is hidden from nav");
   });
 
   it("prefixes hrefs with the base path the shell hands it", () => {
     // Same capability, same path, two workspaces. It never learns which.
     const [consumer] = capabilitiesFor("train", { basePath: "/app/me" }).filter(
-      (c) => c.id === "media",
+      (c) => c.id === "study-a-to-z",
     );
     const [institution] = capabilitiesFor("assess", { basePath: "/app/kings" }).filter(
-      (c) => c.id === "media",
+      (c) => c.id === "study-a-to-z",
     );
-    assert.equal(consumer?.href, "/app/me/library");
-    assert.equal(institution?.href, "/app/kings/library");
+    assert.equal(consumer?.href, "/app/me/summary");
+    assert.equal(institution?.href, "/app/kings/summary");
   });
 
   it("hides a capability the backend has not granted", () => {
@@ -39,8 +41,8 @@ describe("capability registry", () => {
     assert.equal(withoutGrant.length, 1);
 
     // And the real path: a permissionless capability is always shown.
-    const media = capabilitiesFor("assess", { can: {} }).find((c) => c.id === "media");
-    assert.ok(media, "study material has no permission gate, so no grant is needed");
+    const study = capabilitiesFor("assess", { can: {} }).find((c) => c.id === "study-podcast");
+    assert.ok(study, "study material has no permission gate, so no grant is needed");
   });
 
   it("keeps hidden capabilities out of navigation", () => {

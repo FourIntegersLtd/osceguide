@@ -2,7 +2,7 @@
  * A worked institution, built entirely through the public API.
  *
  * Gives a fresh database something to sign into: an organisation with staff,
- * trainees, a published feedback template, a programme, a sitting and a
+ * trainees, a programme, a sitting and a
  * circuit ready to run. Every call is one the console makes, so this doubles
  * as an end-to-end check of the Assess path.
  *
@@ -85,40 +85,7 @@ async function main() {
   });
   say("programme: sca");
 
-  // 4. A feedback template, bound to the platform rubric and published. A
-  //    sitting cannot exist without a published version of one.
-  const rubrics = await call("/api/v1/platform/rubrics?limit=10");
-  const rubricVersionId = rubrics.items.find((r) => r.current_version_id)?.current_version_id;
-  if (!rubricVersionId) throw new Error("no published platform rubric to bind to");
-
-  const templates = await call(`/api/v1/orgs/${SLUG}/feedback-templates?limit=50`);
-  let template = templates.items.find((item) => item.title === "House template");
-  if (!template) {
-    template = await call(`/api/v1/orgs/${SLUG}/feedback-templates`, {
-      method: "POST",
-      body: { title: "House template", rubric_version_id: rubricVersionId, field_selection: {} },
-    });
-    say("created feedback template");
-  }
-  let version = (template.versions ?? []).find((v) => v.status === "published");
-  if (!version) {
-    const draft =
-      (template.versions ?? []).find((v) => v.status === "draft") ??
-      (await call(`/api/v1/orgs/${SLUG}/feedback-templates/${template.id}/versions`, { method: "POST" }));
-    await call(`/api/v1/orgs/${SLUG}/feedback-templates/${template.id}/publish`, {
-      method: "POST",
-      body: { version: draft.version },
-      allow: ["already_published"],
-    });
-    const refreshed = await call(`/api/v1/orgs/${SLUG}/feedback-templates?limit=50`);
-    version = (refreshed.items.find((i) => i.id === template.id)?.versions ?? []).find(
-      (v) => v.status === "published",
-    );
-  }
-  if (!version) throw new Error("could not publish a feedback template version");
-  say(`feedback template published (v${version.version})`);
-
-  // 5. Trainees.
+  // 4. Trainees.
   const people = [
     { email: "amara.okafor@example.com", first_name: "Amara", last_name: "Okafor" },
     { email: "tom.reilly@example.com", first_name: "Tom", last_name: "Reilly" },
@@ -154,7 +121,11 @@ async function main() {
   const rosterable = trainees.items.filter((t) => t.user_id !== null);
   say(`${trainees.items.length} trainees, ${rosterable.length} with accounts`);
 
-  // 6. A sitting, and a circuit on it.
+  const programmes = await call(`/api/v1/orgs/${SLUG}/programmes?limit=20`);
+  const programme = programmes.items.find((p) => p.exam_code === "sca");
+  if (!programme) throw new Error("no sca programme — run step 3");
+
+  // 5. A sitting, and a circuit on it.
   const sittings = await call(`/api/v1/orgs/${SLUG}/sittings?limit=50`);
   let sitting = sittings.items.find((item) => item.name === "March mock OSCE");
   if (!sitting) {
@@ -164,7 +135,7 @@ async function main() {
         name: "March mock OSCE",
         mode: "training",
         sitting_type: "group_training",
-        feedback_template_version_id: version.id,
+        programme_id: programme.id,
         scheduled_for: new Date(Date.now() + 86_400_000).toISOString(),
       },
     });

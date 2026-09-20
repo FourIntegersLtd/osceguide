@@ -47,7 +47,11 @@ export function WorkspaceSwitcher({ current }: { current: Workspace }) {
   // One workspace is not a choice. Showing a menu with a single item in it
   // invites people to look for something that is not there.
   if (workspaces.length < 2) {
-    return <span className="truncate text-sm font-semibold text-ink">{current.name}</span>;
+    return (
+      <span className="truncate font-sans text-osce-meta font-semibold text-osce-ink-900">
+        {current.name}
+      </span>
+    );
   }
 
   return (
@@ -57,10 +61,10 @@ export function WorkspaceSwitcher({ current }: { current: Workspace }) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left hover:bg-surface-raised"
+        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-osce-navActive"
       >
         <WorkspaceIcon workspace={current} />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+        <span className="min-w-0 flex-1 truncate font-sans text-osce-meta font-semibold text-osce-ink-900">
           {current.name}
         </span>
         {busy ? (

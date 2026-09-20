@@ -30,6 +30,8 @@ export type Job = S["JobRead"];
 export type JobsPage = S["JobsPage"];
 export type PlatformHealth = S["PlatformHealth"];
 export type CloudCapacity = S["CloudCapacityRead"];
+export type StationProgress = S["StationProgressRead"];
+export type StationProgressChange = S["StationProgressChange"];
 
 interface Page<T> {
   items: T[];
@@ -93,6 +95,41 @@ export function failAttempt(attemptId: string, reason: string): Promise<Platform
   });
 }
 
+/* ------------------------------------------------------- Station progress */
+
+/**
+ * One row per station this person has sat: the attempts that exist beside
+ * the counters on their practice-set entries — which is what the per-station
+ * limit is enforced on, and what "reset attempts" zeroes.
+ */
+export function listUserStations(userId: string, signal?: AbortSignal): Promise<StationProgress[]> {
+  return platformRequest<StationProgress[]>(`${user(userId)}/stations`, { signal });
+}
+
+/** The old console's "reset attempts": counters to zero, records kept. */
+export function resetStationAttempts(userId: string, stationId: string): Promise<StationProgressChange> {
+  return platformRequest<StationProgressChange>(
+    `${user(userId)}/stations/${encodeURIComponent(stationId)}/reset-attempts`,
+    { method: "POST" },
+  );
+}
+
+/**
+ * The old console's "delete station": every attempt, transcript and marking
+ * at it, and the station taken out of their sets. Refused with
+ * `attempt_in_progress` while one is still running.
+ */
+export function deleteStationProgress(
+  userId: string,
+  stationId: string,
+  reason: string,
+): Promise<StationProgressChange> {
+  return platformRequest<StationProgressChange>(
+    `${user(userId)}/stations/${encodeURIComponent(stationId)}/delete-progress`,
+    { method: "POST", body: { reason } },
+  );
+}
+
 /* ----------------------------------------------------------- Entitlements */
 
 export function listUserEntitlements(
@@ -138,17 +175,25 @@ export function revokeEntitlement(
 
 export function listUserPayments(
   userId: string,
+  page?: PageParams,
   signal?: AbortSignal,
 ): Promise<Page<PlatformPayment>> {
-  return platformRequest<Page<PlatformPayment>>(`${user(userId)}/payments`, { signal });
+  return platformRequest<Page<PlatformPayment>>(`${user(userId)}/payments`, {
+    signal,
+    query: pageQuery(page),
+  });
 }
 
 /** Every webhook delivery naming this person's address, applied or refused. */
 export function listUserBillingEvents(
   userId: string,
+  page?: PageParams,
   signal?: AbortSignal,
 ): Promise<Page<StripeEvent>> {
-  return platformRequest<Page<StripeEvent>>(`${user(userId)}/billing-events`, { signal });
+  return platformRequest<Page<StripeEvent>>(`${user(userId)}/billing-events`, {
+    signal,
+    query: pageQuery(page),
+  });
 }
 
 /** The webhook ledger, newest first. `failedOnly` is the reconcile queue. */

@@ -1,8 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowLeft } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, Card } from "@/foundation/ui";
+import {
+  HiOutlineArchiveBox,
+  HiOutlineArrowLeft,
+  HiOutlineArrowUpTray,
+  HiOutlinePencilSquare,
+} from "react-icons/hi2";
+import { StructureBuilder } from "@/b2b/components/features/stations/templates/builder/StructureBuilder";
+import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import { Alert, AsyncBoundary } from "@/foundation/ui";
+import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
+import {
+  AuthoringIconAction,
+  AuthoringRowActions,
+} from "@/capabilities/authoring/parts/AuthoringIconAction";
 import { useAsync } from "@/foundation/hooks";
 import {
   addRubricVersion,
@@ -23,6 +36,11 @@ import {
   jsonProblem,
   parseJson,
 } from "@/capabilities/authoring/parts/JsonField";
+import {
+  emptyMarkingLayout,
+  markingLayoutFromVersion,
+  markingLayoutToJson,
+} from "@/capabilities/authoring/templates/rubricMarkingLayout";
 
 /** A rubric's versions, and the writes against each one. */
 export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: () => void }) {
@@ -34,6 +52,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
   const [prompt, setPrompt] = useState("");
   const [structure, setStructure] = useState("{}");
   const [pacing, setPacing] = useState("{}");
+  const [markingLayout, setMarkingLayout] = useState<StationStructure>(emptyMarkingLayout());
 
   return (
     <div className="space-y-4">
@@ -53,29 +72,28 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-osce-body font-semibold text-b2b-headline">{data.title}</h2>
-              <Button
-                themeType="b2b"
+              <AuthoringButton
                 variant="secondary"
                 size="sm"
                 disabled={action.busy !== null}
                 onClick={() => void action.run("add", () => addRubricVersion(scope, data.id))}
               >
                 {action.busy === "add" ? "Creating…" : "New draft version"}
-              </Button>
+              </AuthoringButton>
             </div>
 
             {(data.versions ?? []).length === 0 ? (
-              <Card themeType="b2b" padding="md">
+              <AuthoringCard padding="md">
                 <p className="text-osce-body text-b2b-mid">
                   This rubric has no versions yet. Cut a draft to start writing it.
                 </p>
-              </Card>
+              </AuthoringCard>
             ) : null}
 
             {[...(data.versions ?? [])]
               .sort((a, b) => b.version - a.version)
               .map((version) => (
-                <Card key={version.id} themeType="b2b" padding="md">
+                <AuthoringCard key={version.id} padding="md">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-osce-body font-medium text-b2b-headline">
@@ -87,49 +105,60 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                     </div>
                     <StatusBadge status={version.status} />
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Button
-                      themeType="b2b"
-                      variant="secondary"
-                      size="xs"
-                      disabled={version.status === "published"}
-                      onClick={() => {
-                        setEditing(version);
-                        setPrompt(version.system_prompt);
-                        setStructure(formatJson(version.structure));
-                        setPacing(formatJson(version.pacing));
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      themeType="b2b"
-                      variant="commit"
-                      size="xs"
-                      disabled={version.status === "published" || action.busy !== null}
-                      onClick={() =>
-                        void action.run(`publish:${version.id}`, () =>
-                          publishRubricVersion(scope, data.id, version.version),
-                        )
-                      }
-                    >
-                      {action.busy === `publish:${version.id}` ? "Publishing…" : "Publish"}
-                    </Button>
-                    <Button
-                      themeType="b2b"
-                      variant="secondary"
-                      size="xs"
-                      disabled={version.status === "archived" || action.busy !== null}
-                      onClick={() =>
-                        void action.run(`archive:${version.id}`, () =>
-                          archiveRubricVersion(scope, data.id, version.version),
-                        )
-                      }
-                    >
-                      {action.busy === `archive:${version.id}` ? "Archiving…" : "Archive"}
-                    </Button>
+                  <div className="mt-3">
+                    <AuthoringRowActions>
+                      {version.status !== "published" ? (
+                        <AuthoringIconAction
+                          label="Edit"
+                          onClick={() => {
+                            setEditing(version);
+                            setPrompt(version.system_prompt);
+                            setStructure(formatJson(version.structure));
+                            setPacing(formatJson(version.pacing));
+                            setMarkingLayout(
+                              markingLayoutFromVersion(version.marking_layout) ??
+                                emptyMarkingLayout(),
+                            );
+                          }}
+                        >
+                          <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
+                        </AuthoringIconAction>
+                      ) : null}
+                      {version.status !== "published" ? (
+                        <AuthoringIconAction
+                          variant="primary"
+                          label="Publish"
+                          busy={action.busy === `publish:${version.id}`}
+                          busyLabel="Publishing…"
+                          disabled={action.busy !== null}
+                          onClick={() =>
+                            void action.run(`publish:${version.id}`, () =>
+                              publishRubricVersion(scope, data.id, version.version),
+                            )
+                          }
+                        >
+                          <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
+                        </AuthoringIconAction>
+                      ) : null}
+                      {version.status !== "archived" ? (
+                        <AuthoringIconAction
+                          variant="warning"
+                          label="Archive"
+                          busy={action.busy === `archive:${version.id}`}
+                          busyLabel="Archiving…"
+                          disabled={action.busy !== null}
+                          onClick={() =>
+                            void action.run(`archive:${version.id}`, () =>
+                              archiveRubricVersion(scope, data.id, version.version),
+                            )
+                          }
+                        >
+                          <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
+                        </AuthoringIconAction>
+                      ) : null}
+                    </AuthoringRowActions>
                   </div>
-                </Card>
+                </AuthoringCard>
               ))}
 
             <AuthoringDialog
@@ -152,6 +181,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                     system_prompt: prompt,
                     structure: parseJson(structure),
                     pacing: parseJson(pacing),
+                    marking_layout: markingLayoutToJson(markingLayout),
                   });
                   setEditing(null);
                 })
@@ -170,6 +200,22 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
               </div>
               <JsonField label="Structure" value={structure} onChange={setStructure} />
               <JsonField label="Pacing" rows={6} value={pacing} onChange={setPacing} />
+              <div>
+                <p className="text-osce-body font-semibold text-b2b-headline">Examiner layout</p>
+                <p className="mt-0.5 text-osce-caption text-b2b-mid">
+                  Structured fields human reviewers see in slot review. Platform catalogue rubrics
+                  need a layout before publish.
+                </p>
+                <div className="mt-3 rounded-md border border-b2b-border bg-white p-3">
+                  <StructureBuilder
+                    kind="feedback"
+                    value={markingLayout}
+                    onChange={setMarkingLayout}
+                    title={data.title}
+                    flatChrome
+                  />
+                </div>
+              </div>
             </AuthoringDialog>
           </div>
         )}

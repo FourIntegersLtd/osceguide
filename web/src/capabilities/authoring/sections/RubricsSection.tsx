@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, Button, getInputClassName } from "@/foundation/ui";
+import { useMemo, useState } from "react";
+import { HiOutlineChevronRight, HiOutlinePlusCircle } from "react-icons/hi2";
+import { Alert, getInputClassName } from "@/foundation/ui";
+import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import {
+  AuthoringIconAction,
+  AuthoringRowActions,
+} from "@/capabilities/authoring/parts/AuthoringIconAction";
+import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
+import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
+import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
+import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
+import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 import { useAsync } from "@/foundation/hooks";
 import { createRubric, listRubrics } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
@@ -13,6 +23,10 @@ import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog"
 import { JsonField, jsonProblem, parseJson } from "@/capabilities/authoring/parts/JsonField";
 import { latestOf } from "@/capabilities/authoring/sections/versions";
 import { RubricDetail } from "@/capabilities/authoring/sections/RubricDetail";
+import {
+  emptyMarkingLayout,
+  markingLayoutToJson,
+} from "@/capabilities/authoring/templates/rubricMarkingLayout";
 
 /**
  * Rubrics: what a station is marked against.
@@ -23,6 +37,9 @@ import { RubricDetail } from "@/capabilities/authoring/sections/RubricDetail";
  */
 export function RubricsSection() {
   const scope = useAuthoringScope();
+  const { rubricVersionIdForExam } = useAuthoringExamCatalog();
+  const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
+  const [search, setSearch] = useState("");
   const rubrics = useAsync((signal) => listRubrics(scope, {}, signal), [scope.base]);
   const action = useAction(rubrics.reload);
 
@@ -33,7 +50,19 @@ export function RubricsSection() {
   const [structure, setStructure] = useState("{}");
   const [pacing, setPacing] = useState("{}");
 
-  const items = rubrics.data?.items ?? [];
+  const items = useMemo(() => {
+    const rubricForExam = rubricVersionIdForExam(examFilter);
+    const q = search.trim().toLowerCase();
+    return (rubrics.data?.items ?? []).filter((rubric) => {
+      if (examFilter) {
+        if (!rubricForExam) return false;
+        const versionIds = (rubric.versions ?? []).map((v) => v.id);
+        if (!versionIds.includes(rubricForExam)) return false;
+      }
+      if (!q) return true;
+      return rubric.title.toLowerCase().includes(q) || rubric.id.toLowerCase().includes(q);
+    });
+  }, [rubrics.data, examFilter, search, rubricVersionIdForExam]);
 
   if (open) {
     return (
@@ -49,21 +78,30 @@ export function RubricsSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-osce-body text-b2b-mid">
-          The marking structure a station is assessed against.
-        </p>
-        <Button
-          themeType="b2b"
-          variant="commit"
-          size="sm"
-          className="gap-2"
-          onClick={() => setCreating(true)}
-        >
-          <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Create rubric
-        </Button>
-      </div>
+      <AuthoringSectionLead
+        action={
+          <AuthoringButton
+            variant="commit"
+            size="sm"
+            className="gap-2"
+            onClick={() => setCreating(true)}
+          >
+            <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+            Create rubric
+          </AuthoringButton>
+        }
+      >
+        The marking structure a station is assessed against.
+      </AuthoringSectionLead>
+
+      <AuthoringCatalogFilterBar
+        examCode={examFilter}
+        onExamCodeChange={setExamFilter}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search rubrics…"
+        searchAriaLabel="Search rubrics"
+      />
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
@@ -81,30 +119,29 @@ export function RubricsSection() {
         {items.map((rubric) => {
           const { published, draft, archivedOnly } = latestOf(rubric.versions ?? []);
           return (
-            <div
+            <AuthoringListRow
               key={rubric.id}
-              className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-osce-body font-medium text-b2b-headline">
-                  {rubric.title}
-                </p>
+              title={rubric.title}
+              detail={
                 <PublishStatusLine
                   kindLabel={rubric.owner_kind === "platform" ? "OSCE Guide" : null}
                   published={published}
                   draft={draft}
                   archivedOnly={archivedOnly}
                 />
-              </div>
-              <Button
-                themeType="b2b"
-                variant="secondary"
-                size="xs"
-                onClick={() => setOpen(rubric.id)}
-              >
-                Versions
-              </Button>
-            </div>
+              }
+              onOpen={() => setOpen(rubric.id)}
+            >
+              <AuthoringRowActions>
+                <AuthoringIconAction
+                  variant="ghost"
+                  label="Open versions"
+                  onClick={() => setOpen(rubric.id)}
+                >
+                  <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
+                </AuthoringIconAction>
+              </AuthoringRowActions>
+            </AuthoringListRow>
           );
         })}
       </ListCard>
@@ -131,6 +168,9 @@ export function RubricsSection() {
               system_prompt: prompt,
               structure: parseJson(structure),
               pacing: parseJson(pacing),
+              ...(scope.kind === "platform"
+                ? { marking_layout: markingLayoutToJson(emptyMarkingLayout()) }
+                : {}),
             });
             setTitle("");
             setPrompt("");

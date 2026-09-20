@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineArrowPath } from "react-icons/hi2";
-import { useAsync, useEventStream } from "@/foundation/hooks";
+import { useAsync } from "@/foundation/hooks";
+import { readAttempt } from "@/capabilities/attempt-runner/api";
 import { AsyncBoundary, cn, productTokens } from "@/foundation/ui";
 import { FeedbackView } from "@/capabilities/feedback/FeedbackView";
+import { SavedLiveCoverage } from "./SavedLiveCoverage";
 import {
-  attemptStreamPath,
   isTerminal,
   readResults,
   scoredAtLabel,
@@ -14,11 +15,6 @@ import {
 } from "@/capabilities/feedback/api";
 
 const { b2cCard, b2cIconEmptyMd, b2cPickerChipBase } = productTokens;
-
-interface AttemptSnapshot {
-  id: string;
-  status: string;
-}
 
 /**
  * One attempt's feedback, including the wait for it.
@@ -31,28 +27,45 @@ interface AttemptSnapshot {
  * The same screen for a candidate and for an examiner: the API decides whose
  * results a person may read, and nothing in this component asks who is looking.
  */
-export function AttemptFeedback({ attemptId }: { attemptId: string }) {
+export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attemptId: string; showLiveCoverage?: boolean }) {
   const state = useAsync((signal) => readResults(attemptId, signal), [attemptId]);
   const results = state.data;
   const pending = results !== null && results.length === 0;
 
-  const snapshot = useEventStream<AttemptSnapshot>(pending ? attemptStreamPath(attemptId) : null);
+  const [attemptStatus, setAttemptStatus] = useState<string | null>(null);
 
-  // Once per arrival at a terminal state. `reload` changes `state`, which
-  // would otherwise re-run this effect on the render it caused and ask again
-  // for a result the job has not written yet — a loop on the one screen a
-  // person sits and watches.
+  // The API does not expose attempt SSE yet. Poll status while marking runs so
+  // this screen updates when the worker finishes (or fails).
   const reReadFor = useRef<string | null>(null);
   const reload = state.reload;
   useEffect(() => {
-    const status = snapshot.data?.status;
-    if (!pending || !status || !isTerminal(status)) return;
-    if (reReadFor.current === `${attemptId}:${status}`) return;
-    reReadFor.current = `${attemptId}:${status}`;
-    reload();
-  }, [pending, snapshot.data, attemptId, reload]);
+    if (!pending) return;
+    let live = true;
 
-  if (pending && snapshot.data?.status === "failed") {
+    const tick = async () => {
+      try {
+        const attempt = await readAttempt(attemptId);
+        if (!live) return;
+        setAttemptStatus(attempt.status);
+        if (!isTerminal(attempt.status)) return;
+        const key = `${attemptId}:${attempt.status}`;
+        if (reReadFor.current === key) return;
+        reReadFor.current = key;
+        reload();
+      } catch {
+        // Transient network errors should not tear down the wait state.
+      }
+    };
+
+    void tick();
+    const interval = window.setInterval(() => void tick(), 3000);
+    return () => {
+      live = false;
+      window.clearInterval(interval);
+    };
+  }, [pending, attemptId, reload]);
+
+  if (pending && attemptStatus === "failed") {
     // The attempt reached a terminal state with nothing scored. Saying so is
     // the whole point: the retiring client showed this as a spinner that never
     // stopped, and people sat in front of it.
@@ -79,7 +92,10 @@ export function AttemptFeedback({ attemptId }: { attemptId: string }) {
     );
   }
 
-  return <AsyncBoundary state={state}>{(items) => <Markings results={items} />}</AsyncBoundary>;
+  return <AsyncBoundary state={state}>{(items) => <>
+    <Markings results={items} />
+    {showLiveCoverage && <SavedLiveCoverage attemptId={attemptId} />}
+  </>}</AsyncBoundary>;
 }
 
 /**

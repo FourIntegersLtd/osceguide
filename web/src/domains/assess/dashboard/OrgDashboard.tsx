@@ -196,7 +196,7 @@ function Counts({ data }: { data: Data }) {
     // platform catalogue it may also run, so it is named that way.
     { label: "Your stations", value: counts.stations, path: "/authoring" },
     { label: "Sittings", value: counts.sittings, path: "/sittings" },
-    { label: "Templates", value: counts.published_feedback_templates, path: null },
+    { label: "Programmes", value: counts.programmes_with_markable_exam, path: "/authoring/programmes" },
   ];
 
   return (

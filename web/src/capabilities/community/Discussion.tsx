@@ -65,7 +65,6 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
       />
 
       <B2CSegmentedTabs
-        className="mb-6 sm:mb-8"
         items={COMMUNITY_TABS}
         value={activeTab}
         onChange={setActiveTab}

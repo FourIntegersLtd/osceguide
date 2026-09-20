@@ -8,9 +8,8 @@ import { errorMessage } from "@/foundation/hooks";
 import {
   LivePracticeModal,
   PeerPracticeInfoModal,
-  QueueIndicator,
-  QueueWaitingModal,
 } from "@/capabilities/peer-practice/queue/modals";
+import { LivePracticeExamPicker } from "./LivePracticeExamPicker";
 import type { Queue } from "@/capabilities/peer-practice/support/useQueue";
 
 /**
@@ -25,32 +24,37 @@ export function LivePracticeButton({
   queue,
   examCode,
   label = "Live Practice",
+  onStarted,
 }: {
   queue: Queue;
   examCode: string | null;
   label?: string;
+  onStarted?: () => void;
 }) {
+  const [selectedExam, setSelectedExam] = useState("");
+  const chosenExam = examCode || selectedExam;
   const [prompting, setPrompting] = useState(false);
   const [explaining, setExplaining] = useState(false);
-  const [minimised, setMinimised] = useState(false);
 
   const joining = queue.phase === "joining";
   const waiting = queue.phase === "waiting";
-
   const start = useCallback(async () => {
-    if (!examCode) return;
-    await queue.join(examCode);
+    if (!chosenExam) { setExplaining(false); setPrompting(true); return; }
+    if ("Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission().catch(() => {});
+    }
+    await queue.join(chosenExam);
+    onStarted?.();
     setPrompting(false);
     setExplaining(false);
-    setMinimised(false);
-  }, [examCode, queue]);
+  }, [chosenExam, queue, onStarted]);
 
   return (
     <>
       <div className="flex w-full items-center gap-3 sm:w-auto">
         <button
           type="button"
-          disabled={!examCode || joining || waiting}
+          disabled={joining || waiting || queue.restoring || queue.phase === "matched"}
           onClick={() => setPrompting(true)}
           className={`flex w-full items-center justify-center gap-2 px-4 py-3 text-center text-osce-body sm:w-auto ${b2cGhostButton}`}
         >
@@ -79,32 +83,20 @@ export function LivePracticeButton({
         onClose={() => setPrompting(false)}
         onStartNow={start}
         isJoiningQueue={joining}
-      />
+        canStart={Boolean(chosenExam)}
+      >
+        {!examCode && <LivePracticeExamPicker value={selectedExam} onChange={setSelectedExam} />}
+      </LivePracticeModal>
 
       {explaining && (
         <PeerPracticeInfoModal
           isLoading={joining}
+          canStart
           onClose={() => setExplaining(false)}
           onStartPractice={start}
         />
       )}
 
-      {waiting && !minimised && (
-        <QueueWaitingModal
-          status={queue.status}
-          live={queue.live}
-          onCancel={() => void queue.leave()}
-          onKeepWaiting={() => setMinimised(true)}
-        />
-      )}
-
-      {waiting && minimised && (
-        <QueueIndicator
-          waitingCount={queue.status?.waiting_count ?? 0}
-          onCancel={() => void queue.leave()}
-          onDismiss={() => setMinimised(false)}
-        />
-      )}
     </>
   );
 }

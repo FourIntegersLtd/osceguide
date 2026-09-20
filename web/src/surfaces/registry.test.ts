@@ -214,10 +214,12 @@ describe("surface registry", () => {
     assert.deepEqual(bySection("practice"), [
       "Dashboard",
       "AI Practice",
-      "Stations",
-      "Study material",
+      "A to Z",
+      "Slides",
+      "Podcast",
+      "Articles",
     ]);
-    assert.deepEqual(bySection("connect"), ["Discussion", "Practise with someone"]);
+    assert.deepEqual(bySection("connect"), ["Community", "Marketplace"]);
     assert.deepEqual(bySection("general"), ["Settings"]);
     // Nothing ungrouped: an item with no section would render above the
     // headings, which on this arm means somebody forgot to name one.

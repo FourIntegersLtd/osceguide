@@ -262,7 +262,7 @@ const SCA: ExamConfig = {
     decimals: 0,
     unit: "%",
   },
-  sections: { hero: true, weeklyTrend: true, insights: true, firstStation: true },
+  sections: { hero: true, weeklyTrend: true, insights: true, firstStation: false },
 };
 
 export const EXAM_CONFIGS: Record<string, ExamConfig> = {

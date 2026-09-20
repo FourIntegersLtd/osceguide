@@ -58,25 +58,6 @@ const ITEMS = [
       ],
     },
   },
-  {
-    kind: "blog",
-    exam_code: "plab",
-    title: "Reading the brief under pressure",
-    summary: "A method for the reading minutes that does not rely on nerve.",
-    content: {
-      body_md:
-        "The reading period is short and the temptation is to read it twice.\n\nRead it once, then spend the rest of the time writing three things: the likely diagnosis, the thing you must not miss, and your opening sentence.",
-    },
-  },
-  {
-    kind: "podcast",
-    exam_code: "sca",
-    title: "Debriefing a station you think went badly",
-    summary: "Twelve minutes on separating the feeling from the evidence.",
-    content: {
-      body_md: "A short conversation about what to do with the station you walked out of certain you had failed.",
-    },
-  },
 ];
 
 async function main() {
@@ -106,6 +87,14 @@ async function main() {
 
   const published = await call("/api/v1/media?limit=100", { token });
   console.log(`\n${published.items.length} published items`);
+  console.log(
+    "\nStudy bodies need a live entitlement (OpenAI alone does not unlock them).",
+  );
+  console.log(
+    "From platform-api: make grant-exam-access EMAIL=" +
+      email +
+      " EXAM=sca",
+  );
 }
 
 main().catch((error) => {

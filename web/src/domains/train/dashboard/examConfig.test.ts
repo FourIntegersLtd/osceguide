@@ -25,7 +25,7 @@ describe("exam configuration", () => {
       hero: true,
       weeklyTrend: true,
       insights: true,
-      firstStation: true,
+      firstStation: false,
     });
     for (const code of ["plab", "casc", "ortho"]) {
       assert.equal(configFor(code).sections.hero, false, `${code} has no hero`);

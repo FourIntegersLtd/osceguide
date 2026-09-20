@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { HiOutlineKey } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
+import Table, {
+  type FetchPageParams,
+  type FetchPageResult,
+} from "@/foundation/table/Table";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { cn } from "@/foundation/ui/cn";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { PanelCard, formatWhen } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
@@ -216,9 +222,118 @@ function GrantsTable({
      `Trainee.user_id`, which is null until the person has signed in — so a
      grant to somebody who has not yet accepted their invitation shows as the
      address it was made to rather than as a name that does not exist yet. */
-  const byUserId = new Map(
-    trainees.filter((trainee) => trainee.user_id).map((trainee) => [trainee.user_id, trainee]),
+  const byUserId = useMemo(
+    () =>
+      new Map(
+        trainees
+          .filter((trainee) => trainee.user_id)
+          .map((trainee) => [trainee.user_id, trainee]),
+      ),
+    [trainees],
   );
+
+  const whoLabel = useCallback(
+    (entitlement: Entitlement) => {
+      const trainee = byUserId.get(entitlement.user_id);
+      return trainee ? displayName(trainee) : "Not on this roster";
+    },
+    [byUserId],
+  );
+
+  const fetchPage = useCallback(
+    async (params: FetchPageParams): Promise<FetchPageResult<Entitlement>> => {
+      let filtered = entitlements;
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = entitlements.filter(
+          (entitlement) =>
+            whoLabel(entitlement).toLowerCase().includes(q) ||
+            entitlement.exam_code.toLowerCase().includes(q),
+        );
+      }
+      const start = (params.page - 1) * params.perPage;
+      const end = start + params.perPage;
+      return {
+        items: filtered.slice(start, end),
+        totalCount: filtered.length,
+      };
+    },
+    [entitlements, whoLabel],
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "Who",
+        key: "user_id" as keyof Entitlement,
+        priority: "primary" as const,
+        render: (entitlement: Entitlement) => (
+          <span className={cn(b2cTableCellText, "font-medium text-osce-ink-900")}>
+            {whoLabel(entitlement)}
+          </span>
+        ),
+      },
+      {
+        header: "Exam",
+        key: "exam_code" as keyof Entitlement,
+        render: (entitlement: Entitlement) => (
+          <span className={cn(b2cTableCellText, "text-b2b-graphite")}>{entitlement.exam_code}</span>
+        ),
+      },
+      {
+        header: "Status",
+        key: "live" as keyof Entitlement,
+        render: (entitlement: Entitlement) =>
+          entitlement.live ? (
+            <span className="text-osce-caption font-medium text-b2b-success-text">Live</span>
+          ) : (
+            <span className="text-osce-caption font-medium text-b2b-warning-text/90">
+              {entitlement.revoked_at ? "Revoked" : "Expired"}
+            </span>
+          ),
+      },
+      {
+        header: "From",
+        key: "starts_at" as keyof Entitlement,
+        className: "hidden md:table-cell",
+        priority: "detail" as const,
+        render: (entitlement: Entitlement) => (
+          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
+            {formatWhen(entitlement.starts_at)}
+          </span>
+        ),
+      },
+      {
+        header: "Until",
+        key: "ends_at" as keyof Entitlement,
+        className: "hidden md:table-cell",
+        priority: "detail" as const,
+        render: (entitlement: Entitlement) => (
+          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
+            {entitlement.ends_at ? formatWhen(entitlement.ends_at) : "No end date"}
+          </span>
+        ),
+      },
+      {
+        header: "Actions",
+        key: "id" as keyof Entitlement,
+        priority: "detail" as const,
+        render: (entitlement: Entitlement) =>
+          canManage && entitlement.live ? (
+            <Button
+              themeType="b2b"
+              variant="secondary"
+              size="sm"
+              onClick={() => onRevoke(entitlement)}
+            >
+              Revoke
+            </Button>
+          ) : null,
+      },
+    ],
+    [canManage, onRevoke, whoLabel],
+  );
+
   if (entitlements.length === 0) {
     return (
       <p className="text-osce-body text-b2b-mid">
@@ -228,68 +343,14 @@ function GrantsTable({
   }
 
   return (
-    <div className={b2bTokens.b2bGroupedShell}>
-      <div className={b2bTokens.b2bTableScroll}>
-        <table className="min-w-full w-full divide-y divide-b2b-border">
-          <thead>
-            <tr>
-              {["Who", "Exam", "Status", "From", "Until", ""].map((header, index) => (
-                <th
-                  key={header || index}
-                  scope="col"
-                  className="px-4 py-2 text-left text-osce-caption font-medium text-b2b-mid"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-b2b-border">
-            {entitlements.map((entitlement) => (
-              <tr key={entitlement.id}>
-                <td className="px-4 py-3 text-osce-body font-medium text-b2b-headline">
-                  {(() => {
-                    const trainee = byUserId.get(entitlement.user_id);
-                    return trainee ? displayName(trainee) : "Not on this roster";
-                  })()}
-                </td>
-                <td className="px-4 py-3 text-osce-body text-b2b-graphite">
-                  {entitlement.exam_code}
-                </td>
-                <td className="px-4 py-3 text-osce-body">
-                  {entitlement.live ? (
-                    <span className="text-osce-caption font-medium text-b2b-success-text">
-                      Live
-                    </span>
-                  ) : (
-                    <span className="text-osce-caption font-medium text-b2b-warning-text/90">
-                      {entitlement.revoked_at ? "Revoked" : "Expired"}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-osce-body text-b2b-mid">
-                  {formatWhen(entitlement.starts_at)}
-                </td>
-                <td className="px-4 py-3 text-osce-body text-b2b-mid">
-                  {entitlement.ends_at ? formatWhen(entitlement.ends_at) : "No end date"}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {canManage && entitlement.live ? (
-                    <Button
-                      themeType="b2b"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => onRevoke(entitlement)}
-                    >
-                      Revoke
-                    </Button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Table<Entitlement>
+      fetchPage={fetchPage}
+      columns={columns}
+      idField="id"
+      nameField="exam_code"
+      searchPlaceholder="Search grants…"
+      showPagination={entitlements.length > 10}
+      defaultItemsPerPage={25}
+    />
   );
 }

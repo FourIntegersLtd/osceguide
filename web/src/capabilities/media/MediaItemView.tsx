@@ -4,10 +4,12 @@ import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMedia, type MediaItem } from "@/capabilities/media/api";
-import { DeckView } from "@/capabilities/media/DeckView";
 import { SummaryView } from "@/capabilities/media/SummaryView";
 import { ArticleView } from "@/capabilities/media/ArticleView";
 import { EpisodeView } from "@/capabilities/media/EpisodeView";
+import { LockedMediaGate } from "@/capabilities/media/LockedMediaGate";
+import { StudyTabRedirect } from "@/capabilities/media/StudyTabRedirect";
+import { podcastEpisodePath, slidesDeckPath } from "@/capabilities/media/studyPaths";
 
 /**
  * One item, read the way its kind is meant to be read.
@@ -30,8 +32,19 @@ export function MediaItemView({ slug }: { slug: string }) {
 }
 
 function Reader({ item, hrefFor }: { item: MediaItem; hrefFor: (path: string) => string }) {
-  if (item.kind === "slide_deck") return <DeckView item={item} hrefFor={hrefFor} />;
+  if (item.locked) {
+    return (
+      <div className="w-full text-left">
+        <LockedMediaGate item={item} />
+      </div>
+    );
+  }
+  if (item.kind === "slide_deck") {
+    return <StudyTabRedirect hrefFor={hrefFor} path={slidesDeckPath(item.slug)} />;
+  }
   if (item.kind === "summary") return <SummaryView item={item} hrefFor={hrefFor} />;
-  if (item.kind === "podcast") return <EpisodeView item={item} hrefFor={hrefFor} />;
+  if (item.kind === "podcast") {
+    return <StudyTabRedirect hrefFor={hrefFor} path={podcastEpisodePath(item.slug)} />;
+  }
   return <ArticleView item={item} hrefFor={hrefFor} />;
 }

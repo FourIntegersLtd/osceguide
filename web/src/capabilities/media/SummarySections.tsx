@@ -76,8 +76,10 @@ export function ClinicalSections({ sections }: { sections: SummarySection[] }) {
  * published against either backend reads the same.
  */
 function splitAspect(aspect: string): { title: string; items: string[] } {
-  const [title, details] = aspect.split(": ");
-  if (!title || !details) return { title: aspect, items: [] };
+  const colon = aspect.indexOf(": ");
+  if (colon === -1) return { title: aspect, items: [] };
+  const title = aspect.slice(0, colon);
+  const details = aspect.slice(colon + 2);
   return {
     title,
     items: details

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal, Spinner } from "@/foundation/ui";
+import { Modal, ModalCallout } from "@/foundation/ui";
 import { readResults } from "@/capabilities/attempt-runner";
+import { GeneratingFeedback } from "@/domains/train/station/GeneratingFeedback";
+import Tips from "./tips/Tips";
 
 const MAX_TRIES = 10;
 
@@ -68,49 +70,38 @@ export function MarkingModal({
   const givenUp = tries >= MAX_TRIES;
 
   return (
-    <Modal onClose={onSkip} width="min(95vw, 36rem)" height="fit-content">
-      <div className="space-y-5 p-6 text-center">
-        <div className="flex justify-center">
-          <Spinner />
-        </div>
-        <div className="space-y-1.5">
-          <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
-            {givenUp ? "Marking is taking longer than usual" : "Marking your consultation"}
-          </h2>
-          <p className="text-osce-body text-b2c-text-muted">
-            {givenUp
-              ? "Your attempt is safe. Your feedback will be on this station when it is ready."
-              : "This usually takes about a minute. You can wait here or carry on."}
-          </p>
-        </div>
-
-        {!givenUp && examCode === "sca" && <ConsultationTips />}
-
+    <Modal
+      onClose={onSkip}
+      width="600px"
+      height="fit-content"
+      title={givenUp ? undefined : "Marking your consultation"}
+    >
+      <ModalCallout className="mb-4 mt-0">
+        Marking usually takes one to three minutes. You don&apos;t have to wait here:{" "}
         <button
           type="button"
           onClick={onSkip}
-          className="text-osce-body text-osce-accent underline underline-offset-2 hover:text-osce-accent-hover"
+          className="font-semibold text-osce-accent underline underline-offset-2 hover:text-osce-accent-hover"
         >
-          Continue to your session summary
-        </button>
-      </div>
-    </Modal>
-  );
-}
+          continue to your session summary
+        </button>{" "}
+        and we&apos;ll let you know the moment your feedback is ready.
+      </ModalCallout>
 
-/**
- * Something worth reading while the marking runs.
- *
- * SCA only, as in the old client: these are the RCGP domains' own vocabulary
- * and would be wrong for PLAB or CASC.
- */
-function ConsultationTips() {
-  return (
-    <ul className="space-y-2 rounded-2xl border border-osce-tone-tip-border bg-osce-tone-tip-bg p-4 text-left text-osce-body text-osce-tone-tip-body">
-      <li>Ask about ideas, concerns and expectations early, and respond to what you hear.</li>
-      <li>Say the safety net out loud: what should make them come back, and how soon.</li>
-      <li>Check understanding by asking them to say the plan back, not by asking &ldquo;is that OK?&rdquo;.</li>
-      <li>Leave time to agree the plan together rather than announcing it at the end.</li>
-    </ul>
+      {givenUp ? (
+        <div className="space-y-3 p-6 text-center">
+          <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
+            Marking is taking longer than usual
+          </h2>
+          <p className="text-osce-body text-b2c-text-muted">
+            Your attempt is safe. Your feedback will be on this station when it is ready.
+          </p>
+        </div>
+      ) : examCode === "sca" ? (
+        <Tips duration={120} />
+      ) : (
+        <GeneratingFeedback />
+      )}
+    </Modal>
   );
 }

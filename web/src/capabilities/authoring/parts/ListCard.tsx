@@ -1,14 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Alert, B2CSkeleton, Button, Card, EmptyState } from "@/foundation/ui";
+import { Alert, B2CSkeleton, Button, EmptyState } from "@/foundation/ui";
+import { cn } from "@/foundation/ui/cn";
+import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
+import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 
 /**
  * A section's list: a header strip, an action error, and one of
  * loading / empty / rows.
- *
- * The three authoring trees each rendered this and each got the empty copy
- * slightly different. The copy is passed in; the frame is not.
  */
 export function ListCard({
   count,
@@ -29,13 +29,24 @@ export function ListCard({
   empty: { title: string; description: string; action?: ReactNode };
   children: ReactNode;
 }) {
+  const chrome = useAuthoringChrome();
+
   return (
-    <Card themeType="b2b" padding="none" className="overflow-hidden">
-      <div className="flex flex-col gap-1 border-b border-b2b-border px-4 pt-3 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5">
-        <span className="text-osce-caption font-medium uppercase tracking-wide text-b2b-mid">
+    <AuthoringCard padding="none" className="overflow-hidden">
+      <div
+        className={cn(
+          "flex flex-col gap-1 px-4 pt-3 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5",
+          `border-b ${chrome.listBorder}`,
+        )}
+      >
+        <span
+          className={`text-osce-caption font-medium uppercase tracking-wide ${chrome.captionMuted}`}
+        >
           {countLabel} ({count})
         </span>
-        {meta ? <span className="text-osce-caption text-b2b-icon">{meta}</span> : null}
+        {meta ? (
+          <span className={`text-osce-caption ${chrome.iconMuted}`}>{meta}</span>
+        ) : null}
       </div>
       {error ? (
         <div className="p-5">
@@ -64,8 +75,8 @@ export function ListCard({
           />
         </div>
       ) : (
-        <div className="divide-y divide-b2b-border">{children}</div>
+        <div className={cn(`divide-y ${chrome.listDivide}`)}>{children}</div>
       )}
-    </Card>
+    </AuthoringCard>
   );
 }

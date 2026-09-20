@@ -13,10 +13,11 @@ import {
   productTokens as t,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { useSession } from "@/foundation/session";
-import { isPlatformAdmin } from "@/foundation/session";
+import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
 import {
   bodyMarkdown,
+  filterMediaByExam,
+  isStructuredSummary,
   listAllMedia,
   podcastUrl,
   psychosocialAspects,
@@ -26,6 +27,7 @@ import {
 import { ClinicalSections, PsychosocialSections } from "@/capabilities/media/SummarySections";
 import { Prose } from "@/capabilities/media/Prose";
 import { PodcastPlayer, type Episode } from "@/capabilities/media/PodcastPlayer";
+import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
 
 /**
  * An A-to-Z summary.
@@ -48,21 +50,22 @@ export function SummaryView({
 
   const sections = summarySections(item);
   const aspects = psychosocialAspects(item);
-  const structured = sections.length > 0 || aspects.length > 0;
+  const structured = isStructuredSummary(item);
   const audio = podcastUrl(item);
   const body = bodyMarkdown(item);
+  const showTabs = structured;
 
   return (
     <div className="w-full text-left">
       <B2CPageHeader
         title={item.title}
-        back={{ href: hrefFor("/library"), label: "Study material" }}
+        back={{ href: hrefFor(studyListPath("summary")), label: STUDY_KIND_LABEL.summary }}
         className="mb-6 border-b-0 pb-0 sm:pb-0"
       />
 
-      {structured || audio ? (
+      {showTabs || audio ? (
         <div className="mb-8 flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
-          {structured ? (
+          {showTabs ? (
             <B2CSegmentedTabs
               items={[
                 {
@@ -102,7 +105,7 @@ export function SummaryView({
         asked of the backend's own answer rather than a role string.
       */}
       <div className={cn(!isPlatformAdmin(session) && "select-none")}>
-        {structured ? (
+        {showTabs ? (
           <>
             <div className={tab === "clinical" ? "block" : "hidden"}>
               <ClinicalSections sections={sections} />
@@ -160,10 +163,12 @@ function ListenCard({ onListen }: { onListen: () => void }) {
  * costs one request.
  */
 function SummaryPodcast({ item }: { item: MediaItem }) {
+  const { code: examCode } = useCurrentExam();
   const state = useAsync((signal) => listAllMedia("summary", signal), []);
   const [index, setIndex] = useState<number | null>(null);
 
-  const withAudio = (state.data ?? []).filter((entry) => podcastUrl(entry) !== null);
+  const scoped = filterMediaByExam(state.data ?? [], examCode);
+  const withAudio = scoped.filter((entry) => podcastUrl(entry) !== null);
   const episodes: Episode[] =
     withAudio.length > 0
       ? withAudio.map((entry) => ({ id: entry.id, title: entry.title, url: podcastUrl(entry) }))

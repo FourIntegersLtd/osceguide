@@ -79,6 +79,7 @@ export function PracticeStation({
           createAttempt={create}
           nextHref={null}
           completeHref={hrefFor("/stations")}
+          flagStationId={station?.id ?? stationId}
         />
       )}
     </AsyncBoundary>

@@ -77,7 +77,6 @@ export function listMemberships(
 }
 
 export type Programme = components["schemas"]["ProgrammeRead"];
-export type FeedbackTemplate = components["schemas"]["FeedbackTemplateRead"];
 
 export function listProgrammes(slug: string, signal?: AbortSignal) {
   return platformRequest<components["schemas"]["Page_ProgrammeRead_"]>(
@@ -86,28 +85,13 @@ export function listProgrammes(slug: string, signal?: AbortSignal) {
   );
 }
 
-export function listFeedbackTemplates(slug: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_FeedbackTemplateRead_"]>(
-    `${org(slug)}/feedback-templates`,
-    { signal },
-  );
-}
-
-export function listTemplateVersions(slug: string, templateId: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["FeedbackTemplateVersionRead"][]>(
-    `${org(slug)}/feedback-templates/${encodeURIComponent(templateId)}/versions`,
-    { signal },
-  );
-}
-
-/** A sitting cannot exist without a published feedback template bound to it. */
+/** A sitting binds to a programme; the exam's published rubric is resolved server-side. */
 export function createSitting(
   slug: string,
   input: {
     name: string;
     mode: "training" | "exam";
-    programmeId: string | null;
-    feedbackTemplateVersionId: string;
+    programmeId: string;
     scheduledFor: string | null;
   },
 ): Promise<Sitting> {
@@ -118,7 +102,6 @@ export function createSitting(
       mode: input.mode,
       sitting_type: input.mode === "exam" ? "examination" : "group_training",
       programme_id: input.programmeId,
-      feedback_template_version_id: input.feedbackTemplateVersionId,
       scheduled_for: input.scheduledFor,
     },
   });

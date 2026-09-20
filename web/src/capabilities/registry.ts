@@ -2,6 +2,7 @@ import type { CapabilityModule, MountedCapability } from "@/capabilities/contrac
 import type { Surface } from "@/capabilities/surface";
 import { helpCapability } from "@/capabilities/help/capability";
 import { mediaCapability } from "@/capabilities/media/capability";
+import { STUDY_NAV_CAPABILITIES } from "@/capabilities/media/studyCapabilities";
 import { stationsCapability } from "@/capabilities/stations/capability";
 import { communityCapability } from "@/capabilities/community/capability";
 import { peerPracticeCapability } from "@/capabilities/peer-practice/capability";
@@ -9,6 +10,9 @@ import { debriefCapability } from "@/capabilities/debrief/capability";
 import { transcriptsCapability } from "@/capabilities/transcripts/capability";
 import { accountCapability } from "@/capabilities/account/capability";
 import { authoringCapability } from "@/capabilities/authoring/capability";
+import { staffMediaCapability } from "@/capabilities/staff-media/capability";
+import { staffGrowthCapability } from "@/capabilities/staff-growth/capability";
+import { staffModerationCapability } from "@/capabilities/staff-moderation/capability";
 
 /**
  * Every capability, and the surfaces each is mounted on.
@@ -22,6 +26,7 @@ import { authoringCapability } from "@/capabilities/authoring/capability";
 export const CAPABILITIES: readonly CapabilityModule[] = [
   stationsCapability,
   helpCapability,
+  ...STUDY_NAV_CAPABILITIES,
   mediaCapability,
   communityCapability,
   peerPracticeCapability,
@@ -29,6 +34,9 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
   transcriptsCapability,
   accountCapability,
   authoringCapability,
+  staffMediaCapability,
+  staffGrowthCapability,
+  staffModerationCapability,
 ];
 
 export interface MountOptions {

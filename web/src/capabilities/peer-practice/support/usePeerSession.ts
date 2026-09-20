@@ -1,148 +1,96 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useAsync } from "@/foundation/hooks";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAsync, useEventStream } from "@/foundation/hooks";
 import { useMicPreflight, type RoomGrant } from "@/foundation/livekit";
-import {
-  endPracticeSession,
-  practiceVoiceToken,
-  readPracticeSession,
-  type PracticeSession,
-} from "@/capabilities/peer-practice/api";
+import { endPracticeSession, practiceSessionStreamPath, practiceVoiceToken, readPracticeSession, recordPracticePresence, submitPracticeFeedback, type PracticeSession } from "../api";
+import { formatCountdown } from "./examTimers";
+import { latestSession, mapPhase, remainingSeconds } from "./sessionState";
+export type { RunnerPhase } from "./sessionState";
 
-export type SessionPhase = "loading" | "ready" | "live" | "ended";
-
-export interface PeerSessionState {
-  phase: SessionPhase;
-  session: PracticeSession | null;
-  loading: boolean;
-  loadError: Error | null;
-  reload: () => void;
-  grant: RoomGrant | null;
-  /** Seconds since the pair were put in the room. Zero until it starts. */
-  elapsed: number;
-  busy: boolean;
-  error: Error | null;
-  mic: ReturnType<typeof useMicPreflight>;
-  connect: () => Promise<void>;
-  end: (reason?: string | null) => Promise<void>;
-  /** The room dropped out from under us rather than being hung up. */
-  dropped: boolean;
-  noteDisconnected: (unexpected: boolean) => void;
-}
-
-/**
- * One paired session, run.
- *
- * The retiring core component was 1,165 lines and held eleven pieces of state,
- * two polling loops, a visibility listener and a second copy of the phase
- * arithmetic inside a one-second interval. Almost all of it existed to work out
- * what phase the session was in from a single `preparation_started_at`
- * timestamp, because the server did not say.
- *
- * `platform-api` does say: a practice session is matched, then started, then
- * ended, and the clock it exposes is `started_at`. So the phase is read rather
- * than computed, the clock is elapsed time rather than an authoritative
- * countdown the browser has no right to run, and what is left is this.
- */
-export function usePeerSession(sessionId: string): PeerSessionState {
+export function usePeerSession(sessionId: string) {
   const loaded = useAsync((signal) => readPracticeSession(sessionId, signal), [sessionId]);
+  const [mutation, setMutation] = useState<PracticeSession | null>(null);
+  const [streamEnded, setStreamEnded] = useState(false);
+  const terminal = streamEnded || ["completed", "ended"].includes(mapPhase(latestSession(sessionId, loaded.data, mutation)));
+  const stream = useEventStream<PracticeSession>(practiceSessionStreamPath(sessionId), { enabled: !terminal });
+  const session = latestSession(sessionId, loaded.data, stream.data, mutation);
+  const runnerPhase = mapPhase(session);
+  const ended = runnerPhase === "ended" || runnerPhase === "completed";
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [dropped, setDropped] = useState(false);
-  const [ended, setEnded] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-
-  const session = loaded.data;
-  const serverEnded = Boolean(session?.ended_at) || session?.status === "ended";
-  const mic = useMicPreflight(Boolean(session) && !serverEnded);
-
-  const phase: SessionPhase = loaded.loading && !session
-    ? "loading"
-    : ended || serverEnded
-      ? "ended"
-      : grant
-        ? "live"
-        : "ready";
-
-  // Deadline arithmetic rather than a decrementing counter: a background tab
-  // throttles timers to once a minute, and the old client's clock drifted
-  // minutes off across a tab switch.
-  const startedAtMs = session?.started_at ? new Date(session.started_at).getTime() : null;
+  const [endedByMe, setEndedByMe] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const mic = useMicPreflight(runnerPhase === "consultation" || runnerPhase === "debrief");
+  if (ended && !streamEnded) setStreamEnded(true);
   useEffect(() => {
-    if (phase !== "live") return;
-    const tick = () => {
-      setElapsed(
-        startedAtMs === null ? 0 : Math.max(0, Math.round((Date.now() - startedAtMs) / 1000)),
-      );
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [phase, startedAtMs]);
-
+    if (!session?.id || ended) return;
+    let live = true;
+    void recordPracticePresence(sessionId).then((result) => { if (live) setMutation(result); })
+      .catch((cause) => { if (live) setError(asError(cause)); });
+    return () => { live = false; };
+  }, [session?.id, sessionId, ended]);
+  useEffect(() => {
+    if (ended) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [ended]);
+  // Read at the server deadline (also drives APIs that advance phases on read).
+  // No client phase transition; a failed read is surfaced with Retry.
+  useEffect(() => {
+    if (!session?.phase_ends_at || ended) return;
+    const delay = Math.max(0, Date.parse(session.phase_ends_at) - Date.now()) + 250;
+    const timer = window.setTimeout(loaded.reload, delay);
+    return () => window.clearTimeout(timer);
+  }, [session?.phase_ends_at, ended, loaded.reload]);
   const connect = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    setDropped(false);
+    setBusy(true); setError(null); setDropped(false);
     try {
-      if (mic.status !== "ready") await mic.request();
+      if (mic.status !== "ready" && !await mic.request()) return;
+      setMutation(await recordPracticePresence(sessionId));
       setGrant(await practiceVoiceToken(sessionId));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error(String(cause)));
-    } finally {
-      setBusy(false);
-    }
+    } catch (cause) { setError(asError(cause)); }
+    finally { setBusy(false); }
   }, [mic, sessionId]);
-
-  const end = useCallback(
-    async (reason: string | null = null) => {
-      setBusy(true);
-      setError(null);
-      // The room goes first: leaving the token live while the server marks the
-      // session ended is how the retiring client left people talking into a
-      // session that had already finished.
-      setGrant(null);
-      setEnded(true);
-      try {
-        await endPracticeSession(sessionId, reason);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause : new Error(String(cause)));
-      } finally {
-        setBusy(false);
-        loaded.reload();
-      }
-    },
-    [sessionId, loaded],
-  );
-
-  const noteDisconnected = useCallback((unexpected: boolean) => {
-    setGrant(null);
-    setDropped(unexpected);
-  }, []);
-
+  const autoConnected = useRef(false);
+  useEffect(() => {
+    if (runnerPhase !== "consultation" && runnerPhase !== "debrief") return;
+    if (autoConnected.current || !window.isSecureContext) return;
+    autoConnected.current = true;
+    void connect();
+  }, [runnerPhase, connect]);
+  const reloadSession = loaded.reload;
+  const retry = useCallback(() => {
+    setError(null);
+    reloadSession();
+    if (!ended) void recordPracticePresence(sessionId).then(setMutation).catch((cause) => setError(asError(cause)));
+  }, [reloadSession, ended, sessionId]);
+  const end = useCallback(async (reason: string | null = null) => {
+    setBusy(true); setError(null);
+    try {
+      const result = await endPracticeSession(sessionId, reason);
+      setEndedByMe(true); setMutation(result); setGrant(null);
+      return true;
+    } catch (cause) { setError(asError(cause)); return false; }
+    finally { setBusy(false); }
+  }, [sessionId]);
+  const submitFeedback = useCallback(async (rating: number, comment: string | null) => {
+    setBusy(true); setError(null);
+    try { await submitPracticeFeedback(sessionId, { rating, comment }); return true; }
+    catch (cause) { setError(asError(cause)); return false; }
+    finally { setBusy(false); }
+  }, [sessionId]);
+  const noteDisconnected = useCallback((unexpected: boolean) => { setGrant(null); setDropped(unexpected); }, []);
+  const remaining = remainingSeconds(session?.phase_ends_at, now);
   return {
-    phase,
-    session,
-    loading: loaded.loading,
-    loadError: loaded.error,
-    reload: loaded.reload,
-    grant,
-    elapsed,
-    busy,
-    error,
-    mic,
-    connect,
-    end,
-    dropped,
-    noteDisconnected,
+    runnerPhase, session, loading: loaded.loading, loadError: session ? null : loaded.error,
+    reload: retry, grant: ended ? null : grant, busy, error: error ?? loaded.error ?? stream.error,
+    mic, connect, end, endedByMe, dropped, noteDisconnected, submitFeedback,
+    remaining, phaseCountdown: remaining === null ? null : formatCountdown(remaining),
   };
 }
+function asError(cause: unknown): Error { return cause instanceof Error ? cause : new Error(String(cause)); }
+
+export type PeerSessionState = ReturnType<typeof usePeerSession>;

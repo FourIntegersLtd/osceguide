@@ -24,26 +24,46 @@ export type Organization = S["OrganizationRead"] & {
   contract_ends_at?: string | null;
 };
 export type OrganizationPage = S["Page_OrganizationRead_"];
-export type User = S["UserSummary"] & { is_platform_admin?: boolean };
+export type User = S["UserSummary"];
 export type UserPage = S["Page_UserSummary_"];
 export type Membership = S["app__features__tenancy__schemas__MembershipRead"];
 export type AuditEntry = S["AuditRead"];
 export type AuditPage = S["Page_AuditRead_"];
 
 /** Support view of one account — richer than `UserSummary`. */
-export interface PlatformUserDetail extends User {
-  is_platform_admin: boolean;
-  must_change_password?: boolean;
-  last_login_at?: string | null;
-  exam_code?: string | null;
-  status?: string | null;
-  memberships?: Membership[];
-}
+export type PlatformUserDetail = S["PlatformUserDetail"] & {
+  consumer_role?: string | null;
+  legacy_consumer_ids?: Record<string, string>;
+};
+
+/**
+ * One row of the account directory: the seven columns the retiring console
+ * had, each answered by the slice that owns the fact. Served by `dashboard`
+ * rather than `tenancy` because four of those slices sit above it.
+ */
+export type DirectoryUser = S["DirectoryUser"];
+export type DirectoryPage = S["Page_DirectoryUser_"];
+export type DirectorySummary = S["DirectorySummary"];
+export type ExamDirectorySummary = S["ExamDirectorySummary"];
 
 export interface UpdatePlatformUserInput {
   name?: string | null;
   exam_code?: string | null;
   status?: "active" | "deactivated" | null;
+  /** `YYYY-MM-DD`. */
+  exam_date?: string | null;
+  extra_reading_percent?: number | null;
+}
+
+/** The directory's facets. `access` is the old filter modal's three states. */
+export interface DirectoryFilters {
+  q?: string | null;
+  examCode?: string | null;
+  status?: string | null;
+  access?: string | null;
+  planCode?: string | null;
+  /** The group under no exam heading: chose none, holds no live access. Overrides `examCode`. */
+  unassigned?: boolean;
 }
 
 const PLATFORM = "/api/v1/platform";
@@ -120,6 +140,44 @@ export function searchUsers(
   return platformRequest<UserPage>(`${PLATFORM}/users`, {
     signal,
     query: { ...pageQuery(options), q: options.q?.trim() || undefined },
+  });
+}
+
+/**
+ * The account directory, one page of it.
+ *
+ * Every filter is the backend's, so a narrowed listing is exact rather than a
+ * search over what happened to be paged in. Twenty-five a page: the screen
+ * shows a group per exam and each group pages on its own.
+ */
+export function readDirectory(
+  filters: DirectoryFilters & PageParams = {},
+  signal?: AbortSignal,
+): Promise<DirectoryPage> {
+  return platformRequest<DirectoryPage>(`${PLATFORM}/directory`, {
+    signal,
+    query: {
+      limit: filters.limit ?? 25,
+      cursor: filters.cursor ?? undefined,
+      q: filters.q?.trim() || undefined,
+      exam_code: filters.examCode || undefined,
+      status: filters.status || undefined,
+      access: filters.access || undefined,
+      plan_code: filters.planCode || undefined,
+      unassigned: filters.unassigned ? true : undefined,
+    },
+  });
+}
+
+/** Per exam: how many accounts, and the paid / trial / not-started split. */
+export function readDirectorySummary(signal?: AbortSignal): Promise<DirectorySummary> {
+  return platformRequest<DirectorySummary>(`${PLATFORM}/directory/summary`, { signal });
+}
+
+/** One account's directory row — the facts the detail's header shows. */
+export function readDirectoryUser(userId: string, signal?: AbortSignal): Promise<DirectoryUser> {
+  return platformRequest<DirectoryUser>(`${PLATFORM}/directory/users/${encodeURIComponent(userId)}`, {
+    signal,
   });
 }
 
@@ -236,6 +294,19 @@ export function resetUserPassword(userId: string): Promise<void> {
 
 export function listPlatformAdmins(signal?: AbortSignal): Promise<User[]> {
   return platformRequest<User[]>(`${PLATFORM}/admins`, { signal });
+}
+
+export interface PlatformAdminInviteResult {
+  user: User;
+  invited: boolean;
+}
+
+/** Grant the staff console by email; new accounts are invited to set a password. */
+export function invitePlatformAdmin(email: string): Promise<PlatformAdminInviteResult> {
+  return platformRequest<PlatformAdminInviteResult>(`${PLATFORM}/admins`, {
+    method: "POST",
+    body: { email },
+  });
 }
 
 export function listOrgMembershipsForSupport(

@@ -1,120 +1,102 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useEventStream } from "@/foundation/hooks";
-import {
-  joinQueue,
-  leaveQueue,
-  queueStreamPath,
-  type QueueStatus,
-} from "@/capabilities/peer-practice/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAsync, useEventStream } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
+import { joinQueue, leaveQueue, listPracticeSessions, readPracticeSession, readQueueStatus, queueStreamPath, type QueueStatus } from "../api";
+
+import { latestQueueStatus } from "./queueState";
 
 export type QueuePhase = "idle" | "joining" | "waiting" | "matched";
-
 export interface Queue {
   phase: QueuePhase;
-  /** The latest the server pushed: position, how many are waiting, the session. */
+  expired: boolean;
   status: QueueStatus | null;
-  /** Set the moment a partner is found. The session to walk into. */
   matchedSessionId: string | null;
-  /** True while the stream is up; false means the fallback read is carrying it. */
   live: boolean;
   error: Error | null;
+  restoring: boolean;
+  retry: () => void;
   join: (examCode: string) => Promise<void>;
   leave: () => Promise<void>;
-  /** Forget a finished match without leaving a queue we are no longer in. */
   reset: () => void;
 }
 
-/**
- * Waiting to be paired, from one place.
- *
- * The retiring client spread this across a context, a modal, a floating
- * indicator and a polling hook that asked for the status every three seconds
- * from each of them. There is one stream now and one state machine reading it:
- * the backend pushes a `QueueStatus` each time the answer changes and closes
- * the stream as soon as it stops being `waiting`, so the match arrives when it
- * happens rather than up to three seconds later.
- *
- * `orgId` is the whole of what an institution's version needs. The hook itself
- * knows only that an audience exists.
- */
-export function useQueue(orgId: string | null): Queue {
-  const [localPhase, setPhase] = useState<QueuePhase>("idle");
+/** One SSE subscription; refresh and cross-tab changes re-read the saved entry. */
+export function useQueue(orgId: string | null, options: {
+  entryId: string | null;
+  onEntryId: (entryId: string | null) => void;
+  onExistingSession?: (sessionId: string) => void;
+}): Queue {
+  const { entryId, onEntryId, onExistingSession } = options;
   const [entry, setEntry] = useState<QueueStatus | null>(null);
+  const [joining, setJoining] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const entryIdRef = useRef<string | null>(null);
-
-  const watching = localPhase === "waiting" && entry !== null;
-  const stream = useEventStream<QueueStatus>(
-    watching ? queueStreamPath(entry.entry_id) : null,
-    { enabled: watching },
-  );
-
-  const status = stream.data ?? entry;
-  const matchedSessionId = status?.session_id ?? null;
-
-  // Matched is a fact about the answer rather than a state to be moved into:
-  // the stream's frame already says so, and an effect copying it across would
-  // render the waiting screen once more before the room appeared.
-  const phase: QueuePhase =
-    matchedSessionId && localPhase === "waiting" ? "matched" : localPhase;
-
-  const join = useCallback(
-    async (examCode: string) => {
-      setPhase("joining");
-      setError(null);
-      try {
-        const placed = await joinQueue(examCode, orgId);
-        entryIdRef.current = placed.entry_id;
-        setEntry(placed);
-        // Joining twice returns the place already held, which may already
-        // carry a session: going straight to "waiting" would hide the match.
-        setPhase(placed.session_id ? "matched" : "waiting");
-      } catch (cause) {
-        setPhase("idle");
-        setError(asError(cause));
-      }
-    },
-    [orgId],
-  );
-
-  const leave = useCallback(async () => {
-    const entryId = entryIdRef.current;
-    entryIdRef.current = null;
-    setEntry(null);
-    setPhase("idle");
-    setError(null);
-    if (!entryId) return;
-    try {
-      await leaveQueue(entryId);
-    } catch (cause) {
-      // The place is gone from this browser either way; a failure to tell the
-      // server is worth showing but must not strand the person in a queue
-      // screen they have already left.
-      setError(asError(cause));
-    }
-  }, []);
-
+  const operation = useRef(false);
+  const restored = useAsync(async (signal) => ({
+    entry: entryId ? await readQueueStatus(entryId, signal) : null,
+  }), [entryId]);
+  const base = latestQueueStatus(entryId, entry, restored.data?.entry);
+  const stream = useEventStream<QueueStatus>(base?.status === "waiting" ? queueStreamPath(base.entry_id) : null);
+  // useEventStream retains its last frame. Never use a frame from an older entry.
+  const status = latestQueueStatus(entryId, base, stream.data);
+  const matchedSessionId = status?.status === "matched" ? status.session_id ?? null : null;
   const reset = useCallback(() => {
-    entryIdRef.current = null;
     setEntry(null);
     setError(null);
-    setPhase("idle");
-  }, []);
-
+    onEntryId(null);
+  }, [onEntryId]);
+  useEffect(() => {
+    // Synchronise persisted storage after the server invalidates an entry.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (hasCode(restored.error, "queue_entry_not_found")) reset();
+  }, [restored.error, reset]);
+  const join = useCallback(async (examCode: string) => {
+    if (operation.current) return;
+    operation.current = true;
+    setJoining(true);
+    setError(null);
+    try {
+      const sessions = await listPracticeSessions();
+      const existing = sessions.items.find((item) => item.exam_code === examCode && item.status !== "ended");
+      if (existing && onExistingSession) {
+        const current = await readPracticeSession(existing.id);
+        if (current.status !== "ended") { onExistingSession(current.id); return; }
+      }
+      const result = await joinQueue(examCode, orgId);
+      setEntry(result);
+      onEntryId(result.entry_id);
+    } catch (cause) { setError(asError(cause)); }
+    finally { operation.current = false; setJoining(false); }
+  }, [orgId, onEntryId, onExistingSession]);
+  const leave = useCallback(async () => {
+    if (!entryId || operation.current) return;
+    operation.current = true;
+    setError(null);
+    try { await leaveQueue(entryId); reset(); }
+    catch (cause) {
+      // A match can win the cancellation race. Recover the room instead of
+      // pretending cancellation succeeded and leaving the other person alone.
+      if (hasCode(cause, "queue_entry_not_found")) {
+        try {
+          const latest = await readQueueStatus(entryId);
+          if (latest.status === "matched") setEntry(latest);
+          else reset();
+        } catch (readError) {
+          if (hasCode(readError, "queue_entry_not_found")) reset();
+          else setError(asError(readError));
+        }
+      } else setError(asError(cause));
+    } finally { operation.current = false; }
+  }, [entryId, reset]);
   return {
-    phase,
-    status,
-    matchedSessionId,
-    live: stream.connected,
-    error: error ?? stream.error,
-    join,
-    leave,
-    reset,
+    phase: joining ? "joining" : matchedSessionId ? "matched" : status?.status === "waiting" ? "waiting" : "idle",
+    expired: status?.status === "expired", status, matchedSessionId,
+    live: stream.connected, error: error ?? restored.error ?? stream.error,
+    restoring: Boolean(entryId && !base && restored.loading), retry: restored.reload,
+    join, leave, reset,
   };
 }
-
 function asError(cause: unknown): Error {
   return cause instanceof Error ? cause : new Error(String(cause));
 }

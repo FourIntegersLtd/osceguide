@@ -1,177 +1,61 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { HiOutlineUsers } from "react-icons/hi2";
-import {
-  Alert,
-  B2CErrorState,
-  Button,
-  ConfirmModal,
-  LoadingSpinner,
-} from "@/foundation/ui";
-import { b2cCard, b2cCardPadding } from "@/foundation/ui/productTokens";
+import { useState } from "react";
+import { Alert, B2CErrorState, Button, ConfirmModal, LoadingSpinner } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { AgentTile, VoiceRoom } from "@/foundation/livekit";
-import { SessionHeader } from "@/capabilities/peer-practice/session/SessionHeader";
-import { usePeerSession } from "@/capabilities/peer-practice/support/usePeerSession";
+import { VoiceRoom } from "@/foundation/livekit";
+import { PeerVideoPanel } from "@/foundation/livekit/PeerVideoPanel";
+import { usePeerSession } from "../support/usePeerSession";
+import { SessionHeader } from "./SessionHeader";
+import { PreparationPanel } from "./PreparationPanel";
+import { SafetyActions } from "./SafetyActions";
+import { PhaseModals } from "./modals";
+import { SessionFeedback } from "./SessionFeedback";
 
-/**
- * The paired session itself.
- *
- * Two people, one room, and the only two things the server will tell us about
- * it: which part each is playing, and when it started. The retiring runner put
- * a reading brief and a patient script beside the call, and neither survives
- * the port — `platform-api` does not serve the station a peer session is about.
- * That is the one thing missing from this screen and it is written down in
- * `docs/port-gaps.md` rather than faked.
- */
-export function PeerSessionScreen({
-  sessionId,
-  onLeave,
-}: {
-  sessionId: string;
-  onLeave: () => void;
-}) {
-  const session = usePeerSession(sessionId);
+export function PeerSessionScreen({ sessionId, onLeave, onRequeue }: { sessionId: string; onLeave: () => void; onRequeue?: (examCode: string) => void }) {
+  const state = usePeerSession(sessionId);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
-
-  const confirmEnd = useCallback(async () => {
-    setConfirmingEnd(false);
-    await session.end("ended_by_participant");
-  }, [session]);
-
-  if (session.phase === "loading") {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <LoadingSpinner />
+  const [callError, setCallError] = useState<string | null>(null);
+  if (state.runnerPhase === "loading" && !state.loadError) return <LoadingSpinner />;
+  if (state.loadError || !state.session) return <B2CErrorState title="We couldn't load this practice session"
+    description={errorMessage(state.loadError)} onRetry={state.reload}
+    secondaryAction={<Button variant="secondary" onClick={onLeave}>Back to practice</Button>} />;
+  const session = state.session;
+  if (state.runnerPhase === "ended" || state.runnerPhase === "completed") return <SessionFeedback
+    sessionId={sessionId} busy={state.busy} error={state.error} onSubmit={state.submitFeedback} onLeave={onLeave} onRequeue={onRequeue ? () => onRequeue(session.exam_code) : undefined}
+    partnerEnded={!state.endedByMe && state.runnerPhase !== "completed"} />;
+  const preparing = state.runnerPhase === "preparation" || state.runnerPhase === "waiting_partner";
+  return <div className="flex min-h-dvh flex-col bg-canvas text-ink">
+    <SessionHeader sessionId={sessionId} role={session.my_role} phase={state.runnerPhase} countdown={state.phaseCountdown}
+      busy={state.busy} onEndSession={() => setConfirmingEnd(true)} />
+    {state.error && <Alert tone="danger">{errorMessage(state.error)} <Button size="sm" onClick={state.reload}>Retry</Button></Alert>}
+    {preparing ? (
+      state.runnerPhase === "waiting_partner" ? <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-5 p-6 text-center">
+        <h2 className="text-xl font-semibold">Waiting for your partner to join…</h2>
+        <p className="text-ink-muted">The timer will start once both users have joined the session.</p>
+        <SafetyActions sessionId={sessionId} noShow />
+      </div> : <div className="mx-auto w-full max-w-6xl flex-1 overflow-y-auto p-4 sm:p-6">
+        <PreparationPanel session={session} />
       </div>
-    );
-  }
-
-  if (session.loadError || !session.session) {
-    return (
-      <B2CErrorState
-        title="We couldn't load this practice session"
-        description={session.loadError ? errorMessage(session.loadError) : undefined}
-        onRetry={session.reload}
-        secondaryAction={
-          <Button type="button" variant="secondary" size="sm" onClick={onLeave}>
-            Back to practice
-          </Button>
-        }
-      />
-    );
-  }
-
-  const role = session.session.my_role;
-
-  if (session.phase === "ended") {
-    return (
-      <div className="mx-auto max-w-2xl px-3 py-4 text-center sm:px-4 sm:py-6">
-        <h2 className="mb-3 text-osce-body font-bold text-osce-ink-900 sm:mb-4">
-          Session Completed
-        </h2>
-        <p className="mb-4 px-2 text-osce-body text-b2c-text-secondary sm:mb-6">
-          Thank you for participating in the practice session!
-        </p>
-        {session.error && (
-          <Alert tone="warning" className="mb-4 text-left">
-            {errorMessage(session.error)}
-          </Alert>
-        )}
-        <Button type="button" variant="primary" size="md" onClick={onLeave}>
-          Back to practice
-        </Button>
+    ) : <div className="flex min-h-0 flex-1 flex-col bg-b2c-secondary lg:flex-row lg:overflow-hidden">
+      <div className="relative flex h-[38vh] min-h-[280px] w-full shrink-0 flex-col bg-b2c-secondary sm:h-[42vh] sm:min-h-[320px] lg:h-full lg:min-h-0 lg:w-3/5 lg:overflow-hidden">
+        {state.dropped && <Alert tone="warning">The call dropped. Rejoin when you are ready.</Alert>}
+        {callError && <Alert tone="warning">{callError}</Alert>}
+        {state.grant ? <VoiceRoom className="h-full min-h-0 flex-1" grant={state.grant} video onDisconnected={state.noteDisconnected}
+          onError={() => setCallError("Could not connect your camera or microphone. Check browser permissions and use the call controls to try again.")}>
+          <PeerVideoPanel role={session.my_role === "patient" ? "patient" : "doctor"} />
+        </VoiceRoom> : <div className="rounded-panel border border-border bg-surface p-6 text-center">
+          <p className="mb-4">{state.busy ? "Connecting to your partner…" : "Your consultation is ready. Allow your microphone and camera to join."}</p>
+          {state.mic.message && <Alert tone="warning">{state.mic.message}</Alert>}
+          <Button disabled={state.mic.status === "insecure"} isLoading={state.busy} onClick={() => { setCallError(null); void state.connect(); }}>{state.dropped ? "Rejoin call" : "Connect camera and microphone"}</Button>
+        </div>}
       </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col overflow-hidden rounded-osce-lg border border-b2c-border bg-b2c-surface-muted">
-      <SessionHeader
-        role={role}
-        phaseLabel={session.phase === "live" ? "Live Consultation" : "You have been matched"}
-        elapsed={session.elapsed}
-        running={session.phase === "live"}
-        busy={session.busy}
-        onEndSession={() => setConfirmingEnd(true)}
-      />
-
-      <div className="flex-1 p-3 sm:p-4">
-        {session.dropped && (
-          <Alert tone="warning" className="mb-3">
-            The call dropped. Rejoin when you are ready — your partner is still in the room.
-          </Alert>
-        )}
-        {session.error && (
-          <Alert tone="danger" className="mb-3">
-            {errorMessage(session.error)}
-          </Alert>
-        )}
-        {session.mic.message && (
-          <Alert tone="warning" className="mb-3">
-            {session.mic.message}
-          </Alert>
-        )}
-
-        {session.phase === "live" && session.grant ? (
-          <VoiceRoom grant={session.grant} onDisconnected={session.noteDisconnected}>
-            <div className="flex flex-col items-center gap-4">
-              <AgentTile
-                name="Your partner"
-                detail={
-                  role === "doctor"
-                    ? "You are the doctor · they are playing the patient"
-                    : "You are the patient · they are the doctor"
-                }
-                className="w-full max-w-sm"
-              />
-            </div>
-          </VoiceRoom>
-        ) : (
-          <div className={`mx-auto max-w-md text-center ${b2cCard} ${b2cCardPadding}`}>
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-osce-accent-subtle ring-2 ring-osce-accent/20">
-              <HiOutlineUsers className="h-8 w-8 text-osce-accent" />
-            </div>
-            <h2 className="mb-2 text-osce-subheading font-semibold text-osce-ink-900">
-              You have a practice partner
-            </h2>
-            <p className="mb-6 text-b2c-text-secondary">
-              You are the <span className="font-semibold">{role}</span> for this session. Join the
-              call when you are ready — the timer starts once you are both in the room.
-            </p>
-            <Button
-              type="button"
-              variant="commit"
-              size="md"
-              fullWidth
-              isLoading={session.busy}
-              onClick={() => void session.connect()}
-            >
-              Join the call
-            </Button>
-            <button
-              type="button"
-              onClick={onLeave}
-              className="mt-3 text-osce-body text-b2c-text-muted underline-offset-2 hover:underline"
-            >
-              Not now
-            </button>
-          </div>
-        )}
-      </div>
-
-      <ConfirmModal
-        isOpen={confirmingEnd}
-        onCancel={() => setConfirmingEnd(false)}
-        onConfirm={() => void confirmEnd()}
-        tone="danger"
-        title="End Practice Session"
-        message="Ending the session closes the room for both of you. Are you sure you want to end the session?"
-        confirmText="Yes, End Session"
-        cancelText="Cancel"
-        isLoading={session.busy}
-      />
-    </div>
-  );
+      <aside className="min-h-[55vh] min-w-0 w-full flex-1 overflow-y-auto border-t border-b2c-border bg-osce-surface p-4 sm:min-h-[58vh] lg:h-full lg:min-h-0 lg:w-2/5 lg:border-l lg:border-t-0"><PreparationPanel session={session} debrief={state.runnerPhase === "debrief"} /></aside>
+    </div>}
+    <PhaseModals phase={state.runnerPhase} remaining={state.remaining} preparationStarted={session.preparation_started_at} />
+    <ConfirmModal isOpen={confirmingEnd} onCancel={() => !state.busy && setConfirmingEnd(false)} onConfirm={async () => {
+      if (await state.end("ended_by_participant")) setConfirmingEnd(false);
+    }} title="End Practice Session" tone="danger" message={state.phaseCountdown ? `You have ${state.phaseCountdown} remaining in this phase. Ending the session closes the room for both of you. Are you sure?` : "Ending the session closes the room for both of you. Are you sure?"}
+      confirmText="Yes, End Session" cancelText="Cancel" isLoading={state.busy} />
+  </div>;
 }

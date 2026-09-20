@@ -50,10 +50,11 @@ export function startAssistantSession(
   sessionType: AssistantSessionType,
   context: AssistantClientContext,
   signal?: AbortSignal,
+  helpOptions?: { voice_help_intent: "faq" | "guide"; screen_ui_guidance: boolean },
 ): Promise<AssistantSession> {
   return platformRequest<AssistantSession>("/api/v1/assistant/sessions", {
     method: "POST",
-    body: { session_type: sessionType, extras: { client: context } },
+    body: { session_type: sessionType, extras: { client: context, ...helpOptions } },
     signal,
   });
 }
@@ -63,4 +64,62 @@ export function assistantVoiceToken(sessionId: string, signal?: AbortSignal): Pr
     `/api/v1/assistant/sessions/${encodeURIComponent(sessionId)}/voice-token`,
     { method: "POST", signal },
   );
+}
+
+export interface HelpCategory {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  icon_key: string;
+  sort_order: number;
+  app_types: string[];
+  article_count: number;
+}
+
+export interface HelpArticleListItem {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  app_types: string[];
+  category_slug: string;
+  category_title?: string | null;
+  sort_order: number;
+}
+
+export interface HelpArticleDetail extends HelpArticleListItem {
+  body_md: string;
+  related_slugs: string[];
+}
+
+/** Published B2C help content served by the platform API. */
+export function fetchHelpCategories(appType: string): Promise<HelpCategory[]> {
+  return platformRequest<{ categories: HelpCategory[] }>("/api/v1/help/categories", {
+    query: { app_type: appType },
+  }).then((data) => data.categories ?? []);
+}
+
+export function fetchHelpArticles(
+  appType: string,
+  categorySlug?: string,
+): Promise<HelpArticleListItem[]> {
+  return platformRequest<{ articles: HelpArticleListItem[] }>("/api/v1/help/articles", {
+    query: {
+      app_type: appType,
+      ...(categorySlug ? { category: categorySlug } : {}),
+    },
+  }).then((data) => data.articles ?? []);
+}
+
+export function fetchHelpArticle(slug: string, appType: string): Promise<HelpArticleDetail> {
+  return platformRequest<{ article: HelpArticleDetail }>(
+    `/api/v1/help/articles/${encodeURIComponent(slug)}`,
+    { query: { app_type: appType } },
+  ).then((data) => data.article);
+}
+
+export interface KnowledgeMessage { role: "user" | "assistant"; content: string }
+export function askKnowledge(messages: KnowledgeMessage[], appType: string): Promise<{ reply: string }> {
+  return platformRequest("/api/v1/help/knowledge-chat", { method: "POST", body: { messages: messages.slice(-40), app_type: appType } });
 }

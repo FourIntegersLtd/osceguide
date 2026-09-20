@@ -1,8 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { HiOutlineArrowLeft } from "react-icons/hi2";
-import { Alert, Button, Card } from "@/foundation/ui";
+import { useEffect, useMemo, useState } from "react";
+import {
+  HiOutlineArchiveBox,
+  HiOutlineArrowLeft,
+  HiOutlineArrowUpTray,
+  HiOutlineDocumentDuplicate,
+  HiOutlineTrash,
+} from "react-icons/hi2";
+import { Alert, Button } from "@/foundation/ui";
+import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
+import { validateStationContentScoped } from "@/capabilities/authoring/lib/b2cStationContentScope";
+import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
+import {
+  AuthoringIconAction,
+  AuthoringRowActions,
+} from "@/capabilities/authoring/parts/AuthoringIconAction";
 import {
   addStationVersion,
   archiveStationVersion,
@@ -12,38 +26,79 @@ import {
   supportsBrief,
   supportsVersionDelete,
   type Station,
+  type StationTemplate,
   type StationVersion,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
-import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
-import {
-  JsonField,
-  formatJson,
-  jsonProblem,
-  parseJson,
-} from "@/capabilities/authoring/parts/JsonField";
 import { BriefEditor } from "@/capabilities/authoring/sections/BriefEditor";
+import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
+
+function structureForTemplateVersion(
+  templates: StationTemplate[],
+  templateVersionId: string | null | undefined,
+): StationStructure | null {
+  if (!templateVersionId) return null;
+  for (const template of templates) {
+    const version = template.versions.find((v) => v.id === templateVersionId);
+    if (version) {
+      return version.structure as StationStructure;
+    }
+  }
+  return null;
+}
 
 /**
  * One station's working version: cut a draft, edit it, publish or archive it.
- *
- * The backend serves no listing of a station's versions — only the row's
- * current one and the writes against it — so this screen holds the version it
- * is working on rather than offering a history. `docs/port-gaps.md` records
- * the missing read.
  */
-export function StationDetail({ station, onBack }: { station: Station; onBack: () => void }) {
+export function StationDetail({
+  station,
+  templates,
+  onBack,
+}: {
+  station: Station;
+  templates: StationTemplate[];
+  onBack: () => void;
+}) {
   const scope = useAuthoringScope();
   const [working, setWorking] = useState<StationVersion | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [content, setContent] = useState("{}");
+  const [editContent, setEditContent] = useState<Record<string, unknown>>({});
   const action = useAction();
 
   const version = working?.version ?? station.version;
   const status = working?.status ?? station.status;
   const isDraft = status !== "published" && status !== "archived";
+  const templateVersionId = station.template_version_id ?? null;
+
+  const structure = useMemo(() => {
+    const fromTemplate = structureForTemplateVersion(templates, templateVersionId);
+    if (fromTemplate) return fromTemplate;
+    const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
+    return legacyB2cStationStructure(station.exam_code, src);
+  }, [templates, templateVersionId, station.exam_code, station.content, working?.content]);
+
+  useEffect(() => {
+    const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
+    setEditContent({ ...src });
+  }, [station.id, version]);
+
+  async function handlePublish() {
+    void action.run("publish", async () => {
+      if (structure) {
+        const v = validateStationContentScoped(structure, editContent);
+        if (!v.ok) {
+          throw new Error(v.errors[0] ?? "Please fill all required fields.");
+        }
+      }
+      setWorking(await publishStationVersion(scope, station.id, version));
+    });
+  }
+
+  const canSaveContent =
+    structure !== null
+      ? validateStationContentScoped(structure, editContent).ok
+      : Object.keys(editContent).length > 0;
 
   return (
     <div className="space-y-4">
@@ -58,7 +113,7 @@ export function StationDetail({ station, onBack }: { station: Station; onBack: (
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
-      <Card themeType="b2b" padding="md">
+      <AuthoringCard padding="md">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-osce-body font-semibold text-b2b-headline">{station.title}</h2>
@@ -70,78 +125,86 @@ export function StationDetail({ station, onBack }: { station: Station; onBack: (
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="xs"
-            disabled={action.busy !== null}
-            onClick={() =>
-              void action.run("add", async () => setWorking(await addStationVersion(scope, station.id)))
-            }
-          >
-            {action.busy === "add" ? "Creating…" : "New draft version"}
-          </Button>
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="xs"
-            disabled={!isDraft || action.busy !== null}
-            onClick={() => {
-              setContent(formatJson(working?.content ?? station.content ?? {}));
-              setEditing(true);
-            }}
-          >
-            Edit content
-          </Button>
-          <Button
-            themeType="b2b"
-            variant="commit"
-            size="xs"
-            disabled={!isDraft || action.busy !== null}
-            onClick={() =>
-              void action.run("publish", async () =>
-                setWorking(await publishStationVersion(scope, station.id, version)),
-              )
-            }
-          >
-            {action.busy === "publish" ? "Publishing…" : "Publish"}
-          </Button>
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="xs"
-            disabled={action.busy !== null}
-            onClick={() =>
-              void action.run("archive", async () =>
-                setWorking(await archiveStationVersion(scope, station.id, version)),
-              )
-            }
-          >
-            {action.busy === "archive" ? "Archiving…" : "Archive"}
-          </Button>
-          {supportsVersionDelete(scope) ? (
-            <Button
-              themeType="b2b"
-              variant="danger"
-              size="xs"
-              disabled={!isDraft || action.busy !== null}
+          <AuthoringRowActions>
+            <AuthoringIconAction
+              label="New draft version"
+              busy={action.busy === "add"}
+              busyLabel="Creating…"
+              disabled={action.busy !== null}
               onClick={() =>
-                void action.run("delete", async () => {
-                  await deleteStationVersion(scope, station.id, version);
-                  onBack();
-                })
+                void action.run("add", async () =>
+                  setWorking(await addStationVersion(scope, station.id)),
+                )
               }
             >
-              {action.busy === "delete" ? "Deleting…" : "Delete draft"}
-            </Button>
-          ) : null}
+              <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
+            {isDraft ? (
+              <AuthoringIconAction
+                variant="primary"
+                label="Publish"
+                busy={action.busy === "publish"}
+                busyLabel="Publishing…"
+                disabled={action.busy !== null}
+                onClick={() => void handlePublish()}
+              >
+                <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {status !== "archived" ? (
+              <AuthoringIconAction
+                variant="warning"
+                label="Archive"
+                busy={action.busy === "archive"}
+                busyLabel="Archiving…"
+                disabled={action.busy !== null}
+                onClick={() =>
+                  void action.run("archive", async () =>
+                    setWorking(await archiveStationVersion(scope, station.id, version)),
+                  )
+                }
+              >
+                <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+            {supportsVersionDelete(scope) && isDraft ? (
+              <AuthoringIconAction
+                variant="danger"
+                label="Delete draft"
+                busy={action.busy === "delete"}
+                busyLabel="Deleting…"
+                disabled={action.busy !== null}
+                onClick={() =>
+                  void action.run("delete", async () => {
+                    await deleteStationVersion(scope, station.id, version);
+                    onBack();
+                  })
+                }
+              >
+                <HiOutlineTrash className="h-4 w-4" aria-hidden />
+              </AuthoringIconAction>
+            ) : null}
+          </AuthoringRowActions>
         </div>
+
+        {!structure && templateVersionId ? (
+          <p className="mt-3 text-osce-caption text-b2b-mid">
+            Template structure is not available in the catalogue — reload templates or edit from the
+            template list.
+          </p>
+        ) : null}
+        {!structure && !templateVersionId ? (
+          <p className="mt-3 text-osce-caption text-b2b-mid">
+            No layout is defined for exam {station.exam_code}. Import uses the B2C library shapes
+            for sca, plab, casc and ortho only.
+          </p>
+        ) : null}
 
         <p className="mt-3 text-osce-caption text-b2b-mid">
           A published version is what an attempt was assessed against, so it is archived rather
           than deleted.
         </p>
-      </Card>
+      </AuthoringCard>
 
       {supportsBrief(scope) ? (
         <BriefEditor
@@ -153,30 +216,45 @@ export function StationDetail({ station, onBack }: { station: Station; onBack: (
         />
       ) : null}
 
-      <AuthoringDialog
-        open={editing}
-        title="Edit station content"
-        lead="The station's content is the exam's own shape — what the template asked for."
-        busy={action.busy === "content"}
-        busyLabel="Saving…"
-        commitLabel="Save"
-        commitDisabled={jsonProblem(content) !== null}
-        onClose={() => setEditing(false)}
-        onCommit={() =>
-          void action.run("content", async () => {
-            setWorking(await editStationVersion(scope, station.id, version, parseJson(content)));
-            setEditing(false);
-          })
-        }
-      >
-        <JsonField
-          label="Content"
-          hint={`Version ${version}. Only a draft can be edited.`}
-          value={content}
-          rows={14}
-          onChange={setContent}
-        />
-      </AuthoringDialog>
+      {structure ? (
+        <AuthoringCard padding="md">
+          <p className="mb-4 text-osce-caption text-b2b-mid">
+            Version {version}.
+            {isDraft
+              ? " Edit sections below, then save or publish."
+              : " Published — same sections as B2C admin (read only). Create a new draft version to edit."}
+          </p>
+          <LegacyStationMeta content={editContent} stationTitle={station.title} />
+          <StationInstanceContentPanel
+            structure={structure}
+            content={editContent}
+            onChange={setEditContent}
+            readOnly={!isDraft}
+          />
+          {isDraft ? (
+            <div className="mt-6 flex justify-end border-t border-b2b-border pt-4">
+              <Button
+                type="button"
+                variant="commit"
+                disabled={!canSaveContent || action.busy !== null}
+                onClick={() =>
+                  void action.run("content", async () => {
+                    if (structure) {
+                      const v = validateStationContentScoped(structure, editContent);
+                      if (!v.ok) {
+                        throw new Error(v.errors[0] ?? "Please fill all required fields.");
+                      }
+                    }
+                    setWorking(await editStationVersion(scope, station.id, version, editContent));
+                  })
+                }
+              >
+                {action.busy === "content" ? "Saving…" : "Save content"}
+              </Button>
+            </div>
+          ) : null}
+        </AuthoringCard>
+      ) : null}
     </div>
   );
 }
@@ -185,4 +263,33 @@ function readBrief(content: unknown): string {
   if (!content || typeof content !== "object") return "";
   const brief = (content as { reading_brief?: unknown }).reading_brief;
   return typeof brief === "string" ? brief : "";
+}
+
+function LegacyStationMeta({
+  content,
+  stationTitle,
+}: {
+  content: Record<string, unknown>;
+  stationTitle: string;
+}) {
+  const legacyId = typeof content.station_id === "string" ? content.station_id : "";
+  const name =
+    typeof content.station_name === "string" && content.station_name.trim()
+      ? content.station_name
+      : stationTitle;
+  if (!legacyId && !name) return null;
+  return (
+    <div className="mb-6 grid gap-4 rounded-lg border border-b2b-border bg-b2b-cream/40 p-4 md:grid-cols-2">
+      {legacyId ? (
+        <div>
+          <p className="text-osce-caption font-medium text-b2b-mid">Station ID</p>
+          <p className="mt-1 font-mono text-osce-body text-b2b-headline">{legacyId}</p>
+        </div>
+      ) : null}
+      <div>
+        <p className="text-osce-caption font-medium text-b2b-mid">Station name</p>
+        <p className="mt-1 text-osce-body text-b2b-headline">{name}</p>
+      </div>
+    </div>
+  );
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Card } from "@/foundation/ui";
+import { Alert } from "@/foundation/ui";
+import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
+import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { editStationBrief, type StationVersion } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
@@ -35,7 +37,7 @@ export function BriefEditor({
   const action = useAction();
 
   return (
-    <Card themeType="b2b" padding="md">
+    <AuthoringCard padding="md">
       <h3 className="text-osce-body font-semibold text-b2b-headline">Reading brief</h3>
       <p className="mt-0.5 text-osce-caption text-b2b-mid">
         What the candidate reads before the station starts. Saving this does not cut a new version.
@@ -55,8 +57,7 @@ export function BriefEditor({
         </Alert>
       ) : null}
       <div className="mt-3 flex items-center gap-3">
-        <Button
-          themeType="b2b"
+        <AuthoringButton
           variant="commit"
           size="sm"
           disabled={action.busy !== null || brief === initial}
@@ -68,9 +69,9 @@ export function BriefEditor({
           }
         >
           {action.busy === "brief" ? "Saving…" : "Save brief"}
-        </Button>
+        </AuthoringButton>
         {saved ? <span className="text-osce-caption text-b2b-success-text">Saved.</span> : null}
       </div>
-    </Card>
+    </AuthoringCard>
   );
 }

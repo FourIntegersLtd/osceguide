@@ -28,8 +28,15 @@ export interface HelpNavItem {
  * institutions have sittings or that consumers have mocks, it just forwards
  * what it was handed and lets the backend's content packs answer.
  */
-export function HelpPanel({ navItems = [] }: { navItems?: HelpNavItem[] }) {
-  const [open, setOpen] = useState(false);
+export function HelpPanel({
+  navItems = [],
+  initialOpen = false,
+}: {
+  navItems?: HelpNavItem[];
+  /** When true, open the dialog on mount (used after a lazy import). */
+  initialOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(initialOpen);
 
   return (
     <>

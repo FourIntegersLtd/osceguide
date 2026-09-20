@@ -12,7 +12,7 @@ export const stationsCapability: CapabilityModule = {
   id: "stations",
   title: "Stations",
   description: "Browse every scenario published for your exams, and practise one.",
-  surfaces: ["train", "assess", "hire"],
+  surfaces: ["assess", "hire"],
   permission: null,
   section: "practice",
   path: "/stations",

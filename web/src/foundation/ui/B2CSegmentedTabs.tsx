@@ -1,12 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cn } from "@/foundation/ui/cn";
 import {
   b2cSegmentedControl,
   b2cSegmentedTabActive,
   b2cSegmentedTabInactive,
   b2cSegmentedTabLabelActive,
   b2cSegmentedTabLabelInactive,
+  b2cSegmentedTabsSpacing,
 } from "@/foundation/ui/productTokens";
 
 export type B2CSegmentedTabItem<T extends string = string> = {
@@ -20,6 +22,8 @@ export type B2CSegmentedTabsProps<T extends string = string> = {
   value: T;
   onChange: (id: T) => void;
   className?: string;
+  /** When true, omit default bottom margin (tabs flush inside a card footer). */
+  compact?: boolean;
   "aria-label"?: string;
 };
 
@@ -27,14 +31,20 @@ export function B2CSegmentedTabs<T extends string = string>({
   items,
   value,
   onChange,
-  className = "",
+  className,
+  compact = false,
   "aria-label": ariaLabel = "Tabs",
 }: B2CSegmentedTabsProps<T>) {
   return (
-    <div className={className}>
+    <div className={cn(!compact && b2cSegmentedTabsSpacing, className)}>
       <div className={b2cSegmentedControl} role="tablist" aria-label={ariaLabel}>
         {items.map((item) => {
           const isActive = value === item.id;
+          const tabClass = isActive ? b2cSegmentedTabActive : b2cSegmentedTabInactive;
+          const labelClass = isActive
+            ? b2cSegmentedTabLabelActive
+            : b2cSegmentedTabLabelInactive;
+
           return (
             <button
               key={item.id}
@@ -42,22 +52,12 @@ export function B2CSegmentedTabs<T extends string = string>({
               role="tab"
               aria-selected={isActive}
               disabled={item.disabled}
-              className={
-                isActive ? b2cSegmentedTabActive : b2cSegmentedTabInactive
-              }
+              className={tabClass}
               onClick={() => {
                 if (!item.disabled) onChange(item.id);
               }}
             >
-              <span
-                className={
-                  isActive
-                    ? b2cSegmentedTabLabelActive
-                    : b2cSegmentedTabLabelInactive
-                }
-              >
-                {item.label}
-              </span>
+              <span className={labelClass}>{item.label}</span>
             </button>
           );
         })}

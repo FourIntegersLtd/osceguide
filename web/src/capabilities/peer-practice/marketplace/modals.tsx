@@ -2,6 +2,7 @@
 
 import { HiOutlineArrowPath, HiOutlineCalendarDays, HiOutlineVideoCamera } from "react-icons/hi2";
 import {
+  Alert,
   Modal,
   ModalBody,
   ModalFooterActions,
@@ -22,11 +23,13 @@ export function ClaimConfirmationModal({
   isClaiming,
   onConfirm,
   onCancel,
+  error,
 }: {
   slot: Slot | null;
   isClaiming: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  error?: string | null;
 }) {
   if (!slot) return null;
 
@@ -68,8 +71,9 @@ export function ClaimConfirmationModal({
           />
         </ModalSection>
 
+        {error && <Alert tone="danger">{error}</Alert>}
         <ModalFooterActions>
-          <ModalSecondaryButton onClick={onCancel}>Cancel</ModalSecondaryButton>
+          <ModalSecondaryButton onClick={onCancel} disabled={isClaiming}>Cancel</ModalSecondaryButton>
           <ModalPrimaryButton onClick={onConfirm} disabled={isClaiming} className="gap-2">
             {isClaiming ? (
               <>

@@ -20,4 +20,6 @@ export const mediaCapability: CapabilityModule = {
   section: "practice",
   path: "/library",
   icon: LuLibrary,
+  /** Detail pages only; study kinds have their own nav entries. */
+  hidden: true,
 };

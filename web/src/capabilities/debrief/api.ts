@@ -1,9 +1,42 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { StartedAttemptRef } from "@/capabilities/attempt-runner";
+import type { RoomGrant } from "@/foundation/livekit";
+import type { AssistantSurface } from "@/capabilities/surface";
 
 export type DebriefSummary = components["schemas"]["DebriefSummaryRead"];
-type TutorMemory = components["schemas"]["TutorMemoryRead"];
+export type AthenaDoctorSession = components["schemas"]["SessionRead"];
+export type PatientRoleplay = components["schemas"]["PatientRoleplayRead"];
+
+export function readPatientRoleplay(attemptId: string, signal?: AbortSignal): Promise<PatientRoleplay> {
+  return platformRequest(`/api/v1/attempts/${encodeURIComponent(attemptId)}/roleplay`, { signal });
+}
+
+export function startAttemptDebrief(attemptId: string): Promise<StartedAttemptRef> {
+  return platformRequest(`/api/v1/attempts/${encodeURIComponent(attemptId)}/debriefs`, { method: "POST" });
+}
 type StartedAttempt = components["schemas"]["StartedAttempt"];
+
+export interface AthenaDoctorClientContext {
+  surface: AssistantSurface;
+  route: string;
+}
+
+export interface AthenaDoctorStationContext {
+  attemptId: string;
+  examCode: string;
+  stationId?: string | null;
+  stationTitle?: string | null;
+  patientName?: string | null;
+  patientGender?: string | null;
+  patientBiodata?: string | null;
+  doctorRole?: string | null;
+  doctorTask?: string | null;
+  clinicalScenario?: string | null;
+  backgroundOverview?: string | null;
+  patientInformation?: string[];
+  ice?: string[];
+  managementPoints?: string[];
+}
 
 /**
  * Talking an attempt through with the tutor.
@@ -31,22 +64,68 @@ export async function startDebrief(
   return { id: started.attempt_id };
 }
 
-/**
- * What past debriefs concluded.
- *
- * Read off the tutor's memory, which is where the summariser writes them: one
- * row per debriefed attempt, holding the narrative, the insights and what was
- * agreed. There is no debriefs collection to list and no debrief to read by
- * id — see `docs/port-gaps.md`.
- */
-export async function listDebriefs(signal?: AbortSignal): Promise<DebriefSummary[]> {
-  const memory = await platformRequest<TutorMemory>("/api/v1/me/tutor-memory", { signal });
-  return [...(memory.debrief_summaries ?? [])].sort(
-    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+export function startAthenaDoctorSession(
+  station: AthenaDoctorStationContext,
+  client: AthenaDoctorClientContext,
+  signal?: AbortSignal,
+): Promise<AthenaDoctorSession> {
+  return platformRequest<AthenaDoctorSession>("/api/v1/assistant/sessions", {
+    method: "POST",
+    body: {
+      session_type: "athena-doctor",
+      extras: {
+        client,
+        station: {
+          attempt_id: station.attemptId,
+          exam_code: station.examCode,
+          station_id: station.stationId ?? null,
+          station_name: station.stationTitle ?? null,
+          station_title: station.stationTitle ?? null,
+          station_patient_name: station.patientName ?? null,
+          station_patient_gender: station.patientGender ?? null,
+          station_patient_biodata: station.patientBiodata ?? null,
+          doctor_role: station.doctorRole ?? null,
+          doctor_task: station.doctorTask ?? null,
+          clinical_scenario: station.clinicalScenario ?? null,
+          background_overview: station.backgroundOverview ?? null,
+          patient_information: station.patientInformation ?? [],
+          ice: station.ice ?? [],
+          management_points: station.managementPoints ?? [],
+          app_type: station.examCode,
+        },
+      },
+    },
+    signal,
+  });
+}
+
+export function athenaDoctorVoiceToken(sessionId: string, signal?: AbortSignal): Promise<RoomGrant> {
+  return platformRequest<RoomGrant>(
+    `/api/v1/assistant/sessions/${encodeURIComponent(sessionId)}/voice-token`,
+    { method: "POST", signal },
   );
 }
 
-/** One debrief, found in the list the tutor's memory returns. */
+/**
+ * What past debriefs concluded.
+ *
+ * Read the complete paginated history rather than the tutor's recent-memory
+ * window. Each summary names its source consultation for station filtering.
+ */
+export async function listDebriefs(signal?: AbortSignal): Promise<DebriefSummary[]> {
+  const items: DebriefSummary[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: { items: DebriefSummary[]; next_cursor?: string | null } = await platformRequest(
+      "/api/v1/me/debriefs", { signal, query: { limit: 100, cursor: cursor ?? undefined } },
+    );
+    items.push(...page.items);
+    cursor = page.next_cursor ?? null;
+  } while (cursor && !signal?.aborted);
+  return items;
+}
+
+/** One summary, found across all pages of the learner's private history. */
 export async function readDebrief(
   id: string,
   signal?: AbortSignal,
