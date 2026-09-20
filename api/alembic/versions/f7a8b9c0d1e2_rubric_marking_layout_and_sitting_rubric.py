@@ -1,7 +1,7 @@
 """Rubric marking layout on versions; sittings bind rubric versions directly.
 
 Revision ID: f7a8b9c0d1e2
-Revises: e6f7a8b9c0d1
+Revises: a8b9c0d1e2f3
 Create Date: 2026-09-19 00:00:00+00:00
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "f7a8b9c0d1e2"
-down_revision: str | None = "e6f7a8b9c0d1"
+down_revision: str | None = "a8b9c0d1e2f3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
