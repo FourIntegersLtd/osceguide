@@ -128,6 +128,7 @@ def definition_payload(
     policy_version: str,
     primary_model: str,
     at: datetime,
+    rubric: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble what gets frozen onto the attempt.
 
@@ -154,9 +155,17 @@ def definition_payload(
             "framework_id": framework_id,
             "primary_model": primary_model,
             "version": policy_version,
+            "rubric": dict(rubric) if rubric else None,
         },
         "snapshot_at": at.isoformat(),
     }
+
+
+def rubric_for(definition: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """The rubric snapshot frozen onto an attempt, if it has one."""
+    policy = (definition or {}).get("evaluation_policy") or {}
+    rubric = policy.get("rubric")
+    return dict(rubric) if isinstance(rubric, Mapping) else None
 
 
 def bootstrap_definition(definition: Mapping[str, Any]) -> dict[str, Any]:

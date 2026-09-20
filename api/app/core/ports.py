@@ -78,7 +78,7 @@ class Evaluator(Protocol):
     async def evaluate(
         self,
         *,
-        framework_id: str,
+        rubric: dict[str, object],
         policy_version: str,
         transcript: list[dict[str, object]],
     ) -> dict[str, object]:

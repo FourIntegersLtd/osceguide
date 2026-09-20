@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,11 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    exam_date: Mapped[date | None] = mapped_column(Date)
+    exam_code: Mapped[str | None] = mapped_column(String(32))
+    extra_reading_percent: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # B2C `role`: `user` or `admin` within an exam app, not platform console access.
+    consumer_role: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'user'"))
 
 
 class UserIdentity(Base, UUIDPrimaryKey, Timestamps):

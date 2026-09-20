@@ -92,6 +92,16 @@ async def withdraw_slot(
 
 
 @router.get(
+    "/me/marketplace/posts",
+    response_model=Page[schemas.PostRead],
+    responses=error_responses(Unauthenticated),
+)
+async def list_my_posts(principal: CurrentPrincipal, session: Session) -> Page[schemas.PostRead]:
+    items = await service.list_my_posts(session, viewer_id=principal.user_id)
+    return Page(items=items, next_cursor=None)
+
+
+@router.get(
     "/me/peer-sessions",
     response_model=Page[schemas.PeerSessionRead],
     responses=error_responses(Unauthenticated),

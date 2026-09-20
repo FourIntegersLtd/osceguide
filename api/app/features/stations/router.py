@@ -3,11 +3,12 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import Forbidden, error_responses
+from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
@@ -16,6 +17,27 @@ from app.features.stations import errors, schemas, service
 router = APIRouter(tags=["stations"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+@router.get(
+    "/stations",
+    response_model=Page[schemas.LibraryStationRead],
+    responses=error_responses(Unauthenticated, errors.UnknownExamError),
+)
+async def browse_library(
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    exam_code: Annotated[str | None, Query()] = None,
+) -> Page[schemas.LibraryStationRead]:
+    items, next_cursor = await service.browse_library(
+        session,
+        exam_code=exam_code,
+        limit=page.limit,
+        cursor=page.cursor,
+        all_exams=principal.is_platform_admin,
+    )
+    return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(

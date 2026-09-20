@@ -74,10 +74,14 @@ async def test_the_adapter_builds_every_object_the_engine_expects() -> None:
             captured.update(attempt=attempt, transcript=transcript, policy=policy, scenario=scenario)
             raise RuntimeError("stop here; construction is what is under test")
 
-    adapter = EngineEvaluator(CapturingEngine(), scenario_title="Chest pain")
+    rubric = {
+        "framework": {"id": "sca-rcgp-v1", "label": "SCA", "version": "1", "scale": ["R", "A", "G"]},
+        "system_prompt": "Mark this consultation.",
+    }
+    adapter = EngineEvaluator(lambda _fw: CapturingEngine(), scenario_title="Chest pain")
     with pytest.raises(EvaluationFailed):
         await adapter.evaluate(
-            framework_id="sca-rcgp-v1",
+            rubric=rubric,
             policy_version="platform-default@1",
             transcript=[
                 {"role": "user", "message": "Hello doctor", "seq": 0, "message_id": "m0"},
@@ -93,14 +97,15 @@ async def test_the_adapter_builds_every_object_the_engine_expects() -> None:
     assert captured["attempt"].definition.evaluation_policy is not None  # type: ignore[union-attr]
 
 
-def test_the_four_framework_ids_match_the_exam_seed() -> None:
-    """The catalogue and the `exams` table have to agree, or an attempt is
-    marked against a framework the engine has never heard of."""
-    from osce_assessment.catalog import framework_ids
-
+def test_the_four_framework_ids_are_in_the_legacy_catalog() -> None:
+    """Published exams must load a marking snapshot from the legacy vendor."""
+    from app.features.attempts.published_marking import marking_snapshot
     from app.features.catalog.domain import PUBLISHED_EXAMS
 
-    assert {e.framework_id for e in PUBLISHED_EXAMS} <= set(framework_ids())
+    for exam in PUBLISHED_EXAMS:
+        snap = marking_snapshot(exam.framework_id)
+        assert snap["framework"]["id"] == exam.framework_id
+        assert str(snap.get("system_prompt") or "").strip()
 
 
 async def test_the_adapter_reports_a_failure_rather_than_an_empty_result() -> None:
@@ -112,10 +117,14 @@ async def test_the_adapter_reports_a_failure_rather_than_an_empty_result() -> No
         def evaluate(self, *args: object, **kwargs: object) -> object:
             raise RuntimeError("model refused")
 
-    adapter = EngineEvaluator(RefusingEngine())
+    rubric = {
+        "framework": {"id": "sca-rcgp-v1", "label": "SCA", "version": "1", "scale": ["R", "A", "G"]},
+        "system_prompt": "Mark this consultation.",
+    }
+    adapter = EngineEvaluator(lambda _fw: RefusingEngine())
     with pytest.raises(EvaluationFailed):
         await adapter.evaluate(
-            framework_id="sca-rcgp-v1",
+            rubric=rubric,
             policy_version="platform-default@1",
             transcript=[{"role": "user", "message": "Hi", "seq": 0, "message_id": "m0"}],
         )

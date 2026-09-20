@@ -138,6 +138,16 @@ async def list_for_org(
     return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
 
 
+async def versions_by_ids(
+    session: AsyncSession, version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, StationVersion]:
+    if not version_ids:
+        return {}
+    stmt = select(StationVersion).where(StationVersion.id.in_(version_ids))
+    rows = (await session.execute(stmt)).scalars().all()
+    return {row.id: row for row in rows}
+
+
 async def list_platform_library(
     session: AsyncSession,
     *,

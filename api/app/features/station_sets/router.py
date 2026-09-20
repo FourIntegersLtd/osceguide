@@ -82,3 +82,28 @@ async def start_attempt(
     clock: ClockDep,
 ) -> schemas.StartedAttempt:
     return await service.start_entry_attempt(session, principal.user_id, set_id, entry_id, now=clock.now())
+
+
+@router.post(
+    "/me/station-sets/{set_id}/entries/{entry_id}/debriefs",
+    response_model=schemas.StartedAttempt,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(
+        Unauthenticated,
+        errors.NotEntitled,
+        errors.SetNotFound,
+        errors.EntryNotFound,
+        errors.AttemptLimitReachedError,
+        errors.NothingToDebriefError,
+    ),
+)
+async def start_debrief(
+    set_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.StartedAttempt:
+    return await service.start_entry_attempt(
+        session, principal.user_id, set_id, entry_id, now=clock.now(), debrief=True
+    )

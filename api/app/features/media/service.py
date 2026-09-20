@@ -22,6 +22,8 @@ _REFUSALS: dict[type[Exception], type[Exception]] = {
     domain.UnusableTitle: errors.UnusableTitleError,
     domain.EmptyQuery: errors.EmptyQueryError,
     domain.QueryTooLong: errors.EmptyQueryError,
+    domain.InvalidListStatus: errors.InvalidListStatusError,
+    domain.NotDeletable: errors.NotDeletableError,
 }
 
 
@@ -69,12 +71,14 @@ async def update(
     title: str | None,
     summary: str | None,
     content: dict[str, Any] | None,
+    editor_is_admin: bool = False,
 ) -> MediaRead:
     row = await _require(session, item_id)
-    try:
-        domain.ensure_editable(status=row.status)
-    except domain.NotEditable as exc:
-        _raise(exc)
+    if not editor_is_admin:
+        try:
+            domain.ensure_editable(status=row.status)
+        except domain.NotEditable as exc:
+            _raise(exc)
 
     values: dict[str, Any] = {}
     if title is not None:
@@ -111,6 +115,13 @@ async def publish(
     return await _read(session, await _require(session, item_id))
 
 
+async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_admin: bool) -> MediaRead:
+    row = await _require(session, item_id)
+    if not domain.is_public(status=row.status) and not viewer_is_admin:
+        raise errors.ItemNotFound()
+    return await _read(session, row)
+
+
 async def read_by_slug(session: AsyncSession, slug: str, *, viewer_is_admin: bool) -> MediaRead:
     row = await repository.by_slug(session, slug)
     if row is None or (not domain.is_public(status=row.status) and not viewer_is_admin):
@@ -119,16 +130,47 @@ async def read_by_slug(session: AsyncSession, slug: str, *, viewer_is_admin: boo
     return await _read(session, row)
 
 
-async def list_published(
-    session: AsyncSession, *, kind: str | None, limit: int, cursor: dict[str, Any] | None
+async def list_catalog(
+    session: AsyncSession,
+    *,
+    kind: str | None,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    status: str | None,
+    viewer_is_admin: bool,
 ) -> tuple[list[MediaRead], str | None]:
     if kind:
         try:
             kind = domain.normalize_kind(kind)
         except domain.UnknownMediaKind as exc:
             _raise(exc)
-    rows, next_cursor = await repository.list_published(session, kind=kind, limit=limit, cursor=cursor)
+    statuses: tuple[str, ...] | None = None
+    if viewer_is_admin and status:
+        try:
+            statuses = domain.parse_authoring_status(status)
+        except domain.InvalidListStatus as exc:
+            _raise(exc)
+    rows, next_cursor = await repository.list_catalog(
+        session, kind=kind, statuses=statuses, limit=limit, cursor=cursor
+    )
     return [await _read(session, r) for r in rows], next_cursor
+
+
+async def list_published(
+    session: AsyncSession, *, kind: str | None, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[MediaRead], str | None]:
+    return await list_catalog(
+        session, kind=kind, limit=limit, cursor=cursor, status=None, viewer_is_admin=False
+    )
+
+
+async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
+    row = await _require(session, item_id)
+    try:
+        domain.ensure_deletable(status=row.status)
+    except domain.NotDeletable as exc:
+        _raise(exc)
+    await repository.delete_item(session, item_id)
 
 
 async def search(
@@ -177,6 +219,7 @@ async def _read(session: AsyncSession, row: MediaItem) -> MediaRead:
         content=dict(row.content or {}),
         exam_code=exam.code if exam else None,
         status=row.status,
+        created_at=row.created_at,
         published_at=row.published_at,
     )
 

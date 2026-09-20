@@ -147,6 +147,20 @@ async def change_password(
     return schemas.Accepted()
 
 
+@router.post(
+    "/me/station-flags",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated),
+)
+async def flag_station(
+    body: schemas.FlagStationBody,
+    principal: CurrentPrincipal,
+) -> None:
+    """Report a library station to the content team. Persistence is TODO."""
+    _ = principal
+    _ = body
+
+
 @router.get("/me", response_model=schemas.UserRead, responses=error_responses(Unauthenticated))
 async def read_me(
     principal: CurrentPrincipal,

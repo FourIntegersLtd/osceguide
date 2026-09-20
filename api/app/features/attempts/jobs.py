@@ -16,8 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import EvaluationFailed, Evaluator
-from app.features.attempts import domain, repository
+from app.features.attempts import domain, published_marking, repository
 from app.features.attempts import repository_transcript as transcripts
+from app.features.catalog import repository as catalog_repository
 
 log = get_logger(__name__)
 
@@ -55,8 +56,15 @@ async def score_attempt_now(
         return False
     status = domain.Status(attempt.status)
     if status not in MARKABLE:
-        # Nothing to mark yet, or the attempt failed. Not an error: a job can
-        # arrive before the status settles, or after a later failure.
+        return False
+
+    exam_code = await catalog_repository.exam_code_by_id(session, attempt.exam_id)
+    rubric = published_marking.rubric_for_scoring(
+        attempt.definition if isinstance(attempt.definition, dict) else None,
+        exam_code=exam_code,
+    )
+    if rubric is None:
+        log.warning("scoring skipped, no rubric for attempt", attempt_id=str(attempt_id))
         return False
 
     turns = await transcripts.chunks_for(session, attempt_id)
@@ -64,22 +72,26 @@ async def score_attempt_now(
         await repository.set_status(session, attempt_id, status="failed", at=now, reason="empty_transcript")
         return False
 
+    resolved_framework_id = str(
+        (rubric.get("framework") or {}).get("id")
+        if isinstance(rubric.get("framework"), dict)
+        else framework_id
+    )
+
     try:
         payload = await evaluator.evaluate(
-            framework_id=framework_id,
+            rubric=rubric,
             policy_version=policy_version,
             transcript=[{"role": t.role, "message": t.message, "seq": t.seq} for t in turns],
         )
     except EvaluationFailed as exc:
-        # The attempt is left at interaction_complete so a retry can mark it;
-        # failing the attempt here would discard a transcript we still hold.
         log.warning("evaluation failed", attempt_id=str(attempt_id), error=str(exc))
         raise
 
     await transcripts.save_result(
         session,
         attempt_id,
-        framework_id=framework_id,
+        framework_id=resolved_framework_id or framework_id,
         policy_version=policy_version,
         payload=payload,
         model_used=str(payload.get("model_used") or "") or None,
@@ -105,12 +117,38 @@ def register() -> None:
         from app.core.db import job_session
         from app.features.attempts.evaluator import build_evaluator
 
+        at = datetime.now(UTC)
+        attempt_uuid = uuid.UUID(attempt_id)
+
         async with job_session() as session:
-            await score_attempt_now(
-                session,
-                uuid.UUID(attempt_id),
-                evaluator=build_evaluator(),
-                policy_version=policy_version,
-                framework_id=framework_id,
-                now=datetime.now(UTC),
-            )
+            try:
+                evaluator = build_evaluator()
+            except EvaluationFailed as exc:
+                await repository.set_status(
+                    session,
+                    attempt_uuid,
+                    status="failed",
+                    at=at,
+                    reason=str(exc)[:500],
+                )
+                log.error("scoring aborted, engine unavailable", attempt_id=attempt_id, error=str(exc))
+                return
+
+            try:
+                await score_attempt_now(
+                    session,
+                    attempt_uuid,
+                    evaluator=evaluator,
+                    policy_version=policy_version,
+                    framework_id=framework_id,
+                    now=at,
+                )
+            except EvaluationFailed as exc:
+                await repository.set_status(
+                    session,
+                    attempt_uuid,
+                    status="failed",
+                    at=at,
+                    reason=str(exc)[:500],
+                )
+                log.error("scoring failed", attempt_id=attempt_id, error=str(exc))

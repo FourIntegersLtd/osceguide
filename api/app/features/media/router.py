@@ -23,28 +23,40 @@ Index = Annotated[VectorIndex, Depends(service.get_vector_index)]
 @router.get(
     "/media",
     response_model=Page[schemas.MediaRead],
-    responses=error_responses(Unauthenticated, errors.UnknownMediaKindError),
+    responses=error_responses(
+        Unauthenticated, errors.UnknownMediaKindError, errors.InvalidListStatusError
+    ),
 )
-async def list_published(
+async def list_media(
     principal: CurrentPrincipal,
     session: Session,
     page: Annotated[CursorParams, Depends()],
     kind: Annotated[str | None, Query()] = None,
+    status: Annotated[
+        str | None,
+        Query(description="Authoring filter: draft, published, or all (platform admin only)."),
+    ] = None,
 ) -> Page[schemas.MediaRead]:
-    items, next_cursor = await service.list_published(
-        session, kind=kind, limit=page.limit, cursor=page.cursor
+    items, next_cursor = await service.list_catalog(
+        session,
+        kind=kind,
+        limit=page.limit,
+        cursor=page.cursor,
+        status=status,
+        viewer_is_admin=principal.is_platform_admin,
     )
     return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(
-    "/media/{slug}",
+    "/media/by-id/{item_id}",
     response_model=schemas.MediaRead,
-    responses=error_responses(Unauthenticated, errors.ItemNotFound),
+    responses=error_responses(Unauthenticated, Forbidden, errors.ItemNotFound),
 )
-async def read_by_slug(slug: str, principal: CurrentPrincipal, session: Session) -> schemas.MediaRead:
-    """A draft is 404 to everyone but an admin: its existence is not public."""
-    return await service.read_by_slug(session, slug, viewer_is_admin=principal.is_platform_admin)
+async def read_by_id(
+    item_id: uuid.UUID, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    return await service.read_by_id(session, item_id, viewer_is_admin=True)
 
 
 @router.get(
@@ -60,6 +72,30 @@ async def search(
 ) -> Page[schemas.SearchHit]:
     items = await service.search(session, query=q, index=index)
     return Page(items=items, next_cursor=None)
+
+
+@router.get(
+    "/media/lookup",
+    response_model=schemas.MediaRead,
+    responses=error_responses(Unauthenticated, errors.ItemNotFound),
+)
+async def read_by_slug_lookup(
+    principal: CurrentPrincipal,
+    session: Session,
+    slug: Annotated[str, Query(min_length=1, description="The item's canonical slug")],
+) -> schemas.MediaRead:
+    """Same as `GET /media/{slug}`; query form avoids path-encoding edge cases in clients."""
+    return await service.read_by_slug(session, slug, viewer_is_admin=principal.is_platform_admin)
+
+
+@router.get(
+    "/media/{slug}",
+    response_model=schemas.MediaRead,
+    responses=error_responses(Unauthenticated, errors.ItemNotFound),
+)
+async def read_by_slug(slug: str, principal: CurrentPrincipal, session: Session) -> schemas.MediaRead:
+    """A draft is 404 to everyone but an admin: its existence is not public."""
+    return await service.read_by_slug(session, slug, viewer_is_admin=principal.is_platform_admin)
 
 
 @router.post(
@@ -91,8 +127,22 @@ async def update(
     item_id: uuid.UUID, body: schemas.UpdateMedia, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
     return await service.update(
-        session, item_id, title=body.title, summary=body.summary, content=body.content
+        session,
+        item_id,
+        title=body.title,
+        summary=body.summary,
+        content=body.content,
+        editor_is_admin=True,
     )
+
+
+@router.delete(
+    "/media/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotDeletableError),
+)
+async def delete_draft(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> None:
+    await service.delete_draft(session, item_id)
 
 
 @router.post(

@@ -30,6 +30,8 @@ class AppEnv(StrEnum):
 _DEFAULT_CORS_ORIGINS = (
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3100",
+    "http://127.0.0.1:3100",
     "https://staging.osceguide.com",
     "https://osceguide.com",
     "https://www.osceguide.com",
@@ -99,6 +101,12 @@ class Settings(BaseSettings):
     # set explicitly: unset means "medium" under any gpt-5 model, which is a
     # cost decision nobody made.
     openai_api_key: str = ""
+    cartesia_api_key: str = ""
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_s3_bucket: str = ""
+    aws_region: str = "eu-west-2"
+    media_av_font_dir: str = ""
     anthropic_api_key: str = ""
     marking_primary_model: str = "gpt-5-mini"
     marking_primary_effort: str = "low"
@@ -137,6 +145,10 @@ class Settings(BaseSettings):
             if not self.jwt_secret:
                 # noqa justified: local and test only, and the branch above is what keeps it there.
                 self.jwt_secret = "dev-only-jwt-secret-change-me"  # noqa: S105
+            # `.env` may set CORS_ORIGINS to :3000 only; platform-web dev uses :3100.
+            self.cors_origins = list(
+                dict.fromkeys([*self.cors_origins, *_DEFAULT_CORS_ORIGINS])
+            )
             return self
         missing = [
             name

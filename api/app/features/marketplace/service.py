@@ -107,19 +107,21 @@ async def list_open_slots(
     cursor: dict[str, Any] | None,
 ) -> tuple[list[PostRead], str | None]:
     rows, next_cursor = await repository.list_open(session, now=now, limit=limit, cursor=cursor)
-    out = []
-    for row in rows:
-        exam = await catalog_repo.exam_by_id(session, row.exam_id)
-        out.append(_post_read(row, exam.code if exam else "", viewer_id=viewer_id))
+    codes = await catalog_repo.exam_codes_by_id(session, {row.exam_id for row in rows})
+    out = [_post_read(row, codes.get(row.exam_id, ""), viewer_id=viewer_id) for row in rows]
     return out, next_cursor
 
 
+async def list_my_posts(session: AsyncSession, *, viewer_id: uuid.UUID, limit: int = 100) -> list[PostRead]:
+    rows = await repository.list_by_owner(session, viewer_id, limit=limit)
+    codes = await catalog_repo.exam_codes_by_id(session, {row.exam_id for row in rows})
+    return [_post_read(row, codes.get(row.exam_id, ""), viewer_id=viewer_id) for row in rows]
+
+
 async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PeerSessionRead]:
-    out = []
-    for row in await repository.sessions_for_user(session, user_id):
-        exam = await catalog_repo.exam_by_id(session, row.exam_id)
-        out.append(_session_read(row, exam.code if exam else "", viewer_id=user_id))
-    return out
+    rows = await repository.sessions_for_user(session, user_id)
+    codes = await catalog_repo.exam_codes_by_id(session, {row.exam_id for row in rows})
+    return [_session_read(row, codes.get(row.exam_id, ""), viewer_id=user_id) for row in rows]
 
 
 async def join_session(

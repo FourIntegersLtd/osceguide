@@ -16,6 +16,17 @@ class StationVersionRead(BaseModel):
     published_at: datetime | None = None
 
 
+class LibraryStationRead(BaseModel):
+    """Platform library row for browse lists — no station content."""
+
+    id: uuid.UUID
+    title: str
+    exam_code: str
+    version_id: uuid.UUID
+    version: int
+    published_at: datetime | None = None
+
+
 class StationRead(BaseModel):
     id: uuid.UUID
     title: str

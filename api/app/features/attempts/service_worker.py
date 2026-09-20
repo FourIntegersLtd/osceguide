@@ -20,7 +20,9 @@ from app.features.attempts.models import Attempt
 from app.features.attempts.renderer import build_renderer
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
 from app.features.attempts.scoring import PLATFORM_DEFAULT_POLICY, enqueue_scoring
-from app.features.catalog import service as catalog
+from app.features.catalog import domain as catalog_domain
+from app.features.catalog import repository as catalog_repository
+from app.features.attempts import published_marking
 from app.features.stations import service as stations
 
 log = get_logger(__name__)
@@ -79,29 +81,36 @@ async def _render_definition(session: AsyncSession, attempt: Attempt, *, now: da
             "This attempt has no station to run against, so there is nothing to render."
         )
 
-    exam = await catalog.exam_for_attempt(session, attempt.exam_id)
+    exam_code = await catalog_repository.exam_code_by_id(session, attempt.exam_id)
+    if not exam_code:
+        raise errors.AttemptNotReady("This attempt's exam is missing from the catalog.")
+    published = catalog_domain.exam_by_code(exam_code)
     degraded = not domain.scenario_is_renderable(station.content)
 
     try:
         rendered = build_renderer().render(
             station={"owner_kind": station.owner_kind, "content": station.content},
-            exam_code=exam.code,
+            exam_code=exam_code,
             mode=_MODE_FOR_KIND.get(attempt.kind, "patient"),
         )
     except RenderFailed as exc:
         raise errors.AttemptNotReady(str(exc)) from exc
 
+    framework_id = published.framework_id
+    rubric = published_marking.marking_snapshot(framework_id)
+
     payload = domain.definition_payload(
         attempt_id=str(attempt.id),
-        framework_id=exam.framework_id,
+        framework_id=framework_id,
         scenario_source="org" if station.owner_kind == "org" else "library",
         scenario_id=str(station.version_id),
         instructions=str(rendered["instructions"]),
         greeting=str(greeting) if (greeting := rendered.get("greeting")) else None,
         mode=_MODE_FOR_KIND.get(attempt.kind, "patient"),
         policy_version=PLATFORM_DEFAULT_POLICY,
-        primary_model=exam.feedback_model_key,
+        primary_model=published.feedback_model_key,
         at=now,
+        rubric=rubric,
     )
 
     if domain.should_freeze(render_degraded=degraded, already_frozen=bool(attempt.definition)):

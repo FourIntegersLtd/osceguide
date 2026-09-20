@@ -81,6 +81,13 @@ async def test_publishing_makes_it_readable_and_findable(
 
     reader = await make_actor("m-pub-reader@example.com")
     assert (await client.get(f"/api/v1/media/{item['slug']}", headers=bearer(reader))).status_code == 200
+    lookup = await client.get(
+        "/api/v1/media/lookup",
+        params={"slug": item["slug"]},
+        headers=bearer(reader),
+    )
+    assert lookup.status_code == 200
+    assert lookup.json()["slug"] == item["slug"]
 
 
 async def test_publishing_twice_conflicts(client: AsyncClient, make_actor, index: FakeVectorIndex) -> None:  # type: ignore[no-untyped-def]
@@ -93,7 +100,7 @@ async def test_publishing_twice_conflicts(client: AsyncClient, make_actor, index
     assert response.json()["code"] == "media_already_published"
 
 
-async def test_a_published_item_cannot_be_edited(
+async def test_a_published_item_can_be_edited_by_platform_admin(
     client: AsyncClient, make_actor, index: FakeVectorIndex
 ) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("m-edit@osceguide.com", platform_admin=True)
@@ -103,8 +110,61 @@ async def test_a_published_item_cannot_be_edited(
     response = await client.patch(
         f"/api/v1/media/{item['id']}", json={"title": "Changed"}, headers=bearer(admin)
     )
+    assert response.status_code == 200
+    assert response.json()["title"] == "Changed"
+
+
+async def test_admin_list_includes_drafts(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("m-list@osceguide.com", platform_admin=True)
+    item = await draft(client, admin, title="Draft Only Item")
+    response = await client.get("/api/v1/media?status=all", headers=bearer(admin))
+    assert response.status_code == 200
+    slugs = [row["slug"] for row in response.json()["items"]]
+    assert item["slug"] in slugs
+
+
+async def test_non_admin_list_ignores_status_filter(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("m-filter@osceguide.com", platform_admin=True)
+    item = await draft(client, admin, title="Hidden Draft Filter")
+    reader = await make_actor("m-filter-reader@example.com")
+    response = await client.get("/api/v1/media?status=all", headers=bearer(reader))
+    assert response.status_code == 200
+    assert item["slug"] not in [row["slug"] for row in response.json()["items"]]
+
+
+async def test_read_by_id_for_admin(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("m-byid@osceguide.com", platform_admin=True)
+    item = await draft(client, admin)
+    response = await client.get(f"/api/v1/media/by-id/{item['id']}", headers=bearer(admin))
+    assert response.status_code == 200
+    assert response.json()["id"] == item["id"]
+
+
+async def test_delete_draft(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("m-del@osceguide.com", platform_admin=True)
+    item = await draft(client, admin, title="Delete Me")
+    deleted = await client.delete(f"/api/v1/media/{item['id']}", headers=bearer(admin))
+    assert deleted.status_code == 204
+    assert (await client.get(f"/api/v1/media/by-id/{item['id']}", headers=bearer(admin))).status_code == 404
+
+
+async def test_cannot_delete_published(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("m-delpub@osceguide.com", platform_admin=True)
+    item = await draft(client, admin)
+    await client.post(f"/api/v1/media/{item['id']}/publish", headers=bearer(admin))
+    response = await client.delete(f"/api/v1/media/{item['id']}", headers=bearer(admin))
     assert response.status_code == 409
-    assert response.json()["code"] == "media_not_editable"
+    assert response.json()["code"] == "media_not_deletable"
 
 
 async def test_search_returns_published_matches(

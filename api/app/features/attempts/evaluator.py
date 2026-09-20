@@ -45,21 +45,22 @@ class EngineEvaluator:
 
     def __init__(
         self,
-        llm_evaluator: Any,
+        build: Any,
         *,
         scenario_title: str = "",
         examiner_context: str | None = None,
     ) -> None:
-        self._evaluator = llm_evaluator
+        # A factory rather than an evaluator: each marking builds one around the
+        # rubric frozen onto that attempt, so two attempts marked in the same
+        # process cannot be scored against each other's rubric.
+        self._build = build
         self._scenario_title = scenario_title
-        # Appended verbatim to what the marker sees. Ortho stations carry their
-        # expected answers here; everything else leaves it unset.
         self._examiner_context = examiner_context
 
     async def evaluate(
         self,
         *,
-        framework_id: str,
+        rubric: dict[str, object],
         policy_version: str,
         transcript: list[dict[str, object]],
     ) -> dict[str, object]:
@@ -77,12 +78,19 @@ class EngineEvaluator:
             TranscriptMessage,
         )
 
+        raw_framework = rubric.get("framework")
+        framework = dict(raw_framework) if isinstance(raw_framework, dict) else {}
+        framework_id = str(framework.get("id") or "")
+        if not framework_id:
+            raise EvaluationFailed("The attempt carries no rubric, so there is nothing to mark against.")
+
         settings = get_settings()
         policy = EvaluationPolicy(
             framework_id=framework_id,
             primary_model=settings.marking_primary_model,
             primary_reasoning_effort=settings.marking_primary_effort,
             fallback_model=settings.marking_fallback_model,
+            system_prompt_override=str(rubric.get("system_prompt") or "") or None,
             version=policy_version,
         )
         scenario_ref = ScenarioRef(source=ScenarioSource.INLINE, scenario_id="scored")
@@ -92,8 +100,6 @@ class EngineEvaluator:
             title=self._scenario_title or "Station",
             examiner_context=self._examiner_context,
         )
-        # The interaction is over by the time anything is marked, so the profile
-        # is a formality the model requires and the evaluator never reads.
         definition = AssessmentDefinition(
             id=policy_version,
             version=policy_version,
@@ -120,20 +126,35 @@ class EngineEvaluator:
         )
 
         try:
-            result = self._evaluator.evaluate(attempt, engine_transcript, policy, scenario)
+            result = self._build(framework).evaluate(attempt, engine_transcript, policy, scenario)
         except Exception as exc:  # noqa: BLE001 - any engine failure is a delivery failure
             log.warning("engine evaluation failed", framework=framework_id, error=str(exc))
             raise EvaluationFailed(str(exc)) from exc
 
-        payload: dict[str, Any] = dict(getattr(result, "payload", {}) or {})
+        payload: dict[str, Any] = dict(result.result or {})
         payload.setdefault("model_used", getattr(result, "model", ""))
         return payload
+
+
+class FrozenFrameworkProvider:
+    """Serves exactly one framework: the one frozen onto the attempt."""
+
+    def __init__(self, framework: dict[str, Any]) -> None:
+        from osce_assessment.contracts import CompetencyFramework  # noqa: PLC0415
+
+        self._framework = CompetencyFramework.model_validate(framework)
+
+    def get(self, framework_id: str) -> Any:
+        if framework_id != self._framework.id:
+            raise LookupError(
+                f"This attempt was frozen against framework {self._framework.id!r}, not {framework_id!r}."
+            )
+        return self._framework
 
 
 def build_evaluator() -> Evaluator:
     """Wire the engine, or say plainly that it is not there."""
     try:
-        from osce_assessment.catalog import CatalogFrameworkProvider  # noqa: PLC0415
         from osce_assessment.evaluation.evaluator import LLMEvaluator  # noqa: PLC0415
     except ImportError as exc:
         raise EvaluationFailed(
@@ -147,10 +168,11 @@ def build_evaluator() -> Evaluator:
         primary_client,
     )
 
-    return EngineEvaluator(
-        LLMEvaluator(
-            framework_provider=CatalogFrameworkProvider(),
+    def build(framework: dict[str, Any]) -> Any:
+        return LLMEvaluator(
+            framework_provider=FrozenFrameworkProvider(framework),
             primary_client=primary_client,
             fallback_client=fallback_client,
         )
-    )
+
+    return EngineEvaluator(build)

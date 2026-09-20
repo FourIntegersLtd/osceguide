@@ -17,7 +17,8 @@ from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
 from app.features.stations import domain, errors, repository
 from app.features.stations.models import FeedbackTemplateVersion, Station, StationVersion
-from app.features.stations.schemas import StationRead, StationVersionRead
+from app.features.catalog.repository import exam_codes_by_id
+from app.features.stations.schemas import LibraryStationRead, StationRead, StationVersionRead
 
 # One place mapping a domain refusal to its API code, so a new rule does not
 # need a new `except` clause in every caller.
@@ -196,6 +197,49 @@ class RunnableStation:
     title: str
     content: dict[str, Any]
     published: bool
+
+
+async def browse_library(
+    session: AsyncSession,
+    *,
+    exam_code: str | None,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    all_exams: bool = False,
+) -> tuple[list[LibraryStationRead], str | None]:
+    """Published platform library stations, optionally filtered by exam."""
+    exam_id: uuid.UUID | None = None
+    if exam_code is not None:
+        try:
+            exam_id = (await resolve_exam(session, exam_code)).id
+        except CatalogUnknownExam as exc:
+            raise errors.UnknownExamError(str(exc)) from exc
+
+    rows, next_cursor = await repository.list_platform_library(
+        session, limit=limit, cursor=cursor, exam_id=exam_id
+    )
+    version_ids = [row.current_version_id for row in rows if row.current_version_id is not None]
+    versions = await repository.versions_by_ids(session, version_ids)
+    codes = await exam_codes_by_id(session, {row.exam_id for row in rows})
+
+    out: list[LibraryStationRead] = []
+    for row in rows:
+        if row.current_version_id is None:
+            continue
+        version = versions.get(row.current_version_id)
+        if version is None:
+            continue
+        out.append(
+            LibraryStationRead(
+                id=row.id,
+                title=row.title,
+                exam_code=codes.get(row.exam_id, ""),
+                version_id=version.id,
+                version=version.version,
+                published_at=version.published_at,
+            )
+        )
+    return out, next_cursor
 
 
 async def runnable_station(

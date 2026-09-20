@@ -16,6 +16,10 @@ class MembershipRead(BaseModel):
     surface: str | None = None
 
 
+class FlagStationBody(BaseModel):
+    station_id: uuid.UUID
+
+
 class UserRead(BaseModel):
     id: uuid.UUID
     email: str

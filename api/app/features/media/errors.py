@@ -36,3 +36,13 @@ class EmptyQueryError(InvalidInput):
 class SlugTaken(Conflict):
     code = "slug_taken"
     default_message = "Something with that title already exists"
+
+
+class InvalidListStatusError(InvalidInput):
+    code = "invalid_media_status"
+    default_message = "That is not a valid status filter"
+
+
+class NotDeletableError(Conflict):
+    code = "media_not_deletable"
+    default_message = "Only drafts can be deleted"

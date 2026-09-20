@@ -27,6 +27,20 @@ async def exam_by_id(session: AsyncSession, exam_id: uuid.UUID) -> Exam | None:
     return (await session.execute(select(Exam).where(Exam.id == exam_id))).scalar_one_or_none()
 
 
+async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | None:
+    """Exam code only — works when older DB rows lack `exams.framework_id`."""
+    row = await session.execute(select(Exam.code).where(Exam.id == exam_id))
+    return row.scalar_one_or_none()
+
+
+async def exam_codes_by_id(session: AsyncSession, exam_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Batch lookup for list endpoints that would otherwise N+1 the exams table."""
+    if not exam_ids:
+        return {}
+    rows = await session.execute(select(Exam.id, Exam.code).where(Exam.id.in_(exam_ids)))
+    return {row[0]: str(row[1]) for row in rows.all()}
+
+
 async def create_programme(
     session: AsyncSession, org_id: uuid.UUID, *, exam_id: uuid.UUID, source: str = "custom"
 ) -> Programme:

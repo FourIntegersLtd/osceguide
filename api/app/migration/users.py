@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 # Oracle: `osce_assessment.compat.legacy_app_types`. The last place this mapping
@@ -55,6 +55,30 @@ class MergedUser:
     # names its author by Firestore document id, not by email, so without these
     # there is no way to attach imported attempts to the user they belong to.
     legacy_ids: set[str] = field(default_factory=set)
+    # Firestore document id per exam collection (`app_type` → `user_id`).
+    legacy_ids_by_product: dict[str, str] = field(default_factory=dict)
+    last_login_at: datetime | None = None
+    exam_code: str | None = None
+    exam_date: date | None = None
+    extra_reading_percent: int = 0
+    consumer_role: str = "user"
+
+
+@dataclass(frozen=True)
+class MergedLegacyPayment:
+    email: str
+    exam_code: str
+    plan_code: str
+    paid_at: datetime
+    stripe_payment_intent_id: str
+    amount_pence: int = 0
+
+
+@dataclass(frozen=True)
+class MergedReferral:
+    email: str
+    code: str
+    earned_pence: int
 
 
 @dataclass(frozen=True)
@@ -79,6 +103,28 @@ def parse_timestamp(raw: Any) -> datetime | None:
     except ValueError:
         return None
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def parse_date(raw: Any) -> date | None:
+    at = parse_timestamp(raw)
+    if at is not None:
+        return at.date()
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def extra_reading_from_record(record: dict[str, Any]) -> int:
+    accessibility = record.get("accessibility")
+    if not isinstance(accessibility, dict):
+        return 0
+    if accessibility.get("needs_extra_reading_time"):
+        return 25
+    return 0
 
 
 def exam_for_product(app_type: Any) -> str:
@@ -118,9 +164,14 @@ def merge_users(
             # starts at `now()`, so the first real timestamp always wins.
             user.created_at = created
 
-        legacy_id = str(record.get("id") or record.get("user_id") or "").strip()
+        doc_id = str(record.get("id") or "").strip()
+        legacy_user_id = str(record.get("user_id") or "").strip()
+        legacy_id = doc_id or legacy_user_id
         if legacy_id:
             user.legacy_ids.add(legacy_id)
+        # Community and marketplace name authors by `user_id`, not the Firestore doc id.
+        if legacy_user_id and legacy_user_id != doc_id:
+            user.legacy_ids.add(legacy_user_id)
 
         if email in admins:
             user.is_platform_admin = True
@@ -128,6 +179,29 @@ def merge_users(
         product = str(record.get("app_type") or "").strip().lower()
         if product:
             user.legacy_products.add(product)
+            if legacy_id:
+                user.legacy_ids_by_product[product] = legacy_id
+
+        login = parse_timestamp(record.get("last_login"))
+        if login and (user.last_login_at is None or login > user.last_login_at):
+            user.last_login_at = login
+
+        reading = extra_reading_from_record(record)
+        if reading > user.extra_reading_percent:
+            user.extra_reading_percent = reading
+
+        exam_on_record = parse_date(record.get("exam_date"))
+        if exam_on_record and user.exam_date is None:
+            user.exam_date = exam_on_record
+            if product:
+                user.exam_code = product
+
+        role = str(record.get("role") or "").strip().lower()
+        if role == "admin":
+            user.consumer_role = "admin"
+
+        if not user.exam_code and product:
+            user.exam_code = product
 
     return list(merged.values())
 
@@ -154,3 +228,48 @@ def entitlements_for(record: dict[str, Any]) -> list[MergedEntitlement]:
             ends_at=parse_timestamp(record.get("plan_end_date")),
         )
     ]
+
+
+def legacy_payment_for(record: dict[str, Any]) -> MergedLegacyPayment | None:
+    if not record.get("has_paid"):
+        return None
+    email = normalize_email(record.get("email"))
+    if not email:
+        raise UnusableRecord("A record has no email address.")
+    exam_code = exam_for_product(record.get("app_type"))
+    plan_code = str(record.get("plan_type") or "one_month").strip()
+    if not plan_code or plan_code == "no_plan":
+        plan_code = "one_month"
+    legacy_id = str(record.get("id") or record.get("user_id") or "unknown")
+    product = str(record.get("app_type") or "sca")
+    stripe_id = str(record.get("stripe_payment_intent_id") or "").strip()
+    if not stripe_id:
+        stripe_id = f"legacy-import:{product}:{legacy_id}"
+    paid_at = parse_timestamp(record.get("plan_start_date")) or parse_timestamp(record.get("created_at"))
+    if paid_at is None:
+        paid_at = datetime.now(UTC)
+    return MergedLegacyPayment(
+        email=email,
+        exam_code=exam_code,
+        plan_code=plan_code,
+        paid_at=paid_at,
+        stripe_payment_intent_id=stripe_id,
+    )
+
+
+def referral_for(record: dict[str, Any]) -> MergedReferral | None:
+    email = normalize_email(record.get("email"))
+    if not email:
+        return None
+    referrals = record.get("referrals")
+    if not isinstance(referrals, dict):
+        return None
+    code = str(referrals.get("referral_code") or "").strip()
+    if not code:
+        return None
+    earned = referrals.get("referral_earnings")
+    try:
+        earned_pence = int(earned) if earned is not None else 0
+    except (TypeError, ValueError):
+        earned_pence = 0
+    return MergedReferral(email=email, code=code, earned_pence=earned_pence)

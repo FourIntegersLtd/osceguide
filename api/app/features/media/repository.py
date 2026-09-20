@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.pagination import encode_cursor
+from app.core.pagination import keyset_page
 from app.features.media.models import MediaItem
 
 
@@ -58,6 +57,33 @@ async def update_item(session: AsyncSession, item_id: uuid.UUID, **values: Any) 
     await session.execute(update(MediaItem).where(MediaItem.id == item_id).values(**values))
 
 
+async def list_catalog(
+    session: AsyncSession,
+    *,
+    kind: str | None,
+    statuses: tuple[str, ...] | None,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+) -> tuple[list[MediaItem], str | None]:
+    stmt = select(MediaItem)
+    if statuses is None:
+        stmt = stmt.where(MediaItem.status == "published")
+    elif len(statuses) == 1:
+        stmt = stmt.where(MediaItem.status == statuses[0])
+    else:
+        stmt = stmt.where(MediaItem.status.in_(statuses))
+    if kind:
+        stmt = stmt.where(MediaItem.kind == kind)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=MediaItem.created_at,
+        id_col=MediaItem.id,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
 async def list_published(
     session: AsyncSession,
     *,
@@ -65,19 +91,10 @@ async def list_published(
     limit: int,
     cursor: dict[str, Any] | None = None,
 ) -> tuple[list[MediaItem], str | None]:
-    stmt = select(MediaItem).where(MediaItem.status == "published")
-    if kind:
-        stmt = stmt.where(MediaItem.kind == kind)
-    if cursor:
-        stmt = stmt.where(MediaItem.created_at < datetime.fromisoformat(cursor["t"]))
-    rows = list(
-        (
-            await session.execute(
-                stmt.order_by(MediaItem.created_at.desc(), MediaItem.id.desc()).limit(limit + 1)
-            )
-        ).scalars()
-    )
-    if len(rows) <= limit:
-        return rows, None
-    page = rows[:limit]
-    return page, encode_cursor({"t": page[-1].created_at, "i": str(page[-1].id)})
+    return await list_catalog(session, kind=kind, statuses=None, limit=limit, cursor=cursor)
+
+
+async def delete_item(session: AsyncSession, item_id: uuid.UUID) -> None:
+    row = await by_id(session, item_id)
+    if row is not None:
+        await session.delete(row)

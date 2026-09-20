@@ -1579,6 +1579,8 @@
               "attempt_not_joinable",
               "attempt_not_ready",
               "attempt_not_yours",
+              "av_already_running",
+              "av_unavailable",
               "cannot_claim_own_post",
               "circuit_already_ended",
               "circuit_locked",
@@ -1594,6 +1596,7 @@
               "exam_not_in_pilot",
               "feedback_template_version_not_found",
               "forbidden",
+              "generation_unavailable",
               "gone",
               "group_exists",
               "group_not_found",
@@ -1603,6 +1606,7 @@
               "invalid_circuit",
               "invalid_credentials",
               "invalid_input",
+              "invalid_media_status",
               "invalid_rag",
               "invalid_refresh_token",
               "invalid_reset_token",
@@ -1611,8 +1615,10 @@
               "invalid_webhook",
               "invalid_workflow",
               "media_already_published",
+              "media_not_deletable",
               "media_not_editable",
               "media_not_found",
+              "media_wrong_kind",
               "membership_exists",
               "membership_not_found",
               "not_a_member",
@@ -1843,6 +1849,82 @@
         "title": "FunnelRead",
         "type": "object"
       },
+      "GenerateResult": {
+        "properties": {
+          "content": {
+            "additionalProperties": true,
+            "title": "Content",
+            "type": "object"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "GenerateResult",
+        "type": "object"
+      },
+      "GenerateStationRequest": {
+        "properties": {
+          "exam_code": {
+            "maxLength": 32,
+            "minLength": 2,
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "ortho_station_type": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When exam_code is ortho: clinical, communication, prioritisation, or portfolio.",
+            "title": "Ortho Station Type"
+          },
+          "prompt": {
+            "maxLength": 4000,
+            "minLength": 8,
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "exam_code"
+        ],
+        "title": "GenerateStationRequest",
+        "type": "object"
+      },
+      "GenerateTextRequest": {
+        "properties": {
+          "exam_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "prompt": {
+            "maxLength": 4000,
+            "minLength": 8,
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "GenerateTextRequest",
+        "type": "object"
+      },
       "GpLeadReviewRead": {
         "properties": {
           "completed_at": {
@@ -2032,6 +2114,11 @@
             "title": "Content",
             "type": "object"
           },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -2097,6 +2184,7 @@
           "content",
           "exam_code",
           "status",
+          "created_at",
           "published_at"
         ],
         "title": "MediaRead",
@@ -8001,7 +8089,7 @@
     },
     "/api/v1/media": {
       "get": {
-        "operationId": "media_list_published",
+        "operationId": "media_list_media",
         "parameters": [
           {
             "in": "query",
@@ -8017,6 +8105,24 @@
                 }
               ],
               "title": "Kind"
+            }
+          },
+          {
+            "description": "Authoring filter: draft, published, or all (platform admin only).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Authoring filter: draft, published, or all (platform admin only).",
+              "title": "Status"
             }
           },
           {
@@ -8082,9 +8188,10 @@
                 }
               }
             },
-            "description": "unknown_media_kind",
+            "description": "unknown_media_kind, invalid_media_status",
             "x-codes": [
-              "unknown_media_kind"
+              "unknown_media_kind",
+              "invalid_media_status"
             ]
           }
         },
@@ -8093,7 +8200,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "List Published",
+        "summary": "List Media",
         "tags": [
           "media"
         ]
@@ -8238,7 +8345,172 @@
         ]
       }
     },
+    "/api/v1/media/by-id/{item_id}": {
+      "get": {
+        "operationId": "media_read_by_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated",
+            "x-codes": [
+              "unauthenticated"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read By Id",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/{item_id}": {
+      "delete": {
+        "operationId": "media_delete_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_deletable",
+            "x-codes": [
+              "media_not_deletable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Draft",
+        "tags": [
+          "media"
+        ]
+      },
       "patch": {
         "operationId": "media_update",
         "parameters": [
@@ -8335,6 +8607,212 @@
         ]
       }
     },
+    "/api/v1/media/{item_id}/generate-audio": {
+      "post": {
+        "operationId": "media_production_generate_podcast_audio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Podcast Audio",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/generate-podcast": {
+      "post": {
+        "operationId": "media_production_generate_summary_podcast",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Summary Podcast",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
     "/api/v1/media/{item_id}/publish": {
       "post": {
         "description": "Indexed on publish, so a draft nobody can read does not surface in search.",
@@ -8420,6 +8898,109 @@
         "summary": "Publish",
         "tags": [
           "media"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/regenerate-av": {
+      "post": {
+        "operationId": "media_production_regenerate_slide_av",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Regenerate Slide Av",
+        "tags": [
+          "media-production"
         ]
       }
     },
@@ -12568,6 +13149,366 @@
         ]
       }
     },
+    "/api/v1/platform/generate/blog": {
+      "post": {
+        "operationId": "generation_generate_blog",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Blog",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
+    "/api/v1/platform/generate/podcast": {
+      "post": {
+        "operationId": "generation_generate_podcast",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Podcast",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
+    "/api/v1/platform/generate/slide-deck": {
+      "post": {
+        "operationId": "generation_generate_slide_deck",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Slide Deck",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
+    "/api/v1/platform/generate/station": {
+      "post": {
+        "operationId": "generation_generate_station",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateStationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Station",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
+    "/api/v1/platform/generate/summary": {
+      "post": {
+        "operationId": "generation_generate_summary",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Summary",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
     "/api/v1/platform/organizations": {
       "post": {
         "operationId": "tenancy_provision_organization",
@@ -13657,6 +14598,14 @@
     {
       "description": "Slides, summaries, blogs and podcasts",
       "name": "media"
+    },
+    {
+      "description": "Platform-admin LLM draft content",
+      "name": "generation"
+    },
+    {
+      "description": "TTS and slide video production for study material",
+      "name": "media-production"
     },
     {
       "description": "Help, onboarding and demonstration sessions",

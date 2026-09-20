@@ -87,7 +87,7 @@ async def run(export: Path, *, commit: bool, verify_only: bool) -> int:
     engine = get_engine()
     async with AsyncSession(engine) as session:
         if not verify_only:
-            people, ids = await loader.load_users(session, merged, grants)
+            people, ids, _email_ids = await loader.load_users(session, merged, grants)
             attempts = await loader.load_attempts(session, migrated_attempts, user_ids=ids)
             report = people.merge(attempts)
             print(report.summary())  # noqa: T201

@@ -16,6 +16,7 @@ class MediaRead(BaseModel):
     content: dict[str, Any]
     exam_code: str | None
     status: str
+    created_at: datetime
     published_at: datetime | None
 
 

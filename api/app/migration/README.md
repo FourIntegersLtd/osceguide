@@ -80,6 +80,100 @@ The export is a directory of JSON arrays: `users.json` (the four `*_users`
 collections concatenated, each document keeping its `app_type` and its `id`),
 optionally `b2b_users.json`, `transcripts.json` and `feedbacks.json`.
 
+## B2C station library (copy only)
+
+One-way import into `stations` / `station_versions`. **Does not write to
+Firestore** or change live consumer traffic.
+
+```bash
+cd backend/platform-api
+poetry run python scripts/import_b2c_stations.py --from-firestore --dry-run
+poetry run python scripts/import_b2c_stations.py --from-firestore --no-dry-run
+poetry run python scripts/import_b2c_stations.py --export ./export --no-dry-run
+poetry run python scripts/import_b2c_stations.py --from-firestore --write-export ./export
+```
+
+Requires consumer exams from `alembic upgrade head`. Idempotent on
+`content->>'station_id'`. Credentials: `GOOGLE_APPLICATION_CREDENTIALS` or
+`FIREBASE_SERVICE_ACCOUNT_KEY` (same as the consumer API).
+
+## B2C users (copy only)
+
+One-way import into `users` and `entitlements`. **Does not write to Firestore**
+or change live consumer traffic. Merges on email when loading more than one
+exam; use `--collection` to copy a single exam's collection first.
+
+```bash
+cd backend/platform-api
+poetry run python scripts/import_b2c_users.py --from-firestore --dry-run
+poetry run python scripts/import_b2c_users.py --from-firestore --no-dry-run
+poetry run python scripts/import_b2c_users.py --export ./export --no-dry-run
+poetry run python scripts/import_b2c_users.py --from-firestore --write-export ./export
+poetry run python scripts/import_b2c_users.py --from-firestore --collection sca --dry-run
+```
+
+Requires consumer exams from `alembic upgrade head`. Idempotent on `users.email`
+and legacy entitlements (`source_ref = legacy-import`). Passwords are not
+imported (same rules as `migrate_legacy.py`).
+
+## B2C study material (copy only)
+
+One-way import into `media_items` (summaries, blogs, slide decks, and podcast
+episodes derived from summaries with `podcast_url`). **Does not write to
+Firestore** or change live consumer traffic.
+
+```bash
+cd backend/platform-api
+poetry run python scripts/import_b2c_media.py --from-firestore --dry-run
+poetry run python scripts/import_b2c_media.py --from-firestore --no-dry-run
+poetry run python scripts/import_b2c_media.py --export ./export --no-dry-run
+poetry run python scripts/import_b2c_media.py --from-firestore --write-export ./export
+poetry run python scripts/import_b2c_media.py --from-firestore --kind summary --collection sca --dry-run
+```
+
+Requires consumer exams from `alembic upgrade head`. Idempotent on
+`content->>'legacy_ref'`. Credentials: same as the station import.
+
+### Podcast URLs on summaries already in Postgres
+
+If summaries were imported before Firestore had `podcast_url`, or the first import
+skipped existing rows, backfill from the summary collections:
+
+```bash
+poetry run python scripts/sync_b2c_podcast_urls.py --from-firestore --inspect
+poetry run python scripts/sync_b2c_podcast_urls.py --from-firestore --no-dry-run
+```
+
+Updates `content.podcast_url` on summary rows and creates/updates `kind=podcast`
+rows (`content.audio_url`). Read-only on Firestore.
+
+## B2C community (copy only)
+
+One-way import into `posts` and `post_likes` (questions, replies, station
+comments). **Does not write to Firestore.**
+
+```bash
+cd backend/platform-api
+poetry run python scripts/import_b2c_community.py --from-firestore --dry-run
+poetry run python scripts/import_b2c_community.py --from-firestore --no-dry-run
+```
+
+Requires `import_b2c_users.py` (identity links) and, for station comments,
+`import_b2c_stations.py`. Idempotent on deterministic row ids (uuid5 of
+`{exam}:community:{kind}:{id}`). Credentials: same as media import.
+
+## B2C marketplace (copy only)
+
+One-way import into `availability_posts` and `peer_sessions`.
+
+```bash
+poetry run python scripts/import_b2c_marketplace.py --from-firestore --dry-run
+poetry run python scripts/import_b2c_marketplace.py --from-firestore --no-dry-run
+```
+
+Requires `import_b2c_users.py`. Posts load before sessions. Idempotent on
+uuid5 of `{exam}:marketplace:{post|session}:{id}`.
+
 ## What is missing
 
 Station sets, sittings and org data. The consumer path — people, entitlements,

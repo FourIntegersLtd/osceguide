@@ -69,6 +69,19 @@ async def mark_cancelled(session: AsyncSession, post_id: uuid.UUID, *, at: datet
     )
 
 
+async def list_by_owner(
+    session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int = 100
+) -> list[AvailabilityPost]:
+    """Every post this person offered, including claimed and cancelled history."""
+    stmt = (
+        select(AvailabilityPost)
+        .where(AvailabilityPost.owner_user_id == owner_user_id)
+        .order_by(AvailabilityPost.starts_at.desc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def list_open(
     session: AsyncSession,
     *,
