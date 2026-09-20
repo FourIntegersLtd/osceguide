@@ -128,7 +128,7 @@ async def run(export: Path, *, commit: bool, verify_only: bool, exams_file: Path
             if exams_spec:
                 created = await exam_loader.load_exams(session, exams_spec, now=datetime.now(UTC))
                 print(f"exams: {len(created)} available ({', '.join(sorted(created))})")  # noqa: T201
-            people, ids = await loader.load_users(session, merged, grants)
+            people, ids, _email_ids = await loader.load_users(session, merged, grants)
             # Before attempts: an imported attempt names the station it ran
             # against, and only this resolves a Firestore station id.
             stations, _station_ids = await load_stations(session, migrated_stations)

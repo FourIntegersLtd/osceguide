@@ -76,7 +76,7 @@ async def test_one_person_across_products_becomes_one_row_with_both_entitlements
     for code in ("sca", "plab"):
         await ensure_exam(db_session, code)
 
-    report, ids = await loader.load_users(db_session, merge_users(records), grants)
+    report, ids, _ = await loader.load_users(db_session, merge_users(records), grants)
 
     assert report.ok, report.problems
     assert report.users_created == 1
@@ -117,8 +117,8 @@ async def test_loading_people_twice_creates_nothing_the_second_time(
     records = [b2c_user("dan@example.com", "sca", "fs-4", has_paid=True)]
     grants = entitlements_for(records[0])
 
-    first, _ = await loader.load_users(db_session, merge_users(records), grants)
-    second, _ = await loader.load_users(db_session, merge_users(records), grants)
+    first, _, _ = await loader.load_users(db_session, merge_users(records), grants)
+    second, _, _ = await loader.load_users(db_session, merge_users(records), grants)
 
     assert (first.users_created, first.entitlements_created) == (1, 1)
     assert (second.users_created, second.entitlements_created) == (0, 0)
@@ -133,7 +133,7 @@ async def test_somebody_who_signed_up_before_their_import_keeps_their_password(
     db_session.add(User(email="eve@example.com", name="Eve", password_hash="argon2-real"))
     await db_session.flush()
 
-    report, _ = await loader.load_users(db_session, merge_users([b2c_user("EVE@example.com", "sca", "fs-5")]))
+    report, _, _ = await loader.load_users(db_session, merge_users([b2c_user("EVE@example.com", "sca", "fs-5")]))
 
     assert report.users_matched == 1
     user = await db_session.scalar(select(User).where(User.email == "eve@example.com"))
@@ -147,7 +147,7 @@ async def test_one_legacy_id_pointing_at_two_people_is_reported_not_guessed(
         [b2c_user("f@example.com", "sca", "shared"), b2c_user("g@example.com", "plab", "shared")]
     )
 
-    report, ids = await loader.load_users(db_session, merged)
+    report, ids, _ = await loader.load_users(db_session, merged)
 
     assert not report.ok
     assert "shared" in report.problems[0]
@@ -165,7 +165,7 @@ async def _alice(session: AsyncSession) -> dict[str, object]:
     # importer's `--exams` file is for.
     await ensure_exam(session, "sca")
     records = [b2c_user("alice@example.com", "sca", "fs-1")]
-    _, ids = await loader.load_users(session, merge_users(records))
+    _, ids, _ = await loader.load_users(session, merge_users(records))
     return ids  # type: ignore[return-value]
 
 

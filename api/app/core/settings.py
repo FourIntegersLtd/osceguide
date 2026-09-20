@@ -33,7 +33,12 @@ class AppEnv(StrEnum):
 # Local development only. Production origins are configuration, not code: a
 # deploy that forgot to set CORS_ORIGINS used to accept credentialed requests
 # from localhost, and staging accepted production's origin.
-_LOCAL_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+_LOCAL_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3100",
+    "http://127.0.0.1:3100",
+)
 _LOCAL_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/osce_platform"
 _LOCAL_JWT_SECRET = "dev-only-jwt-secret-change-me"  # noqa: S105 — local and test only
 

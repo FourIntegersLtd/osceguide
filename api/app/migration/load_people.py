@@ -18,7 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog.models import Exam
 from app.features.entitlements.models import Entitlement
+from app.features.identity import repository as identity_repository
 from app.features.identity.models import User
+from app.migration.load_legacy_b2c import LEGACY_CONSUMER_PROVIDER
 from app.migration.report import LoadReport
 from app.migration.users import MergedEntitlement, MergedUser
 
@@ -26,6 +28,52 @@ from app.migration.users import MergedEntitlement, MergedUser
 # a second run. There is no natural key on `entitlements` because a person may
 # legitimately hold several for one exam.
 LEGACY_SOURCE_REF = "legacy-import"
+
+
+def _apply_profile(row: User, merged: MergedUser, *, creating: bool) -> None:
+    if creating or not row.name.strip():
+        row.name = merged.name or row.name
+    if merged.last_login_at and (row.last_login_at is None or merged.last_login_at > row.last_login_at):
+        row.last_login_at = merged.last_login_at
+    if merged.exam_code and (creating or row.exam_code is None):
+        row.exam_code = merged.exam_code
+    if merged.exam_date and (creating or row.exam_date is None):
+        row.exam_date = merged.exam_date
+    if merged.extra_reading_percent > row.extra_reading_percent:
+        row.extra_reading_percent = merged.extra_reading_percent
+    if merged.consumer_role == "admin":
+        row.consumer_role = "admin"
+    if creating and merged.created_at:
+        row.created_at = merged.created_at
+
+
+async def _link_consumer_ids(session: AsyncSession, user_id: uuid.UUID, merged: MergedUser) -> None:
+    linked: set[str] = set()
+    for product, subject in merged.legacy_ids_by_product.items():
+        if not subject or subject in linked:
+            continue
+        linked.add(subject)
+        existing = await identity_repository.identity_by_subject(session, LEGACY_CONSUMER_PROVIDER, subject)
+        if existing is None:
+            await identity_repository.link_identity(
+                session,
+                user_id=user_id,
+                provider=LEGACY_CONSUMER_PROVIDER,
+                subject=subject,
+                tenant_slug=product,
+            )
+    for subject in merged.legacy_ids:
+        if subject in linked:
+            continue
+        existing = await identity_repository.identity_by_subject(session, LEGACY_CONSUMER_PROVIDER, subject)
+        if existing is None:
+            await identity_repository.link_identity(
+                session,
+                user_id=user_id,
+                provider=LEGACY_CONSUMER_PROVIDER,
+                subject=subject,
+                tenant_slug=None,
+            )
 
 
 async def exams_by_code(session: AsyncSession) -> dict[str, uuid.UUID]:
@@ -37,7 +85,7 @@ async def load_users(
     session: AsyncSession,
     users: Sequence[MergedUser],
     entitlements: Sequence[MergedEntitlement] = (),
-) -> tuple[LoadReport, dict[str, uuid.UUID]]:
+) -> tuple[LoadReport, dict[str, uuid.UUID], dict[str, uuid.UUID]]:
     """Load people and their access. Returns the report and legacy id -> user id.
 
     The mapping is the reason this runs first: a transcript names its author by
@@ -63,9 +111,15 @@ async def load_users(
                 password_hash=None,
                 must_change_password=merged.must_reset_password,
                 is_platform_admin=merged.is_platform_admin,
+                exam_code=merged.exam_code,
+                exam_date=merged.exam_date,
+                extra_reading_percent=merged.extra_reading_percent,
+                consumer_role=merged.consumer_role,
+                last_login_at=merged.last_login_at,
             )
             session.add(row)
             await session.flush()
+            _apply_profile(row, merged, creating=True)
             report.users_created += 1
         else:
             # A second run, or somebody who signed up before their import.
@@ -75,8 +129,10 @@ async def load_users(
             row = existing
             if merged.is_platform_admin and not row.is_platform_admin:
                 row.is_platform_admin = True
+            _apply_profile(row, merged, creating=False)
             report.users_matched += 1
 
+        await _link_consumer_ids(session, row.id, merged)
         by_email[email] = row.id
         for legacy_id in merged.legacy_ids:
             if legacy_id in by_legacy_id and by_legacy_id[legacy_id] != row.id:
@@ -125,4 +181,4 @@ async def load_users(
         report.entitlements_created += 1
 
     await session.flush()
-    return report, by_legacy_id
+    return report, by_legacy_id, by_email

@@ -51,6 +51,7 @@ from app.features.identity.router import router as identity_router
 from app.features.identity.router_me import router as identity_me_router
 from app.features.marketplace.router import router as marketplace_router
 from app.features.media.router import router as media_router
+from app.features.media_production.router import router as media_production_router
 from app.features.peer_practice.router import router as peer_practice_router
 from app.features.public_site.router import router as public_site_router
 from app.features.results.router import router as results_router
@@ -135,6 +136,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(growth_router)
     router.include_router(generation_router)
     router.include_router(media_router)
+    router.include_router(media_production_router)
     router.include_router(sso_router)
     router.include_router(public_site_router)
     router.include_router(tutor_memory_router)

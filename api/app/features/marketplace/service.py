@@ -153,6 +153,15 @@ async def _exam_codes(session: AsyncSession, exam_ids: set[uuid.UUID]) -> dict[u
     return codes
 
 
+async def list_my_posts(
+    session: AsyncSession, *, viewer_id: uuid.UUID, limit: int = 100
+) -> list[PostRead]:
+    """Every post this person offered, including claimed and cancelled history."""
+    rows = await repository.list_by_owner(session, viewer_id, limit=limit)
+    exams = await _exam_codes(session, {r.exam_id for r in rows})
+    return [_post_read(row, exams.get(row.exam_id, ""), viewer_id=viewer_id) for row in rows]
+
+
 async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PeerSessionRead]:
     rows = await repository.sessions_for_user(session, user_id)
     exams = await _exam_codes(session, {r.exam_id for r in rows})

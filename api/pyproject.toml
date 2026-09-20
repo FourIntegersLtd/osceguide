@@ -49,6 +49,10 @@ dependencies = [
     "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.7.0#subdirectory=packages/osce_assessment",
     "python-multipart (>=0.0.18,<0.0.21)",
     "sentry-sdk[fastapi] (>=2.19,<3)",
+    "boto3 (>=1.36,<2)",
+    "cartesia (>=1.4,<2)",
+    "moviepy (>=2.2,<3)",
+    "pydub (>=0.25,<1)",
 ]
 
 [tool.poetry]
@@ -61,6 +65,7 @@ testcontainers = { version = ">=4.8,<5", extras = ["postgres"] }
 ruff = ">=0.8,<1"
 mypy = ">=1.13,<2"
 import-linter = ">=2.1,<3"
+google-cloud-firestore = ">=2.19,<3"
 
 # ---------------------------------------------------------------------------
 # Tests: every async fixture and test shares one session-scoped event loop so
