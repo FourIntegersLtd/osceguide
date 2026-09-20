@@ -8,6 +8,7 @@ Read in this order if you are new.
 | 2 | [ATTEMPT-LIFECYCLE.md](ATTEMPT-LIFECYCLE.md) | One attempt traced across browser, API, engine, LiveKit, worker and job queue. The flow that crosses every boundary. |
 | 3 | [SYSTEM-MAP.md](SYSTEM-MAP.md) | Which repo owns what, which are frozen, what this backend depends on, and the two false alarms that waste a week. |
 | 4 | [ENVIRONMENT.md](ENVIRONMENT.md) | Every setting, what breaks without it, and why secrets have no defaults outside local. |
+| — | [DEPLOY-CHECKLIST.md](DEPLOY-CHECKLIST.md) | Gates before shipping platform-api to staging or production (migrations, voice label, classic Railway isolation). |
 | 5 | [DATA-MODEL.md](DATA-MODEL.md) | All 57 tables, column by column, with the reasoning behind each constraint. |
 | 6 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | How to add a slice, tests first. The method, in order. |
 | 7 | [adr/](adr/) | The decisions someone might otherwise question. 0010–0013 are the current shape. |
