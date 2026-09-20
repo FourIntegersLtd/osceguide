@@ -3680,6 +3680,8 @@
               "attempt_not_ready",
               "attempt_not_yours",
               "audience_not_yours",
+              "av_already_running",
+              "av_unavailable",
               "billing_event_not_found",
               "cannot_claim_own_post",
               "checkout_failed",
@@ -3719,6 +3721,7 @@
               "invalid_exam_code",
               "invalid_input",
               "invalid_legacy_token",
+              "invalid_media_status",
               "invalid_message",
               "invalid_rag",
               "invalid_refresh_token",
@@ -3732,8 +3735,10 @@
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
               "media_already_published",
+              "media_not_deletable",
               "media_not_editable",
               "media_not_found",
+              "media_wrong_kind",
               "membership_exists",
               "membership_not_found",
               "message_not_found",
@@ -3760,6 +3765,7 @@
               "peer_session_not_found",
               "peer_session_not_open",
               "plan_not_available",
+              "platform_admin_exists",
               "post_not_found",
               "post_not_yours",
               "post_unavailable",
@@ -4139,6 +4145,20 @@
           }
         },
         "title": "FinalizeCircuitReview",
+        "type": "object"
+      },
+      "FlagStationBody": {
+        "properties": {
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ],
+        "title": "FlagStationBody",
         "type": "object"
       },
       "ForgottenCounts": {
@@ -4574,6 +4594,20 @@
           }
         },
         "title": "InterviewQuestionRead",
+        "type": "object"
+      },
+      "InvitePlatformAdmin": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "InvitePlatformAdmin",
         "type": "object"
       },
       "JobRead": {
@@ -5207,6 +5241,11 @@
             ],
             "title": "Content"
           },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -5276,6 +5315,7 @@
           "summary",
           "exam_code",
           "status",
+          "created_at",
           "published_at"
         ],
         "title": "MediaRead",
@@ -7120,6 +7160,23 @@
         "title": "PlanRead",
         "type": "object"
       },
+      "PlatformAdminInviteRead": {
+        "properties": {
+          "invited": {
+            "default": false,
+            "title": "Invited",
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserSummary"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "PlatformAdminInviteRead",
+        "type": "object"
+      },
       "PlatformAttemptDetail": {
         "properties": {
           "chunk_count": {
@@ -7960,6 +8017,11 @@
       "PlatformUserDetail": {
         "description": "Support view: memberships and account flags the list row omits.",
         "properties": {
+          "consumer_role": {
+            "default": "user",
+            "title": "Consumer Role",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -8018,6 +8080,13 @@
               }
             ],
             "title": "Last Login At"
+          },
+          "legacy_consumer_ids": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Legacy Consumer Ids",
+            "type": "object"
           },
           "memberships": {
             "items": {
@@ -16717,6 +16786,46 @@
         ]
       }
     },
+    "/api/v1/me/marketplace/posts": {
+      "get": {
+        "operationId": "marketplace_list_my_posts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__core__pagination__Page_PostRead___1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Posts",
+        "tags": [
+          "marketplace"
+        ]
+      }
+    },
     "/api/v1/me/peer-sessions": {
       "get": {
         "operationId": "marketplace_list_my_sessions",
@@ -17878,6 +17987,60 @@
         ]
       }
     },
+    "/api/v1/me/station-flags": {
+      "post": {
+        "description": "Report a library station to the content team. Persistence is TODO.",
+        "operationId": "identity_flag_station",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagStationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Flag Station",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/v1/me/station-sets": {
       "get": {
         "description": "Each set carries its own progress, so the list does not need a call per\nstation to work out how far along someone is.",
@@ -18566,6 +18729,24 @@
             }
           },
           {
+            "description": "Authoring filter: draft, published, or all (platform admin only).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Authoring filter: draft, published, or all (platform admin only).",
+              "title": "Status"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -18799,7 +18980,238 @@
         ]
       }
     },
+    "/api/v1/media/by-id/{item_id}": {
+      "get": {
+        "description": "Staff authoring: read any row by primary key, including drafts.",
+        "operationId": "media_read_by_id",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read By Id",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/lookup": {
+      "get": {
+        "description": "Same as `GET /media/{slug}`; query form avoids path-encoding edge cases in clients.",
+        "operationId": "media_read_by_slug_lookup",
+        "parameters": [
+          {
+            "description": "The item's canonical slug",
+            "in": "query",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "description": "The item's canonical slug",
+              "minLength": 1,
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read By Slug Lookup",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/{item_id}": {
+      "delete": {
+        "operationId": "media_delete_draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_deletable",
+            "x-codes": [
+              "media_not_deletable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Draft",
+        "tags": [
+          "media"
+        ]
+      },
       "patch": {
         "operationId": "media_update",
         "parameters": [
@@ -18896,6 +19308,212 @@
         ]
       }
     },
+    "/api/v1/media/{item_id}/generate-audio": {
+      "post": {
+        "operationId": "media_production_generate_podcast_audio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Podcast Audio",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/generate-podcast": {
+      "post": {
+        "operationId": "media_production_generate_summary_podcast",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Summary Podcast",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
     "/api/v1/media/{item_id}/publish": {
       "post": {
         "description": "Indexed on publish, so a draft nobody can read does not surface in search.",
@@ -18981,6 +19599,109 @@
         "summary": "Publish",
         "tags": [
           "media"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/regenerate-av": {
+      "post": {
+        "operationId": "media_production_regenerate_slide_av",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Regenerate Slide Av",
+        "tags": [
+          "media-production"
         ]
       }
     },
@@ -27874,6 +28595,77 @@
         "tags": [
           "tenancy"
         ]
+      },
+      "post": {
+        "description": "Add somebody to the platform team by email.\n\nNo password passes through this app. A new address is invited and emailed a\nlink to choose one; an existing account is granted the console immediately.",
+        "operationId": "tenancy_invite_platform_admin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitePlatformAdmin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAdminInviteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "platform_admin_exists",
+            "x-codes": [
+              "platform_admin_exists"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Invite Platform Admin",
+        "tags": [
+          "tenancy"
+        ]
       }
     },
     "/api/v1/platform/attempts/{attempt_id}": {
@@ -36484,6 +37276,10 @@
       "name": "stations"
     },
     {
+      "description": "Exported B2C station templates and block hints for autogeneration",
+      "name": "station-generation-profiles"
+    },
+    {
       "description": "A learner's own practice sets",
       "name": "station-sets"
     },
@@ -36546,6 +37342,10 @@
     {
       "description": "Drafting content with a model, for the people who author it",
       "name": "generation"
+    },
+    {
+      "description": "TTS and slide video production for study material",
+      "name": "media-production"
     },
     {
       "description": "Help, onboarding and demonstration sessions",

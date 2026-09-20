@@ -21,7 +21,12 @@ def test_local_fills_working_defaults() -> None:
     settings = Settings(_env_file=None, app_env=AppEnv.local, jwt_secret="")
     assert settings.jwt_secret
     assert settings.database_url.startswith("postgresql")
-    assert settings.cors_origins == ["http://localhost:3000", "http://127.0.0.1:3000"]
+    assert settings.cors_origins == [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3100",
+        "http://127.0.0.1:3100",
+    ]
     assert settings.is_deployed is False
 
 
@@ -75,4 +80,9 @@ def test_the_example_env_file_loads(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name, raising=False)
     settings = Settings(_env_file=PROJECT_ROOT / ".env.example")
     assert settings.app_env is AppEnv.local
-    assert settings.cors_origins == ["http://localhost:3000", "http://127.0.0.1:3000"]
+    assert settings.cors_origins == [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3100",
+        "http://127.0.0.1:3100",
+    ]

@@ -31,6 +31,10 @@ TAGS: list[dict[str, str]] = [
     {"name": "catalog", "description": "Exams and the programmes that offer them"},
     {"name": "rubrics", "description": "What a candidate is marked against, and who wrote it"},
     {"name": "stations", "description": "Scenarios and the templates behind them"},
+    {
+        "name": "station-generation-profiles",
+        "description": "Exported B2C station templates and block hints for autogeneration",
+    },
     {"name": "station-sets", "description": "A learner's own practice sets"},
     {"name": "attempts", "description": "One candidate running one scenario"},
     {"name": "voice", "description": "Joining a station with a LiveKit worker"},

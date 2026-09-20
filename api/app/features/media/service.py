@@ -268,6 +268,7 @@ async def _read(
         locked=locked,
         exam_code=exam_code,
         status=row.status,
+        created_at=row.created_at,
         published_at=row.published_at,
     )
 

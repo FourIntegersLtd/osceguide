@@ -37,6 +37,3 @@ def register() -> None:
         async with job_session() as session:
             await run_podcast_audio_job(session, uuid.UUID(media_id))
             log.info("podcast audio produced", media_id=media_id)
-
-
-register()
