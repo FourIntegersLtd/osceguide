@@ -39,6 +39,9 @@ Both produce rows in the one `attempts` table.
 | GET | `/api/v1/me/station-sets/{id}` | owner | `set_not_found` (404) |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/attempts` | owner | `attempt_limit_reached` (409), `set_locked` (409) |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/debriefs` | owner | Talk through an attempt already made; `nothing_to_debrief` (409), `attempt_limit_reached` (409) |
+| GET | `/api/v1/platform/users/{id}/stations` | platform admin | one row per station the person has sat: attempts that exist, how many were marked, the newest, and the counters on their set entries; `user_not_found` (404) |
+| POST | `/api/v1/platform/users/{id}/stations/{station_id}/reset-attempts` | platform admin | zero the entry counters for that station — the old console's "reset attempts"; attempts and marking kept; audited `user.station_attempts_reset`; `station_not_found` (404) |
+| POST | `/api/v1/platform/users/{id}/stations/{station_id}/delete-progress` | platform admin | `{reason}`; delete every attempt at the station (turns, transcript, results and debrief summary cascade) and take it out of their sets; audited `user.station_progress_deleted`; `attempt_in_progress` (409) while one is running |
 
 ## Jobs
 None. Locking on expiry belongs with `entitlements` and is not yet wired.
@@ -46,3 +49,9 @@ None. Locking on expiry belongs with `entitlements` and is not yet wired.
 ## Cross-slice dependencies
 Calls `catalog` for the exam and its attempt limit, and `attempts` to create the
 attempt — which applies the entitlement check.
+
+The console routes (`service_platform.py`) also read `stations` for a
+station's title and versions, ask `attempts` to delete a person's attempts at
+those versions, and write the audit row through `tenancy.service_audit`. They
+live here rather than in `attempts` because the counter the old console reset
+is this slice's entry, and this slice sits above both.

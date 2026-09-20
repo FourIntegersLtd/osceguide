@@ -57,6 +57,9 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | GET | `/api/v1/orgs/{org_slug}/live` | org staff | every circuit running now, with its clock, its progress and its alerts |
 | GET | `/api/v1/orgs/{org_slug}/live/stream` | org staff | the same payload, pushed (SSE) |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream` | org member | the same payload, pushed (SSE) |
+| GET | `/api/v1/platform/directory` | platform admin | the account directory: every account with the facts beside it (signed in, paid, last plan, live access, attempts); `?q=` email or name, `?exam_code=` chosen or held live, `?status=`, `?access=paid\|trial\|not_started`, `?plan_code=` |
+| GET | `/api/v1/platform/directory/summary` | platform admin | per published exam: accounts, and how many paid, on trial, not started; plus the unassigned |
+| GET | `/api/v1/platform/directory/users/{id}` | platform admin | one account's directory row; `user_not_found` (404) |
 
 ## Jobs
 None. Anything expensive enough to need caching belongs behind Redis here rather
@@ -89,9 +92,17 @@ not a cookie and not the access token.
 
 ## Cross-slice dependencies
 Reads `entitlements`, `attempts`, `station_sets`, `sittings`, `stations`,
-`roster`, `reviews`, `catalog`, `rubrics`, `tenancy` and `identity` through
-their services. Sits at
-the top of the layer order and nothing depends on it.
+`roster`, `reviews`, `catalog`, `rubrics`, `billing`, `tenancy` and `identity`
+through their services. Sits at the top of the layer order and nothing depends
+on it.
+
+The account directory (`service_platform_users.py`) is here for the same
+reason as the rest: the retiring B2C admin's user list had seven columns and
+each is a different slice's fact. `tenancy` owns `GET /platform/users` and
+sits below four of those slices, so it cannot answer "has this person paid?".
+The page comes from `identity`, is enriched with one bulk read per slice, and
+the facets another slice owns (paid, on trial, on a plan, entitled to an exam)
+are handed to `identity` as sets of ids rather than joined across tables.
 
 The one error it can answer with, `circuit_not_found`, is `sittings`',
 re-exported by `errors.py`: asking for the console of a circuit that is not

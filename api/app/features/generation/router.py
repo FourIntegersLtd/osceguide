@@ -28,7 +28,12 @@ async def generate_station(
     _session: Session,
 ) -> schemas.GenerateResult:
     _ = admin
-    content = await service.generate_station(prompt=body.prompt, exam_code=body.exam_code, settings=settings)
+    content = await service.generate_station(
+        prompt=body.prompt,
+        exam_code=body.exam_code,
+        ortho_station_type=body.ortho_station_type,
+        settings=settings,
+    )
     return schemas.GenerateResult(content=content)
 
 
@@ -77,6 +82,24 @@ async def generate_slide_deck(
 ) -> schemas.GenerateResult:
     _ = admin
     content = await service.generate_slide_deck(
+        prompt=body.prompt, exam_code=body.exam_code, settings=settings
+    )
+    return schemas.GenerateResult(content=content)
+
+
+@router.post(
+    "/platform/generate/podcast",
+    response_model=schemas.GenerateResult,
+    responses=error_responses(Forbidden, GenerationUnavailable),
+)
+async def generate_podcast(
+    body: schemas.GenerateTextRequest,
+    admin: PlatformAdmin,
+    settings: SettingsDep,
+    _session: Session,
+) -> schemas.GenerateResult:
+    _ = admin
+    content = await service.generate_podcast(
         prompt=body.prompt, exam_code=body.exam_code, settings=settings
     )
     return schemas.GenerateResult(content=content)

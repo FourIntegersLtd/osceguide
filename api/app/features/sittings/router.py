@@ -35,7 +35,14 @@ async def list_sittings(
     "/orgs/{org_slug}/sittings",
     response_model=schemas.SittingRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.TemplateVersionNotFound, errors.FeedbackTemplateNotPublished),
+    responses=error_responses(
+        Forbidden,
+        errors.ProgrammeRequired,
+        errors.ProgrammeNotFound,
+        errors.ExamRubricNotReady,
+        errors.RubricVersionNotFound,
+        errors.RubricVersionNotPublished,
+    ),
 )
 async def create_sitting(
     body: schemas.CreateSitting, workspace: OrgAdmin, session: Session
@@ -44,7 +51,6 @@ async def create_sitting(
         session,
         workspace.org_id,
         name=body.name,
-        feedback_template_version_id=body.feedback_template_version_id,
         mode=body.mode,
         sitting_type=body.sitting_type,
         scheduled_for=body.scheduled_for,

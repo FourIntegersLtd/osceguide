@@ -92,6 +92,7 @@ def _station_read(station: Station, exam_code: str, version: StationVersion | No
         version=version.version if version else 0,
         content=dict(version.content) if version else None,
         current_version_id=station.current_version_id,
+        template_version_id=version.template_version_id if version else None,
     )
 
 

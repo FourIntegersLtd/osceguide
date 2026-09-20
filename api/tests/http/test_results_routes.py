@@ -54,7 +54,7 @@ async def a_sitting_and_named_trainee(
 
     version = await published_feedback_version(db_session, org_id)
     await db_session.flush()
-    sitting = Sitting(org_id=org_id, name="Finals", mode="exam", feedback_template_version_id=version.id)
+    sitting = Sitting(org_id=org_id, name="Finals", mode="exam", rubric_version_id=version.id)
     email = f"c{uuid.uuid4().hex[:8]}@example.com"
     trainee = Trainee(org_id=org_id, email=email)
     db_session.add_all([sitting, trainee])

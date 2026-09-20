@@ -47,6 +47,14 @@ class QueryTooLong(ValueError):
     pass
 
 
+class InvalidListStatus(ValueError):
+    pass
+
+
+class NotDeletable(Exception):
+    pass
+
+
 def normalize_kind(kind: str) -> str:
     try:
         return str(MediaKind((kind or "").strip().lower()))
@@ -61,6 +69,23 @@ def is_public(*, status: str) -> bool:
 def ensure_editable(*, status: str) -> None:
     if status != "draft":
         raise NotEditable("Published material is edited by replacing it, not in place.")
+
+
+def ensure_deletable(*, status: str) -> None:
+    if status != "draft":
+        raise NotDeletable("Only drafts can be deleted.")
+
+
+def parse_authoring_status(raw: str | None) -> tuple[str, ...] | None:
+    """`None` means published-only (consumer catalogue)."""
+    if raw is None:
+        return None
+    key = raw.strip().lower()
+    if key == "all":
+        return ("draft", "published")
+    if key in ("draft", "published"):
+        return (key,)
+    raise InvalidListStatus(f"{raw!r} is not a valid status filter (draft, published, all).")
 
 
 def publish(*, status: str) -> str:

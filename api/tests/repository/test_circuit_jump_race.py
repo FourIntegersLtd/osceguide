@@ -62,7 +62,7 @@ async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UU
     session.add(station_version)
     await session.flush()
 
-    sitting = Sitting(org_id=org.id, name="S", mode="training", feedback_template_version_id=version.id)
+    sitting = Sitting(org_id=org.id, name="S", mode="training", rubric_version_id=version.id)
     session.add(sitting)
     await session.flush()
     circuit = Circuit(org_id=org.id, sitting_id=sitting.id, name="C", room_name="room-1", started_at=NOW)

@@ -57,7 +57,7 @@ async def a_running_circuit(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()

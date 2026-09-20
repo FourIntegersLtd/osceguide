@@ -105,3 +105,47 @@ async def publish_station_template(
     return await service_templates.publish_version(
         session, workspace.org_id, template_id, actor_id=workspace.principal.user_id, now=clock.now()
     )
+
+
+@router.post(
+    "/orgs/{org_slug}/station-templates/{template_id}/versions/{version}/archive",
+    response_model=schemas.StationTemplateVersionRead,
+    responses=error_responses(
+        Forbidden,
+        errors.StationTemplateNotFound,
+        errors.VersionNotFound,
+        errors.NotArchivableError,
+    ),
+)
+async def archive_station_template_version(
+    template_id: uuid.UUID,
+    version: int,
+    workspace: OrgAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.StationTemplateVersionRead:
+    return await service_templates.archive_version(
+        session,
+        workspace.org_id,
+        template_id,
+        version,
+        actor_id=workspace.principal.user_id,
+        now=clock.now(),
+    )
+
+
+@router.delete(
+    "/orgs/{org_slug}/station-templates/{template_id}/versions/{version}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Forbidden,
+        errors.StationTemplateNotFound,
+        errors.VersionNotFound,
+        errors.NotDeletableError,
+    ),
+)
+async def delete_station_template_version(
+    template_id: uuid.UUID, version: int, workspace: OrgAdmin, session: Session
+) -> None:
+    """Throw away a draft. A published version is what stations may have been built on."""
+    await service_templates.delete_version(session, workspace.org_id, template_id, version)

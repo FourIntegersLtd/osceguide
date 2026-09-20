@@ -278,3 +278,23 @@ async def test_the_listing_locks_the_same_way(
     assert locked, "the item is still listed"
     assert locked[0]["locked"] is True
     assert locked[0]["content"] is None
+
+
+async def test_a_platform_admin_reads_bodies_on_the_listing(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    """The episode player loads its playlist from GET /media, not the slug read.
+
+    A slug read already unlocks for staff. If the listing stayed locked, the
+    page would show the title and 'this episode has no audio attached yet'.
+    """
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-admin-list@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    item = await an_exam_item(client, admin, exam_code="sca", title="SCA Deck For Staff")
+
+    listed = (await client.get("/api/v1/media?kind=slide_deck", headers=bearer(admin))).json()["items"]
+    row = next(entry for entry in listed if entry["id"] == item["id"])
+    assert row["locked"] is False
+    assert row["content"] == {"slides": ["Angina", "Reflux"]}

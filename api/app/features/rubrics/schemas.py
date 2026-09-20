@@ -15,6 +15,7 @@ class RubricVersionRead(BaseModel):
     structure: dict[str, Any]
     system_prompt: str
     pacing: dict[str, Any]
+    marking_layout: dict[str, Any] | None = None
     # Derived from `structure` on the way out, never stored: what the marker is
     # actually asked to fill. Read-only, so an author can see what their
     # domains and competencies came to without running an attempt.
@@ -37,6 +38,7 @@ class CreateRubric(BaseModel):
     system_prompt: str = Field(min_length=1)
     pacing: dict[str, Any]
     result_schema_override: dict[str, Any] | None = None
+    marking_layout: dict[str, Any] | None = None
 
 
 class EditRubricVersion(BaseModel):
@@ -44,6 +46,7 @@ class EditRubricVersion(BaseModel):
     system_prompt: str = Field(min_length=1)
     pacing: dict[str, Any]
     result_schema_override: dict[str, Any] | None = None
+    marking_layout: dict[str, Any] | None = None
 
 
 class FeedbackTemplateVersionRead(BaseModel):

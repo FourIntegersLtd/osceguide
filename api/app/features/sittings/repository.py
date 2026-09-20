@@ -18,7 +18,7 @@ async def create_sitting(
     org_id: uuid.UUID,
     *,
     name: str,
-    feedback_template_version_id: uuid.UUID,
+    rubric_version_id: uuid.UUID,
     mode: str,
     sitting_type: str,
     scheduled_for: datetime | None,
@@ -27,7 +27,7 @@ async def create_sitting(
     row = Sitting(
         org_id=org_id,
         name=name,
-        feedback_template_version_id=feedback_template_version_id,
+        rubric_version_id=rubric_version_id,
         mode=mode,
         sitting_type=sitting_type,
         scheduled_for=scheduled_for,
@@ -202,12 +202,12 @@ async def slots_for_trainee(session: AsyncSession, trainee_id: uuid.UUID) -> lis
     return list((await session.execute(stmt)).scalars())
 
 
-async def feedback_template_version_for_slot(
+async def rubric_version_for_slot(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> uuid.UUID | None:
-    """The rubric a slot is marked against: its sitting's bound template version."""
+    """The rubric version a slot is marked against: its sitting's bound rubric."""
     stmt = (
-        select(Sitting.feedback_template_version_id)
+        select(Sitting.rubric_version_id)
         .join(Circuit, Circuit.sitting_id == Sitting.id)
         .join(Slot, Slot.circuit_id == Circuit.id)
         .where(Slot.org_id == org_id, Slot.id == slot_id)

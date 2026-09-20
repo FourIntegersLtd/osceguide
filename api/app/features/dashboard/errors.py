@@ -14,6 +14,7 @@ from __future__ import annotations
 from app.core.errors import InvalidInput
 from app.features.catalog.errors import UnknownExamError
 from app.features.sittings.errors import CircuitNotFound, SittingNotFound
+from app.features.tenancy.errors import UserNotFound
 
 
 class NotAnExamSitting(InvalidInput):
@@ -29,4 +30,5 @@ class NotAnExamSitting(InvalidInput):
     default_message = "A cohort summary is only produced for an exam sitting"
 
 
-__all__ = ["CircuitNotFound", "NotAnExamSitting", "SittingNotFound", "UnknownExamError"]
+# `user_not_found` is `tenancy`'s, for the directory's per-account read.
+__all__ = ["CircuitNotFound", "NotAnExamSitting", "SittingNotFound", "UnknownExamError", "UserNotFound"]

@@ -43,10 +43,8 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
         String(32), nullable=False, server_default=text("'group_training'")
     )
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'scheduled'"))
-    # Not null: b2b refuses to create a session without a published feedback
-    # template bound, and the column says so rather than a service check.
-    feedback_template_version_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("feedback_template_versions.id", ondelete="RESTRICT"), nullable=False
+    rubric_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("rubric_versions.id", ondelete="RESTRICT"), nullable=False
     )
 
 

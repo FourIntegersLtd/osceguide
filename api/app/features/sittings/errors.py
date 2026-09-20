@@ -44,8 +44,11 @@ class NotPermittedInModeError(Conflict):
 # Re-exported rather than redefined: the previous local classes were never
 # raised, so the routes advertised codes that could not happen while the
 # invariants they named went unenforced.
+from app.features.catalog.errors import ProgrammeNotFound  # noqa: E402
 from app.features.rubrics.errors import (  # noqa: E402
     FeedbackTemplateNotPublished,
+    RubricVersionNotFound,
+    RubricVersionNotPublished,
     TemplateVersionNotFound,
 )
 from app.features.stations.errors import TemplateNotPublishedError  # noqa: E402
@@ -56,12 +59,27 @@ from app.features.stations.errors import TemplateNotPublishedError  # noqa: E402
 from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 
 __all__ = [
+    "ExamRubricNotReady",
     "FeedbackTemplateNotPublished",
+    "ProgrammeNotFound",
+    "ProgrammeRequired",
+    "RubricVersionNotFound",
+    "RubricVersionNotPublished",
     "TemplateNotPublishedError",
     "TemplateVersionNotFound",
     "TraineeRevokedError",
     "VoiceUnavailable",
 ]
+
+
+class ProgrammeRequired(Conflict):
+    code = "programme_required"
+    default_message = "A sitting must name the programme it is running"
+
+
+class ExamRubricNotReady(Conflict):
+    code = "exam_rubric_not_ready"
+    default_message = "That programme's exam is not ready to mark against yet"
 
 
 class CircuitNotStarted(Conflict):

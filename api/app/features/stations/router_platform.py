@@ -19,11 +19,13 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
-from app.core.errors import Forbidden, Unauthenticated, error_responses
+from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
-from app.features.stations import errors, schemas, service, service_templates, service_versions
+from app.features.generation.errors import GenerationUnavailable
+from app.features.stations import errors, schemas, service, service_templates, service_versions, station_autogenerate
 
 router = APIRouter(tags=["stations"])
 
@@ -32,7 +34,12 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 _AUTH = (Unauthenticated, Forbidden)
 _STATION = (errors.StationNotFound, errors.VersionNotFound)
 _TEMPLATE = (errors.StationTemplateNotFound, errors.VersionNotFound)
-_LIFECYCLE = (errors.NotEditableError, errors.AlreadyPublishedError, errors.NotArchivableError)
+_LIFECYCLE = (
+    errors.NotEditableError,
+    errors.AlreadyPublishedError,
+    errors.NotArchivableError,
+    errors.NotDeletableError,
+)
 
 
 # --- the library ------------------------------------------------------------
@@ -73,6 +80,34 @@ async def create_platform_station(
         content=body.content,
         template_version_id=body.template_version_id,
     )
+
+
+@router.post(
+    "/platform/stations/autogenerate-draft",
+    response_model=schemas.AutogenerateStationDraftResult,
+    responses=error_responses(
+        *_AUTH,
+        InvalidInput,
+        GenerationUnavailable,
+        errors.StationTemplateVersionNotFound,
+        errors.TemplateNotPublishedError,
+    ),
+)
+async def autogenerate_platform_station_draft(
+    body: schemas.AutogenerateStationDraft,
+    admin: PlatformAdmin,
+    session: Session,
+    settings: SettingsDep,
+) -> schemas.AutogenerateStationDraftResult:
+    _ = admin
+    result = await station_autogenerate.autogenerate_station_draft(
+        session,
+        None,
+        prompt=body.prompt,
+        template_version_id=body.template_version_id,
+        settings=settings,
+    )
+    return schemas.AutogenerateStationDraftResult(**result)
 
 
 @router.post(
@@ -195,3 +230,27 @@ async def publish_platform_station_template(
     return await service_templates.publish_version(
         session, None, template_id, actor_id=admin.user_id, now=clock.now()
     )
+
+
+@router.post(
+    "/platform/station-templates/{template_id}/versions/{version}/archive",
+    response_model=schemas.StationTemplateVersionRead,
+    responses=error_responses(*_AUTH, *_TEMPLATE, *_LIFECYCLE),
+)
+async def archive_platform_station_template_version(
+    template_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session, clock: ClockDep
+) -> schemas.StationTemplateVersionRead:
+    return await service_templates.archive_version(
+        session, None, template_id, version, actor_id=admin.user_id, now=clock.now()
+    )
+
+
+@router.delete(
+    "/platform/station-templates/{template_id}/versions/{version}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(*_AUTH, *_TEMPLATE, *_LIFECYCLE),
+)
+async def delete_platform_station_template_version(
+    template_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
+) -> None:
+    await service_templates.delete_version(session, None, template_id, version)

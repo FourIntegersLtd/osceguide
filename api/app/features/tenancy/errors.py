@@ -28,6 +28,11 @@ class MembershipNotFound(NotFound):
     default_message = "No such membership"
 
 
+class PlatformAdminExists(Conflict):
+    code = "platform_admin_exists"
+    default_message = "That person already has staff console access"
+
+
 class UserNotFound(NotFound):
     """No account for the address an administrator named.
 

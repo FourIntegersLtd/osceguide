@@ -51,6 +51,7 @@ __all__ = [
     "parse_structure",
     "result_schema_for",
     "reviewable_domains",
+    "scoring_domain_ids",
     "validate_pacing",
 ]
 
@@ -233,3 +234,8 @@ def narrow_structure(
         domains=tuple(d for d in structure.domains if d.id in wanted),
         sections=structure.sections,
     )
+
+
+def scoring_domain_ids(structure: RubricStructure) -> frozenset[str]:
+    """Domains a human review must score when using the full rubric."""
+    return frozenset(d.id for d in structure.domains if d.id not in NON_SCORING_SECTIONS)

@@ -67,11 +67,12 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | GET | `/api/v1/platform/organizations/{slug}/memberships` | platform admin | read-only member list, for support |
 | GET | `/api/v1/platform/organizations/{slug}/audit` | platform admin | one organisation's audit log, for support |
 | GET | `/api/v1/platform/users` | platform admin | `?q=` part of an email; `?platform_admin=true` only console users |
-| GET | `/api/v1/platform/users/{id}` | platform admin | flags, last sign-in, `exam_code`, memberships |
-| PATCH | `/api/v1/platform/users/{id}` | platform admin | `name`, `exam_code`, `status` (`active`/`deactivated`); audited |
+| GET | `/api/v1/platform/users/{id}` | platform admin | flags, `status`, last sign-in, `exam_code`, `exam_date`, `extra_reading_percent`, memberships. The directory the console lists is `GET /platform/directory` (`dashboard`) |
+| PATCH | `/api/v1/platform/users/{id}` | platform admin | `name`, `exam_code`, `status` (`active`/`deactivated`), `exam_date`, `extra_reading_percent` (0–100); audited |
 | POST | `/api/v1/platform/users/{id}/reset-password` | platform admin | sends the reset link; audited |
 | PUT | `/api/v1/platform/users/{id}/platform-admin` | platform admin | grant or revoke the console; audited |
 | GET | `/api/v1/platform/admins` | platform admin | everyone who may use the console |
+| POST | `/api/v1/platform/admins` | platform admin | grant the console by email; unknown addresses are **invited** (`invited: true`) |
 | GET | `/api/v1/platform/audit` | platform admin | every organisation's log and the platform's own rows; `?org_slug=`, `?actor_email=`, `?action=` (prefix) |
 | GET | `/api/v1/platform/users/{id}/audit` | platform admin | what was done to the account and what it did |
 | GET | `/api/v1/platform/overview` | platform admin | counts by status, and the one list: `at_risk` — suspended, lapsed, or ending within thirty days |

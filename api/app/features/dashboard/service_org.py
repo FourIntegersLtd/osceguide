@@ -20,7 +20,7 @@ from app.features.dashboard.schemas_org import (
     SupervisorCircuits,
 )
 from app.features.roster import service as roster
-from app.features.rubrics import service_feedback_binding as rubrics
+from app.features.catalog import repository as catalog_repo
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 from app.features.tenancy import service as tenancy
@@ -41,19 +41,21 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
         trainees=await roster.count_trainees(session, org_id),
         stations=await stations.count_stations(session, org_id),
         staff=await memberships.count_staff(session, org_id),
-        published_feedback_templates=await rubrics.count_published_versions(session, org_id),
+        programmes_with_markable_exam=await catalog_repo.count_programmes_with_markable_exam(
+            session, org_id
+        ),
         sittings=await sittings.count_sittings(session, org_id),
     )
     setup = OrgSetup(
         trainees_added=counts.trainees > 0,
         stations_authored=counts.stations > 0,
         team_invited=counts.staff > 0,
-        feedback_template_published=counts.published_feedback_templates > 0,
+        programme_exam_rubric_ready=counts.programmes_with_markable_exam > 0,
         ready_to_run=(
             counts.trainees > 0
             and counts.stations > 0
             and counts.staff > 0
-            and counts.published_feedback_templates > 0
+            and counts.programmes_with_markable_exam > 0
         ),
     )
     recent = await sittings.recent_sittings(session, org_id, limit=RECENT_SITTINGS)

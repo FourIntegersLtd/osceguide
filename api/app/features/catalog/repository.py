@@ -6,11 +6,12 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
 from app.core.pagination import keyset_page
+from app.features.catalog.domain import ExamStatus
 from app.features.catalog.models import Exam, Programme
 
 
@@ -171,3 +172,18 @@ async def exams_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> 
         return []
     stmt = select(Exam).where(Exam.id.in_(list(exam_ids)))
     return list((await session.execute(stmt)).scalars())
+
+
+async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """Programmes whose exam is published and names a rubric version."""
+    stmt = (
+        select(func.count())
+        .select_from(Programme)
+        .join(Exam, Exam.id == Programme.exam_id)
+        .where(
+            Programme.org_id == org_id,
+            Exam.status == ExamStatus.PUBLISHED,
+            Exam.rubric_version_id.isnot(None),
+        )
+    )
+    return int((await session.execute(stmt)).scalar_one())

@@ -20,18 +20,23 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.features.identity import repository as identity_repository
 from app.features.identity import service as identity
+from app.features.identity import service_invitations as invitations
 from app.features.identity import service_passwords
 from app.features.identity import service_platform as accounts
 from app.features.tenancy import repository, repository_platform
-from app.features.tenancy.errors import UserNotFound
+from app.features.tenancy.errors import PlatformAdminExists, UserNotFound
 from app.features.tenancy.schemas import (
     MembershipRead,
+    PlatformAdminInviteRead,
     PlatformAuditRead,
     PlatformUserDetail,
     UpdatePlatformUser,
     UserSummary,
 )
+
+_STAFF_CONSOLE_LABEL = "the OSCE Guide staff console"
 from app.features.tenancy.service_platform_audit import platform_audit_read
 
 
@@ -42,6 +47,7 @@ def _user_summary(user: accounts.SupportUser) -> UserSummary:
         name=user.name,
         created_at=user.created_at,
         is_platform_admin=user.is_platform_admin,
+        status=user.status,
     )
 
 
@@ -62,6 +68,31 @@ async def search_users(
 
 async def list_platform_admins(session: AsyncSession, *, limit: int = 100) -> list[UserSummary]:
     return [_user_summary(row) for row in await accounts.list_platform_admins(session, limit=limit)]
+
+
+async def invite_platform_admin(
+    session: AsyncSession, *, email: str, actor: Principal, now: datetime
+) -> PlatformAdminInviteRead:
+    """Grant the staff console by email.
+
+    An unknown address is invited the same way as the first member of a new
+    organisation: an account without a password and an email carrying a link
+    to choose one. They must finish that before they can sign in.
+    """
+    address = email.strip()
+    ref = await identity.user_ref_by_email(session, address)
+    invited = ref is None
+    if ref is None:
+        ref = await invitations.invite_user(
+            session, email=address, name=address, invited_to=_STAFF_CONSOLE_LABEL, now=now
+        )
+    existing = await accounts.user_by_id(session, ref.id)
+    if existing is None:
+        raise UserNotFound()
+    if existing.is_platform_admin:
+        raise PlatformAdminExists()
+    user = await set_platform_admin(session, ref.id, is_admin=True, actor=actor)
+    return PlatformAdminInviteRead(user=user, invited=invited)
 
 
 async def set_platform_admin(
@@ -107,15 +138,21 @@ async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDe
         )
         for row in await repository.memberships_for_user(session, user_id)
     ]
+    legacy_ids = await identity_repository.consumer_legacy_ids(session, user_id)
     return PlatformUserDetail(
         id=user.id,
         email=user.email,
         name=user.name,
         created_at=user.created_at,
         is_platform_admin=user.is_platform_admin,
+        status=user.status,
         must_change_password=user.must_change_password,
         last_login_at=user.last_login_at,
         exam_code=user.exam_code,
+        exam_date=user.exam_date,
+        extra_reading_percent=user.extra_reading_percent,
+        consumer_role=user.consumer_role,
+        legacy_consumer_ids=legacy_ids,
         memberships=memberships,
     )
 

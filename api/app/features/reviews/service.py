@@ -17,7 +17,7 @@ from app.features.reviews.schemas import (
     GpLeadReviewRead,
     SlotReviewRead,
 )
-from app.features.rubrics import service_feedback as templates
+from app.features.rubrics import service_marking as rubrics
 from app.features.sittings import service as sittings
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -53,14 +53,12 @@ async def _require_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.
 async def _required_domains(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> set[str]:
     """Which domains a completed review must have scored (R-1).
 
-    Read from the sitting's bound feedback template. The router used to pass
-    an empty set here, and `ensure_completable` refuses an empty set outright,
-    so no review could ever be completed.
+    All scoring domains on the sitting's bound rubric version.
     """
-    version_id = await sittings.feedback_template_version_for_slot(session, org_id, slot_id)
+    version_id = await sittings.rubric_version_for_slot(session, org_id, slot_id)
     if version_id is None:
         return set()
-    return await templates.reviewable_domains_for_version(session, org_id, version_id)
+    return await rubrics.reviewable_domains_for_version(session, org_id, version_id)
 
 
 async def submit_slot_review(

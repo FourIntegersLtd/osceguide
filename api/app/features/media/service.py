@@ -26,6 +26,8 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.UnusableTitle: errors.UnusableTitleError,
     domain.EmptyQuery: errors.EmptyQueryError,
     domain.QueryTooLong: errors.EmptyQueryError,
+    domain.InvalidListStatus: errors.InvalidListStatusError,
+    domain.NotDeletable: errors.NotDeletableError,
 }
 
 
@@ -69,12 +71,14 @@ async def update(
     title: str | None,
     summary: str | None,
     content: dict[str, Any] | None,
+    editor_is_admin: bool = False,
 ) -> MediaRead:
     row = await _require(session, item_id)
-    try:
-        domain.ensure_editable(status=row.status)
-    except domain.NotEditable as exc:
-        raise_mapped(exc, _REFUSALS)
+    if not editor_is_admin:
+        try:
+            domain.ensure_editable(status=row.status)
+        except domain.NotEditable as exc:
+            raise_mapped(exc, _REFUSALS)
 
     values: dict[str, Any] = {}
     if title is not None:
@@ -108,7 +112,15 @@ async def publish(
         text=f"{row.title}\n{row.summary or ''}",
         metadata={"kind": row.kind, "slug": row.slug},
     )
-    return await _read(session, await _require(session, item_id))
+    return await _read(session, await _require(session, item_id), unlocked_exam_ids=None)
+
+
+async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_admin: bool) -> MediaRead:
+    row = await _require(session, item_id)
+    if not domain.is_public(status=row.status) and not viewer_is_admin:
+        raise errors.ItemNotFound()
+    unlocked = None if viewer_is_admin else frozenset[uuid.UUID]()
+    return await _read(session, row, unlocked_exam_ids=unlocked)
 
 
 async def read_by_slug(
@@ -125,6 +137,38 @@ async def read_by_slug(
     return await _read(session, row, unlocked_exam_ids=None if viewer_is_admin else unlocked)
 
 
+async def list_catalog(
+    session: AsyncSession,
+    *,
+    kind: str | None,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    status: str | None,
+    viewer_is_admin: bool,
+    unlocked: frozenset[uuid.UUID] = frozenset(),
+) -> tuple[list[MediaRead], str | None]:
+    if kind:
+        try:
+            kind = domain.normalize_kind(kind)
+        except domain.UnknownMediaKind as exc:
+            raise_mapped(exc, _REFUSALS)
+    statuses: tuple[str, ...] | None = None
+    if viewer_is_admin and status:
+        try:
+            statuses = domain.parse_authoring_status(status)
+        except domain.InvalidListStatus as exc:
+            raise_mapped(exc, _REFUSALS)
+    rows, next_cursor = await repository.list_catalog(
+        session, kind=kind, statuses=statuses, limit=limit, cursor=cursor
+    )
+    # Staff listing the public catalogue still get bodies: a slug read already
+    # unlocks for admins, and the episode player loads its playlist from this
+    # list. Locking the list while unlocking the page made every episode
+    # render as "no audio attached".
+    read_unlocked = None if viewer_is_admin else unlocked
+    return [await _read(session, r, unlocked_exam_ids=read_unlocked) for r in rows], next_cursor
+
+
 async def list_published(
     session: AsyncSession,
     *,
@@ -133,13 +177,24 @@ async def list_published(
     cursor: dict[str, Any] | None,
     unlocked: frozenset[uuid.UUID] = frozenset(),
 ) -> tuple[list[MediaRead], str | None]:
-    if kind:
-        try:
-            kind = domain.normalize_kind(kind)
-        except domain.UnknownMediaKind as exc:
-            raise_mapped(exc, _REFUSALS)
-    rows, next_cursor = await repository.list_published(session, kind=kind, limit=limit, cursor=cursor)
-    return [await _read(session, r, unlocked_exam_ids=unlocked) for r in rows], next_cursor
+    return await list_catalog(
+        session,
+        kind=kind,
+        limit=limit,
+        cursor=cursor,
+        status=None,
+        viewer_is_admin=False,
+        unlocked=unlocked,
+    )
+
+
+async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
+    row = await _require(session, item_id)
+    try:
+        domain.ensure_deletable(status=row.status)
+    except domain.NotDeletable as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.delete_item(session, item_id)
 
 
 async def search(
@@ -193,10 +248,11 @@ async def _read(
     """One item, with its body only for a reader entitled to it.
 
     `unlocked_exam_ids` is `None` for a caller that has already decided the
-    reader may see everything — the authoring routes, which are behind
-    `PlatformAdmin`. For everybody else it is the set of exams they hold a
-    **live** grant for, and an item belonging to any other exam comes back
-    locked. Material with no exam at all is free material and is never locked.
+    reader may see everything — a platform admin, on authoring routes and on
+    the public listing (the episode player loads its playlist from the list).
+    For everybody else it is the set of exams they hold a **live** grant for,
+    and an item belonging to any other exam comes back locked. Material with
+    no exam at all is free material and is never locked.
     """
     exam_code = await catalog.exam_code_by_id(session, row.exam_id) if row.exam_id else None
     locked = (

@@ -185,3 +185,46 @@ async def test_templates_are_refused_to_outsiders(client: AsyncClient, make_acto
     stranger = await make_actor("nobody@example.com")
     response = await client.get("/api/v1/orgs/kings/station-templates", headers=bearer(stranger))
     assert response.status_code == 403
+
+
+async def test_a_draft_template_version_can_be_deleted(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    template = await a_template(client, admin)
+
+    deleted = await client.delete(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1", headers=bearer(admin)
+    )
+    assert deleted.status_code == 204, deleted.text
+
+    listed = await client.get("/api/v1/orgs/kings/station-templates", headers=bearer(admin))
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+
+
+async def test_a_published_template_version_can_be_archived(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    template = await a_template(client, admin)
+    await client.post(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/publish", headers=bearer(admin)
+    )
+
+    archived = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1/archive",
+        headers=bearer(admin),
+    )
+    assert archived.status_code == 200, archived.text
+    assert archived.json()["status"] == "archived"
+
+
+async def test_a_published_template_version_cannot_be_deleted(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    template = await a_template(client, admin)
+    await client.post(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/publish", headers=bearer(admin)
+    )
+
+    response = await client.delete(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1", headers=bearer(admin)
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "not_deletable"

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.entitlements.models import Entitlement
@@ -81,3 +83,33 @@ async def by_id(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement
 
 async def set_ends_at(session: AsyncSession, entitlement_id: uuid.UUID, *, ends_at: datetime | None) -> None:
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(ends_at=ends_at))
+
+
+async def live_user_ids_for_exam(
+    session: AsyncSession, exam_id: uuid.UUID, *, now: datetime
+) -> set[uuid.UUID]:
+    """Everyone holding a live grant for this exam.
+
+    The liveness rule is `domain.Grant.live_at`, written here in SQL because
+    the directory needs the whole set at once rather than a decision per row.
+    A change to one must be made to the other.
+    """
+    stmt = select(Entitlement.user_id).where(Entitlement.exam_id == exam_id, *_live(now)).distinct()
+    return set((await session.execute(stmt)).scalars())
+
+
+async def live_for_users(
+    session: AsyncSession, user_ids: Collection[uuid.UUID], *, now: datetime
+) -> list[Entitlement]:
+    if not user_ids:
+        return []
+    stmt = select(Entitlement).where(Entitlement.user_id.in_(list(user_ids)), *_live(now))
+    return list((await session.execute(stmt)).scalars())
+
+
+def _live(now: datetime) -> tuple[Any, ...]:
+    return (
+        Entitlement.revoked_at.is_(None),
+        Entitlement.starts_at <= now,
+        or_(Entitlement.ends_at.is_(None), Entitlement.ends_at > now),
+    )

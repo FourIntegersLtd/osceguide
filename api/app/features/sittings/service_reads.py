@@ -42,7 +42,8 @@ def _sitting_ref(row: Sitting) -> SittingRef:
         sitting_type=row.sitting_type,
         status=row.status,
         scheduled_for=row.scheduled_for,
-        feedback_template_version_id=row.feedback_template_version_id,
+        rubric_version_id=row.rubric_version_id,
+        programme_id=row.programme_id,
     )
 
 

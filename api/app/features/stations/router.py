@@ -8,16 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import Forbidden, Unauthenticated, error_responses
+from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader
+from app.features.generation.errors import GenerationUnavailable
 from app.features.stations import (
     errors,
     schemas,
     service,
     service_reads,
     service_versions,
+    station_autogenerate,
 )
 
 router = APIRouter(tags=["stations"])
@@ -96,6 +99,33 @@ async def create_station(
         content=body.content,
         template_version_id=body.template_version_id,
     )
+
+
+@router.post(
+    "/orgs/{org_slug}/stations/autogenerate-draft",
+    response_model=schemas.AutogenerateStationDraftResult,
+    responses=error_responses(
+        Forbidden,
+        InvalidInput,
+        GenerationUnavailable,
+        errors.StationTemplateVersionNotFound,
+        errors.TemplateNotPublishedError,
+    ),
+)
+async def autogenerate_station_draft(
+    body: schemas.AutogenerateStationDraft,
+    workspace: OrgAdmin,
+    session: Session,
+    settings: SettingsDep,
+) -> schemas.AutogenerateStationDraftResult:
+    result = await station_autogenerate.autogenerate_station_draft(
+        session,
+        workspace.org_id,
+        prompt=body.prompt,
+        template_version_id=body.template_version_id,
+        settings=settings,
+    )
+    return schemas.AutogenerateStationDraftResult(**result)
 
 
 @router.post(

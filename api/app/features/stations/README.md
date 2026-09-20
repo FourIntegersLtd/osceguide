@@ -11,6 +11,16 @@ Firestore to read the platform library. Here a station has an `owner_kind` of
 `platform` or `org`, so an attempt points at one column rather than a union of
 sources, and nothing has to read another product's database.
 
+## AI generation (template-bound)
+
+Station **Generate draft** uses:
+
+- `structure.generation.profileKey` — exam profile (`sca.station`, `plab.station`, …) with system prompt from B2C `shared_prompts` and per-block hints exported from B2C Pydantic `Field(description=…)` (`generation_profiles/_generated/`).
+- Optional `structure.generation.systemPromptAppend` and org-only `systemPromptOverride` when `profileKey` is `custom`.
+- Per-block `generationHint` (LLM-only) and author `placeholder` (appended to profile hints when `generationHint` is empty).
+
+Catalog: `GET /api/v1/station-generation-profiles`. Detail responses return **effective** `blockHints` (exported profile JSON + `template_block_hint_supplements.py` for template-only field ids + `platform_overrides.py` where stricter). Re-export hints after B2C model changes: `poetry run python scripts/export_station_generation_profiles.py`.
+
 ## Use cases
 - As a **platform admin**, I author a station template and a library station, and
   publish both.

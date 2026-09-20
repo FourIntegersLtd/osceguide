@@ -29,7 +29,6 @@ from app.core.openapi import (
 from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.features import health
-from app.features.health.router_platform import router as platform_health_router
 from app.features.assistant.router import router as assistant_router
 from app.features.assistant.router_worker import router as assistant_worker_router
 from app.features.attempts.router import router as attempts_router
@@ -42,10 +41,12 @@ from app.features.community.router import router as community_router
 from app.features.community.router_platform import router as community_platform_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.dashboard.router_live import router as live_board_router
+from app.features.dashboard.router_platform import router as platform_directory_router
 from app.features.entitlements.router import router as entitlements_router
 from app.features.entitlements.router_platform import router as platform_entitlements_router
 from app.features.generation.router import router as generation_router
 from app.features.growth.router import router as growth_router
+from app.features.health.router_platform import router as platform_health_router
 from app.features.identity.router import router as identity_router
 from app.features.identity.router_me import router as identity_me_router
 from app.features.marketplace.router import router as marketplace_router
@@ -56,14 +57,15 @@ from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
 from app.features.roster.router import router as roster_router
 from app.features.rubrics.router import router as rubrics_router
-from app.features.rubrics.router_feedback import router as feedback_templates_router
 from app.features.rubrics.router_org import router as org_rubrics_router
 from app.features.sittings.router import router as sittings_router
 from app.features.sittings.router_overrides import router as circuit_overrides_router
 from app.features.sittings.router_run import router as circuit_run_router
 from app.features.sso.router import router as sso_router
 from app.features.station_sets.router import router as station_sets_router
+from app.features.station_sets.router_platform import router as platform_station_sets_router
 from app.features.stations.router import router as stations_router
+from app.features.stations.router_generation_profiles import router as station_generation_profiles_router
 from app.features.stations.router_platform import router as platform_stations_router
 from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
@@ -102,8 +104,8 @@ def api_v1_router() -> APIRouter:
     router.include_router(rubrics_router)
     router.include_router(org_rubrics_router)
     router.include_router(stations_router)
-    router.include_router(feedback_templates_router)
     router.include_router(station_templates_router)
+    router.include_router(station_generation_profiles_router)
     router.include_router(platform_stations_router)
     router.include_router(attempts_router)
     router.include_router(platform_attempts_router)
@@ -121,7 +123,9 @@ def api_v1_router() -> APIRouter:
     router.include_router(billing_router)
     router.include_router(platform_billing_router)
     router.include_router(station_sets_router)
+    router.include_router(platform_station_sets_router)
     router.include_router(dashboard_router)
+    router.include_router(platform_directory_router)
     router.include_router(live_board_router)
     router.include_router(assistant_router)
     router.include_router(marketplace_router)

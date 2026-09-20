@@ -51,7 +51,7 @@ async def a_circuit(
     assert exam is not None
     template = await published_feedback_version(session, org.id)
 
-    sitting = Sitting(org_id=org.id, name="S", mode=mode, feedback_template_version_id=template.id)
+    sitting = Sitting(org_id=org.id, name="S", mode=mode, rubric_version_id=template.id)
     session.add(sitting)
     await session.flush()
 

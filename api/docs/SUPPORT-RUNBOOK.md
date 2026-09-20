@@ -19,6 +19,10 @@ Billing queue, the Audit log and Machinery.
 | Organisation lapsed or suspended | `GET /platform/overview` → `at_risk` | `POST /platform/organizations/{slug}/contract` (dates + restore in one step) | `organization.contract_renewed` |
 | Org admin locked out / wrong admin | `GET /platform/organizations/{slug}/memberships` | `…/memberships/{id}/restore`, `PATCH …/memberships/{id}` (role), `POST /platform/users/{id}/reset-password` | `membership.*`, `user.password_reset_sent` |
 | Deactivate an account | `GET /platform/users/{id}` | `PATCH /platform/users/{id}` `{status: deactivated}` — sessions end now, token refused on next request | `user.deactivated` |
+| Find an account, or everyone on an exam / paid / on trial / not started | `GET /platform/directory?q=&exam_code=&access=&status=&plan_code=`; `GET /platform/directory/summary` for the counts | — | — |
+| "Let me sit this station again" (limit used up) | `GET /platform/users/{id}/stations` — `entry_attempts` is what the limit counts | `POST /platform/users/{id}/stations/{station_id}/reset-attempts` — counters to zero, attempts and marking kept | `user.station_attempts_reset` |
+| "Wipe this station from my history" | same | `POST /platform/users/{id}/stations/{station_id}/delete-progress` `{reason}` — every attempt, transcript and marking gone, station removed from their sets; refused `attempt_in_progress` while one runs (fail it first) | `user.station_progress_deleted` |
+| Exam date or extra reading time wrong | `GET /platform/users/{id}` | `PATCH /platform/users/{id}` `{exam_date, extra_reading_percent}` | `user.updated` |
 | "Is the platform working?" | `GET /platform/health`, `GET /platform/jobs?status=failed`, `GET /platform/voice/capacity` | re-queue through the thing the job was about; no blind retry | — |
 
 Decisions behind this (ADR 0020): platform admins read anything and act only

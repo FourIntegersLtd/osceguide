@@ -20,7 +20,7 @@ from app.features.catalog import repository as catalog_repository
 from app.features.catalog import service_authoring as catalog
 from app.features.catalog.models import Exam
 from app.features.rubrics import service as rubrics
-from tests.support.rubrics import MINIMAL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
+from tests.support.rubrics import MINIMAL_MARKING_LAYOUT, MINIMAL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
 from tests.support.tokens import bearer
 
 # Roughly the timings the four seeded exams carried, so tests that asserted on
@@ -56,6 +56,7 @@ async def ensure_exam(
         structure=structure or MINIMAL_RUBRIC,
         system_prompt=SYSTEM_PROMPT,
         pacing=PACING,
+        marking_layout=MINIMAL_MARKING_LAYOUT,
     )
     version_id = rubric.versions[0].id
     await rubrics.publish_version(session, None, rubric.id, 1, actor_id=None, now=_now())

@@ -56,6 +56,7 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     # fixed amount inside the timer component; a percentage says what was
     # actually granted, and 25 is what a bare "yes" used to mean.
     extra_reading_percent: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    consumer_role: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'user'"))
 
 
 class UserIdentity(Base, UUIDPrimaryKey, Timestamps):

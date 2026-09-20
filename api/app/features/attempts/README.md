@@ -54,6 +54,10 @@ and the job that scores a delivered transcript.
 | GET | `/api/v1/attempts/{id}/stream` | stream ticket | The attempt, pushed until it is marked. Replaces b2c's feedback-status stream and the two pollers behind it |
 | GET | `/api/v1/platform/users/{id}/attempts` | platform admin | One person's attempts with their marking state: transcript delivered, results, the newest scoring job. `?status=` narrows |
 | GET | `/api/v1/platform/attempts/{id}` | platform admin | The support detail: frozen definition present, turns received, every scoring job ever queued |
+
+The console's per-station view of a person's attempts, and the one delete this
+table has (`service_platform_progress.py`), are routed from `station_sets`,
+which owns the counter beside them.
 | GET | `/api/worker/attempts/{id}` | worker secret | `{attempt, scenario}`, no evaluation policy |
 | POST | `/api/worker/attempts/{id}/transcript-chunks` | worker secret | idempotent |
 | POST | `/api/worker/attempts/{id}/transcript` | worker secret | exactly once; enqueues scoring |

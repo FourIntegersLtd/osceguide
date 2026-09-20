@@ -10,7 +10,9 @@ of those, with the same publish-and-read logic copied into each.
 ## Use cases
 - As a **consumer**, I browse published material and read one by its slug.
 - As a **consumer**, I search for something and get the best matches.
-- As a **platform admin**, I draft material, edit it, and publish it.
+- As a **platform admin**, I draft material, edit it, and publish it, and I
+  read bodies on the public listing (the episode player loads its playlist
+  from `GET /media`).
 
 ## Aggregates & invariants
 **MediaItem** stands alone.
@@ -37,16 +39,17 @@ of those, with the same publish-and-read logic copied into each.
 | POST | `/api/v1/media/{id}/publish` | platform admin | indexes it |
 
 ## Jobs
-None. Slide and podcast generation are not ported — see `docs/OPEN-QUESTIONS.md` M-2.
+None. LLM draft generation for staff authoring lives under `generation` (`POST /api/v1/platform/generate/*`); TTS and slide video render are not ported — see `docs/OPEN-QUESTIONS.md` M-2.
 
 ## Who may read a body
 The titles are public — the landing page's article rail and a shared link both
 need them without a token — and the bodies are not. `content` is the paid half
-of the consumer product (the A to Z, the slide decks), so it comes back only to
-a reader holding a **live** entitlement for that item's exam; everybody else
-gets `locked: true` and a `null` body, which is what the retiring client's 403
-and upgrade prompt were. Material tagged with no exam is free material and is
-never locked.
+of the consumer product (the A to Z, the slide decks), so it comes back to a
+**platform admin** (authoring and the consumer player both load bodies from the
+listing) or to a reader holding a **live** entitlement for that item's exam;
+everybody else gets `locked: true` and a `null` body, which is what the
+retiring client's 403 and upgrade prompt were. Material tagged with no exam is
+free material and is never locked.
 
 The free trial is deliberately not honoured here: it buys three stations, not
 the study library.

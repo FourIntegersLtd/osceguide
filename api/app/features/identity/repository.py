@@ -84,6 +84,19 @@ async def identity_by_subject(session: AsyncSession, provider: str, subject: str
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def consumer_legacy_ids(session: AsyncSession, user_id: uuid.UUID) -> dict[str, str]:
+    """Firestore `user_id` per exam (`tenant_slug`), for the staff console."""
+    stmt = select(UserIdentity.tenant_slug, UserIdentity.subject).where(
+        UserIdentity.user_id == user_id,
+        UserIdentity.provider == "consumer",
+    )
+    out: dict[str, str] = {}
+    for slug, subject in (await session.execute(stmt)).all():
+        key = str(slug or "unknown").lower()
+        out[key] = str(subject)
+    return out
+
+
 # --- refresh chains --------------------------------------------------------
 
 

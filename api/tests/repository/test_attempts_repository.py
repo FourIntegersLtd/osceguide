@@ -60,7 +60,7 @@ async def a_slot(session: AsyncSession) -> uuid.UUID:
     session.add_all([station_version])
     await session.flush()
 
-    sitting = Sitting(org_id=org.id, name="S", mode="exam", feedback_template_version_id=version.id)
+    sitting = Sitting(org_id=org.id, name="S", mode="exam", rubric_version_id=version.id)
     session.add(sitting)
     await session.flush()
     circuit = Circuit(org_id=org.id, sitting_id=sitting.id, name="C")

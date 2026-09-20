@@ -824,6 +824,43 @@
         "title": "AuthResult",
         "type": "object"
       },
+      "AutogenerateStationDraft": {
+        "properties": {
+          "prompt": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "template_version_id": {
+            "format": "uuid",
+            "title": "Template Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "template_version_id"
+        ],
+        "title": "AutogenerateStationDraft",
+        "type": "object"
+      },
+      "AutogenerateStationDraftResult": {
+        "properties": {
+          "content": {
+            "additionalProperties": true,
+            "title": "Content",
+            "type": "object"
+          },
+          "suggested_title": {
+            "default": "",
+            "title": "Suggested Title",
+            "type": "string"
+          }
+        },
+        "title": "AutogenerateStationDraftResult",
+        "type": "object"
+      },
       "BulkCreateTrainees": {
         "description": "A spreadsheet's worth of trainees in one request.\n\nThe browser parses the file; the API takes rows. Capped so one request\ncannot invite a whole university at once by accident.",
         "properties": {
@@ -1815,11 +1852,6 @@
       },
       "ConsoleSitting": {
         "properties": {
-          "feedback_template_version_id": {
-            "format": "uuid",
-            "title": "Feedback Template Version Id",
-            "type": "string"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1831,6 +1863,11 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "rubric_version_id": {
+            "format": "uuid",
+            "title": "Rubric Version Id",
             "type": "string"
           },
           "scheduled_for": {
@@ -1861,7 +1898,7 @@
           "sitting_type",
           "status",
           "scheduled_for",
-          "feedback_template_version_id"
+          "rubric_version_id"
         ],
         "title": "ConsoleSitting",
         "type": "object"
@@ -2265,32 +2302,6 @@
         "title": "CreateExam",
         "type": "object"
       },
-      "CreateFeedbackTemplate": {
-        "properties": {
-          "field_selection": {
-            "additionalProperties": true,
-            "title": "Field Selection",
-            "type": "object"
-          },
-          "rubric_version_id": {
-            "format": "uuid",
-            "title": "Rubric Version Id",
-            "type": "string"
-          },
-          "title": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "rubric_version_id"
-        ],
-        "title": "CreateFeedbackTemplate",
-        "type": "object"
-      },
       "CreateGroup": {
         "properties": {
           "label": {
@@ -2526,6 +2537,18 @@
       },
       "CreateRubric": {
         "properties": {
+          "marking_layout": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marking Layout"
+          },
           "pacing": {
             "additionalProperties": true,
             "title": "Pacing",
@@ -2603,11 +2626,6 @@
       },
       "CreateSitting": {
         "properties": {
-          "feedback_template_version_id": {
-            "format": "uuid",
-            "title": "Feedback Template Version Id",
-            "type": "string"
-          },
           "mode": {
             "default": "training",
             "pattern": "^(training|exam)$",
@@ -2621,16 +2639,9 @@
             "type": "string"
           },
           "programme_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Programme Id"
+            "format": "uuid",
+            "title": "Programme Id",
+            "type": "string"
           },
           "scheduled_for": {
             "anyOf": [
@@ -2653,7 +2664,7 @@
         },
         "required": [
           "name",
-          "feedback_template_version_id"
+          "programme_id"
         ],
         "title": "CreateSitting",
         "type": "object"
@@ -3066,6 +3077,173 @@
         "title": "DecisionSummary",
         "type": "object"
       },
+      "DeleteStationProgress": {
+        "properties": {
+          "reason": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "DeleteStationProgress",
+        "type": "object"
+      },
+      "DirectorySummary": {
+        "properties": {
+          "exams": {
+            "items": {
+              "$ref": "#/components/schemas/ExamDirectorySummary"
+            },
+            "title": "Exams",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unassigned": {
+            "title": "Unassigned",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "exams",
+          "unassigned",
+          "total"
+        ],
+        "title": "DirectorySummary",
+        "type": "object"
+      },
+      "DirectoryUser": {
+        "description": "One row of the directory: the seven columns the retiring console had,\neach answered by the slice that owns the fact.",
+        "properties": {
+          "access_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Ends At"
+          },
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "has_paid": {
+            "title": "Has Paid",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_platform_admin": {
+            "title": "Is Platform Admin",
+            "type": "boolean"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "last_paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Paid At"
+          },
+          "live_exam_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Live Exam Codes",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Code"
+          },
+          "signed_in": {
+            "title": "Signed In",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "created_at",
+          "status",
+          "is_platform_admin",
+          "exam_code",
+          "last_login_at",
+          "signed_in",
+          "has_paid",
+          "plan_code",
+          "last_paid_at",
+          "access_ends_at",
+          "attempt_count"
+        ],
+        "title": "DirectoryUser",
+        "type": "object"
+      },
       "DispatchResult": {
         "properties": {
           "agent_name": {
@@ -3259,6 +3437,18 @@
       },
       "EditRubricVersion": {
         "properties": {
+          "marking_layout": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marking Layout"
+          },
           "pacing": {
             "additionalProperties": true,
             "title": "Pacing",
@@ -3481,6 +3671,7 @@
               "assistant_session_not_ready",
               "assistant_session_not_yours",
               "assistant_tools_not_available",
+              "attempt_in_progress",
               "attempt_limit_reached",
               "attempt_mismatch",
               "attempt_not_finished",
@@ -3510,6 +3701,7 @@
               "exam_code_taken",
               "exam_not_in_pilot",
               "exam_not_publishable",
+              "exam_rubric_not_ready",
               "feedback_template_not_found",
               "feedback_template_not_published",
               "feedback_template_version_not_found",
@@ -3575,6 +3767,7 @@
               "practice_session_not_found",
               "programme_exists",
               "programme_not_found",
+              "programme_required",
               "queue_entry_not_found",
               "receipt_not_found",
               "referral_already_redeemed",
@@ -3699,6 +3892,45 @@
           "occurred_at"
         ],
         "title": "EventRead",
+        "type": "object"
+      },
+      "ExamDirectorySummary": {
+        "description": "How many accounts an exam has, split the way the old filter did.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "not_started": {
+            "title": "Not Started",
+            "type": "integer"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "integer"
+          },
+          "trial": {
+            "title": "Trial",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "users",
+          "paid",
+          "trial",
+          "not_started"
+        ],
+        "title": "ExamDirectorySummary",
         "type": "object"
       },
       "ExamProgress": {
@@ -3892,92 +4124,6 @@
         "title": "FailAttemptRequest",
         "type": "object"
       },
-      "FeedbackTemplateRead": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "owner_kind": {
-            "title": "Owner Kind",
-            "type": "string"
-          },
-          "rubric_version_id": {
-            "format": "uuid",
-            "title": "Rubric Version Id",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "versions": {
-            "items": {
-              "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-            },
-            "title": "Versions",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "owner_kind",
-          "rubric_version_id",
-          "versions"
-        ],
-        "title": "FeedbackTemplateRead",
-        "type": "object"
-      },
-      "FeedbackTemplateVersionRead": {
-        "properties": {
-          "field_selection": {
-            "additionalProperties": true,
-            "title": "Field Selection",
-            "type": "object"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "published_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Published At"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "template_id": {
-            "format": "uuid",
-            "title": "Template Id",
-            "type": "string"
-          },
-          "version": {
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "template_id",
-          "version",
-          "status",
-          "field_selection"
-        ],
-        "title": "FeedbackTemplateVersionRead",
-        "type": "object"
-      },
       "FinalizeCircuitReview": {
         "properties": {
           "merged_notes": {
@@ -4077,6 +4223,19 @@
             "minLength": 2,
             "title": "Exam Code",
             "type": "string"
+          },
+          "ortho_station_type": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When exam_code is ortho: clinical, communication, prioritisation, or portfolio.",
+            "title": "Ortho Station Type"
           },
           "prompt": {
             "maxLength": 4000,
@@ -5632,8 +5791,8 @@
       "OrgCounts": {
         "description": "What the setup checklist counts. Four legacy calls existed to produce these.",
         "properties": {
-          "published_feedback_templates": {
-            "title": "Published Feedback Templates",
+          "programmes_with_markable_exam": {
+            "title": "Programmes With Markable Exam",
             "type": "integer"
           },
           "sittings": {
@@ -5657,7 +5816,7 @@
           "trainees",
           "stations",
           "staff",
-          "published_feedback_templates",
+          "programmes_with_markable_exam",
           "sittings"
         ],
         "title": "OrgCounts",
@@ -5705,8 +5864,8 @@
       "OrgSetup": {
         "description": "Whether the organisation can actually hold a sitting yet.\n\nEach flag is a step the browser was deriving from a list it fetched only to\ntake the length of.",
         "properties": {
-          "feedback_template_published": {
-            "title": "Feedback Template Published",
+          "programme_exam_rubric_ready": {
+            "title": "Programme Exam Rubric Ready",
             "type": "boolean"
           },
           "ready_to_run": {
@@ -5730,7 +5889,7 @@
           "trainees_added",
           "stations_authored",
           "team_invited",
-          "feedback_template_published",
+          "programme_exam_rubric_ready",
           "ready_to_run"
         ],
         "title": "OrgSetup",
@@ -5969,6 +6128,33 @@
         "title": "Page[CohortRead]",
         "type": "object"
       },
+      "Page_DirectoryUser_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DirectoryUser"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[DirectoryUser]",
+        "type": "object"
+      },
       "Page_EntitlementRead_": {
         "properties": {
           "items": {
@@ -6021,33 +6207,6 @@
           "items"
         ],
         "title": "Page[ExamRead]",
-        "type": "object"
-      },
-      "Page_FeedbackTemplateRead_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/FeedbackTemplateRead"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "Page[FeedbackTemplateRead]",
         "type": "object"
       },
       "Page_GroupRead_": {
@@ -7821,6 +7980,23 @@
             ],
             "title": "Exam Code"
           },
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "extra_reading_percent": {
+            "default": 0,
+            "title": "Extra Reading Percent",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -7857,6 +8033,11 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "active",
+            "title": "Status",
             "type": "string"
           }
         },
@@ -8801,6 +8982,18 @@
             "title": "Id",
             "type": "string"
           },
+          "marking_layout": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marking Layout"
+          },
           "pacing": {
             "additionalProperties": true,
             "title": "Pacing",
@@ -9490,11 +9683,6 @@
             "title": "Circuits",
             "type": "array"
           },
-          "feedback_template_version_id": {
-            "format": "uuid",
-            "title": "Feedback Template Version Id",
-            "type": "string"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -9506,6 +9694,23 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "programme_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programme Id"
+          },
+          "rubric_version_id": {
+            "format": "uuid",
+            "title": "Rubric Version Id",
             "type": "string"
           },
           "scheduled_for": {
@@ -9536,7 +9741,7 @@
           "sitting_type",
           "status",
           "scheduled_for",
-          "feedback_template_version_id"
+          "rubric_version_id"
         ],
         "title": "SittingRead",
         "type": "object"
@@ -10052,6 +10257,122 @@
         "title": "StationOverride",
         "type": "object"
       },
+      "StationProgressChange": {
+        "description": "What one of the two actions did, in numbers the toast can print.",
+        "properties": {
+          "attempts_deleted": {
+            "default": 0,
+            "title": "Attempts Deleted",
+            "type": "integer"
+          },
+          "entries_removed": {
+            "default": 0,
+            "title": "Entries Removed",
+            "type": "integer"
+          },
+          "entries_reset": {
+            "default": 0,
+            "title": "Entries Reset",
+            "type": "integer"
+          },
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id"
+        ],
+        "title": "StationProgressChange",
+        "type": "object"
+      },
+      "StationProgressRead": {
+        "description": "One station this person has sat, or holds in a practice set.\n\n`attempts` counts the attempts that exist; `entry_attempts` is the sum of\nthe counters on their set entries, which is what the per-station limit is\nenforced on and what \"reset attempts\" zeroes. The two agree until somebody\nresets, and showing both is how the console explains the difference.",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "entry_attempts": {
+            "title": "Entry Attempts",
+            "type": "integer"
+          },
+          "evaluated": {
+            "title": "Evaluated",
+            "type": "integer"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "last_attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt Id"
+          },
+          "last_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status"
+          },
+          "set_entry_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Set Entry Ids",
+            "type": "array"
+          },
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "title",
+          "exam_code",
+          "attempts",
+          "evaluated",
+          "last_attempt_at",
+          "last_attempt_id",
+          "last_status",
+          "entry_attempts"
+        ],
+        "title": "StationProgressRead",
+        "type": "object"
+      },
       "StationRead": {
         "properties": {
           "content": {
@@ -10094,6 +10415,18 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "template_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Version Id"
           },
           "title": {
             "title": "Title",
@@ -11376,20 +11709,6 @@
         "title": "UpdateExam",
         "type": "object"
       },
-      "UpdateFeedbackTemplateVersion": {
-        "properties": {
-          "field_selection": {
-            "additionalProperties": true,
-            "title": "Field Selection",
-            "type": "object"
-          }
-        },
-        "required": [
-          "field_selection"
-        ],
-        "title": "UpdateFeedbackTemplateVersion",
-        "type": "object"
-      },
       "UpdateMe": {
         "description": "What a person may change about themselves. Absent means \"leave it\".",
         "properties": {
@@ -11574,6 +11893,31 @@
               }
             ],
             "title": "Exam Code"
+          },
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "extra_reading_percent": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Reading Percent"
           },
           "name": {
             "anyOf": [
@@ -11762,6 +12106,11 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "default": "active",
+            "title": "Status",
             "type": "string"
           }
         },
@@ -21806,476 +22155,6 @@
         ]
       }
     },
-    "/api/v1/orgs/{org_slug}/feedback-templates": {
-      "get": {
-        "operationId": "rubrics_list_feedback_templates",
-        "parameters": [
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_FeedbackTemplateRead_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "List Feedback Templates",
-        "tags": [
-          "rubrics"
-        ]
-      },
-      "post": {
-        "operationId": "rubrics_create_feedback_template",
-        "parameters": [
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFeedbackTemplate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "rubric_version_not_found",
-            "x-codes": [
-              "rubric_version_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "rubric_version_not_published",
-            "x-codes": [
-              "rubric_version_not_published"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "invalid_rubric",
-            "x-codes": [
-              "invalid_rubric"
-            ]
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Create Feedback Template",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
-    "/api/v1/orgs/{org_slug}/feedback-templates/{template_id}/publish": {
-      "post": {
-        "description": "Publishes the template's newest version.",
-        "operationId": "rubrics_publish_feedback_template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "template_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Template Id",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "feedback_template_not_found, version_not_found",
-            "x-codes": [
-              "feedback_template_not_found",
-              "version_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "already_published, not_editable",
-            "x-codes": [
-              "already_published",
-              "not_editable"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Publish Feedback Template",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
-    "/api/v1/orgs/{org_slug}/feedback-templates/{template_id}/versions": {
-      "post": {
-        "operationId": "rubrics_add_feedback_template_version",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "template_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Template Id",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "feedback_template_not_found",
-            "x-codes": [
-              "feedback_template_not_found"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Add Feedback Template Version",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
-    "/api/v1/orgs/{org_slug}/feedback-templates/{template_id}/versions/{version}": {
-      "patch": {
-        "operationId": "rubrics_edit_feedback_template_version",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "template_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Template Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "version",
-            "required": true,
-            "schema": {
-              "title": "Version",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Organisation slug",
-            "in": "path",
-            "name": "org_slug",
-            "required": true,
-            "schema": {
-              "description": "Organisation slug",
-              "title": "Org Slug",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFeedbackTemplateVersion"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden, organization_suspended",
-            "x-codes": [
-              "forbidden",
-              "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "feedback_template_not_found, version_not_found",
-            "x-codes": [
-              "feedback_template_not_found",
-              "version_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "not_editable",
-            "x-codes": [
-              "not_editable"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Edit Feedback Template Version",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
     "/api/v1/orgs/{org_slug}/live": {
       "get": {
         "description": "Every examination this organisation has running, in one request.\n\nThe screen that did not exist: a course lead on the morning of an OSCE\ncould open one circuit's console, or a list of sittings that did not say\nwhich were live.",
@@ -24092,9 +23971,10 @@
                 }
               }
             },
-            "description": "feedback_template_version_not_found",
+            "description": "programme_not_found, rubric_version_not_found",
             "x-codes": [
-              "feedback_template_version_not_found"
+              "programme_not_found",
+              "rubric_version_not_found"
             ]
           },
           "409": {
@@ -24105,9 +23985,11 @@
                 }
               }
             },
-            "description": "feedback_template_not_published",
+            "description": "programme_required, exam_rubric_not_ready, rubric_version_not_published",
             "x-codes": [
-              "feedback_template_not_published"
+              "programme_required",
+              "exam_rubric_not_ready",
+              "rubric_version_not_published"
             ]
           },
           "422": {
@@ -25680,6 +25562,107 @@
       }
     },
     "/api/v1/orgs/{org_slug}/station-templates/{template_id}/versions/{version}": {
+      "delete": {
+        "description": "Throw away a draft. A published version is what stations may have been built on.",
+        "operationId": "stations_delete_station_template_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_template_not_found, version_not_found",
+            "x-codes": [
+              "station_template_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_deletable",
+            "x-codes": [
+              "not_deletable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Station Template Version",
+        "tags": [
+          "stations"
+        ]
+      },
       "patch": {
         "operationId": "stations_edit_station_template_version",
         "parameters": [
@@ -25793,6 +25776,115 @@
           }
         ],
         "summary": "Edit Station Template Version",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/station-templates/{template_id}/versions/{version}/archive": {
+      "post": {
+        "operationId": "stations_archive_station_template_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationTemplateVersionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_template_not_found, version_not_found",
+            "x-codes": [
+              "station_template_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_archivable",
+            "x-codes": [
+              "not_archivable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive Station Template Version",
         "tags": [
           "stations"
         ]
@@ -25984,6 +26076,121 @@
           }
         ],
         "summary": "Create Station",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/stations/autogenerate-draft": {
+      "post": {
+        "operationId": "stations_autogenerate_station_draft",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutogenerateStationDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutogenerateStationDraftResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_template_version_not_found",
+            "x-codes": [
+              "station_template_version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_not_published",
+            "x-codes": [
+              "template_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_input",
+            "x-codes": [
+              "invalid_input"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Autogenerate Station Draft",
         "tags": [
           "stations"
         ]
@@ -28350,6 +28557,307 @@
         ]
       }
     },
+    "/api/v1/platform/directory": {
+      "get": {
+        "description": "Every account, newest first, with the facts beside each that the old\nconsole showed as columns.",
+        "operationId": "dashboard_list_directory",
+        "parameters": [
+          {
+            "description": "Part of an email address or a name",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of an email address or a name",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Chosen at sign-up, or held live",
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Chosen at sign-up, or held live",
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(active|deactivated)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "paid: any payment; trial: unpaid and started; not_started: neither",
+            "in": "query",
+            "name": "access",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(paid|trial|not_started)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "paid: any payment; trial: unpaid and started; not_started: neither",
+              "title": "Access"
+            }
+          },
+          {
+            "description": "Whose latest payment bought this plan",
+            "in": "query",
+            "name": "plan_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whose latest payment bought this plan",
+              "title": "Plan Code"
+            }
+          },
+          {
+            "description": "Only accounts naming no exam and holding no live access; overrides exam_code",
+            "in": "query",
+            "name": "unassigned",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only accounts naming no exam and holding no live access; overrides exam_code",
+              "title": "Unassigned",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DirectoryUser_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Directory",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/platform/directory/summary": {
+      "get": {
+        "description": "How many accounts each exam has, and how many of them paid, are on\ntrial or have not started \u2014 the headings of the grouped list.",
+        "operationId": "dashboard_summarise_directory",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectorySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Summarise Directory",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/platform/directory/users/{user_id}": {
+      "get": {
+        "description": "The directory's row for one account, for the top of the detail screen.",
+        "operationId": "dashboard_read_directory_user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryUser"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Directory User",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/v1/platform/entitlements/{entitlement_id}": {
       "patch": {
         "description": "Move the end date. A renewal is this rather than a second row.",
@@ -28926,403 +29434,6 @@
         ]
       }
     },
-    "/api/v1/platform/feedback-templates": {
-      "get": {
-        "operationId": "rubrics_list_platform_feedback_templates",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_FeedbackTemplateRead_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "List Platform Feedback Templates",
-        "tags": [
-          "rubrics"
-        ]
-      },
-      "post": {
-        "operationId": "rubrics_create_platform_feedback_template",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFeedbackTemplate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "rubric_version_not_found",
-            "x-codes": [
-              "rubric_version_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "rubric_version_not_published",
-            "x-codes": [
-              "rubric_version_not_published"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "invalid_rubric",
-            "x-codes": [
-              "invalid_rubric"
-            ]
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Create Platform Feedback Template",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
-    "/api/v1/platform/feedback-templates/{template_id}/publish": {
-      "post": {
-        "operationId": "rubrics_publish_platform_feedback_template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "template_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Template Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "feedback_template_not_found, version_not_found",
-            "x-codes": [
-              "feedback_template_not_found",
-              "version_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "already_published",
-            "x-codes": [
-              "already_published"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Publish Platform Feedback Template",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
-    "/api/v1/platform/feedback-templates/{template_id}/versions": {
-      "post": {
-        "operationId": "rubrics_add_platform_feedback_version",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "template_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Template Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "feedback_template_not_found",
-            "x-codes": [
-              "feedback_template_not_found"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Add Platform Feedback Version",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
-    "/api/v1/platform/feedback-templates/{template_id}/versions/{version}": {
-      "patch": {
-        "operationId": "rubrics_edit_platform_feedback_version",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "template_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Template Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "version",
-            "required": true,
-            "schema": {
-              "title": "Version",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFeedbackTemplateVersion"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeedbackTemplateVersionRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden",
-            "x-codes": [
-              "forbidden"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "feedback_template_not_found, version_not_found",
-            "x-codes": [
-              "feedback_template_not_found",
-              "version_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "not_editable",
-            "x-codes": [
-              "not_editable"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "invalid_rubric",
-            "x-codes": [
-              "invalid_rubric"
-            ]
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Edit Platform Feedback Version",
-        "tags": [
-          "rubrics"
-        ]
-      }
-    },
     "/api/v1/platform/generate/blog": {
       "post": {
         "operationId": "generation_generate_blog",
@@ -29390,6 +29501,78 @@
           }
         ],
         "summary": "Generate Blog",
+        "tags": [
+          "generation"
+        ]
+      }
+    },
+    "/api/v1/platform/generate/podcast": {
+      "post": {
+        "operationId": "generation_generate_podcast",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Podcast",
         "tags": [
           "generation"
         ]
@@ -32358,11 +32541,12 @@
                 }
               }
             },
-            "description": "not_editable, already_published, not_archivable",
+            "description": "not_editable, already_published, not_archivable, not_deletable",
             "x-codes": [
               "not_editable",
               "already_published",
-              "not_archivable"
+              "not_archivable",
+              "not_deletable"
             ]
           },
           "422": {
@@ -32477,6 +32661,111 @@
       }
     },
     "/api/v1/platform/station-templates/{template_id}/versions/{version}": {
+      "delete": {
+        "operationId": "stations_delete_platform_station_template_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_template_not_found, version_not_found",
+            "x-codes": [
+              "station_template_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable, already_published, not_archivable, not_deletable",
+            "x-codes": [
+              "not_editable",
+              "already_published",
+              "not_archivable",
+              "not_deletable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Platform Station Template Version",
+        "tags": [
+          "stations"
+        ]
+      },
       "patch": {
         "operationId": "stations_edit_platform_template_version",
         "parameters": [
@@ -32592,6 +32881,120 @@
           }
         ],
         "summary": "Edit Platform Template Version",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/station-templates/{template_id}/versions/{version}/archive": {
+      "post": {
+        "operationId": "stations_archive_platform_station_template_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationTemplateVersionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_template_not_found, version_not_found",
+            "x-codes": [
+              "station_template_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable, already_published, not_archivable, not_deletable",
+            "x-codes": [
+              "not_editable",
+              "already_published",
+              "not_archivable",
+              "not_deletable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive Platform Station Template Version",
         "tags": [
           "stations"
         ]
@@ -32786,6 +33189,121 @@
           }
         ],
         "summary": "Create Platform Station",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/stations/autogenerate-draft": {
+      "post": {
+        "operationId": "stations_autogenerate_platform_station_draft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutogenerateStationDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutogenerateStationDraftResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_template_version_not_found",
+            "x-codes": [
+              "station_template_version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "template_not_published",
+            "x-codes": [
+              "template_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_input",
+            "x-codes": [
+              "invalid_input"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_unavailable",
+            "x-codes": [
+              "generation_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Autogenerate Platform Station Draft",
         "tags": [
           "stations"
         ]
@@ -33085,11 +33603,12 @@
                 }
               }
             },
-            "description": "not_editable, already_published, not_archivable",
+            "description": "not_editable, already_published, not_archivable, not_deletable",
             "x-codes": [
               "not_editable",
               "already_published",
-              "not_archivable"
+              "not_archivable",
+              "not_deletable"
             ]
           },
           "422": {
@@ -33199,11 +33718,12 @@
                 }
               }
             },
-            "description": "not_editable, already_published, not_archivable",
+            "description": "not_editable, already_published, not_archivable, not_deletable",
             "x-codes": [
               "not_editable",
               "already_published",
-              "not_archivable"
+              "not_archivable",
+              "not_deletable"
             ]
           },
           "422": {
@@ -34294,6 +34814,280 @@
         ]
       }
     },
+    "/api/v1/platform/users/{user_id}/stations": {
+      "get": {
+        "description": "One row per station this person has sat: attempts, how many were\nmarked, the newest one, and the counters their practice sets hold.",
+        "operationId": "station_sets_list_station_progress_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StationProgressRead"
+                  },
+                  "title": "Response Station Sets List Station Progress For Support",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Station Progress For Support",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
+    "/api/v1/platform/users/{user_id}/stations/{station_id}/delete-progress": {
+      "post": {
+        "description": "Erase every attempt this person made at the station \u2014 transcript and\nmarking with it \u2014 and take it out of their practice sets. Not undoable.",
+        "operationId": "station_sets_delete_station_progress_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteStationProgress"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationProgressChange"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found, station_not_found",
+            "x-codes": [
+              "user_not_found",
+              "station_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_in_progress",
+            "x-codes": [
+              "attempt_in_progress"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Station Progress For Support",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
+    "/api/v1/platform/users/{user_id}/stations/{station_id}/reset-attempts": {
+      "post": {
+        "description": "Set the person's attempt counters for this station back to zero. The\nattempts and their marking are kept.",
+        "operationId": "station_sets_reset_station_attempts_for_support",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationProgressChange"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found, station_not_found",
+            "x-codes": [
+              "user_not_found",
+              "station_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset Station Attempts For Support",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
     "/api/v1/platform/voice/capacity": {
       "get": {
         "description": "How many LiveKit Cloud sessions are held against the metered cap.\n\nA count, not a reservation: `LiveKit Cloud \"Updating\"` on the dashboard is\nusually a worker recycle, and this is what says whether sessions are\nactually running through it.",
@@ -34429,6 +35223,111 @@
         "summary": "Read Statistics",
         "tags": [
           "public-site"
+        ]
+      }
+    },
+    "/api/v1/station-generation-profiles": {
+      "get": {
+        "operationId": "station_generation_profiles_list_station_generation_profiles",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Station Generation Profiles List Station Generation Profiles",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Station Generation Profiles",
+        "tags": [
+          "station-generation-profiles"
+        ]
+      }
+    },
+    "/api/v1/station-generation-profiles/{profile_key}": {
+      "get": {
+        "operationId": "station_generation_profiles_get_station_generation_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_key",
+            "required": true,
+            "schema": {
+              "title": "Profile Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Station Generation Profiles Get Station Generation Profile",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Station Generation Profile",
+        "tags": [
+          "station-generation-profiles"
         ]
       }
     },

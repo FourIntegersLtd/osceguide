@@ -61,17 +61,17 @@ class SittingRead(BaseModel):
     sitting_type: str
     status: str
     scheduled_for: datetime | None
-    feedback_template_version_id: uuid.UUID
+    rubric_version_id: uuid.UUID
+    programme_id: uuid.UUID | None = None
     circuits: list[CircuitRead] = Field(default_factory=list)
 
 
 class CreateSitting(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    feedback_template_version_id: uuid.UUID
+    programme_id: uuid.UUID
     mode: str = Field(default="training", pattern="^(training|exam)$")
     sitting_type: str = Field(default="group_training", max_length=32)
     scheduled_for: datetime | None = None
-    programme_id: uuid.UUID | None = None
 
 
 class TimingIn(BaseModel):

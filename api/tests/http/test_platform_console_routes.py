@@ -107,6 +107,43 @@ async def test_the_console_grants_and_revokes_itself(
     assert revoked.status_code == 200, revoked.text
 
 
+async def test_inviting_by_email_grants_the_console(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+
+    invited = await client.post(
+        "/api/v1/platform/admins",
+        json={"email": "teammate@osceguide.com"},
+        headers=bearer(root),
+    )
+    assert invited.status_code == 200, invited.text
+    body = invited.json()
+    assert body["invited"] is True
+    assert body["user"]["email"] == "teammate@osceguide.com"
+    assert body["user"]["is_platform_admin"] is True
+
+    admins = await client.get("/api/v1/platform/admins", headers=bearer(root))
+    assert "teammate@osceguide.com" in {row["email"] for row in admins.json()}
+
+
+async def test_inviting_somebody_who_already_has_the_console_is_a_refusal(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.identity import repository as identity_repo
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await make_actor("dup@osceguide.com", platform_admin=True)
+    user = await identity_repo.user_by_email(db_session, "dup@osceguide.com")
+    assert user is not None
+
+    again = await client.post(
+        "/api/v1/platform/admins",
+        json={"email": "dup@osceguide.com"},
+        headers=bearer(root),
+    )
+    assert again.status_code == 409
+    assert again.json()["code"] == "platform_admin_exists"
+
+
 async def test_granting_to_nobody_is_a_refusal(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor("root@osceguide.com", platform_admin=True)
     response = await client.put(

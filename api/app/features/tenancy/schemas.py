@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field
@@ -39,12 +39,18 @@ class UserSummary(BaseModel):
     name: str
     created_at: datetime
     is_platform_admin: bool = False
+    # `active` or `deactivated`. Was missing from the detail too, so the
+    # console's Deactivate button could never say which state it was in.
+    status: str = "active"
 
 
 class UpdatePlatformUser(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     exam_code: str | None = Field(default=None, min_length=1, max_length=32)
     status: str | None = Field(default=None, pattern="^(active|deactivated)$")
+    exam_date: date | None = None
+    # An access arrangement: 25 is what the old client's bare "yes" meant.
+    extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
 
 
 class PlatformUserDetail(UserSummary):
@@ -53,6 +59,10 @@ class PlatformUserDetail(UserSummary):
     must_change_password: bool = False
     last_login_at: datetime | None = None
     exam_code: str | None = None
+    exam_date: date | None = None
+    extra_reading_percent: int = 0
+    consumer_role: str = "user"
+    legacy_consumer_ids: dict[str, str] = Field(default_factory=dict)
     memberships: list[MembershipRead] = Field(default_factory=list)
 
 
@@ -60,6 +70,16 @@ class SetPlatformAdmin(BaseModel):
     """Grant or revoke, spelled out rather than implied by which route was called."""
 
     is_platform_admin: bool
+
+
+class InvitePlatformAdmin(BaseModel):
+    email: EmailStr
+
+
+class PlatformAdminInviteRead(BaseModel):
+    user: UserSummary
+    # True when the account was created and emailed a link to choose a password.
+    invited: bool = False
 
 
 class OrgAtRisk(BaseModel):

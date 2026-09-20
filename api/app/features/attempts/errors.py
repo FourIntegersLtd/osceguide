@@ -61,6 +61,15 @@ class InvalidAttemptState(Conflict):
     default_message = "The attempt is not in a state that allows this"
 
 
+class AttemptInProgress(Conflict):
+    """Deleting a station's progress was refused because one attempt at it is
+    still mid-consultation. Its own code, because the console says "wait for
+    it to end, or fail it" rather than "something went wrong"."""
+
+    code = "attempt_in_progress"
+    default_message = "One attempt at this station is still running; end it first"
+
+
 class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError`; the code is the shared contract."""
 

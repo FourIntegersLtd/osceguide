@@ -52,6 +52,11 @@ from app.features.catalog import service_authoring as exams  # noqa: E402
 from app.features.catalog.errors import UnknownExamError  # noqa: E402
 from app.features.rubrics import service as rubrics  # noqa: E402
 
+DEFAULT_MARKING_LAYOUT: dict[str, Any] = {
+    "schemaVersion": 1,
+    "sections": [{"id": "sec_main", "title": "Marking", "blocks": []}],
+}
+
 
 class SeedFileInvalid(Exception):
     """The file does not describe exams this script can author."""
@@ -111,6 +116,7 @@ async def seed(*, path: Path, dry_run: bool, report: bool) -> int:
                     structure=spec["structure"],
                     system_prompt=spec["system_prompt"],
                     pacing=spec["pacing"],
+                    marking_layout=spec.get("marking_layout") or DEFAULT_MARKING_LAYOUT,
                 )
                 published = await rubrics.publish_version(session, None, rubric.id, 1, actor_id=None, now=now)
                 exam = await exams.create_exam(

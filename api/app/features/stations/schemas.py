@@ -25,6 +25,7 @@ class StationRead(BaseModel):
     version: int
     content: dict[str, Any] | None = None
     current_version_id: uuid.UUID | None = None
+    template_version_id: uuid.UUID | None = None
 
 
 class LibraryStationRead(BaseModel):
@@ -92,3 +93,13 @@ class CreateStationTemplate(BaseModel):
 
 class UpdateStationTemplateVersion(BaseModel):
     structure: dict[str, Any]
+
+
+class AutogenerateStationDraft(BaseModel):
+    prompt: str = Field(min_length=1, max_length=20_000)
+    template_version_id: uuid.UUID
+
+
+class AutogenerateStationDraftResult(BaseModel):
+    suggested_title: str = ""
+    content: dict[str, Any] = Field(default_factory=dict)

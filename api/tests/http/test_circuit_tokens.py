@@ -48,7 +48,7 @@ async def a_live_circuit(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()
@@ -127,7 +127,7 @@ async def test_there_is_no_room_before_the_circuit_starts(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "feedback_template_version_id": str(template), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template), "mode": "exam"},
             headers=bearer(admin),
         )
     ).json()

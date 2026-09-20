@@ -8,6 +8,11 @@ from pydantic import BaseModel, Field
 class GenerateStationRequest(BaseModel):
     prompt: str = Field(min_length=8, max_length=4000)
     exam_code: str = Field(min_length=2, max_length=32)
+    ortho_station_type: str | None = Field(
+        default=None,
+        max_length=32,
+        description="When exam_code is ortho: clinical, communication, prioritisation, or portfolio.",
+    )
 
 
 class GenerateTextRequest(BaseModel):

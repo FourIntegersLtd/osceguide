@@ -59,6 +59,27 @@ async def list_platform_admins(admin: PlatformAdmin, session: Session) -> list[s
     return await service_platform_users.list_platform_admins(session)
 
 
+@router.post(
+    "/platform/admins",
+    response_model=schemas.PlatformAdminInviteRead,
+    responses=error_responses(Forbidden, errors.PlatformAdminExists),
+)
+async def invite_platform_admin(
+    body: schemas.InvitePlatformAdmin,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.PlatformAdminInviteRead:
+    """Add somebody to the platform team by email.
+
+    No password passes through this app. A new address is invited and emailed a
+    link to choose one; an existing account is granted the console immediately.
+    """
+    return await service_platform_users.invite_platform_admin(
+        session, email=body.email, actor=admin, now=clock.now()
+    )
+
+
 @router.get(
     "/platform/users/{user_id}",
     response_model=schemas.PlatformUserDetail,

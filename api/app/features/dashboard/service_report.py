@@ -95,7 +95,7 @@ async def build_sitting_report(
             sitting_type=detail.sitting.sitting_type,
             status=detail.sitting.status,
             scheduled_for=detail.sitting.scheduled_for,
-            feedback_template_version_id=detail.sitting.feedback_template_version_id,
+            rubric_version_id=detail.sitting.rubric_version_id,
         ),
         totals=ReportTotals(
             candidates=len(candidates),

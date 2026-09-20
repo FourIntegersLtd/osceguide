@@ -20,7 +20,7 @@ class OrgCounts(BaseModel):
     trainees: int
     stations: int
     staff: int
-    published_feedback_templates: int
+    programmes_with_markable_exam: int
     sittings: int
 
 
@@ -42,7 +42,7 @@ class OrgSetup(BaseModel):
     trainees_added: bool
     stations_authored: bool
     team_invited: bool
-    feedback_template_published: bool
+    programme_exam_rubric_ready: bool
     ready_to_run: bool
 
 
@@ -160,7 +160,7 @@ class ConsoleSitting(BaseModel):
     sitting_type: str
     status: str
     scheduled_for: datetime | None
-    feedback_template_version_id: uuid.UUID
+    rubric_version_id: uuid.UUID
 
 
 class CircuitConsole(BaseModel):

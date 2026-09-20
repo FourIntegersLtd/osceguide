@@ -31,6 +31,10 @@ async def list_published(
     clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
     kind: Annotated[str | None, Query()] = None,
+    status: Annotated[
+        str | None,
+        Query(description="Authoring filter: draft, published, or all (platform admin only)."),
+    ] = None,
 ) -> Page[schemas.MediaRead]:
     """Published material: the titles to anybody, the bodies to subscribers.
 
@@ -40,16 +44,74 @@ async def list_published(
     paid half of the product and used to come back in full to anyone who asked,
     signed in or not.
     """
-    items, next_cursor = await service.list_published(
+    is_admin = bool(principal and principal.is_platform_admin)
+    unlocked = await service.unlocked_exam_ids(
+        session, principal.user_id if principal else None, now=clock.now()
+    )
+    items, next_cursor = await service.list_catalog(
         session,
         kind=kind,
         limit=page.limit,
         cursor=page.cursor,
+        status=status,
+        viewer_is_admin=is_admin,
+        unlocked=unlocked,
+    )
+    return Page(items=items, next_cursor=next_cursor)
+
+
+@router.get(
+    "/media/by-id/{item_id}",
+    response_model=schemas.MediaRead,
+    responses=error_responses(Unauthenticated, Forbidden, errors.ItemNotFound),
+)
+async def read_by_id(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> schemas.MediaRead:
+    """Staff authoring: read any row by primary key, including drafts."""
+    return await service.read_by_id(session, item_id, viewer_is_admin=True)
+
+
+@router.get(
+    "/media-search",
+    response_model=Page[schemas.SearchHit],
+    responses=error_responses(Unauthenticated, errors.EmptyQueryError),
+)
+async def search(
+    principal: CurrentPrincipal,
+    session: Session,
+    index: Index,
+    clock: ClockDep,
+    q: Annotated[str, Query(description="What to search for")],
+) -> Page[schemas.SearchHit]:
+    """Over the material this reader holds, not the whole library."""
+    items = await service.search(
+        session,
+        query=q,
+        index=index,
+        unlocked=await service.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
+    )
+    return Page(items=items, next_cursor=None)
+
+
+@router.get(
+    "/media/lookup",
+    response_model=schemas.MediaRead,
+    responses=error_responses(errors.ItemNotFound),
+)
+async def read_by_slug_lookup(
+    principal: MaybePrincipal,
+    session: Session,
+    clock: ClockDep,
+    slug: Annotated[str, Query(min_length=1, description="The item's canonical slug")],
+) -> schemas.MediaRead:
+    """Same as `GET /media/{slug}`; query form avoids path-encoding edge cases in clients."""
+    return await service.read_by_slug(
+        session,
+        slug,
+        viewer_is_admin=bool(principal and principal.is_platform_admin),
         unlocked=await service.unlocked_exam_ids(
             session, principal.user_id if principal else None, now=clock.now()
         ),
     )
-    return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(
@@ -75,28 +137,6 @@ async def read_by_slug(
             session, principal.user_id if principal else None, now=clock.now()
         ),
     )
-
-
-@router.get(
-    "/media-search",
-    response_model=Page[schemas.SearchHit],
-    responses=error_responses(Unauthenticated, errors.EmptyQueryError),
-)
-async def search(
-    principal: CurrentPrincipal,
-    session: Session,
-    index: Index,
-    clock: ClockDep,
-    q: Annotated[str, Query(description="What to search for")],
-) -> Page[schemas.SearchHit]:
-    """Over the material this reader holds, not the whole library."""
-    items = await service.search(
-        session,
-        query=q,
-        index=index,
-        unlocked=await service.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
-    )
-    return Page(items=items, next_cursor=None)
 
 
 @router.post(
@@ -132,8 +172,22 @@ async def update(
     item_id: uuid.UUID, body: schemas.UpdateMedia, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
     return await service.update(
-        session, item_id, title=body.title, summary=body.summary, content=body.content
+        session,
+        item_id,
+        title=body.title,
+        summary=body.summary,
+        content=body.content,
+        editor_is_admin=True,
     )
+
+
+@router.delete(
+    "/media/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotDeletableError),
+)
+async def delete_draft(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> None:
+    await service.delete_draft(session, item_id)
 
 
 @router.post(

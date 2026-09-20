@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import owned_by, owner_kind_for, visible_to
@@ -103,6 +103,22 @@ async def set_template_version_structure(
     )
 
 
+async def delete_template_version(
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
+) -> None:
+    await session.execute(
+        delete(StationTemplateVersion).where(
+            owned_by(StationTemplateVersion, org_id), StationTemplateVersion.id == version_id
+        )
+    )
+
+
+async def delete_template(session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID) -> None:
+    await session.execute(
+        delete(StationTemplate).where(owned_by(StationTemplate, org_id), StationTemplate.id == template_id)
+    )
+
+
 async def set_template_version_status(
     session: AsyncSession,
     org_id: uuid.UUID | None,
@@ -110,7 +126,7 @@ async def set_template_version_status(
     *,
     status: str,
     at: datetime,
-    by: uuid.UUID,
+    by: uuid.UUID | None,
 ) -> None:
     values: dict[str, Any] = {"status": status}
     if status == "published":
