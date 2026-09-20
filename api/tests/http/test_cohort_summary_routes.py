@@ -52,7 +52,7 @@ async def mark(client: AsyncClient, admin: str, slot_id: str, rag: str) -> None:
     """A completed review of one slot, through the route a reviewer uses."""
     response = await client.put(
         f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
-        json={"field_values": {"communication.score": rag}, "status": "completed"},
+        json={"field_values": {"consulting.score": rag}, "status": "completed"},
         headers=bearer(admin),
     )
     assert response.status_code == 200, response.text

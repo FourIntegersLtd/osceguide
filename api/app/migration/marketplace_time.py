@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
@@ -21,4 +21,4 @@ def scheduled_local_to_utc(
         tz = ZoneInfo("UTC")
 
     local_naive = datetime.strptime(f"{scheduled_date} {scheduled_time}", "%Y-%m-%d %H:%M")
-    return local_naive.replace(tzinfo=tz).astimezone(timezone.utc)
+    return local_naive.replace(tzinfo=tz).astimezone(UTC)

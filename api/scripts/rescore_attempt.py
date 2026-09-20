@@ -7,12 +7,13 @@ import asyncio
 import uuid
 from datetime import UTC, datetime
 
-from app.core.db import job_session
-from app.features.attempts.evaluator import build_evaluator
-from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY, score_attempt_now
 from app.features.attempts.scoring import enqueue_scoring
+
+from app.core.db import job_session
 from app.features.attempts import repository
 from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts.evaluator import build_evaluator
+from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY, score_attempt_now
 
 
 async def _run(attempt_id: uuid.UUID, *, queue_only: bool) -> None:
@@ -35,7 +36,7 @@ async def _run(attempt_id: uuid.UUID, *, queue_only: bool) -> None:
 
         if queue_only:
             await enqueue_scoring(session, attempt, now=datetime.now(UTC))
-            print(f"Queued score_attempt for {attempt_id}")
+            print(f"Queued score_attempt for {attempt_id}")  # noqa: T201
             return
 
         evaluator = build_evaluator()
@@ -47,7 +48,7 @@ async def _run(attempt_id: uuid.UUID, *, queue_only: bool) -> None:
             framework_id=str((attempt.definition or {}).get("framework_id") or ""),
             now=datetime.now(UTC),
         )
-        print(f"score_attempt_now wrote={wrote} for {attempt_id}")
+        print(f"score_attempt_now wrote={wrote} for {attempt_id}")  # noqa: T201
 
 
 def main() -> None:

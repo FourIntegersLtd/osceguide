@@ -28,6 +28,9 @@ os.environ.setdefault("WORKER_SECRET", "test-worker-secret")
 os.environ.setdefault("REDIS_DISABLED", "1")
 os.environ.setdefault("LIVEKIT_URL", "wss://livekit.test")
 os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_secret")
+# A local `.env` OpenAI key would otherwise make `build_material_index` look
+# configured, and the tutor would claim it searched material it never read.
+os.environ["OPENAI_API_KEY"] = ""
 # The legacy login bridge. Set here so the exchange route is exercised in
 # its configured state; `test_legacy_exchange_routes` covers the unset one
 # by overriding the setting, because an unset secret must fail closed.

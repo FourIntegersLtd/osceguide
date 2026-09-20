@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Index,
+    Integer,
     String,
     text,
 )
@@ -55,6 +56,7 @@ class QueueEntry(Base, UUIDPrimaryKey, Timestamps, Addressed):
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'waiting'"))
     matched_session_id: Mapped[uuid.UUID | None] = mapped_column()
     left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
@@ -73,11 +75,21 @@ class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
     station_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("station_versions.id", ondelete="SET NULL")
     )
+    peer_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("peer_sessions.id", ondelete="SET NULL", use_alter=True)
+    )
     room_name: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'matched'"))
+    current_phase: Mapped[str | None] = mapped_column(String(16))
+    phase_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    doctor_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    patient_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    preparation_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_reason: Mapped[str | None] = mapped_column(String(32))
+    feedback_rating: Mapped[int | None] = mapped_column(Integer)
+    feedback_comment: Mapped[str | None] = mapped_column(String(2000))
 
 
 class PracticeHistory(Base, UUIDPrimaryKey, Timestamps):

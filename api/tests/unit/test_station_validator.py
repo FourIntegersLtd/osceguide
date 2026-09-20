@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from app.features.stations.station_validator import (
+from app.features.stations.station_content import (
     validate_station_content,
-    validate_station_structure,
 )
+from app.features.stations.station_validator import validate_station_structure
 
 MINIMAL_STRUCTURE = {
     "schemaVersion": 1,

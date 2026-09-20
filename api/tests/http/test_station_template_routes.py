@@ -18,7 +18,19 @@ from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
-STRUCTURE = {"fields": ["patient_information", "doctor_information"]}
+STRUCTURE = {
+    "schemaVersion": 1,
+    "sections": [
+        {
+            "id": "main",
+            "title": "Main",
+            "blocks": [
+                {"id": "patient_information", "type": "longText", "label": "Patient information"},
+                {"id": "doctor_information", "type": "longText", "label": "Doctor information"},
+            ],
+        }
+    ],
+}
 CONTENT = {"patient_information": {"persona": "anxious"}}
 
 
@@ -204,9 +216,7 @@ async def test_a_draft_template_version_can_be_deleted(client: AsyncClient, make
 async def test_a_published_template_version_can_be_archived(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
     template = await a_template(client, admin)
-    await client.post(
-        f"/api/v1/orgs/kings/station-templates/{template['id']}/publish", headers=bearer(admin)
-    )
+    await client.post(f"/api/v1/orgs/kings/station-templates/{template['id']}/publish", headers=bearer(admin))
 
     archived = await client.post(
         f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1/archive",
@@ -219,9 +229,7 @@ async def test_a_published_template_version_can_be_archived(client: AsyncClient,
 async def test_a_published_template_version_cannot_be_deleted(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
     template = await a_template(client, admin)
-    await client.post(
-        f"/api/v1/orgs/kings/station-templates/{template['id']}/publish", headers=bearer(admin)
-    )
+    await client.post(f"/api/v1/orgs/kings/station-templates/{template['id']}/publish", headers=bearer(admin))
 
     response = await client.delete(
         f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1", headers=bearer(admin)

@@ -183,6 +183,9 @@ def register() -> None:
     Kept behind a function so importing this module for its logic — which the
     tests do — does not require a configured queue.
     """
+    from app.features.attempts.jobs_coverage import register as register_coverage
+
+    register_coverage()
     app = get_jobs_app()
 
     @app.task(name=SCORING_TASK, queue=SCORING_QUEUE)

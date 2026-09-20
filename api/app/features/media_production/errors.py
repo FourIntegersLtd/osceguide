@@ -16,3 +16,8 @@ class AvAlreadyRunning(Conflict):
 class WrongMediaKind(InvalidInput):
     code = "media_wrong_kind"
     default_message = "That operation does not apply to this kind of study material"
+
+
+from app.features.media.errors import ItemNotFound  # noqa: E402
+
+__all__ = ["AvUnavailable", "AvAlreadyRunning", "WrongMediaKind", "ItemNotFound"]

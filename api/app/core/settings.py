@@ -110,6 +110,7 @@ class Settings(BaseSettings):
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
     livekit_routing_mode: str = "self-hosted"
+    livekit_agent_namespace: str = ""
     livekit_token_ttl_seconds: int = 60 * 60
     voice_backend_label: str = "platform"
 
@@ -141,6 +142,15 @@ class Settings(BaseSettings):
     marking_primary_model: str = "gpt-5-mini"
     marking_primary_effort: str = "low"
     marking_fallback_model: str = "claude-sonnet-4-5"
+
+    # Slide/podcast audio-video production. Optional: missing values refuse the
+    # AV jobs rather than the process. Not in REQUIRED_WHEN_DEPLOYED.
+    cartesia_api_key: str = ""
+    aws_region: str = ""
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    aws_s3_bucket: str = ""
+    media_av_font_dir: str = ""
 
     # --- Background jobs ---
     worker_concurrency: int = 4

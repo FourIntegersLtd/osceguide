@@ -64,7 +64,9 @@ def _configure_firebase_credentials_from_env() -> None:
             if resolved.is_file():
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(resolved)
 
-    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_KEY"
+    )
     if not json_content or os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         return
     try:

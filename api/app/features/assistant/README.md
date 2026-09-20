@@ -93,3 +93,18 @@ A **dashboard** session is rendered by `tutor_memory` from the learner's own
 history and carries four backend-defined tools. `help`, `onboarding` and
 `consulting-doctor` are still the three placeholder strings, and the FAQ pack
 is unported (A-2).
+
+## Help browser and knowledge chat
+
+Authenticated `GET /api/v1/help/categories`, `/help/articles` (optional category),
+and `/help/articles/{slug}` serve the B2C help catalogue bundled in
+`help_content.json`, filtered by `app_type` (sca, plab, casc, ortho). This is a
+versioned copy of the legacy seed, with the platform's 10-minute booking join
+window. Published Firestore edits must be reconciled into this bundle.
+
+`POST /api/v1/help/knowledge-chat` accepts user/assistant message history and
+returns a Markdown reply grounded in published summary material. Retrieval is
+limited to the requested exam and the caller's server-side study entitlements,
+including the 14-day trial. It needs the existing vector index, indexed summaries,
+and OpenAI configuration. Missing references yield an explicit no-results answer;
+model failures return `knowledge_unavailable`. No legacy Flask request is made.

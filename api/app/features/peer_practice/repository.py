@@ -27,8 +27,28 @@ async def entry_by_id(session: AsyncSession, entry_id: uuid.UUID) -> QueueEntry 
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def expire_stale_waiting(session: AsyncSession, *, at: datetime) -> int:
+    """Mark waiting entries past their expiry as left."""
+    expired = await session.execute(
+        update(QueueEntry)
+        .where(
+            QueueEntry.status == "waiting",
+            QueueEntry.expires_at.is_not(None),
+            QueueEntry.expires_at < at,
+        )
+        .values(status="expired", left_at=at)
+        .returning(QueueEntry.id)
+    )
+    return len(expired.scalars().all())
+
+
 async def join(
-    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, audience: Audience
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    audience: Audience,
+    expires_at: datetime | None = None,
 ) -> QueueEntry | None:
     """Take a place in the queue, or None if this person already holds one.
 
@@ -45,6 +65,7 @@ async def join(
             visibility=str(audience.visibility),
             audience_org_id=audience.org_id,
             audience_group_id=audience.group_id,
+            expires_at=expires_at,
         )
         .on_conflict_do_nothing(index_elements=["user_id", "exam_id"], index_where=text("status = 'waiting'"))
         .returning(QueueEntry)
@@ -149,8 +170,16 @@ async def create_session(
     exam_id: uuid.UUID,
     doctor_user_id: uuid.UUID,
     patient_user_id: uuid.UUID,
+    station_version_id: uuid.UUID | None = None,
+    peer_session_id: uuid.UUID | None = None,
 ) -> PracticeSession:
-    row = PracticeSession(exam_id=exam_id, doctor_user_id=doctor_user_id, patient_user_id=patient_user_id)
+    row = PracticeSession(
+        exam_id=exam_id,
+        doctor_user_id=doctor_user_id,
+        patient_user_id=patient_user_id,
+        station_version_id=station_version_id,
+        peer_session_id=peer_session_id,
+    )
     session.add(row)
     await session.flush()
     await session.refresh(row)

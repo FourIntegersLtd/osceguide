@@ -21,9 +21,7 @@ def test_normalize_summary_response_maps_b2c_fields() -> None:
 
 
 def test_normalize_blog_response_maps_content_to_body_md() -> None:
-    out = normalize_blog_response(
-        {"title": "Tips", "content": "# Hello\n\nParagraph.", "url": "tips"}
-    )
+    out = normalize_blog_response({"title": "Tips", "content": "# Hello\n\nParagraph.", "url": "tips"})
     assert out["body_md"] == "# Hello\n\nParagraph."
     assert out["url"] == "tips"
     assert out["summary"]

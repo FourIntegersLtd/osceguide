@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audience import (
     PUBLIC,
     Audience,
-    AudienceOut,
     audience_of,
     audiences_for,
     can_see,
@@ -21,8 +20,9 @@ from app.core.errors import AppError, raise_mapped
 from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
-from app.features.marketplace import domain, errors, repository
-from app.features.marketplace.models import AvailabilityPost, PeerSession
+from app.features.identity import service as identity
+from app.features.marketplace import domain, errors, repository, service_reads
+from app.features.marketplace.models import AvailabilityPost
 from app.features.marketplace.schemas import PeerSessionRead, PostRead
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -66,7 +66,10 @@ async def offer_slot(
         duration_minutes=duration_minutes,
         note=note,
     )
-    return _post_read(row, exam.code, viewer_id=owner_user_id)
+    owner = await identity.user_ref_by_id(session, owner_user_id)
+    return service_reads.post_read(
+        row, exam.code, viewer_id=owner_user_id, owner_username=service_reads.peer_username(owner)
+    )
 
 
 async def claim_slot(
@@ -109,8 +112,17 @@ async def claim_slot(
     # Derived from the session id, so a stray room says what it belongs to.
     await repository.set_room(session, peer_session.id, room_name=f"peer_{peer_session.id}")
     refreshed = await repository.peer_session_by_id(session, peer_session.id)
+    if refreshed is None:
+        raise errors.SessionNotFound()
     code = await catalog.exam_code_by_id(session, post.exam_id)
-    return _session_read(refreshed, code or "", viewer_id=claimer_user_id)  # type: ignore[arg-type]
+    partner_id = post.owner_user_id
+    partner = await identity.user_ref_by_id(session, partner_id)
+    return service_reads.session_read(
+        refreshed,
+        code or "",
+        viewer_id=claimer_user_id,
+        partner_username=service_reads.peer_username(partner),
+    )
 
 
 async def withdraw_slot(
@@ -134,13 +146,24 @@ async def list_open_slots(
     limit: int,
     cursor: dict[str, Any] | None,
     audience: Audience | None = None,
+    exam_code: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
+    """Available and claimed posts, like the retiring `GET /api/marketplace/posts`."""
     viewer = await audiences_for(session, viewer_id)
-    rows, next_cursor = await repository.list_open(
-        session, viewer=viewer, now=now, limit=limit, cursor=cursor, audience=audience
+    exam_id: uuid.UUID | None = None
+    if exam_code:
+        exam = await resolve_exam(session, exam_code)
+        exam_id = exam.id
+    rows, next_cursor = await repository.list_feed(
+        session,
+        viewer=viewer,
+        limit=limit,
+        cursor=cursor,
+        audience=audience,
+        exam_id=exam_id,
     )
     exams = await _exam_codes(session, {r.exam_id for r in rows})
-    return [_post_read(row, exams.get(row.exam_id, ""), viewer_id=viewer_id) for row in rows], next_cursor
+    return await service_reads.posts_read(session, rows, exams, viewer_id=viewer_id), next_cursor
 
 
 async def _exam_codes(session: AsyncSession, exam_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
@@ -153,24 +176,42 @@ async def _exam_codes(session: AsyncSession, exam_ids: set[uuid.UUID]) -> dict[u
     return codes
 
 
-async def list_my_posts(
-    session: AsyncSession, *, viewer_id: uuid.UUID, limit: int = 100
-) -> list[PostRead]:
+async def list_my_posts(session: AsyncSession, *, viewer_id: uuid.UUID, limit: int = 100) -> list[PostRead]:
     """Every post this person offered, including claimed and cancelled history."""
     rows = await repository.list_by_owner(session, viewer_id, limit=limit)
     exams = await _exam_codes(session, {r.exam_id for r in rows})
-    return [_post_read(row, exams.get(row.exam_id, ""), viewer_id=viewer_id) for row in rows]
+    return await service_reads.posts_read(session, rows, exams, viewer_id=viewer_id)
 
 
-async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PeerSessionRead]:
-    rows = await repository.sessions_for_user(session, user_id)
+async def list_my_sessions(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+) -> tuple[list[PeerSessionRead], str | None]:
+    rows, next_cursor = await repository.sessions_for_user(session, user_id, limit=limit, cursor=cursor)
     exams = await _exam_codes(session, {r.exam_id for r in rows})
-    return [_session_read(row, exams.get(row.exam_id, ""), viewer_id=user_id) for row in rows]
+    partner_ids = {row.claimer_user_id if row.owner_user_id == user_id else row.owner_user_id for row in rows}
+    people = await identity.user_refs_by_ids(session, list(partner_ids))
+    return [
+        service_reads.session_read(
+            row,
+            exams.get(row.exam_id, ""),
+            viewer_id=user_id,
+            partner_username=service_reads.peer_username(
+                people.get(row.claimer_user_id if row.owner_user_id == user_id else row.owner_user_id)
+            ),
+        )
+        for row in rows
+    ], next_cursor
 
 
 async def join_session(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PeerSessionRead:
+    from app.features.peer_practice.service_lifecycle import create_runtime_for_peer_booking
+
     row = await repository.peer_session_by_id(session, session_id)
     if row is None:
         raise errors.SessionNotFound()
@@ -187,31 +228,39 @@ async def join_session(
     if not domain.is_open(state, now=now):
         raise errors.SessionNotOpen()
 
+    if row.practice_session_id is None:
+        practice = await create_runtime_for_peer_booking(
+            session,
+            peer_session_id=row.id,
+            exam_id=row.exam_id,
+            owner_user_id=row.owner_user_id,
+            claimer_user_id=row.claimer_user_id,
+        )
+        await repository.link_practice_session(
+            session,
+            row.id,
+            practice_session_id=practice.id,
+            doctor_user_id=practice.doctor_user_id,
+            patient_user_id=practice.patient_user_id,
+        )
+        row = await repository.peer_session_by_id(session, session_id)
+        assert row is not None
+
     code = await catalog.exam_code_by_id(session, row.exam_id)
-    return _session_read(row, code or "", viewer_id=user_id)
-
-
-def _post_read(row: AvailabilityPost, exam_code: str, *, viewer_id: uuid.UUID) -> PostRead:
-    return PostRead(
-        id=row.id,
-        owner_user_id=row.owner_user_id,
-        exam_code=exam_code,
-        starts_at=row.starts_at,
-        duration_minutes=row.duration_minutes,
-        note=row.note,
-        status=row.status,
-        is_mine=row.owner_user_id == viewer_id,
-        audience=AudienceOut.of(row),
+    partner_id = row.claimer_user_id if row.owner_user_id == user_id else row.owner_user_id
+    partner = await identity.user_ref_by_id(session, partner_id)
+    return service_reads.session_read(
+        row, code or "", viewer_id=user_id, partner_username=service_reads.peer_username(partner)
     )
 
 
-def _session_read(row: PeerSession, exam_code: str, *, viewer_id: uuid.UUID) -> PeerSessionRead:
-    partner = row.claimer_user_id if row.owner_user_id == viewer_id else row.owner_user_id
-    return PeerSessionRead(
-        id=row.id,
-        exam_code=exam_code,
-        starts_at=row.starts_at,
-        status=row.status,
-        room_name=row.room_name,
-        partner_user_id=partner,
-    )
+async def cancel_peer_session(
+    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
+) -> None:
+    row = await repository.peer_session_by_id(session, session_id)
+    if row is None:
+        raise errors.SessionNotFound()
+    if user_id not in {row.owner_user_id, row.claimer_user_id}:
+        raise errors.SessionNotFound()
+    if not await repository.mark_peer_cancelled(session, session_id, at=now):
+        raise errors.SessionNotOpen()

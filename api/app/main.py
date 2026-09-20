@@ -30,9 +30,12 @@ from app.core.redis import close_redis
 from app.core.settings import get_settings
 from app.features import health
 from app.features.assistant.router import router as assistant_router
+from app.features.assistant.router_help import router as help_router
 from app.features.assistant.router_worker import router as assistant_worker_router
 from app.features.attempts.router import router as attempts_router
+from app.features.attempts.router_coverage import router as attempts_coverage_router
 from app.features.attempts.router_platform import router as platform_attempts_router
+from app.features.attempts.router_roleplay import router as attempts_roleplay_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
 from app.features.billing.router_platform import router as platform_billing_router
@@ -68,6 +71,7 @@ from app.features.station_sets.router_platform import router as platform_station
 from app.features.stations.router import router as stations_router
 from app.features.stations.router_generation_profiles import router as station_generation_profiles_router
 from app.features.stations.router_platform import router as platform_stations_router
+from app.features.stations.router_platform_templates import router as platform_station_templates_router
 from app.features.stations.router_templates import router as station_templates_router
 from app.features.tenancy.router import router as tenancy_router
 from app.features.tenancy.router_platform import router as platform_console_router
@@ -108,7 +112,10 @@ def api_v1_router() -> APIRouter:
     router.include_router(station_templates_router)
     router.include_router(station_generation_profiles_router)
     router.include_router(platform_stations_router)
+    router.include_router(platform_station_templates_router)
     router.include_router(attempts_router)
+    router.include_router(attempts_coverage_router)
+    router.include_router(attempts_roleplay_router)
     router.include_router(platform_attempts_router)
     router.include_router(entitlements_router)
     router.include_router(platform_entitlements_router)
@@ -129,6 +136,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(platform_directory_router)
     router.include_router(live_board_router)
     router.include_router(assistant_router)
+    router.include_router(help_router)
     router.include_router(marketplace_router)
     router.include_router(community_router)
     router.include_router(community_platform_router)

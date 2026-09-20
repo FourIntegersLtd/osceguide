@@ -79,6 +79,13 @@ def test_the_agent_name_pairs_family_with_mode() -> None:
     assert domain.agent_name(domain.Family.ASSISTANT, domain.Mode.LIVEKIT_CLOUD) == "assistant-livekit-cloud"
 
 
+@pytest.mark.parametrize("family", list(domain.Family))
+@pytest.mark.parametrize("mode", list(domain.Mode))
+def test_local_agents_cannot_collide_with_deployed_workers(family, mode) -> None:
+    assert domain.agent_name(family, mode, namespace=" dev-alice ") == f"dev-alice-{family}-{mode}"
+    assert domain.agent_name(family, mode, namespace=" ") == domain.agent_name(family, mode)
+
+
 # --------------------------------------------------------------------------
 # Rooms and capacity
 # --------------------------------------------------------------------------

@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-66 tables across 23 slices. Every table's classes live in `app/features/<slice>/models.py`
+67 tables across 23 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -93,7 +93,9 @@ names both.
 | `must_change_password` | `bool not null default false` | gates all but `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED` |
 | `last_login_at` | `timestamptz null` | |
 | `exam_date` | `date null` | when they sit the real thing; the consumer dashboard counts down to it |
+| `exam_code` | `varchar(32) null` | which exam they signed up for; a preference, not a grant |
 | `extra_reading_percent` | `int not null default 0` | an access arrangement, as a percentage of extra reading time. CHECK 0–100. Applies to their own practice, never to a circuit's clock — one clock serves everybody on it |
+| `consumer_role` | `varchar(32) not null default 'user'` | staff vs learner on the consumer product |
 
 Domain: `MIN_PASSWORD_LENGTH = 12`.
 
@@ -498,7 +500,7 @@ wired behind it.
 
 # The assessment core
 
-## attempts — 4 tables
+## attempts — 5 tables
 
 ### `attempts`
 One candidate running one scenario. `id` is its own identity: b2c made the attempt id
@@ -570,6 +572,18 @@ The delivery record for an attempt's turns.
 
 `attempt_id` → `attempts.id` CASCADE (UNIQUE), `complete bool not null default false`,
 `runtime_label varchar(64) null`, `delivered_at timestamptz null`.
+
+### `attempt_live_coverage`
+One durable live-coverage snapshot per practice attempt. Unlike the base models,
+this table has no separate `id` or timestamps.
+
+| Field | Type | Notes |
+|---|---|---|
+| `attempt_id` | `uuid not null` → `attempts.id` CASCADE | primary key |
+| `snapshot` | `jsonb not null` | Engine-validated coverage items and last processed sequence; labels are read from the frozen rubric |
+
+Upserted by serialized `coverage` jobs. Coverage records observed behaviours,
+not grades; exam-slot attempts never receive this coaching feed.
 
 ### `assessment_results`
 What the engine scored, kept immutably.

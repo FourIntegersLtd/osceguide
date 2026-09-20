@@ -23,10 +23,35 @@ pytestmark = pytest.mark.db
 # A template whose blocks say what each is for. `role` is what the renderer
 # places them by, which is what replaced the per-exam formatters.
 TEMPLATE = {
-    "blocks": [
-        {"id": "who_you_are", "label": "Who you are", "kind": "text", "role": "persona"},
-        {"id": "why_you_came", "label": "Why you came", "kind": "text", "role": "complaint"},
-        {"id": "expected_answers", "label": "Expected answers", "kind": "text", "role": "examiner"},
+    "schemaVersion": 1,
+    "sections": [
+        {
+            "id": "main",
+            "title": "Main",
+            "blocks": [
+                {
+                    "id": "who_you_are",
+                    "type": "longText",
+                    "label": "Who you are",
+                    "kind": "text",
+                    "role": "persona",
+                },
+                {
+                    "id": "why_you_came",
+                    "type": "longText",
+                    "label": "Why you came",
+                    "kind": "text",
+                    "role": "complaint",
+                },
+                {
+                    "id": "expected_answers",
+                    "type": "longText",
+                    "label": "Expected answers",
+                    "kind": "text",
+                    "role": "examiner",
+                },
+            ],
+        }
     ],
     "layout": {"persona": "patient"},
 }

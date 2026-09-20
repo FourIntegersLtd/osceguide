@@ -13,6 +13,7 @@ from app.core.settings import Settings
 from app.features.assistant import domain, errors, repository
 from app.features.assistant import service_seams as seams
 from app.features.assistant.models import AssistantSession
+from app.features.assistant.doctor_prompt import consulting_doctor_instructions
 from app.features.assistant.schemas import RoomGrant, SessionRead
 
 # Placeholder text until content packs are ported. Rendered here rather than in
@@ -73,6 +74,14 @@ async def start_session(
     rendered = await seams._render(session, worker_type, user_id, now) if seams._render else None
     instructions = str(rendered["instructions"]) if rendered else _INSTRUCTIONS[worker_type]
     greeting = str(rendered["greeting"]) if rendered and rendered.get("greeting") else None
+    if worker_type == "consulting-doctor":
+        station_instructions = consulting_doctor_instructions(extras)
+        if station_instructions:
+            instructions = station_instructions
+            greeting = (
+                "Hello, I'm Doctor Athena. It's nice to meet you. "
+                "Can you confirm your name and date of birth for me?"
+            )
     try:
         domain.ensure_dispatchable(instructions=instructions)
     except domain.UnrenderableSession as exc:

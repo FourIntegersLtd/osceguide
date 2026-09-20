@@ -9,7 +9,6 @@ what they were told they would be marked on, not against today's version.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Any
 
@@ -23,6 +22,7 @@ from app.features.attempts import domain, domain_definition, errors, repository
 from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY
 from app.features.attempts.models import Attempt
 from app.features.attempts.renderer import build_renderer
+from app.features.attempts.service_debrief_render import render_debrief
 from app.features.catalog import service as catalog
 from app.features.rubrics import service_marking as rubrics
 from app.features.sittings import service as sittings_service
@@ -57,6 +57,8 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
     exam = await catalog.exam_for_attempt(session, attempt.exam_id)
     degraded = not domain_definition.scenario_is_renderable(station.content, station.layout)
     mode = station.persona if station.persona != "patient" else _MODE_FOR_KIND.get(attempt.kind, "patient")
+    if attempt.kind == "debrief":
+        mode = "tutor"
 
     try:
         rendered = build_renderer().render(
@@ -65,6 +67,10 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
             greeting=station.greeting,
             mode=mode,
         )
+        if attempt.kind == "debrief":
+            rendered = await render_debrief(
+                session, attempt, examiner_context=rendered.get("examiner_context")
+            )
     except RenderFailed as exc:
         raise errors.AttemptNotReady(str(exc)) from exc
 
@@ -115,7 +121,7 @@ async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) 
     marking it cannot perform, which is the right place for that refusal.
     """
     rubric_version_id = exam.rubric_version_id
-    if attempt.slot_id is not None:
+    if attempt.slot_id is not None and attempt.org_id is not None:
         bound = await sittings_service.rubric_version_for_slot(session, attempt.org_id, attempt.slot_id)
         if bound is not None:
             rubric_version_id = bound

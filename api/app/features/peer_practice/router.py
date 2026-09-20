@@ -12,13 +12,16 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import SessionOpenerDep, get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus
+from app.core.logging import get_logger
 from app.core.openapi import sse_responses
 from app.core.pagination import Page
 from app.core.ports import ClockDep, EventBus, VoiceTokens
 from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.features.peer_practice import errors, schemas, service, service_stream
+from app.features.peer_practice import errors, schemas, service, service_stream, service_stream_session
+
+log = get_logger(__name__)
 
 router = APIRouter(tags=["peer-practice"])
 
@@ -117,9 +120,107 @@ async def list_my_sessions(
     responses=error_responses(Unauthenticated, errors.SessionNotFound),
 )
 async def read_session(
-    session_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+    session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.PracticeSessionRead:
-    return await service.read_session(session, session_id, user_id=principal.user_id)
+    return await service.read_session(
+        session, session_id, user_id=principal.user_id, now=clock.now()
+    )
+
+
+@router.post(
+    "/me/practice-sessions/{session_id}/presence",
+    response_model=schemas.PracticeSessionRead,
+    responses=error_responses(
+        Unauthenticated, errors.SessionNotFound, errors.SessionAlreadyEnded
+    ),
+)
+async def record_presence(
+    session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.PracticeSessionRead:
+    return await service.touch_presence(
+        session, session_id, user_id=principal.user_id, now=clock.now()
+    )
+
+
+@router.get(
+    "/me/practice-sessions/{session_id}/stream",
+    responses=sse_responses(schemas.PracticeSessionRead, Unauthenticated, errors.SessionNotFound),
+    response_class=StreamingResponse,
+)
+async def stream_session(
+    session_id: uuid.UUID,
+    principal: StreamPrincipal,
+    bus: Annotated[EventBus, Depends(get_event_bus)],
+    open_session: SessionOpenerDep,
+) -> StreamingResponse:
+    return StreamingResponse(
+        service_stream_session.session_stream(
+            session_id, principal.user_id, bus=bus, open_session=open_session
+        ),
+        media_type=MEDIA_TYPE,
+        headers=SSE_HEADERS,
+    )
+
+
+@router.post(
+    "/me/practice-sessions/{session_id}/feedback",
+    response_model=schemas.PracticeSessionRead,
+    responses=error_responses(Unauthenticated, errors.SessionNotFound),
+)
+async def session_feedback(
+    session_id: uuid.UUID,
+    body: schemas.SessionFeedback,
+    principal: CurrentPrincipal,
+    session: Session,
+) -> schemas.PracticeSessionRead:
+    return await service.submit_feedback(
+        session,
+        session_id,
+        user_id=principal.user_id,
+        rating=body.rating,
+        comment=body.comment,
+    )
+
+
+@router.post(
+    "/me/practice-sessions/{session_id}/report-abuse",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated, errors.SessionNotFound),
+)
+async def report_abuse(
+    session_id: uuid.UUID,
+    body: schemas.ReportAbuse,
+    principal: CurrentPrincipal,
+    session: Session,
+) -> Response:
+    # Safety control: recorded for follow-up; no separate table in this pass.
+    log.warning(
+        "practice session abuse report",
+        session_id=str(session_id),
+        reporter=str(principal.user_id),
+        message=body.message,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/me/practice-sessions/{session_id}/report-no-show",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated, errors.SessionNotFound),
+)
+async def report_no_show(
+    session_id: uuid.UUID,
+    body: schemas.ReportNoShow,
+    principal: CurrentPrincipal,
+    session: Session,
+) -> Response:
+    log.info(
+        "practice session no-show report",
+        session_id=str(session_id),
+        reporter=str(principal.user_id),
+        message=body.message or "",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

@@ -12,12 +12,12 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, VectorIndex
 from app.core.tenancy import PlatformAdmin
-from app.features.media import errors, schemas, service
+from app.features.media import errors, schemas, service, service_search
 
 router = APIRouter(tags=["media"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
-Index = Annotated[VectorIndex, Depends(service.get_vector_index)]
+Index = Annotated[VectorIndex, Depends(service_search.get_vector_index)]
 
 
 @router.get(
@@ -45,7 +45,7 @@ async def list_published(
     signed in or not.
     """
     is_admin = bool(principal and principal.is_platform_admin)
-    unlocked = await service.unlocked_exam_ids(
+    unlocked = await service_search.unlocked_exam_ids(
         session, principal.user_id if principal else None, now=clock.now()
     )
     items, next_cursor = await service.list_catalog(
@@ -83,11 +83,11 @@ async def search(
     q: Annotated[str, Query(description="What to search for")],
 ) -> Page[schemas.SearchHit]:
     """Over the material this reader holds, not the whole library."""
-    items = await service.search(
+    items = await service_search.search(
         session,
         query=q,
         index=index,
-        unlocked=await service.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
+        unlocked=await service_search.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
     )
     return Page(items=items, next_cursor=None)
 
@@ -108,7 +108,7 @@ async def read_by_slug_lookup(
         session,
         slug,
         viewer_is_admin=bool(principal and principal.is_platform_admin),
-        unlocked=await service.unlocked_exam_ids(
+        unlocked=await service_search.unlocked_exam_ids(
             session, principal.user_id if principal else None, now=clock.now()
         ),
     )
@@ -133,7 +133,7 @@ async def read_by_slug(
         session,
         slug,
         viewer_is_admin=bool(principal and principal.is_platform_admin),
-        unlocked=await service.unlocked_exam_ids(
+        unlocked=await service_search.unlocked_exam_ids(
             session, principal.user_id if principal else None, now=clock.now()
         ),
     )
@@ -177,7 +177,6 @@ async def update(
         title=body.title,
         summary=body.summary,
         content=body.content,
-        editor_is_admin=True,
     )
 
 

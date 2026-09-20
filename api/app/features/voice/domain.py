@@ -89,8 +89,10 @@ def resolve_mode(configured: Mode, *, cloud_slots_free: bool) -> Mode:
     return configured
 
 
-def agent_name(family: Family, mode: Mode) -> str:
-    return f"{family}-{mode}"
+def agent_name(family: Family, mode: Mode, *, namespace: str = "") -> str:
+    prefix = namespace.strip()
+    name = f"{family}-{mode}"
+    return f"{prefix}-{name}" if prefix else name
 
 
 def room_name_for(attempt_id: str) -> str:

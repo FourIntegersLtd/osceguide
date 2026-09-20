@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,12 +22,17 @@ from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.peer_practice import domain, errors, repository
+from app.features.peer_practice.jobs import enqueue_try_match
 from app.features.peer_practice.models import PracticeSession, QueueEntry
 from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus, RoomGrant
+from app.features.peer_practice.service_lifecycle import advance_phases_if_due, record_presence
+from app.features.peer_practice.service_station import station_read_for_version
+from app.features.peer_practice.station_pick import pick_station_version_id
 from app.features.voice import service as voice
 
 # What the queue stream reacts to. Named here because this is where it happens.
 MATCHED = "practice.matched"
+QUEUE_WAIT_MINUTES = 10
 
 
 async def join_queue(
@@ -58,11 +63,16 @@ async def join_queue(
     existing = await repository.live_entry(session, user_id, exam.id)
     # Re-read on a losing race rather than failing: two taps arriving together
     # both found an empty queue, both inserted, and the loser got a 500.
-    entry = existing or await repository.join(session, user_id=user_id, exam_id=exam.id, audience=audience)
+    expires_at = now + timedelta(minutes=QUEUE_WAIT_MINUTES)
+    entry = existing or await repository.join(
+        session, user_id=user_id, exam_id=exam.id, audience=audience, expires_at=expires_at
+    )
     if entry is None:
         entry = await repository.live_entry(session, user_id, exam.id)
     if entry is None:
         raise errors.QueueEntryNotFound()
+    if entry.status == "waiting":
+        await enqueue_try_match(session, exam_id=exam.id, audience=audience_of(entry))
     return await _status(session, entry)
 
 
@@ -118,8 +128,13 @@ async def match_waiting(
         return None
 
     doctor_id, patient_id = uuid.UUID(pair.doctor), uuid.UUID(pair.patient)
+    station_id = await pick_station_version_id(session, exam_id=exam_id, doctor_user_id=doctor_id)
     practice = await repository.create_session(
-        session, exam_id=exam_id, doctor_user_id=doctor_id, patient_user_id=patient_id
+        session,
+        exam_id=exam_id,
+        doctor_user_id=doctor_id,
+        patient_user_id=patient_id,
+        station_version_id=station_id,
     )
     await repository.set_room(session, practice.id, room_name=f"practice_{practice.id}")
     await repository.mark_matched(
@@ -142,14 +157,51 @@ async def match_waiting(
 
 
 async def read_session(
-    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID
+    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime | None = None
 ) -> PracticeSessionRead:
     row = await repository.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         # 404 rather than 403: a session id is not something a stranger should
         # be able to confirm exists.
         raise errors.SessionNotFound()
+    if now is not None:
+        code = await catalog.exam_code_by_id(session, row.exam_id) or ""
+        row = await advance_phases_if_due(session, row, exam_code=code, now=now)
     return await _session_read(session, row, viewer_id=user_id)
+
+
+async def touch_presence(
+    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
+) -> PracticeSessionRead:
+    row = await repository.session_by_id(session, session_id)
+    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+        raise errors.SessionNotFound()
+    if row.status == "ended":
+        raise errors.SessionAlreadyEnded()
+    row = await record_presence(session, row, user_id=user_id, now=now)
+    return await _session_read(session, row, viewer_id=user_id)
+
+
+async def submit_feedback(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    user_id: uuid.UUID,
+    rating: int,
+    comment: str | None,
+) -> PracticeSessionRead:
+    row = await repository.session_by_id(session, session_id)
+    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+        raise errors.SessionNotFound()
+    from sqlalchemy import update
+
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(feedback_rating=rating, feedback_comment=comment)
+    )
+    refreshed = await repository.session_by_id(session, session_id)
+    return await _session_read(session, refreshed, viewer_id=user_id)  # type: ignore[arg-type]
 
 
 async def end_session(
@@ -193,6 +245,11 @@ async def _session_read(
 ) -> PracticeSessionRead:
     code = await catalog.exam_code_by_id(session, row.exam_id)
     is_doctor = row.doctor_user_id == viewer_id
+    partner_joined = bool(row.preparation_started_at)
+    station = await station_read_for_version(
+        session, row.station_version_id, is_doctor=is_doctor,
+        reveal_review=row.current_phase in {"debrief", "completed"} or row.status == "ended",
+    )
     return PracticeSessionRead(
         id=row.id,
         exam_code=code or "",
@@ -200,8 +257,15 @@ async def _session_read(
         partner_user_id=row.patient_user_id if is_doctor else row.doctor_user_id,
         room_name=row.room_name,
         status=row.status,
+        current_phase=row.current_phase,
+        phase_ends_at=row.phase_ends_at,
+        preparation_started_at=row.preparation_started_at,
+        doctor_joined_at=row.doctor_joined_at,
+        patient_joined_at=row.patient_joined_at,
         started_at=row.started_at,
         ended_at=row.ended_at,
+        station=station,
+        partner_joined=partner_joined,
     )
 
 

@@ -62,6 +62,41 @@ async def test_the_legacy_persona_name_resolves_to_the_workers_own(client: Async
     assert response.json()["session"]["worker_type"] == "consulting-doctor"
 
 
+async def test_athena_doctor_bootstrap_uses_station_context(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("doctor-context@example.com")
+    created = await client.post(
+        "/api/v1/assistant/sessions",
+        json={
+            "session_type": "athena-doctor",
+            "extras": {
+                "station": {
+                    "exam_code": "sca",
+                    "station_name": "Chest pain",
+                    "station_patient_name": "Sam Green",
+                    "station_patient_biodata": "Sam Green, 54",
+                    "doctor_task": "Assess chest pain in primary care.",
+                    "patient_information": ["Central chest tightness for 20 minutes"],
+                    "ice": ["Worried this is a heart attack"],
+                    "management_points": ["Explore red flags", "Safety-net clearly"],
+                }
+            },
+        },
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+
+    response = await client.get(
+        f"/api/worker/assistant-sessions/{created.json()['id']}", headers=worker_headers()
+    )
+    payload = response.json()["session"]
+    assert payload["worker_type"] == "consulting-doctor"
+    assert "Chest pain" in payload["instructions"]
+    assert "The learner is role-playing the patient" in payload["instructions"]
+    assert "Central chest tightness" in payload["instructions"]
+
+
 async def test_an_unknown_session_type_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("unknown@example.com")
     response = await client.post(

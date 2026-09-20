@@ -6,7 +6,6 @@ Does not print secret values.
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -50,7 +49,7 @@ def write_env(path: Path, values: dict[str, str]) -> None:
 def main() -> int:
     b2c = parse_env(B2C_ENV)
     if not b2c:
-        print(f"No keys read from {B2C_ENV}", file=sys.stderr)
+        print(f"No keys read from {B2C_ENV}", file=sys.stderr)  # noqa: T201
         return 1
 
     to_set: dict[str, str] = {}
@@ -63,14 +62,14 @@ def main() -> int:
         to_set[platform_key] = val
 
     if missing:
-        print("Missing in b2c .env (add there first):", ", ".join(missing), file=sys.stderr)
+        print("Missing in b2c .env (add there first):", ", ".join(missing), file=sys.stderr)  # noqa: T201
 
     if not to_set:
-        print("Nothing to sync.", file=sys.stderr)
+        print("Nothing to sync.", file=sys.stderr)  # noqa: T201
         return 1
 
     write_env(PLATFORM_ENV, to_set)
-    print(f"Updated {PLATFORM_ENV} with: {', '.join(sorted(to_set))}")
+    print(f"Updated {PLATFORM_ENV} with: {', '.join(sorted(to_set))}")  # noqa: T201
     return 0 if not missing else 2
 
 

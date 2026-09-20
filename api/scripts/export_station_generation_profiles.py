@@ -13,7 +13,14 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 B2C_API = REPO_ROOT / "backend" / "b2c-api"
-OUT_DIR = Path(__file__).resolve().parents[1] / "app" / "features" / "stations" / "generation_profiles" / "_generated"
+OUT_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "app"
+    / "features"
+    / "stations"
+    / "generation_profiles"
+    / "_generated"
+)
 
 # Template block id -> B2C model field name when they differ
 BLOCK_FIELD_ALIASES: dict[str, str] = {
@@ -149,7 +156,7 @@ def main() -> None:
         key = profile["profileKey"]
         path = OUT_DIR / f"{key.replace('.', '_')}.json"
         path.write_text(json.dumps(profile, indent=2, ensure_ascii=False) + "\n")
-        print(f"wrote {path} ({len(profile['blockHints'])} block hints)")
+        print(f"wrote {path} ({len(profile['blockHints'])} block hints)")  # noqa: T201
 
     index = [
         {
@@ -161,7 +168,7 @@ def main() -> None:
         for p in profiles
     ]
     (OUT_DIR / "index.json").write_text(json.dumps(index, indent=2) + "\n")
-    print("done")
+    print("done")  # noqa: T201
 
 
 if __name__ == "__main__":

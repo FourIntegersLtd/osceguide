@@ -1149,6 +1149,30 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "maxLength": 6000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
       "CheckoutStarted": {
         "description": "Where to send the customer. Nothing is granted until the webhook.",
         "properties": {
@@ -2133,6 +2157,68 @@
         "title": "ConsoleTiming",
         "type": "object"
       },
+      "CoverageItemRead": {
+        "properties": {
+          "competency_id": {
+            "title": "Competency Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "partial",
+              "covered"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "competency_id",
+          "label",
+          "state",
+          "quote",
+          "seq"
+        ],
+        "title": "CoverageItemRead",
+        "type": "object"
+      },
+      "CoverageRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "last_seq": {
+            "default": -1,
+            "title": "Last Seq",
+            "type": "integer"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "supported"
+        ],
+        "title": "CoverageRead",
+        "type": "object"
+      },
       "CreateAttempt": {
         "description": "What a client may ask for directly.\n\nDeliberately narrower than `attempts.create_attempt`. The other kinds are\n*about* something a different slice owns \u2014 a slot, a set entry, a peer\npairing, an earlier attempt \u2014 and `attempts` sits below all of them in the\nlayer order, so it cannot check that the caller owns the thing they named.\n\nThis route used to take every one of those ids straight from the body and\nstore them unverified, which let anyone attach their attempt to another\norganisation's exam slot or another person's set entry. Each of those\nkinds has its own route, on the slice that can do the checking:\n`POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set\nstation and its debrief, and the circuit itself for an exam slot (ADR\n0018). `room_name` is likewise not the client's to choose \u2014 `voice`\nderives it from the attempt.",
         "properties": {
@@ -2921,6 +3007,18 @@
               }
             ],
             "title": "Narrative"
+          },
+          "source_attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Attempt Id"
           }
         },
         "required": [
@@ -3708,6 +3806,7 @@
               "feedback_template_not_published",
               "feedback_template_version_not_found",
               "forbidden",
+              "generation_profile_not_found",
               "generation_unavailable",
               "gone",
               "group_exists",
@@ -3732,6 +3831,7 @@
               "invalid_sso_binding",
               "invalid_webhook",
               "invalid_workflow",
+              "knowledge_unavailable",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
               "media_already_published",
@@ -4475,6 +4575,164 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "HelpArticle": {
+        "properties": {
+          "app_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "App Types",
+            "type": "array"
+          },
+          "body_md": {
+            "title": "Body Md",
+            "type": "string"
+          },
+          "category_slug": {
+            "title": "Category Slug",
+            "type": "string"
+          },
+          "category_title": {
+            "default": "",
+            "title": "Category Title",
+            "type": "string"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "related_slugs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Slugs",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": 0,
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "app_types",
+          "category_slug",
+          "body_md"
+        ],
+        "title": "HelpArticle",
+        "type": "object"
+      },
+      "HelpArticleDetail": {
+        "properties": {
+          "article": {
+            "$ref": "#/components/schemas/HelpArticle"
+          }
+        },
+        "required": [
+          "article"
+        ],
+        "title": "HelpArticleDetail",
+        "type": "object"
+      },
+      "HelpArticles": {
+        "properties": {
+          "articles": {
+            "items": {
+              "$ref": "#/components/schemas/HelpArticle"
+            },
+            "title": "Articles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "articles"
+        ],
+        "title": "HelpArticles",
+        "type": "object"
+      },
+      "HelpCategories": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/HelpCategory"
+            },
+            "title": "Categories",
+            "type": "array"
+          }
+        },
+        "required": [
+          "categories"
+        ],
+        "title": "HelpCategories",
+        "type": "object"
+      },
+      "HelpCategory": {
+        "properties": {
+          "app_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "App Types",
+            "type": "array"
+          },
+          "article_count": {
+            "default": 0,
+            "title": "Article Count",
+            "type": "integer"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "icon_key": {
+            "default": "book",
+            "title": "Icon Key",
+            "type": "string"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": 0,
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "app_types"
+        ],
+        "title": "HelpCategory",
+        "type": "object"
+      },
       "Intervention": {
         "properties": {
           "action": {
@@ -4719,6 +4977,48 @@
           "exam_code"
         ],
         "title": "JoinQueue",
+        "type": "object"
+      },
+      "KnowledgeChat": {
+        "properties": {
+          "app_type": {
+            "default": "sca",
+            "enum": [
+              "sca",
+              "plab",
+              "casc",
+              "ortho"
+            ],
+            "title": "App Type",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "KnowledgeChat",
+        "type": "object"
+      },
+      "KnowledgeReply": {
+        "properties": {
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply"
+        ],
+        "title": "KnowledgeReply",
         "type": "object"
       },
       "LegacyExchangeRequest": {
@@ -5224,101 +5524,6 @@
           }
         },
         "title": "ManagementPlanRead",
-        "type": "object"
-      },
-      "MediaRead": {
-        "description": "One piece of study material.\n\n`content` is the body \u2014 the slide deck, the summary, the article \u2014 and it\nis the paid half. It is `None` for a reader who does not hold the exam it\nbelongs to, and `locked` says which of the two happened, so the client can\nshow the upgrade prompt the retiring app showed rather than an empty page.\n\nEverything else is deliberately public: the landing page's article rail and\na shared link both need a title and a summary without a token.",
-        "properties": {
-          "content": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "exam_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exam Code"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "locked": {
-            "default": false,
-            "title": "Locked",
-            "type": "boolean"
-          },
-          "published_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Published At"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "slug",
-          "title",
-          "summary",
-          "exam_code",
-          "status",
-          "created_at",
-          "published_at"
-        ],
-        "title": "MediaRead",
         "type": "object"
       },
       "MessageAccepted": {
@@ -6168,6 +6373,33 @@
         "title": "Page[CohortRead]",
         "type": "object"
       },
+      "Page_DebriefSummaryRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DebriefSummaryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[DebriefSummaryRead]",
+        "type": "object"
+      },
       "Page_DirectoryUser_": {
         "properties": {
           "items": {
@@ -6307,7 +6539,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/MediaRead"
+              "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
             },
             "title": "Items",
             "type": "array"
@@ -7010,6 +7242,109 @@
         "title": "PatientReviewRead",
         "type": "object"
       },
+      "PatientRoleplayRead": {
+        "properties": {
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "expanded_history": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expanded History"
+          },
+          "expectation": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expectation",
+            "type": "array"
+          },
+          "family_social_history": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Family Social History",
+            "type": "array"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "idea": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Idea",
+            "type": "array"
+          },
+          "opening_sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Sentence"
+          },
+          "past_med_history_allergies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Past Med History Allergies",
+            "type": "array"
+          },
+          "patient_biodata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Biodata"
+          },
+          "persona": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persona"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "title": "PatientRoleplayRead",
+        "type": "object"
+      },
       "PeerSessionRead": {
         "properties": {
           "exam_code": {
@@ -7021,10 +7356,37 @@
             "title": "Id",
             "type": "string"
           },
+          "my_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Role"
+          },
           "partner_user_id": {
             "format": "uuid",
             "title": "Partner User Id",
             "type": "string"
+          },
+          "partner_username": {
+            "title": "Partner Username",
+            "type": "string"
+          },
+          "practice_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Practice Session Id"
           },
           "room_name": {
             "anyOf": [
@@ -7045,6 +7407,10 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "user_role": {
+            "title": "User Role",
+            "type": "string"
           }
         },
         "required": [
@@ -7053,7 +7419,9 @@
           "starts_at",
           "status",
           "room_name",
-          "partner_user_id"
+          "partner_user_id",
+          "partner_username",
+          "user_role"
         ],
         "title": "PeerSessionRead",
         "type": "object"
@@ -8121,6 +8489,29 @@
       },
       "PracticeSessionRead": {
         "properties": {
+          "current_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Phase"
+          },
+          "doctor_joined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Joined At"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -8146,10 +8537,51 @@
             "title": "My Role",
             "type": "string"
           },
+          "partner_joined": {
+            "default": false,
+            "title": "Partner Joined",
+            "type": "boolean"
+          },
           "partner_user_id": {
             "format": "uuid",
             "title": "Partner User Id",
             "type": "string"
+          },
+          "patient_joined_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Joined At"
+          },
+          "phase_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Ends At"
+          },
+          "preparation_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preparation Started At"
           },
           "room_name": {
             "anyOf": [
@@ -8174,6 +8606,16 @@
             ],
             "title": "Started At"
           },
+          "station": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PracticeStationRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -8185,11 +8627,117 @@
           "my_role",
           "partner_user_id",
           "room_name",
-          "status",
-          "started_at",
-          "ended_at"
+          "status"
         ],
         "title": "PracticeSessionRead",
+        "type": "object"
+      },
+      "PracticeStationRead": {
+        "properties": {
+          "doctor_information": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DoctorInformationRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "management": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManagementPlanRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "management_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Management Plan"
+          },
+          "patient_information": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PatientRoleplayRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "patient_script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Script"
+          },
+          "reading_brief": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reading Brief"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateScenarioRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          },
+          "teaching": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StationTeachingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "station_id",
+          "station_version_id",
+          "title"
+        ],
+        "title": "PracticeStationRead",
         "type": "object"
       },
       "PrioritisationPatientRead": {
@@ -8807,6 +9355,39 @@
           "contract_ends_at"
         ],
         "title": "RenewContract",
+        "type": "object"
+      },
+      "ReportAbuse": {
+        "properties": {
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ReportAbuse",
+        "type": "object"
+      },
+      "ReportNoShow": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "title": "ReportNoShow",
         "type": "object"
       },
       "ReportTotals": {
@@ -9522,6 +10103,44 @@
           }
         },
         "title": "SessionComplete",
+        "type": "object"
+      },
+      "SessionFeedback": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "type": "integer"
+          },
+          "would_practice_again": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Would Practice Again"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "SessionFeedback",
         "type": "object"
       },
       "SessionRead": {
@@ -12621,6 +13240,29 @@
           "audience": {
             "$ref": "#/components/schemas/AudienceOut"
           },
+          "claimed_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed By User Id"
+          },
+          "claimed_by_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed By Username"
+          },
           "duration_minutes": {
             "title": "Duration Minutes",
             "type": "integer"
@@ -12654,6 +13296,10 @@
             "title": "Owner User Id",
             "type": "string"
           },
+          "owner_username": {
+            "title": "Owner Username",
+            "type": "string"
+          },
           "starts_at": {
             "format": "date-time",
             "title": "Starts At",
@@ -12667,6 +13313,7 @@
         "required": [
           "id",
           "owner_user_id",
+          "owner_username",
           "exam_code",
           "starts_at",
           "duration_minutes",
@@ -12676,6 +13323,196 @@
           "audience"
         ],
         "title": "PostRead",
+        "type": "object"
+      },
+      "app__features__media__schemas__MediaRead": {
+        "description": "One piece of study material.\n\n`content` is the body \u2014 the slide deck, the summary, the article \u2014 and it\nis the paid half. It is `None` for a reader who does not hold the exam it\nbelongs to, and `locked` says which of the two happened, so the client can\nshow the upgrade prompt the retiring app showed rather than an empty page.\n\nEverything else is deliberately public: the landing page's article rail and\na shared link both need a title and a summary without a token.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "slug",
+          "title",
+          "summary",
+          "exam_code",
+          "status",
+          "created_at",
+          "published_at"
+        ],
+        "title": "MediaRead",
+        "type": "object"
+      },
+      "app__features__media_production__schemas__MediaRead": {
+        "description": "Same fields as media's item read, owned here so this slice's contract stands alone.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "slug",
+          "title",
+          "summary",
+          "exam_code",
+          "status",
+          "created_at",
+          "published_at"
+        ],
+        "title": "MediaRead",
         "type": "object"
       },
       "app__features__peer_practice__schemas__RoomGrant": {
@@ -13420,6 +14257,190 @@
         ]
       }
     },
+    "/api/v1/attempts/{attempt_id}/coverage": {
+      "get": {
+        "operationId": "api_read_coverage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Coverage"
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/debriefs": {
+      "post": {
+        "operationId": "api_start_debrief",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_ready, attempt_not_finished",
+            "x-codes": [
+              "attempt_not_ready",
+              "attempt_not_finished"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Debrief"
+      }
+    },
     "/api/v1/attempts/{attempt_id}/result": {
       "get": {
         "description": "A page rather than one result: re-scoring under a new policy adds beside\nthe old, so a candidate's history stays readable.",
@@ -13610,6 +14631,105 @@
         "tags": [
           "attempts"
         ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/roleplay": {
+      "get": {
+        "operationId": "api_read_roleplay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientRoleplayRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_ready, attempt_not_finished",
+            "x-codes": [
+              "attempt_not_ready",
+              "attempt_not_finished"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Roleplay"
       }
     },
     "/api/v1/attempts/{attempt_id}/stream": {
@@ -15852,11 +16972,315 @@
         ]
       }
     },
+    "/api/v1/help/articles": {
+      "get": {
+        "operationId": "assistant_articles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "app_type",
+            "required": false,
+            "schema": {
+              "default": "sca",
+              "enum": [
+                "sca",
+                "plab",
+                "casc",
+                "ortho"
+              ],
+              "title": "App Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpArticles"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Articles",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/help/articles/{slug}": {
+      "get": {
+        "operationId": "assistant_article",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "app_type",
+            "required": false,
+            "schema": {
+              "default": "sca",
+              "enum": [
+                "sca",
+                "plab",
+                "casc",
+                "ortho"
+              ],
+              "title": "App Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpArticleDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_found",
+            "x-codes": [
+              "not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Article",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/help/categories": {
+      "get": {
+        "operationId": "assistant_categories",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "app_type",
+            "required": false,
+            "schema": {
+              "default": "sca",
+              "enum": [
+                "sca",
+                "plab",
+                "casc",
+                "ortho"
+              ],
+              "title": "App Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelpCategories"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Categories",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/v1/help/knowledge-chat": {
+      "post": {
+        "operationId": "assistant_knowledge_chat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeChat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "knowledge_unavailable",
+            "x-codes": [
+              "knowledge_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Knowledge Chat",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
     "/api/v1/marketplace/slots": {
       "get": {
-        "description": "Open slots this caller may take: the public pool plus every institution\nand group they belong to, or one room of it.",
+        "description": "Availability and claimed slots this caller can see \u2014 the public pool plus\nevery institution and group they belong to. Matches the retiring marketplace\nfeed (open posts plus historic claimed sessions).",
         "operationId": "marketplace_list_open_slots",
         "parameters": [
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
           {
             "description": "Opaque cursor from a previous page",
             "in": "query",
@@ -16745,6 +18169,91 @@
         ]
       }
     },
+    "/api/v1/me/debriefs": {
+      "get": {
+        "operationId": "tutor_memory_list_debriefs",
+        "parameters": [
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DebriefSummaryRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_input",
+            "x-codes": [
+              "invalid_input"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Debriefs",
+        "tags": [
+          "tutor-memory"
+        ]
+      }
+    },
     "/api/v1/me/entitlements": {
       "get": {
         "description": "Expired grants are included with `live` computed, because \"your access\nended on the 3rd\" is a more useful answer than an empty list.",
@@ -16829,6 +18338,38 @@
     "/api/v1/me/peer-sessions": {
       "get": {
         "operationId": "marketplace_list_my_sessions",
+        "parameters": [
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -16853,6 +18394,16 @@
               "unauthenticated",
               "account_suspended"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -16861,6 +18412,87 @@
           }
         ],
         "summary": "List My Sessions",
+        "tags": [
+          "marketplace"
+        ]
+      }
+    },
+    "/api/v1/me/peer-sessions/{session_id}/cancel": {
+      "post": {
+        "operationId": "marketplace_cancel_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "peer_session_not_found",
+            "x-codes": [
+              "peer_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "peer_session_not_open",
+            "x-codes": [
+              "peer_session_not_open"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Session",
         "tags": [
           "marketplace"
         ]
@@ -17246,6 +18878,439 @@
           }
         ],
         "summary": "End Session",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/feedback": {
+      "post": {
+        "operationId": "peer_practice_session_feedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionFeedback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Session Feedback",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/presence": {
+      "post": {
+        "operationId": "peer_practice_record_presence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_ended",
+            "x-codes": [
+              "practice_session_ended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Presence",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/report-abuse": {
+      "post": {
+        "operationId": "peer_practice_report_abuse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportAbuse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report Abuse",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/report-no-show": {
+      "post": {
+        "operationId": "peer_practice_report_no_show",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportNoShow"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Report No Show",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/stream": {
+      "get": {
+        "operationId": "peer_practice_stream_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A stream ticket from POST /auth/stream-ticket",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A stream ticket from POST /auth/stream-ticket",
+              "title": "Ticket"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `PracticeSessionRead` each time the state changes, and `ping` every 25 seconds."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Session",
         "tags": [
           "peer-practice"
         ]
@@ -18842,7 +20907,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
                 }
               }
             },
@@ -19001,7 +21066,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
                 }
               }
             },
@@ -19092,7 +21157,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
                 }
               }
             },
@@ -19241,7 +21306,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
                 }
               }
             },
@@ -19328,7 +21393,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
                 }
               }
             },
@@ -19431,7 +21496,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
                 }
               }
             },
@@ -19535,7 +21600,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
                 }
               }
             },
@@ -19622,7 +21687,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
                 }
               }
             },
@@ -19725,7 +21790,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaRead"
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
                 }
               }
             },
@@ -36101,6 +38166,19 @@
               "account_suspended"
             ]
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "generation_profile_not_found",
+            "x-codes": [
+              "generation_profile_not_found"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -37276,7 +39354,7 @@
       "name": "stations"
     },
     {
-      "description": "Exported B2C station templates and block hints for autogeneration",
+      "description": "Exported station templates and block hints for autogeneration",
       "name": "station-generation-profiles"
     },
     {

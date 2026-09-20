@@ -4,20 +4,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
 from app.core.errors import AppError, raise_mapped
 from app.core.ports import VectorIndex
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
-from app.features.entitlements import service as entitlements
 from app.features.media import domain, errors, repository
 from app.features.media.models import MediaItem
-from app.features.media.schemas import MediaRead, SearchHit
+from app.features.media.schemas import MediaRead
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.UnknownMediaKind: errors.UnknownMediaKindError,
@@ -71,14 +68,12 @@ async def update(
     title: str | None,
     summary: str | None,
     content: dict[str, Any] | None,
-    editor_is_admin: bool = False,
 ) -> MediaRead:
     row = await _require(session, item_id)
-    if not editor_is_admin:
-        try:
-            domain.ensure_editable(status=row.status)
-        except domain.NotEditable as exc:
-            raise_mapped(exc, _REFUSALS)
+    try:
+        domain.ensure_editable(status=row.status)
+    except domain.NotEditable as exc:
+        raise_mapped(exc, _REFUSALS)
 
     values: dict[str, Any] = {}
     if title is not None:
@@ -197,44 +192,6 @@ async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
     await repository.delete_item(session, item_id)
 
 
-async def search(
-    session: AsyncSession,
-    *,
-    query: str,
-    index: VectorIndex,
-    limit: int = 10,
-    unlocked: frozenset[uuid.UUID] = frozenset(),
-) -> list[SearchHit]:
-    """Search the index, then read the rows it named.
-
-    The index holds ids and nothing else, so what a reader sees always comes
-    from the database — an item unpublished since it was indexed cannot leak
-    through a stale entry.
-
-    Scoped to what the reader holds, the way the tutor's own search already is
-    (`tutor_memory.service_search`): a hit names a title, and a search over
-    every exam's material is a table of contents for the ones you have not
-    bought. Free material — no exam — is searchable by everybody.
-    """
-    try:
-        cleaned = domain.clean_query(query)
-    except Exception as exc:  # noqa: BLE001 - mapped above
-        raise_mapped(exc, _REFUSALS)
-
-    hits = await index.search(query=cleaned, limit=limit)
-    scores = {uuid.UUID(doc_id): score for doc_id, score in hits}
-    rows = await repository.by_ids(session, list(scores))
-    return sorted(
-        (
-            SearchHit(id=r.id, kind=r.kind, slug=r.slug, title=r.title, score=scores.get(r.id, 0.0))
-            for r in rows
-            if domain.is_public(status=r.status) and (r.exam_id is None or r.exam_id in unlocked)
-        ),
-        key=lambda hit: hit.score,
-        reverse=True,
-    )
-
-
 async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
     row = await repository.by_id(session, item_id)
     if row is None:
@@ -271,34 +228,3 @@ async def _read(
         created_at=row.created_at,
         published_at=row.published_at,
     )
-
-
-async def unlocked_exam_ids(
-    session: AsyncSession, user_id: uuid.UUID | None, *, now: datetime
-) -> frozenset[uuid.UUID]:
-    """The exams whose material this reader may open.
-
-    Live grants only, and fails closed on anything that cannot say: a signed-out
-    visitor unlocks nothing, which is the whole point — the A to Z and the
-    slides were readable by anybody with the URL, signed in or not, because
-    these routes never took a principal at all.
-
-    The free trial is deliberately *not* honoured here. It buys three stations,
-    not the study library, which is what the retiring client enforced by
-    answering 403 with an upgrade prompt.
-    """
-    if user_id is None:
-        return frozenset()
-    grants = await entitlements.list_for_user(session, user_id, now=now)
-    return frozenset(g.exam_id for g in grants if g.live and g.exam_id)
-
-
-def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
-    """The dependency the router wires. Overridden in tests with a fake.
-
-    Takes the request's session because the index is in the same database:
-    indexing on publish belongs in the transaction that published.
-    """
-    from app.features.media.index import build_vector_index  # noqa: PLC0415
-
-    return build_vector_index(session)

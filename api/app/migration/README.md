@@ -169,8 +169,11 @@ One-way import into `availability_posts` and `peer_sessions`.
 
 ```bash
 poetry run python scripts/import_b2c_marketplace.py --from-firestore --dry-run
-poetry run python scripts/import_b2c_marketplace.py --from-firestore --no-dry-run
+poetry run python scripts/import_b2c_marketplace.py --from-firestore --purge-seeded --no-dry-run
 ```
+
+`--purge-seeded` removes rows created through the live marketplace API (uuid4)
+before copying Firestore; re-import is idempotent on uuid5 keys.
 
 Requires `import_b2c_users.py`. Posts load before sessions. Idempotent on
 uuid5 of `{exam}:marketplace:{post|session}:{id}`.

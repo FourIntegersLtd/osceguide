@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import domain, errors, repository, repository_slots
 from app.features.attempts.models import Attempt
+from app.features.attempts.service_debrief import start_debrief_attempt as start_debrief_attempt
 from app.features.attempts.schemas import (
     AttemptRead,
 )

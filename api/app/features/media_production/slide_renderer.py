@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import textwrap
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -47,7 +46,7 @@ def set_nested_value(data: dict, key: str, value) -> None:
 
 
 def utc_now_iso_z() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 openai_client = None
@@ -79,7 +78,11 @@ class SlideService:
         assets_dir = Path(__file__).resolve().parent / "assets"
         self.slides_base_dir = assets_dir / "slides"
         self.slides_base_dir.mkdir(parents=True, exist_ok=True)
-        font_dir = Path(self.settings.media_av_font_dir) if self.settings.media_av_font_dir.strip() else assets_dir / "fonts"
+        font_dir = (
+            Path(self.settings.media_av_font_dir)
+            if self.settings.media_av_font_dir.strip()
+            else assets_dir / "fonts"
+        )
         self.font_path = font_dir / "Poppins-Regular.ttf"
         self.bold_font_path = font_dir / "Poppins-Medium.ttf"
 
@@ -105,9 +108,7 @@ class SlideService:
             Path: Path to the topic folder
         """
         # Sanitize topic for folder name
-        safe_topic = "".join(
-            c if c.isalnum() or c in (" ", "-", "_") else "_" for c in topic
-        )
+        safe_topic = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in topic)
         safe_topic = safe_topic.replace(" ", "_").lower()[:50]  # Limit length
 
         # Create folder structure: slides/<topic>_<slide_id>/
@@ -134,18 +135,12 @@ class SlideService:
                 # Check if it's a dict with numeric string keys
                 keys = list(slides_field.keys())
                 if keys and all(k.isdigit() for k in keys):
-                    log.debug(
-                        "[SLIDE_SERVICE] Normalizing slides field from dict to list"
-                    )
+                    log.debug("[SLIDE_SERVICE] Normalizing slides field from dict to list")
                     sorted_keys = sorted(keys, key=int)
                     slide_data["slides"] = [slides_field[k] for k in sorted_keys]
-                    log.debug(
-                        f"[SLIDE_SERVICE] Converted to list with {len(slide_data['slides'])} items"
-                    )
+                    log.debug(f"[SLIDE_SERVICE] Converted to list with {len(slide_data['slides'])} items")
 
-    def _save_slides_json(
-        self, slide_data: dict, topic_folder: Path, slide_id: str
-    ) -> Path:
+    def _save_slides_json(self, slide_data: dict, topic_folder: Path, slide_id: str) -> Path:
         """
         Save slide data as JSON in the topic folder.
 
@@ -184,12 +179,10 @@ class SlideService:
             dict: Generated slide data with status and slide_id, or error message
         """
         if not prompt or not isinstance(prompt, str):
-            log.error(f"Invalid or missing prompt")
+            log.error("Invalid or missing prompt")
             return {"error": "Invalid or missing prompt"}, 400
 
-        log.debug(
-            f"[SLIDE_GENERATION] Starting slide generation for prompt: {prompt[:100]}..."
-        )
+        log.debug(f"[SLIDE_GENERATION] Starting slide generation for prompt: {prompt[:100]}...")
 
         # Construct user prompt
         user_prompt = f"Generate teaching slides based on the following clinical scenario: {prompt}"
@@ -202,9 +195,7 @@ class SlideService:
         ]
 
         try:
-            log.debug(
-                "[SLIDE_GENERATION] Calling OpenAI API for structured slide generation"
-            )
+            log.debug("[SLIDE_GENERATION] Calling OpenAI API for structured slide generation")
 
             completion = self.openai_client.beta.chat.completions.parse(
                 model="gpt-4o",
@@ -213,9 +204,7 @@ class SlideService:
             )
 
             slide_response = completion.choices[0].message.parsed
-            log.debug(
-                f"[SLIDE_GENERATION] Successfully generated {len(slide_response.slides)} slides"
-            )
+            log.debug(f"[SLIDE_GENERATION] Successfully generated {len(slide_response.slides)} slides")
 
             # Generate a unique ID for the slide job
             slide_id = f"slide_{str(uuid.uuid4())[:8]}"
@@ -231,9 +220,7 @@ class SlideService:
 
             # Save to Firestore and then save the JSON
             if self.firestore_service:
-                success, firestore_doc_id = self._save_to_firestore(
-                    slide_data, app_type
-                )
+                success, firestore_doc_id = self._save_to_firestore(slide_data, app_type)
                 if not success:
                     log.warning(
                         "[SLIDE_GENERATION] Failed to save to Firestore, but continuing with local JSON save."
@@ -245,9 +232,7 @@ class SlideService:
             # Save the final slide_data to JSON (now contains Firestore ID if available)
             json_path = self._save_slides_json(slide_data, topic_folder, slide_id)
 
-            log.debug(
-                f"[SLIDE_GENERATION] Slide generation completed: {slide_id}"
-            )
+            log.debug(f"[SLIDE_GENERATION] Slide generation completed: {slide_id}")
             log.debug(f"Slides saved to: {json_path}")
 
             return {
@@ -263,9 +248,7 @@ class SlideService:
             }, 200
 
         except Exception as e:
-            log.error(
-                f"[SLIDE_GENERATION] Failed to generate slides: {str(e)}", exc_info=True
-            )
+            log.error(f"[SLIDE_GENERATION] Failed to generate slides: {str(e)}", exc_info=True)
             return {"error": f"Slide generation failed: {str(e)}"}, 500
 
     def _add_slide_metadata(
@@ -312,9 +295,7 @@ class SlideService:
         """
         try:
             slide_id = slide_data.get("slide_id")
-            log.debug(
-                f"[SLIDE_GENERATION] Saving slides to Firestore: {slide_id} (app_type: {app_type})"
-            )
+            log.debug(f"[SLIDE_GENERATION] Saving slides to Firestore: {slide_id} (app_type: {app_type})")
 
             # Use app_type-specific collection name
             collection_name = COLLECTION_MAPPING[app_type]["slide"]
@@ -326,9 +307,7 @@ class SlideService:
             )
 
             if not success:
-                log.error(
-                    f"[SLIDE_GENERATION] Firestore save failed: {message}"
-                )
+                log.error(f"[SLIDE_GENERATION] Firestore save failed: {message}")
                 return False, None
 
             # Extract the Firestore document ID from response
@@ -340,9 +319,7 @@ class SlideService:
                 )
                 return True, firestore_doc_id
             else:
-                log.error(
-                    "[SLIDE_GENERATION] No document ID returned from Firestore"
-                )
+                log.error("[SLIDE_GENERATION] No document ID returned from Firestore")
                 return False, None
 
         except Exception as e:
@@ -367,9 +344,7 @@ class SlideService:
             return {"error": "Firestore service not configured"}, 500
 
         try:
-            log.debug(
-                f"[SLIDE_GENERATION] Retrieving slides: {slide_id} (app_type: {app_type})"
-            )
+            log.debug(f"[SLIDE_GENERATION] Retrieving slides: {slide_id} (app_type: {app_type})")
 
             # Get collection name for specific app_type
             collection_name = COLLECTION_MAPPING[app_type]["slide"]
@@ -378,9 +353,7 @@ class SlideService:
             )
 
             if not success or not slides:
-                log.error(
-                    f"[SLIDE_GENERATION] Slides not found: {slide_id} in {collection_name}"
-                )
+                log.error(f"[SLIDE_GENERATION] Slides not found: {slide_id} in {collection_name}")
                 return {"error": "Slides not found"}, 404
 
             # Normalize the 'slides' field from a dict to a list if necessary
@@ -390,14 +363,10 @@ class SlideService:
             return slides, 200
 
         except Exception as e:
-            log.error(
-                f"[SLIDE_GENERATION] Failed to retrieve slides: {str(e)}", exc_info=True
-            )
+            log.error(f"[SLIDE_GENERATION] Failed to retrieve slides: {str(e)}", exc_info=True)
             return {"error": f"Failed to retrieve slides: {str(e)}"}, 500
 
-    def update_slide(
-        self, slide_id: str, updated_data: dict, app_type: str = "sca"
-    ) -> dict:
+    def update_slide(self, slide_id: str, updated_data: dict, app_type: str = "sca") -> dict:
         """
         Update slide content in Firestore (and JSON file if exists).
 
@@ -422,12 +391,8 @@ class SlideService:
             return {"error": "Firestore service not configured"}, 500
 
         try:
-            log.debug(
-                f"[SLIDE_UPDATE] Updating slide: {slide_id} (app_type: {app_type})"
-            )
-            log.debug(
-                f"[SLIDE_UPDATE] Updated data keys: {list(updated_data.keys())}"
-            )
+            log.debug(f"[SLIDE_UPDATE] Updating slide: {slide_id} (app_type: {app_type})")
+            log.debug(f"[SLIDE_UPDATE] Updated data keys: {list(updated_data.keys())}")
 
             # Get collection name for specific app_type
             collection_name = COLLECTION_MAPPING[app_type]["slide"]
@@ -438,17 +403,13 @@ class SlideService:
             )
 
             if not success or not slide_data:
-                log.error(
-                    f"[SLIDE_UPDATE] Slide not found in Firestore: {slide_id}"
-                )
+                log.error(f"[SLIDE_UPDATE] Slide not found in Firestore: {slide_id}")
                 return {"error": "Slide not found"}, 404
 
             # Get the Firestore document ID
             firestore_doc_id = slide_data.get("id")
             if not firestore_doc_id:
-                log.error(
-                    f"[SLIDE_UPDATE] No Firestore document ID found for: {slide_id}"
-                )
+                log.error(f"[SLIDE_UPDATE] No Firestore document ID found for: {slide_id}")
                 return {"error": "Firestore document ID not found"}, 404
 
             # Update the slide data with new values using dot notation
@@ -468,38 +429,26 @@ class SlideService:
                 log.error(f"Firestore update failed: {message}")
                 return {"error": f"Firestore update failed: {message}"}, 500
 
-            log.debug(
-                f"[SLIDE_UPDATE] Updated Firestore document: {firestore_doc_id}"
-            )
+            log.debug(f"[SLIDE_UPDATE] Updated Firestore document: {firestore_doc_id}")
 
             # Optionally update JSON file if it exists (not required)
             try:
-                json_files = list(
-                    self.slides_base_dir.glob(f"**/slides_{slide_id}.json")
-                )
+                json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
                 if json_files:
                     json_path = json_files[0]
                     with open(json_path, "w", encoding="utf-8") as f:
                         json.dump(slide_data, f, indent=2, ensure_ascii=False)
-                    log.debug(
-                        f"[SLIDE_UPDATE] Also updated JSON file: {json_path}"
-                    )
+                    log.debug(f"[SLIDE_UPDATE] Also updated JSON file: {json_path}")
                 else:
-                    log.debug(
-                        f"[SLIDE_UPDATE] No JSON file found for {slide_id}, skipping JSON update"
-                    )
+                    log.debug(f"[SLIDE_UPDATE] No JSON file found for {slide_id}, skipping JSON update")
             except Exception as json_error:
-                log.warning(
-                    f"[SLIDE_UPDATE] Failed to update JSON file: {str(json_error)}"
-                )
+                log.warning(f"[SLIDE_UPDATE] Failed to update JSON file: {str(json_error)}")
                 # Continue anyway since Firestore update succeeded
 
             return {"message": "Slide updated successfully", "slide_id": slide_id}, 200
 
         except Exception as e:
-            log.error(
-                f"[SLIDE_UPDATE] Failed to update slide: {str(e)}", exc_info=True
-            )
+            log.error(f"[SLIDE_UPDATE] Failed to update slide: {str(e)}", exc_info=True)
             return {"error": f"Failed to update slide: {str(e)}"}, 500
 
     def update_slide_status(
@@ -526,9 +475,7 @@ class SlideService:
             return {"error": "Firestore service not configured"}, 500
 
         try:
-            log.debug(
-                f"[SLIDE_GENERATION] Updating slide status: {slide_id} -> {status}"
-            )
+            log.debug(f"[SLIDE_GENERATION] Updating slide status: {slide_id} -> {status}")
 
             # Try all app_types to find the slide and get document ID
             firestore_doc_id = None
@@ -551,9 +498,7 @@ class SlideService:
                     break
 
             if not firestore_doc_id:
-                log.error(
-                    f"[SLIDE_GENERATION] Slide not found in Firestore: {slide_id}"
-                )
+                log.error(f"[SLIDE_GENERATION] Slide not found in Firestore: {slide_id}")
                 return {"error": "Slide not found in Firestore"}, 404
 
             update_data = {
@@ -575,9 +520,7 @@ class SlideService:
                 log.error(f"Status update failed: {message}")
                 return {"error": message}, 500
 
-            log.debug(
-                f"[SLIDE_GENERATION] Status updated successfully to: {status}"
-            )
+            log.debug(f"[SLIDE_GENERATION] Status updated successfully to: {status}")
             return {
                 "message": "Status updated successfully",
                 "slide_id": slide_id,
@@ -585,14 +528,10 @@ class SlideService:
             }, 200
 
         except Exception as e:
-            log.error(
-                f"[SLIDE_GENERATION] Failed to update status: {str(e)}", exc_info=True
-            )
+            log.error(f"[SLIDE_GENERATION] Failed to update status: {str(e)}", exc_info=True)
             return {"error": f"Failed to update status: {str(e)}"}, 500
 
-    def _load_slide_data(
-        self, slide_id: str, json_path: str = None
-    ) -> tuple[dict | None, str | None]:
+    def _load_slide_data(self, slide_id: str, json_path: str = None) -> tuple[dict | None, str | None]:
         """
         Load slide data, prioritizing Firestore and falling back to a local JSON file.
         Also normalizes the 'slides' array from a dict to a list.
@@ -619,7 +558,8 @@ class SlideService:
                     slide_data = result
                     app_type = current_app_type
                     log.debug(
-                        f"[SLIDE_DATA] Found and loaded slide data from Firestore collection: {collection_name}"
+                        "[SLIDE_DATA] Found and loaded slide data from Firestore "
+                        f"collection: {collection_name}"
                     )
                     break
 
@@ -630,14 +570,10 @@ class SlideService:
             )
             json_path_obj = Path(json_path)
             if json_path_obj.exists():
-                with open(json_path_obj, "r", encoding="utf-8") as f:
+                with open(json_path_obj, encoding="utf-8") as f:
                     slide_data = json.load(f)
-                    app_type = slide_data.get(
-                        "app_type", "sca"
-                    )  # Get app_type from data or default
-                log.debug(
-                    f"[SLIDE_DATA] Successfully loaded slide data from JSON file."
-                )
+                    app_type = slide_data.get("app_type", "sca")  # Get app_type from data or default
+                log.debug("[SLIDE_DATA] Successfully loaded slide data from JSON file.")
 
         # If data was loaded, normalize the slides array
         if slide_data:
@@ -665,9 +601,7 @@ class SlideService:
             return {"error": "Firestore service not configured"}, 500
 
         try:
-            log.debug(
-                f"[SLIDE_DELETE] Deleting slide: {slide_id} (app_type: {app_type})"
-            )
+            log.debug(f"[SLIDE_DELETE] Deleting slide: {slide_id} (app_type: {app_type})")
 
             was_deleted = False
 
@@ -684,22 +618,14 @@ class SlideService:
                         collection_name=collection_name, document_id=firestore_doc_id
                     )
                     if del_success:
-                        log.debug(
-                            f"[SLIDE_DELETE] Deleted from Firestore: {firestore_doc_id}"
-                        )
+                        log.debug(f"[SLIDE_DELETE] Removed Firestore document: {firestore_doc_id}")
                         was_deleted = True
                     else:
-                        log.warning(
-                            f"[SLIDE_DELETE] Failed to delete from Firestore: {message}"
-                        )
+                        log.warning(f"[SLIDE_DELETE] Firestore delete failed: {message}")
                 else:
-                    log.warning(
-                        f"[SLIDE_DELETE] Found doc in Firestore but it has no ID: {slide_id}"
-                    )
+                    log.warning(f"[SLIDE_DELETE] Found doc in Firestore but it has no ID: {slide_id}")
             else:
-                log.debug(
-                    f"[SLIDE_DELETE] Slide not found in Firestore collection '{collection_name}'"
-                )
+                log.debug(f"[SLIDE_DELETE] Slide not found in Firestore collection '{collection_name}'")
 
             # --- Step 2: Delete from local filesystem ---
             json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
@@ -709,14 +635,10 @@ class SlideService:
                     import shutil
 
                     shutil.rmtree(topic_folder)
-                    log.debug(
-                        f"[SLIDE_DELETE] Deleted local folder: {topic_folder}"
-                    )
+                    log.debug(f"[SLIDE_DELETE] Deleted local folder: {topic_folder}")
                     was_deleted = True
             else:
-                log.debug(
-                    f"[SLIDE_DELETE] No local folder found for {slide_id}, skipping local delete."
-                )
+                log.debug(f"[SLIDE_DELETE] No local folder found for {slide_id}, skipping local delete.")
 
             # --- Step 3: Return result ---
             if was_deleted:
@@ -725,15 +647,11 @@ class SlideService:
                     "slide_id": slide_id,
                 }, 200
             else:
-                log.error(
-                    f"[SLIDE_DELETE] Slide not found anywhere for ID: {slide_id}"
-                )
+                log.error(f"[SLIDE_DELETE] Slide not found anywhere for ID: {slide_id}")
                 return {"error": "Slide not found"}, 404
 
         except Exception as e:
-            log.error(
-                f"[SLIDE_DELETE] Failed to delete slide: {str(e)}", exc_info=True
-            )
+            log.error(f"[SLIDE_DELETE] Failed to delete slide: {str(e)}", exc_info=True)
             return {"error": f"Failed to delete slide: {str(e)}"}, 500
 
     def generate_audio_for_slides(self, slide_id: str, json_path: str = None) -> dict:
@@ -757,17 +675,13 @@ class SlideService:
             slide_data, app_type = self._load_slide_data(slide_id, json_path)
 
             if not slide_data:
-                log.error(
-                    f"[AUDIO_GENERATION] Slide data not found for slide_id: {slide_id}"
-                )
+                log.error(f"[AUDIO_GENERATION] Slide data not found for slide_id: {slide_id}")
                 return {"error": f"Slide not found: {slide_id}"}, 404
 
             # Create or find topic folder for audio storage
             if not json_path:
                 # Check if folder exists
-                json_files = list(
-                    self.slides_base_dir.glob(f"**/slides_{slide_id}.json")
-                )
+                json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
                 if json_files:
                     json_path = json_files[0]
                     topic_folder = json_path.parent
@@ -777,13 +691,9 @@ class SlideService:
                     topic_folder = self._create_topic_folder(topic, slide_id)
 
                     # Save the JSON file in the newly created folder.
-                    json_path = self._save_slides_json(
-                        slide_data, topic_folder, slide_id
-                    )
+                    json_path = self._save_slides_json(slide_data, topic_folder, slide_id)
 
-                    log.debug(
-                        f"[AUDIO_GENERATION] Created new topic folder and saved JSON: {topic_folder}"
-                    )
+                    log.debug(f"[AUDIO_GENERATION] Created new topic folder and saved JSON: {topic_folder}")
             else:
                 json_path = Path(json_path)
                 topic_folder = json_path.parent
@@ -797,9 +707,7 @@ class SlideService:
             if not slides:
                 return {"error": "No slides found in JSON"}, 400
 
-            log.debug(
-                f"[AUDIO_GENERATION] Generating audio for {len(slides)} slides (with bullet timing)"
-            )
+            log.debug(f"[AUDIO_GENERATION] Generating audio for {len(slides)} slides (with bullet timing)")
 
             audio_paths = []
             total_duration = 0.0
@@ -812,25 +720,23 @@ class SlideService:
                 bullets = slide.get("bullets", [])
 
                 if not speaker_notes:
-                    log.warning(
-                        f"[AUDIO_GENERATION] Slide {slide_position} has no speaker_notes, skipping"
-                    )
+                    log.warning(f"[AUDIO_GENERATION] Slide {slide_position} has no speaker_notes, skipping")
                     continue
 
-                # Check if the slide is a question slide - if it has speaker notes and no bullets, it is a question slide
+                # Question slides have speaker notes and no bullets.
                 is_question_slide = speaker_notes and not bullets
 
                 if is_question_slide:
-                    updated_slide, slide_duration, new_audio_paths = (
-                        self._process_question_slide_audio(slide, audio_folder)
+                    updated_slide, slide_duration, new_audio_paths = self._process_question_slide_audio(
+                        slide, audio_folder
                     )
                 elif bullets:
-                    updated_slide, slide_duration, new_audio_paths = (
-                        self._process_bullet_slide_audio(slide, audio_folder)
+                    updated_slide, slide_duration, new_audio_paths = self._process_bullet_slide_audio(
+                        slide, audio_folder
                     )
                 else:
-                    updated_slide, slide_duration, new_audio_paths = (
-                        self._process_regular_slide_audio(slide, audio_folder)
+                    updated_slide, slide_duration, new_audio_paths = self._process_regular_slide_audio(
+                        slide, audio_folder
                     )
 
                 # Update the slide in the main data structure
@@ -847,7 +753,8 @@ class SlideService:
                 json.dump(slide_data, f, indent=2, ensure_ascii=False)
 
             log.debug(
-                f"[AUDIO_GENERATION] Audio generation completed: {len(audio_paths)} files, {total_duration:.2f}s total"
+                "[AUDIO_GENERATION] Audio generation completed: "
+                f"{len(audio_paths)} files, {total_duration:.2f}s total"
             )
 
             # Update Firestore with complete slide data (including updated slides with audio metadata)
@@ -868,13 +775,9 @@ class SlideService:
                             updated_data=slide_data,
                         )
                         if success:
-                            log.debug(
-                                f"[AUDIO_GENERATION] Updated Firestore with complete slide data"
-                            )
+                            log.debug("[AUDIO_GENERATION] Updated Firestore with complete slide data")
                         else:
-                            log.warning(
-                                f"[AUDIO_GENERATION] Failed to update Firestore: {message}"
-                            )
+                            log.warning(f"[AUDIO_GENERATION] Failed to update Firestore: {message}")
 
             return {
                 "message": "Audio generated successfully with bullet timing",
@@ -886,14 +789,10 @@ class SlideService:
             }, 200
 
         except Exception as e:
-            log.error(
-                f"[AUDIO_GENERATION] Failed to generate audio: {str(e)}", exc_info=True
-            )
+            log.error(f"[AUDIO_GENERATION] Failed to generate audio: {str(e)}", exc_info=True)
             return {"error": f"Audio generation failed: {str(e)}"}, 500
 
-    def _process_regular_slide_audio(
-        self, slide: dict, audio_folder: Path
-    ) -> tuple[dict, float, list]:
+    def _process_regular_slide_audio(self, slide: dict, audio_folder: Path) -> tuple[dict, float, list]:
         """
         Generates a single audio clip for a regular slide.
 
@@ -909,16 +808,12 @@ class SlideService:
         speaker_notes = slide.get("speaker_notes", "")
         audio_paths = []
 
-        log.debug(
-            f"[AUDIO_GENERATION] Slide {slide_position}: REGULAR slide (no bullets)"
-        )
+        log.debug(f"[AUDIO_GENERATION] Slide {slide_position}: REGULAR slide (no bullets)")
         audio_file = audio_folder / f"slide_{slide_position:04d}.wav"
 
         # Check if audio already exists
         if audio_file.exists():
-            log.debug(
-                f"[AUDIO_GENERATION] Slide {slide_position}: Using existing audio file"
-            )
+            log.debug(f"[AUDIO_GENERATION] Slide {slide_position}: Using existing audio file")
             audio_clip = AudioFileClip(str(audio_file))
             audio_duration = audio_clip.duration
             audio_clip.close()
@@ -945,9 +840,7 @@ class SlideService:
 
         return slide, audio_duration, audio_paths
 
-    def _process_bullet_slide_audio(
-        self, slide: dict, audio_folder: Path
-    ) -> tuple[dict, float, list]:
+    def _process_bullet_slide_audio(self, slide: dict, audio_folder: Path) -> tuple[dict, float, list]:
         """
         Generates segmented audio for a slide with bullet points.
 
@@ -966,48 +859,33 @@ class SlideService:
         slide_total_duration = 0.0
 
         # Check if bullets have sub-bullets
-        has_subbullets = any(
-            isinstance(b, dict) and b.get("sub_bullets") for b in bullets
-        )
+        has_subbullets = any(isinstance(b, dict) and b.get("sub_bullets") for b in bullets)
 
         if has_subbullets:
             log.debug(
-                f"[AUDIO_GENERATION] Slide {slide_position}: BULLET slide with SUB-BULLETS ({len(bullets)} main bullets)"
+                f"[AUDIO_GENERATION] Slide {slide_position}: BULLET slide with "
+                f"SUB-BULLETS ({len(bullets)} main bullets)"
             )
-            bullet_segments = self._split_speaker_notes_for_bullets_with_subbullets(
-                speaker_notes, bullets
-            )
+            bullet_segments = self._split_speaker_notes_for_bullets_with_subbullets(speaker_notes, bullets)
         else:
-            log.debug(
-                f"[AUDIO_GENERATION] Slide {slide_position}: BULLET slide ({len(bullets)} bullets)"
-            )
-            bullet_segments = self._split_speaker_notes_for_bullets(
-                speaker_notes, len(bullets)
-            )
+            log.debug(f"[AUDIO_GENERATION] Slide {slide_position}: BULLET slide ({len(bullets)} bullets)")
+            bullet_segments = self._split_speaker_notes_for_bullets(speaker_notes, len(bullets))
 
         if bullet_segments is None:
-            log.debug(
-                f"[AUDIO_GENERATION] Slide {slide_position}: Falling back to single audio"
-            )
+            log.debug(f"[AUDIO_GENERATION] Slide {slide_position}: Falling back to single audio")
             return self._process_regular_slide_audio(slide, audio_folder)
 
         bullet_audio_segments = []
         for bullet_idx, segment_text in enumerate(bullet_segments):
             if not segment_text or len(segment_text.strip()) < 5:
-                log.warning(
-                    f"[AUDIO_GENERATION]   Bullet {bullet_idx + 1}: Skipping empty/invalid segment"
-                )
+                log.warning(f"[AUDIO_GENERATION]   Bullet {bullet_idx + 1}: Skipping empty/invalid segment")
                 continue
 
-            audio_file = (
-                audio_folder / f"slide_{slide_position:04d}_bullet_{bullet_idx:02d}.wav"
-            )
+            audio_file = audio_folder / f"slide_{slide_position:04d}_bullet_{bullet_idx:02d}.wav"
 
             # Check if audio already exists
             if audio_file.exists():
-                log.debug(
-                    f"[AUDIO_GENERATION]   Bullet {bullet_idx + 1}: Using existing audio file"
-                )
+                log.debug(f"[AUDIO_GENERATION]   Bullet {bullet_idx + 1}: Using existing audio file")
                 audio_clip = AudioFileClip(str(audio_file))
                 segment_duration = audio_clip.duration
                 audio_clip.close()
@@ -1043,21 +921,15 @@ class SlideService:
             )
             slide_total_duration += segment_duration
             audio_paths.append(str(audio_file))
-            log.debug(
-                f"[AUDIO_GENERATION]   Bullet {bullet_idx + 1}: {segment_duration:.2f}s"
-            )
+            log.debug(f"[AUDIO_GENERATION]   Bullet {bullet_idx + 1}: {segment_duration:.2f}s")
 
-        slide["bullet_audio_segments"] = [
-            seg.model_dump() for seg in bullet_audio_segments
-        ]
+        slide["bullet_audio_segments"] = [seg.model_dump() for seg in bullet_audio_segments]
         slide["audio_duration"] = slide_total_duration
         slide["has_pause"] = False
 
         return slide, slide_total_duration, audio_paths
 
-    def _process_question_slide_audio(
-        self, slide: dict, audio_folder: Path
-    ) -> tuple[dict, float, list]:
+    def _process_question_slide_audio(self, slide: dict, audio_folder: Path) -> tuple[dict, float, list]:
         """
         Generates audio for a question slide and adds a pause.
 
@@ -1073,16 +945,12 @@ class SlideService:
         speaker_notes = slide.get("speaker_notes", "")
         audio_paths = []
 
-        log.debug(
-            f"[AUDIO_GENERATION] Slide {slide_position}: QUESTION slide (with pause)"
-        )
+        log.debug(f"[AUDIO_GENERATION] Slide {slide_position}: QUESTION slide (with pause)")
         audio_file = audio_folder / f"slide_{slide_position:04d}.wav"
 
         # Check if audio already exists
         if audio_file.exists():
-            log.debug(
-                f"[AUDIO_GENERATION] Slide {slide_position}: Using existing audio file"
-            )
+            log.debug(f"[AUDIO_GENERATION] Slide {slide_position}: Using existing audio file")
             audio_clip = AudioFileClip(str(audio_file))
             audio_duration = audio_clip.duration
             audio_clip.close()
@@ -1111,9 +979,7 @@ class SlideService:
         total_slide_duration = audio_duration + pause_duration
         audio_paths.append(str(audio_file))
 
-        log.debug(
-            f"[AUDIO_GENERATION] Question slide: {audio_duration:.2f}s + {pause_duration}s pause"
-        )
+        log.debug(f"[AUDIO_GENERATION] Question slide: {audio_duration:.2f}s + {pause_duration}s pause")
 
         return slide, total_slide_duration, audio_paths
 
@@ -1143,11 +1009,7 @@ class SlideService:
             # Handle dict format
             if isinstance(highlight, dict):
                 # Try common dict keys
-                highlight_text = (
-                    highlight.get("text")
-                    or highlight.get("term")
-                    or highlight.get("value")
-                )
+                highlight_text = highlight.get("text") or highlight.get("term") or highlight.get("value")
                 if highlight_text:
                     normalized_highlights.append(str(highlight_text))
             # Handle list format (nested lists)
@@ -1155,9 +1017,7 @@ class SlideService:
                 # Recursively process nested lists
                 for item in highlight:
                     if isinstance(item, dict):
-                        item_text = (
-                            item.get("text") or item.get("term") or item.get("value")
-                        )
+                        item_text = item.get("text") or item.get("term") or item.get("value")
                         if item_text:
                             normalized_highlights.append(str(item_text))
                     elif isinstance(item, str) and item.strip():
@@ -1173,16 +1033,12 @@ class SlideService:
                 pattern = re.compile(re.escape(highlight_text), re.IGNORECASE)
                 result = pattern.sub(highlight_text.upper(), result)
             except Exception as e:
-                log.warning(
-                    f"[HIGHLIGHT] Failed to apply highlight '{highlight_text}': {str(e)}"
-                )
+                log.warning(f"[HIGHLIGHT] Failed to apply highlight '{highlight_text}': {str(e)}")
                 continue
 
         return result
 
-    def _split_speaker_notes_for_bullets(
-        self, speaker_notes: str, num_bullets: int
-    ) -> list:
+    def _split_speaker_notes_for_bullets(self, speaker_notes: str, num_bullets: int) -> list:
         """
         Split speaker notes into segments for each bullet point.
         Uses sentence-based splitting for natural audio segmentation.
@@ -1204,7 +1060,8 @@ class SlideService:
         # Use 50% threshold - only fall back to single audio if we have less than half the bullets
         if len(sentences) < num_bullets * 0.5:
             log.warning(
-                f"[AUDIO_SPLIT] Not enough sentences ({len(sentences)}) for {num_bullets} bullets. Using single audio."
+                f"[AUDIO_SPLIT] Not enough sentences ({len(sentences)}) for "
+                f"{num_bullets} bullets. Using single audio."
             )
             return None
 
@@ -1222,30 +1079,21 @@ class SlideService:
                 current_segment.append(sentence)
 
                 # Check if we should close this segment
-                if (
-                    len(current_segment) >= target_sentences
-                    and len(segments) < num_bullets - 1
-                ):
+                if len(current_segment) >= target_sentences and len(segments) < num_bullets - 1:
                     segments.append(" ".join(current_segment))
                     current_segment = []
-                    target_sentences = (len(sentences) - i - 1) / (
-                        num_bullets - len(segments)
-                    )
+                    target_sentences = (len(sentences) - i - 1) / (num_bullets - len(segments))
 
             # Add remaining sentences to last segment
             if current_segment:
                 segments.append(" ".join(current_segment))
 
         # Final validation - ensure no empty segments
-        segments = [
-            seg for seg in segments if seg and seg.strip() not in ["", ".", ",", "!"]
-        ]
+        segments = [seg for seg in segments if seg and seg.strip() not in ["", ".", ",", "!"]]
 
         # If we lost too many segments, return None to use single audio
         if len(segments) < num_bullets * 0.5:
-            log.warning(
-                f"[AUDIO_SPLIT] Too many empty segments. Using single audio."
-            )
+            log.warning("[AUDIO_SPLIT] Too many empty segments. Using single audio.")
             return None
 
         # Trim to exact number of bullets (shouldn't happen with proper distribution)
@@ -1302,9 +1150,7 @@ class SlideService:
             if image_path.exists():
                 if layout == "full_image":
                     is_full_image = True
-                    image_clip = ImageClip(str(image_path)).with_duration(
-                        total_duration
-                    )
+                    image_clip = ImageClip(str(image_path)).with_duration(total_duration)
                     max_width, max_height = int(width * 0.6), int(height * 0.6)
                     image_clip = (
                         image_clip.resized(height=max_height)
@@ -1332,9 +1178,7 @@ class SlideService:
 
         return elements, side_padding, content_width, is_full_image
 
-    def upload_video_to_s3(
-        self, video_path: Path, slide_id: str, topic: str, app_type: str = "sca"
-    ) -> dict:
+    def upload_video_to_s3(self, video_path: Path, slide_id: str, topic: str, app_type: str = "sca") -> dict:
         """
         Upload the generated video to AWS S3.
 
@@ -1350,9 +1194,7 @@ class SlideService:
         try:
             # Format the S3 file name with app_type-specific folder
             formatted_topic = topic.lower().replace(" ", "_")[:50]
-            s3_key = (
-                f"{self.s3_base_folder}/{app_type}/{formatted_topic}_{slide_id}.mp4"
-            )
+            s3_key = f"{self.s3_base_folder}/{app_type}/{formatted_topic}_{slide_id}.mp4"
 
             # Upload to S3
             log.debug(f"Uploading video to S3: {s3_key}")
@@ -1365,9 +1207,7 @@ class SlideService:
                 )
 
             # Generate the public URL
-            video_url = (
-                f"https://{self._s3_bucket}.s3.{self._aws_region}.amazonaws.com/{s3_key}"
-            )
+            video_url = f"https://{self._s3_bucket}.s3.{self._aws_region}.amazonaws.com/{s3_key}"
             log.debug(f"Video uploaded successfully: {video_url}")
 
             return {"success": True, "video_url": video_url}
@@ -1391,9 +1231,7 @@ class SlideService:
         try:
             # Find or create local folder for audio files
             if not json_path:
-                json_files = list(
-                    self.slides_base_dir.glob(f"**/slides_{slide_id}.json")
-                )
+                json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
                 if json_files:
                     json_path = json_files[0]
                     topic_folder = Path(json_path).parent
@@ -1403,13 +1241,13 @@ class SlideService:
                     json_files = list(self.slides_base_dir.glob(f"**/{slide_id}"))
                     if not json_files:
                         return {
-                            "error": f"Slides folder not found for slide_id: {slide_id}. Generate audio first."
+                            "error": (
+                                f"Slides folder not found for slide_id: {slide_id}. Generate audio first."
+                            )
                         }, 404
                     topic_folder = json_files[0]
                     json_path = topic_folder / f"slides_{slide_id}.json"
-                    log.debug(
-                        f"[VIDEO_GENERATION] Using topic folder: {topic_folder}"
-                    )
+                    log.debug(f"[VIDEO_GENERATION] Using topic folder: {topic_folder}")
             else:
                 json_path = Path(json_path)
                 topic_folder = json_path.parent
@@ -1420,9 +1258,7 @@ class SlideService:
             slide_data, app_type = self._load_slide_data(slide_id, json_path)
 
             if not slide_data:
-                log.error(
-                    f"[VIDEO_GENERATION] Slide data not found for slide_id: {slide_id}"
-                )
+                log.error(f"[VIDEO_GENERATION] Slide data not found for slide_id: {slide_id}")
                 return {"error": f"Slide not found: {slide_id}"}, 404
 
             slides = slide_data.get("slides", [])
@@ -1436,27 +1272,21 @@ class SlideService:
 
             # Generate all slides
             test_slides = slides
-            log.debug(
-                f"[VIDEO_GENERATION] Creating video for all {len(slides)} slides"
-            )
+            log.debug(f"[VIDEO_GENERATION] Creating video for all {len(slides)} slides")
 
             # Generate video clips for each slide
             video_clips = []
             total_duration = 0.0
 
             for i, slide in enumerate(test_slides, 1):
-                log.debug(
-                    f"[VIDEO_GENERATION] Creating video for slide {i}/{len(test_slides)}"
-                )
+                log.debug(f"[VIDEO_GENERATION] Creating video for slide {i}/{len(test_slides)}")
 
                 clip = self._create_slide_clip(slide, topic_folder)
                 if clip:
                     video_clips.append(clip)
                     total_duration += clip.duration
                 else:
-                    log.warning(
-                        f"[VIDEO_GENERATION] Failed to create clip for slide {i}"
-                    )
+                    log.warning(f"[VIDEO_GENERATION] Failed to create clip for slide {i}")
 
             if not video_clips:
                 return {"error": "Failed to create any video clips"}, 500
@@ -1469,18 +1299,14 @@ class SlideService:
             video_clips.append(end_screen)
 
             # Concatenate all clips into one continuous auto-playing video
-            log.debug(
-                f"[VIDEO_GENERATION] Concatenating {len(video_clips)} clips (all slides + end screen)"
-            )
+            log.debug(f"[VIDEO_GENERATION] Concatenating {len(video_clips)} clips (all slides + end screen)")
             final_video = concatenate_videoclips(video_clips, method="compose")
 
             # Save final video
             video_filename = f"teaching_video_{slide_id}.mp4"
             video_path = topic_folder / video_filename
 
-            log.debug(
-                f"[VIDEO_GENERATION] Rendering final video to: {video_path}"
-            )
+            log.debug(f"[VIDEO_GENERATION] Rendering final video to: {video_path}")
             final_video.write_videofile(
                 str(video_path),
                 fps=24,
@@ -1497,29 +1323,19 @@ class SlideService:
             for clip in video_clips:
                 clip.close()
 
-            log.debug(
-                f"[VIDEO_GENERATION] Video generation completed: {video_path}"
-            )
+            log.debug(f"[VIDEO_GENERATION] Video generation completed: {video_path}")
 
             # Upload video to S3
             topic = slide_data.get("topic", "untitled")
-            app_type = app_type or slide_data.get(
-                "app_type", "sca"
-            )  # Use detected app_type
-            upload_result = self.upload_video_to_s3(
-                video_path, slide_id, topic, app_type
-            )
+            app_type = app_type or slide_data.get("app_type", "sca")  # Use detected app_type
+            upload_result = self.upload_video_to_s3(video_path, slide_id, topic, app_type)
 
             if not upload_result["success"]:
-                log.warning(
-                    f"[VIDEO_GENERATION] Failed to upload video to S3: {upload_result.get('error')}"
-                )
+                log.warning(f"[VIDEO_GENERATION] Failed to upload video to S3: {upload_result.get('error')}")
                 video_url = str(video_path)  # Fallback to local path
             else:
                 video_url = upload_result["video_url"]
-                log.debug(
-                    f"[VIDEO_GENERATION] Video uploaded to S3: {video_url}"
-                )
+                log.debug(f"[VIDEO_GENERATION] Video uploaded to S3: {video_url}")
 
             # Update JSON with video info
             slide_data["final_video_url"] = video_url
@@ -1554,14 +1370,10 @@ class SlideService:
             }, 200
 
         except Exception as e:
-            log.error(
-                f"[VIDEO_GENERATION] Failed to generate video: {str(e)}", exc_info=True
-            )
+            log.error(f"[VIDEO_GENERATION] Failed to generate video: {str(e)}", exc_info=True)
             return {"error": f"Video generation failed: {str(e)}"}, 500
 
-    def _create_end_screen(
-        self, duration: float, width: int, height: int
-    ) -> CompositeVideoClip:
+    def _create_end_screen(self, duration: float, width: int, height: int) -> CompositeVideoClip:
         """
         Creates a branded end screen for the video.
 
@@ -1585,13 +1397,10 @@ class SlideService:
         logo_path = self.slides_base_dir / "images" / "logo.png"
         if logo_path.exists():
             logo_clip = (
-                ImageClip(str(logo_path))
-                .with_duration(duration)
-                .resized(width=400)
-                .with_position("center")
+                ImageClip(str(logo_path)).with_duration(duration).resized(width=400).with_position("center")
             )
             elements.append(logo_clip)
-            log.debug(f"Added logo to end screen")
+            log.debug("Added logo to end screen")
         else:
             end_text = (
                 TextClip(
@@ -1607,9 +1416,7 @@ class SlideService:
                 .with_position("center")
             )
             elements.append(end_text)
-            log.debug(
-                "[VIDEO_GENERATION] Added text to end screen (no logo found)"
-            )
+            log.debug("[VIDEO_GENERATION] Added text to end screen (no logo found)")
 
         return CompositeVideoClip(elements)
 
@@ -1644,38 +1451,26 @@ class SlideService:
             bullets = slide.get("bullets", [])
             total_duration = slide["audio_duration"]
 
-            log.debug(
-                f"[VIDEO_GENERATION] Creating progressive bullet reveal for {len(bullets)} bullets"
-            )
+            log.debug(f"[VIDEO_GENERATION] Creating progressive bullet reveal for {len(bullets)} bullets")
 
-            image_elements, side_padding, content_width, is_full_image = (
-                self._create_image_clips(
-                    slide,
-                    topic_folder,
-                    total_duration,
-                    width,
-                    height,
-                    side_padding,
-                    content_y,
-                )
+            image_elements, side_padding, content_width, is_full_image = self._create_image_clips(
+                slide,
+                topic_folder,
+                total_duration,
+                width,
+                height,
+                side_padding,
+                content_y,
             )
 
             # Create background
             background_img_path = self.slides_base_dir / "images" / "bg.png"
-            log.debug(
-                f"[VIDEO_GENERATION] Checking background path: {background_img_path}"
-            )
-            log.debug(
-                f"[VIDEO_GENERATION] Background path exists: {background_img_path.exists()}"
-            )
+            log.debug(f"[VIDEO_GENERATION] Checking background path: {background_img_path}")
+            log.debug(f"[VIDEO_GENERATION] Background path exists: {background_img_path.exists()}")
             if not background_img_path.exists():
-                background = ColorClip(
-                    size=(width, height), color=(245, 245, 247), duration=total_duration
-                )
+                background = ColorClip(size=(width, height), color=(245, 245, 247), duration=total_duration)
             else:
-                background = ImageClip(str(background_img_path)).with_duration(
-                    total_duration
-                )
+                background = ImageClip(str(background_img_path)).with_duration(total_duration)
 
             elements = [background]
             elements.extend(image_elements)
@@ -1716,9 +1511,7 @@ class SlideService:
                 elements.append(title)
 
             # Create individual text clips for each bullet that appear at the right time
-            bullet_y_spacing = (
-                120  # Increased space between bullets to accommodate multi-line text
-            )
+            bullet_y_spacing = 120  # Increased space between bullets to accommodate multi-line text
 
             # Get highlights for this slide (ensure it's a list)
             slide_highlights = slide.get("highlights", [])
@@ -1763,9 +1556,7 @@ class SlideService:
 
                 # Apply highlights to this bullet
                 if slide_highlights:
-                    bullet_text = self._apply_highlights_to_text(
-                        bullet_text, slide_highlights
-                    )
+                    bullet_text = self._apply_highlights_to_text(bullet_text, slide_highlights)
 
                 # Add bullet point prefix
                 formatted_bullet = f"• {bullet_text}"
@@ -1776,9 +1567,7 @@ class SlideService:
                 start_y = bullet_y - 50  # Start 50px above final position
                 end_y = bullet_y  # End at normal position
 
-                def make_bullet_slide_position(
-                    start_y_val, end_y_val, x_val, slide_dur
-                ):
+                def make_bullet_slide_position(start_y_val, end_y_val, x_val, slide_dur):
                     def bullet_slide_in(t):
                         """Slide in from top over 0.4 seconds, starting immediately when bullet appears
                         Note: t is relative to clip start (0 when clip appears)"""
@@ -1787,9 +1576,7 @@ class SlideService:
                             progress = t / slide_dur
                             # Use ease-out for smoother animation
                             eased_progress = 1 - (1 - progress) ** 2
-                            current_y = (
-                                start_y_val + (end_y_val - start_y_val) * eased_progress
-                            )
+                            current_y = start_y_val + (end_y_val - start_y_val) * eased_progress
                             return (x_val, current_y)
                         else:
                             # Stay at final position
@@ -1810,17 +1597,14 @@ class SlideService:
                     )
                     .with_start(bullet_appear_time)  # Appear 0.2s before audio
                     .with_duration(total_duration - bullet_appear_time)
-                    .with_position(
-                        make_bullet_slide_position(
-                            start_y, end_y, side_padding, slide_duration
-                        )
-                    )
+                    .with_position(make_bullet_slide_position(start_y, end_y, side_padding, slide_duration))
                     .with_effects([CrossFadeIn(0.15)])  # Quick fade with slide
                 )
 
                 elements.append(bullet_clip)
                 log.debug(
-                    f"[VIDEO_GENERATION]   Bullet {bullet_idx + 1} appears at {bullet_appear_time:.2f}s (audio at {start_time:.2f}s)"
+                    f"[VIDEO_GENERATION]   Bullet {bullet_idx + 1} appears at "
+                    f"{bullet_appear_time:.2f}s (audio at {start_time:.2f}s)"
                 )
 
             # Concatenate all audio segments
@@ -1830,10 +1614,7 @@ class SlideService:
                 if audio_path.exists():
                     audio_clips.append(AudioFileClip(str(audio_path)))
 
-            if audio_clips:
-                combined_audio = concatenate_audioclips(audio_clips)
-            else:
-                combined_audio = None
+            combined_audio = concatenate_audioclips(audio_clips) if audio_clips else None
 
             # Compose video
             composite = CompositeVideoClip(elements)
@@ -1842,9 +1623,7 @@ class SlideService:
             if combined_audio:
                 composite = composite.with_audio(combined_audio)
 
-            log.debug(
-                f"[VIDEO_GENERATION] Progressive bullet clip created (duration: {total_duration:.2f}s)"
-            )
+            log.debug(f"[VIDEO_GENERATION] Progressive bullet clip created (duration: {total_duration:.2f}s)")
 
             return composite
 
@@ -1887,31 +1666,26 @@ class SlideService:
             total_duration = slide["audio_duration"]
 
             log.debug(
-                f"[VIDEO_GENERATION] Creating progressive bullet reveal with sub-bullets for {len(bullets)} bullets"
+                "[VIDEO_GENERATION] Creating progressive bullet reveal with "
+                f"sub-bullets for {len(bullets)} bullets"
             )
 
-            image_elements, side_padding, content_width, is_full_image = (
-                self._create_image_clips(
-                    slide,
-                    topic_folder,
-                    total_duration,
-                    width,
-                    height,
-                    side_padding,
-                    content_y,
-                )
+            image_elements, side_padding, content_width, is_full_image = self._create_image_clips(
+                slide,
+                topic_folder,
+                total_duration,
+                width,
+                height,
+                side_padding,
+                content_y,
             )
 
             # Create background
             background_img_path = self.slides_base_dir / "images" / "bg.png"
             if not background_img_path.exists():
-                background = ColorClip(
-                    size=(width, height), color=(245, 245, 247), duration=total_duration
-                )
+                background = ColorClip(size=(width, height), color=(245, 245, 247), duration=total_duration)
             else:
-                background = ImageClip(str(background_img_path)).with_duration(
-                    total_duration
-                )
+                background = ImageClip(str(background_img_path)).with_duration(total_duration)
 
             elements = [background]
             elements.extend(image_elements)
@@ -2020,9 +1794,7 @@ class SlideService:
 
                 # Apply highlights to main bullet
                 if all_highlights:
-                    bullet_text = self._apply_highlights_to_text(
-                        bullet_text, all_highlights
-                    )
+                    bullet_text = self._apply_highlights_to_text(bullet_text, all_highlights)
 
                 # Calculate dynamic height for main bullet based on text length
                 estimated_lines = max(1, len(bullet_text) // 80)
@@ -2036,9 +1808,7 @@ class SlideService:
                 start_y = current_y - 50  # Start 50px above final position
                 end_y = current_y  # End at normal position
 
-                def make_bullet_slide_position(
-                    start_y_val, end_y_val, x_val, slide_dur
-                ):
+                def make_bullet_slide_position(start_y_val, end_y_val, x_val, slide_dur):
                     def bullet_slide_in(t):
                         """Slide in from top over 0.4 seconds, starting immediately when bullet appears
                         Note: t is relative to clip start (0 when clip appears)"""
@@ -2047,9 +1817,7 @@ class SlideService:
                             progress = t / slide_dur
                             # Use ease-out for smoother animation
                             eased_progress = 1 - (1 - progress) ** 2
-                            current_y_pos = (
-                                start_y_val + (end_y_val - start_y_val) * eased_progress
-                            )
+                            current_y_pos = start_y_val + (end_y_val - start_y_val) * eased_progress
                             return (x_val, current_y_pos)
                         else:
                             # Stay at final position
@@ -2070,17 +1838,14 @@ class SlideService:
                     )
                     .with_start(bullet_appear_time)  # Appear 0.2s before audio
                     .with_duration(total_duration - bullet_appear_time)
-                    .with_position(
-                        make_bullet_slide_position(
-                            start_y, end_y, side_padding, slide_duration
-                        )
-                    )
+                    .with_position(make_bullet_slide_position(start_y, end_y, side_padding, slide_duration))
                     .with_effects([CrossFadeIn(0.15)])  # Quick fade with slide
                 )
 
                 elements.append(bullet_clip)
                 log.debug(
-                    f"[VIDEO_GENERATION]   Main Bullet {bullet_idx + 1} appears at {bullet_appear_time:.2f}s (audio at {start_time:.2f}s), y={current_y}"
+                    f"[VIDEO_GENERATION]   Main Bullet {bullet_idx + 1} appears at "
+                    f"{bullet_appear_time:.2f}s (audio at {start_time:.2f}s), y={current_y}"
                 )
 
                 # Move down by the bullet height
@@ -2101,9 +1866,7 @@ class SlideService:
 
                     # Ensure sub_bullet_text is a string
                     if not isinstance(sub_bullet_text, str):
-                        sub_bullet_text = (
-                            str(sub_bullet_text) if sub_bullet_text else ""
-                        )
+                        sub_bullet_text = str(sub_bullet_text) if sub_bullet_text else ""
 
                     # Ensure sub_bullet_highlights is a list
                     if not isinstance(sub_bullet_highlights, list):
@@ -2129,9 +1892,7 @@ class SlideService:
 
                     # Apply highlights to sub-bullet
                     if sub_all_highlights:
-                        sub_bullet_text = self._apply_highlights_to_text(
-                            sub_bullet_text, sub_all_highlights
-                        )
+                        sub_bullet_text = self._apply_highlights_to_text(sub_bullet_text, sub_all_highlights)
 
                     # Calculate dynamic height for sub-bullet
                     estimated_sub_lines = max(1, len(sub_bullet_text) // 85)
@@ -2161,7 +1922,9 @@ class SlideService:
 
                     elements.append(sub_bullet_clip)
                     log.debug(
-                        f"[VIDEO_GENERATION]     Sub-Bullet appears at {sub_bullet_appear_time:.2f}s (audio at {sub_start_time:.2f}s), y={current_y}"
+                        f"[VIDEO_GENERATION]     Sub-Bullet appears at "
+                        f"{sub_bullet_appear_time:.2f}s (audio at {sub_start_time:.2f}s), "
+                        f"y={current_y}"
                     )
 
                     # Move down by the sub-bullet height
@@ -2177,10 +1940,7 @@ class SlideService:
                 if audio_path.exists():
                     audio_clips.append(AudioFileClip(str(audio_path)))
 
-            if audio_clips:
-                combined_audio = concatenate_audioclips(audio_clips)
-            else:
-                combined_audio = None
+            combined_audio = concatenate_audioclips(audio_clips) if audio_clips else None
 
             # Compose video
             composite = CompositeVideoClip(elements)
@@ -2190,7 +1950,8 @@ class SlideService:
                 composite = composite.with_audio(combined_audio)
 
             log.debug(
-                f"[VIDEO_GENERATION] Progressive bullet clip with sub-bullets created (duration: {total_duration:.2f}s)"
+                "[VIDEO_GENERATION] Progressive bullet clip with sub-bullets created "
+                f"(duration: {total_duration:.2f}s)"
             )
 
             return composite
@@ -2204,9 +1965,7 @@ class SlideService:
 
     # Enhanced audio splitting for sub-bullets
 
-    def _split_speaker_notes_for_bullets_with_subbullets(
-        self, speaker_notes: str, bullets: list
-    ) -> list:
+    def _split_speaker_notes_for_bullets_with_subbullets(self, speaker_notes: str, bullets: list) -> list:
         """
         Split speaker notes into segments for each bullet and sub-bullet.
 
@@ -2231,7 +1990,8 @@ class SlideService:
         # Check if we have enough content
         if len(sentences) < total_items * 0.5:
             log.warning(
-                f"[AUDIO_SPLIT] Not enough sentences ({len(sentences)}) for {total_items} items. Using single audio."
+                f"[AUDIO_SPLIT] Not enough sentences ({len(sentences)}) for "
+                f"{total_items} items. Using single audio."
             )
             return None
 
@@ -2245,29 +2005,20 @@ class SlideService:
         for i, sentence in enumerate(sentences):
             current_segment.append(sentence)
 
-            if (
-                len(current_segment) >= target_sentences
-                and len(segments) < total_items - 1
-            ):
+            if len(current_segment) >= target_sentences and len(segments) < total_items - 1:
                 segments.append(" ".join(current_segment))
                 current_segment = []
-                target_sentences = (len(sentences) - i - 1) / (
-                    total_items - len(segments)
-                )
+                target_sentences = (len(sentences) - i - 1) / (total_items - len(segments))
 
         # Add remaining sentences
         if current_segment:
             segments.append(" ".join(current_segment))
 
         # Validate segments
-        segments = [
-            seg for seg in segments if seg and seg.strip() not in ["", ".", ",", "!"]
-        ]
+        segments = [seg for seg in segments if seg and seg.strip() not in ["", ".", ",", "!"]]
 
         if len(segments) < total_items * 0.5:
-            log.warning(
-                f"[AUDIO_SPLIT] Too many empty segments. Using single audio."
-            )
+            log.warning("[AUDIO_SPLIT] Too many empty segments. Using single audio.")
             return None
 
         return segments[:total_items]
@@ -2298,9 +2049,7 @@ class SlideService:
             if has_bullet_timing and bullets:
                 # Check if any bullets have sub-bullets
                 bullets = slide.get("bullets", [])
-                has_subbullets = any(
-                    isinstance(b, dict) and b.get("sub_bullets") for b in bullets
-                )
+                has_subbullets = any(isinstance(b, dict) and b.get("sub_bullets") for b in bullets)
 
                 if has_subbullets:
                     # Use enhanced sub-bullet function
@@ -2333,9 +2082,7 @@ class SlideService:
             # Get audio file
             audio_file = topic_folder / "audio" / f"slide_{slide['position']:04d}.wav"
             if not audio_file.exists():
-                log.warning(
-                    f"[VIDEO_GENERATION] Audio file not found: {audio_file}"
-                )
+                log.warning(f"[VIDEO_GENERATION] Audio file not found: {audio_file}")
                 return None
 
             audio = AudioFileClip(str(audio_file))
@@ -2345,41 +2092,29 @@ class SlideService:
             if has_pause:
                 pause_duration = slide.get("pause_duration", 3.5)
                 total_duration = duration + pause_duration
-                log.debug(
-                    f"[VIDEO_GENERATION] Question slide with {pause_duration}s pause"
-                )
+                log.debug(f"[VIDEO_GENERATION] Question slide with {pause_duration}s pause")
             else:
                 total_duration = duration
 
-            image_elements, side_padding, content_width, is_full_image = (
-                self._create_image_clips(
-                    slide,
-                    topic_folder,
-                    total_duration,
-                    width,
-                    height,
-                    side_padding,
-                    content_y,
-                )
+            image_elements, side_padding, content_width, is_full_image = self._create_image_clips(
+                slide,
+                topic_folder,
+                total_duration,
+                width,
+                height,
+                side_padding,
+                content_y,
             )
 
             # Create background
             background_img_path = self.slides_base_dir / "images" / "bg.png"
-            log.debug(
-                f"[VIDEO_GENERATION] Checking background path: {background_img_path}"
-            )
-            log.debug(
-                f"[VIDEO_GENERATION] Background path exists: {background_img_path.exists()}"
-            )
+            log.debug(f"[VIDEO_GENERATION] Checking background path: {background_img_path}")
+            log.debug(f"[VIDEO_GENERATION] Background path exists: {background_img_path.exists()}")
             if not background_img_path.exists():
-                background = ColorClip(
-                    size=(width, height), color=(245, 245, 247), duration=total_duration
-                )
+                background = ColorClip(size=(width, height), color=(245, 245, 247), duration=total_duration)
                 elements = [background]
             else:
-                background = ImageClip(str(background_img_path)).with_duration(
-                    total_duration
-                )
+                background = ImageClip(str(background_img_path)).with_duration(total_duration)
                 elements = [background]
 
             elements.extend(image_elements)
@@ -2410,11 +2145,7 @@ class SlideService:
                 elements.append(title)
 
             # Handle patient explanation slide (no bullets) - skip for full_image layout
-            if (
-                slide.get("explanation")
-                and not slide.get("bullets")
-                and not is_full_image
-            ):
+            if slide.get("explanation") and not slide.get("bullets") and not is_full_image:
                 wrapper = textwrap.TextWrapper(width=content_width_chars)
                 wrapped_text = wrapper.fill(text=slide["explanation"])
 
@@ -2457,9 +2188,7 @@ class SlideService:
                 # Apply highlights
                 highlights = slide.get("highlights", [])
                 if highlights:
-                    bullet_text = self._apply_highlights_to_text(
-                        bullet_text, highlights
-                    )
+                    bullet_text = self._apply_highlights_to_text(bullet_text, highlights)
 
                 bullets_clip = (
                     TextClip(
@@ -2490,7 +2219,5 @@ class SlideService:
             return composite
 
         except Exception as e:
-            log.error(
-                f"[VIDEO_GENERATION] Error creating slide clip: {str(e)}", exc_info=True
-            )
+            log.error(f"[VIDEO_GENERATION] Error creating slide clip: {str(e)}", exc_info=True)
             return None

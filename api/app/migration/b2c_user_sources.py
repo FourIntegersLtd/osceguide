@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,10 @@ def _serialize_value(value: Any) -> Any:
 
 
 def _doc_to_dict(doc_id: str, data: dict[str, Any], *, app_type: str) -> dict[str, Any]:
-    out = _serialize_value(dict(data))
+    serialized = _serialize_value(dict(data))
+    if not isinstance(serialized, dict):
+        raise TypeError("document payload must serialize to an object")
+    out: dict[str, Any] = serialized
     out["id"] = doc_id
     out.setdefault("app_type", app_type)
     return out
@@ -58,11 +61,10 @@ def stream_b2c_user_documents(
 ) -> list[dict[str, Any]]:
     """Stream user documents from the four consumer collections (read-only)."""
     try:
-        from google.cloud import firestore  # type: ignore[import-untyped]
+        from google.cloud import firestore
     except ImportError as exc:
         raise RuntimeError(
-            "google-cloud-firestore is not installed. "
-            "Install the dev dependency: poetry install --with dev"
+            "google-cloud-firestore is not installed. Install the dev dependency: poetry install --with dev"
         ) from exc
 
     selected = list(products) if products is not None else list(B2C_USER_COLLECTIONS)
@@ -86,4 +88,4 @@ def write_users_json(path: Path, documents: list[dict[str, Any]]) -> None:
 
 
 def export_timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")

@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import delete, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import CursorParams, keyset_page
 from app.features.tutor_memory.models import DebriefSummary, LearningEvent, TutorNote
 
 
@@ -189,3 +190,16 @@ async def recent_debrief_summaries(
         .limit(limit)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def page_debrief_summaries(
+    session: AsyncSession, user_id: uuid.UUID, params: CursorParams
+) -> tuple[list[DebriefSummary], str | None]:
+    return await keyset_page(
+        session,
+        select(DebriefSummary).where(DebriefSummary.user_id == user_id),
+        sort_col=DebriefSummary.created_at,
+        id_col=DebriefSummary.id,
+        limit=params.limit,
+        cursor=params.cursor,
+    )

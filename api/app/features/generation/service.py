@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 from app.core.settings import Settings
-from app.features.generation import b2c_prompts
+from app.features.generation import exam_prompts
 from app.features.generation.errors import GenerationUnavailable
 from app.features.generation.normalizers import (
     normalize_blog_response,
@@ -24,7 +24,7 @@ _STATION_JSON_APPENDIX = (
 )
 
 _SUMMARY_JSON_APPENDIX = (
-    "\n\nReturn a single JSON object only (no markdown). Use B2C summary field names:\n"
+    "\n\nReturn a single JSON object only (no markdown). Use summary field names:\n"
     "- name (condition name)\n"
     "- red_flags (array of strings)\n"
     "- examinations (array of strings)\n"
@@ -62,7 +62,7 @@ async def generate_station(
     ortho_station_type: str | None = None,
     settings: Settings,
 ) -> dict[str, Any]:
-    system = b2c_prompts.station_system_prompt(exam_code, ortho_station_type) + _STATION_JSON_APPENDIX
+    system = exam_prompts.station_system_prompt(exam_code, ortho_station_type) + _STATION_JSON_APPENDIX
     return await _json_completion(
         settings=settings,
         system=system,
@@ -72,7 +72,7 @@ async def generate_station(
 
 async def generate_summary(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     exam = exam_code or "sca"
-    system = b2c_prompts.summary_system_prompt(exam) + _SUMMARY_JSON_APPENDIX
+    system = exam_prompts.summary_system_prompt(exam) + _SUMMARY_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -83,7 +83,7 @@ async def generate_summary(*, prompt: str, exam_code: str | None, settings: Sett
 
 async def generate_blog(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     exam = exam_code or "sca"
-    system = b2c_prompts.blog_system_prompt(exam) + _BLOG_JSON_APPENDIX
+    system = exam_prompts.blog_system_prompt(exam) + _BLOG_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -94,7 +94,7 @@ async def generate_blog(*, prompt: str, exam_code: str | None, settings: Setting
 
 async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     exam = exam_code or "sca"
-    system = b2c_prompts.slide_system_prompt(exam) + _SLIDE_JSON_APPENDIX
+    system = exam_prompts.slide_system_prompt(exam) + _SLIDE_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -105,7 +105,7 @@ async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: S
 
 async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     exam = exam_code or "sca"
-    system = b2c_prompts.podcast_system_prompt(prompt) + _PODCAST_JSON_APPENDIX
+    system = exam_prompts.podcast_system_prompt(prompt) + _PODCAST_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -133,3 +133,11 @@ async def _json_completion(*, settings: Settings, system: str, user: str) -> dic
     if not isinstance(parsed, dict):
         raise GenerationUnavailable("Model did not return a JSON object")
     return parsed
+
+
+def station_system_prompt(exam_code: str | None, ortho_station_type: str | None = None) -> str:
+    """Exam-level station generation prompt, for other slices to compose with."""
+    return exam_prompts.station_system_prompt(exam_code, ortho_station_type)
+
+
+PODCAST_PROMPT = exam_prompts.PODCAST_PROMPT

@@ -7,12 +7,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.entitlements.models import Entitlement
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
+from tests.support.finished_consultation import finish_consultation
 
 pytestmark = pytest.mark.db
 
@@ -252,6 +255,43 @@ async def test_a_debrief_can_be_started_from_an_entry(
         f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
     )
     assert attempt.status_code == 201, attempt.text
+    await finish_consultation(db_session, uuid.UUID(attempt.json()["attempt_id"]))
+
+    debrief = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs", headers=bearer(token)
+    )
+    assert debrief.status_code == 201, debrief.text
+    assert debrief.json()["kind"] == "debrief"
+
+
+async def test_a_debrief_does_not_recheck_exam_access_after_the_source_attempt(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    token = await a_learner(client, db_session, make_actor, "debrief-expired@example.com")
+    user = await identity_repo.user_by_email(db_session, "debrief-expired@example.com")
+    assert user is not None
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    set_id, entry_id = created["id"], created["entries"][0]["id"]
+
+    attempt = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
+    )
+    assert attempt.status_code == 201, attempt.text
+    await finish_consultation(db_session, uuid.UUID(attempt.json()["attempt_id"]))
+
+    await db_session.execute(
+        update(Entitlement)
+        .where(Entitlement.user_id == user.id)
+        .values(ends_at=datetime.now(UTC) - timedelta(days=1))
+    )
+    await db_session.flush()
 
     debrief = await client.post(
         f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs", headers=bearer(token)

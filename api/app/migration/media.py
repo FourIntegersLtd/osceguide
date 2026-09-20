@@ -173,11 +173,7 @@ def blog_from_document(document: dict[str, Any], *, product: str | None = None) 
     exam_code = _product(document, product=product)
     legacy_ref = f"{exam_code}:blog:{legacy_id}"
     url_slug = str(document.get("url") or "").strip()
-    slug = (
-        _bounded_slug(exam_code, url_slug)
-        if url_slug
-        else _bounded_slug(exam_code, "blog", legacy_id)
-    )
+    slug = _bounded_slug(exam_code, url_slug) if url_slug else _bounded_slug(exam_code, "blog", legacy_id)
 
     base = _legacy_content(document)
     normalized = normalize_blog_response(

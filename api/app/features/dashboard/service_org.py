@@ -11,6 +11,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.catalog import service as catalog
 from app.features.dashboard.schemas_org import (
     OrgCounts,
     OrgDashboard,
@@ -20,7 +21,6 @@ from app.features.dashboard.schemas_org import (
     SupervisorCircuits,
 )
 from app.features.roster import service as roster
-from app.features.catalog import repository as catalog_repo
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 from app.features.tenancy import service as tenancy
@@ -41,9 +41,7 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
         trainees=await roster.count_trainees(session, org_id),
         stations=await stations.count_stations(session, org_id),
         staff=await memberships.count_staff(session, org_id),
-        programmes_with_markable_exam=await catalog_repo.count_programmes_with_markable_exam(
-            session, org_id
-        ),
+        programmes_with_markable_exam=await catalog.count_programmes_with_markable_exam(session, org_id),
         sittings=await sittings.count_sittings(session, org_id),
     )
     setup = OrgSetup(

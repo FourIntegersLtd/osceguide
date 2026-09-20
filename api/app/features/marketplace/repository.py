@@ -97,8 +97,7 @@ async def list_open(
     exam_id: uuid.UUID | None = None,
     audience: Audience | None = None,
 ) -> tuple[list[AvailabilityPost], str | None]:
-    """Slots still to come, still unclaimed, and offered to a room this viewer
-    is in."""
+    """Open slots this viewer may claim: unclaimed and still in the future."""
     stmt = select(AvailabilityPost).where(
         AvailabilityPost.status == "available",
         AvailabilityPost.starts_at > now,
@@ -116,6 +115,39 @@ async def list_open(
         limit=limit,
         cursor=cursor,
         descending=False,
+    )
+
+
+async def list_feed(
+    session: AsyncSession,
+    *,
+    viewer: ViewerAudiences,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    exam_id: uuid.UUID | None = None,
+    audience: Audience | None = None,
+) -> tuple[list[AvailabilityPost], str | None]:
+    """Every post the retiring marketplace screen showed on **All Sessions**.
+
+    Unclaimed and claimed rows, newest first — claimed history is what becomes
+    the Scheduled and Completed sections once the clock passes.
+    """
+    stmt = select(AvailabilityPost).where(
+        AvailabilityPost.status.in_(("available", "claimed")),
+        visible_to(AvailabilityPost, viewer),
+    )
+    if exam_id is not None:
+        stmt = stmt.where(AvailabilityPost.exam_id == exam_id)
+    if audience is not None:
+        stmt = stmt.where(addressed_to(AvailabilityPost, audience))
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=AvailabilityPost.starts_at,
+        id_col=AvailabilityPost.id,
+        limit=limit,
+        cursor=cursor,
+        descending=True,
     )
 
 
@@ -146,23 +178,60 @@ async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: s
     await session.execute(update(PeerSession).where(PeerSession.id == session_id).values(room_name=room_name))
 
 
+async def link_practice_session(
+    session: AsyncSession,
+    peer_session_id: uuid.UUID,
+    *,
+    practice_session_id: uuid.UUID,
+    doctor_user_id: uuid.UUID,
+    patient_user_id: uuid.UUID,
+) -> None:
+    await session.execute(
+        update(PeerSession)
+        .where(PeerSession.id == peer_session_id)
+        .values(
+            practice_session_id=practice_session_id,
+            doctor_user_id=doctor_user_id,
+            patient_user_id=patient_user_id,
+            status="active",
+        )
+    )
+
+
+async def mark_peer_cancelled(session: AsyncSession, peer_session_id: uuid.UUID, *, at: datetime) -> bool:
+    cancelled = await session.execute(
+        update(PeerSession)
+        .where(PeerSession.id == peer_session_id, PeerSession.status.in_(("scheduled", "active")))
+        .values(status="cancelled", cancelled_at=at)
+        .returning(PeerSession.id)
+    )
+    return cancelled.scalar_one_or_none() is not None
+
+
 async def peer_session_by_id(session: AsyncSession, session_id: uuid.UUID) -> PeerSession | None:
     stmt = select(PeerSession).where(PeerSession.id == session_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def sessions_for_user(
-    session: AsyncSession, user_id: uuid.UUID, *, limit: int = 50
-) -> list[PeerSession]:
-    stmt = (
-        select(PeerSession)
-        .where(
-            or_(
-                PeerSession.owner_user_id == user_id,
-                PeerSession.claimer_user_id == user_id,
-            )
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+) -> tuple[list[PeerSession], str | None]:
+    stmt = select(PeerSession).where(
+        or_(
+            PeerSession.owner_user_id == user_id,
+            PeerSession.claimer_user_id == user_id,
         )
-        .order_by(PeerSession.starts_at.desc())
-        .limit(limit)
     )
-    return list((await session.execute(stmt)).scalars())
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=PeerSession.starts_at,
+        id_col=PeerSession.id,
+        limit=limit,
+        cursor=cursor,
+        descending=True,
+    )

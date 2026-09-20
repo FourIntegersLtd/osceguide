@@ -13,6 +13,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.features.attempts.schemas_coverage import CoverageRead as CoverageRead
+from app.features.attempts.schemas_roleplay import PatientRoleplayRead as PatientRoleplayRead
+
 
 class TranscriptMessageIn(BaseModel):
     """One turn, exactly as `osce_assessment.contracts.TranscriptMessage`."""

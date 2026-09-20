@@ -71,6 +71,7 @@ announce their moments through `bind_*` seams tied in `app/main.py`.
 |---|---|---|---|
 | POST | `/api/v1/me/activity` | bearer | batch of at most 50, 202 |
 | GET | `/api/v1/me/tutor-memory` | bearer | everything on file |
+| GET | `/api/v1/me/debriefs` | bearer | Cursor-paginated, owner-only history beyond the 20-summary tutor-memory window; includes `source_attempt_id` for station filtering |
 | DELETE | `/api/v1/me/tutor-memory/notes/{id}` | bearer | 204 |
 | DELETE | `/api/v1/me/tutor-memory?include_debriefs=` | bearer | says how much went |
 | POST | `/api/v1/admin/tutor-memory/reindex` | platform admin | rebuilds the material index now; synchronous |

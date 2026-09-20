@@ -19,10 +19,6 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import InvalidInput, raise_mapped
-from app.features.stations.station_validator import (
-    validate_generation_policy,
-    validate_station_structure,
-)
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import exam_code_by_id, resolve_exam
 from app.features.stations import domain, errors
@@ -30,6 +26,10 @@ from app.features.stations import repository_templates as repository
 from app.features.stations.models import StationTemplate, StationTemplateVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationTemplateRead, StationTemplateVersionRead
+from app.features.stations.station_validator import (
+    validate_generation_policy,
+    validate_station_structure,
+)
 
 
 def _ensure_valid_structure(structure: dict[str, Any], *, org_id: uuid.UUID | None) -> None:

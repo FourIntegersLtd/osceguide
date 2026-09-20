@@ -22,6 +22,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, Timestamps, UUIDPrimaryKey
+from app.features.attempts.models_coverage import AttemptLiveCoverage as AttemptLiveCoverage
 
 # Exactly one optional reference must match the kind. Written as a CHECK rather
 # than left to the service, because six code paths create attempts and only one

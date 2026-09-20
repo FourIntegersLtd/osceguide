@@ -83,7 +83,9 @@ async def test_truncated_text_is_caught(db_session: AsyncSession) -> None:
 
 
 async def test_an_attempt_that_never_arrived_is_named(db_session: AsyncSession) -> None:
-    _, ids, _ = await loader.load_users(db_session, merge_users([b2c_user("alice@example.com", "sca", "fs-1")]))
+    _, ids, _ = await loader.load_users(
+        db_session, merge_users([b2c_user("alice@example.com", "sca", "fs-1")])
+    )
     never_loaded = attempt_from_transcript(b2c_transcript("fs-1", "t-missing"), app_type="sca")
 
     problems = await verify.spot_check(db_session, [never_loaded])

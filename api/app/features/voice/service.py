@@ -86,7 +86,10 @@ async def grant_for_attempt(
     # A circuit's patient is dispatched by the orchestrator, into a room that
     # is already up. Carrying a dispatch on the candidate's token as well would
     # put a second patient in beside the first, and both would answer.
-    agent_name = None if attempt.kind == "exam_slot" else domain.agent_name(family, mode)
+    agent_name = (
+        None if attempt.kind == "exam_slot"
+        else domain.agent_name(family, mode, namespace=settings.livekit_agent_namespace)
+    )
 
     token = tokens.issue(
         identity=str(attempt.user_id),
@@ -159,7 +162,7 @@ async def grant_for_agent_room(
     token = tokens.issue(
         identity=identity,
         room=room,
-        agent_name=domain.agent_name(family, mode),
+        agent_name=domain.agent_name(family, mode, namespace=settings.livekit_agent_namespace),
         dispatch_metadata=dispatch_metadata,
         ttl_seconds=settings.livekit_token_ttl_seconds,
     )
@@ -206,7 +209,7 @@ async def dispatch_agent_into_room(
     """
     family = domain.family_for(session_type)
     mode = domain.resolve_mode(domain.normalize_mode(settings.livekit_routing_mode), cloud_slots_free=False)
-    agent = domain.agent_name(family, mode)
+    agent = domain.agent_name(family, mode, namespace=settings.livekit_agent_namespace)
 
     removed = await agents.remove_agents(room)
     if removed:

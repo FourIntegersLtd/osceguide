@@ -163,3 +163,8 @@ async def update_user(
     changes = {k: v for k, v in sent.items() if v is not None}
     await repository_platform.update_admin_fields(session, user_id, **changes)
     return await user_by_id(session, user_id)
+
+
+async def consumer_legacy_ids(session: AsyncSession, user_id: uuid.UUID) -> dict[str, str]:
+    """Legacy consumer subject ids keyed by exam, for the staff console."""
+    return await repository.consumer_legacy_ids(session, user_id)

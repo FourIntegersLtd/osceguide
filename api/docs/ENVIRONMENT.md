@@ -50,6 +50,9 @@ least 32 characters.
 | `WORKER_CONCURRENCY` | 4 | Background job parallelism. |
 | `FRONTEND_URL` / `LOG_LEVEL` | localhost:3000 / INFO | Link building and logging. Logs become JSON automatically when deployed. |
 | `SENTRY_DSN` | — | Error reporting, off unless set. Traces are sampled at 5% because an API the console polls would otherwise bill for its own heartbeat, and the request body is never sent — it holds passwords, legacy tokens and transcripts. |
+| `CARTESIA_API_KEY` | — | TTS for slide and podcast production. Jobs raise `av_unavailable` without it. |
+| `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_S3_BUCKET` | — | Where produced audio and video are stored. Jobs raise `av_unavailable` without a bucket. |
+| `MEDIA_AV_FONT_DIR` | — | Optional extra font directory for slide video. Empty uses the bundled fonts. |
 
 ## Local gotcha
 

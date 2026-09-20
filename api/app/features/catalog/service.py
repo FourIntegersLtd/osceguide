@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import domain, repository
-from app.features.catalog.errors import UnknownExamError
+from app.features.catalog.errors import ProgrammeNotFound, UnknownExamError
 from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
 
@@ -181,3 +181,16 @@ async def exam_refs(session: AsyncSession, org_id: uuid.UUID | None = None) -> l
 
 async def _published(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[Exam]:
     return await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])
+
+
+async def programme_exam_id(session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID) -> uuid.UUID:
+    """The exam this programme offers, or the refusal."""
+    programme = await repository.programme_by_id(session, org_id, programme_id)
+    if programme is None:
+        raise ProgrammeNotFound()
+    return programme.exam_id
+
+
+async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """Programmes whose exam is published and names a rubric version."""
+    return await repository.count_programmes_with_markable_exam(session, org_id)

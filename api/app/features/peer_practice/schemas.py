@@ -6,6 +6,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.core.audience import AudienceIn, AudienceOut
+from app.features.attempts.schemas_material import (
+    CandidateScenarioRead, DoctorInformationRead, ManagementPlanRead, StationTeachingRead,
+)
+from app.features.attempts.schemas_roleplay import PatientRoleplayRead
 
 
 class JoinQueue(BaseModel):
@@ -32,6 +36,20 @@ class QueueStatus(BaseModel):
     audience: AudienceOut
 
 
+class PracticeStationRead(BaseModel):
+    station_id: uuid.UUID
+    station_version_id: uuid.UUID
+    title: str
+    reading_brief: str | None = None
+    patient_script: str | None = None
+    management_plan: str | None = None
+    doctor_information: DoctorInformationRead | None = None
+    patient_information: PatientRoleplayRead | None = None
+    management: ManagementPlanRead | None = None
+    scenario: CandidateScenarioRead | None = None
+    teaching: StationTeachingRead | None = None
+
+
 class PracticeSessionRead(BaseModel):
     id: uuid.UUID
     exam_code: str
@@ -39,8 +57,29 @@ class PracticeSessionRead(BaseModel):
     partner_user_id: uuid.UUID
     room_name: str | None
     status: str
-    started_at: datetime | None
-    ended_at: datetime | None
+    current_phase: str | None = None
+    phase_ends_at: datetime | None = None
+    preparation_started_at: datetime | None = None
+    doctor_joined_at: datetime | None = None
+    patient_joined_at: datetime | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    station: PracticeStationRead | None = None
+    partner_joined: bool = False
+
+
+class SessionFeedback(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
+    would_practice_again: bool | None = None
+
+
+class ReportAbuse(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+
+
+class ReportNoShow(BaseModel):
+    message: str | None = Field(default=None, max_length=500)
 
 
 class EndSession(BaseModel):

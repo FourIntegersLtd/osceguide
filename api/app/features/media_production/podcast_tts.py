@@ -10,7 +10,7 @@ from openai import OpenAI
 from pydub import AudioSegment
 
 from app.core.settings import Settings
-from app.features.generation.b2c_prompts import PODCAST_PROMPT
+from app.features.generation.service import PODCAST_PROMPT
 from app.features.media_production.errors import AvUnavailable
 from app.features.media_production.s3 import upload_file
 from app.features.media_production.summary_text import format_summary_for_podcast
@@ -33,7 +33,7 @@ def generate_script(settings: Settings, source_text: str) -> str:
                 "role": "system",
                 "content": (
                     "You create a natural medical podcast between Ben and Michelle (UK GPs). "
-                    "Use the format Ben: \"...\" and Michelle: \"...\"."
+                    'Use the format Ben: "..." and Michelle: "...".'
                 ),
             },
             {"role": "user", "content": prompt},

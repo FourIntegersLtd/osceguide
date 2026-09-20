@@ -81,9 +81,15 @@ class StationTemplateVersionNotFound(NotFound):
     default_message = "No such station template version"
 
 
+class GenerationProfileNotFound(NotFound):
+    code = "generation_profile_not_found"
+    default_message = "No such generation profile"
+
+
 # Re-exported, not redefined: browsing another exam's library is refused with
 # the same code starting an attempt in it is, and two classes with one code
 # would drift.
 from app.features.entitlements.errors import NotEntitled  # noqa: E402
+from app.features.generation.errors import GenerationUnavailable  # noqa: E402
 
-__all__ = ["NotEntitled"]
+__all__ = ["NotEntitled", "GenerationUnavailable"]

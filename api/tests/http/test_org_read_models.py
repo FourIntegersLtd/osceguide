@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.http.test_sittings_routes import (
-    a_template_version,
     org_with_admin,
     published_station,
 )

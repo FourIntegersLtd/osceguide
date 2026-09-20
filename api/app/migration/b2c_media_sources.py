@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -93,8 +93,7 @@ def stream_b2c_media_documents(
         from google.cloud import firestore  # type: ignore[import-untyped]
     except ImportError as exc:
         raise RuntimeError(
-            "google-cloud-firestore is not installed. "
-            "Install the dev dependency: poetry install --with dev"
+            "google-cloud-firestore is not installed. Install the dev dependency: poetry install --with dev"
         ) from exc
 
     selected_kinds = list(kinds) if kinds is not None else list(ALL_MEDIA_KINDS)
@@ -128,4 +127,4 @@ def write_media_json(path: Path, documents: list[dict[str, Any]]) -> None:
 
 
 def export_timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")

@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from app.features.generation import b2c_prompts
+from app.features.generation import service as generation
 
 _GENERATED_DIR = Path(__file__).resolve().parent / "_generated"
 
@@ -45,7 +45,7 @@ class GenerationProfile:
             return ""
         exam = self.meta.exam_code or "sca"
         ortho = self.meta.ortho_station_type
-        return b2c_prompts.station_system_prompt(exam, ortho)
+        return generation.station_system_prompt(exam, ortho)
 
 
 def _json_path_for_key(profile_key: str) -> Path:

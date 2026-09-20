@@ -94,15 +94,12 @@ def _map_post_status(raw: str | None) -> tuple[str, datetime | None]:
 
 def _map_session_status(raw: str | None) -> tuple[str, datetime | None]:
     status = str(raw or "scheduled").strip().lower()
-    ended = None
     if status == "completed":
-        ended = datetime.now(UTC)
-        return "scheduled", ended
+        return "completed", datetime.now(UTC)
     if status in {"cancelled", "no_show"}:
-        ended = datetime.now(UTC)
-        return "scheduled", ended
+        return "cancelled", datetime.now(UTC)
     if status == "active":
-        return "scheduled", None
+        return "active", None
     if status == "scheduled":
         return "scheduled", None
     return "scheduled", None

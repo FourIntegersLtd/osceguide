@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.assistant import service as assistant
+from app.features.attempts.service_debrief import debrief_sources
 from app.features.catalog import service as catalog
 from app.features.tutor_memory import domain, errors, repository
 from app.features.tutor_memory.schemas import (
@@ -102,6 +103,7 @@ async def read_memory(session: AsyncSession, user_id: uuid.UUID) -> TutorMemoryR
     notes.sort(key=lambda n: n.created_at, reverse=True)
     events = await repository.recent_events(session, user_id, limit=MAX_EVENTS)
     debriefs = await repository.recent_debrief_summaries(session, user_id, limit=MAX_DEBRIEFS)
+    sources = await debrief_sources(session, user_id, [d.attempt_id for d in debriefs])
 
     return TutorMemoryRead(
         notes=[
@@ -123,6 +125,7 @@ async def read_memory(session: AsyncSession, user_id: uuid.UUID) -> TutorMemoryR
             DebriefSummaryRead(
                 id=d.id,
                 attempt_id=d.attempt_id,
+                source_attempt_id=sources.get(d.attempt_id),
                 key_insights=list(d.key_insights or []),
                 action_plan=list(d.action_plan or []),
                 narrative=d.narrative,

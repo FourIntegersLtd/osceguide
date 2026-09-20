@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog.models import Exam
@@ -14,6 +14,29 @@ from app.features.marketplace.models import AvailabilityPost, PeerSession
 from app.migration.b2c_marketplace import MigratedAvailabilityPost, MigratedPeerSession
 from app.migration.report import LoadReport
 from app.migration.resolve_legacy_users import legacy_consumer_user_ids
+
+
+def _is_live_api_row_id(row_id: uuid.UUID) -> bool:
+    """Imported B2C rows use uuid5; rows created through the platform API use uuid4."""
+    return row_id.version == 4
+
+
+async def purge_seeded_marketplace(session: AsyncSession) -> tuple[int, int]:
+    """Remove marketplace rows created locally (not from a B2C Firestore import).
+
+    Deletes `peer_sessions` first because they may reference `availability_posts`.
+    """
+    session_ids = list(await session.scalars(select(PeerSession.id)))
+    post_ids = list(await session.scalars(select(AvailabilityPost.id)))
+    seeded_sessions = [sid for sid in session_ids if _is_live_api_row_id(sid)]
+    seeded_posts = [pid for pid in post_ids if _is_live_api_row_id(pid)]
+
+    if seeded_sessions:
+        await session.execute(delete(PeerSession).where(PeerSession.id.in_(seeded_sessions)))
+    if seeded_posts:
+        await session.execute(delete(AvailabilityPost).where(AvailabilityPost.id.in_(seeded_posts)))
+    await session.flush()
+    return len(seeded_posts), len(seeded_sessions)
 
 
 def _resolve_user(
@@ -57,9 +80,7 @@ async def load_marketplace_posts(
 
         claimed_by: uuid.UUID | None = None
         if item.claimed_by_legacy_user_id:
-            claimed_by = _resolve_user(
-                report, users, item.claimed_by_legacy_user_id, item.legacy_ref
-            )
+            claimed_by = _resolve_user(report, users, item.claimed_by_legacy_user_id, item.legacy_ref)
 
         created = item.created_at or at
         updated = item.updated_at or created
@@ -117,9 +138,7 @@ async def load_peer_sessions(
         if item.post_row_id is not None:
             post = await session.get(AvailabilityPost, item.post_row_id)
             if post is None:
-                report.problem(
-                    f"{item.legacy_ref}: availability post {item.post_legacy_ref!r} is missing"
-                )
+                report.problem(f"{item.legacy_ref}: availability post {item.post_legacy_ref!r} is missing")
                 continue
             post_id = item.post_row_id
 

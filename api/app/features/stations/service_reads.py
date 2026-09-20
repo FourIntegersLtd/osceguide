@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import service as catalog
 from app.features.entitlements import service_access
-from app.features.stations import repository
+from app.features.stations import repository, repository_library
 from app.features.stations.schemas import LibraryStationRead
 
 
@@ -44,7 +44,7 @@ async def summaries_by_version_id(
     The frontend resolves these one id at a time against the catalogue — the
     N+1 the read models exist to delete.
     """
-    rows = await repository.versions_with_stations(session, org_id, list(version_ids))
+    rows = await repository_library.versions_with_stations(session, org_id, list(version_ids))
     return {
         version.id: StationSummary(
             version_id=version.id,
@@ -199,7 +199,7 @@ async def published_material(
     contributing its patient brief.
     """
     out: list[MaterialSource] = []
-    for version, station in await repository.published_library_versions(session, exam_id=exam_id):
+    for version, station in await repository_library.published_library_versions(session, exam_id=exam_id):
         text = _doctor_facing_text(dict(version.content or {}))
         if not text:
             continue

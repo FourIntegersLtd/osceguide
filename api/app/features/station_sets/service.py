@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.attempts import service as attempts
+from app.features.attempts.errors import AttemptNotFinished, AttemptNotReady
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.station_sets import domain, errors, repository
@@ -106,16 +107,26 @@ async def start_entry_attempt(
         if source_attempt_id is None:
             raise errors.NothingToDebriefError()
 
-    attempt = await attempts.start_attempt(
-        session,
-        user_id=owner_user_id,
-        kind="debrief" if debrief else "set_station",
-        exam_code=exam.code,
-        now=now,
-        station_version_id=entry.station_version_id,
-        set_entry_id=None if debrief else entry.id,
-        source_attempt_id=source_attempt_id,
-    )
+    if debrief:
+        try:
+            attempt = await attempts.start_debrief_attempt(
+                session,
+                user_id=owner_user_id,
+                source_attempt_id=source_attempt_id,
+                now=now,
+            )
+        except (AttemptNotFinished, AttemptNotReady) as exc:
+            raise errors.NothingToDebriefError() from exc
+    else:
+        attempt = await attempts.start_attempt(
+            session,
+            user_id=owner_user_id,
+            kind="set_station",
+            exam_code=exam.code,
+            now=now,
+            station_version_id=entry.station_version_id,
+            set_entry_id=entry.id,
+        )
     await repository.record_attempt(session, entry.id, at=now, debrief=debrief)
 
     entries = await repository.entries_for(session, set_id)

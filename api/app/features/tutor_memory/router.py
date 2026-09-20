@@ -8,14 +8,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import Unauthenticated, error_responses
+from app.core.errors import InvalidInput, Unauthenticated, error_responses
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import PlatformAdmin
-from app.features.tutor_memory import errors, schemas, service, service_material
+from app.features.tutor_memory import errors, schemas, service, service_history, service_material
 
 router = APIRouter(tags=["tutor-memory"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+@router.get(
+    "/me/debriefs",
+    response_model=Page[schemas.DebriefSummaryRead],
+    responses=error_responses(Unauthenticated, InvalidInput),
+)
+async def list_debriefs(
+    principal: CurrentPrincipal,
+    session: Session,
+    params: Annotated[CursorParams, Depends()],
+) -> Page[schemas.DebriefSummaryRead]:
+    return await service_history.list_debriefs(session, principal.user_id, params)
 
 
 @router.post(

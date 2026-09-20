@@ -133,7 +133,9 @@ async def test_somebody_who_signed_up_before_their_import_keeps_their_password(
     db_session.add(User(email="eve@example.com", name="Eve", password_hash="argon2-real"))
     await db_session.flush()
 
-    report, _, _ = await loader.load_users(db_session, merge_users([b2c_user("EVE@example.com", "sca", "fs-5")]))
+    report, _, _ = await loader.load_users(
+        db_session, merge_users([b2c_user("EVE@example.com", "sca", "fs-5")])
+    )
 
     assert report.users_matched == 1
     user = await db_session.scalar(select(User).where(User.email == "eve@example.com"))

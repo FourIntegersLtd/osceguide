@@ -16,9 +16,12 @@ from app.core import jobs
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 FEATURE_TASKS = {
+    "update_attempt_coverage",
     "score_attempt",
     "deliver_outbound_messages",
     "match_practice_queue",
+    "try_match_practice_room",
+    "expire_practice_queue",
     "suspend_lapsed_organizations",
     # The examination bell. Unregistered, a circuit starts and never moves —
     # which is the failure this whole file exists to make impossible.
@@ -37,6 +40,7 @@ FEATURE_TASKS = {
 PERIODIC_TASKS = {
     "deliver_outbound_messages",
     "match_practice_queue",
+    "expire_practice_queue",
     "suspend_lapsed_organizations",
     "sweep_circuits",
     "reindex_material",

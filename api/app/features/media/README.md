@@ -51,8 +51,9 @@ everybody else gets `locked: true` and a `null` body, which is what the
 retiring client's 403 and upgrade prompt were. Material tagged with no exam is
 free material and is never locked.
 
-The free trial is deliberately not honoured here: it buys three stations, not
-the study library.
+New accounts also unlock their registered exam's study library for fourteen
+days from account creation, independently of the AI station quota. After that
+window, a live entitlement is required. Other exams remain locked.
 
 ## Cross-slice dependencies
 Calls `catalog` to tag an item with an exam, and `entitlements` to decide whose

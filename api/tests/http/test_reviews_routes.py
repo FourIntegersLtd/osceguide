@@ -57,7 +57,7 @@ async def a_slot(
     template_version = await published_feedback_version(
         db_session,
         org_id,
-        structure=rubric_with_domains(*domains) if domains else None,
+        structure=rubric_with_domains(*domains),
     )
     station = Station(owner_kind="org", org_id=org_id, exam_id=exam.id, title="S")
     db_session.add(station)

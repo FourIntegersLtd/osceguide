@@ -59,6 +59,7 @@ class EventRead(BaseModel):
 class DebriefSummaryRead(BaseModel):
     id: uuid.UUID
     attempt_id: uuid.UUID
+    source_attempt_id: uuid.UUID | None = None
     key_insights: list[Any]
     action_plan: list[Any]
     narrative: str | None

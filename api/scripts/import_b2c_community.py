@@ -61,7 +61,9 @@ def _configure_firebase_credentials_from_env() -> None:
             if resolved.is_file():
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(resolved)
 
-    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_KEY"
+    )
     if not json_content or os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         return
     try:
@@ -78,11 +80,7 @@ def transform_documents(raw_documents: list[dict[str, Any]]) -> tuple[list[Migra
     problems: list[str] = []
     for raw in raw_documents:
         doc_id = (
-            raw.get("question_id")
-            or raw.get("reply_id")
-            or raw.get("comment_id")
-            or raw.get("id")
-            or "?"
+            raw.get("question_id") or raw.get("reply_id") or raw.get("comment_id") or raw.get("id") or "?"
         )
         try:
             migrated.append(community_from_document(raw))
@@ -136,7 +134,7 @@ async def run(
         print(report.summary())  # noqa: T201
 
         all_problems = transform_problems + report.problems
-        failed = bool(transform_problems)
+        failed = bool(all_problems)
         if commit and not failed:
             await session.commit()
             print("committed")  # noqa: T201

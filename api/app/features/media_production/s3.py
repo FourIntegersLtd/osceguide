@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import boto3
 
 from app.core.settings import Settings
 
 
-def s3_client(settings: Settings):
+def s3_client(settings: Settings) -> Any:
     return boto3.client(
         "s3",
         region_name=settings.aws_region,

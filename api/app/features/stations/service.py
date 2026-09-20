@@ -165,6 +165,14 @@ async def _presentation(
     if not structure:
         return None, "patient", None
     blocks = structure.get("blocks")
+    if not isinstance(blocks, list):
+        blocks = [
+            block
+            for section in structure.get("sections") or []
+            if isinstance(section, dict)
+            for block in (section.get("blocks") or [])
+            if isinstance(block, dict)
+        ]
     presentation = structure.get("layout") or {}
     layout = [dict(b) for b in blocks if isinstance(b, dict)] if isinstance(blocks, list) else None
     persona = str(presentation.get("persona") or "patient")

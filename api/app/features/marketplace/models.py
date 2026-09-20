@@ -54,5 +54,11 @@ class PeerSession(Base, UUIDPrimaryKey, Timestamps):
     exam_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("exams.id", ondelete="RESTRICT"), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     room_name: Mapped[str | None] = mapped_column(String(200))
+    practice_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("practice_sessions.id", ondelete="SET NULL")
+    )
+    doctor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    patient_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'scheduled'"))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -9,65 +9,49 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.tenancy import PlatformAdmin
-from app.features.media import errors as media_errors
-from app.features.media import service as media_service
-from app.features.media.schemas import MediaRead
-from app.features.media_production import service as production_service
-from app.features.media_production.errors import AvAlreadyRunning, AvUnavailable, WrongMediaKind
+from app.features.media_production import errors, schemas, service
 
 router = APIRouter(tags=["media-production"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 
+_AV = (errors.ItemNotFound, errors.WrongMediaKind, errors.AvAlreadyRunning, errors.AvUnavailable)
+
 
 @router.post(
     "/media/{item_id}/generate-podcast",
-    response_model=MediaRead,
+    response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(
-        Forbidden,
-        media_errors.ItemNotFound,
-        WrongMediaKind,
-        AvAlreadyRunning,
-        AvUnavailable,
-    ),
+    responses=error_responses(Forbidden, *_AV),
 )
 async def generate_summary_podcast(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
-) -> MediaRead:
-    await production_service.enqueue_summary_podcast(session, item_id)
-    return await media_service.read_by_id(session, item_id, viewer_is_admin=True)
+) -> schemas.MediaRead:
+    _ = admin
+    return await service.enqueue_summary_podcast(session, item_id)
 
 
 @router.post(
     "/media/{item_id}/regenerate-av",
-    response_model=MediaRead,
+    response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(
-        Forbidden,
-        media_errors.ItemNotFound,
-        WrongMediaKind,
-        AvAlreadyRunning,
-        AvUnavailable,
-    ),
+    responses=error_responses(Forbidden, *_AV),
 )
-async def regenerate_slide_av(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> MediaRead:
-    await production_service.enqueue_slide_regenerate(session, item_id)
-    return await media_service.read_by_id(session, item_id, viewer_is_admin=True)
+async def regenerate_slide_av(
+    item_id: uuid.UUID, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    _ = admin
+    return await service.enqueue_slide_regenerate(session, item_id)
 
 
 @router.post(
     "/media/{item_id}/generate-audio",
-    response_model=MediaRead,
+    response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(
-        Forbidden,
-        media_errors.ItemNotFound,
-        WrongMediaKind,
-        AvAlreadyRunning,
-        AvUnavailable,
-    ),
+    responses=error_responses(Forbidden, *_AV),
 )
-async def generate_podcast_audio(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> MediaRead:
-    await production_service.enqueue_podcast_audio(session, item_id)
-    return await media_service.read_by_id(session, item_id, viewer_is_admin=True)
+async def generate_podcast_audio(
+    item_id: uuid.UUID, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    _ = admin
+    return await service.enqueue_podcast_audio(session, item_id)

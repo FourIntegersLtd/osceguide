@@ -51,7 +51,7 @@ async def test_the_report_lists_every_candidate_with_marking_ratings_and_decisio
     await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/advance", json={}, headers=bearer(admin))
     reviewed = await client.put(
         f"/api/v1/orgs/kings/slots/{first_slot}/reviews/mine",
-        json={"field_values": {"communication.score": "a"}, "status": "completed"},
+        json={"field_values": {"consulting.score": "a"}, "status": "completed"},
         headers=bearer(admin),
     )
     assert reviewed.status_code == 200, reviewed.text
@@ -73,7 +73,7 @@ async def test_the_report_lists_every_candidate_with_marking_ratings_and_decisio
     assert row["trainee_id"] == trainee_id
     assert [s["station_title"] for s in row["stations"]] == ["Chest pain", "Headache"]
     assert row["stations"][0]["attempt_status"] == "created"
-    assert row["stations"][0]["by_domain"] == {"communication": "A"}
+    assert row["stations"][0]["by_domain"] == {"consulting": "A"}
     assert row["stations"][1]["attempt_status"] is None
     assert row["overall_rag"] == "A"
     assert row["decision"]["workflow_state"] == "draft"

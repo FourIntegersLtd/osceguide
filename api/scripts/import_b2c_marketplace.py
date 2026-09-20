@@ -4,9 +4,13 @@ Reads availability posts and peer sessions from Firestore (read-only) or from
 `marketplace.json`. Writes `availability_posts` and `peer_sessions` only.
 
     poetry run python scripts/import_b2c_marketplace.py --from-firestore --dry-run
-    poetry run python scripts/import_b2c_marketplace.py --from-firestore --no-dry-run
+    poetry run python scripts/import_b2c_marketplace.py --from-firestore --purge-seeded --no-dry-run
 
 Run `import_b2c_users.py` first so legacy user ids resolve.
+
+`--purge-seeded` deletes marketplace rows created via the live API (uuid4) before
+loading from Firestore. Imported rows (uuid5) are left in place and skipped on
+re-import.
 
 `--dry-run` is the default: full load, then rollback.
 """
@@ -45,7 +49,11 @@ from app.migration.b2c_social_sources import (  # noqa: E402
     stream_b2c_marketplace_documents,
     write_marketplace_json,
 )
-from app.migration.load_marketplace import load_marketplace_posts, load_peer_sessions  # noqa: E402
+from app.migration.load_marketplace import (  # noqa: E402
+    load_marketplace_posts,
+    load_peer_sessions,
+    purge_seeded_marketplace,
+)
 from app.migration.report import LoadReport  # noqa: E402
 from app.migration.users import UnknownLegacyProduct  # noqa: E402
 
@@ -61,7 +69,9 @@ def _configure_firebase_credentials_from_env() -> None:
             if resolved.is_file():
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(resolved)
 
-    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_KEY"
+    )
     if not json_content or os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         return
     try:
@@ -100,6 +110,7 @@ async def run(
     export_dir: Path | None,
     write_export: Path | None,
     collection: str | None,
+    purge_seeded: bool,
 ) -> int:
     if from_firestore and export_dir is not None:
         raise SystemExit("Use --from-firestore or --export, not both.")
@@ -129,6 +140,13 @@ async def run(
     import_all_models()
     engine = get_engine()
     async with AsyncSession(engine) as session:
+        if purge_seeded:
+            posts_removed, sessions_removed = await purge_seeded_marketplace(session)
+            print(  # noqa: T201
+                f"purged seeded rows: {posts_removed} availability posts, "
+                f"{sessions_removed} peer sessions (uuid4 / live API)"
+            )
+
         report = LoadReport()
         report = report.merge(await load_marketplace_posts(session, posts))
         report = report.merge(await load_peer_sessions(session, sessions))
@@ -136,7 +154,6 @@ async def run(
             print(f"  problem: {problem}")  # noqa: T201
         print(report.summary())  # noqa: T201
 
-        all_problems = transform_problems + report.problems
         failed = bool(transform_problems)
         if commit and not failed:
             await session.commit()
@@ -171,6 +188,11 @@ def main() -> None:
         default=True,
         help="run everything and roll back (default). Pass --no-dry-run to commit.",
     )
+    parser.add_argument(
+        "--purge-seeded",
+        action="store_true",
+        help="delete marketplace rows created via the live API before importing",
+    )
     args = parser.parse_args()
     raise SystemExit(
         asyncio.run(
@@ -180,6 +202,7 @@ def main() -> None:
                 export_dir=args.export,
                 write_export=args.write_export,
                 collection=args.collection,
+                purge_seeded=args.purge_seeded,
             )
         )
     )

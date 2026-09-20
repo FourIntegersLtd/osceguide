@@ -21,6 +21,7 @@ from app.core import lifecycle
 from app.core.errors import AppError, raise_mapped
 from app.features.rubrics import domain, errors, repository
 from app.features.rubrics.models import Rubric, RubricVersion
+from app.features.rubrics.reads import rubric_read, validate_marking_layout, validated, version_read
 from app.features.rubrics.schemas import RubricRead, RubricVersionRead
 
 REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -43,8 +44,8 @@ async def create_rubric(
     marking_layout: dict[str, Any] | None = None,
 ) -> RubricRead:
     """A rubric and its first draft version, ready to edit or publish."""
-    parsed, checked_pacing = _validated(structure, pacing)
-    _validate_marking_layout(marking_layout)
+    parsed, checked_pacing = validated(structure, pacing)
+    validate_marking_layout(marking_layout)
     rubric = await repository.create_rubric(session, org_id, title=title)
     version = await repository.add_version(
         session,
@@ -57,7 +58,7 @@ async def create_rubric(
         result_schema_override=result_schema_override,
         marking_layout=marking_layout,
     )
-    return _rubric_read(rubric, [version])
+    return rubric_read(rubric, [version])
 
 
 async def list_rubrics(
@@ -67,7 +68,7 @@ async def list_rubrics(
     out = []
     for rubric in rubrics:
         versions = await repository.versions_for_rubric(session, org_id, rubric.id)
-        out.append(_rubric_read(rubric, list(versions)))
+        out.append(rubric_read(rubric, list(versions)))
     return out, next_cursor
 
 
@@ -76,7 +77,7 @@ async def read_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id
     if rubric is None:
         raise errors.RubricNotFound()
     versions = await repository.versions_for_rubric(session, org_id, rubric_id)
-    return _rubric_read(rubric, list(versions))
+    return rubric_read(rubric, list(versions))
 
 
 async def add_version(
@@ -105,7 +106,7 @@ async def add_version(
         else None,
         marking_layout=dict(source.marking_layout) if source and source.marking_layout else None,
     )
-    return _version_read(version)
+    return version_read(version)
 
 
 async def edit_version(
@@ -125,8 +126,8 @@ async def edit_version(
         lifecycle.ensure_editable(
             lifecycle.VersionRef(number=row.version, status=lifecycle.Status(row.status))
         )
-        parsed, checked_pacing = _validated(structure, pacing)
-        _validate_marking_layout(marking_layout)
+        parsed, checked_pacing = validated(structure, pacing)
+        validate_marking_layout(marking_layout)
     except Exception as exc:  # noqa: BLE001 — mapped to the error carrying its status
         raise_mapped(exc, REFUSALS)
     await repository.set_version_body(
@@ -140,7 +141,7 @@ async def edit_version(
         marking_layout=marking_layout,
     )
     await session.refresh(row)
-    return _version_read(row)
+    return version_read(row)
 
 
 async def publish_version(
@@ -173,7 +174,7 @@ async def publish_version(
     await repository.set_version_status(session, org_id, row.id, status=status, at=now, by=actor_id)
     await repository.set_current_version(session, org_id, rubric_id, version_id=row.id)
     await session.refresh(row)
-    return _version_read(row)
+    return version_read(row)
 
 
 async def archive_version(
@@ -194,23 +195,7 @@ async def archive_version(
         raise_mapped(exc, REFUSALS)
     await repository.set_version_status(session, org_id, row.id, status=status, at=now, by=actor_id)
     await session.refresh(row)
-    return _version_read(row)
-
-
-def _validated(
-    structure: dict[str, Any], pacing: dict[str, Any]
-) -> tuple[domain.RubricStructure, dict[str, int]]:
-    try:
-        return domain.parse_structure(structure), domain.validate_pacing(pacing)
-    except domain.InvalidRubric as exc:
-        raise errors.InvalidRubricError(str(exc)) from exc
-
-
-def _validate_marking_layout(marking_layout: dict[str, Any] | None) -> None:
-    if marking_layout is None:
-        return
-    if not isinstance(marking_layout, dict) or not marking_layout.get("sections"):
-        raise errors.InvalidRubricError("A marking layout must include sections.")
+    return version_read(row)
 
 
 async def _own_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> Rubric:
@@ -228,37 +213,3 @@ async def _version(
     if row is None:
         raise errors.RubricVersionNotFound()
     return row
-
-
-def _rubric_read(rubric: Rubric, versions: list[RubricVersion]) -> RubricRead:
-    return RubricRead(
-        id=rubric.id,
-        owner_kind=rubric.owner_kind,
-        org_id=rubric.org_id,
-        title=rubric.title,
-        current_version_id=rubric.current_version_id,
-        versions=[_version_read(v) for v in versions],
-    )
-
-
-def _version_read(version: RubricVersion) -> RubricVersionRead:
-    try:
-        schema = domain.result_schema_for(
-            domain.parse_structure(version.structure), version.result_schema_override
-        )
-    except domain.InvalidRubric:
-        # A draft may be half-written. Showing an empty schema is better than
-        # refusing to show the draft its author is in the middle of writing.
-        schema = {}
-    return RubricVersionRead(
-        id=version.id,
-        rubric_id=version.rubric_id,
-        version=version.version,
-        status=version.status,
-        structure=dict(version.structure or {}),
-        system_prompt=version.system_prompt,
-        pacing=dict(version.pacing or {}),
-        result_schema=schema,
-        marking_layout=dict(version.marking_layout) if version.marking_layout else None,
-        published_at=version.published_at,
-    )

@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from app.core.settings import Settings
-from app.features.media_production.b2c_slide_service import SlideService
 from app.features.media_production.errors import AvUnavailable
+from app.features.media_production.slide_renderer import SlideService
 
 
 def _prepare_slide_payload(

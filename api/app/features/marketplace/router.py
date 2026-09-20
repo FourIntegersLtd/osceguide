@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import AudienceFilter, AudienceNotYours, InvalidAudience
@@ -30,9 +30,11 @@ async def list_open_slots(
     clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
     room: Annotated[AudienceFilter, Depends()],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
 ) -> Page[schemas.PostRead]:
-    """Open slots this caller may take: the public pool plus every institution
-    and group they belong to, or one room of it."""
+    """Availability and claimed slots this caller can see — the public pool plus
+    every institution and group they belong to. Matches the retiring marketplace
+    feed (open posts plus historic claimed sessions)."""
     items, next_cursor = await service.list_open_slots(
         session,
         viewer_id=principal.user_id,
@@ -40,6 +42,7 @@ async def list_open_slots(
         limit=page.limit,
         cursor=page.cursor,
         audience=room.audience,
+        exam_code=exam_code,
     )
     return Page(items=items, next_cursor=next_cursor)
 
@@ -120,9 +123,15 @@ async def list_my_posts(principal: CurrentPrincipal, session: Session) -> Page[s
     response_model=Page[schemas.PeerSessionRead],
     responses=error_responses(Unauthenticated),
 )
-async def list_my_sessions(principal: CurrentPrincipal, session: Session) -> Page[schemas.PeerSessionRead]:
-    items = await service.list_my_sessions(session, principal.user_id)
-    return Page(items=items, next_cursor=None)
+async def list_my_sessions(
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+) -> Page[schemas.PeerSessionRead]:
+    items, next_cursor = await service.list_my_sessions(
+        session, principal.user_id, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=items, next_cursor=next_cursor)
 
 
 @router.post(
@@ -134,3 +143,15 @@ async def join_session(
     session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.PeerSessionRead:
     return await service.join_session(session, session_id, user_id=principal.user_id, now=clock.now())
+
+
+@router.post(
+    "/me/peer-sessions/{session_id}/cancel",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.SessionNotOpen),
+)
+async def cancel_session(
+    session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> Response:
+    await service.cancel_peer_session(session, session_id, user_id=principal.user_id, now=clock.now())
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

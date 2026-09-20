@@ -99,7 +99,5 @@ async def generate_podcast(
     _session: Session,
 ) -> schemas.GenerateResult:
     _ = admin
-    content = await service.generate_podcast(
-        prompt=body.prompt, exam_code=body.exam_code, settings=settings
-    )
+    content = await service.generate_podcast(prompt=body.prompt, exam_code=body.exam_code, settings=settings)
     return schemas.GenerateResult(content=content)

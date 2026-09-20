@@ -67,8 +67,10 @@ class LoadReport:
             community_likes_existing=self.community_likes_existing + other.community_likes_existing,
             marketplace_posts_created=self.marketplace_posts_created + other.marketplace_posts_created,
             marketplace_posts_existing=self.marketplace_posts_existing + other.marketplace_posts_existing,
-            marketplace_sessions_created=self.marketplace_sessions_created + other.marketplace_sessions_created,
-            marketplace_sessions_existing=self.marketplace_sessions_existing + other.marketplace_sessions_existing,
+            marketplace_sessions_created=self.marketplace_sessions_created
+            + other.marketplace_sessions_created,
+            marketplace_sessions_existing=self.marketplace_sessions_existing
+            + other.marketplace_sessions_existing,
             problems=[*self.problems, *other.problems],
         )
 

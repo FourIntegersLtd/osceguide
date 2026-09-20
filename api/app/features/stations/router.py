@@ -13,7 +13,6 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.generation.errors import GenerationUnavailable
 from app.features.stations import (
     errors,
     schemas,
@@ -107,7 +106,7 @@ async def create_station(
     responses=error_responses(
         Forbidden,
         InvalidInput,
-        GenerationUnavailable,
+        errors.GenerationUnavailable,
         errors.StationTemplateVersionNotFound,
         errors.TemplateNotPublishedError,
     ),

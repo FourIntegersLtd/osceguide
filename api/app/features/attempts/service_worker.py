@@ -16,6 +16,7 @@ from app.core.logging import get_logger
 from app.features.attempts import domain, domain_definition, errors, repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.jobs import enqueue_scoring
+from app.features.attempts.jobs_coverage import enqueue_coverage
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
 from app.features.attempts.service_render import render_definition
@@ -117,7 +118,7 @@ async def accept_chunk(
     session: AsyncSession, attempt_id: uuid.UUID, *, body_attempt_id: str, message: TranscriptMessageIn
 ) -> None:
     _same_attempt(attempt_id, body_attempt_id)
-    await _require(session, attempt_id)
+    attempt = await _require(session, attempt_id)
     seen = await transcripts.seen_message_ids(session, attempt_id)
     if not domain.should_store_chunk(message.message_id, seen):
         return
@@ -130,6 +131,8 @@ async def accept_chunk(
         message=message.message,
         spoken_at=message.timestamp,
     )
+    if message.role in {"user", "doctor", "candidate"}:
+        await enqueue_coverage(session, attempt)
 
 
 async def accept_transcript(
@@ -198,6 +201,7 @@ async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: 
     # owed commit together. b2c spawned a thread and b2b a daemon thread, so a
     # deploy mid-generation stranded the attempt forever.
     await enqueue_scoring(session, attempt, now=now)
+    await enqueue_coverage(session, attempt)
     # Announced after the marking is queued, in the same transaction, so
     # whatever else this attempt is owed lands with it or not at all.
     if _on_interaction_complete is not None:

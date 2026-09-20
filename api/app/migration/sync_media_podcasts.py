@@ -10,7 +10,6 @@ module reads summary documents (e.g. `summaries`, `plab_summaries`, …) and:
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -23,7 +22,6 @@ from app.features.catalog.models import Exam
 from app.features.media.models import MediaItem
 from app.migration.media import (
     MediaTransformError,
-    MigratedMedia,
     podcast_from_summary,
     summary_from_document,
 )
@@ -72,9 +70,7 @@ def podcast_url_from_document(document: dict[str, Any]) -> str | None:
 
 
 async def _media_by_legacy_ref(session: AsyncSession) -> dict[str, MediaItem]:
-    rows = await session.execute(
-        select(MediaItem).where(MediaItem.content["legacy_ref"].astext.isnot(None))
-    )
+    rows = await session.execute(select(MediaItem).where(MediaItem.content["legacy_ref"].astext.isnot(None)))
     out: dict[str, MediaItem] = {}
     for row in rows.scalars():
         legacy = row.content.get("legacy_ref")
@@ -111,11 +107,7 @@ async def sync_podcast_urls_from_documents(
             continue
         report.firestore_with_url += 1
 
-        doc_id = (
-            raw.get("summary_id")
-            or raw.get("id")
-            or "?"
-        )
+        doc_id = raw.get("summary_id") or raw.get("id") or "?"
         try:
             summary_migrated = summary_from_document(raw)
             podcast_migrated = podcast_from_summary(summary_migrated)
@@ -148,9 +140,7 @@ async def sync_podcast_urls_from_documents(
         if podcast_row is None:
             exam_id = exams.get(podcast_migrated.exam_code)
             if exam_id is None:
-                report.problem(
-                    f"podcast {doc_id}: exam {podcast_migrated.exam_code!r} not in database"
-                )
+                report.problem(f"podcast {doc_id}: exam {podcast_migrated.exam_code!r} not in database")
                 continue
             podcast_row = MediaItem(
                 kind="podcast",

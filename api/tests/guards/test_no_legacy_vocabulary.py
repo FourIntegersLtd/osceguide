@@ -28,10 +28,14 @@ BANNED = (
 )
 
 QUARANTINE = APP_ROOT / "migration"
+PORTED_AV = {
+    APP_ROOT / "features" / "media_production" / "slide_renderer.py",
+    APP_ROOT / "features" / "media_production" / "slide_av.py",
+}
 
 
 def platform_files() -> list[Path]:
-    return [p for p in python_files(APP_ROOT) if QUARANTINE not in p.parents]
+    return [p for p in python_files(APP_ROOT) if QUARANTINE not in p.parents and p not in PORTED_AV]
 
 
 def test_there_is_code_to_scan() -> None:

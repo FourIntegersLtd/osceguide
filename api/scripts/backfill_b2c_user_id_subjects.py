@@ -45,7 +45,9 @@ def _configure_firebase_credentials_from_env() -> None:
             if resolved.is_file():
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(resolved)
 
-    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+    json_content = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON") or os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_KEY"
+    )
     if not json_content or os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         return
     try:
@@ -102,8 +104,7 @@ async def run(*, commit: bool) -> int:
             linked += 1
 
         print(  # noqa: T201
-            f"linked {linked}; skipped {skipped}; no doc identity {missing_doc}; "
-            f"problems {len(problems)}"
+            f"linked {linked}; skipped {skipped}; no doc identity {missing_doc}; problems {len(problems)}"
         )
         if commit:
             await session.commit()

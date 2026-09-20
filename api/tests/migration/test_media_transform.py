@@ -18,6 +18,7 @@ from app.migration.media import (
     summary_from_document,
 )
 from app.migration.sync_media_podcasts import sync_podcast_urls_from_documents
+from tests.support.catalog import ensure_exam
 
 pytestmark = pytest.mark.db
 
@@ -109,6 +110,7 @@ def test_slide_deck_normalizes_dict_slides() -> None:
 
 
 async def test_load_media_is_idempotent_on_legacy_ref(db_session: AsyncSession) -> None:
+    await ensure_exam(db_session, "sca")
     rows = media_from_document(sca_summary())
     first = await load_media(db_session, rows, now=NOW)
     assert first.media_created == 2
@@ -125,6 +127,7 @@ async def test_load_media_is_idempotent_on_legacy_ref(db_session: AsyncSession) 
 async def test_sync_podcast_urls_backfills_after_summary_without_url(
     db_session: AsyncSession,
 ) -> None:
+    await ensure_exam(db_session, "sca")
     await load_media(
         db_session,
         [summary_from_document(sca_summary(podcast_url=""))],
@@ -139,12 +142,8 @@ async def test_sync_podcast_urls_backfills_after_summary_without_url(
     assert report.podcasts_created == 1
     assert report.problems == []
 
-    summary = await db_session.scalar(
-        select(MediaItem).where(MediaItem.kind == "summary").limit(1)
-    )
-    podcast = await db_session.scalar(
-        select(MediaItem).where(MediaItem.kind == "podcast").limit(1)
-    )
+    summary = await db_session.scalar(select(MediaItem).where(MediaItem.kind == "summary").limit(1))
+    podcast = await db_session.scalar(select(MediaItem).where(MediaItem.kind == "podcast").limit(1))
     assert summary is not None
     assert podcast is not None
     assert summary.content.get("podcast_url") == "https://cdn.example.com/a.mp3"

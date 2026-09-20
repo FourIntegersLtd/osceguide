@@ -94,9 +94,7 @@ async def repair(*, dry_run: bool) -> int:
         if sca_exam is None:
             raise SystemExit("No platform exam with code 'sca'")
         if sca_exam.rubric_version_id != sca_version_id:
-            actions.append(
-                f"Rebind exam sca: {sca_exam.rubric_version_id} -> {sca_version_id}"
-            )
+            actions.append(f"Rebind exam sca: {sca_exam.rubric_version_id} -> {sca_version_id}")
             await exams.update_exam(session, sca_exam.id, None, rubric_version_id=sca_version_id)
         else:
             actions.append("Exam sca already bound to official SCA rubric")
@@ -136,13 +134,13 @@ async def repair(*, dry_run: bool) -> int:
 
         if dry_run:
             for line in actions:
-                print(line)
-            print("dry-run (rolled back — no changes committed)")
+                print(line)  # noqa: T201
+            print("dry-run (rolled back — no changes committed)")  # noqa: T201
             raise _Rollback()
 
     for line in actions:
-        print(line)
-    print("committed")
+        print(line)  # noqa: T201
+    print("committed")  # noqa: T201
     return 0
 
 

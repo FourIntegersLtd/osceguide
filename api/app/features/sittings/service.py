@@ -15,8 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.roster import service as roster
-from app.features.sittings import domain_binding
-from app.features.sittings import domain, domain_run, errors, repository
+from app.features.sittings import domain, domain_run, errors, repository, service_binding
 from app.features.sittings.models import Circuit, Sitting
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
@@ -44,9 +43,7 @@ async def create_sitting(
     scheduled_for: datetime | None,
     programme_id: uuid.UUID,
 ) -> SittingRead:
-    rubric_version_id = await domain_binding.rubric_version_for_programme(
-        session, org_id, programme_id
-    )
+    rubric_version_id = await service_binding.rubric_version_for_programme(session, org_id, programme_id)
 
     row = await repository.create_sitting(
         session,

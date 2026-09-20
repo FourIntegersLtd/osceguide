@@ -23,7 +23,8 @@ def resolve_system_prompt(
     allow_custom_override: bool,
 ) -> str:
     profile_key = resolve_profile_key_from_structure(structure, exam_code)
-    generation = structure.get("generation") if isinstance(structure.get("generation"), dict) else {}
+    raw_generation = structure.get("generation")
+    generation: dict[str, Any] = raw_generation if isinstance(raw_generation, dict) else {}
 
     if allow_custom_override and profile_key == "custom":
         override = generation.get("systemPromptOverride")
@@ -36,9 +37,9 @@ def resolve_system_prompt(
         if profile is not None and profile.meta.profile_key != "custom":
             base = profile.system_prompt().strip()
         else:
-            from app.features.generation import b2c_prompts
+            from app.features.generation.service import station_system_prompt
 
-            base = b2c_prompts.station_system_prompt(exam_code).strip()
+            base = station_system_prompt(exam_code).strip()
 
     append = generation.get("systemPromptAppend")
     if isinstance(append, str) and append.strip():

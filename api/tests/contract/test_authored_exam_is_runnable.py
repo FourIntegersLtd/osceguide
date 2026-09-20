@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import get_settings
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
+from tests.support.rubrics import MINIMAL_MARKING_LAYOUT
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -62,11 +63,42 @@ RUBRIC = {
 }
 
 TEMPLATE = {
-    "blocks": [
-        {"id": "who_you_are", "label": "Who you are", "kind": "text", "role": "persona"},
-        {"id": "why_you_came", "label": "Why you came", "kind": "text", "role": "complaint"},
-        {"id": "your_history", "label": "Your history", "kind": "text", "role": "history"},
-        {"id": "expected", "label": "Expected answers", "kind": "text", "role": "examiner"},
+    "schemaVersion": 1,
+    "sections": [
+        {
+            "id": "main",
+            "title": "Main",
+            "blocks": [
+                {
+                    "id": "who_you_are",
+                    "type": "longText",
+                    "label": "Who you are",
+                    "kind": "text",
+                    "role": "persona",
+                },
+                {
+                    "id": "why_you_came",
+                    "type": "longText",
+                    "label": "Why you came",
+                    "kind": "text",
+                    "role": "complaint",
+                },
+                {
+                    "id": "your_history",
+                    "type": "longText",
+                    "label": "Your history",
+                    "kind": "text",
+                    "role": "history",
+                },
+                {
+                    "id": "expected",
+                    "type": "longText",
+                    "label": "Expected answers",
+                    "kind": "text",
+                    "role": "examiner",
+                },
+            ],
+        }
     ],
     "layout": {"persona": "patient"},
 }
@@ -106,6 +138,7 @@ async def test_an_exam_authored_over_http_can_be_sat_and_marked(
                 "introduction_seconds": 30,
                 "safety_net_seconds": 90,
             },
+            "marking_layout": MINIMAL_MARKING_LAYOUT,
         },
         headers=bearer(admin),
     )

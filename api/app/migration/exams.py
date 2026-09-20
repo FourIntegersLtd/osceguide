@@ -42,6 +42,11 @@ from app.features.catalog import service_authoring as catalog
 from app.features.catalog.models import Exam
 from app.features.rubrics import service as rubrics
 
+_DEFAULT_MARKING_LAYOUT: dict[str, Any] = {
+    "schemaVersion": 1,
+    "sections": [{"id": "sec_main", "title": "Marking", "blocks": []}],
+}
+
 
 class InvalidExamsFile(ValueError):
     """The operator's exams file cannot be used as it stands."""
@@ -93,6 +98,7 @@ async def _publish_rubric(
             f"Exam {code!r} has no rubric. An exam that cannot be marked cannot be published, "
             "and imported attempts would have nothing to be re-marked against."
         )
+    layout = rubric.get("marking_layout")
     created = await rubrics.create_rubric(
         session,
         None,
@@ -101,6 +107,7 @@ async def _publish_rubric(
         system_prompt=str(rubric.get("system_prompt") or ""),
         pacing=dict(rubric.get("pacing") or {}),
         result_schema_override=rubric.get("result_schema_override"),
+        marking_layout=dict(layout) if isinstance(layout, Mapping) else dict(_DEFAULT_MARKING_LAYOUT),
     )
     published = await rubrics.publish_version(session, None, created.id, 1, actor_id=None, now=now)
     return published.id

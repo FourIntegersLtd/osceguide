@@ -9,7 +9,6 @@ library. See `app.core.ownership`.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -204,54 +203,8 @@ async def count_for_org(session: AsyncSession, org_id: uuid.UUID | None) -> int:
     return int((await session.execute(stmt)).scalar_one())
 
 
-async def versions_with_stations(
-    session: AsyncSession, org_id: uuid.UUID | None, version_ids: Sequence[uuid.UUID]
-) -> list[tuple[StationVersion, Station]]:
-    """Several versions and the stations that own them, in one query.
-
-    Scoped like `version_for_attempt`: the platform library is everybody's, an
-    org's own stations are only its own. A circuit mixes both, which is why a
-    console asking for its slots' station titles asks here once rather than
-    resolving each id through the station routes.
-    """
-    if not version_ids:
-        return []
-    owner = visible_to(Station, org_id)
-    stmt = (
-        select(StationVersion, Station)
-        .join(Station, Station.id == StationVersion.station_id)
-        .where(StationVersion.id.in_(list(version_ids)), owner)
-    )
-    return [(v, s) for v, s in (await session.execute(stmt)).all()]
-
-
 async def delete_version(session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID) -> None:
     """Remove one revision. The service refuses anything but a draft (T6)."""
     await session.execute(
         delete(StationVersion).where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
     )
-
-
-async def published_library_versions(
-    session: AsyncSession, *, exam_id: uuid.UUID | None = None
-) -> list[tuple[StationVersion, Station]]:
-    """Every current, published platform-library version, with its station.
-
-    The whole library at once rather than a page, because the only caller is a
-    re-index that has to see all of it: a paged walk of a table being written
-    to can miss a row or read one twice, and either leaves the index quietly
-    wrong about material nobody will check.
-    """
-    stmt = (
-        select(StationVersion, Station)
-        .join(Station, Station.id == StationVersion.station_id)
-        .where(
-            Station.owner_kind == "platform",
-            Station.status == "published",
-            StationVersion.status == "published",
-            StationVersion.id == Station.current_version_id,
-        )
-    )
-    if exam_id is not None:
-        stmt = stmt.where(Station.exam_id == exam_id)
-    return [(v, s) for v, s in (await session.execute(stmt)).all()]

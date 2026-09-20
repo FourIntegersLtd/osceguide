@@ -11,6 +11,9 @@ from app.core.audience import AudienceIn, AudienceOut
 class PostRead(BaseModel):
     id: uuid.UUID
     owner_user_id: uuid.UUID
+    owner_username: str
+    claimed_by_user_id: uuid.UUID | None = None
+    claimed_by_username: str | None = None
     exam_code: str
     starts_at: datetime
     duration_minutes: int
@@ -36,3 +39,7 @@ class PeerSessionRead(BaseModel):
     status: str
     room_name: str | None
     partner_user_id: uuid.UUID
+    partner_username: str
+    user_role: str
+    practice_session_id: uuid.UUID | None = None
+    my_role: str | None = None

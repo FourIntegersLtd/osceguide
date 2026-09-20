@@ -14,7 +14,7 @@ pytestmark = pytest.mark.db
 @pytest.fixture
 def index(client: AsyncClient) -> FakeVectorIndex:
     """Replace the search index with a fake, through the app's own seam."""
-    from app.features.media.service import get_vector_index
+    from app.features.media.service_search import get_vector_index
 
     fake = FakeVectorIndex()
     client._transport.app.dependency_overrides[get_vector_index] = lambda: fake  # type: ignore[attr-defined]

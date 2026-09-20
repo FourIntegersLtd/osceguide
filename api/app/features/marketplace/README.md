@@ -46,11 +46,12 @@ someone else claims it, and both join a room at the appointed hour.
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET/POST | `/api/v1/marketplace/slots` | bearer | open slots, cursor-paginated |
+| GET/POST | `/api/v1/marketplace/slots` | bearer | available + claimed feed (B2C parity), cursor-paginated |
 | POST | `/api/v1/marketplace/slots/{id}/claim` | bearer | `post_unavailable` (409) |
 | DELETE | `/api/v1/marketplace/slots/{id}` | owner | |
 | GET | `/api/v1/me/peer-sessions` | bearer | |
-| POST | `/api/v1/me/peer-sessions/{id}/join` | participant | `peer_session_not_open` (409) |
+| POST | `/api/v1/me/peer-sessions/{id}/join` | participant | creates/links `practice_session_id`; `peer_session_not_open` (409) |
+| POST | `/api/v1/me/peer-sessions/{id}/cancel` | participant | |
 
 ## Jobs
 A reminder before each session is not yet ported; b2c sends one.

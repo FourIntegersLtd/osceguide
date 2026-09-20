@@ -64,9 +64,12 @@ the patient.
 | POST | `/api/v1/me/practice-sessions/{id}/voice-token` | bearer | Join the room the pair were matched into; `practice_session_ended` (409) |
 
 ## Jobs
-`match_practice_queue` — periodic, every minute. Periodic rather than triggered
-on join: two people arriving together would otherwise both try to match, and one
-would find an empty queue.
+`try_match_practice_room` — deferred when somebody joins the queue (same
+transaction as the queue row). `match_practice_queue` — periodic, every minute,
+drains every room as a safety net. `expire_practice_queue` — marks waiting
+entries past ten minutes as `expired`.
+
+The procrastinate worker must be running for matching and expiry.
 
 ## Cross-slice dependencies
 Calls `catalog` to resolve an exam. Recording and transcription of a peer

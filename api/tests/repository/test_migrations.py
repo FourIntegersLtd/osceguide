@@ -23,9 +23,11 @@ def head_revisions() -> set[str]:
 
 async def test_the_database_is_stamped_at_head(db_session: AsyncSession) -> None:
     stamped = {row[0] for row in (await db_session.execute(text("select version_num from alembic_version")))}
-    assert stamped == head_revisions(), (
+    heads = head_revisions()
+    assert stamped == heads, (
         "The test database is not at head. A migration was added without the session "
-        "fixture re-running, or two heads exist and need a merge revision."
+        "fixture re-running, or two heads exist and need a merge revision. "
+        f"stamped={sorted(stamped)} heads={sorted(heads)}"
     )
 
 

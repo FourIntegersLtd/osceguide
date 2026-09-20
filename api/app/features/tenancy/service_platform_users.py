@@ -20,7 +20,6 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
-from app.features.identity import repository as identity_repository
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.identity import service_passwords
@@ -35,9 +34,9 @@ from app.features.tenancy.schemas import (
     UpdatePlatformUser,
     UserSummary,
 )
+from app.features.tenancy.service_platform_audit import platform_audit_read
 
 _STAFF_CONSOLE_LABEL = "the OSCE Guide staff console"
-from app.features.tenancy.service_platform_audit import platform_audit_read
 
 
 def _user_summary(user: accounts.SupportUser) -> UserSummary:
@@ -138,7 +137,7 @@ async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDe
         )
         for row in await repository.memberships_for_user(session, user_id)
     ]
-    legacy_ids = await identity_repository.consumer_legacy_ids(session, user_id)
+    legacy_ids = await accounts.consumer_legacy_ids(session, user_id)
     return PlatformUserDetail(
         id=user.id,
         email=user.email,
