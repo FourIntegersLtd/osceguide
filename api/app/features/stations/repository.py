@@ -63,6 +63,17 @@ async def station_by_id(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def exists_by_id(session: AsyncSession, station_id: uuid.UUID) -> bool:
+    """Whether a station carries this id at all, under any owner.
+
+    Not org-scoped, and so not narrowing by org: a community comment names a
+    station without knowing whose it is, and needs existence rather than
+    ownership answered.
+    """
+    stmt = select(Station.id).where(Station.id == station_id)
+    return (await session.execute(stmt)).first() is not None
+
+
 async def versions_for_station(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID
 ) -> list[StationVersion]:

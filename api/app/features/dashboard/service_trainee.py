@@ -82,6 +82,8 @@ async def my_sittings(
                 status=row.slot.status,
                 room_name=row.slot.room_name,
                 station_title=summary.title if summary else None,
+                station_id=summary.station_id if summary else None,
+                station_version_id=row.slot.station_version_id,
                 started_at=row.slot.started_at,
                 ended_at=row.slot.ended_at,
                 exam_completed_at=row.slot.exam_completed_at,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -157,3 +159,18 @@ async def test_an_empty_station_comment_is_refused(  # type: ignore[no-untyped-d
     )
     assert response.status_code == 422
     assert response.json()["code"] == "empty_content"
+
+
+async def test_a_comment_on_a_station_that_does_not_exist_is_refused(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor
+) -> None:
+    """S3: the foreign key used to do this refusal, unmapped, so a client
+    naming a station nobody wrote got `internal_error` — a 500 for a typo."""
+    token = await make_actor("ghostwriter@example.com")
+    response = await client.post(
+        f"/api/v1/stations/{uuid.uuid4()}/comments",
+        json={"body": "Nobody will read this."},
+        headers=bearer(token),
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "station_not_found"

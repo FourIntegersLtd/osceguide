@@ -208,3 +208,15 @@ async def count_completed(session: AsyncSession, *, kind: str | None = None) -> 
     stmt = select(func.count()).select_from(Attempt).where(Attempt.status.in_(_COMPLETED))
     stmt = stmt.where(Attempt.kind == kind) if kind else stmt.where(Attempt.kind != "debrief")
     return int((await session.execute(stmt)).scalar_one())
+
+
+async def count_evaluated(session: AsyncSession) -> int:
+    """How many attempts have been marked — the feedback counter.
+
+    An evaluated attempt has a result the candidate can read. The landing-page
+    statistics band shows this as the feedback number; legacy logs had it
+    within 0.5%% of consultations, so it is the same population once marking
+    has caught up.
+    """
+    stmt = select(func.count()).select_from(Attempt).where(Attempt.status == str(Status.EVALUATED))
+    return int((await session.execute(stmt)).scalar_one())

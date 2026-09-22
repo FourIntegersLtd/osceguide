@@ -51,3 +51,46 @@ class SsoSignIn(BaseModel):
     # Whether to draw the password form at all.
     sso_only: bool
     default_exam_code: str | None = None
+
+
+class SsoLoginRequest(BaseModel):
+    """Which organisation to start signing in to.
+
+    The slug comes from `GET /auth/sso/sign-in`, which a sign-in page already
+    called to learn whether this visitor's organisation signs in elsewhere.
+    """
+
+    org_slug: str = Field(min_length=1, max_length=100)
+
+
+class SsoLoginResult(BaseModel):
+    """Where to send the browser to sign in.
+
+    A URL rather than a server-side redirect: the frontend owns navigation and
+    the platform issues no cookies (ADR 0004). The broker sends the browser
+    back to `{frontend_url}/auth/sso/callback`, which posts the token it was
+    handed to `POST /auth/sso/callback`.
+    """
+
+    sign_in_url: str
+
+
+class SsoCallbackRequest(BaseModel):
+    """The token the broker handed back, and the organisation it was for."""
+
+    org_slug: str = Field(min_length=1, max_length=100)
+    token: str = Field(min_length=1, max_length=4096)
+
+
+class SsoSession(BaseModel):
+    """A platform session — what a login returns, minus the profile.
+
+    The frontend stores these and reads the person from `GET /me`, so the user
+    object is not duplicated into this slice's contract; `identity` owns its
+    shape and the broker's job ends at the tokens.
+    """
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"  # noqa: S105 - a scheme name, not a secret
+    expires_in: int

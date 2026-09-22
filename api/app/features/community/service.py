@@ -22,6 +22,7 @@ from app.features.catalog.service import resolve_exam
 from app.features.community import domain, errors, repository
 from app.features.community.models import Post
 from app.features.community.schemas import PostRead
+from app.features.stations import service as stations
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.NotYours: errors.NotYoursError,
@@ -97,6 +98,11 @@ async def comment_on_station(
     body: str,
     audience: Audience = PUBLIC,
 ) -> PostRead:
+    # Asked before the insert rather than mapped off its failure: the foreign
+    # key would refuse a station that does not exist, and an unmapped
+    # IntegrityError answers `internal_error` (S3).
+    if not await stations.station_exists(session, station_id):
+        raise errors.StationNotFound()
     try:
         domain.ensure_postable(body)
     except Exception as exc:  # noqa: BLE001 - mapped above

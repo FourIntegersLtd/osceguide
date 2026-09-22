@@ -201,3 +201,12 @@ async def count_consultations(session: AsyncSession) -> int:
 async def count_debriefs(session: AsyncSession) -> int:
     """Every debrief, which is an attempt of its own kind against another."""
     return await repository.count_completed(session, kind="debrief")
+
+
+async def count_feedback(session: AsyncSession) -> int:
+    """Every attempt that has been marked — the feedback counter.
+
+    On this slice's service face because the public statistics band draws it
+    and `public_site` may not read this slice's tables.
+    """
+    return await repository.count_evaluated(session)

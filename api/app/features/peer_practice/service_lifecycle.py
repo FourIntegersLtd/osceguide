@@ -5,16 +5,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
 from app.features.catalog import service as catalog
 from app.features.peer_practice import domain, repository
 from app.features.peer_practice.models import PracticeSession
-SESSION_UPDATED = "practice.session_updated"
 from app.features.peer_practice.station_pick import pick_station_version_id
 from app.features.peer_practice.timers import durations_for
+
+SESSION_UPDATED = "practice.session_updated"
 
 
 async def roles_for_peer_participants(
@@ -73,6 +73,7 @@ async def advance_phases_if_due(
     durs = durations_for(exam_code)
     next_phase: str | None = None
     next_end: datetime | None = None
+    started_at: datetime | None = None
     if row.current_phase == "preparation":
         next_phase = "consultation"
         next_end = now + timedelta(seconds=durs.consultation)
@@ -94,7 +95,7 @@ async def advance_phases_if_due(
         values["status"] = "ended"
         values["ended_at"] = now
         values["end_reason"] = "phases_complete"
-    await session.execute(update(PracticeSession).where(PracticeSession.id == row.id).values(**values))
+    await repository.advance_phase(session, row.id, values=values)
     refreshed = await repository.session_by_id(session, row.id)
     assert refreshed is not None
     for user_id in (refreshed.doctor_user_id, refreshed.patient_user_id):
@@ -112,7 +113,7 @@ async def record_presence(
     if user_id == row.patient_user_id and row.patient_joined_at is None:
         updates["patient_joined_at"] = now
     if updates:
-        await session.execute(update(PracticeSession).where(PracticeSession.id == row.id).values(**updates))
+        await repository.advance_phase(session, row.id, values=updates)
         row = await repository.session_by_id(session, row.id)  # type: ignore[assignment]
         assert row is not None
 
@@ -121,15 +122,15 @@ async def record_presence(
     if doctor_in and patient_in and row.preparation_started_at is None:
         durs = durations_for(exam_code)
         prep_end = now + timedelta(seconds=durs.preparation)
-        await session.execute(
-            update(PracticeSession)
-            .where(PracticeSession.id == row.id)
-            .values(
-                preparation_started_at=now,
-                current_phase="preparation",
-                phase_ends_at=prep_end,
-                status="active",
-            )
+        await repository.advance_phase(
+            session,
+            row.id,
+            values={
+                "preparation_started_at": now,
+                "current_phase": "preparation",
+                "phase_ends_at": prep_end,
+                "status": "active",
+            },
         )
         row = await repository.session_by_id(session, row.id)  # type: ignore[assignment]
         assert row is not None

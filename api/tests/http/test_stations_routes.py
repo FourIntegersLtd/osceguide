@@ -57,10 +57,12 @@ async def member(make_actor, org_id: uuid.UUID, slug: str, role: str) -> str:  #
     )
 
 
-async def make_station(client: AsyncClient, token: str, slug: str = "kings") -> dict:
+async def make_station(
+    client: AsyncClient, token: str, slug: str = "kings", content: dict | None = None
+) -> dict:
     response = await client.post(
         f"/api/v1/orgs/{slug}/stations",
-        json={"title": "Chest pain", "exam_code": "sca", "content": CONTENT},
+        json={"title": "Chest pain", "exam_code": "sca", "content": content or CONTENT},
         headers=bearer(token),
     )
     assert response.status_code == 201, response.text
@@ -216,6 +218,88 @@ async def test_a_trainee_may_browse_stations(client: AsyncClient, make_actor) ->
         headers=bearer(await member(make_actor, org_id, "kings", "trainee")),
     )
     assert response.status_code == 200
+
+
+# --------------------------------------------------------------------------
+# The reader-scoped projection (S1): a trainee is handed a station document
+# they may be examined on, so they get the candidate-facing half of it only.
+# --------------------------------------------------------------------------
+
+FULL_DOCUMENT = {
+    "reading_brief": "Mrs Patel, 42, chest pain for two days.",
+    "candidate_brief": "Older spelling of the same brief.",
+    "clinical_scenario": "A GP consultation.",
+    "doctor_information": {"doctor_task": "Take a history."},
+    "patient_information": {
+        "patient_biodata": "Mrs Patel, 42",
+        "gender": "female",
+        "persona": "anxious, guards the diagnosis",
+        "expanded_history": "The hidden block.",
+    },
+    "patient_brief": "You are unwell and know why.",
+    "management_plan": {"explanation": "The model answer."},
+    "examiner_additional_info": ["Mark the ICE."],
+}
+
+
+async def listed_content(client: AsyncClient, token: str, slug: str = "kings") -> dict:
+    response = await client.get(f"/api/v1/orgs/{slug}/stations", headers=bearer(token))
+    assert response.status_code == 200, response.text
+    [row] = response.json()["items"]
+    return row["content"]
+
+
+async def test_a_trainee_reader_gets_only_the_candidate_facing_document(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The leak this closes: `OrgReader` admits every rostered trainee, and the
+    document is the patient's persona and the examiner's notes as much as it is
+    the brief — for stations they are about to be examined on."""
+    org_id = await seed_org(client, make_actor)
+    await make_station(client, await member(make_actor, org_id, "kings", "owner"), content=FULL_DOCUMENT)
+    trainee = await member(make_actor, org_id, "kings", "trainee")
+
+    content = await listed_content(client, trainee)
+
+    # The briefs and the candidate's own material survive, as on their
+    # attempt's brief read.
+    assert content["reading_brief"] == FULL_DOCUMENT["reading_brief"]
+    assert content["candidate_brief"] == FULL_DOCUMENT["candidate_brief"]
+    assert content["clinical_scenario"] == FULL_DOCUMENT["clinical_scenario"]
+    assert content["doctor_information"] == FULL_DOCUMENT["doctor_information"]
+    assert content["patient_information"] == {"patient_biodata": "Mrs Patel, 42", "gender": "female"}
+
+    # The patient's half, the examiner's half and the model answer do not.
+    for key in ("patient_brief", "management_plan", "examiner_additional_info"):
+        assert key not in content
+    assert "persona" not in content["patient_information"]
+    assert "expanded_history" not in content["patient_information"]
+
+
+async def test_a_practice_user_reads_as_a_trainee_does(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`practice_user` is the other end-user role `may_read_org` admits."""
+    org_id = await seed_org(client, make_actor)
+    await make_station(client, await member(make_actor, org_id, "kings", "owner"), content=FULL_DOCUMENT)
+
+    content = await listed_content(client, await member(make_actor, org_id, "kings", "practice_user"))
+
+    assert "patient_brief" not in content
+    assert content["reading_brief"] == FULL_DOCUMENT["reading_brief"]
+
+
+async def test_staff_and_admin_readers_get_the_whole_document(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Authoring, scheduling and marking all need the document complete: an
+    org admin, an assigned supervisor, and a platform admin for support."""
+    org_id = await seed_org(client, make_actor)
+    owner = await member(make_actor, org_id, "kings", "owner")
+    await make_station(client, owner, content=FULL_DOCUMENT)
+
+    for token in (
+        owner,
+        await member(make_actor, org_id, "kings", "supervisor"),
+        await make_actor("console@osceguide.com", platform_admin=True),
+    ):
+        assert await listed_content(client, token) == FULL_DOCUMENT
 
 
 # --------------------------------------------------------------------------

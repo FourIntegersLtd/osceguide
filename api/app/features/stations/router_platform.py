@@ -58,7 +58,9 @@ async def list_platform_stations(
     admin: PlatformAdmin, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.StationRead]:
     """Every library station, drafts included — the author's own view of it."""
-    items, next_cursor = await service.list_stations(session, None, limit=page.limit, cursor=page.cursor)
+    items, next_cursor = await service.list_stations(
+        session, None, limit=page.limit, cursor=page.cursor, full_content=True
+    )
     return Page(items=items, next_cursor=next_cursor)
 
 

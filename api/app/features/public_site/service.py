@@ -38,6 +38,7 @@ async def statistics(session: AsyncSession, *, now: datetime) -> schemas.SiteSta
 
     figures = schemas.SiteStatistics(
         consultations=await attempts.count_consultations(session),
+        feedback=await attempts.count_feedback(session),
         debriefs=await attempts.count_debriefs(session),
         users=await identity.count_users(session),
         # The platform catalogue, not an institution's own material: this is

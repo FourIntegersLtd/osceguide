@@ -16,19 +16,15 @@ from app.core.audience import (
     ensure_may_address,
 )
 from app.core.events import publish_after_commit, user_topic
-from app.core.ports import VoiceTokens
-from app.core.settings import Settings
 from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.peer_practice import domain, errors, repository
 from app.features.peer_practice.jobs import enqueue_try_match
 from app.features.peer_practice.models import PracticeSession, QueueEntry
-from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus, RoomGrant
+from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus
 from app.features.peer_practice.service_lifecycle import advance_phases_if_due, record_presence
-from app.features.peer_practice.service_station import station_read_for_version
 from app.features.peer_practice.station_pick import pick_station_version_id
-from app.features.voice import service as voice
 
 # What the queue stream reacts to. Named here because this is where it happens.
 MATCHED = "practice.matched"
@@ -193,13 +189,7 @@ async def submit_feedback(
     row = await repository.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         raise errors.SessionNotFound()
-    from sqlalchemy import update
-
-    await session.execute(
-        update(PracticeSession)
-        .where(PracticeSession.id == session_id)
-        .values(feedback_rating=rating, feedback_comment=comment)
-    )
+    await repository.record_feedback(session, session_id, rating=rating, comment=comment)
     refreshed = await repository.session_by_id(session, session_id)
     return await _session_read(session, refreshed, viewer_id=user_id)  # type: ignore[arg-type]
 
@@ -243,72 +233,6 @@ async def _status(session: AsyncSession, entry: QueueEntry) -> QueueStatus:
 async def _session_read(
     session: AsyncSession, row: PracticeSession, *, viewer_id: uuid.UUID
 ) -> PracticeSessionRead:
-    code = await catalog.exam_code_by_id(session, row.exam_id)
-    is_doctor = row.doctor_user_id == viewer_id
-    partner_joined = bool(row.preparation_started_at)
-    station = await station_read_for_version(
-        session, row.station_version_id, is_doctor=is_doctor,
-        reveal_review=row.current_phase in {"debrief", "completed"} or row.status == "ended",
-    )
-    return PracticeSessionRead(
-        id=row.id,
-        exam_code=code or "",
-        my_role=str(domain.Role.DOCTOR if is_doctor else domain.Role.PATIENT),
-        partner_user_id=row.patient_user_id if is_doctor else row.doctor_user_id,
-        room_name=row.room_name,
-        status=row.status,
-        current_phase=row.current_phase,
-        phase_ends_at=row.phase_ends_at,
-        preparation_started_at=row.preparation_started_at,
-        doctor_joined_at=row.doctor_joined_at,
-        patient_joined_at=row.patient_joined_at,
-        started_at=row.started_at,
-        ended_at=row.ended_at,
-        station=station,
-        partner_joined=partner_joined,
-    )
+    from app.features.peer_practice.service_station import session_read
 
-
-def get_voice_tokens() -> VoiceTokens:
-    """The LiveKit adapter, as a FastAPI dependency.
-
-    Imported inside the function so a test can override the dependency
-    without the SDK installed, which is the same reason `assistant` does it.
-    """
-    from app.features.voice.service import get_voice_tokens as build  # noqa: PLC0415
-
-    return build()
-
-
-async def voice_grant(
-    session: AsyncSession,
-    session_id: uuid.UUID,
-    *,
-    user_id: uuid.UUID,
-    tokens: VoiceTokens,
-    settings: Settings,
-) -> RoomGrant:
-    """A token for the room two people were paired into.
-
-    The pairing is the permission: both the doctor and the patient join the
-    same room and both may speak, so there is no observer shape here. A
-    stranger gets `practice_session_not_found` rather than a refusal, because
-    whether a session exists is not something to confirm to somebody who is
-    not in it.
-
-    The room was named when the pair was matched and nothing could mint a
-    token for it, so the session existed and could never be held.
-    """
-    row = await repository.session_by_id(session, session_id)
-    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
-        raise errors.SessionNotFound()
-    if row.status == "ended" or not row.room_name:
-        raise errors.SessionAlreadyEnded()
-    granted = voice.grant_for_room(
-        room=row.room_name,
-        identity=str(user_id),
-        can_publish=True,
-        tokens=tokens,
-        settings=settings,
-    )
-    return RoomGrant(token=granted.token, server_url=granted.server_url, room=granted.room)
+    return await session_read(session, row, viewer_id=viewer_id)

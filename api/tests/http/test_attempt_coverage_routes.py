@@ -24,20 +24,47 @@ async def test_live_evidence_is_grounded_and_owner_only(client, db_session, make
     definition = frozen_definition(str(sat.attempt_id))
     await repository.freeze_definition(db_session, sat.attempt_id, definition=definition, at=NOW)
     await accept_chunk(
-        db_session, sat.attempt_id, body_attempt_id=str(sat.attempt_id),
+        db_session,
+        sat.attempt_id,
+        body_attempt_id=str(sat.attempt_id),
         message=TranscriptMessageIn(
-            role="user", message="What brought you in today?", timestamp=NOW, message_id="first", seq=0,
+            role="user",
+            message="What brought you in today?",
+            timestamp=NOW,
+            message_id="first",
+            seq=0,
         ),
     )
-    call = Mock(return_value=SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
-        refusal=None, content=json.dumps({"newly_demonstrated": [{
-            "competency_id": "opens_well", "state": "covered",
-            "quote": "What brought you in today?", "seq": 0,
-        }]}),
-    ))]))
-    monkeypatch.setattr(llm_clients, "primary_client", lambda: SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=call)),
-    ))
+    call = Mock(
+        return_value=SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        refusal=None,
+                        content=json.dumps(
+                            {
+                                "newly_demonstrated": [
+                                    {
+                                        "competency_id": "opens_well",
+                                        "state": "covered",
+                                        "quote": "What brought you in today?",
+                                        "seq": 0,
+                                    }
+                                ]
+                            }
+                        ),
+                    )
+                )
+            ]
+        )
+    )
+    monkeypatch.setattr(
+        llm_clients,
+        "primary_client",
+        lambda: SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=call)),
+        ),
+    )
     await update_coverage(db_session, sat.attempt_id)
     snapshot = await repository_coverage.read(db_session, sat.attempt_id)
     assert snapshot and len(snapshot["items"]) == 1

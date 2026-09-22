@@ -15,6 +15,7 @@ class SiteStatistics(BaseModel):
     """
 
     consultations: int
+    feedback: int
     debriefs: int
     users: int
     stations: int

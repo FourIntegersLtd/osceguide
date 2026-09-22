@@ -12,8 +12,8 @@ from app.core.ports import VoiceTokens
 from app.core.settings import Settings
 from app.features.assistant import domain, errors, repository
 from app.features.assistant import service_seams as seams
-from app.features.assistant.models import AssistantSession
 from app.features.assistant.doctor_prompt import consulting_doctor_instructions
+from app.features.assistant.models import AssistantSession
 from app.features.assistant.schemas import RoomGrant, SessionRead
 
 # Placeholder text until content packs are ported. Rendered here rather than in

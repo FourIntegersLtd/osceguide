@@ -53,10 +53,11 @@ product — twelve in total — and the same handler logic copied across them.
 | GET/POST | `/api/v1/community/questions/{id}/replies` | bearer | |
 | POST/DELETE | `/api/v1/community/posts/{id}/like` | bearer | idempotent both ways |
 | DELETE | `/api/v1/community/posts/{id}` | author or platform admin | `post_not_yours` (403) |
-| GET/POST | `/api/v1/stations/{id}/comments` | bearer | |
+| GET/POST | `/api/v1/stations/{id}/comments` | bearer | POST names a station; one that does not exist is `station_not_found` (404), not the foreign key's `internal_error` |
 
 ## Jobs
 None. b2c moderates comments with an LLM; not ported.
 
 ## Cross-slice dependencies
-Calls `catalog` to tag a question with an exam.
+Calls `catalog` to tag a question with an exam, and `stations` to check that a
+station a comment names exists.

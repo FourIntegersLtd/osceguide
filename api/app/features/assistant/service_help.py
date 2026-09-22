@@ -1,4 +1,4 @@
-"""Versioned B2C help guides; no dependency on the retired Flask/Firestore app."""
+"""Versioned help guides; no dependency on the retired Flask/Firestore app."""
 
 import json
 from collections import Counter
@@ -25,35 +25,35 @@ def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
     return categories, articles
 
 
-def list_articles(app_type: str, category: str | None = None) -> list[HelpArticle]:
+def list_articles(exam_code: str, category: str | None = None) -> list[HelpArticle]:
     return sorted(
         (
             row
             for row in _catalogue()[1]
-            if ("all" in row.app_types or app_type in row.app_types)
+            if ("all" in row.exam_codes or exam_code in row.exam_codes)
             and (category is None or row.category_slug == category)
         ),
         key=lambda row: (row.sort_order, row.title),
     )
 
 
-def list_categories(app_type: str) -> list[HelpCategory]:
-    counts = Counter(row.category_slug for row in list_articles(app_type))
+def list_categories(exam_code: str) -> list[HelpCategory]:
+    counts = Counter(row.category_slug for row in list_articles(exam_code))
     return sorted(
         (
             row.model_copy(update={"article_count": counts[row.slug]})
             for row in _catalogue()[0]
-            if "all" in row.app_types or app_type in row.app_types
+            if "all" in row.exam_codes or exam_code in row.exam_codes
         ),
         key=lambda row: (row.sort_order, row.title),
     )
 
 
-def read_article(slug: str, app_type: str) -> HelpArticle:
-    article = next((row for row in list_articles(app_type) if row.slug == slug), None)
+def read_article(slug: str, exam_code: str) -> HelpArticle:
+    article = next((row for row in list_articles(exam_code) if row.slug == slug), None)
     if article is None:
         raise NotFound("Help article not found")
-    visible = {row.slug for row in list_articles(app_type)}
+    visible = {row.slug for row in list_articles(exam_code)}
     return article.model_copy(
         update={"related_slugs": [slug for slug in article.related_slugs if slug in visible]}
     )

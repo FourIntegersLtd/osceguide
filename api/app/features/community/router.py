@@ -153,7 +153,9 @@ async def list_station_comments(
     "/stations/{station_id}/comments",
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.EmptyContentError, InvalidAudience, AudienceNotYours),
+    responses=error_responses(
+        Unauthenticated, errors.StationNotFound, errors.EmptyContentError, InvalidAudience, AudienceNotYours
+    ),
 )
 async def comment_on_station(
     station_id: uuid.UUID,

@@ -11,8 +11,9 @@ the backend actually did.
 
 So the rules live here and the facts live in two tables. Nothing in this module
 verifies anybody: it decides which organisation a visitor belongs to and what
-their sign-in page should say. Who checks the identity is a separate question,
-deliberately still open — see `docs/port-gaps.md`.
+their sign-in page should say. Who checks the identity is a separate question —
+Clerk has a login behind it (`service_login`, `clerk.py`); direct OIDC to Entra
+is still open. See S-1 in `docs/OPEN-QUESTIONS.md`.
 """
 
 from __future__ import annotations

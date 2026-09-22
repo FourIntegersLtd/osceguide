@@ -18,8 +18,17 @@ from typing import Annotated, Protocol, runtime_checkable
 from fastapi import Depends
 
 # Re-exported so every existing caller keeps one import for "a port". The
-# model-facing and retrieval halves live next door only because the file
-# outgrew its cap.
+# model-facing, identity and retrieval halves live next door only because the
+# file outgrew its cap.
+from app.core.ports_identity import (
+    SsoBroker as SsoBroker,
+)
+from app.core.ports_identity import (
+    SsoBrokerUnavailable as SsoBrokerUnavailable,
+)
+from app.core.ports_identity import (
+    SsoIdentity as SsoIdentity,
+)
 from app.core.ports_models import (
     EvaluationFailed as EvaluationFailed,
 )

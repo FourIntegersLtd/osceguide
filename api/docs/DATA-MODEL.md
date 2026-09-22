@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-67 tables across 23 slices. Every table's classes live in `app/features/<slice>/models.py`
+68 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -145,6 +145,21 @@ A host, or an email domain, that means one organisation.
 UNIQUE `(kind, value)` — across the whole platform, not within an organisation.
 A hostname belongs to exactly one, and two rows claiming `nhs.net` would make
 home-realm discovery a coin toss.
+
+### `cvs`
+A learner's uploaded CV, and what was read out of it. The PDF is not stored:
+its text is pulled on upload and the structured result is what the product
+reads back. `created_at` is the upload time the list sorts by.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id` | `uuid not null` → `users.id` CASCADE | indexed; a CV is read by its owner and nobody else |
+| `status` | `varchar(16) not null default 'processing'` | moves one way: `processing` → `completed` or `failed` |
+| `original_filename` | `varchar(255) not null default ''` | what the person called the file; never re-opened |
+| `extracted_text` | `text null` | the PDF's text, so the job needs neither the file nor a second parse |
+| `structured` | `jsonb null` | the sections, as `cv.schemas.StructuredCv`. Null until the job completes |
+| `error` | `text null` | why it failed, for the person to read. Null unless `status` is `failed` |
+| `completed_at` | `timestamptz null` | when the read finished |
 
 ### `site_messages`
 Somebody wrote to us from the public site, or from inside the product.
@@ -1034,7 +1049,11 @@ The session a claim creates. Two people, one room, one appointed time.
 `owner_user_id` and `claimer_user_id` → `users.id` CASCADE (indexed together),
 `exam_id` → `exams.id` RESTRICT, `starts_at timestamptz not null`,
 `room_name varchar(200) null`, `status varchar(16) not null default 'scheduled'`,
-`ended_at timestamptz null`.
+`practice_session_id` → `practice_sessions.id` SET NULL (nullable — filled once the
+matched pair opens their LiveKit room), `doctor_user_id` and `patient_user_id` →
+`users.id` SET NULL (nullable — the two roles are appointed when the session
+starts, not when it is scheduled), `ended_at timestamptz null`,
+`cancelled_at timestamptz null`.
 
 ## peer_practice — 3 tables
 
@@ -1049,6 +1068,7 @@ Someone waiting to be paired. Carries the `Addressed` columns.
 | `status` | `varchar(16) not null default 'waiting'` | |
 | `matched_session_id` | `uuid null` | not a FK |
 | `left_at` | `timestamptz null` | |
+| `expires_at` | `timestamptz null` | a waiting entry's own deadline; distinct from `left_at` which is when the person actually left |
 
 Partial UNIQUE on `(user_id, exam_id)` WHERE `status = 'waiting'` — one live place per
 person per exam; joining twice keeps the place you already have. Partial index on
@@ -1059,8 +1079,15 @@ Two people practising, one as doctor and one as patient.
 
 `exam_id` → `exams.id` RESTRICT, `doctor_user_id` and `patient_user_id` → `users.id`
 CASCADE (indexed together), `station_version_id` → `station_versions.id` SET NULL,
+`peer_session_id` → `peer_sessions.id` SET NULL (the marketplace claim that
+started this — `use_alter` because `peer_sessions` itself points back here),
 `room_name varchar(200) null`, `status varchar(16) not null default 'matched'`,
-`started_at` / `ended_at timestamptz null`, `end_reason varchar(32) null`.
+`current_phase varchar(16) null` (the phase the session is in — preparation,
+consultation, feedback — driven by the circuit clock), `phase_ends_at timestamptz null`,
+`doctor_joined_at` / `patient_joined_at` / `preparation_started_at timestamptz null`
+(per-participant timing), `started_at` / `ended_at timestamptz null`,
+`end_reason varchar(32) null`, `feedback_rating int null`,
+`feedback_comment varchar(2000) null`.
 
 ### `practice_history`
 What part someone last played, and how often they have practised. A row rather than

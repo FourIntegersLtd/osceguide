@@ -7,7 +7,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.stations.repository_library import published_library_versions
+from app.features.stations import service_reads as stations
 
 
 async def pick_station_version_id(
@@ -19,8 +19,7 @@ async def pick_station_version_id(
     unattempted stations would need attempt history keyed to practice sessions;
     the library pick is enough for a fair session.
     """
-    candidates = await published_library_versions(session, exam_id=exam_id)
+    candidates = await stations.published_library_version_ids(session, exam_id=exam_id)
     if not candidates:
         return None
-    version, _station = random.choice(candidates)
-    return version.id
+    return random.choice(candidates)  # noqa: S311 — fairness pick, not a security decision

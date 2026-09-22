@@ -68,8 +68,11 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
             mode=mode,
         )
         if attempt.kind == "debrief":
+            context = rendered.get("examiner_context")
             rendered = await render_debrief(
-                session, attempt, examiner_context=rendered.get("examiner_context")
+                session,
+                attempt,
+                examiner_context=context if isinstance(context, str) else None,
             )
     except RenderFailed as exc:
         raise errors.AttemptNotReady(str(exc)) from exc

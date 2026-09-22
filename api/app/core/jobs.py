@@ -93,6 +93,7 @@ async def defer_in_transaction(
     lock: str | None = None,
     priority: int = 0,
     scheduled_at: datetime | None = None,
+    ignore_lock_conflict: bool = False,
 ) -> None:
     """Write a queue row in the caller's transaction.
 
@@ -116,20 +117,33 @@ async def defer_in_transaction(
     This lives in core rather than in a slice because every slice defers the
     same way, and the one that had it first had the SQL in its repository where
     nobody else could reach it.
+
+    When `ignore_lock_conflict` is true, a duplicate queueing-lock is caught
+    inside a savepoint so the surrounding transaction survives. This is for
+    fire-and-forget nudges where a second caller arriving while the first job
+    is still queued should silently no-op rather than 500.
     """
-    await session.execute(
-        text(
-            "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("
-            ":queue, :task, :priority, :lock, :queueing_lock, CAST(:args AS jsonb), :scheduled_at"
-            ")]::procrastinate_job_to_defer_v1[])"
-        ),
-        {
-            "queue": queue,
-            "task": task,
-            "priority": priority,
-            "lock": lock,
-            "queueing_lock": queueing_lock,
-            "args": json.dumps(args),
-            "scheduled_at": scheduled_at,
-        },
+    params = {
+        "queue": queue,
+        "task": task,
+        "priority": priority,
+        "lock": lock,
+        "queueing_lock": queueing_lock,
+        "args": json.dumps(args),
+        "scheduled_at": scheduled_at,
+    }
+    stmt = text(
+        "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("
+        ":queue, :task, :priority, :lock, :queueing_lock, CAST(:args AS jsonb), :scheduled_at"
+        ")]::procrastinate_job_to_defer_v1[])"
     )
+    if ignore_lock_conflict:
+        from sqlalchemy.exc import IntegrityError
+
+        try:
+            async with session.begin_nested():
+                await session.execute(stmt, params)
+        except IntegrityError:
+            pass
+    else:
+        await session.execute(stmt, params)

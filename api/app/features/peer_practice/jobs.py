@@ -23,12 +23,18 @@ def audience_lock_key(exam_id: uuid.UUID, audience: Audience) -> str:
 
 
 async def enqueue_try_match(session: AsyncSession, *, exam_id: uuid.UUID, audience: Audience) -> None:
-    """Nudge the matcher after somebody joins, without waiting for the cron."""
+    """Nudge the matcher after somebody joins, without waiting for the cron.
+
+    A second join for the same exam and audience while the first job is still
+    waiting hits the queueing-lock unique constraint. That is the lock doing
+    its job — one nudge is enough — so the duplicate is silently ignored.
+    """
     await defer_in_transaction(
         session,
         queue=MATCHING_QUEUE,
         task=TRY_MATCH_TASK,
         queueing_lock=audience_lock_key(exam_id, audience),
+        ignore_lock_conflict=True,
         args={
             "exam_id": str(exam_id),
             "visibility": str(audience.visibility),
@@ -38,9 +44,7 @@ async def enqueue_try_match(session: AsyncSession, *, exam_id: uuid.UUID, audien
     )
 
 
-async def drain_waiting_room(
-    session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience
-) -> int:
+async def drain_waiting_room(session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience) -> int:
     """Pair everyone who can be paired in one room. Returns how many pairs were made."""
     from app.features.peer_practice.service import match_waiting
 
@@ -96,7 +100,12 @@ def register() -> None:
                 for audience in await repository.waiting_audiences(session, exam.id):
                     count = await drain_waiting_room(session, exam.id, audience=audience)
                     if count:
-                        log.info("practice pair matched", exam=exam.code, room=str(audience.visibility), pairs=count)
+                        log.info(
+                            "practice pair matched",
+                            exam=exam.code,
+                            room=str(audience.visibility),
+                            pairs=count,
+                        )
 
     @app.periodic(cron="* * * * *")
     @app.task(name="expire_practice_queue", queue="matching")

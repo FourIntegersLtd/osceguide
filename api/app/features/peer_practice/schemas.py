@@ -2,14 +2,95 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from app.core.audience import AudienceIn, AudienceOut
-from app.features.attempts.schemas_material import (
-    CandidateScenarioRead, DoctorInformationRead, ManagementPlanRead, StationTeachingRead,
-)
-from app.features.attempts.schemas_roleplay import PatientRoleplayRead
+
+
+class _Passthrough(BaseModel):
+    """A block whose known fields are typed and whose unknown ones survive.
+
+    These mirror the attempt material shapes but are peer practice's own, and
+    the `Practice` prefix is what keeps their OpenAPI component names distinct:
+    two models sharing a name makes FastAPI qualify *both*, which renames the
+    attempt types the web client already imports.
+    """
+
+    model_config = {"extra": "allow"}
+
+
+class PracticeDoctorInformationRead(_Passthrough):
+    patient_biodata: str | None = None
+    recent_notes: list[str] = Field(default_factory=list)
+    current_medications: list[str] = Field(default_factory=list)
+    past_medical_history: list[str] = Field(default_factory=list)
+    recent_investigations: list[str] = Field(default_factory=list)
+    social_history: list[str] = Field(default_factory=list)
+    photos: list[str] = Field(default_factory=list)
+    doctor_task: str | None = None
+    doctor_identity: str | None = None
+    patient_information: list[str] = Field(default_factory=list)
+    task_instructions: str | None = None
+
+
+class PracticeCandidateScenarioRead(_Passthrough):
+    station_type: str | None = None
+    clinical_scenario_title: str | None = None
+    clinical_scenario: str | None = None
+    radiograph_image_url: str | None = None
+    additional_image_urls: list[str] = Field(default_factory=list)
+    background_overview: str | None = None
+    duration_minutes: int | None = None
+
+
+class PracticeManagementPlanRead(_Passthrough):
+    explanation: str | None = None
+    differential_diagnosis: list[str] = Field(default_factory=list)
+    examination_findings: list[str] = Field(default_factory=list)
+    assessment: list[str] = Field(default_factory=list)
+    further_investigations: list[str] = Field(default_factory=list)
+    social_concerns: list[str] = Field(default_factory=list)
+    ice: list[str] = Field(default_factory=list)
+    immediate_actions: list[str] = Field(default_factory=list)
+    pharmacological_treatment: list[str] = Field(default_factory=list)
+    non_pharmacological_treatment: list[str] = Field(default_factory=list)
+    health_education: list[str] = Field(default_factory=list)
+    follow_up: str | None = None
+    safety_netting: str | None = None
+    additional_notes: str | None = None
+
+
+class PracticeStationTeachingRead(_Passthrough):
+    key_concerns: list[str] = Field(default_factory=list)
+    history_overview: str | None = None
+    examination_overview: str | None = None
+    investigations_overview: str | None = None
+    management_overview: str | None = None
+    references: list[str] = Field(default_factory=list)
+    suggested_order_overview: str | None = None
+    suggested_order: dict[str, Any] | None = None
+    communication_themes: list[str] = Field(default_factory=list)
+    consent_approach: str | None = None
+    breaking_bad_news_framework: str | None = None
+    professional_conduct_topics: list[str] = Field(default_factory=list)
+    key_learning_points: list[str] = Field(default_factory=list)
+    portfolio_themes: list[str] = Field(default_factory=list)
+
+
+class PracticePatientRoleplayRead(BaseModel):
+    patient_biodata: str | None = None
+    gender: str | None = None
+    idea: list[str] = Field(default_factory=list)
+    concerns: list[str] = Field(default_factory=list)
+    expectation: list[str] = Field(default_factory=list)
+    opening_sentence: str | None = None
+    expanded_history: str | None = None
+    persona: str | None = None
+    family_social_history: list[str] = Field(default_factory=list)
+    past_med_history_allergies: list[str] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
 
 
 class JoinQueue(BaseModel):
@@ -43,11 +124,11 @@ class PracticeStationRead(BaseModel):
     reading_brief: str | None = None
     patient_script: str | None = None
     management_plan: str | None = None
-    doctor_information: DoctorInformationRead | None = None
-    patient_information: PatientRoleplayRead | None = None
-    management: ManagementPlanRead | None = None
-    scenario: CandidateScenarioRead | None = None
-    teaching: StationTeachingRead | None = None
+    doctor_information: PracticeDoctorInformationRead | None = None
+    patient_information: PracticePatientRoleplayRead | None = None
+    management: PracticeManagementPlanRead | None = None
+    scenario: PracticeCandidateScenarioRead | None = None
+    teaching: PracticeStationTeachingRead | None = None
 
 
 class PracticeSessionRead(BaseModel):

@@ -24,9 +24,7 @@ def session_stream(
 
         async with open_session() as session:
             try:
-                view = await service.read_session(
-                    session, session_id, user_id=user_id, now=datetime.now(UTC)
-                )
+                view = await service.read_session(session, session_id, user_id=user_id, now=datetime.now(UTC))
             except errors.SessionNotFound:
                 raise StreamFinished from None
         payload = view.model_dump_json()

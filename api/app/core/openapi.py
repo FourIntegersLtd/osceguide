@@ -46,6 +46,7 @@ TAGS: list[dict[str, str]] = [
     {"name": "results", "description": "Candidate outcomes and their release"},
     {"name": "dashboard", "description": "What a learner sees on opening the app"},
     {"name": "community", "description": "Questions, replies and comments"},
+    {"name": "cv", "description": "A learner's uploaded CV, read into sections"},
     {"name": "marketplace", "description": "Peer practice slots offered and claimed"},
     {"name": "peer-practice", "description": "Being matched with somebody to practise"},
     {"name": "growth", "description": "Partner attribution and referrals"},

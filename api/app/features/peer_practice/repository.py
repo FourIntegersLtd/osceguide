@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from datetime import datetime
 
 from sqlalchemy import func, or_, select, text, update
@@ -92,12 +93,7 @@ async def leave(session: AsyncSession, entry_id: uuid.UUID, *, at: datetime) -> 
 async def claim_waiting(
     session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience, limit: int = 20
 ) -> list[QueueEntry]:
-    """The people waiting in one room, oldest first, locked for matching.
-
-    `FOR UPDATE SKIP LOCKED` so two matchers running at once pair different
-    people rather than both pairing the same two. Scoped to one room, because
-    pairing across rooms is what the audience exists to prevent.
-    """
+    """The people waiting in one room, oldest first, locked for matching."""
     stmt = (
         select(QueueEntry)
         .where(
@@ -113,12 +109,7 @@ async def claim_waiting(
 
 
 async def waiting_count(session: AsyncSession, exam_id: uuid.UUID, *, audience: Audience) -> int:
-    """How many are waiting in this room.
-
-    Per room, not per exam: somebody queueing inside their institution was
-    otherwise told twelve people were ahead of them when only two could ever
-    be matched with them.
-    """
+    """How many are waiting in this room."""
     stmt = select(func.count(QueueEntry.id)).where(
         QueueEntry.exam_id == exam_id,
         QueueEntry.status == "waiting",
@@ -141,12 +132,7 @@ async def waiting_audiences(session: AsyncSession, exam_id: uuid.UUID) -> list[A
 
 
 async def position_of(session: AsyncSession, entry: QueueEntry) -> int:
-    """How many people are ahead. One-based, so "position 1" means next.
-
-    Counted on `seq`, not on `created_at`: everyone joining in one transaction
-    shares a timestamp, and a random-uuid tie-break gives a stable order that is
-    not the order they arrived in — two people would each be told they were next.
-    """
+    """How many people are ahead. One-based."""
     stmt = select(func.count(QueueEntry.id)).where(
         QueueEntry.exam_id == entry.exam_id,
         QueueEntry.status == "waiting",
@@ -244,3 +230,19 @@ async def record_role(session: AsyncSession, user_id: uuid.UUID, *, role: str) -
         .where(PracticeHistory.user_id == user_id)
         .values(last_role=role, session_count=PracticeHistory.session_count + 1)
     )
+
+
+async def record_feedback(
+    session: AsyncSession, session_id: uuid.UUID, *, rating: int, comment: str | None
+) -> None:
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(feedback_rating=rating, feedback_comment=comment)
+    )
+
+
+async def advance_phase(
+    session: AsyncSession, session_id: uuid.UUID, *, values: Mapping[str, object]
+) -> None:
+    await session.execute(update(PracticeSession).where(PracticeSession.id == session_id).values(**values))

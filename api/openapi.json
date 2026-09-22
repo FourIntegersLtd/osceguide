@@ -861,6 +861,21 @@
         "title": "AutogenerateStationDraftResult",
         "type": "object"
       },
+      "Body_cv_upload_cv": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "The CV, as a PDF",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_cv_upload_cv",
+        "type": "object"
+      },
       "BulkCreateTrainees": {
         "description": "A spreadsheet's worth of trainees in one request.\n\nThe browser parses the file; the API takes rows. Capped so one request\ncannot invite a whole university at once by accident.",
         "properties": {
@@ -2909,6 +2924,114 @@
         "title": "CreditSignup",
         "type": "object"
       },
+      "CvList": {
+        "properties": {
+          "cvs": {
+            "items": {
+              "$ref": "#/components/schemas/CvRead"
+            },
+            "title": "Cvs",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total"
+        ],
+        "title": "CvList",
+        "type": "object"
+      },
+      "CvRead": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "structured": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StructuredCv"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "original_filename",
+          "uploaded_at"
+        ],
+        "title": "CvRead",
+        "type": "object"
+      },
+      "CvUploadResult": {
+        "description": "What an upload answers with, before the model has read it.\n\nThe row exists and is `processing`; the structured sections arrive later,\nread back from the list. The message is the one the retiring backend\nshowed, because it sets the expectation that this is not instant.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "message"
+        ],
+        "title": "CvUploadResult",
+        "type": "object"
+      },
       "Dashboard": {
         "description": "Replaces seven calls on the SCA dashboard alone.\n\nThe legacy screen fans out to four RAG endpoints, a weekly trend and two\nmarketplace lists, then joins them in the browser.",
         "properties": {
@@ -3793,6 +3916,7 @@
               "cohort_not_found",
               "conflict",
               "content_too_long",
+              "cv_not_found",
               "email_taken",
               "empty_content",
               "empty_query",
@@ -3817,6 +3941,7 @@
               "invalid_audience",
               "invalid_circuit",
               "invalid_credentials",
+              "invalid_cv_file",
               "invalid_exam_code",
               "invalid_input",
               "invalid_legacy_token",
@@ -3894,8 +4019,11 @@
               "slot_not_found",
               "slug_taken",
               "sso_binding_taken",
+              "sso_login_unavailable",
               "sso_not_configurable",
               "sso_not_configured",
+              "sso_provider_unsupported",
+              "sso_verification_failed",
               "station_not_found",
               "station_not_published",
               "station_template_not_found",
@@ -4577,13 +4705,6 @@
       },
       "HelpArticle": {
         "properties": {
-          "app_types": {
-            "items": {
-              "type": "string"
-            },
-            "title": "App Types",
-            "type": "array"
-          },
           "body_md": {
             "title": "Body Md",
             "type": "string"
@@ -4596,6 +4717,13 @@
             "default": "",
             "title": "Category Title",
             "type": "string"
+          },
+          "exam_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exam Codes",
+            "type": "array"
           },
           "id": {
             "default": "",
@@ -4631,7 +4759,7 @@
         "required": [
           "slug",
           "title",
-          "app_types",
+          "exam_codes",
           "category_slug",
           "body_md"
         ],
@@ -4684,13 +4812,6 @@
       },
       "HelpCategory": {
         "properties": {
-          "app_types": {
-            "items": {
-              "type": "string"
-            },
-            "title": "App Types",
-            "type": "array"
-          },
           "article_count": {
             "default": 0,
             "title": "Article Count",
@@ -4700,6 +4821,13 @@
             "default": "",
             "title": "Description",
             "type": "string"
+          },
+          "exam_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exam Codes",
+            "type": "array"
           },
           "icon_key": {
             "default": "book",
@@ -4728,7 +4856,7 @@
         "required": [
           "slug",
           "title",
-          "app_types"
+          "exam_codes"
         ],
         "title": "HelpCategory",
         "type": "object"
@@ -4981,7 +5109,7 @@
       },
       "KnowledgeChat": {
         "properties": {
-          "app_type": {
+          "exam_code": {
             "default": "sca",
             "enum": [
               "sca",
@@ -4989,7 +5117,7 @@
               "casc",
               "ortho"
             ],
-            "title": "App Type",
+            "title": "Exam Code",
             "type": "string"
           },
           "messages": {
@@ -5930,6 +6058,18 @@
             ],
             "title": "Started At"
           },
+          "station_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Id"
+          },
           "station_title": {
             "anyOf": [
               {
@@ -5940,6 +6080,18 @@
               }
             ],
             "title": "Station Title"
+          },
+          "station_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Version Id"
           },
           "status": {
             "title": "Status",
@@ -8487,6 +8639,410 @@
         "title": "PlatformUserDetail",
         "type": "object"
       },
+      "PracticeCandidateScenarioRead": {
+        "additionalProperties": true,
+        "properties": {
+          "additional_image_urls": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Additional Image Urls",
+            "type": "array"
+          },
+          "background_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Overview"
+          },
+          "clinical_scenario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinical Scenario"
+          },
+          "clinical_scenario_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinical Scenario Title"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "radiograph_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radiograph Image Url"
+          },
+          "station_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Type"
+          }
+        },
+        "title": "PracticeCandidateScenarioRead",
+        "type": "object"
+      },
+      "PracticeDoctorInformationRead": {
+        "additionalProperties": true,
+        "properties": {
+          "current_medications": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Current Medications",
+            "type": "array"
+          },
+          "doctor_identity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Identity"
+          },
+          "doctor_task": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Task"
+          },
+          "past_medical_history": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Past Medical History",
+            "type": "array"
+          },
+          "patient_biodata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Biodata"
+          },
+          "patient_information": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Patient Information",
+            "type": "array"
+          },
+          "photos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "recent_investigations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recent Investigations",
+            "type": "array"
+          },
+          "recent_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recent Notes",
+            "type": "array"
+          },
+          "social_history": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Social History",
+            "type": "array"
+          },
+          "task_instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Instructions"
+          }
+        },
+        "title": "PracticeDoctorInformationRead",
+        "type": "object"
+      },
+      "PracticeManagementPlanRead": {
+        "additionalProperties": true,
+        "properties": {
+          "additional_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Notes"
+          },
+          "assessment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assessment",
+            "type": "array"
+          },
+          "differential_diagnosis": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Differential Diagnosis",
+            "type": "array"
+          },
+          "examination_findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Examination Findings",
+            "type": "array"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "follow_up": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up"
+          },
+          "further_investigations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Further Investigations",
+            "type": "array"
+          },
+          "health_education": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Health Education",
+            "type": "array"
+          },
+          "ice": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ice",
+            "type": "array"
+          },
+          "immediate_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Immediate Actions",
+            "type": "array"
+          },
+          "non_pharmacological_treatment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Non Pharmacological Treatment",
+            "type": "array"
+          },
+          "pharmacological_treatment": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pharmacological Treatment",
+            "type": "array"
+          },
+          "safety_netting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Netting"
+          },
+          "social_concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Social Concerns",
+            "type": "array"
+          }
+        },
+        "title": "PracticeManagementPlanRead",
+        "type": "object"
+      },
+      "PracticePatientRoleplayRead": {
+        "properties": {
+          "concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "expanded_history": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expanded History"
+          },
+          "expectation": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expectation",
+            "type": "array"
+          },
+          "family_social_history": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Family Social History",
+            "type": "array"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "idea": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Idea",
+            "type": "array"
+          },
+          "opening_sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Sentence"
+          },
+          "past_med_history_allergies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Past Med History Allergies",
+            "type": "array"
+          },
+          "patient_biodata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Biodata"
+          },
+          "persona": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persona"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "title": "PracticePatientRoleplayRead",
+        "type": "object"
+      },
       "PracticeSessionRead": {
         "properties": {
           "current_phase": {
@@ -8637,7 +9193,7 @@
           "doctor_information": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/DoctorInformationRead"
+                "$ref": "#/components/schemas/PracticeDoctorInformationRead"
               },
               {
                 "type": "null"
@@ -8647,7 +9203,7 @@
           "management": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ManagementPlanRead"
+                "$ref": "#/components/schemas/PracticeManagementPlanRead"
               },
               {
                 "type": "null"
@@ -8668,7 +9224,7 @@
           "patient_information": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PatientRoleplayRead"
+                "$ref": "#/components/schemas/PracticePatientRoleplayRead"
               },
               {
                 "type": "null"
@@ -8700,7 +9256,7 @@
           "scenario": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CandidateScenarioRead"
+                "$ref": "#/components/schemas/PracticeCandidateScenarioRead"
               },
               {
                 "type": "null"
@@ -8720,7 +9276,7 @@
           "teaching": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/StationTeachingRead"
+                "$ref": "#/components/schemas/PracticeStationTeachingRead"
               },
               {
                 "type": "null"
@@ -8738,6 +9294,144 @@
           "title"
         ],
         "title": "PracticeStationRead",
+        "type": "object"
+      },
+      "PracticeStationTeachingRead": {
+        "additionalProperties": true,
+        "properties": {
+          "breaking_bad_news_framework": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaking Bad News Framework"
+          },
+          "communication_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Communication Themes",
+            "type": "array"
+          },
+          "consent_approach": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Approach"
+          },
+          "examination_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Examination Overview"
+          },
+          "history_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Overview"
+          },
+          "investigations_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investigations Overview"
+          },
+          "key_concerns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Concerns",
+            "type": "array"
+          },
+          "key_learning_points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Learning Points",
+            "type": "array"
+          },
+          "management_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Management Overview"
+          },
+          "portfolio_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Portfolio Themes",
+            "type": "array"
+          },
+          "professional_conduct_topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Professional Conduct Topics",
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "type": "string"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "suggested_order": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Order"
+          },
+          "suggested_order_overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Order Overview"
+          }
+        },
+        "title": "PracticeStationTeachingRead",
         "type": "object"
       },
       "PrioritisationPatientRead": {
@@ -10343,6 +11037,10 @@
             "title": "Debriefs",
             "type": "integer"
           },
+          "feedback": {
+            "title": "Feedback",
+            "type": "integer"
+          },
           "stations": {
             "title": "Stations",
             "type": "integer"
@@ -10354,6 +11052,7 @@
         },
         "required": [
           "consultations",
+          "feedback",
           "debriefs",
           "users",
           "stations",
@@ -10731,6 +11430,29 @@
         "title": "SsoBinding",
         "type": "object"
       },
+      "SsoCallbackRequest": {
+        "description": "The token the broker handed back, and the organisation it was for.",
+        "properties": {
+          "org_slug": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Org Slug",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_slug",
+          "token"
+        ],
+        "title": "SsoCallbackRequest",
+        "type": "object"
+      },
       "SsoConfigRead": {
         "description": "The whole arrangement, for whoever administers it.",
         "properties": {
@@ -10800,6 +11522,65 @@
           "default_exam_code"
         ],
         "title": "SsoConfigRead",
+        "type": "object"
+      },
+      "SsoLoginRequest": {
+        "description": "Which organisation to start signing in to.\n\nThe slug comes from `GET /auth/sso/sign-in`, which a sign-in page already\ncalled to learn whether this visitor's organisation signs in elsewhere.",
+        "properties": {
+          "org_slug": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Org Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_slug"
+        ],
+        "title": "SsoLoginRequest",
+        "type": "object"
+      },
+      "SsoLoginResult": {
+        "description": "Where to send the browser to sign in.\n\nA URL rather than a server-side redirect: the frontend owns navigation and\nthe platform issues no cookies (ADR 0004). The broker sends the browser\nback to `{frontend_url}/auth/sso/callback`, which posts the token it was\nhanded to `POST /auth/sso/callback`.",
+        "properties": {
+          "sign_in_url": {
+            "title": "Sign In Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sign_in_url"
+        ],
+        "title": "SsoLoginResult",
+        "type": "object"
+      },
+      "SsoSession": {
+        "description": "A platform session \u2014 what a login returns, minus the profile.\n\nThe frontend stores these and reads the person from `GET /me`, so the user\nobject is not duplicated into this slice's contract; `identity` owns its\nshape and the broker's job ends at the tokens.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_in"
+        ],
+        "title": "SsoSession",
         "type": "object"
       },
       "SsoSignIn": {
@@ -11610,6 +12391,157 @@
           "payment_intent_id"
         ],
         "title": "StripeEventRead",
+        "type": "object"
+      },
+      "StructuredCv": {
+        "description": "The sections a CV is read into. A section with nothing in it is null.",
+        "properties": {
+          "achievements": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Awards, prizes, recognition",
+            "title": "Achievements"
+          },
+          "audits": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Audit and quality-improvement work",
+            "title": "Audits"
+          },
+          "courses": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Professional development courses",
+            "title": "Courses"
+          },
+          "education": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Medical school, degrees, qualifications",
+            "title": "Education"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Clinical experience, roles, rotations",
+            "title": "Experience"
+          },
+          "grants": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Research funding and scholarships",
+            "title": "Grants"
+          },
+          "leadership": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Leadership and management roles",
+            "title": "Leadership"
+          },
+          "publications": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Papers, presentations, abstracts",
+            "title": "Publications"
+          },
+          "research": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Research projects and interests",
+            "title": "Research"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Clinical competencies, languages",
+            "title": "Skills"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Personal summary and career overview",
+            "title": "Summary"
+          },
+          "teaching": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Teaching, supervision, education",
+            "title": "Teaching"
+          }
+        },
+        "title": "StructuredCv",
         "type": "object"
       },
       "SubmitSlotReview": {
@@ -15539,6 +16471,178 @@
         ]
       }
     },
+    "/api/v1/auth/sso/callback": {
+      "post": {
+        "description": "Trade the broker's token for a platform session.\n\nThe browser is sent here by the frontend callback page with the token the\nbroker appended. The token is verified against the broker \u2014 never decoded\nand trusted \u2014 and the person is provisioned on first sign-in, because the\ninstitution vouches for them and there is no password to have lost.",
+        "operationId": "sso_sso_callback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoCallbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_verification_failed, unknown_sso_provider",
+            "x-codes": [
+              "sso_verification_failed",
+              "unknown_sso_provider"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_provider_unsupported, sso_login_unavailable",
+            "x-codes": [
+              "sso_provider_unsupported",
+              "sso_login_unavailable"
+            ]
+          }
+        },
+        "summary": "Sso Callback",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
+    "/api/v1/auth/sso/login": {
+      "post": {
+        "description": "Where to send the browser to sign in to this organisation.\n\n**Unauthenticated**, like the discovery read above it: this is the first\nstep of signing in, before anybody has. The URL is returned rather than\nfollowed \u2014 the frontend owns navigation and the platform sets no cookies\n(ADR 0004) \u2014 and points the broker back at a frontend page that posts the\ntoken to `POST /auth/sso/callback`.",
+        "operationId": "sso_sso_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoLoginResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_sso_provider",
+            "x-codes": [
+              "unknown_sso_provider"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_provider_unsupported, sso_login_unavailable",
+            "x-codes": [
+              "sso_provider_unsupported",
+              "sso_login_unavailable"
+            ]
+          }
+        },
+        "summary": "Sso Login",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
     "/api/v1/auth/sso/sign-in": {
       "get": {
         "description": "Whether this visitor's organisation signs in somewhere else.\n\n**Unauthenticated, and it has to be**: this is what a sign-in page asks\nbefore anybody has signed in. The retiring client answered it from a\nhostname allow-list compiled into the bundle, so adding a partner meant a\nfrontend deploy and the tenant slug, the button's wording and the\n\"no password form\" rule were three things that could disagree with the\nbackend.\n\nA 404 means \"sign in here, with a password\", which is the ordinary case and\nwhat every host that is not a partner's gets.",
@@ -16551,6 +17655,198 @@
         ]
       }
     },
+    "/api/v1/cv": {
+      "get": {
+        "description": "Your own CVs, most recent first, with whatever has been read so far.",
+        "operationId": "cv_list_cv",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CvList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Cv",
+        "tags": [
+          "cv"
+        ]
+      },
+      "post": {
+        "description": "Upload a CV and queue reading it into sections.\n\nThe first multipart route on this API. The text is pulled from the PDF here\n\u2014 it is cheap and it is what the size and type checks are for \u2014 and the\nmodel call that structures it is a background job, so the answer comes back\nbefore the reading is done. Rate limited: an upload pays for a parse and,\nbehind it, a model call.",
+        "operationId": "cv_upload_cv",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_cv_upload_cv"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CvUploadResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_cv_file",
+            "x-codes": [
+              "invalid_cv_file"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Cv",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
+    "/api/v1/cv/{cv_id}": {
+      "get": {
+        "description": "One CV. Somebody else's is `not found`, so an id cannot be probed.",
+        "operationId": "cv_read_cv",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cv Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CvRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cv_not_found",
+            "x-codes": [
+              "cv_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Cv",
+        "tags": [
+          "cv"
+        ]
+      }
+    },
     "/api/v1/exams": {
       "get": {
         "description": "The exams the platform offers. Small set, so no cursor is ever returned.\n\nThe consumer catalogue: platform exams only. An institution's own exams are\nnot here and never are \u2014 they are that institution's, not ours to publish.\nSee `/orgs/{org_slug}/exams` for those.\n\nA platform admin sees the platform's drafts, because they are the person\nwriting them, and nobody else's.",
@@ -16978,7 +18274,7 @@
         "parameters": [
           {
             "in": "query",
-            "name": "app_type",
+            "name": "exam_code",
             "required": false,
             "schema": {
               "default": "sca",
@@ -16988,7 +18284,7 @@
                 "casc",
                 "ortho"
               ],
-              "title": "App Type",
+              "title": "Exam Code",
               "type": "string"
             }
           },
@@ -17019,6 +18315,20 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
           },
           "422": {
             "content": {
@@ -17057,7 +18367,7 @@
           },
           {
             "in": "query",
-            "name": "app_type",
+            "name": "exam_code",
             "required": false,
             "schema": {
               "default": "sca",
@@ -17067,7 +18377,7 @@
                 "casc",
                 "ortho"
               ],
-              "title": "App Type",
+              "title": "Exam Code",
               "type": "string"
             }
           }
@@ -17138,7 +18448,7 @@
         "parameters": [
           {
             "in": "query",
-            "name": "app_type",
+            "name": "exam_code",
             "required": false,
             "schema": {
               "default": "sca",
@@ -17148,7 +18458,7 @@
                 "casc",
                 "ortho"
               ],
-              "title": "App Type",
+              "title": "Exam Code",
               "type": "string"
             }
           }
@@ -17163,6 +18473,20 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
           },
           "422": {
             "content": {
@@ -19318,7 +20642,7 @@
     },
     "/api/v1/me/practice-sessions/{session_id}/voice-token": {
       "post": {
-        "description": "A way into the room the pair were matched into.\n\n`practice_sessions.room_name` has been written since the slice landed and\nnothing could mint a token for it, so two people could be paired and then\nhad nowhere to meet.",
+        "description": "A way into the room the pair were matched into.",
         "operationId": "peer_practice_voice_token",
         "parameters": [
           {
@@ -28678,6 +30002,7 @@
     },
     "/api/v1/orgs/{org_slug}/stations": {
       "get": {
+        "description": "The stations this organisation has authored.\n\n`OrgReader` admits every rostered trainee, and the document is the patient's\nmaterial and the examiner's notes as much as it is the brief \u2014 so a reader\nwhose only relationship to the org is trainee gets the candidate-facing\nprojection of each `content` (S1), the same material their own attempt's\nbrief read discloses. Staff \u2014 an org admin or an assigned supervisor, the\npredicate `OrgStaff` runs on \u2014 and a platform admin read the whole thing.",
         "operationId": "stations_list_stations",
         "parameters": [
           {
@@ -30439,7 +31764,6 @@
         ]
       },
       "get": {
-        "description": "Position, how many are waiting, and the session if one has been made \u2014\none call, because the client polls this every few seconds.",
         "operationId": "peer_practice_read_status",
         "parameters": [
           {
@@ -30515,7 +31839,6 @@
     },
     "/api/v1/peer-practice/queue/{entry_id}/stream": {
       "get": {
-        "description": "The streaming form of the route above it (ADR 0015).\n\nThe place in the product where polling cost the most: somebody is sitting\nwatching the screen, and the whole feature is how fast they get into a room\nwith another person. Closes as soon as the answer stops being \"waiting\".",
         "operationId": "peer_practice_stream_status",
         "parameters": [
           {
@@ -38449,6 +39772,19 @@
               "audience_not_yours"
             ]
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found",
+            "x-codes": [
+              "station_not_found"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -39400,6 +40736,10 @@
     {
       "description": "Questions, replies and comments",
       "name": "community"
+    },
+    {
+      "description": "A learner's uploaded CV, read into sections",
+      "name": "cv"
     },
     {
       "description": "Peer practice slots offered and claimed",

@@ -2,17 +2,22 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
+from app.core.memberships import MembershipsFor
+from app.core.ports import ClockDep, SsoBroker
+from app.core.rate_limit import SSO_CALLBACK, TooManyRequests, caller_key, check
+from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
-from app.features.sso import errors, schemas, service
+from app.features.sso import errors, schemas, service, service_login
 
 router = APIRouter(tags=["sso"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+Broker = Annotated[SsoBroker, Depends(service_login.get_sso_broker)]
 
 
 @router.get(
@@ -48,6 +53,76 @@ async def read_sign_in(
     if email:
         return await service.sign_in_for_email(session, email)
     raise errors.InvalidSsoBinding("Give either a host or an email address.")
+
+
+@router.post(
+    "/auth/sso/login",
+    response_model=schemas.SsoLoginResult,
+    responses=error_responses(
+        errors.SsoNotConfigured,
+        errors.SsoProviderUnsupported,
+        errors.SsoLoginUnavailable,
+        errors.UnknownSsoProvider,
+    ),
+)
+async def sso_login(
+    body: schemas.SsoLoginRequest,
+    session: Session,
+    broker: Broker,
+    settings: SettingsDep,
+) -> schemas.SsoLoginResult:
+    """Where to send the browser to sign in to this organisation.
+
+    **Unauthenticated**, like the discovery read above it: this is the first
+    step of signing in, before anybody has. The URL is returned rather than
+    followed — the frontend owns navigation and the platform sets no cookies
+    (ADR 0004) — and points the broker back at a frontend page that posts the
+    token to `POST /auth/sso/callback`.
+    """
+    return await service_login.build_login(session, body.org_slug, broker=broker, settings=settings)
+
+
+@router.post(
+    "/auth/sso/callback",
+    response_model=schemas.SsoSession,
+    responses=error_responses(
+        errors.SsoNotConfigured,
+        errors.SsoProviderUnsupported,
+        errors.SsoLoginUnavailable,
+        errors.SsoVerificationFailed,
+        errors.UnknownSsoProvider,
+        # A suspended account is refused by `identity` while issuing the
+        # session; declaring the base pulls in its `account_suspended` code.
+        Unauthenticated,
+        TooManyRequests,
+    ),
+)
+async def sso_callback(
+    request: Request,
+    body: schemas.SsoCallbackRequest,
+    session: Session,
+    broker: Broker,
+    memberships_for: MembershipsFor,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.SsoSession:
+    """Trade the broker's token for a platform session.
+
+    The browser is sent here by the frontend callback page with the token the
+    broker appended. The token is verified against the broker — never decoded
+    and trusted — and the person is provisioned on first sign-in, because the
+    institution vouches for them and there is no password to have lost.
+    """
+    await check(SSO_CALLBACK, caller_key(request))
+    return await service_login.complete_callback(
+        session,
+        body.org_slug,
+        token=body.token,
+        broker=broker,
+        settings=settings,
+        now=clock.now(),
+        memberships_for=memberships_for,
+    )
 
 
 @router.get(

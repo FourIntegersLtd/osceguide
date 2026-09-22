@@ -28,7 +28,7 @@ def test_categories_articles_and_related_links(exam):
 
 
 def test_exam_specific_articles_are_not_exposed_to_other_exams():
-    specific = next(a for a in service_help.list_articles("sca") if a.app_types == ["sca"])
+    specific = next(a for a in service_help.list_articles("sca") if a.exam_codes == ["sca"])
     with pytest.raises(NotFound):
         service_help.read_article(specific.slug, "plab")
 
@@ -39,16 +39,16 @@ def test_browser_endpoint_contract():
     app.include_router(router, prefix="/api/v1")
     app.dependency_overrides[get_principal] = lambda: SimpleNamespace(user_id="test")
     with TestClient(app) as client:
-        categories = client.get("/api/v1/help/categories?app_type=sca")
+        categories = client.get("/api/v1/help/categories?exam_code=sca")
         assert categories.status_code == 200
         category = categories.json()["categories"][0]
         articles = client.get(
-            "/api/v1/help/articles", params={"app_type": "sca", "category": category["slug"]}
+            "/api/v1/help/articles", params={"exam_code": "sca", "category": category["slug"]}
         )
         assert articles.status_code == 200
         slug = articles.json()["articles"][0]["slug"]
-        detail = client.get(f"/api/v1/help/articles/{slug}?app_type=sca")
+        detail = client.get(f"/api/v1/help/articles/{slug}?exam_code=sca")
         assert detail.status_code == 200
         assert detail.json()["article"]["body_md"]
         assert client.get("/api/v1/help/articles/missing").status_code == 404
-        assert client.get("/api/v1/help/categories?app_type=invalid").status_code == 422
+        assert client.get("/api/v1/help/categories?exam_code=invalid").status_code == 422

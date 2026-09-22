@@ -12,7 +12,7 @@ from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_resp
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgAdmin, OrgReader
+from app.core.tenancy import OrgAdmin, OrgReader, may_run_circuit_policy
 from app.features.stations import (
     errors,
     schemas,
@@ -70,8 +70,21 @@ async def browse_library(
 async def list_stations(
     workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.StationRead]:
+    """The stations this organisation has authored.
+
+    `OrgReader` admits every rostered trainee, and the document is the patient's
+    material and the examiner's notes as much as it is the brief — so a reader
+    whose only relationship to the org is trainee gets the candidate-facing
+    projection of each `content` (S1), the same material their own attempt's
+    brief read discloses. Staff — an org admin or an assigned supervisor, the
+    predicate `OrgStaff` runs on — and a platform admin read the whole thing.
+    """
     items, next_cursor = await service.list_stations(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session,
+        workspace.org_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        full_content=workspace.is_platform_admin or may_run_circuit_policy()(workspace.role),
     )
     return Page(items=items, next_cursor=next_cursor)
 

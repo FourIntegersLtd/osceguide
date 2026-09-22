@@ -62,9 +62,7 @@ async def test_the_legacy_persona_name_resolves_to_the_workers_own(client: Async
     assert response.json()["session"]["worker_type"] == "consulting-doctor"
 
 
-async def test_athena_doctor_bootstrap_uses_station_context(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_athena_doctor_bootstrap_uses_station_context(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("doctor-context@example.com")
     created = await client.post(
         "/api/v1/assistant/sessions",

@@ -22,7 +22,7 @@ from tests.guards._scan import (
 
 # Ending or restarting the transaction is core's job alone.
 TRANSACTION_CONTROL = {"commit", "rollback", "transaction", "begin", "begin_nested"}
-ALLOWED = {CORE_ROOT / "db.py"}
+ALLOWED = {CORE_ROOT / "db.py", CORE_ROOT / "jobs.py"}
 
 # `flush` only stages work inside the open transaction, so it is ordinary data
 # access — a repository needs the id of a parent row before inserting a child.

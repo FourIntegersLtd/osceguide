@@ -45,6 +45,7 @@ least 32 characters.
 | `LIVEKIT_CLOUD_SLOT_PENDING_TTL_SECONDS` / `_SLOT_TTL_SECONDS` | 300 / 2100 | How long a reservation is held before a worker connects, and for a whole session after. |
 | `EMAIL_FROM` | OSCE Guide \<noreply@…\> | Envelope sender. |
 | `STRIPE_SECRET_KEY` | — | Checkout. **Not** in the required ten, so a deploy can boot without being able to sell. |
+| `CLERK_SECRET_KEY` / `CLERK_PUBLISHABLE_KEY` | — | Partner SSO, brokered through Clerk. **Not** in the required ten: a deploy without them simply cannot offer SSO, and `POST /auth/sso/login` and `/callback` refuse with `sso_login_unavailable` rather than trusting an unverified token. The organisation's `issuer` carries its Clerk frontend domain. |
 | `MARKING_PRIMARY_MODEL` / `_EFFORT` | gpt-5-mini / low | Effort is set *explicitly* because unset means "medium" under any gpt-5 model — a cost decision nobody made. |
 | `MARKING_FALLBACK_MODEL` / `ANTHROPIC_API_KEY` | claude-sonnet-4-5 | Fallback marking. |
 | `WORKER_CONCURRENCY` | 4 | Background job parallelism. |

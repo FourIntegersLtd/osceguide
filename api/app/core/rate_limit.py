@@ -61,6 +61,13 @@ PASSWORD_RESET = Limit(name="password-reset", allowance=5, window_seconds=300)
 # A legacy token is signed and verifiable, so this is not guessable the way a
 # password is; the limit is here because the route reaches the user table.
 LEGACY_EXCHANGE = Limit(name="legacy-exchange", allowance=20, window_seconds=60)
+# An SSO callback reaches the broker and the user table, and provisions an
+# account on first sign-in. The token is verified by the broker, so this is not
+# guessable either; the limit keeps a forged-token spray from being free.
+SSO_CALLBACK = Limit(name="sso-callback", allowance=20, window_seconds=60)
+# A CV upload pays for a PDF parse and, behind it, a model call. Five an hour
+# is generous for somebody re-uploading a corrected CV and expensive to repeat.
+CV_UPLOAD = Limit(name="cv-upload", allowance=5, window_seconds=3600)
 
 
 def caller_key(request: Request) -> str:

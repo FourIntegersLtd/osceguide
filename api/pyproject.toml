@@ -48,6 +48,10 @@ dependencies = [
     # that added the dashboard tutor's prompt.
     "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.7.0#subdirectory=packages/osce_assessment",
     "python-multipart (>=0.0.18,<0.0.21)",
+    # Reading the text out of an uploaded CV. `cv/service.py` imports it inside
+    # the call, so a machine without it still starts and still serves every
+    # route that is not a CV upload. Same pin as the retiring consumer backend.
+    "pypdf (>=6.5,<7)",
     "sentry-sdk[fastapi] (>=2.19,<3)",
     "boto3 (>=1.36,<2)",
     "cartesia (>=1.4,<2)",
@@ -162,6 +166,7 @@ layers = [
     "app.features.assistant",
     "app.features.marketplace",
     "app.features.community",
+    "app.features.cv",
     "app.features.peer_practice",
     "app.features.growth",
     "app.features.media",

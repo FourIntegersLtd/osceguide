@@ -42,6 +42,7 @@ from app.features.billing.router_platform import router as platform_billing_rout
 from app.features.catalog.router import router as catalog_router
 from app.features.community.router import router as community_router
 from app.features.community.router_platform import router as community_platform_router
+from app.features.cv.router import router as cv_router
 from app.features.dashboard.router import router as dashboard_router
 from app.features.dashboard.router_live import router as live_board_router
 from app.features.dashboard.router_platform import router as platform_directory_router
@@ -56,6 +57,7 @@ from app.features.marketplace.router import router as marketplace_router
 from app.features.media.router import router as media_router
 from app.features.media_production.router import router as media_production_router
 from app.features.peer_practice.router import router as peer_practice_router
+from app.features.peer_practice.router_sessions import router as peer_practice_sessions_router
 from app.features.public_site.router import router as public_site_router
 from app.features.results.router import router as results_router
 from app.features.reviews.router import router as reviews_router
@@ -140,7 +142,9 @@ def api_v1_router() -> APIRouter:
     router.include_router(marketplace_router)
     router.include_router(community_router)
     router.include_router(community_platform_router)
+    router.include_router(cv_router)
     router.include_router(peer_practice_router)
+    router.include_router(peer_practice_sessions_router)
     router.include_router(growth_router)
     router.include_router(generation_router)
     router.include_router(media_router)

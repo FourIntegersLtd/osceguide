@@ -3,63 +3,182 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import domain_material
-from app.features.peer_practice.schemas import PracticeStationRead
-from app.features.attempts.schemas_material import (
-    CandidateScenarioRead, DoctorInformationRead, ManagementPlanRead, StationTeachingRead,
+from app.features.peer_practice.models import PracticeSession
+from app.features.peer_practice.schemas import (
+    PracticeCandidateScenarioRead,
+    PracticeDoctorInformationRead,
+    PracticeManagementPlanRead,
+    PracticePatientRoleplayRead,
+    PracticeSessionRead,
+    PracticeStationRead,
+    PracticeStationTeachingRead,
 )
-from app.features.attempts.schemas_roleplay import PatientRoleplayRead
-from app.features.stations.models import Station, StationVersion
-from app.features.stations.repository_library import versions_with_stations
+from app.features.stations import service_reads as stations
+
+_PATIENT_KEYS = ("patient_information", "patient_info")
+_SCENARIO_KEYS = (
+    "station_type",
+    "clinical_scenario_title",
+    "clinical_scenario",
+    "radiograph_image_url",
+    "additional_image_urls",
+    "background_overview",
+    "patient_list_for_candidate",
+    "duration_minutes",
+)
+_TEACHING_KEYS = (
+    "key_concerns",
+    "history_overview",
+    "examination_overview",
+    "investigations_overview",
+    "management_overview",
+    "interview_questions",
+    "references",
+    "examiner_additional_info",
+    "suggested_order_overview",
+    "suggested_order",
+    "communication_themes",
+    "consent_approach",
+    "breaking_bad_news_framework",
+    "professional_conduct_topics",
+    "key_learning_points",
+    "portfolio_themes",
+)
+
+
+def _block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
+    for key in keys:
+        value = content.get(key)
+        if isinstance(value, Mapping):
+            return dict(value)
+    return {}
+
+
+def _text(value: Any) -> str | None:
+    if value is None:
+        return None
+    t = str(value).strip()
+    return t or None
+
+
+def _lines(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, Mapping):
+        return [str(item).strip() for item in value.values() if str(item).strip()]
+    if isinstance(value, (list, tuple)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [str(value).strip()]
+
+
+async def session_read(
+    session: AsyncSession, row: PracticeSession, *, viewer_id: uuid.UUID
+) -> PracticeSessionRead:
+    """Build the full session read payload, delegating station resolution here."""
+    from app.features.catalog import service as catalog
+    from app.features.peer_practice import domain
+
+    code = await catalog.exam_code_by_id(session, row.exam_id)
+    is_doctor = row.doctor_user_id == viewer_id
+    partner_joined = bool(row.preparation_started_at)
+    station = await station_read_for_version(
+        session,
+        row.station_version_id,
+        is_doctor=is_doctor,
+        reveal_review=row.current_phase in {"debrief", "completed"} or row.status == "ended",
+    )
+    return PracticeSessionRead(
+        id=row.id,
+        exam_code=code or "",
+        my_role=str(domain.Role.DOCTOR if is_doctor else domain.Role.PATIENT),
+        partner_user_id=row.patient_user_id if is_doctor else row.doctor_user_id,
+        room_name=row.room_name,
+        status=row.status,
+        current_phase=row.current_phase,
+        phase_ends_at=row.phase_ends_at,
+        preparation_started_at=row.preparation_started_at,
+        doctor_joined_at=row.doctor_joined_at,
+        patient_joined_at=row.patient_joined_at,
+        started_at=row.started_at,
+        ended_at=row.ended_at,
+        station=station,
+        partner_joined=partner_joined,
+    )
 
 
 async def station_read_for_version(
-    session: AsyncSession, station_version_id: uuid.UUID | None, *,
-    is_doctor: bool, reveal_review: bool,
+    session: AsyncSession,
+    station_version_id: uuid.UUID | None,
+    *,
+    is_doctor: bool,
+    reveal_review: bool,
 ) -> PracticeStationRead | None:
     if station_version_id is None:
         return None
-    pairs = await versions_with_stations(session, None, [station_version_id])
-    if not pairs:
+    mat = await stations.version_material(session, None, station_version_id)
+    if mat is None:
         return None
-    version, station = pairs[0]
-    return _station_payload(station, version, is_doctor=is_doctor, reveal_review=reveal_review)
+    return _station_payload(mat, is_doctor=is_doctor, reveal_review=reveal_review)
 
 
-def _station_payload(station: Station, version: StationVersion, *, is_doctor: bool, reveal_review: bool) -> PracticeStationRead:
-    content: dict[str, Any] = version.content or {}
-    patient = domain_material.block(content, domain_material.PATIENT_BLOCKS)
-    doctor = domain_material.block(content, ("doctor_information",))
-    plan = domain_material.block(content, ("management_plan",))
-    reading = domain_material.text(content.get("reading_brief") or doctor.get("reading_brief") or "")
-    patient_script = domain_material.text(
+def _station_payload(
+    mat: stations.VersionMaterial, *, is_doctor: bool, reveal_review: bool
+) -> PracticeStationRead:
+    content: dict[str, Any] = mat.content or {}
+    patient = _block(content, _PATIENT_KEYS)
+    doctor = _block(content, ("doctor_information",))
+    plan = _block(content, ("management_plan",))
+    reading = _text(content.get("reading_brief") or doctor.get("reading_brief") or "")
+    patient_script = _text(
         patient.get("patient_script") or patient.get("script") or content.get("patient_script") or ""
     )
-    management = domain_material.text(plan.get("management_plan") or plan.get("plan") or "")
-    scenario = domain_material.scenario(content)
-    teaching = domain_material.teaching(content)
-    actor = PatientRoleplayRead(
-        **{key: domain_material.lines(patient.get(key)) for key in (
-            "idea", "concerns", "expectation", "family_social_history", "past_med_history_allergies", "questions",
-        )},
-        **{key: domain_material.text(patient.get(key)) for key in (
-            "patient_biodata", "gender", "opening_sentence", "expanded_history", "persona",
-        )},
-    ) if patient else None
+    management = _text(plan.get("management_plan") or plan.get("plan") or "")
+    scenario = {key: content[key] for key in _SCENARIO_KEYS if key in content} or None
+    teaching = {key: content[key] for key in _TEACHING_KEYS if key in content}
+    actor = (
+        PracticePatientRoleplayRead(
+            **{
+                key: _lines(patient.get(key))
+                for key in (
+                    "idea",
+                    "concerns",
+                    "expectation",
+                    "family_social_history",
+                    "past_med_history_allergies",
+                    "questions",
+                )
+            },
+            **{
+                key: _text(patient.get(key))
+                for key in (
+                    "patient_biodata",
+                    "gender",
+                    "opening_sentence",
+                    "expanded_history",
+                    "persona",
+                )
+            },
+        )
+        if patient
+        else None
+    )
     return PracticeStationRead(
-        station_id=station.id,
-        station_version_id=version.id,
-        title=station.title,
+        station_id=mat.station_id,
+        station_version_id=mat.version_id,
+        title=mat.title,
         reading_brief=reading,
         patient_script=patient_script if not is_doctor or reveal_review else None,
         management_plan=management if reveal_review else None,
-        doctor_information=DoctorInformationRead(**doctor) if doctor else None,
+        doctor_information=PracticeDoctorInformationRead(**doctor) if doctor else None,
         patient_information=actor if not is_doctor or reveal_review else None,
-        management=ManagementPlanRead(**plan) if plan and reveal_review else None,
-        scenario=CandidateScenarioRead(**scenario) if scenario else None,
-        teaching=StationTeachingRead(**teaching) if teaching and reveal_review else None,
+        management=PracticeManagementPlanRead(**plan) if plan and reveal_review else None,
+        scenario=PracticeCandidateScenarioRead(**scenario) if scenario else None,
+        teaching=PracticeStationTeachingRead(**teaching) if teaching and reveal_review else None,
     )

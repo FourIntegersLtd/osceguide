@@ -87,7 +87,8 @@ async def grant_for_attempt(
     # is already up. Carrying a dispatch on the candidate's token as well would
     # put a second patient in beside the first, and both would answer.
     agent_name = (
-        None if attempt.kind == "exam_slot"
+        None
+        if attempt.kind == "exam_slot"
         else domain.agent_name(family, mode, namespace=settings.livekit_agent_namespace)
     )
 

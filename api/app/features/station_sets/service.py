@@ -99,15 +99,12 @@ async def start_entry_attempt(
     except Exception as exc:  # noqa: BLE001 - mapped below
         raise_mapped(exc, _REFUSALS)
 
-    source_attempt_id = None
     if debrief:
         # A debrief is *about* an earlier attempt, and the table requires it to
         # say which. Passing None raised an IntegrityError on every request.
         source_attempt_id = await attempts.latest_attempt_for_set_entry(session, entry.id)
         if source_attempt_id is None:
             raise errors.NothingToDebriefError()
-
-    if debrief:
         try:
             attempt = await attempts.start_debrief_attempt(
                 session,

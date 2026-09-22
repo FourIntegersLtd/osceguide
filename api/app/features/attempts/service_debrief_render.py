@@ -17,7 +17,8 @@ async def render_debrief(
 ) -> dict[str, Any]:
     source = (
         await repository.attempt_by_id(session, attempt.source_attempt_id)
-        if attempt.source_attempt_id else None
+        if attempt.source_attempt_id
+        else None
     )
     if source is None or source.user_id != attempt.user_id:
         raise errors.AttemptNotReady("The source consultation is unavailable.")
@@ -32,14 +33,18 @@ async def render_debrief(
         from osce_assessment.prompts.greetings import DEBRIEF_GREETING
     except ImportError as exc:
         raise RenderFailed("The assessment engine's debrief renderer is unavailable.") from exc
-    transcript = TranscriptFormatter.format({
-        "transcript_message": [{"role": row.role, "message": row.message} for row in messages],
-    })
+    transcript = TranscriptFormatter.format(
+        {
+            "transcript_message": [{"role": row.role, "message": row.message} for row in messages],
+        }
+    )
     return {
         "instructions": DebriefPromptFormatter.create_prompt(
             transcript=transcript,
             management_plan=frozen_context or examiner_context,
-            sca_feedback=json.dumps([row.payload for row in results], ensure_ascii=False) if results else None,
+            sca_feedback=json.dumps([row.payload for row in results], ensure_ascii=False)
+            if results
+            else None,
         ),
         "greeting": DEBRIEF_GREETING,
         "examiner_context": frozen_context or examiner_context,

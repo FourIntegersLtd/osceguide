@@ -64,6 +64,15 @@ async def count_stations(session: AsyncSession, org_id: uuid.UUID | None) -> int
     return await repository.count_for_org(session, org_id)
 
 
+async def published_library_version_ids(
+    session: AsyncSession, *, exam_id: uuid.UUID | None = None
+) -> list[uuid.UUID]:
+    """Version ids of every published platform-library station."""
+    from app.features.stations import repository_library
+
+    return [v.id for v, _ in await repository_library.published_library_versions(session, exam_id=exam_id)]
+
+
 async def browse_library(
     session: AsyncSession,
     *,
@@ -218,12 +227,7 @@ def _doctor_facing_text(content: Mapping[str, Any]) -> str:
 
 
 def _flatten(value: Any) -> list[str]:
-    """Text out of a block, whatever shape its author gave it.
-
-    The four exams' documents are genuinely different, and a management plan is
-    a dict of sections in one and a list of lines in another. Walking it is
-    what keeps this read from having a branch per exam.
-    """
+    """Text out of a block, whatever shape its author gave it."""
     if value is None:
         return []
     if isinstance(value, str):
@@ -234,9 +238,6 @@ def _flatten(value: Any) -> list[str]:
             label = str(key).replace("_", " ").strip()
             texts = _flatten(inner)
             if texts:
-                # The key is kept as a heading: the chunker cuts at headings,
-                # and a plan flattened into one run of prose would be one
-                # passage the tutor reads out whole.
                 out.append(f"{label.capitalize()} {' '.join(texts)}")
         return out
     if isinstance(value, Sequence):

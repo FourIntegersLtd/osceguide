@@ -12,12 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import AppError, raise_mapped
 from app.core.ports import VectorIndex
-from app.features.entitlements import service as entitlements
-from app.features.entitlements.domain import TRIAL_DAYS
-from app.features.identity import service as identity
 from app.features.catalog import service as catalog
+from app.features.entitlements import service as entitlements
+from app.features.identity import service as identity
 from app.features.media import domain, errors, repository
 from app.features.media.schemas import SearchHit
+
+# How long a new account's exam-code preference grants study access.
+# Mirrors the entitlements slice's own trial window.
+_STUDY_TRIAL_DAYS = 14
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.EmptyQuery: errors.EmptyQueryError,
@@ -76,7 +79,11 @@ async def unlocked_exam_ids(
     grants = await entitlements.list_for_user(session, user_id, now=now)
     unlocked = {g.exam_id for g in grants if g.live and g.exam_id}
     user = await identity.user_ref_by_id(session, user_id)
-    if user and user.exam_code and user.created_at <= now < user.created_at + timedelta(days=TRIAL_DAYS):
+    if (
+        user
+        and user.exam_code
+        and user.created_at <= now < user.created_at + timedelta(days=_STUDY_TRIAL_DAYS)
+    ):
         exams = await catalog.exam_refs(session)
         unlocked.update(exam.id for exam in exams if exam.code == user.exam_code)
     return frozenset(unlocked)

@@ -103,6 +103,18 @@ class Settings(BaseSettings):
     legacy_consumer_jwt_secret: str = ""
     legacy_institution_jwt_secret: str = ""
 
+    # --- The SSO broker (Clerk) ---
+    # Partner sign-in is delegated to Clerk, which brokers to the institution's
+    # own provider (Microsoft, for the first partner). The secret verifies the
+    # session token the callback is handed; the publishable key names the
+    # frontend. Neither is one of the required ten: a deployment without them
+    # simply cannot offer SSO, and `sso/clerk.py` refuses the flow rather than
+    # trusting an unverified token — the same fail-closed shape as Stripe and
+    # the worker guard. The organisation's `issuer` carries its Clerk frontend
+    # domain, so one secret serves every partner.
+    clerk_secret_key: str = ""
+    clerk_publishable_key: str = ""
+
     # LiveKit. `voice_backend_label` is the key the worker looks this API up by
     # in its own VOICE_BACKENDS_JSON, so all three deployments can coexist
     # under different labels during a cutover.

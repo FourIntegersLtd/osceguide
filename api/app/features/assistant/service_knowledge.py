@@ -3,10 +3,14 @@
 import json
 import uuid
 from datetime import datetime
+from typing import Annotated, cast
 
+from fastapi import Depends
 from openai import AsyncOpenAI, OpenAIError
+from openai.types.chat import ChatCompletionMessageParam
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import get_session
 from app.core.errors import AppError, InvalidInput
 from app.core.ports import VectorIndex
 from app.core.settings import Settings
@@ -14,13 +18,21 @@ from app.features.assistant.schemas_help import KnowledgeChat, KnowledgeReply
 from app.features.catalog import service as catalog
 from app.features.media import service as media
 from app.features.media import service_search
-from app.features.media.domain import MAX_QUERY
+
+_MAX_QUERY = 2_000
 
 
 class KnowledgeUnavailable(AppError):
     status = 503
     code = "knowledge_unavailable"
     default_message = "Athena is temporarily unavailable. Please try again."
+
+
+def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
+    """The dependency the router wires. Overridden in tests with a fake."""
+    from app.features.media.service_search import get_vector_index as _build  # noqa: PLC0415
+
+    return _build(session)
 
 
 async def answer(
@@ -36,14 +48,14 @@ async def answer(
         raise InvalidInput("Finish with a question for Athena.")
     unlocked = await service_search.unlocked_exam_ids(session, user_id, now=now)
     exams = await catalog.exam_refs(session)
-    scoped = frozenset(exam.id for exam in exams if exam.code == body.app_type and exam.id in unlocked)
+    scoped = frozenset(exam.id for exam in exams if exam.code == body.exam_code and exam.id in unlocked)
     if not scoped:
         return KnowledgeReply(
             reply="Your study access for this exam has expired. Open Settings to review your plan."
         )
     question = body.messages[-1].content.strip()
     hits = await service_search.search(
-        session, query=question[:MAX_QUERY], index=index, limit=8, unlocked=scoped
+        session, query=question[:_MAX_QUERY], index=index, limit=8, unlocked=scoped
     )
     passages: list[str] = []
     for hit in hits:
@@ -52,7 +64,7 @@ async def answer(
             not item.locked
             and item.content
             and item.kind == "summary"
-            and item.exam_code in (None, body.app_type)
+            and item.exam_code in (None, body.exam_code)
         ):
             passages.append(f"{item.title}\n{json.dumps(item.content, ensure_ascii=False)[:12000]}")
     if not passages:
@@ -78,7 +90,7 @@ async def answer(
                 max_completion_tokens=4000,
                 messages=[
                     {"role": "system", "content": system},
-                    *[message.model_dump() for message in body.messages],
+                    *[cast(ChatCompletionMessageParam, message.model_dump()) for message in body.messages],
                 ],
             )
         reply = (result.choices[0].message.content or "").strip()

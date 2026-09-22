@@ -18,7 +18,7 @@ async def test_the_landing_numbers_are_readable_without_signing_in(client: Async
     read = await client.get(STATS)
     assert read.status_code == 200, read.text
     body = read.json()
-    for field in ("consultations", "debriefs", "users", "stations"):
+    for field in ("consultations", "feedback", "debriefs", "users", "stations"):
         assert isinstance(body[field], int)
     # Said rather than implied: these are counted, not live.
     assert body["as_of"]

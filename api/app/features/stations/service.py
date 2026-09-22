@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import raise_mapped
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam
-from app.features.stations import domain, errors, repository, repository_templates
+from app.features.stations import domain, domain_content, errors, repository, repository_templates
 from app.features.stations import service_templates as templates
 from app.features.stations.models import Station, StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
@@ -53,7 +53,9 @@ async def create_station(
         content=content,
         template_version_id=template_version_id,
     )
-    return _station_read(station, exam.code, version)
+    # The authoring routes are org-admin only, so the author reads back the
+    # whole document they just wrote.
+    return _station_read(station, exam.code, version, full_content=True)
 
 
 async def read_station(session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID) -> Station:
@@ -63,16 +65,40 @@ async def read_station(session: AsyncSession, org_id: uuid.UUID | None, station_
     return station
 
 
+async def station_exists(session: AsyncSession, station_id: uuid.UUID) -> bool:
+    """Whether any station at all carries this id, whoever owns it.
+
+    Deliberately not org-scoped: a caller below this slice that names a
+    station — a community comment's `station_id` — holds no org to scope by,
+    and the question it needs answered is existence, not ownership.
+    """
+    return await repository.exists_by_id(session, station_id)
+
+
 async def list_stations(
-    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    full_content: bool,
 ) -> tuple[list[StationRead], str | None]:
+    """The stations this owner has authored.
+
+    `full_content` is the reader-scoped projection (S1): a caller whose only
+    relationship to the org is trainee gets each document reduced to what a
+    candidate may read — the briefs, the scenario, the doctor's information —
+    and never the patient's persona or the examiner's material. Required
+    rather than defaulted, so a new call site decides who it is serving
+    instead of inheriting the whole document.
+    """
     rows, next_cursor = await repository.list_for_org(session, org_id, limit=limit, cursor=cursor)
     out = []
     for station in rows:
         versions = await repository.versions_for_station(session, org_id, station.id)
         latest = versions[-1] if versions else None
         exam = await _exam_code(session, station)
-        out.append(_station_read(station, exam, latest))
+        out.append(_station_read(station, exam, latest, full_content=full_content))
     return out, next_cursor
 
 
@@ -82,7 +108,12 @@ async def _exam_code(session: AsyncSession, station: Station) -> str:
     return await exam_code_by_id(session, station.exam_id) or ""
 
 
-def _station_read(station: Station, exam_code: str, version: StationVersion | None) -> StationRead:
+def _station_read(
+    station: Station, exam_code: str, version: StationVersion | None, *, full_content: bool
+) -> StationRead:
+    content = dict(version.content) if version else None
+    if not full_content:
+        content = domain_content.candidate_content(content)
     return StationRead(
         id=station.id,
         title=station.title,
@@ -90,7 +121,7 @@ def _station_read(station: Station, exam_code: str, version: StationVersion | No
         exam_code=exam_code,
         status=version.status if version else station.status,
         version=version.version if version else 0,
-        content=dict(version.content) if version else None,
+        content=content,
         current_version_id=station.current_version_id,
         template_version_id=version.template_version_id if version else None,
     )

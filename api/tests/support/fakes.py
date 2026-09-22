@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.core.ports import EmailDeliveryFailed, Passage
+from app.core.ports import EmailDeliveryFailed, Passage, SsoBrokerUnavailable, SsoIdentity
 
 FIXED_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 
@@ -358,3 +358,36 @@ class FakeCheckoutSessions:
         if self.fails:
             raise CheckoutUnavailable("stripe is down")
         return self.url
+
+
+@dataclass
+class FakeSsoBroker:
+    """Stands in for Clerk: builds a sign-in URL and vouches for a fixed person.
+
+    `identity` is what `verify` returns; leave it None to make verification
+    fail, which is how a test exercises the refused callback without a broker.
+    `unavailable` makes both calls raise, for the fail-closed path. Everything
+    is recorded so a test can assert what the flow asked of the broker rather
+    than only what came back.
+    """
+
+    identity: SsoIdentity | None = None
+    unavailable: bool = False
+    sign_in_urls: list[str] = field(default_factory=list)
+    verified: list[str] = field(default_factory=list)
+
+    def sign_in_url(self, *, redirect_url: str, issuer: str | None) -> str:
+        if self.unavailable:
+            raise SsoBrokerUnavailable("fake broker is down")
+        domain = (issuer or "").strip()
+        if not domain:
+            raise SsoBrokerUnavailable("no issuer configured")
+        url = f"https://{domain}/sign-in?redirect_url={redirect_url}"
+        self.sign_in_urls.append(url)
+        return url
+
+    async def verify(self, *, token: str) -> SsoIdentity | None:
+        if self.unavailable:
+            raise SsoBrokerUnavailable("fake broker is down")
+        self.verified.append(token)
+        return self.identity

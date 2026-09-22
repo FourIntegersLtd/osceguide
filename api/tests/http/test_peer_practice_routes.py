@@ -17,7 +17,7 @@ pytestmark = pytest.mark.db
 @pytest.fixture
 def voice_tokens(client: AsyncClient) -> FakeVoiceTokens:
     """Replace the LiveKit adapter with a recording fake, at this slice's seam."""
-    from app.features.peer_practice.service import get_voice_tokens
+    from app.features.peer_practice.service_voice import get_voice_tokens
 
     fake = FakeVoiceTokens()
     client._transport.app.dependency_overrides[get_voice_tokens] = lambda: fake  # type: ignore[attr-defined]

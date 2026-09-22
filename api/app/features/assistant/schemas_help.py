@@ -1,4 +1,4 @@
-"""B2C help catalogue and knowledge chat contracts."""
+"""Help catalogue and knowledge chat contracts."""
 
 from typing import Literal
 
@@ -14,7 +14,7 @@ class HelpCategory(BaseModel):
     description: str = ""
     icon_key: str = "book"
     sort_order: int = 0
-    app_types: list[str]
+    exam_codes: list[str]
     article_count: int = 0
 
 
@@ -23,7 +23,7 @@ class HelpArticle(BaseModel):
     slug: str
     title: str
     summary: str = ""
-    app_types: list[str]
+    exam_codes: list[str]
     category_slug: str
     category_title: str = ""
     sort_order: int = 0
@@ -49,7 +49,7 @@ class ChatMessage(BaseModel):
 
 
 class KnowledgeChat(BaseModel):
-    app_type: ExamCode = "sca"
+    exam_code: ExamCode = "sca"
     messages: list[ChatMessage] = Field(min_length=1, max_length=40)
 
 

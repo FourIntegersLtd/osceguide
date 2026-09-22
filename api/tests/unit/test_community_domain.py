@@ -10,6 +10,8 @@ from __future__ import annotations
 import pytest
 
 from app.features.community import domain
+from app.features.community import errors as community_errors
+from app.features.stations import errors as station_errors
 
 AUTHOR = "author-1"
 OTHER = "other-1"
@@ -46,3 +48,11 @@ def test_ordinary_content_is_accepted() -> None:
 
 def test_content_is_trimmed_but_not_otherwise_altered() -> None:
     assert domain.clean("  Some  spacing  kept  ") == "Some  spacing  kept"
+
+
+def test_the_mirrored_station_error_shares_the_stations_code() -> None:
+    """S3: `community` declares its own `StationNotFound` so its routes
+    document their own errors, but the code is the contract the client
+    switches on — two classes sharing one code must not drift."""
+    assert community_errors.StationNotFound.code == station_errors.StationNotFound.code
+    assert community_errors.StationNotFound.code == "station_not_found"

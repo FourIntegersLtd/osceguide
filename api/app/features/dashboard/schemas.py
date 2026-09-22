@@ -117,6 +117,10 @@ class MySlot(BaseModel):
     status: str
     room_name: str | None
     station_title: str | None
+    # The station and its version, so the frontend can match a slot to a
+    # station without title-based string matching.
+    station_id: uuid.UUID | None = None
+    station_version_id: uuid.UUID | None = None
     started_at: datetime | None
     ended_at: datetime | None
     exam_completed_at: datetime | None

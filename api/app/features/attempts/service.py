@@ -9,10 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import domain, errors, repository, repository_slots
 from app.features.attempts.models import Attempt
-from app.features.attempts.service_debrief import start_debrief_attempt as start_debrief_attempt
 from app.features.attempts.schemas import (
     AttemptRead,
 )
+from app.features.attempts.service_debrief import start_debrief_attempt as start_debrief_attempt
 from app.features.attempts.service_reads import _attempt_read, _ensure_visible, _require
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.catalog.service import resolve_exam

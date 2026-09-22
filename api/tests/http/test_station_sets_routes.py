@@ -10,12 +10,12 @@ from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.entitlements.models import Entitlement
 from app.features.entitlements import repository as ent_repo
+from app.features.entitlements.models import Entitlement
 from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
-from tests.support.tokens import bearer
 from tests.support.finished_consultation import finish_consultation
+from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 

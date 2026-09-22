@@ -42,6 +42,8 @@ organisation.
 | Route | Who |
 |---|---|
 | `GET /auth/sso/sign-in?host=…` or `?email=…` | **Anyone, unauthenticated** — it is what a sign-in page asks before anybody has signed in. A 404 means "sign in here, with a password", which is the ordinary case. |
+| `POST /auth/sso/login` | **Anyone, unauthenticated** — where to send the browser to sign in. Returns the broker's sign-in URL rather than redirecting: the frontend owns navigation and the platform sets no cookies (ADR 0004). |
+| `POST /auth/sso/callback` | **Anyone, unauthenticated** — trades the broker's token for a platform session, provisioning the person on first sign-in. Rate limited. |
 | `GET /platform/orgs/{slug}/sso` | Platform admin |
 | `PUT /platform/orgs/{slug}/sso` | Platform admin |
 
@@ -60,14 +62,22 @@ None.
 `org_ref_by_id` to name the organisation on the sign-in page. This slice never
 reads the `organizations` table.
 
+`identity`, through `service_sso.sign_in_external`: the callback hands it the
+verified identity and it provisions the person and mints the platform session.
+Who verifies the identity is this slice's business (the `SsoBroker` port, with
+Clerk behind it); who the person then is, is `identity`'s. `sso` sits above
+both, so both calls go downward.
+
 ## What is deliberately not here
 
-The sign-in itself. `/auth/sso/login` and `/auth/sso/callback` do not exist,
-because who verifies the identity is an open decision: the retiring backend
-brokered through Clerk to Microsoft, and direct OIDC to Entra is the other
-candidate. `Provider` names both so a stored row says what it expects, and
-nothing here implies a flow has been built.
+**A second provider.** `Provider` names `clerk` and `entra` so a stored row says
+what it expects, and only Clerk has a login behind it — the one the retiring
+backend brokered through. An organisation configured for `entra` is refused
+with `sso_provider_unsupported` rather than silently sent to a Clerk page;
+direct OIDC to Entra is the open half, tracked as S-1 in `docs/OPEN-QUESTIONS.md`.
 
-Until that lands **`sso_only` is a display rule, not an enforcement one** — the
-page hides its password form, and nothing in this slice refuses a password
-login. See `docs/port-gaps.md`.
+**Enforcement of `sso_only`.** A provisioned SSO user has no password hash, so
+`verify_password` rejects every attempt against it and SSO is the only way in —
+the flag describes a truth. But nothing here yet *refuses* a password login for
+an account that happens to have one, so `sso_only` remains a display rule for
+the page rather than a gate on `identity`'s login. Closing that is part of S-1.

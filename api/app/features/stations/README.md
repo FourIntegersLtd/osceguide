@@ -45,6 +45,12 @@ beside the rubric they narrow).
   version, so an abandoned draft cannot silently become the basis of the next one.
 - A station instance may only bind a **published** template version, re-checked at publish.
 - A circuit may only reference a **published** station.
+- The org station list is **reader-scoped**: a caller whose only relationship
+  to the org is trainee receives each `content` projected onto the
+  candidate-facing keys (`domain_content.py`) — the briefs, the scenario, the
+  doctor's information — and never the patient's persona or the examiner's
+  material. An org admin, an assigned supervisor or a platform admin reads the
+  whole document.
 - `owner_kind='platform'` requires `org_id IS NULL`; `owner_kind='org'` requires it
   set. A check constraint, not a convention.
 - Attempts reference a `station_version`, never a station.
@@ -53,7 +59,7 @@ beside the rubric they narrow).
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/stations` | bearer | platform library, cursor-paginated; **no station content** — browsing is not reading the answers. Scoped to the exams the caller may open: `?exam_code=` must be one of them (`not_entitled`, 403), and omitting it gives theirs rather than everybody's. A platform admin browses the whole catalogue |
-| GET | `/api/v1/orgs/{org_slug}/stations` | org member | the org's own plus the library |
+| GET | `/api/v1/orgs/{org_slug}/stations` | org member | the org's own; a trainee-only reader gets the candidate-facing projection of each `content` (see the invariant above) |
 | POST | `/api/v1/orgs/{org_slug}/stations` | org admin | |
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions` | org admin | seeded from the latest published |
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions/{n}/publish` | org admin | `already_published` (409) |
