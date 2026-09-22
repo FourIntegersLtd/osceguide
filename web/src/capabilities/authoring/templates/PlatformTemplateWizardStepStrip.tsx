@@ -1,6 +1,6 @@
 "use client";
 
-import { platformStaffHairlineB } from "@/domains/platform/platformStaffChrome";
+import { platformStaffHairlineB } from "@/foundation/ui";
 
 const STEPS = [
   { id: 1 as const, label: "Start" },
@@ -60,7 +60,7 @@ export function PlatformTemplateWizardStepStrip({
   );
 }
 
-import { platformStaffHairlineT } from "@/domains/platform/platformStaffChrome";
+import { platformStaffHairlineT } from "@/foundation/ui";
 
 export const platformTemplateWizardFooterClass = `flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${platformStaffHairlineT}`;
 

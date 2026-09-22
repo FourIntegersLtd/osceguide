@@ -13,6 +13,7 @@ import {
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
+import { SlotReadingBrief } from "@/domains/assess/trainee/SlotReadingBrief";
 import {
   MY_SITTINGS_STREAM,
   readMyResult,
@@ -22,6 +23,7 @@ import {
   type MySlot,
 } from "@/domains/assess/trainee/api";
 import {
+  activeSlot,
   isExam,
   modeLabel,
   orderedSlots,
@@ -107,6 +109,10 @@ function Circuit({ sitting }: { sitting: MySitting }) {
             <JoinRoom sitting={sitting} />
           </div>
         </div>
+      ) : null}
+
+      {readingBriefSlot(sitting) ? (
+        <SlotReadingBrief slot={readingBriefSlot(sitting)!} orgSlug={sitting.org_slug} />
       ) : null}
 
       <div className="space-y-2">
@@ -218,4 +224,19 @@ function MyResultLink({ sittingId }: { sittingId: string }) {
       </TextLink>
     </Alert>
   );
+}
+
+/**
+ * The slot a candidate should see the reading brief for, if any.
+ *
+ * The active slot during reading — either the server has dispatched an attempt
+ * (and the brief comes from `GET /attempts/{id}/brief`) or it has not (and the
+ * brief comes from the org station list). A sitting between stations has no
+ * active slot, and a finished station has no brief to show.
+ */
+function readingBriefSlot(sitting: MySitting): MySlot | null {
+  const active = activeSlot(sitting);
+  if (!active) return null;
+  if (active.status === "completed" || active.exam_completed_at) return null;
+  return active;
 }

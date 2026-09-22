@@ -6,10 +6,10 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createAttempt } from "@/capabilities/attempt-runner";
 import { listExams } from "@/capabilities/stations";
-import { StationScreen } from "@/domains/train/station/StationScreen";
-import type { StationStep } from "@/domains/train/station/StationChrome";
-import type { StationAction } from "@/domains/train/station/useStationAttempt";
-import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
+import { StationScreen } from "@/capabilities/station-runner/StationScreen";
+import type { StationStep } from "@/capabilities/station-runner/StationChrome";
+import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
+import { listOrgStations } from "@/domains/assess/trainee/api";
 
 /**
  * One org station sat with the same four-step runner as consumer practice.
@@ -41,9 +41,6 @@ export function SelfPracticeStation({
     },
     [orgSlug, stationId],
   );
-
-  const versionId = context.data?.station?.current_version_id ?? null;
-  const examCode = context.data?.station?.exam_code ?? "";
 
   const create = useCallback(async () => {
     const row = context.data?.station;

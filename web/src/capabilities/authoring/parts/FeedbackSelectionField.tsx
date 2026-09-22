@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { JsonField, formatJson, jsonProblem, parseJson } from "@/capabilities/authoring/parts/JsonField";
 import {

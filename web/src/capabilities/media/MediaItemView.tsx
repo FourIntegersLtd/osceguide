@@ -6,7 +6,6 @@ import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMedia, type MediaItem } from "@/capabilities/media/api";
 import { SummaryView } from "@/capabilities/media/SummaryView";
 import { ArticleView } from "@/capabilities/media/ArticleView";
-import { EpisodeView } from "@/capabilities/media/EpisodeView";
 import { LockedMediaGate } from "@/capabilities/media/LockedMediaGate";
 import { StudyTabRedirect } from "@/capabilities/media/StudyTabRedirect";
 import { podcastEpisodePath, slidesDeckPath } from "@/capabilities/media/studyPaths";

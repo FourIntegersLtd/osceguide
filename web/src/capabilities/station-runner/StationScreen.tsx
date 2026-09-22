@@ -28,25 +28,27 @@ import {
   StationBrief,
   consultationPatientFromBrief,
   useAttemptSession,
+  useExtraReadingPercent,
+  withExtraReadingTime,
 } from "@/capabilities/attempt-runner";
 import { readResults } from "@/capabilities/attempt-runner";
-import { MarkingModal } from "@/domains/train/station/MarkingModal";
-import { FeedbackStep } from "@/domains/train/station/FeedbackStep";
-import { TranscriptStep } from "@/domains/train/station/TranscriptStep";
-import { SimulationTimeUpModal } from "@/domains/train/station/SimulationTimeUpModal";
-import { useStationUrl } from "@/domains/train/station/useStationUrl";
+import { MarkingModal } from "@/capabilities/station-runner/MarkingModal";
+import { FeedbackStep } from "@/capabilities/station-runner/FeedbackStep";
+import { TranscriptStep } from "@/capabilities/station-runner/TranscriptStep";
+import { SimulationTimeUpModal } from "@/capabilities/station-runner/SimulationTimeUpModal";
+import { useStationUrl } from "@/capabilities/station-runner/useStationUrl";
 import {
   STEP_LABELS,
   StationHeader,
   StationTabs,
   stepsFor,
   type StationStep,
-} from "@/domains/train/station/StationChrome";
+} from "@/capabilities/station-runner/StationChrome";
 import {
   forgetStationAttempt,
   useStationAttempt,
   type StationAction,
-} from "@/domains/train/station/useStationAttempt";
+} from "@/capabilities/station-runner/useStationAttempt";
 import {
   useOptionalPendingFeedback,
   feedbackReviewHref,
@@ -102,6 +104,15 @@ export function StationScreen(props: StationScreenProps) {
   const { hrefFor } = useSurface();
   const { replace: replaceUrl } = useStationUrl();
   const pendingFeedback = useOptionalPendingFeedback();
+
+  /*
+   * A person's own extra reading time extends the reading period of their own
+   * practice — never the consultation, and never a circuit's clock (this screen
+   * is practice only). Zero for everybody with no arrangement, so the reading
+   * timer is exactly the exam's default then.
+   */
+  const extraReadingPercent = useExtraReadingPercent();
+  const effectiveReadingSeconds = withExtraReadingTime(readingSeconds, extraReadingPercent);
 
   const [step, setStep] = useState<StationStep>(initialStep ?? "patient");
   const [confirmingStart, setConfirmingStart] = useState(false);
@@ -371,7 +382,7 @@ export function StationScreen(props: StationScreenProps) {
           <div className="mt-4 lg:mt-0">
             {step === "patient" && (
               <Timer
-                duration={readingSeconds}
+                duration={effectiveReadingSeconds}
                 stationId={attempt.attemptId}
                 timerType="doctor"
                 onTimeUp={enterConsultation}

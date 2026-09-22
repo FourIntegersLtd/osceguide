@@ -1,33 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { GoSidebarCollapse } from "react-icons/go";
-import { MdClose, MdLogout, MdMenu } from "react-icons/md";
+import { MdClose, MdMenu } from "react-icons/md";
 import Logo from "@/foundation/ui/Logo";
 import { cn } from "@/foundation/ui";
-import { isNavActive } from "@/foundation/navigation/isNavActive";
 import {
-  b2cNavLinkActive,
-  b2cNavLinkInactive,
   b2cNavMobileBar,
-  b2cNavSectionLabel,
   b2cNavShell,
-  b2cScrollY,
 } from "@/foundation/ui/productTokens";
 import { useSession } from "@/foundation/session";
-import type { NavItem } from "@/surfaces/contract";
-import type { NavSection } from "@/capabilities";
+import { NavRailList, type NavRailGroups } from "@/surfaces/NavRailList";
 import { StaffNavFooter } from "@/surfaces/platform/StaffNavFooter";
 
 export interface PlatformSidebarProps {
   title: string;
   basePath: string;
-  groups: {
-    ungrouped: NavItem[];
-    sections: { section: NavSection; label: string; items: NavItem[] }[];
-  };
+  groups: NavRailGroups;
   navCollapsed: boolean;
   onNavCollapsedChange: (collapsed: boolean) => void;
   menuOpen: boolean;
@@ -43,43 +32,12 @@ export function PlatformSidebar({
   menuOpen,
   onMenuOpenChange,
 }: PlatformSidebarProps) {
-  const pathname = usePathname();
   const { signOut } = useSession();
 
-  const syncCollapsed = useCallback(
-    (value: boolean) => {
-      onNavCollapsedChange(value);
-    },
-    [onNavCollapsedChange],
-  );
-
-  const renderItem = useCallback(
-    (item: NavItem) => {
-      const active = isNavActive(pathname ?? "", item.href, { shellBase: basePath });
-      const Icon = item.icon;
-      return (
-        <Link
-          key={item.key}
-          href={item.href}
-          onClick={() => onMenuOpenChange(false)}
-          aria-current={active ? "page" : undefined}
-          className={active ? b2cNavLinkActive : b2cNavLinkInactive}
-        >
-          {Icon ? (
-            <Icon
-              className={cn(
-                "h-5 w-5 shrink-0",
-                active ? "text-osce-ink-900" : "text-b2c-text-muted",
-              )}
-              aria-hidden
-            />
-          ) : null}
-          <span className="min-w-0 flex-1 truncate md:sr-only lg:not-sr-only">{item.label}</span>
-        </Link>
-      );
-    },
-    [pathname, basePath, onMenuOpenChange],
-  );
+  const closeMenu = useCallback(() => onMenuOpenChange(false), [onMenuOpenChange]);
+  const handleSignOut = useCallback(() => {
+    void signOut();
+  }, [signOut]);
 
   return (
     <>
@@ -127,7 +85,7 @@ export function PlatformSidebar({
               <Logo variant="light" compact />
               <button
                 type="button"
-                onClick={() => syncCollapsed(false)}
+                onClick={() => onNavCollapsedChange(false)}
                 aria-label="Expand sidebar"
                 className="flex h-9 w-9 items-center justify-center rounded-md text-osce-ink-600 hover:bg-osce-navActive"
               >
@@ -139,7 +97,7 @@ export function PlatformSidebar({
               <Logo variant="light" />
               <button
                 type="button"
-                onClick={() => syncCollapsed(true)}
+                onClick={() => onNavCollapsedChange(true)}
                 aria-label="Collapse sidebar"
                 className="flex h-9 w-9 items-center justify-center rounded-md text-osce-ink-600 hover:bg-osce-navActive"
               >
@@ -150,44 +108,43 @@ export function PlatformSidebar({
           <div className="md:hidden">
             <Logo variant="light" />
           </div>
-          <p
-            className={cn(
-              "mt-3 hidden truncate text-center font-sans text-osce-meta font-medium text-b2c-text-muted lg:block",
-              navCollapsed && "lg:sr-only",
-            )}
-          >
-            {title}
-          </p>
+          {navCollapsed ? null : (
+            <p className="mt-3 hidden truncate text-center font-sans text-osce-meta font-medium text-b2c-text-muted lg:block">
+              {title}
+            </p>
+          )}
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col" aria-label="Staff console">
-          <div className={`${b2cScrollY} min-h-0 flex-1 py-4`}>
-            <div className="flex flex-col px-2">
-              {groups.ungrouped.length > 0 ? (
-                <div className="mb-5 flex flex-col gap-0.5">{groups.ungrouped.map(renderItem)}</div>
-              ) : null}
-              {groups.sections.map((group) => (
-                <div key={group.section} className="mb-5 last:mb-0">
-                  <p className={`${b2cNavSectionLabel} md:sr-only lg:not-sr-only`}>{group.label}</p>
-                  <div className="flex flex-col gap-0.5">
-                    {group.items.map(renderItem)}
-                    {group.section === "general" ? (
-                      <button
-                        type="button"
-                        onClick={() => void signOut()}
-                        className={`${b2cNavLinkInactive} w-full md:justify-center lg:justify-start`}
-                      >
-                        <MdLogout className="h-5 w-5 shrink-0 text-b2c-text-muted" aria-hidden />
-                        <span className="md:sr-only lg:not-sr-only">Sign out</span>
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <StaffNavFooter collapsed={navCollapsed} />
-        </nav>
+        <NavRailList
+          className="hidden md:flex lg:hidden"
+          groups={groups}
+          basePath={basePath}
+          collapsed
+          onNavigate={closeMenu}
+          onSignOut={handleSignOut}
+          ariaLabel="Staff console"
+          footer={<StaffNavFooter collapsed />}
+        />
+        <NavRailList
+          className="hidden lg:flex"
+          groups={groups}
+          basePath={basePath}
+          collapsed={navCollapsed}
+          onNavigate={closeMenu}
+          onSignOut={handleSignOut}
+          ariaLabel="Staff console"
+          footer={<StaffNavFooter collapsed={navCollapsed} />}
+        />
+        <NavRailList
+          className="flex md:hidden"
+          groups={groups}
+          basePath={basePath}
+          collapsed={false}
+          onNavigate={closeMenu}
+          onSignOut={handleSignOut}
+          ariaLabel="Staff console"
+          footer={<StaffNavFooter />}
+        />
       </div>
     </>
   );

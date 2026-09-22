@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Button } from "@/foundation/ui";
 import { login } from "@/foundation/platform-client";
@@ -17,6 +17,8 @@ import {
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
+import { readSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
+import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 import { sanitizeReturnTo } from "@/capabilities/account/support/sessionEvents";
 import {
   loginSchema,
@@ -38,8 +40,17 @@ type LoginField = "email" | "password";
  * there.
  *
  * Gone with the five pages: the exam picker (which exam you are practising for
- * is an entitlement, not something to choose at the door) and the SSO button
- * (`platform-api` has no tenant SSO yet — see `docs/port-gaps.md`).
+ * is an entitlement, not something to choose at the door).
+ *
+ * The SSO button is back, and it is the backend's answer now rather than a
+ * hostname allow-list in the bundle: on mount this asks
+ * `GET /auth/sso/sign-in?host=<this host>`, which names the organisation and
+ * says whether to draw the password form at all. A host nobody has claimed
+ * answers `null` and the page is the ordinary password form. **`sso_only` is a
+ * display rule only** — it hides the password form; nothing here refuses a
+ * password login, because who verifies an identity is still an open backend
+ * decision (`docs/port-gaps.md`, S-1). There is no SSO redirect to make yet,
+ * so the button is a labelled placeholder rather than a door.
  */
 export default function Login() {
   const router = useRouter();
@@ -55,6 +66,30 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<LoginField>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sso, setSso] = useState<SsoSignIn | null>(null);
+  // Set when somebody clicks the organisation's button: there is no sign-in
+  // flow to take them to yet (S-1), so they get told rather than stared at.
+  const [ssoNotice, setSsoNotice] = useState(false);
+
+  /*
+   * Discovery, once, on the host the visitor actually arrived at. It is a
+   * display concern and must never block or delay the password form, so a
+   * `null` answer (no SSO here, or the request failed) simply leaves the
+   * ordinary sign-in standing. See `readSsoSignIn`.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const host = typeof window === "undefined" ? undefined : window.location.hostname;
+    if (!host) return;
+    void readSsoSignIn({ host }).then((result) => {
+      if (!cancelled) setSso(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showPasswordForm = !sso?.sso_only;
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -120,60 +155,106 @@ export default function Login() {
       subtitle="Sign in to your account"
       sidePanel={<AuthQuotePanel />}
     >
-      <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
-        <AuthFormField
-          label="Email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          error={fieldErrors.email}
-        />
-        <AuthFormField
-          label="Password"
-          name="password"
-          type={formData.showPassword ? "text" : "password"}
-          autoComplete="current-password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          suffix={passwordToggle}
-          error={fieldErrors.password}
-        />
-        {formError ? (
-          <p role="alert" className="text-center text-osce-meta text-osce-danger">
-            {formError}
-          </p>
-        ) : null}
-        <Button
-          type="submit"
-          variant="commit"
-          themeType="b2c"
-          fullWidth
-          size="lg"
-          isLoading={isSubmitting}
-          className={authButtonPrimary}
-        >
-          {isSubmitting ? "Signing you in…" : "Sign in"}
-        </Button>
-      </form>
+      {showPasswordForm && (
+        <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
+          <AuthFormField
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            error={fieldErrors.email}
+          />
+          <AuthFormField
+            label="Password"
+            name="password"
+            type={formData.showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            suffix={passwordToggle}
+            error={fieldErrors.password}
+          />
+          {formError ? (
+            <p role="alert" className="text-center text-osce-meta text-osce-danger">
+              {formError}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            variant="commit"
+            themeType="b2c"
+            fullWidth
+            size="lg"
+            isLoading={isSubmitting}
+            className={authButtonPrimary}
+          >
+            {isSubmitting ? "Signing you in…" : "Sign in"}
+          </Button>
+        </form>
+      )}
 
-      <div className="space-y-3">
-        <p className={authFooterLink}>
-          Forgot your password?{" "}
-          <Link href="/forgot-password" className={authLink}>
-            Reset password
-          </Link>
-        </p>
-        <p className={authFooterLink}>
-          Don&apos;t have an account?{" "}
-          <Link href={examAuthHref("/register", examCode)} className={authLink}>
-            Create account
-          </Link>
-        </p>
-      </div>
+      {showPasswordForm && (
+        <div className="space-y-3">
+          <p className={authFooterLink}>
+            Forgot your password?{" "}
+            <Link href="/forgot-password" className={authLink}>
+              Reset password
+            </Link>
+          </p>
+          <p className={authFooterLink}>
+            Don&apos;t have an account?{" "}
+            <Link href={examAuthHref("/register", examCode)} className={authLink}>
+              Create account
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {sso ? (
+        <div className="space-y-3">
+          {/*
+           * The organisation's own wording, from the discovery answer. The
+           * sign-in behind it is the backend's open decision (S-1): there is
+           * no `/auth/sso/login` to redirect to, so the button says what it is
+           * and points at support rather than pretending to be a door.
+           */}
+          <Button
+            type="button"
+            variant={showPasswordForm ? "secondary" : "primary"}
+            themeType="b2c"
+            fullWidth
+            size="lg"
+            className={showPasswordForm ? undefined : authButtonPrimary}
+            onClick={() => setSsoNotice(true)}
+          >
+            {sso.sign_in_label}
+          </Button>
+          {ssoNotice ? (
+            <p role="status" className="text-center text-osce-meta text-b2c-text-muted">
+              Organisation sign-in is not available on this site yet. Need
+              help?{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
+                Contact support
+              </a>
+              .
+            </p>
+          ) : null}
+          {!showPasswordForm ? (
+            <p className={authFooterLink}>
+              Sign in with your organisation account. Password sign-in
+              isn&apos;t available on this site. Need help?{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
+                Contact support
+              </a>
+              .
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </AuthShell>
   );
 }

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { AttemptRunner, createAttempt } from "@/capabilities/attempt-runner";
+import { AttemptRunner, createAttempt, useExtraReadingPercent, withExtraReadingTime } from "@/capabilities/attempt-runner";
 import { findLibraryStation, listExams } from "@/capabilities/stations/api";
 import { stationHref } from "@/capabilities/stations/routes";
 
@@ -25,6 +25,7 @@ import { stationHref } from "@/capabilities/stations/routes";
 export function StationConsultation({ stationId }: { stationId: string }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
+  const extraReadingPercent = useExtraReadingPercent();
 
   const station = useAsync((signal) => findLibraryStation(stationId, signal), [stationId]);
   const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
@@ -72,7 +73,7 @@ export function StationConsultation({ stationId }: { stationId: string }) {
               start={start}
               onEnded={onEnded}
               stationTitle={found.title}
-              readingSeconds={exam?.default_reading_seconds ?? 0}
+              readingSeconds={withExtraReadingTime(exam?.default_reading_seconds ?? 0, extraReadingPercent)}
               simulationSeconds={exam?.default_simulation_seconds ?? 600}
             />
           </>

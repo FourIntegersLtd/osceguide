@@ -6,9 +6,9 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listExams } from "@/capabilities/stations";
 import { loadStationCatalogue, readSet, startSetAttempt } from "@/domains/train/api";
-import { StationScreen } from "@/domains/train/station/StationScreen";
-import type { StationStep } from "@/domains/train/station/StationChrome";
-import type { StationAction } from "@/domains/train/station/useStationAttempt";
+import { StationScreen } from "@/capabilities/station-runner/StationScreen";
+import type { StationStep } from "@/capabilities/station-runner/StationChrome";
+import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 import { entriesInOrder } from "@/domains/train/mocks/model";
 
 /**

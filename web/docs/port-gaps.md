@@ -15,12 +15,18 @@ deleted, because what a screen does today is still what it does until somebody
 wires the new route:
 
 - **Landing statistics** — `GET /site/statistics` exists, cached for ten
-  minutes and carrying `as_of`. `fetchLandingStats()` still returns `null`;
-  putting it back is that function's body.
+  minutes and carrying `as_of`. **Wired 2026-09-21**: `fetchLandingStats()`
+  reads it through `domains/marketing/api.ts` and the numbers band and the
+  hero's social proof render again. One figure has no counter of its own —
+  see the "Landing statistics band" row below.
 - **Public blog listing** — `GET /media` and `GET /media/{slug}` no longer
-  require a bearer, so `landingBlogs.ts` can ask again.
+  require a bearer. **Wired 2026-09-21**: `landingBlogs.ts` asks again,
+  signed out included, and the landing's blog rail renders.
 - **Messages / contact** and **product feedback** — `POST /site/messages` takes
-  both, with a platform-admin inbox behind it.
+  both, with a platform-admin inbox behind it. **Wired 2026-09-21**: the
+  "Help Us Improve" section is back in `landingSections`, and the old
+  `/messages` screen is ported to `capabilities/help/Messages.tsx` at
+  `/app/<workspace>/messages` (the redirect table already pointed there).
 - **Accessibility (extra reading time)** — `users.extra_reading_percent` is on
   `/me`. It is a person's own practice arrangement and is **not** applied to a
   circuit's clock, which serves everybody on it.
@@ -34,15 +40,15 @@ half of **SSO** (the discovery half landed — see below).
 
 | What | Where | Today |
 |---|---|---|
-| Landing statistics band | `domains/marketing/Numbers.tsx` | The retiring backend served `/api/v1/landing`. `fetchLandingStats` returns `null` without asking, and the band hides itself — asking would 404 on every view of the busiest public page. Putting it back is that function's body. |
+| Landing statistics band | `domains/marketing/Numbers.tsx` | **Wired 2026-09-21.** `fetchLandingStats` reads `GET /site/statistics` through `domains/marketing/api.ts`, and the band and the hero's social proof render again. One figure is a stopgap: the band's fourth card ("AI feedback reports generated") read the retiring backend's `all_feedback`, and `SiteStatistics` carries no feedback counter — every completed consultation produces one AI feedback report and the old two counters never differed by more than a fraction of a percent, so the consultation count stands in. A dedicated counter on `SiteStatistics` would make the card its own number again. |
 | Achievements | `capabilities/account/Achievements.tsx` | **Ported as its own empty state, and it asks for nothing.** The old screen counted station badges from `user.station_progress` and computed streaks in the browser from the transcript list; `platform-api` has neither — progress is attempts, and a streak exists nowhere on the backend. The component takes the four numbers as props and defaults them to zero, so the day something serves them it is a one-line change at the call site rather than a port. It has no route: see "Route files the account capability still needs". |
-| Messages / contact | not yet ported | `/messages` in the old arm. No backend. |
-| Product feedback form | `domains/marketing` section, unlisted | The "Help Us Improve" landing section is kept but left out of `landingSections`; it needs a product-feedback slice. |
+| Messages / contact | `capabilities/help/Messages.tsx` | **Ported 2026-09-21.** The old `/messages` screen — "Contact & Feedback", two tabs — is a straight port over `POST /site/messages` (`kind: "contact"`), at `/app/<workspace>/messages` through the `help` capability; the redirect table already sent `/messages` there. One adaptation: the old screen widened when the help dock expanded, read off a context the shell owned; the shells here keep that state private, so the width is the fixed `max-w-2xl` every sibling port settled on. |
+| Product feedback form | `domains/marketing/sections/LandingFeedbackSection.tsx` | **Wired 2026-09-21.** The "Help Us Improve" section is back in `landingSections` with the retiring landing's two-tab widget ("Harsh Truth" / "Feature Wishlist") ported as it was, posting `kind: "product_feedback"` to `POST /site/messages`. The signed-in product-feedback form (stars, testimonial question) is ported beside the contact tab in `capabilities/help/ProductFeedbackForm.tsx`. |
 | Push notifications | not ported | `web-push` is deliberately not a dependency here yet. |
-| SSO configuration | not ported | `getSsoConfig` in the old arm — a hostname allow-list in the bundle. **The backend now answers it**: `GET /auth/sso/sign-in?host=…` or `?email=…`, unauthenticated, returning the organisation, the button's wording and whether to draw the password form. Nothing in this client calls it yet. The *sign-in* half — who verifies the identity — is still an open decision, so `sso_only` is a display rule and a password login is not refused. |
+| SSO configuration | `capabilities/account/Login.tsx` | **Discovery wired 2026-09-21.** The sign-in page asks `GET /auth/sso/sign-in?host=<this host>` on mount (`readSsoSignIn` in the account capability's `api.ts`); a host nobody has claimed answers 404 and the ordinary password form stands. On an answer the organisation's button renders with the backend's `sign_in_label`, and on `sso_only` the password form is not drawn — a display rule only, nothing refuses a password login. **The button is not a door**: `/auth/sso/login` does not exist (the sign-in half — who verifies the identity — is still open decision S-1), so clicking it says organisation sign-in is not available yet and points at support. |
 | Public user profiles | not ported | `/users/[userId]`. The old `b2c/components/shared/users` was not a public profile at all: it is an **administrator's** user list and user detail — plan editing, station-progress resetting, hard delete, filters by plan type. None of it is servable. See "The old `users/` folder" below. |
 | Blog authoring | not ported | Reading is `capabilities/media`; authoring has no endpoint. |
-| Public blog listing | `domains/marketing/support/landingBlogs.ts` | `GET /media` requires a bearer token, so a signed-out visitor cannot read the landing's blog rail. It hides itself. A public listing — or an anonymous read for published items — would bring it back. |
+| Public blog listing | `domains/marketing/support/landingBlogs.ts` | **Wired 2026-09-21.** `GET /media` is public, so the rail asks again — signed-out visitors included — and links each card by the item's slug. |
 | Exam wishes | `capabilities/account/ExamWishes.tsx` | Ported, and nothing renders it. It was shown in the week of somebody's exam, and `UserRead` carries no `exam_date` — the same gap the dashboard countdown hits. |
 | Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | The old client read `accessibility.needs_extra_reading_time` off the user and extended the clock from inside the timer. No such field on `platform-api`. The timer takes the duration it is given; when the field exists, whoever creates the attempt applies it. |
 | Photo upload | `foundation/ui/PhotoUpload.tsx` | Posted to the old backend's `/api/upload_photos/{id}`. The component takes an `upload` function now, and nothing supplies one yet. |
@@ -365,8 +371,8 @@ and exported from `capabilities/account`:
 
 | Route file | Component | Why it is where it is |
 |---|---|---|
-| `src/app/billing/complete/page.tsx` | `PaymentReturn` | The backend hardcodes `success_url = {FRONTEND_URL}/billing/complete?session_id=…` in `billing/service_checkout.py`. **Not** `/payments/success`, which is what the retiring client used. |
-| `src/app/pricing/page.tsx` | `CheckoutCancelled` | The same file hardcodes `cancel_url = {FRONTEND_URL}/pricing`. **Not** `/payments/cancel`. Either these two route files are added, or the backend's two URLs are changed to match whatever is preferred — but they have to agree, or a paying customer lands on a 404. |
+| `src/app/billing/complete/page.tsx` | `PaymentReturn` | **Done — the route file exists.** The backend hardcodes `success_url = {FRONTEND_URL}/billing/complete?session_id=…` in `billing/service_checkout.py`. **Not** `/payments/success`, which is what the retiring client used. |
+| `src/app/pricing/page.tsx` | `CheckoutCancelled` | **Done — the route file exists** at `src/app/(public)/pricing/page.tsx`, which is `/pricing` (the group segment is not part of the URL). The same file hardcodes `cancel_url = {FRONTEND_URL}/pricing`. **Not** `/payments/cancel`. |
 | `src/app/app/[workspace]/achievements/page.tsx` | `Achievements` | The old `/achievements` route. |
 | `src/app/staff/settings/page.tsx` | `Settings` | **Done.** The staff console is outside the workspace grammar and has its own route tree, so `surfaces: ["…", "platform"]` on the capability does not reach it by itself and the route file is written out. The nav entry needed nothing: `SurfaceShell` appends `capabilitiesFor(manifest.id, …)` to every arm's own items, so Settings and Authoring appear on `/staff` from the capability registry. Checked in a browser against a live API in J15. |
 

@@ -6,7 +6,7 @@ import {
   PlatformFilterDivider,
   PlatformFilterSearch,
   PlatformFilterSelect,
-} from "@/domains/platform/PlatformFilterBar";
+} from "@/foundation/ui";
 import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 

@@ -5,8 +5,8 @@ import { HiOutlineChatBubbleLeftRight, HiOutlineChevronDown, HiOutlineChevronRig
 import { LuFlag } from "react-icons/lu";
 import { Back, cn, productTokens } from "@/foundation/ui";
 import { useToast } from "@/foundation/hooks";
-import { flagStation } from "@/capabilities/stations/flagStation";
-import type { StationAction } from "@/domains/train/station/useStationAttempt";
+import { flagStation } from "@/capabilities/stations/api";
+import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 
 export type StationStep = "patient" | "simulation" | "management" | "feedback";
 

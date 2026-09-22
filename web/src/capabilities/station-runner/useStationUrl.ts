@@ -2,8 +2,8 @@
 
 import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { StationAction } from "@/domains/train/station/useStationAttempt";
-import type { StationStep } from "@/domains/train/station/StationChrome";
+import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
+import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 
 /** Keeps the retiring client's query-string shape for the four station steps. */
 export function useStationUrl() {

@@ -31,9 +31,7 @@ export const landingSections: readonly LandingSectionKey[] = [
   "testimonials",
   "pricing",
   "faq",
-  // "feedback" — the "Help Us Improve" form needs a product-feedback backend
-  // slice that platform-api does not have yet. The section and its registry
-  // entry are kept; putting it back is this one line.
+  "feedback",
   "footer",
 ];
 
@@ -51,11 +49,13 @@ export type LandingNavConfig = {
 
 export const landingNavConfig: LandingNavConfig = {
   desktopLinks: [
+    { href: "#feedback", label: "Feedback" },
     { href: "#exams", label: "Exams" },
     { href: "#pricing", label: "Pricing" },
     { href: "#faq", label: "FAQ" },
   ],
   mobileLinks: [
+    { href: "#feedback", label: "Feedback" },
     { href: "#exams", label: "Exams" },
     { href: "#pricing", label: "Pricing" },
     { href: "#faq", label: "FAQ" },

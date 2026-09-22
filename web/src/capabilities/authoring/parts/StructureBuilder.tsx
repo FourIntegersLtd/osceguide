@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, getInputClassName } from "@/foundation/ui";
+import { getInputClassName } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   blankStructure,

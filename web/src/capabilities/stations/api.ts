@@ -41,6 +41,15 @@ export function listExams(signal?: AbortSignal): Promise<ExamPage> {
   return platformRequest<ExamPage>("/api/v1/exams", { signal });
 }
 
+/** Ask the content team to review a library station. */
+export async function flagStation(stationId: string, signal?: AbortSignal): Promise<void> {
+  await platformRequest(`/api/v1/me/station-flags`, {
+    method: "POST",
+    body: JSON.stringify({ station_id: stationId }),
+    signal,
+  });
+}
+
 /** How many library pages `findLibraryStation` will walk before giving up. */
 const FIND_PAGE_LIMIT = 100;
 const FIND_MAX_PAGES = 20;

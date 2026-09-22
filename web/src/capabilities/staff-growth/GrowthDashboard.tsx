@@ -8,12 +8,10 @@ import {
   Button,
   Card,
   Input,
-} from "@/foundation/ui";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
-import {
+  PlatformPageHeader,
   PlatformFilterBar,
   PlatformFilterSearch,
-} from "@/domains/platform/PlatformFilterBar";
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   addPartnerReporter,

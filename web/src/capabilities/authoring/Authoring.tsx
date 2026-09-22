@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { B2CSegmentedTabs } from "@/foundation/ui";
-import { PlatformTabbedScreen } from "@/domains/platform/PlatformTabbedScreen";
-import { PageHeader } from "@/foundation/ui";
+import { B2CSegmentedTabs, PageHeader, PlatformTabbedScreen } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { supportsProgrammes } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";

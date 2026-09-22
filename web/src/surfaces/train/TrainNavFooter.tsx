@@ -17,53 +17,58 @@ export function TrainNavFooter({ collapsed = false }: { collapsed?: boolean }) {
 
   const displayName = session?.user.name || session?.user.email || "Account";
   const meta = examMeta(code, session?.user.exam_date ?? null);
+  const showUpgrade = codes.length === 0;
+
+  if (collapsed && !showUpgrade) return null;
 
   return (
     <div
       className={cn(
         "mt-auto shrink-0 border-t border-[#EDF1F5] py-5",
-        collapsed ? "px-2 lg:px-2" : "px-4",
+        collapsed ? "px-1.5" : "px-4",
       )}
     >
-      {codes.length === 0 && (
+      {showUpgrade && (
         <Link
           href={`${hrefFor("/settings")}?tab=payments`}
           className={cn(
             b2cNavUpgradeButton,
-            "mb-4",
-            collapsed ? "lg:h-11 lg:!px-0 lg:w-full" : "",
+            collapsed ? "h-11 w-full !px-0" : "mb-4",
           )}
           title="Upgrade to Pro"
+          aria-label={collapsed ? "Upgrade to Pro" : undefined}
         >
           <PiSparkle className="h-4 w-4 shrink-0" aria-hidden />
-          <span className={collapsed ? "lg:sr-only" : ""}>Upgrade to Pro</span>
+          <span className={collapsed ? "sr-only" : undefined}>Upgrade to Pro</span>
         </Link>
       )}
 
-      <div className={cn("text-center text-osce-meta text-b2c-text-secondary", collapsed && "lg:sr-only")}>
-        <p className="truncate">{displayName}</p>
+      {collapsed ? null : (
+        <div className="text-center text-osce-meta text-b2c-text-secondary">
+          <p className="truncate">{displayName}</p>
 
-        {codes.length > 1 ? (
-          <label className="mt-1 block">
-            <span className="sr-only">Exam</span>
-            <select
-              value={code ?? ""}
-              onChange={(event) => setCode(event.target.value)}
-              className="w-full bg-transparent font-mono text-osce-micro font-medium uppercase tracking-[0.08em] leading-snug text-b2c-text-muted"
-            >
-              {codes.map((item) => (
-                <option key={item} value={item}>
-                  {item.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : meta ? (
-          <p className="mt-0.5 font-mono text-osce-micro font-medium uppercase tracking-[0.08em] leading-snug text-b2c-text-muted">
-            {meta}
-          </p>
-        ) : null}
-      </div>
+          {codes.length > 1 ? (
+            <label className="mt-1 block">
+              <span className="sr-only">Exam</span>
+              <select
+                value={code ?? ""}
+                onChange={(event) => setCode(event.target.value)}
+                className="w-full bg-transparent font-mono text-osce-micro font-medium uppercase tracking-[0.08em] leading-snug text-b2c-text-muted"
+              >
+                {codes.map((item) => (
+                  <option key={item} value={item}>
+                    {item.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : meta ? (
+            <p className="mt-0.5 font-mono text-osce-micro font-medium uppercase tracking-[0.08em] leading-snug text-b2c-text-muted">
+              {meta}
+            </p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

@@ -123,3 +123,30 @@ export interface KnowledgeMessage { role: "user" | "assistant"; content: string 
 export function askKnowledge(messages: KnowledgeMessage[], appType: string): Promise<{ reply: string }> {
   return platformRequest("/api/v1/help/knowledge-chat", { method: "POST", body: { messages: messages.slice(-40), app_type: appType } });
 }
+
+export type SendMessageInput = components["schemas"]["SendMessage"];
+export type MessageAccepted = components["schemas"]["MessageAccepted"];
+
+/**
+ * Write to the team: a contact message or product feedback.
+ *
+ * `POST /site/messages` takes both, told apart by `kind` — "contact" or
+ * "product_feedback" — and works signed in or out. When there is a token the
+ * message is filed against the person, which is how a reply finds them
+ * without the form asking for an address again. It replaced the retiring
+ * backend's `/api/create_message` and `/api/add_feature`.
+ *
+ * The backend rate-limits this to five messages per ten minutes per caller;
+ * over that it answers `too_many_requests`, which is a message for a human,
+ * so surface `error.message` rather than a generic failure.
+ */
+export function sendSiteMessage(
+  body: SendMessageInput,
+  signal?: AbortSignal,
+): Promise<MessageAccepted> {
+  return platformRequest<MessageAccepted>("/api/v1/site/messages", {
+    method: "POST",
+    body,
+    signal,
+  });
+}

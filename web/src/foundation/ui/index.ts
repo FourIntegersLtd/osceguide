@@ -106,3 +106,21 @@ export * from "@/foundation/ui/ModalSection";
 /* The product's class-name vocabularies, for ported screens. */
 export * as productTokens from "@/foundation/ui/productTokens";
 export * as b2bTokens from "@/foundation/ui/b2bTokens";
+
+/* Platform chrome — generic staff-console layout primitives. */
+export { PlatformPageHeader } from "@/foundation/ui/PlatformPageHeader";
+export { PlatformTabbedScreen } from "@/foundation/ui/PlatformTabbedScreen";
+export {
+  PlatformFilterBar,
+  PlatformFilterDivider,
+  PlatformFilterSelect,
+  PlatformFilterSearch,
+} from "@/foundation/ui/PlatformFilterBar";
+export {
+  platformStaffPanel,
+  platformStaffHairlineB,
+  platformStaffHairlineT,
+  platformStaffFilterSection,
+  platformStaffFilterBox,
+  platformStaffFilterDivider,
+} from "@/foundation/ui/platformStaffChrome";

@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, type B2CSegmentedTabItem } from "@/foundation/ui";
-import { PlatformTabbedScreen } from "@/domains/platform/PlatformTabbedScreen";
+import { Alert, AsyncBoundary, Button, PlatformTabbedScreen, type B2CSegmentedTabItem } from "@/foundation/ui";
 import { useAsync, useToast } from "@/foundation/hooks";
 import { isMediaKind, MEDIA_KIND_LABELS, type MediaKind } from "@/capabilities/media/api";
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";

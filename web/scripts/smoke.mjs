@@ -206,6 +206,33 @@ async function main() {
     method: "POST",
     expect: (p) => must(typeof p.ticket === "string", "no ticket"),
   });
+  // The public site: the landing band's counters, the discovery answer behind
+  // the sign-in page, and the inbox the contact and feedback forms write to.
+  await step("site statistics", "/api/v1/site/statistics", {
+    expect: (p) => {
+      for (const key of ["consultations", "debriefs", "users", "stations"]) {
+        must(typeof p[key] === "number", `no ${key} count`);
+      }
+      must(typeof p.as_of === "string", "no as_of");
+    },
+  });
+  await step("sso discovery", "/api/v1/auth/sso/sign-in?host=localhost", {
+    // A 404 (`sso_not_configured`) is the ordinary answer for a host nobody
+    // has claimed: "sign in here, with a password".
+    allow: [404],
+    expect: (p) =>
+      must(typeof p.sign_in_label === "string" && typeof p.sso_only === "boolean", "unexpected shape"),
+  });
+  await step("send a site message", "/api/v1/site/messages", {
+    method: "POST",
+    body: {
+      kind: "contact",
+      subject: "Smoke test",
+      body: "Smoke test message — safe to mark handled.",
+      email,
+    },
+    expect: (p) => must(typeof p.id === "string" && p.kind === "contact", "unexpected shape"),
+  });
   // The account capability: the person, what they may practise, what they paid,
   // who they referred and what the tutor remembers.
   await step("plans", "/api/v1/billing/plans", {

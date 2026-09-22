@@ -24,7 +24,6 @@ try {
   const stat = fs.lstatSync(linkPath);
   if (stat.isSymbolicLink()) {
     const current = fs.readlinkSync(linkPath);
-    const expected = path.relative(path.dirname(linkPath), targetPath);
     if (path.resolve(path.dirname(linkPath), current) === targetPath) {
       process.exit(0);
     }

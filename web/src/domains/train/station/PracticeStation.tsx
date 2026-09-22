@@ -7,9 +7,9 @@ import { useSurface } from "@/capabilities";
 import { useCurrentExam } from "@/foundation/session";
 import { createAttempt } from "@/capabilities/attempt-runner";
 import { findLibraryStation, listExams } from "@/capabilities/stations";
-import { StationScreen } from "@/domains/train/station/StationScreen";
-import type { StationStep } from "@/domains/train/station/StationChrome";
-import type { StationAction } from "@/domains/train/station/useStationAttempt";
+import { StationScreen } from "@/capabilities/station-runner/StationScreen";
+import type { StationStep } from "@/capabilities/station-runner/StationChrome";
+import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 
 /**
  * One station from the library, sat on its own.

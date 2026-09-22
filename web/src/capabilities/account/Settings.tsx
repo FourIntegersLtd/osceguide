@@ -2,9 +2,8 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { B2CSegmentedTabs, type B2CSegmentedTabItem } from "@/foundation/ui";
+import { B2CSegmentedTabs, type B2CSegmentedTabItem, PlatformTabbedScreen } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { PlatformTabbedScreen } from "@/domains/platform/PlatformTabbedScreen";
 import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
 import ExamPanel from "@/capabilities/account/settings/ExamPanel";

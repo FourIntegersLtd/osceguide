@@ -442,6 +442,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/sso/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sso Callback
+         * @description Trade the broker's token for a platform session.
+         *
+         *     The browser is sent here by the frontend callback page with the token the
+         *     broker appended. The token is verified against the broker — never decoded
+         *     and trusted — and the person is provisioned on first sign-in, because the
+         *     institution vouches for them and there is no password to have lost.
+         */
+        post: operations["sso_sso_callback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sso/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sso Login
+         * @description Where to send the browser to sign in to this organisation.
+         *
+         *     **Unauthenticated**, like the discovery read above it: this is the first
+         *     step of signing in, before anybody has. The URL is returned rather than
+         *     followed — the frontend owns navigation and the platform sets no cookies
+         *     (ADR 0004) — and points the broker back at a frontend page that posts the
+         *     token to `POST /auth/sso/callback`.
+         */
+        post: operations["sso_sso_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/sso/sign-in": {
         parameters: {
             query?: never;
@@ -661,6 +712,56 @@ export interface paths {
         put?: never;
         /** Reply */
         post: operations["community_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Cv
+         * @description Your own CVs, most recent first, with whatever has been read so far.
+         */
+        get: operations["cv_list_cv"];
+        put?: never;
+        /**
+         * Upload Cv
+         * @description Upload a CV and queue reading it into sections.
+         *
+         *     The first multipart route on this API. The text is pulled from the PDF here
+         *     — it is cheap and it is what the size and type checks are for — and the
+         *     model call that structures it is a background job, so the answer comes back
+         *     before the reading is done. Rate limited: an upload pays for a parse and,
+         *     behind it, a model call.
+         */
+        post: operations["cv_upload_cv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cv/{cv_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Cv
+         * @description One CV. Somebody else's is `not found`, so an id cannot be probed.
+         */
+        get: operations["cv_read_cv"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1354,10 +1455,6 @@ export interface paths {
         /**
          * Voice Token
          * @description A way into the room the pair were matched into.
-         *
-         *     `practice_sessions.room_name` has been written since the slice landed and
-         *     nothing could mint a token for it, so two people could be paired and then
-         *     had nowhere to meet.
          */
         post: operations["peer_practice_voice_token"];
         delete?: never;
@@ -3175,7 +3272,17 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Stations */
+        /**
+         * List Stations
+         * @description The stations this organisation has authored.
+         *
+         *     `OrgReader` admits every rostered trainee, and the document is the patient's
+         *     material and the examiner's notes as much as it is the brief — so a reader
+         *     whose only relationship to the org is trainee gets the candidate-facing
+         *     projection of each `content` (S1), the same material their own attempt's
+         *     brief read discloses. Staff — an org admin or an assigned supervisor, the
+         *     predicate `OrgStaff` runs on — and a platform admin read the whole thing.
+         */
         get: operations["stations_list_stations"];
         put?: never;
         /** Create Station */
@@ -3454,11 +3561,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Read Status
-         * @description Position, how many are waiting, and the session if one has been made —
-         *     one call, because the client polls this every few seconds.
-         */
+        /** Read Status */
         get: operations["peer_practice_read_status"];
         put?: never;
         post?: never;
@@ -3476,14 +3579,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Stream Status
-         * @description The streaming form of the route above it (ADR 0015).
-         *
-         *     The place in the product where polling cost the most: somebody is sitting
-         *     watching the screen, and the whole feature is how fast they get into a room
-         *     with another person. Closes as soon as the answer stops being "waiting".
-         */
+        /** Stream Status */
         get: operations["peer_practice_stream_status"];
         put?: never;
         post?: never;
@@ -5590,6 +5686,14 @@ export interface components {
              */
             suggested_title: string;
         };
+        /** Body_cv_upload_cv */
+        Body_cv_upload_cv: {
+            /**
+             * File
+             * @description The CV, as a PDF
+             */
+            file: string;
+        };
         /**
          * BulkCreateTrainees
          * @description A spreadsheet's worth of trainees in one request.
@@ -6329,6 +6433,54 @@ export interface components {
             /** Visitor Key */
             visitor_key: string;
         };
+        /** CvList */
+        CvList: {
+            /** Cvs */
+            cvs?: components["schemas"]["CvRead"][];
+            /** Total */
+            total: number;
+        };
+        /** CvRead */
+        CvRead: {
+            /** Completed At */
+            completed_at?: string | null;
+            /** Error */
+            error?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Original Filename */
+            original_filename: string;
+            /** Status */
+            status: string;
+            structured?: components["schemas"]["StructuredCv"] | null;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+        };
+        /**
+         * CvUploadResult
+         * @description What an upload answers with, before the model has read it.
+         *
+         *     The row exists and is `processing`; the structured sections arrive later,
+         *     read back from the list. The message is the one the retiring backend
+         *     showed, because it sets the expectation that this is not instant.
+         */
+        CvUploadResult: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Message */
+            message: string;
+            /** Status */
+            status: string;
+        };
         /**
          * Dashboard
          * @description Replaces seven calls on the SCA dashboard alone.
@@ -6638,7 +6790,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_not_configurable" | "sso_not_configured" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -6894,8 +7046,6 @@ export interface components {
         };
         /** HelpArticle */
         HelpArticle: {
-            /** App Types */
-            app_types: string[];
             /** Body Md */
             body_md: string;
             /** Category Slug */
@@ -6905,6 +7055,8 @@ export interface components {
              * @default
              */
             category_title: string;
+            /** Exam Codes */
+            exam_codes: string[];
             /**
              * Id
              * @default
@@ -6943,8 +7095,6 @@ export interface components {
         };
         /** HelpCategory */
         HelpCategory: {
-            /** App Types */
-            app_types: string[];
             /**
              * Article Count
              * @default 0
@@ -6955,6 +7105,8 @@ export interface components {
              * @default
              */
             description: string;
+            /** Exam Codes */
+            exam_codes: string[];
             /**
              * Icon Key
              * @default book
@@ -7070,11 +7222,11 @@ export interface components {
         /** KnowledgeChat */
         KnowledgeChat: {
             /**
-             * App Type
+             * Exam Code
              * @default sca
              * @enum {string}
              */
-            app_type: "sca" | "plab" | "casc" | "ortho";
+            exam_code: "sca" | "plab" | "casc" | "ortho";
             /** Messages */
             messages: components["schemas"]["ChatMessage"][];
         };
@@ -7434,8 +7586,12 @@ export interface components {
             slot_index: number;
             /** Started At */
             started_at: string | null;
+            /** Station Id */
+            station_id?: string | null;
             /** Station Title */
             station_title: string | null;
+            /** Station Version Id */
+            station_version_id?: string | null;
             /** Status */
             status: string;
         };
@@ -8298,6 +8454,110 @@ export interface components {
              */
             status: string;
         };
+        /** PracticeCandidateScenarioRead */
+        PracticeCandidateScenarioRead: {
+            /** Additional Image Urls */
+            additional_image_urls?: string[];
+            /** Background Overview */
+            background_overview?: string | null;
+            /** Clinical Scenario */
+            clinical_scenario?: string | null;
+            /** Clinical Scenario Title */
+            clinical_scenario_title?: string | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Radiograph Image Url */
+            radiograph_image_url?: string | null;
+            /** Station Type */
+            station_type?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PracticeDoctorInformationRead */
+        PracticeDoctorInformationRead: {
+            /** Current Medications */
+            current_medications?: string[];
+            /** Doctor Identity */
+            doctor_identity?: string | null;
+            /** Doctor Task */
+            doctor_task?: string | null;
+            /** Past Medical History */
+            past_medical_history?: string[];
+            /** Patient Biodata */
+            patient_biodata?: string | null;
+            /** Patient Information */
+            patient_information?: string[];
+            /** Photos */
+            photos?: string[];
+            /** Recent Investigations */
+            recent_investigations?: string[];
+            /** Recent Notes */
+            recent_notes?: string[];
+            /** Social History */
+            social_history?: string[];
+            /** Task Instructions */
+            task_instructions?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PracticeManagementPlanRead */
+        PracticeManagementPlanRead: {
+            /** Additional Notes */
+            additional_notes?: string | null;
+            /** Assessment */
+            assessment?: string[];
+            /** Differential Diagnosis */
+            differential_diagnosis?: string[];
+            /** Examination Findings */
+            examination_findings?: string[];
+            /** Explanation */
+            explanation?: string | null;
+            /** Follow Up */
+            follow_up?: string | null;
+            /** Further Investigations */
+            further_investigations?: string[];
+            /** Health Education */
+            health_education?: string[];
+            /** Ice */
+            ice?: string[];
+            /** Immediate Actions */
+            immediate_actions?: string[];
+            /** Non Pharmacological Treatment */
+            non_pharmacological_treatment?: string[];
+            /** Pharmacological Treatment */
+            pharmacological_treatment?: string[];
+            /** Safety Netting */
+            safety_netting?: string | null;
+            /** Social Concerns */
+            social_concerns?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** PracticePatientRoleplayRead */
+        PracticePatientRoleplayRead: {
+            /** Concerns */
+            concerns?: string[];
+            /** Expanded History */
+            expanded_history?: string | null;
+            /** Expectation */
+            expectation?: string[];
+            /** Family Social History */
+            family_social_history?: string[];
+            /** Gender */
+            gender?: string | null;
+            /** Idea */
+            idea?: string[];
+            /** Opening Sentence */
+            opening_sentence?: string | null;
+            /** Past Med History Allergies */
+            past_med_history_allergies?: string[];
+            /** Patient Biodata */
+            patient_biodata?: string | null;
+            /** Persona */
+            persona?: string | null;
+            /** Questions */
+            questions?: string[];
+        };
         /** PracticeSessionRead */
         PracticeSessionRead: {
             /** Current Phase */
@@ -8341,16 +8601,16 @@ export interface components {
         };
         /** PracticeStationRead */
         PracticeStationRead: {
-            doctor_information?: components["schemas"]["DoctorInformationRead"] | null;
-            management?: components["schemas"]["ManagementPlanRead"] | null;
+            doctor_information?: components["schemas"]["PracticeDoctorInformationRead"] | null;
+            management?: components["schemas"]["PracticeManagementPlanRead"] | null;
             /** Management Plan */
             management_plan?: string | null;
-            patient_information?: components["schemas"]["PatientRoleplayRead"] | null;
+            patient_information?: components["schemas"]["PracticePatientRoleplayRead"] | null;
             /** Patient Script */
             patient_script?: string | null;
             /** Reading Brief */
             reading_brief?: string | null;
-            scenario?: components["schemas"]["CandidateScenarioRead"] | null;
+            scenario?: components["schemas"]["PracticeCandidateScenarioRead"] | null;
             /**
              * Station Id
              * Format: uuid
@@ -8361,9 +8621,44 @@ export interface components {
              * Format: uuid
              */
             station_version_id: string;
-            teaching?: components["schemas"]["StationTeachingRead"] | null;
+            teaching?: components["schemas"]["PracticeStationTeachingRead"] | null;
             /** Title */
             title: string;
+        };
+        /** PracticeStationTeachingRead */
+        PracticeStationTeachingRead: {
+            /** Breaking Bad News Framework */
+            breaking_bad_news_framework?: string | null;
+            /** Communication Themes */
+            communication_themes?: string[];
+            /** Consent Approach */
+            consent_approach?: string | null;
+            /** Examination Overview */
+            examination_overview?: string | null;
+            /** History Overview */
+            history_overview?: string | null;
+            /** Investigations Overview */
+            investigations_overview?: string | null;
+            /** Key Concerns */
+            key_concerns?: string[];
+            /** Key Learning Points */
+            key_learning_points?: string[];
+            /** Management Overview */
+            management_overview?: string | null;
+            /** Portfolio Themes */
+            portfolio_themes?: string[];
+            /** Professional Conduct Topics */
+            professional_conduct_topics?: string[];
+            /** References */
+            references?: string[];
+            /** Suggested Order */
+            suggested_order?: {
+                [key: string]: unknown;
+            } | null;
+            /** Suggested Order Overview */
+            suggested_order_overview?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * PrioritisationPatientRead
@@ -9015,6 +9310,8 @@ export interface components {
             consultations: number;
             /** Debriefs */
             debriefs: number;
+            /** Feedback */
+            feedback: number;
             /** Stations */
             stations: number;
             /** Users */
@@ -9167,6 +9464,16 @@ export interface components {
             value: string;
         };
         /**
+         * SsoCallbackRequest
+         * @description The token the broker handed back, and the organisation it was for.
+         */
+        SsoCallbackRequest: {
+            /** Org Slug */
+            org_slug: string;
+            /** Token */
+            token: string;
+        };
+        /**
          * SsoConfigRead
          * @description The whole arrangement, for whoever administers it.
          */
@@ -9192,6 +9499,51 @@ export interface components {
             sign_in_label: string;
             /** Sso Only */
             sso_only: boolean;
+        };
+        /**
+         * SsoLoginRequest
+         * @description Which organisation to start signing in to.
+         *
+         *     The slug comes from `GET /auth/sso/sign-in`, which a sign-in page already
+         *     called to learn whether this visitor's organisation signs in elsewhere.
+         */
+        SsoLoginRequest: {
+            /** Org Slug */
+            org_slug: string;
+        };
+        /**
+         * SsoLoginResult
+         * @description Where to send the browser to sign in.
+         *
+         *     A URL rather than a server-side redirect: the frontend owns navigation and
+         *     the platform issues no cookies (ADR 0004). The broker sends the browser
+         *     back to `{frontend_url}/auth/sso/callback`, which posts the token it was
+         *     handed to `POST /auth/sso/callback`.
+         */
+        SsoLoginResult: {
+            /** Sign In Url */
+            sign_in_url: string;
+        };
+        /**
+         * SsoSession
+         * @description A platform session — what a login returns, minus the profile.
+         *
+         *     The frontend stores these and reads the person from `GET /me`, so the user
+         *     object is not duplicated into this slice's contract; `identity` owns its
+         *     shape and the broker's job ends at the tokens.
+         */
+        SsoSession: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In */
+            expires_in: number;
+            /** Refresh Token */
+            refresh_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
         };
         /**
          * SsoSignIn
@@ -9526,6 +9878,72 @@ export interface components {
              * Format: date-time
              */
             received_at: string;
+        };
+        /**
+         * StructuredCv
+         * @description The sections a CV is read into. A section with nothing in it is null.
+         */
+        StructuredCv: {
+            /**
+             * Achievements
+             * @description Awards, prizes, recognition
+             */
+            achievements?: string | null;
+            /**
+             * Audits
+             * @description Audit and quality-improvement work
+             */
+            audits?: string | null;
+            /**
+             * Courses
+             * @description Professional development courses
+             */
+            courses?: string | null;
+            /**
+             * Education
+             * @description Medical school, degrees, qualifications
+             */
+            education?: string | null;
+            /**
+             * Experience
+             * @description Clinical experience, roles, rotations
+             */
+            experience?: string | null;
+            /**
+             * Grants
+             * @description Research funding and scholarships
+             */
+            grants?: string | null;
+            /**
+             * Leadership
+             * @description Leadership and management roles
+             */
+            leadership?: string | null;
+            /**
+             * Publications
+             * @description Papers, presentations, abstracts
+             */
+            publications?: string | null;
+            /**
+             * Research
+             * @description Research projects and interests
+             */
+            research?: string | null;
+            /**
+             * Skills
+             * @description Clinical competencies, languages
+             */
+            skills?: string | null;
+            /**
+             * Summary
+             * @description Personal summary and career overview
+             */
+            summary?: string | null;
+            /**
+             * Teaching
+             * @description Teaching, supervision, education
+             */
+            teaching?: string | null;
         };
         /** SubmitSlotReview */
         SubmitSlotReview: {
@@ -11648,6 +12066,126 @@ export interface operations {
             };
         };
     };
+    sso_sso_callback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SsoCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoSession"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_not_configured */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_verification_failed, unknown_sso_provider */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_provider_unsupported, sso_login_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sso_sso_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SsoLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SsoLoginResult"];
+                };
+            };
+            /** @description sso_not_configured */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_sso_provider */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sso_provider_unsupported, sso_login_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     sso_read_sign_in: {
         parameters: {
             query?: {
@@ -12278,6 +12816,135 @@ export interface operations {
             };
         };
     };
+    cv_list_cv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvList"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cv_upload_cv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_cv_upload_cv"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvUploadResult"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_cv_file */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cv_read_cv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CvRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cv_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     catalog_list_exams: {
         parameters: {
             query?: never;
@@ -12561,7 +13228,7 @@ export interface operations {
     assistant_articles: {
         parameters: {
             query?: {
-                app_type?: "sca" | "plab" | "casc" | "ortho";
+                exam_code?: "sca" | "plab" | "casc" | "ortho";
                 category?: string | null;
             };
             header?: never;
@@ -12579,6 +13246,15 @@ export interface operations {
                     "application/json": components["schemas"]["HelpArticles"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -12593,7 +13269,7 @@ export interface operations {
     assistant_article: {
         parameters: {
             query?: {
-                app_type?: "sca" | "plab" | "casc" | "ortho";
+                exam_code?: "sca" | "plab" | "casc" | "ortho";
             };
             header?: never;
             path: {
@@ -12644,7 +13320,7 @@ export interface operations {
     assistant_categories: {
         parameters: {
             query?: {
-                app_type?: "sca" | "plab" | "casc" | "ortho";
+                exam_code?: "sca" | "plab" | "casc" | "ortho";
             };
             header?: never;
             path?: never;
@@ -12659,6 +13335,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HelpCategories"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -25355,6 +26040,15 @@ export interface operations {
             };
             /** @description audience_not_yours */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

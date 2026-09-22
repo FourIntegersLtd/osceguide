@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { LuShield } from "react-icons/lu";
-import { AsyncBoundary, Button, Card, ConfirmModal } from "@/foundation/ui";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import { AsyncBoundary, Button, Card, ConfirmModal, PlatformPageHeader } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   deleteModerationPost,

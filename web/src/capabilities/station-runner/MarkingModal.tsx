@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Modal, ModalCallout } from "@/foundation/ui";
 import { readResults } from "@/capabilities/attempt-runner";
-import { GeneratingFeedback } from "@/domains/train/station/GeneratingFeedback";
+import { GeneratingFeedback } from "@/capabilities/station-runner/GeneratingFeedback";
 import Tips from "./tips/Tips";
 
 const MAX_TRIES = 10;

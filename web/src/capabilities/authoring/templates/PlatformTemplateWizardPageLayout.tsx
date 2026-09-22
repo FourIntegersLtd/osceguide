@@ -1,8 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { B2CPageHeader } from "@/foundation/ui";
-import { platformStaffPanel } from "@/domains/platform/platformStaffChrome";
+import { B2CPageHeader, platformStaffPanel } from "@/foundation/ui";
 
 /** Staff template wizards — light gray panel (B2C borders). */
 export function PlatformTemplateWizardPageLayout({

@@ -219,7 +219,9 @@ describe("surface registry", () => {
       "Podcast",
       "Articles",
     ]);
-    assert.deepEqual(bySection("connect"), ["Community", "Marketplace"]);
+    // Contact & Feedback leads Connect: the retiring sidebar carried it too,
+    // ahead of the community, and a capability mounts it on this arm only.
+    assert.deepEqual(bySection("connect"), ["Contact & Feedback", "Community", "Marketplace"]);
     assert.deepEqual(bySection("general"), ["Settings"]);
     // Nothing ungrouped: an item with no section would render above the
     // headings, which on this arm means somebody forgot to name one.

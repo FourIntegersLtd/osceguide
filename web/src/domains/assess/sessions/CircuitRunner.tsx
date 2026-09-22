@@ -15,6 +15,7 @@ import { RunnerHelpPanel } from "@/domains/assess/sessions/RunnerHelpPanel";
 import { RunnerStepper } from "@/domains/assess/sessions/RunnerStepper";
 import { StationProgressList } from "@/domains/assess/sessions/StationProgressList";
 import { SupervisorControls } from "@/domains/assess/sessions/SupervisorControls";
+import { SupervisorReadingBrief } from "@/domains/assess/sessions/SupervisorReadingBrief";
 import { TurnStrip } from "@/domains/assess/sessions/TurnStrip";
 import { alertCopy, observerSubtitle, phaseLabel, runnerSteps } from "@/domains/assess/sessions/support";
 import { useCircuitRun, useObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
@@ -161,6 +162,8 @@ function Runner({
         <h2 className={b2bTokens.b2bEyebrow}>Station progress</h2>
         <StationProgressList data={data} agentLive={circuit.agent_dispatched} />
       </section>
+
+      <SupervisorReadingBrief data={data} orgSlug={orgSlug} />
 
       <ObserverPanel data={data} observer={observer} />
 

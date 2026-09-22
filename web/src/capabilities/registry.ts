@@ -1,6 +1,7 @@
 import type { CapabilityModule, MountedCapability } from "@/capabilities/contract";
 import type { Surface } from "@/capabilities/surface";
 import { helpCapability } from "@/capabilities/help/capability";
+import { messagesCapability } from "@/capabilities/help/messagesCapability";
 import { mediaCapability } from "@/capabilities/media/capability";
 import { STUDY_NAV_CAPABILITIES } from "@/capabilities/media/studyCapabilities";
 import { stationsCapability } from "@/capabilities/stations/capability";
@@ -28,6 +29,7 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
   helpCapability,
   ...STUDY_NAV_CAPABILITIES,
   mediaCapability,
+  messagesCapability,
   communityCapability,
   peerPracticeCapability,
   debriefCapability,

@@ -27,7 +27,7 @@ import {
   updateMedia,
   type MediaItem,
 } from "@/capabilities/staff-media/api";
-import { learnerMediaPreviewPath, staffMediaDetailPath } from "@/capabilities/staff-media/paths";
+import { learnerMediaPreviewPath } from "@/capabilities/staff-media/paths";
 
 function contentRecord(item: MediaItem | null): Record<string, unknown> {
   if (!item?.content || typeof item.content !== "object" || Array.isArray(item.content)) return {};

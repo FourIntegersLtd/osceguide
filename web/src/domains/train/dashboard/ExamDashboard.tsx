@@ -2,11 +2,12 @@
 
 import { PracticeOptions } from "@/capabilities/peer-practice/PracticeOptions";
 
-import { useState } from "react";
-import { AsyncBoundary, ButtonLink } from "@/foundation/ui";
+import { useEffect, useState } from "react";
+import { AsyncBoundary, ButtonLink, Modal } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
+import { ExamWishes } from "@/capabilities/account";
 import {
   readDashboard,
   readPerformance,
@@ -28,6 +29,8 @@ import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
 import { configFor } from "@/domains/train/dashboard/examConfig";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
+import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
+import { examCountdownSubtitle, isExamWeek } from "@/domains/train/dashboard/examDate";
 import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
 
 /**
@@ -56,6 +59,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
   const { examCode, attempts } = useDashboardExam(data);
   const config = configFor(examCode);
   const [about, setAbout] = useState<AboutKey | null>(null);
+  const [showExamWishes, setShowExamWishes] = useState(false);
 
   /*
    * Wrapped in an object so a 404 — the endpoint is not built yet — is a
@@ -68,8 +72,32 @@ function DashboardBody({ data }: { data: DashboardData }) {
     [examCode],
   );
 
+  const examDate = session?.user.exam_date ?? null;
+  const userId = session?.user.id ?? null;
+
+  /*
+   * The retiring dashboard showed its "Good luck this week" note once, in the
+   * seven days before the exam, and remembered that it had via localStorage so
+   * it did not re-open on every visit. Same trigger, same one-time guard.
+   */
+  useEffect(() => {
+    if (!examDate || !userId) return;
+    if (!isExamWeek(examDate)) return;
+    const key = `examWishesShown-${userId}`;
+    if (window.localStorage.getItem(key)) return;
+    window.localStorage.setItem(key, "true");
+    // A one-time modal fired off reading/writing localStorage — the effect is
+    // synchronising with that external store, which is what it is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowExamWishes(true);
+  }, [examDate, userId]);
+
   const firstName = session?.user.name?.split(" ")[0] ?? "there";
-  const subtitle = config.subtitle ? `Welcome back, ${firstName}. ${config.subtitle}` : undefined;
+  // The countdown leads when there is one to show; otherwise the exam's own
+  // welcome line (SCA has none, matching the old screen).
+  const subtitle =
+    examCountdownSubtitle(examDate) ??
+    (config.subtitle ? `Welcome back, ${firstName}. ${config.subtitle}` : undefined);
   const eyebrow = config.sections.hero
     ? `${attempts} station${attempts === 1 ? "" : "s"} attempted`
     : undefined;
@@ -82,6 +110,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
         subtitle={subtitle}
         actions={
           <>
+            <ExamDateControl />
             <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
               {attempts === 0 ? "Start your first station" : "Practise a station"}
             </ButtonLink>
@@ -102,6 +131,12 @@ function DashboardBody({ data }: { data: DashboardData }) {
 
           <PracticeOptions />
       <AboutModal config={config} active={about} onClose={() => setAbout(null)} />
+
+      {showExamWishes && (
+        <Modal width="min(95vw, 480px)" height="fit-content" onClose={() => setShowExamWishes(false)}>
+          <ExamWishes />
+        </Modal>
+      )}
     </>
   );
 }
