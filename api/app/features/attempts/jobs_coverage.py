@@ -12,6 +12,18 @@ TASK = "update_attempt_coverage"
 
 
 async def enqueue_coverage(session: AsyncSession, attempt: Attempt) -> None:
+    """Nudge coverage for the transcript as it stands, coalescing on purpose.
+
+    A turn that lands while a coverage job is still waiting asks for nothing the
+    waiting job will not do itself: it recomputes from the committed transcript
+    when it starts. The queueing lock covers `todo` rows only, so a turn arriving
+    while a job is *running* still queues a follow-up and no seq is lost.
+
+    Letting the duplicate raise would not merely fail the worker's POST for a
+    provisional panel: `complete_interaction` defers the marking in the same
+    transaction, and a lock trip aborts that too, so an attempt would finish with
+    no marking queued.
+    """
     if framework_for(attempt) is None:
         return
     await defer_in_transaction(
@@ -21,6 +33,7 @@ async def enqueue_coverage(session: AsyncSession, attempt: Attempt) -> None:
         args={"attempt_id": str(attempt.id)},
         queueing_lock=f"coverage:{attempt.id}",
         lock=f"coverage:{attempt.id}",
+        ignore_lock_conflict=True,
     )
 
 

@@ -14,6 +14,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import repository
+from app.features.attempts.jobs import SCORING_TASK
 from app.features.identity import repository as identity_repo
 from tests.contract.test_worker_routes import DEFINITION, NOW, transcript, worker_headers
 from tests.support.catalog import ensure_exam
@@ -169,21 +170,29 @@ async def test_only_a_platform_admin_reads_across_accounts(
 
 
 async def scoring_jobs(db_session: AsyncSession, attempt_id: uuid.UUID) -> list[str]:
+    """The markings, not every job an attempt carries — live coverage queues beside them."""
     from sqlalchemy import text
 
     rows = await db_session.execute(
-        text("SELECT status FROM procrastinate_jobs WHERE args->>'attempt_id' = :id ORDER BY id"),
-        {"id": str(attempt_id)},
+        text(
+            "SELECT status FROM procrastinate_jobs "
+            "WHERE args->>'attempt_id' = :id AND task_name = :task ORDER BY id"
+        ),
+        {"id": str(attempt_id), "task": SCORING_TASK},
     )
     return [str(r[0]) for r in rows]
 
 
 async def mark_jobs_failed(db_session: AsyncSession, attempt_id: uuid.UUID) -> None:
+    """Fail the marking, the way a worker exhausting its retries would."""
     from sqlalchemy import text
 
     await db_session.execute(
-        text("UPDATE procrastinate_jobs SET status = 'failed' WHERE args->>'attempt_id' = :id"),
-        {"id": str(attempt_id)},
+        text(
+            "UPDATE procrastinate_jobs SET status = 'failed' "
+            "WHERE args->>'attempt_id' = :id AND task_name = :task"
+        ),
+        {"id": str(attempt_id), "task": SCORING_TASK},
     )
 
 
@@ -213,7 +222,13 @@ async def test_a_failed_marking_can_be_queued_again_and_twice_is_once(
     detail = await client.get(f"/api/v1/platform/attempts/{attempt_id}", headers=bearer(root))
     assert [job["status"] for job in detail.json()["jobs"]] == ["todo", "failed"]
     audit = await client.get("/api/v1/platform/audit?action=attempt.rescore_requested", headers=bearer(root))
-    assert [row["meta"]["queued"] for row in audit.json()["items"]] == [False, True]
+    # Matched by summary rather than position. Both presses write inside the test's
+    # one transaction, so their `now()` ties and the newest-first tie-break on a
+    # random uuid id is a coin flip; in production they are separate transactions.
+    assert {row["summary"]: row["meta"]["queued"] for row in audit.json()["items"]} == {
+        "platform-default@1: queued": True,
+        "platform-default@1: already queued": False,
+    }
 
 
 async def test_a_marked_attempt_is_not_marked_again_under_the_same_policy(
