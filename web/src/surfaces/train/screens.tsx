@@ -1,7 +1,10 @@
 "use client";
 
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
-import type { StationStep } from "@/domains/train";
+import {
+  stationActionFromParam,
+  stationStepFromParam,
+} from "@/capabilities/station-runner/useStationUrl";
 import {
   AttemptLanding,
   ExamDashboard,
@@ -40,8 +43,8 @@ function TrainMockStation({ params }: ScreenProps) {
     <SetStation
       setId={params?.setId ?? ""}
       entryId={params?.entryId ?? ""}
-      action={params?.action === "review" ? "review" : "attempt"}
-      step={asStep(params?.tab)}
+      action={stationActionFromParam(params?.action)}
+      step={stationStepFromParam(params?.tab)}
       attemptId={params?.attempt || null}
     />
   );
@@ -55,21 +58,11 @@ function TrainPracticeStation({ params }: ScreenProps) {
   return (
     <PracticeStation
       stationId={params?.stationId ?? ""}
-      action={params?.action === "review" ? "review" : "attempt"}
-      step={asStep(params?.tab)}
+      action={stationActionFromParam(params?.action)}
+      step={stationStepFromParam(params?.tab)}
       attemptId={params?.attempt || null}
     />
   );
-}
-
-/** A tab this screen answers, or nothing — never a guess. */
-function asStep(value: string | undefined): StationStep | undefined {
-  return value === "patient" ||
-    value === "simulation" ||
-    value === "management" ||
-    value === "feedback"
-    ? value
-    : undefined;
 }
 
 /**

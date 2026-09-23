@@ -236,6 +236,19 @@ export function listCvs(signal?: AbortSignal): Promise<components["schemas"]["Cv
 }
 
 /**
+ * One CV by id.
+ *
+ * This is what an upload waits on. `POST /cv` answers a row and a status and the
+ * sections arrive later from a background job, so the thing being watched is
+ * exactly one known record — and re-listing the whole set every five seconds to
+ * ask about it is both the slower question and the one that can answer about a
+ * different row if a second upload lands in between.
+ */
+export function readCv(cvId: string, signal?: AbortSignal): Promise<CvRead> {
+  return platformRequest<CvRead>(`/api/v1/cv/${encodeURIComponent(cvId)}`, { signal });
+}
+
+/**
  * Send a CV for reading.
  *
  * The answer is a row, not a parsed CV: the text is pulled from the PDF in the

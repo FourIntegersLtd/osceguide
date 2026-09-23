@@ -4,6 +4,7 @@ import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
 import { SessionProvider } from "@/foundation/session";
 import { ToastHost } from "@/foundation/ui";
 import { AnalyticsConsentGate } from "@/foundation/analytics/AnalyticsConsentGate";
+import InstallPrompt from "@/domains/marketing/InstallPrompt";
 import "@/app/globals.css";
 
 /*
@@ -77,6 +78,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           */}
           <ToastHost>
             <AnalyticsConsentGate>{children}</AnalyticsConsentGate>
+            {/*
+              The add-to-home-screen helper, on every arm — which is where the
+              retiring client had it, in its one app-wide layout. It decides for
+              itself whether to appear: a phone that is not mobile, a browser
+              already running standalone, somebody who dismissed it, and the
+              first visit where the consent question is still on screen all keep
+              it away. Inside `SessionProvider` because whose account this is
+              forms part of that answer.
+            */}
+            <InstallPrompt />
           </ToastHost>
         </SessionProvider>
       </body>

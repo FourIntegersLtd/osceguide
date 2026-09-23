@@ -121,7 +121,9 @@ const LEGACY_SAMPLE: readonly [string, string][] = [
   ["/b2b/trainee/sessions", "/app/me/trainee"],
   ["/b2b/trainee/sessions/s1", "/app/me/trainee/sittings/s1"],
   ["/b2b/trainee/sessions/s1/result", "/app/me/trainee/results/s1"],
-  ["/b2b/trainee/join/sl1", "/app/me/trainee"],
+  // A join link names a slot, so the id survives as a query the screen reads.
+  ["/b2b/trainee/join/sl1", "/app/me/trainee?slot=sl1"],
+  ["/b2b/trainee/join", "/app/me/trainee"],
   ["/b2b/trainee/circuit-feedback", "/app/me/trainee"],
   ["/b2b/trainee/transcript", "/app/me/transcripts"],
   // The console sign-ins, and the workspace picker.

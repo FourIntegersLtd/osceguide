@@ -2,6 +2,7 @@ import {
   LuCalendarDays,
   LuGauge,
   LuGraduationCap,
+  LuLayers,
   LuRadio,
   LuSparkles,
   LuUserCog,
@@ -37,6 +38,18 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
       href: href("/trainee/practice"),
       icon: LuSparkles,
     },
+    /*
+     * Several stations on one clock.
+     *
+     * `Self practice` above is one station at a time; the retiring client also
+     * let somebody string a handful together and sit them back to back, which is
+     * the rehearsal that actually resembles an exam day. The screens are
+     * Train's — a practice set belongs to the person sitting it, not to the
+     * organisation that happens to also examine them — and `/me/station-sets`
+     * is unscoped, so an institution workspace asks the same question the
+     * personal one does and gets the same answer.
+     */
+    { key: "mocks", label: "Practice sessions", href: href("/mocks"), icon: LuLayers },
   ];
   /* The exam-day board is for the people who run circuits, and it names every
    * candidate on them — which is why the backend gates it on staff rather than
@@ -71,6 +84,17 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "mySitting",
   "myResult",
   "myPractice",
+  /*
+   * The practice-set screens, answered here as well as on Train.
+   *
+   * A route file is one file for every arm, so `/app/kings/mocks` exists the
+   * moment this list says yes and 404s until then. The components are the
+   * consumer ones — see the nav item for why that is the right ownership.
+   */
+  "mocks",
+  "mockDetail",
+  "mockStation",
+  "mockComplete",
   /*
    * A station record, which is an attempt: the transcript and the marking both
    * hang off one. Train answers the same screen — a candidate reading back

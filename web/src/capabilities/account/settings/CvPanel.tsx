@@ -29,7 +29,7 @@ import {
   Spinner,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { listCvs, uploadCv, type CvRead, type StructuredCv } from "@/capabilities/account/api";
+import { listCvs, readCv, uploadCv, type CvRead, type StructuredCv } from "@/capabilities/account/api";
 
 /**
  * The CV an orthopaedic applicant uploads, and the sections it is read into.
@@ -42,9 +42,10 @@ import { listCvs, uploadCv, type CvRead, type StructuredCv } from "@/capabilitie
  * interview is built on.
  *
  * Uploading answers a row and a status, not a parsed CV: the PDF is read by a
- * background job. So the panel polls while a row is `processing` rather than
- * pretending the sections are instant — the old copy told people "about 60
- * seconds", and a screen that goes quiet for a minute reads as a failed upload.
+ * background job. So the panel follows that one row by its id until the job
+ * settles, rather than pretending the sections are instant — the old copy told
+ * people "about 60 seconds", and a screen that goes quiet for a minute reads as
+ * a failed upload.
  */
 
 const SECTIONS: { key: keyof StructuredCv; title: string; icon: ComponentType<{ className?: string }> }[] = [
@@ -66,25 +67,48 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 export function CvPanel() {
   const state = useAsync((signal) => listCvs(signal), []);
-  const [pending, setPending] = useState(false);
-  const reload = state.reload;
+  const reloadList = state.reload;
 
   /*
-   * Poll while the newest upload is still being read. The interval lives here
-   * rather than in `useAsync` because "is it done yet" is a property of the
-   * data, and the data is the thing the hook just returned.
+   * The upload in flight, named by the id `POST /cv` answered with.
+   *
+   * Asking the list "is it done yet" re-reads every CV to find out something
+   * about one of them, and if a second upload lands in between it can answer
+   * about the wrong row. `watching` is null whenever nothing is in flight, and
+   * the loader below declines to run in that case.
    */
-  const processing = state.data?.cvs?.some((cv) => cv.status === "processing") ?? false;
+  const [watching, setWatching] = useState<string | null>(null);
+  const watched = useAsync(
+    (signal) => (watching ? readCv(watching, signal) : Promise.resolve(null)),
+    [watching],
+  );
+  const reloadWatched = watched.reload;
+
+  // An unread answer is still an answer being waited for — the first poll has
+  // not landed yet, and treating that as finished would fold the row back into
+  // the list before anything had been read from it.
+  const stillReading =
+    watching !== null && (watched.data?.status ?? "processing") === "processing";
+
   useEffect(() => {
-    if (!processing && !pending) return;
-    const timer = window.setInterval(() => reload(), 5000);
+    if (watching === null) return;
+    if (!stillReading) {
+      // Read or refused: either way the list is the view that stays open, so
+      // hand the finished row back to it and stop asking about a single id.
+      setWatching(null);
+      reloadList();
+      return;
+    }
+    const timer = window.setInterval(() => reloadWatched(), 5000);
     return () => window.clearInterval(timer);
-  }, [processing, pending, reload]);
+  }, [watching, stillReading, reloadList, reloadWatched]);
 
   return (
     <AsyncBoundary state={state}>
       {(list) => {
-        const latest: CvRead | undefined = list.cvs?.[0];
+        // The row being followed outranks the list's newest while it lasts,
+        // which is what shows the sections the moment the job writes them.
+        const latest: CvRead | undefined = watched.data ?? list.cvs?.[0];
         return (
           <B2CPanelCard className="mt-0">
             <B2CPanelCardHeader>
@@ -96,13 +120,7 @@ export function CvPanel() {
                 Upload the CV you will bring to the interview. We read it into
                 sections and base your practice questions on what is in it.
               </ModalHelper>
-              <Upload
-                onUploaded={() => {
-                  setPending(true);
-                  reload();
-                }}
-                onSettled={() => setPending(false)}
-              />
+              <Upload onUploaded={(cvId) => setWatching(cvId)} />
               {latest?.status === "processing" ? (
                 <p className="flex items-center gap-2 text-osce-meta text-b2c-text-muted">
                   <Spinner label="Reading" /> Reading {latest.original_filename} — this takes about
@@ -131,13 +149,7 @@ export function CvPanel() {
   );
 }
 
-function Upload({
-  onUploaded,
-  onSettled,
-}: {
-  onUploaded: () => void;
-  onSettled: () => void;
-}) {
+function Upload({ onUploaded }: { onUploaded: (cvId: string) => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,15 +190,16 @@ function Upload({
     setBusy(true);
     setError(null);
     try {
-      await uploadCv(file);
+      // The receipt's id is what the panel follows: the row exists and is
+      // `processing` here, and the sections are the job's to write later.
+      const receipt = await uploadCv(file);
       setDone(true);
       setFile(null);
-      onUploaded();
+      onUploaded(receipt.id);
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       setBusy(false);
-      onSettled();
     }
   };
 

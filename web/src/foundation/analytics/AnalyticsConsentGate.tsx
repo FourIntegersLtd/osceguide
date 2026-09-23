@@ -29,6 +29,22 @@ import CookiesConsentModal from "@/foundation/ui/CookiesConsentModal";
 const CONSENT_KEY = "analytics-consent";
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-57RJ52Q20T";
 
+/**
+ * Whether this browser has answered the analytics question yet.
+ *
+ * Exported because the answer is the only reason a second piece of bottom-of-screen
+ * chrome knows to keep out of the way: the retiring client rendered its install
+ * prompt as `{!showConsent && <InstallPrompt />}`, and the consent choice it
+ * tested is this key. Reading the key rather than taking a prop is what lets the
+ * two components stay strangers — and the key is deliberately the old one, so a
+ * returning visitor is not asked twice by two frontends.
+ */
+export function hasAnsweredAnalyticsConsent(): boolean {
+  if (typeof window === "undefined") return true;
+  const stored = window.localStorage.getItem(CONSENT_KEY);
+  return stored === "accepted" || stored === "rejected";
+}
+
 export function AnalyticsConsentGate({ children }: { children: ReactNode }) {
   const [consent, setConsent] = useState<"unknown" | "accepted" | "rejected">("unknown");
 

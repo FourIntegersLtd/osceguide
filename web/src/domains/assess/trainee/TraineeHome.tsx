@@ -10,7 +10,7 @@ import {
   HiOutlineSparkles,
 } from "react-icons/hi2";
 import type { IconType } from "react-icons";
-import { AsyncBoundary, Badge, EmptyState, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, EmptyState, b2bTokens } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -28,6 +28,8 @@ import {
   isExam,
   liveSittings,
   progressOf,
+  sittingForSlot,
+  slotById,
   sortSittings,
   stationsCompleted,
   summaryLine,
@@ -44,7 +46,7 @@ import {
  * first frame, which is why a dropped connection shows "Updating" rather than
  * emptying the page.
  */
-export function TraineeHome() {
+export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
   const { session } = useSession();
   const initial = useAsync((signal) => readMySittings(signal), []);
   const stream = useEventStream<MySittings>(MY_SITTINGS_STREAM);
@@ -69,18 +71,47 @@ export function TraineeHome() {
       </header>
 
       <AsyncBoundary state={initial}>
-        {() => <Overview sittings={data?.items ?? []} />}
+        {() => <Overview sittings={data?.items ?? []} slotId={slotId} />}
       </AsyncBoundary>
     </div>
   );
 }
 
-function Overview({ sittings }: { sittings: readonly MySitting[] }) {
+function Overview({
+  sittings,
+  slotId,
+}: {
+  sittings: readonly MySitting[];
+  slotId: string | null;
+}) {
+  const { hrefFor } = useSurface();
   const live = liveSittings(sittings);
   const ordered = sortSittings(sittings);
+  // An emailed join link named a slot, and only the list this person has
+  // already loaded can say which sitting owns it. Not finding it is an answer
+  // rather than a fault: the slot was taken off them, or the link was never
+  // theirs, and either way what follows is still the truth.
+  const sentTo = sittingForSlot(sittings, slotId);
+  const station = sentTo ? (slotById(sentTo, slotId)?.station_title ?? null) : null;
 
   return (
     <>
+      {slotId ? (
+        sentTo ? (
+          <Alert tone="info">
+            You were sent to {station ?? "one of your stations"} on {sentTo.name}.{" "}
+            <Link className="underline" href={hrefFor(`/trainee/sittings/${sentTo.id}`)}>
+              Open it
+            </Link>
+            {sentTo.can_join ? " — the room is open now." : "."}
+          </Alert>
+        ) : (
+          <Alert tone="warning">
+            That link names a station you are no longer rostered onto. Everything you are
+            on is listed below.
+          </Alert>
+        )
+      ) : null}
       <LiveTurnBanner sittings={live} />
 
       {sittings.length > 0 ? (

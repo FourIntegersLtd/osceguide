@@ -2,6 +2,16 @@
 
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
+  MockDetail,
+  MockEnd,
+  Mocks,
+  SetStation,
+} from "@/domains/train";
+import {
+  stationActionFromParam,
+  stationStepFromParam,
+} from "@/capabilities/station-runner/useStationUrl";
+import {
   CircuitRunner,
   EditCircuit,
   LiveBoard,
@@ -86,7 +96,9 @@ function AssessTeam(props: ScreenProps) {
   return <Team orgSlug={slugOf(props)} />;
 }
 
-const AssessMyTraining = () => <TraineeHome />;
+function AssessMyTraining({ params }: ScreenProps) {
+  return <TraineeHome slotId={params?.slot || null} />;
+}
 
 function AssessMySitting({ params }: ScreenProps) {
   return <MySittingDetail sittingId={params?.sittingId ?? ""} />;
@@ -110,18 +122,43 @@ function AssessPracticeStation({ params, workspace }: ScreenProps) {
     <SelfPracticeStation
       orgSlug={orgSlug}
       stationId={params?.stationId ?? ""}
-      action={params?.action === "review" ? "review" : "attempt"}
-      step={
-        params?.tab === "patient" ||
-        params?.tab === "simulation" ||
-        params?.tab === "management" ||
-        params?.tab === "feedback"
-          ? params.tab
-          : undefined
-      }
+      action={stationActionFromParam(params?.action)}
+      step={stationStepFromParam(params?.tab)}
       attemptId={params?.attempt || null}
     />
   );
+}
+
+/*
+ * Practice sets, answered on this arm by Train's screens.
+ *
+ * A set belongs to the person sitting it: `/me/station-sets` is unscoped, so an
+ * institution workspace asks the identical question and gets the identical
+ * answer. Adapting four components is cheaper than a second implementation that
+ * can drift, and the alternative — an institution trainee reduced to one
+ * station at a time — is what shipped until now. `mocks` is the whole of why
+ * these are here; the other three are the set's own detail, station and end.
+ */
+const AssessMocks = () => <Mocks />;
+
+function AssessMockDetail({ params }: ScreenProps) {
+  return <MockDetail setId={params?.setId ?? ""} />;
+}
+
+function AssessMockStation({ params }: ScreenProps) {
+  return (
+    <SetStation
+      setId={params?.setId ?? ""}
+      entryId={params?.entryId ?? ""}
+      action={stationActionFromParam(params?.action)}
+      step={stationStepFromParam(params?.tab)}
+      attemptId={params?.attempt || null}
+    />
+  );
+}
+
+function AssessMockComplete({ params }: ScreenProps) {
+  return <MockEnd setId={params?.setId ?? ""} />;
 }
 
 /**
@@ -147,6 +184,10 @@ export const assessScreens: ScreenMap = {
   mySitting: AssessMySitting,
   myResult: AssessMyResult,
   myPractice: AssessMyPractice,
+  mocks: AssessMocks,
+  mockDetail: AssessMockDetail,
+  mockStation: AssessMockStation,
+  mockComplete: AssessMockComplete,
   attempt: AssessAttempt,
   practiceStation: AssessPracticeStation,
 };

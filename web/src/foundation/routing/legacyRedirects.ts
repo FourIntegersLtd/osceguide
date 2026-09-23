@@ -140,6 +140,14 @@ export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
    */
   { pattern: /^\/b2b\/trainee\/sessions\/([^/]+)\/result$/, to: personal("/trainee/results/$1") },
   { pattern: /^\/b2b\/trainee\/sessions\/([^/]+)$/, to: personal("/trainee/sittings/$1") },
+  /*
+   * An emailed join link named a *slot*, and this platform opens a candidate's
+   * room by sitting, so the id cannot become a path of its own. It rides along
+   * as a query and the trainee's screen resolves it against the sittings it has
+   * already loaded — which is also why a link for somebody else resolves to
+   * nothing rather than to a plausible room.
+   */
+  { pattern: /^\/b2b\/trainee\/join\/([^/]+)$/, to: personal("/trainee?slot=$1") },
   { pattern: /^\/b2b\/trainee\/(?:sessions|circuit-feedback|join)(\/.*)?$/, to: personal("/trainee") },
   { pattern: /^\/b2b\/trainee\/transcript$/, to: personal("/transcripts") },
   { pattern: /^\/b2b\/trainee(?:\/(.*))?$/, to: personal("/trainee/$1") },

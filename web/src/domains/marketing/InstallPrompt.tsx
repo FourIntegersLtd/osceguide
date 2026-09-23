@@ -5,6 +5,7 @@ import { FiDownload, FiX, FiInfo, FiCheckCircle } from "react-icons/fi"
 import { MdIosShare, MdInstallDesktop, MdAddBox } from "react-icons/md"
 import { HiOutlineDotsHorizontal, HiOutlineDotsVertical } from "react-icons/hi"
 import { Button } from "@/foundation/ui"
+import { hasAnsweredAnalyticsConsent } from "@/foundation/analytics/AnalyticsConsentGate"
 import { useSession } from "@/foundation/session"
 import { needsDashboardOnboarding } from "@/domains/marketing/support/onboardingDismissedStorage"
 
@@ -18,10 +19,19 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 function InstallPrompt() {
-  // `appType` was the consumer backend's four-product split; the install
-  // prompt only needs to know somebody is signed in.
   const { session } = useSession()
   const user = session?.user ?? null
+  /*
+   * `appType` was the consumer backend's four-product split, and there is no
+   * equivalent here — an account holds exams rather than being one product's.
+   *
+   * Leaving it null makes the `needsDashboardOnboarding` clause below inert,
+   * because that function answers false without an app type: nobody is deferred
+   * to an onboarding flow that does not exist yet. The call stays rather than
+   * being deleted so that porting the consumer onboarding re-gates this prompt
+   * by supplying a real value, instead of somebody having to remember it was
+   * ever here.
+   */
   const appType: string | null = null
   const [isIOS, setIsIOS] = useState(false)
   const [isAndroid, setIsAndroid] = useState(false)
@@ -32,6 +42,9 @@ function InstallPrompt() {
   const [dismissed, setDismissed] = useState(false)
   const [installError, setInstallError] = useState<string | null>(null)
   const [installSuccess, setInstallSuccess] = useState(false)
+  // Two bottom-of-screen things at once is one of them unread. The retiring
+  // client expressed this as `{!showConsent && <InstallPrompt />}`.
+  const [consentPending, setConsentPending] = useState(false)
 
   const handleClose = () => {
     setDismissed(true)
@@ -66,6 +79,8 @@ function InstallPrompt() {
     if (dismissedState === 'true') {
       setDismissed(true)
     }
+
+    setConsentPending(!hasAnsweredAnalyticsConsent())
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -128,14 +143,7 @@ function InstallPrompt() {
     isStandalone ||
     dismissed ||
     !isMobile ||
-    /*
-     * The old consumer user object carried `user_id` and an inlined
-     * `station_progress` array; the platform's `/me` carries neither — progress
-     * is its own endpoint. Passing 0 means "no attempts yet", which is the
-     * conservative reading: a brand-new person still gets the onboarding, and
-     * somebody mid-course sees the prompt once more rather than never.
-     * Tracked in docs/port-gaps.md.
-     */
+    consentPending ||
     needsDashboardOnboarding(appType, user?.id, 0)
   ) {
     return null

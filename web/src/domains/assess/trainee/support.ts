@@ -124,6 +124,35 @@ export function liveSittings(sittings: readonly MySitting[]): MySitting[] {
   return sittings.filter(joinable);
 }
 
+/**
+ * The sitting that owns a slot, for a link that named the slot and not the sitting.
+ *
+ * The retiring client emailed `/b2b/trainee/join/<slotId>`, while this platform
+ * opens a candidate's room by *sitting* — so a carried-over link has to be
+ * resolved against the list the screen has already loaded. `MySitting.slots`
+ * carries each slot's id, which makes that a lookup rather than a new endpoint.
+ *
+ * Answering null is a real result, not a failure: a link from last month's
+ * examination points at a slot this person has since been taken off, and the
+ * honest response is to say so rather than open something merely plausible.
+ */
+export function sittingForSlot(
+  sittings: readonly MySitting[],
+  slotId: string | null | undefined,
+): MySitting | null {
+  if (!slotId) return null;
+  return sittings.find((sitting) => sitting.slots?.some((slot) => slot.id === slotId)) ?? null;
+}
+
+/** One slot within a sitting, by the id a link carried. */
+export function slotById(
+  sitting: MySitting,
+  slotId: string | null | undefined,
+): MySlot | null {
+  if (!slotId) return null;
+  return sitting.slots?.find((slot) => slot.id === slotId) ?? null;
+}
+
 /** Stations this person has finished, across everything they are rostered onto. */
 export function stationsCompleted(sittings: readonly MySitting[]): number {
   return sittings.reduce((total, sitting) => total + progressOf(sitting).completed, 0);
