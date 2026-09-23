@@ -18,6 +18,18 @@ class EmptyContentError(InvalidInput):
     default_message = "There is nothing to post"
 
 
+class InvalidAuthorFilter(InvalidInput):
+    """`author` on the reply listing takes `me` and nothing else.
+
+    Not a 403 — the caller is not forbidden from what they asked, they asked
+    something this endpoint does not mean. Reading another person's answer
+    history is a different question and would need its own visibility rule.
+    """
+
+    code = "invalid_author_filter"
+    default_message = "The only author filter is `me`"
+
+
 class ContentTooLongError(InvalidInput):
     code = "content_too_long"
     default_message = "That post is too long"

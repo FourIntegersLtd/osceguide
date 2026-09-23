@@ -62,19 +62,50 @@ async def list_questions(
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
     audience: Audience | None = None,
+    author_id: uuid.UUID | None = None,
 ) -> tuple[list[Post], str | None]:
     """Questions this viewer may see, newest first.
 
     The audience filter is applied here rather than after the fetch: filtering
     a page in Python would return short pages and, worse, page *past* content
-    the viewer cannot see.
+    the viewer cannot see. `author_id` is the same argument — "questions I
+    asked" has to narrow in SQL or the tab only ever searches page one.
     """
     stmt = select(Post).where(Post.kind == "question", Post.removed_at.is_(None), visible_to(Post, viewer))
     if exam_id is not None:
         stmt = stmt.where(Post.exam_id == exam_id)
+    if author_id is not None:
+        stmt = stmt.where(Post.author_id == author_id)
     if audience is not None:
         # Narrowing to one room, on top of everything the viewer may see.
         stmt = stmt.where(addressed_to(Post, audience))
+    return await keyset_page(
+        session, stmt, sort_col=Post.created_at, id_col=Post.id, limit=limit, cursor=cursor
+    )
+
+
+async def list_answers(
+    session: AsyncSession,
+    *,
+    viewer: ViewerAudiences,
+    author_id: uuid.UUID,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+) -> tuple[list[Post], str | None]:
+    """One person's replies, across every question.
+
+    Replies were only readable one question at a time, so an "answers I wrote"
+    tab cost a request per question in the feed and the screen shipped as an
+    empty state instead. Filtering the reply's own visibility is enough and no
+    join back to the question is needed: a reply inherits its parent's audience
+    when it is written, so the two cannot disagree about who may read it.
+    """
+    stmt = select(Post).where(
+        Post.kind == "reply",
+        Post.author_id == author_id,
+        Post.removed_at.is_(None),
+        visible_to(Post, viewer),
+    )
     return await keyset_page(
         session, stmt, sort_col=Post.created_at, id_col=Post.id, limit=limit, cursor=cursor
     )

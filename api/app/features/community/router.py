@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import AudienceFilter, AudienceNotYours, InvalidAudience
@@ -30,6 +30,7 @@ async def list_questions(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     room: Annotated[AudienceFilter, Depends()],
+    mine: Annotated[bool, Query(description="Only the caller's own questions.")] = False,
 ) -> Page[schemas.PostRead]:
     """Everything this caller may see, or one room of it.
 
@@ -42,8 +43,47 @@ async def list_questions(
         limit=page.limit,
         cursor=page.cursor,
         audience=room.audience,
+        mine=mine,
     )
     return Page(items=items, next_cursor=next_cursor)
+
+
+@router.get(
+    "/community/replies",
+    response_model=Page[schemas.PostRead],
+    responses=error_responses(Unauthenticated, errors.InvalidAuthorFilter),
+)
+async def list_replies_by_author(
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    author: Annotated[str, Query(description="`me` — the caller's own answers.")] = "me",
+) -> Page[schemas.PostRead]:
+    """The answers this caller has written, across every question.
+
+    `author` takes `me` and nothing else. Reading somebody else's answer
+    history is a different question — "what has this person said" — and it is
+    not what the tab asks, so the parameter refuses rather than quietly
+    widening to any user id.
+    """
+    if author.strip().lower() != "me":
+        raise errors.InvalidAuthorFilter()
+    items, next_cursor = await service.list_my_answers(
+        session, viewer_id=principal.user_id, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=items, next_cursor=next_cursor)
+
+
+@router.get(
+    "/community/questions/{question_id}",
+    response_model=schemas.PostRead,
+    responses=error_responses(Unauthenticated, errors.PostNotFound),
+)
+async def read_question(
+    question_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.PostRead:
+    """One question by id, so a deep link works whatever page the feed is on."""
+    return await service.question_detail(session, question_id, viewer_id=principal.user_id)
 
 
 @router.post(

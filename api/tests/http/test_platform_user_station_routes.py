@@ -73,7 +73,10 @@ async def test_progress_is_one_row_per_station_with_both_counts(
     assert row["evaluated"] == 0
     assert row["entry_attempts"] == 2
     assert row["set_entry_ids"] == [created["entries"][0]["id"]]
-    assert row["last_attempt_id"] == attempt_ids[-1]
+    # Both attempts are written in this fixture's one transaction, so they
+    # share a `created_at` and "newest" falls to the documented tie-break —
+    # greater id wins (`attempts.repository_platform.progress_by_version`).
+    assert row["last_attempt_id"] == max(attempt_ids)
     assert row["last_status"] == "created"
     assert row["last_attempt_at"] is not None
 

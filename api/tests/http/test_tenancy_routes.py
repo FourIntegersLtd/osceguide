@@ -150,6 +150,24 @@ async def test_memberships_are_listed_as_a_page(client: AsyncClient, make_actor)
     assert "items" in body and "next_cursor" in body
 
 
+async def test_a_membership_row_carries_the_address_it_belongs_to(client: AsyncClient, make_actor) -> None:
+    """The list used to answer `email: null` for every row but the one it had
+    just invited, which left a team screen showing the front of a user id where
+    a person's name should be."""
+    org_id = await seed_org(client, make_actor)
+    owner = await member_token(make_actor, org_id, "kings", "owner")
+    await client.post(
+        "/api/v1/orgs/kings/memberships",
+        json={"email": "tutor@kings.example", "role": "supervisor"},
+        headers=bearer(owner),
+    )
+
+    listed = await client.get("/api/v1/orgs/kings/memberships", headers=bearer(owner))
+    addresses = {item["email"] for item in listed.json()["items"]}
+    assert "tutor@kings.example" in addresses, listed.json()
+    assert None not in addresses, "every row on the list is somebody's address"
+
+
 # --------------------------------------------------------------------------
 # Switching workspace
 # --------------------------------------------------------------------------

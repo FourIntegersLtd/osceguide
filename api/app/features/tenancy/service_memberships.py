@@ -27,7 +27,14 @@ async def list_memberships(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[MembershipRead], str | None]:
     rows, next_cursor = await repository.list_memberships(session, org_id, limit=limit, cursor=cursor)
-    return [_membership_read(r) for r in rows], next_cursor
+    # The addresses are read for the page instead of being left null. A team
+    # list without an email can only show the front of a user id, which is a
+    # uuid printed as if it were a name; the one join is the whole of the fix.
+    people = await identity.user_refs_by_ids(session, [row.user_id for row in rows])
+    return [
+        _membership_read(row, email=people[row.user_id].email if row.user_id in people else None)
+        for row in rows
+    ], next_cursor
 
 
 async def add_membership(
@@ -92,7 +99,19 @@ async def change_membership_role(
         target_id=str(membership_id),
         summary=f"{membership.role} to {role}",
     )
-    return _membership_read(await _require_membership(session, org_id, membership_id))
+    return await _read_with_email(session, await _require_membership(session, org_id, membership_id))
+
+
+async def _read_with_email(session: AsyncSession, row: Any) -> MembershipRead:
+    """A membership answered the way the list answers it.
+
+    The write routes used to return the row with no address on it, so a screen
+    that had just changed a role or revoked one lost the email it was already
+    showing. `add_membership` does not need this — it looked the person up by
+    address to do the job at all.
+    """
+    people = await identity.user_refs_by_ids(session, [row.user_id])
+    return _membership_read(row, email=people[row.user_id].email if row.user_id in people else None)
 
 
 async def set_membership_revoked(
@@ -121,7 +140,7 @@ async def set_membership_revoked(
         target_type="membership",
         target_id=str(membership_id),
     )
-    return _membership_read(await _require_membership(session, org_id, membership_id))
+    return await _read_with_email(session, await _require_membership(session, org_id, membership_id))
 
 
 async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID) -> Any:

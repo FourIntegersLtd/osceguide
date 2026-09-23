@@ -174,3 +174,80 @@ async def test_a_comment_on_a_station_that_does_not_exist_is_refused(  # type: i
     )
     assert response.status_code == 404
     assert response.json()["code"] == "station_not_found"
+
+
+# ------------------------------------------------------------------ W1 reads
+
+
+async def test_a_post_names_its_author(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`author_name` is joined, not stored.
+
+    The feed used to carry `author_id` and nothing else, so every screen could
+    only byline the viewer's own posts and a stranger read as "a colleague".
+    `make_actor` names a user by their address, which is what makes the
+    assertion prove a join rather than a coincidence.
+    """
+    token = await make_actor("byline@example.com")
+    await ask(client, token)
+    listed = await client.get("/api/v1/community/questions", headers=bearer(token))
+    assert listed.json()["items"][0]["author_name"] == "byline@example.com"
+
+
+async def test_one_question_opens_by_id_however_old_it_is(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """There was no single-question read, so a thread was hunted through the
+    feed page — which meant anything past the first hundred 404ed on a link."""
+    token = await make_actor("deeplink@example.com")
+    question = await ask(client, token, title="Deep-linked")
+
+    response = await client.get(f"/api/v1/community/questions/{question['id']}", headers=bearer(token))
+    assert response.status_code == 200, response.text
+    assert response.json()["id"] == question["id"]
+    assert response.json()["title"] == "Deep-linked"
+
+
+async def test_an_answer_is_listed_across_every_question(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Replies were only readable one question at a time, so "answers I wrote"
+    cost a request per question and the screen shipped empty."""
+    asker = await make_actor("asker@example.com")
+    responder = await make_actor("responder@example.com")
+    first = await ask(client, asker, title="First")
+    second = await ask(client, asker, title="Second")
+
+    for question, body in ((first, "History first."), (second, "Examine, then plan.")):
+        posted = await client.post(
+            f"/api/v1/community/questions/{question['id']}/replies",
+            json={"body": body},
+            headers=bearer(responder),
+        )
+        assert posted.status_code == 201, posted.text
+
+    mine = await client.get("/api/v1/community/replies?author=me", headers=bearer(responder))
+    assert mine.status_code == 200, mine.text
+    assert sorted(item["body"] for item in mine.json()["items"]) == [
+        "Examine, then plan.",
+        "History first.",
+    ]
+    # Only their own answers, not the whole pool.
+    other = await client.get("/api/v1/community/replies?author=me", headers=bearer(asker))
+    assert other.json()["items"] == []
+
+
+async def test_the_author_filter_refuses_to_read_somebody_else(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`author` takes `me` and nothing else: another person's answer history is
+    a different question, with its own visibility rule this endpoint has not."""
+    token = await make_actor("nosy@example.com")
+    response = await client.get("/api/v1/community/replies?author=someone-else", headers=bearer(token))
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_author_filter"
+
+
+async def test_the_feed_can_narrow_to_my_questions(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`mine` filters in SQL, so the tab is not "the first page, minus the rows
+    that were not mine"."""
+    mine = await make_actor("mine-asker@example.com")
+    theirs = await make_actor("theirs-asker@example.com")
+    await ask(client, mine, title="Mine")
+    await ask(client, theirs, title="Theirs")
+
+    response = await client.get("/api/v1/community/questions?mine=true", headers=bearer(mine))
+    assert [item["title"] for item in response.json()["items"]] == ["Mine"]

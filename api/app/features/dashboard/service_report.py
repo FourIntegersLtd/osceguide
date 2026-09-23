@@ -57,6 +57,7 @@ async def build_sitting_report(
                     slot_index=slot.slot_index,
                     station_title=title.title if title else None,
                     slot_status=slot.status,
+                    attempt_id=attempt.id if attempt else None,
                     attempt_status=attempt.status if attempt else None,
                     marked=attempt is not None and attempt.status == "evaluated",
                     overall_rag=summary.overall_rag,

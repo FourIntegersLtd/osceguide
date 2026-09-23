@@ -3939,6 +3939,7 @@
               "internal_error",
               "invalid_attempt_state",
               "invalid_audience",
+              "invalid_author_filter",
               "invalid_circuit",
               "invalid_credentials",
               "invalid_cv_file",
@@ -11919,6 +11920,18 @@
       },
       "StationReport": {
         "properties": {
+          "attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
           "attempt_status": {
             "anyOf": [
               {
@@ -11993,6 +12006,7 @@
           "slot_index",
           "station_title",
           "slot_status",
+          "attempt_id",
           "attempt_status",
           "marked",
           "overall_rag"
@@ -14028,6 +14042,17 @@
             "title": "Author Id",
             "type": "string"
           },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
           "body": {
             "title": "Body",
             "type": "string"
@@ -14087,6 +14112,7 @@
           "kind",
           "parent_id",
           "author_id",
+          "author_name",
           "title",
           "body",
           "like_count",
@@ -17264,6 +17290,18 @@
         "operationId": "community_list_questions",
         "parameters": [
           {
+            "description": "Only the caller's own questions.",
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only the caller's own questions.",
+              "title": "Mine",
+              "type": "boolean"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -17494,6 +17532,82 @@
         ]
       }
     },
+    "/api/v1/community/questions/{question_id}": {
+      "get": {
+        "description": "One question by id, so a deep link works whatever page the feed is on.",
+        "operationId": "community_read_question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__community__schemas__PostRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "post_not_found",
+            "x-codes": [
+              "post_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Question",
+        "tags": [
+          "community"
+        ]
+      }
+    },
     "/api/v1/community/questions/{question_id}/replies": {
       "get": {
         "operationId": "community_list_replies",
@@ -17650,6 +17764,104 @@
           }
         ],
         "summary": "Reply",
+        "tags": [
+          "community"
+        ]
+      }
+    },
+    "/api/v1/community/replies": {
+      "get": {
+        "description": "The answers this caller has written, across every question.\n\n`author` takes `me` and nothing else. Reading somebody else's answer\nhistory is a different question \u2014 \"what has this person said\" \u2014 and it is\nnot what the tab asks, so the parameter refuses rather than quietly\nwidening to any user id.",
+        "operationId": "community_list_replies_by_author",
+        "parameters": [
+          {
+            "description": "`me` \u2014 the caller's own answers.",
+            "in": "query",
+            "name": "author",
+            "required": false,
+            "schema": {
+              "default": "me",
+              "description": "`me` \u2014 the caller's own answers.",
+              "title": "Author",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__core__pagination__Page_PostRead___2"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_author_filter",
+            "x-codes": [
+              "invalid_author_filter"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Replies By Author",
         "tags": [
           "community"
         ]

@@ -23,6 +23,10 @@ class StationReport(BaseModel):
     slot_index: int
     station_title: str | None
     slot_status: str
+    # The live attempt's id, or null if the station was never dispatched. A
+    # reviewer opening a slot needs it to read the engine's marking beside their
+    # own, and `/slots/{id}/reviews` does not carry one.
+    attempt_id: uuid.UUID | None
     # The live attempt's status, or null if the station was never dispatched.
     attempt_status: str | None
     # Marked by the engine: the attempt reached `evaluated`.

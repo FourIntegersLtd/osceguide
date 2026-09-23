@@ -13,6 +13,10 @@ class PostRead(BaseModel):
     kind: str
     parent_id: uuid.UUID | None
     author_id: uuid.UUID
+    # The author's name, joined from `identity` a page at a time rather than
+    # stored twice. A display name is not a fact about the post, and copying it
+    # in would leave every old post holding the name somebody stopped using.
+    author_name: str | None
     title: str | None
     body: str
     like_count: int
