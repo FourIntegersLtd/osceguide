@@ -2,24 +2,24 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { structureFromStartPoint } from "@/b2b/lib/stations/stationTemplatePresets";
+import { structureFromStartPoint } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
 import {
   initialStationStartPoint,
   startOptionsForExam,
   STATION_TEMPLATE_START_OPTIONS,
-} from "@/b2b/lib/stations/stationTemplateStartOptions";
+} from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplateStartOptions";
 import type {
   StationStructure,
   StationTemplateStartPoint,
-} from "@/b2b/types/b2bStationTemplateTypes";
-import { StructureBuilder } from "@/b2b/components/features/stations/templates/builder/StructureBuilder";
-import { TemplateStartPanel } from "@/b2b/components/features/stations/templates/TemplateLayoutGallery";
+} from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
+import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
+import { TemplateStartPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/TemplateLayoutGallery";
 import { Button, getInputClassName } from "@/foundation/ui";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import {
   b2bTemplateTitleSchema,
   zodErrorFirstMessage,
-} from "@/b2b/lib/validation";
+} from "@/capabilities/authoring/structure/b2b/lib/validation";
 import { useSurface } from "@/capabilities";
 import { createStationTemplate } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";

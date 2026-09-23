@@ -5,7 +5,7 @@ import {
   UTM_PARAM_CONTENT,
   UTM_PARAM_MEDIUM,
   UTM_PARAM_SOURCE,
-} from "./partnerConstants";
+} from "../../../foundation/attribution/partnerConstants";
 import type { StoredPartnerContext } from "./partnerContextStorage";
 
 const CARRIED_PARAMS = [

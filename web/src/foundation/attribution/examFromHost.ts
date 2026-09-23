@@ -1,5 +1,5 @@
-import { PILOT_EXAMS } from "@/domains/marketing/support/partnerConstants";
-import type { PilotExam } from "@/domains/marketing/support/partnerTypes";
+import { PILOT_EXAMS } from "@/foundation/attribution/partnerConstants";
+import type { PilotExam } from "@/foundation/attribution/partnerTypes";
 import { getExamFromHost } from "@/foundation/routing/examFromHost";
 
 export { getExamFromHost };

@@ -5,8 +5,8 @@ import type {
   StationTemplateVersion,
 } from "@/capabilities/authoring/api/scope";
 import { pathId } from "@/capabilities/authoring/api/scope";
-import { toPlatformStructure } from "@/b2b/lib/stations/blockRoles";
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import { toPlatformStructure } from "@/capabilities/authoring/structure/b2b/lib/stations/blockRoles";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 
 /**
  * platform-api's renderer reads a flat `blocks` list with a `role` per block

@@ -7,6 +7,50 @@ shape. One file so the backlog is countable rather than scattered through
 
 Each entry says what the screen does today, so nothing is silently dropped.
 
+## 2026-09-23 — a full re-check, and the two ways this file was wrong
+
+Everything below was re-read against the current tree. This file's own rule is
+"annotate, don't delete", so nothing here is removed — but a reader should know
+that the register drifted in **both** directions, and that a row saying "not
+ported" is now evidence to check rather than a fact to act on.
+
+**It understated the work.** The whole of `gap-closure-plan.md` Phase 1 was
+already implemented — the checkout return routes, `fetchLandingStats`, the public
+blog rail, `POST /site/messages`, the exam-date countdown, extra reading time,
+SSO discovery, `/me/attempts` in the mock station table, and the
+station-comment dedupe. So were three rows that still read as open: there *is* a
+platform-admin listing (`/platform/admins`, driving `/staff/team`), there *is* a
+cross-tenant audit and an organisation member read wired into the staff console,
+and the runner *does* show a reading brief (`sessions/SupervisorReadingBrief.tsx`
+besides the candidate's `trainee/SlotReadingBrief.tsx`).
+
+**It reported a security hole that is shut.** Phase 0's S1 — a trainee reading
+`StationRead.content` with the patient brief in it — is implemented server-side:
+`stations/service.py` takes `full_content` and reduces a non-staff reader's rows
+through `candidate_content`. The `SelfPractice.readingBrief()` workaround is no
+longer load-bearing. S3 was checked at the same time.
+
+**It missed ten things outright**, found by auditing `frontend/` against
+`platform-web` screen by screen rather than through this file. All ten are fixed
+now, and are recorded here because they were never in the register:
+
+| What was wrong | Where | Fixed by |
+|---|---|---|
+| The examiner's review screen never received an `attemptId`, so it derived zero scoreable domains from a null payload — **per-domain marking could not be done from the UI at all**. One caller link sent `?attempt=` that nothing read; the other sent nothing. | `app/[workspace]/slots/[slotId]/review/page.tsx`, `domains/assess/SlotReview.tsx` | The route forwards `searchParams.attempt`; the sitting report now carries `attempt_id` per station (platform-api) so `CandidateCard` can link with it; an absent attempt says so rather than rendering an empty rubric. |
+| Every legacy session URL 404ed: `/b2b/<org>/sessions…` redirected to `/app/<org>/sessions`, but the route tree renamed the word to **sittings**. The repo's own test asserted the broken destination. | `foundation/routing/legacyRedirects.ts` | Table rewritten for the renamed sub-trees (`sessions`→`sittings`, a slot's `feedback` page→`review`, `[org]/templates`→Authoring's station-templates, `trainee/sessions`→`trainee/sittings`), with the test now reading `src/app` off disk and failing if any destination has no page behind it. |
+| `/welcome`, `/feedbacks`, `/blogs` and the four console sign-ins redirected to routes that do not exist; `/b2b/trainee/join/<slotId>` read `join` as a workspace slug, so **emailed join links were dead**. | same | Same pass. Each now lands on a page that answers, or on the arm's `dashboard` where nothing does. |
+| `must_change_password` was read by nobody. An account created by an invitation kept running on a password an administrator set. | `foundation/session/guards.tsx` | `RequireSession` sends a flagged account to `/change-password` and renders nothing until it is cleared. |
+| **A partner arm could not invite anybody.** `screenNames` was `["dashboard","reporting"]`; a partner admin had no route to their own editors. | `surfaces/partner/surface.ts` | `team` added to the manifest, answering Assess's `Team` — the memberships are the same rows behind the same routes. |
+| **A circuit could not be corrected.** `PUT /orgs/{slug}/circuits/{id}` was served and tested and had no caller, so "circuits are immutable" read as a backend limit. `edit-lock` was unwired for the same reason. | `domains/assess/sessions/api.ts` | New `EditCircuit` screen sharing one `CircuitBuilder` with the create form, pre-filled from the console and gated by `editable`/`edit_block`. |
+| **Partner attribution was dead.** `middleware.ts` ported the redirects and dropped `proxy.ts`'s attribution half; `POST /growth/arrivals` and `/growth/acquisitions` had no caller, and sign-up carried nothing. BMJ reporting would have stopped accruing at cutover. | `middleware.ts`, `foundation/attribution/` | Visitor key minted first-touch at the edge, arrival recorded with `waitUntil`, and the key spent on the new account after `POST /auth/register`. The signed `osce_acquisition` cookie did not come across: platform-api asks for no signature, so there was nothing to sign. |
+| **Analytics, consent, SEO and the sitemap had no new home.** `CookiesConsentModal` was ported and never rendered; no gtag; no `openGraph` although `og-image.png` shipped; no `robots.txt`/`sitemap.xml` (`next-sitemap` was dropped with no replacement) while the privacy policy still claimed Mixpanel. | `foundation/analytics/`, `app/metadata.ts`, `app/robots.ts`, `app/sitemap.ts` | Consent gates gtag as the old client did, on the same `analytics-consent` key. Metadata ported from `frontend/src/app/metadata.ts` minus two lines that were already broken there (a `manifest.json` that never existed, and the `appleWebApp.capable` beside it). The public path list is shared with the robots file so the two cannot disagree about what is private. |
+| **`platform-web` was not self-contained.** Thirteen files imported `@/b2b/**` and `@/shared/**` out of the retiring tree, so deleting `frontend/` broke the build — and the alias hid half the ported code from every grep run against this project. | `next.config.ts`, `tsconfig.json` | The 63-file closure (template builder, station structures, the four arm v1 templates, validators, the shared primitives) moved to `capabilities/authoring/structure`. The `@/b2b` and `@/shared` aliases and the `prebuild` that installed the old tree's dependencies are gone; `npm run build` proves it. |
+| Four backend routes were served, typed, and called by nothing: `POST /auth/sso/login` + `/callback` (the sign-in button said "not available yet" against a live door), `/cv`, `GET /platform/site/messages`, and `POST /platform/generate/station`. | `capabilities/account/`, `domains/platform/`, `capabilities/authoring/` | The SSO button now redirects and `/auth/sso/callback` closes the loop; the Ortho CV upload and its twelve sections are back on the profile; `/staff/messages` is the inbox; a station can be generated from a prompt with no template, which `CreateStation` always allowed and the create screen forbade. |
+
+`GET /station-generation-profiles` looked like a fifth orphan and is not one —
+it was wired all along, inside the tree only reachable through the alias. That
+is worth stating because it is the same grep that produced the other four.
+
 ## Five of these are now served
 
 The backend jobs B2 and B3 closed a row of these (platform-api commits c04411e
@@ -33,19 +77,20 @@ wires the new route:
 - **Exam wishes / the dashboard countdown** — `users.exam_date` is on `/me`.
 
 Still genuinely absent: **achievements**, **photo upload**, **push
-notifications**, **public user profiles**, **blog authoring**, and the sign-in
-half of **SSO** (the discovery half landed — see below).
+notifications**, **public user profiles** and **blog authoring**. SSO was on this
+list and is not any more — both halves of it landed on 2026-09-23; see the row
+below.
 
 ## No endpoint on platform-api
 
 | What | Where | Today |
 |---|---|---|
-| Landing statistics band | `domains/marketing/Numbers.tsx` | **Wired 2026-09-21.** `fetchLandingStats` reads `GET /site/statistics` through `domains/marketing/api.ts`, and the band and the hero's social proof render again. One figure is a stopgap: the band's fourth card ("AI feedback reports generated") read the retiring backend's `all_feedback`, and `SiteStatistics` carries no feedback counter — every completed consultation produces one AI feedback report and the old two counters never differed by more than a fraction of a percent, so the consultation count stands in. A dedicated counter on `SiteStatistics` would make the card its own number again. |
+| Landing statistics band | `domains/marketing/Numbers.tsx` | **Wired 2026-09-21; stopgap closed.** `fetchLandingStats` reads `GET /site/statistics` through `domains/marketing/api.ts`, and the band and the hero's social proof render again. The band's fourth card ("AI feedback reports generated") read the retiring backend's `all_feedback`; the consultation stand-in that replaced it is gone — `SiteStatistics` now carries a dedicated `feedback` counter (evaluated attempts) and the card shows its own number. |
 | Achievements | `capabilities/account/Achievements.tsx` | **Ported as its own empty state, and it asks for nothing.** The old screen counted station badges from `user.station_progress` and computed streaks in the browser from the transcript list; `platform-api` has neither — progress is attempts, and a streak exists nowhere on the backend. The component takes the four numbers as props and defaults them to zero, so the day something serves them it is a one-line change at the call site rather than a port. It has no route: see "Route files the account capability still needs". |
-| Messages / contact | `capabilities/help/Messages.tsx` | **Ported 2026-09-21.** The old `/messages` screen — "Contact & Feedback", two tabs — is a straight port over `POST /site/messages` (`kind: "contact"`), at `/app/<workspace>/messages` through the `help` capability; the redirect table already sent `/messages` there. One adaptation: the old screen widened when the help dock expanded, read off a context the shell owned; the shells here keep that state private, so the width is the fixed `max-w-2xl` every sibling port settled on. |
+| Messages / contact | `capabilities/help/Messages.tsx` | **Ported 2026-09-21.** The old `/messages` screen — "Contact & Feedback", two tabs — is a straight port over `POST /site/messages` (`kind: "contact"`), at `/app/<workspace>/messages` through its own `messages` capability, which puts "Contact & Feedback" back in the consumer sidebar ahead of Community; the redirect table already sent `/messages` there. One adaptation: the old screen widened when the help dock expanded, read off a context the shell owned; the shells here keep that state private, so the width is the fixed `max-w-2xl` every sibling port settled on. |
 | Product feedback form | `domains/marketing/sections/LandingFeedbackSection.tsx` | **Wired 2026-09-21.** The "Help Us Improve" section is back in `landingSections` with the retiring landing's two-tab widget ("Harsh Truth" / "Feature Wishlist") ported as it was, posting `kind: "product_feedback"` to `POST /site/messages`. The signed-in product-feedback form (stars, testimonial question) is ported beside the contact tab in `capabilities/help/ProductFeedbackForm.tsx`. |
 | Push notifications | not ported | `web-push` is deliberately not a dependency here yet. |
-| SSO configuration | `capabilities/account/Login.tsx` | **Discovery wired 2026-09-21.** The sign-in page asks `GET /auth/sso/sign-in?host=<this host>` on mount (`readSsoSignIn` in the account capability's `api.ts`); a host nobody has claimed answers 404 and the ordinary password form stands. On an answer the organisation's button renders with the backend's `sign_in_label`, and on `sso_only` the password form is not drawn — a display rule only, nothing refuses a password login. **The button is not a door**: `/auth/sso/login` does not exist (the sign-in half — who verifies the identity — is still open decision S-1), so clicking it says organisation sign-in is not available yet and points at support. |
+| SSO configuration | `capabilities/account/Login.tsx` | **Discovery wired 2026-09-21.** The sign-in page asks `GET /auth/sso/sign-in?host=<this host>` on mount (`readSsoSignIn` in the account capability's `api.ts`); a host nobody has claimed answers 404 and the ordinary password form stands. On an answer the organisation's button renders with the backend's `sign_in_label`, and on `sso_only` the password form is not drawn — a display rule only, nothing refuses a password login. **The button is not a door**: `/auth/sso/login` does not exist (the sign-in half — who verifies the identity — is still open decision S-1), so clicking it says organisation sign-in is not available yet and points at support **[2026-09-23: the button is a door now.]** `POST /auth/sso/login` and `/auth/sso/callback` are served, and `startSsoSignIn`/`completeSsoSignIn` in the account capability's `api.ts` use them: the button redirects to the broker's URL and `app/(auth)/auth/sso/callback/page.tsx` posts the token it was handed and adopts the session. Decision S-1 is closed. The token is verified by the backend, never decoded here. |
 | Public user profiles | not ported | `/users/[userId]`. The old `b2c/components/shared/users` was not a public profile at all: it is an **administrator's** user list and user detail — plan editing, station-progress resetting, hard delete, filters by plan type. None of it is servable. See "The old `users/` folder" below. |
 | Blog authoring | not ported | Reading is `capabilities/media`; authoring has no endpoint. |
 | Public blog listing | `domains/marketing/support/landingBlogs.ts` | **Wired 2026-09-21.** `GET /media` is public, so the rail asks again — signed-out visitors included — and links each card by the item's slug. |
@@ -340,7 +385,7 @@ arms. Most of it is wired; these are the parts of the retiring screens that
 | Bank details for referral payouts | `settings/referrals/user/BankDetails.tsx` (293 lines) | The growth slice tracks a code, a redemption count and pence earned. There is nowhere to store a sort code, and nothing pays anybody out. Not ported. |
 | Referral history per referee | `settings/referrals/user/ReferralHistory.tsx`, `ReferralDetail.tsx` | `GET /me/referrals` answers one `ReferralRead` — `{code, redeemed_count, earned_pence}` — with no per-referee rows, no join dates and no payout status. The screen shows the two totals it can prove. A listing endpoint would bring the table back unchanged. |
 | The admin referral console | `settings/referrals/admin/*` (665 lines) | Marking payouts paid across all users. No endpoint, and it belongs to the staff console (J15) rather than to an account capability, since it is about other people. |
-| Ortho CV upload and display | `Profile.tsx`, `/api/ortho/cv_status` | An exam-specific attachment on a consumer profile. No endpoint. |
+| Ortho CV upload and display | `Profile.tsx`, `/api/ortho/cv_status` | An exam-specific attachment on a consumer profile. No endpoint **[2026-09-23: ported.]** `/cv` and `/cv/{id}` are served and now have a caller — `capabilities/account/settings/CvPanel.tsx`, on the Profile tab for anybody holding `ortho`, polling while a row is `processing`. The `StructuredCv` sections are the twelve the old screen showed. |
 
 ### Checkout works; two things about it are worth knowing
 
@@ -574,6 +619,16 @@ cannot show addresses for people it did not just invite, and says
 user id rather than printing a uuid as if it were a name. It is a one-line join
 in the service, and it is the single thing that would most improve this screen.
 
+**[2026-09-23: served.]** `list_memberships` now reads the page's addresses
+through `identity.user_refs_by_ids` — the helper whose own docstring says it is
+for read models that show a name beside a row — and the two write routes
+(`PATCH` role, revoke/restore) answer through the same join, so a screen no
+longer loses the address on the row it has just changed. `POST` still answers
+from the lookup it did to do the job at all. `/platform/organizations/{slug}/memberships`
+calls the same service and is fixed by the same change. The screen's
+"Account without a listed address" fallback stays: it now means the account is
+gone, which is the only way the field can be null.
+
 ### Cohorts and groups
 
 The platform splits what the old client held in one free-text `cohort` string:
@@ -655,6 +710,8 @@ being able to speak into a training circuit, which the old runner allowed and
 this backend does not offer a token for.
 
 ### The reading brief is not in the runner
+
+**[2026-09-23: stale — it is in the runner.]** `sessions/SupervisorReadingBrief.tsx` is mounted in `CircuitRunner.tsx` and resolves the active slot's brief for the supervisor, and the candidate has `trainee/SlotReadingBrief.tsx` off the attempt read. This row describes the state before the candidate-scoped brief read landed.
 
 The old runner showed the station's brief in a sidebar while reading time ran.
 `CircuitConsole` carries a station's title and version and no content, for the
@@ -899,6 +956,8 @@ Two things follow from that:
 
 ### `GET /orgs/{slug}/stations` hands a trainee the whole station document
 
+**[2026-09-23: shut server-side.]** `stations/service.py`'s `list_stations(..., full_content)` reduces a reader who is not admin or assigned staff through `domain_content.candidate_content`, so the patient material no longer leaves the server. `SelfPractice.readingBrief()` remains but is no longer the only thing standing between a trainee and the answer. Gap-closure-plan Phase 0 S1 and S2 are closed by this; S3 (the `station_not_found` mapping) should be re-checked the same way before being scheduled.
+
 `StationRead.content` is the version's full content — on the seeded case that
 is `candidate_brief` **and** `patient_brief` together, and on a
 template-authored station it is every block, the hidden ones included. The route
@@ -983,6 +1042,8 @@ not, and one of them is a deliberate decision rather than a hole.
 
 ### A platform admin cannot read an organisation's members or its audit log
 
+**[2026-09-23: stale.]** `domains/platform/api.ts` calls `GET /platform/organizations/{slug}/memberships` and `…/audit`, and `MembersSection.tsx` / `AuditSection.tsx` render and act on them (role, revoke, restore). The platform-admin routes are the ones the console uses; the org-scoped `/orgs/{slug}/…` reads remain `OrgAdmin`-only, which is the policy the row cites and is unchanged.
+
 The largest gap, and the reason the organisation screen ends with a card saying
 so. `GET /orgs/{slug}/memberships` and `GET /orgs/{slug}/audit` are both
 `OrgAdmin`, which is declared `allow_platform_admin=False` — on purpose:
@@ -1008,6 +1069,8 @@ smoke account is a member of the org it switched into and so reads them through
 its membership. Against an organisation it does not belong to, both are 403.
 
 ### There is no list of platform administrators, and no field saying who is one
+
+**[2026-09-23: stale.]** `GET`/`POST /api/v1/platform/admins` exists and `domains/platform/PlatformTeam.tsx` lists, invites and revokes through it, mounted at `/staff/team`.
 
 `PlatformTeamPage` listed them, granted by email and revoked by id. On
 `platform-api`, `PUT /platform/users/{id}/platform-admin` is the whole of it:

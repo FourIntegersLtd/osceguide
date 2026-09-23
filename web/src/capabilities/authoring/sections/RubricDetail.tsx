@@ -7,8 +7,8 @@ import {
   HiOutlineArrowUpTray,
   HiOutlinePencilSquare,
 } from "react-icons/hi2";
-import { StructureBuilder } from "@/b2b/components/features/stations/templates/builder/StructureBuilder";
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { Alert, AsyncBoundary } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";

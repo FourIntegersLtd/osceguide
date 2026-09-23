@@ -330,3 +330,32 @@ export function listOrgAuditForSupport(
     { signal, query: pageQuery(page) },
   );
 }
+
+/* ---------- the contact and feedback inbox ---------- */
+
+export type SiteMessage = components["schemas"]["MessageRead"];
+
+/**
+ * Everybody's messages to us — contact form and product feedback.
+ *
+ * Platform admin only, because it is everybody's: a contact note from a
+ * candidate may name their employer, and an organisation's own admin has no
+ * business reading the messages that arrived at the platform.
+ */
+export function listSiteMessages(
+  query: { kind?: string } = {},
+  signal?: AbortSignal,
+): Promise<SiteMessage[]> {
+  return platformRequest<SiteMessage[]>(`${PLATFORM}/site/messages`, {
+    signal,
+    query: { kind: query.kind || undefined, limit: 200 },
+  });
+}
+
+/** Answered, or read and nothing to do. Either way it leaves the queue. */
+export function markMessageHandled(messageId: string): Promise<SiteMessage> {
+  return platformRequest<SiteMessage>(
+    `${PLATFORM}/site/messages/${encodeURIComponent(messageId)}/handled`,
+    { method: "POST" },
+  );
+}

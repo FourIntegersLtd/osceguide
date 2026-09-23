@@ -1,11 +1,11 @@
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
-import { cascStationTemplateV1 } from "@/b2b/lib/stations/v1/cascStation";
-import { orthoClinicalStationTemplateV1 } from "@/b2b/lib/stations/v1/orthoClinicalStation";
-import { orthoCommunicationStationTemplateV1 } from "@/b2b/lib/stations/v1/orthoCommunicationStation";
-import { orthoPortfolioStationTemplateV1 } from "@/b2b/lib/stations/v1/orthoPortfolioStation";
-import { orthoPrioritisationStationTemplateV1 } from "@/b2b/lib/stations/v1/orthoPrioritisationStation";
-import { plabStationTemplateV1 } from "@/b2b/lib/stations/v1/plabStation";
-import { scaStationTemplateV1 } from "@/b2b/lib/stations/v1/scaStation";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
+import { cascStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/cascStation";
+import { orthoClinicalStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/orthoClinicalStation";
+import { orthoCommunicationStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/orthoCommunicationStation";
+import { orthoPortfolioStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/orthoPortfolioStation";
+import { orthoPrioritisationStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/orthoPrioritisationStation";
+import { plabStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/plabStation";
+import { scaStationTemplateV1 } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/scaStation";
 
 const ORTHO_TEMPLATES: Record<string, () => StationStructure> = {
   clinical: orthoClinicalStationTemplateV1,

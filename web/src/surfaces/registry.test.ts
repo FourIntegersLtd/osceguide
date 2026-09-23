@@ -179,6 +179,7 @@ describe("surface registry", () => {
       "Users",
       "Platform team",
       "Billing",
+      "Messages",
       "Audit log",
       "Machinery",
     ]);

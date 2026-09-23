@@ -1,4 +1,4 @@
-import { LuActivity, LuBuilding2, LuGauge, LuReceipt, LuScrollText, LuShieldCheck, LuUsers } from "react-icons/lu";
+import { LuActivity, LuBuilding2, LuGauge, LuInbox, LuReceipt, LuScrollText, LuShieldCheck, LuUsers } from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -31,6 +31,7 @@ function nav({ href }: NavContext): NavItem[] {
       section: "console",
     },
     { key: "billing", label: "Billing", href: href("/billing"), icon: LuReceipt, section: "console" },
+    { key: "messages", label: "Messages", href: href("/messages"), icon: LuInbox, section: "console" },
     { key: "audit", label: "Audit log", href: href("/audit"), icon: LuScrollText, section: "console" },
     { key: "ops", label: "Machinery", href: href("/ops"), icon: LuActivity, section: "console" },
   ];

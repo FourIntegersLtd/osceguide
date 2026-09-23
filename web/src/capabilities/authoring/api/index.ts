@@ -27,6 +27,7 @@ export {
   listStations,
   listAllStations,
   createStation,
+  generateStation,
   autogenerateStationDraft,
   addStationVersion,
   editStationVersion,

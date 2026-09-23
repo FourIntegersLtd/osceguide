@@ -1,9 +1,17 @@
-import type { Metadata, Viewport } from "next";
+import type { Viewport } from "next";
 import type { ReactNode } from "react";
 import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
 import { SessionProvider } from "@/foundation/session";
 import { ToastHost } from "@/foundation/ui";
+import { AnalyticsConsentGate } from "@/foundation/analytics/AnalyticsConsentGate";
 import "@/app/globals.css";
+
+/*
+ * The document head lives in `app/metadata.ts` so that the one object Next
+ * reads for every page can be read on its own. Re-exported here through the
+ * conventional binding.
+ */
+export { metadata } from "@/app/metadata";
 
 /*
  * Three faces, as CSS variables.
@@ -43,11 +51,6 @@ const bodyClassName = [
   "antialiased",
 ].join(" ");
 
-export const metadata: Metadata = {
-  title: { default: "OSCE Guide", template: "%s · OSCE Guide" },
-  description: "Practise, assess and hire against real clinical scenarios.",
-};
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -72,7 +75,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             shell because a toast outlives the screen that raised it: "results
             released" has to survive the navigation that follows it.
           */}
-          <ToastHost>{children}</ToastHost>
+          <ToastHost>
+            <AnalyticsConsentGate>{children}</AnalyticsConsentGate>
+          </ToastHost>
         </SessionProvider>
       </body>
     </html>

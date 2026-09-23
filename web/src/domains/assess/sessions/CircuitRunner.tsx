@@ -100,6 +100,18 @@ function Runner({
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <RunnerHelpPanel kind={isExam ? "exam" : "training"} />
+          {/*
+            Offered only while the circuit's slots can still be rebuilt, which
+            is the backend's rule and not this screen's guess — it sends
+            `editable` with the frame precisely so a supervisor is not invited to
+            delete a consultation in progress. Once anything on the circuit means
+            something the link is gone rather than there and refusing.
+          */}
+          {circuit.editable ? (
+            <Link href={hrefFor(`/circuits/${circuitId}/edit`)} className={b2bTokens.b2bLink}>
+              Edit
+            </Link>
+          ) : null}
           {/* The stream being up is the difference between a stale screen and
               a live one, so it is said rather than assumed — until the circuit
               ends, when the stream closing is the expected thing and a

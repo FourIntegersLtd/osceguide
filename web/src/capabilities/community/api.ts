@@ -29,7 +29,7 @@ export const PUBLIC_ROOM: Room = { visibility: "public", orgId: null };
  * conversation never mixes with the public board.
  */
 export function listQuestions(
-  params: { room?: Room | null; cursor?: string | null; limit?: number },
+  params: { room?: Room | null; cursor?: string | null; limit?: number; mine?: boolean },
   signal?: AbortSignal,
 ): Promise<PostPage> {
   const room = params.room ?? null;
@@ -40,7 +40,36 @@ export function listQuestions(
       audience_org_id: scoped ? (room.orgId ?? undefined) : undefined,
       cursor: params.cursor ?? undefined,
       limit: params.limit ?? undefined,
+      // Narrowed in SQL. Filtering the fetched page would make the tab mean
+      // "the first hundred questions, minus the ones that were not mine".
+      mine: params.mine ? true : undefined,
     },
+    signal,
+  });
+}
+
+/**
+ * One question by id.
+ *
+ * A thread used to be found by searching the page the feed already served, so a
+ * question older than the first hundred opened as "Question not found" — the
+ * same shape as `findLibraryStation`, and the reason a deep link must not
+ * depend on how much other traffic there happens to be.
+ */
+export function readQuestion(questionId: string, signal?: AbortSignal): Promise<Post> {
+  return platformRequest<Post>(
+    `/api/v1/community/questions/${encodeURIComponent(questionId)}`,
+    { signal },
+  );
+}
+
+/** Everything this person has answered, across every question. */
+export function listMyAnswers(
+  params: { cursor?: string | null; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<PostPage> {
+  return platformRequest<PostPage>("/api/v1/community/replies", {
+    query: { author: "me", cursor: params.cursor ?? undefined, limit: params.limit ?? undefined },
     signal,
   });
 }

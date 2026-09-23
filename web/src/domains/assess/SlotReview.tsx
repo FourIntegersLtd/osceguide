@@ -66,6 +66,17 @@ export function SlotReview({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Mark this station" description="Your judgement, beside the machine's." />
+      {attemptId ? null : (
+        /*
+         * Without an attempt there is no engine marking to derive the domains
+         * from, and an empty list of domains reads as "this station has no
+         * rubric" rather than as "this candidate was never dispatched". Say
+         * which of the two it is.
+         */
+        <Alert tone="warning">
+          This slot has no consultation on record, so there is nothing to mark against yet.
+        </Alert>
+      )}
       <AsyncBoundary state={state}>
         {(data) => (
           <Editor

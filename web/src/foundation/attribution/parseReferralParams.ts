@@ -1,4 +1,4 @@
-import { getExamFromHost, resolvePilotExamFromHost } from "@/domains/marketing/support/getExamFromHost";
+import { getExamFromHost, resolvePilotExamFromHost } from "@/foundation/attribution/examFromHost";
 import {
   EXAM_LANDING_PATH_PREFIX,
   PILOT_EXAMS,

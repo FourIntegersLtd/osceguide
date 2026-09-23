@@ -3,6 +3,7 @@
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   CircuitRunner,
+  EditCircuit,
   LiveBoard,
   MySittingDetail,
   MyResult,
@@ -59,6 +60,10 @@ function AssessCircuitRunner(props: ScreenProps) {
   return <CircuitRunner orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />;
 }
 
+function AssessCircuitEdit(props: ScreenProps) {
+  return <EditCircuit orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />;
+}
+
 function AssessResults(props: ScreenProps) {
   return <Results orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />;
 }
@@ -68,7 +73,7 @@ function AssessSlotReview(props: ScreenProps) {
     <SlotReview
       orgSlug={slugOf(props)}
       slotId={props.params?.slotId ?? ""}
-      attemptId={props.params?.attemptId ?? null}
+      attemptId={props.params?.attemptId || null}
     />
   );
 }
@@ -132,6 +137,7 @@ export const assessScreens: ScreenMap = {
   newSitting: AssessNewSitting,
   newCircuit: AssessNewCircuit,
   circuitConsole: AssessCircuitRunner,
+  circuitEdit: AssessCircuitEdit,
   live: AssessLiveBoard,
   sittingResults: AssessResults,
   slotReview: AssessSlotReview,

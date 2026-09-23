@@ -10,7 +10,7 @@ import { HeroReportShowcase } from "./HeroReportShowcase";
 import { HeroSocialProof } from "./HeroSocialProof";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
-import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 
 export function ClassicLandingHero() {
   const partner = usePartnerContext();

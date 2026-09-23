@@ -1,4 +1,4 @@
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 
 /** B2B-style feedback templates stored on platform-api (see rubrics service validation). */
 export const STRUCTURE_FEEDBACK_TEMPLATE_KIND = "structure" as const;

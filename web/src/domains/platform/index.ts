@@ -6,6 +6,7 @@ export { UserDetail } from "@/domains/platform/UserDetail";
 export { PlatformTeam } from "@/domains/platform/PlatformTeam";
 export { AttemptInspector } from "@/domains/platform/AttemptInspector";
 export { PlatformAudit } from "@/domains/platform/PlatformAudit";
+export { MessagesInbox } from "@/domains/platform/MessagesInbox";
 export { BillingQueue } from "@/domains/platform/BillingQueue";
 export { Ops } from "@/domains/platform/Ops";
 export * from "@/domains/platform/api";

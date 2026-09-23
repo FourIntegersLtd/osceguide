@@ -6,7 +6,7 @@ import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext
 import Logo from "@/foundation/ui/Logo";
 import type { ExamKey } from "./landingExams";
 import { useLandingVariant } from "./LandingVariantContext";
-import { LOGIN_PATH, REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH, REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
 type ExamLandingNavProps = {
   appType: ExamKey;

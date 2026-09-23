@@ -25,12 +25,6 @@
       }
     ],
     "paths": {
-      "@/b2b/*": [
-        "../frontend/src/b2b/*"
-      ],
-      "@/shared/*": [
-        "../frontend/src/shared/*"
-      ],
       "@/*": [
         "./src/*"
       ]

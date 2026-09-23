@@ -3,6 +3,7 @@ export { default as Register } from "@/capabilities/account/Register";
 export { default as ForgotPassword } from "@/capabilities/account/ForgotPassword";
 export { default as ResetPassword } from "@/capabilities/account/ResetPassword";
 export { default as AuthShell } from "@/capabilities/account/AuthShell";
+export { ChangePasswordRequired } from "@/capabilities/account/ChangePasswordRequired";
 export { default as AuthFormField } from "@/capabilities/account/AuthFormField";
 export { sanitizeReturnTo, isPublicPath } from "@/capabilities/account/support/sessionEvents";
 export { accountCapability } from "@/capabilities/account/capability";
@@ -10,6 +11,7 @@ export { accountCapability } from "@/capabilities/account/capability";
 /* The settings screen and its tabs. `Settings` is what the route mounts. */
 export { Settings, type SettingsTab } from "@/capabilities/account/Settings";
 export { default as ProfilePanel } from "@/capabilities/account/settings/ProfilePanel";
+export { default as CvPanel } from "@/capabilities/account/settings/CvPanel";
 export { default as AccessPanel } from "@/capabilities/account/settings/AccessPanel";
 export { default as ReferralsPanel } from "@/capabilities/account/settings/ReferralsPanel";
 export { default as TutorMemoryPanel } from "@/capabilities/account/settings/TutorMemoryPanel";

@@ -10,7 +10,7 @@ import { HeroSocialProof } from "./HeroSocialProof";
 import type { ExamKey } from "./landingExams";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
-import { LOGIN_PATH, REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH, REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
 type ExamLandingHeroProps = {
   appType: ExamKey;

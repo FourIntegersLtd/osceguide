@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 import { InstitutionsHeroCircuitShowcase } from "../components/InstitutionsHeroCircuitShowcase";
 import { DEMO_MAILTO } from "../institutionsLandingContent";
 import { institutionsLandingType } from "../institutionsLandingType";

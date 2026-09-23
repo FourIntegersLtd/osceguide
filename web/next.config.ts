@@ -6,20 +6,16 @@ const platformRoot = path.dirname(fileURLToPath(import.meta.url));
 const platformNodeModules = path.join(platformRoot, "node_modules");
 /** Turbopack only resolves files under `turbopack.root`; aliases are relative to it. */
 const repoRoot = path.join(platformRoot, "..");
-const b2bRoot = path.join(repoRoot, "frontend/src/b2b");
-const sharedRoot = path.join(repoRoot, "frontend/src/shared");
 
-/** Must beat `@/*` → `./src/*`, which would wrongly resolve `@/b2b/...` to `src/b2b/...`. */
-const b2bAliases = {
-  "@/b2b": b2bRoot,
-  "@/shared": sharedRoot,
-} as const;
-
-/** Paths are relative to `turbopack.root` (repo root), not `platform-web/`. */
-const turbopackB2bAliases = {
-  "@/b2b": "frontend/src/b2b",
-  "@/shared": "frontend/src/shared",
-  // Turbopack does not always apply tsconfig `paths`; keep `@/` → `src/` explicit.
+/**
+ * Turbopack does not always apply tsconfig `paths`, so `@/` → `src/` is spelled
+ * out here as well. There used to be two more entries pointing at
+ * `frontend/src/b2b` and `frontend/src/shared`; the template builder and the
+ * station structures they served are ported into
+ * `capabilities/authoring/structure` now, so this project builds with the old
+ * tree deleted.
+ */
+const turbopackAliases = {
   "@": "platform-web/src",
 } as const;
 
@@ -57,17 +53,13 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: repoRoot,
-    resolveAlias: turbopackB2bAliases,
+    resolveAlias: turbopackAliases,
   },
   webpack: (config) => {
     config.resolve.modules = [
       platformNodeModules,
       ...(config.resolve.modules ?? ["node_modules"]),
     ];
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      ...b2bAliases,
-    };
     return config;
   },
   // Local subdomain testing: <exam>.lvh.me resolves to 127.0.0.1.

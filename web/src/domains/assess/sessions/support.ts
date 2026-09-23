@@ -215,3 +215,27 @@ export function observerSubtitle(data: CircuitConsole): string {
 export function markable(slot: ConsoleSlot): boolean {
   return slot.started_at !== null;
 }
+
+export const EDIT_BLOCK_COPY: Record<string, string> = {
+  circuit_ended: "This circuit has finished. Its slots are part of the record now.",
+  consultation_in_progress:
+    "A station is being sat. Rebuilding the slots would delete the consultation in progress.",
+  feedback_recorded:
+    "Feedback has been recorded against these slots, so they cannot be rebuilt.",
+};
+
+/**
+ * Why a circuit's slots cannot be restructured, in the reader's language.
+ *
+ * The backend sends a code precisely so that this file — not a `catch` on an
+ * English sentence — decides what a supervisor reads. A circuit that may be
+ * edited answers with no block at all, and the edit screen leaves the form alone.
+ */
+export function editLockNotice(circuit: {
+  editable?: boolean;
+  edit_block?: string | null;
+}): string | null {
+  if (circuit.editable !== false && !circuit.edit_block) return null;
+  const code = circuit.edit_block ?? "";
+  return EDIT_BLOCK_COPY[code] ?? "This circuit cannot be restructured right now.";
+}

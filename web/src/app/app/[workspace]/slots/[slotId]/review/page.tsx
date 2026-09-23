@@ -5,9 +5,14 @@ export const metadata: Metadata = { title: "Review" };
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string; slotId: string }>;
+  searchParams: Promise<{ attempt?: string }>;
 }) {
   const { workspace, slotId } = await params;
-  return <Screen name="slotReview" slug={workspace} params={{ slotId }} />;
+  const { attempt } = await searchParams;
+  return (
+    <Screen name="slotReview" slug={workspace} params={{ slotId, attemptId: attempt ?? "" }} />
+  );
 }

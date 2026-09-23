@@ -91,9 +91,17 @@ function remember(result: AuthResult): StoredSession {
  * Switching workspace re-mints the token with a different active membership,
  * so the new one has to replace the stored one or every later request still
  * claims the old workspace.
+ *
+ * Typed as the pair rather than as `AuthResult`, because not every issuer of a
+ * pair also returns a profile: `POST /auth/sso/callback` answers `SsoSession`,
+ * which is a token pair and nothing else — the person is read afterwards from
+ * `GET /me`, which is where the profile lives anyway. Widening the parameter is
+ * what lets that caller be honest instead of casting a `user` into existence.
  */
-export function rememberPlatformSession(result: AuthResult): void {
-  remember(result);
+export function rememberPlatformSession(
+  result: Pick<AuthResult, "access_token" | "refresh_token" | "expires_in">,
+): void {
+  remember(result as AuthResult);
 }
 
 /** Forget the platform session. The legacy one is untouched. */

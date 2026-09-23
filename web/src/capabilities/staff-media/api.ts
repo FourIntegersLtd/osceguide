@@ -100,13 +100,6 @@ export function generatePodcast(prompt: string, examCode?: string | null) {
   return generateContent("/api/v1/platform/generate/podcast", prompt, examCode);
 }
 
-export function generateStation(prompt: string, examCode?: string | null): Promise<unknown> {
-  return platformRequest("/api/v1/platform/generate/station", {
-    method: "POST",
-    body: { prompt, exam_code: examCode ?? "sca" },
-  });
-}
-
 export function generateSummaryPodcast(itemId: string): Promise<MediaItem> {
   return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/generate-podcast`, {
     method: "POST",

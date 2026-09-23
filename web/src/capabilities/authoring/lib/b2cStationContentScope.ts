@@ -1,5 +1,5 @@
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
-import { validateStationContent } from "@/b2b/lib/stations/validateStationContent";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
+import { validateStationContent } from "@/capabilities/authoring/structure/b2b/lib/stations/validateStationContent";
 
 /** Firestore-shaped station JSON nests fields; the B2C admin editor reads per section. */
 

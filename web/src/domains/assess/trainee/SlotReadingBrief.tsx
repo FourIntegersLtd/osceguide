@@ -15,9 +15,8 @@ import { readingBrief } from "@/domains/assess/trainee/support";
  *
  * - **Before dispatch** (`attempt_id` is null): the candidate reads the org
  *   station's `reading_brief` (or `candidate_brief` fallback). The org station
- *   list carries the whole document; `readingBrief()` picks only the field a
- *   candidate may see. Matched by `station_id` when the backend carries it,
- *   falling back to `station_title`.
+ *   list gives a trainee caller a candidate-scoped projection server-side, and
+ *   `readingBrief()` picks the field to show. Matched by `station_id`.
  *
  * - **After dispatch** (`attempt_id` is populated): the candidate reads their
  *   own attempt brief via `GET /attempts/{id}/brief`, which is the entitlement-
@@ -109,16 +108,12 @@ function OrgStationBriefView({
 /**
  * Match a slot to its station in the org list.
  *
- * The backend is adding `station_id` to `MySlot` (concurrent work). When it
- * lands, the match is exact. Until then, fall back to `station_title`.
- *
- * A narrow local type for the upcoming field avoids a schema regeneration
- * race with the backend agent.
+ * `MySlot.station_id` makes the match exact. The title fallback stays only
+ * for rows served by a backend that predates the field.
  */
 function matchStation(stations: OrgStation[], slot: MySlot): OrgStation | null {
-  const slotWithStationId = slot as MySlot & { station_id?: string | null };
-  if (slotWithStationId.station_id) {
-    return stations.find((s) => s.id === slotWithStationId.station_id) ?? null;
+  if (slot.station_id) {
+    return stations.find((s) => s.id === slot.station_id) ?? null;
   }
   if (slot.station_title) {
     return stations.find((s) => s.title === slot.station_title) ?? null;

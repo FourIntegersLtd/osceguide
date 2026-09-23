@@ -28,17 +28,20 @@ export const EXAM_LANDING_PATH_PREFIX = "/exams/";
 export const REGISTER_PATH = "/register";
 export const LOGIN_PATH = "/login";
 
-export const ACQUISITION_COOKIE_NAME = "osce_acquisition";
-
-/**
- * Non-httpOnly bridge so client Mixpanel can read `visitor_key` on the same
- * response as middleware `Set-Cookie` (httpOnly acquisition cookie is not
- * readable until the next request).
+/*
+ * The visitor's own key, and how long we keep claiming they had one.
+ *
+ * The retiring client also set a signed `osce_acquisition` cookie, issued by
+ * the old backend so the edge could not invent an attribution. platform-api
+ * asks for no signature — an arrival and a signup both carry an opaque
+ * `visitor_key` — so the signature had no counterpart to talk to and the second
+ * cookie went with it. One value, one name, and `arrivalCapture.ts` says why it
+ * is readable by the browser.
  */
-export const VISITOR_KEY_BRIDGE_COOKIE_NAME = "osce_visitor_key";
+export const VISITOR_KEY_COOKIE_NAME = "osce_visitor_key";
 
-/** First-touch acquisition cookie lifetime (days). */
-export const ACQUISITION_COOKIE_MAX_AGE_DAYS = 90;
+/** First-touch lifetime (days). A partner's credit outlives the campaign. */
+export const VISITOR_KEY_COOKIE_MAX_AGE_DAYS = 90;
 
 const PILOT_PARTNER_SET = new Set<string>(PILOT_PARTNERS);
 

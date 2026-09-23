@@ -55,7 +55,7 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
   const roomName = useRoomName();
   const questionId = useSearchParams().get("question");
 
-  if (questionId) return <QuestionDetail questionId={questionId} room={room} />;
+  if (questionId) return <QuestionDetail questionId={questionId} />;
 
   return (
     <div className="w-full">

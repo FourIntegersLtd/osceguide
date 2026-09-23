@@ -4,17 +4,18 @@ import { useCallback, useState } from "react";
 import {
   autogenerateStationDraft,
   createStation,
+  generateStation,
   publishStationVersion,
   type Station,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
-import { validateStationContent } from "@/b2b/lib/stations/validateStationContent";
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import { validateStationContent } from "@/capabilities/authoring/structure/b2b/lib/stations/validateStationContent";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import {
   b2bStationAiPromptSchema,
   zodErrorFirstMessage,
-} from "@/b2b/lib/validation";
+} from "@/capabilities/authoring/structure/b2b/lib/validation";
 
 function resolvePublishedVersion(
   templates: StationTemplate[],
@@ -47,6 +48,8 @@ export function useCreateStationForm({
   const [templateVersionId, setTemplateVersionId] = useState("");
   const [structure, setStructure] = useState<StationStructure | null>(null);
   const [examCode, setExamCode] = useState("");
+  /** Only sent when `examCode` is ortho, which is the one exam that asks. */
+  const [orthoStationType, setOrthoStationType] = useState("");
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -60,6 +63,7 @@ export function useCreateStationForm({
     setTemplateVersionId("");
     setStructure(null);
     setExamCode("");
+    setOrthoStationType("");
     setContent({});
     setPrompt("");
     setGenerating(false);
@@ -98,24 +102,41 @@ export function useCreateStationForm({
 
   async function handleGenerateDraft() {
     setError(null);
-    if (!templateVersionId) {
-      setError("Please choose a published template first.");
-      return;
-    }
     const promptParsed = b2bStationAiPromptSchema.safeParse({ prompt });
     if (!promptParsed.success) {
       setError(zodErrorFirstMessage(promptParsed.error));
       return;
     }
+    /*
+     * Two routes to the same box.
+     *
+     * With a template chosen, generation is bound to that structure and answers
+     * a suggested title too. Without one, the platform writes a one-off case
+     * from the exam's own shape — the legacy "auto-station" screen — which needs
+     * the author to say which exam, because there is no template to read it from.
+     */
+    if (!templateVersionId && !examCode) {
+      setError("Choose a template, or say which exam this is for.");
+      return;
+    }
     setGenerating(true);
     try {
-      const r = await autogenerateStationDraft(scope, {
-        prompt: promptParsed.data.prompt,
-        template_version_id: templateVersionId,
-      });
-      setContent(r.content ?? {});
-      if (!title.trim() && r.suggested_title) {
-        setTitle(r.suggested_title);
+      if (templateVersionId) {
+        const r = await autogenerateStationDraft(scope, {
+          prompt: promptParsed.data.prompt,
+          template_version_id: templateVersionId,
+        });
+        setContent(r.content ?? {});
+        if (!title.trim() && r.suggested_title) {
+          setTitle(r.suggested_title);
+        }
+      } else {
+        const r = await generateStation({
+          prompt: promptParsed.data.prompt,
+          examCode,
+          orthoStationType: examCode === "ortho" ? orthoStationType : null,
+        });
+        setContent(r.content ?? {});
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to generate content.");
@@ -130,10 +151,12 @@ export function useCreateStationForm({
       setError("Please enter a station title.");
       return;
     }
-    if (!templateVersionId || !examCode) {
-      setError("Please choose a published template.");
+    if (!examCode) {
+      setError("Choose a template, or say which exam this is for.");
       return;
     }
+    // Validated only against a structure that exists. A template-less station
+    // has none, and the backend is the authority on what its content must hold.
     if (structure) {
       const v = validateStationContent(structure, content);
       if (!v.ok) {
@@ -147,7 +170,7 @@ export function useCreateStationForm({
         title: title.trim(),
         exam_code: examCode,
         content,
-        template_version_id: templateVersionId,
+        template_version_id: templateVersionId || null,
       });
       if (publishNow) {
         await publishStationVersion(scope, created.id, created.version);
@@ -166,6 +189,10 @@ export function useCreateStationForm({
   return {
     mode,
     setMode,
+    examCode,
+    setExamCode,
+    orthoStationType,
+    setOrthoStationType,
     title,
     setTitle,
     templateVersionId,

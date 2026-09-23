@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { LuUserCog } from "react-icons/lu";
-import { HiOutlineIdentification, HiOutlineKey } from "react-icons/hi2";
 import {
+  HiOutlineArrowPath,
+  HiOutlineCheckCircle,
+  HiOutlineIdentification,
+  HiOutlineKey,
+} from "react-icons/hi2";
+import {
+  Alert,
   AsyncBoundary,
   B2CPanelCard,
   B2CPanelCardBody,
@@ -11,88 +17,180 @@ import {
   B2CPanelCardHeader,
   Modal,
   ModalHelper,
+  ModalPrimaryButton,
   ModalSecondaryButton,
   productTokens,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
-import { readMe, type Me } from "@/capabilities/account/api";
+import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useSession } from "@/foundation/session";
+import { useCurrentExam } from "@/foundation/session/useCurrentExam";
+import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
+import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
 const {
   b2cFieldLabel,
   b2cSettingsCardHeaderIcon,
+  b2cSettingsFieldInput,
   b2cSettingsFieldInputDisabled,
 } = productTokens;
 
+/** The retiring client's `profileSchema`, kept as numbers so the copy is one string. */
+const NAME_MIN = 3;
+const NAME_MAX = 50;
+
 /**
- * Who you are, and the one thing about it you can change today.
+ * Who you are, and the two things about it you can change.
  *
- * The name and the address are read back rather than edited: `platform-api`
- * has no write on `/me`, and a box that discards what you typed is worse than
- * a box you cannot type in. The old client's editable username, its account
- * deletion and its CV upload are in `docs/port-gaps.md` with the endpoints
- * each would need.
+ * The name is editable because `PATCH /me` accepts it. The address stays read
+ * back: changing the thing you sign in with is a different flow with its own
+ * verification, and no `platform-api` route does it. The retiring screen's
+ * "Danger zone" is still absent — soft-deleting an account has no endpoint
+ * here either, and a button that cannot save is worse than no button.
  */
 export default function ProfilePanel() {
   const me = useAsync((signal) => readMe(signal), []);
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const { codes } = useCurrentExam();
+  const holdsOrtho = codes.includes("ortho");
 
   return (
     <SettingsTabShell>
       <AsyncBoundary state={me}>
-        {(user: Me) => (
-          <B2CPanelCard className="mt-0">
-            <B2CPanelCardHeader>
-              <LuUserCog className={b2cSettingsCardHeaderIcon} aria-hidden />
-              Account
-            </B2CPanelCardHeader>
-            <B2CPanelCardBody className="space-y-4">
-              <ModalHelper className="mt-0">
-                Your sign-in details and account actions.
-              </ModalHelper>
-
-              <div>
-                <label htmlFor="profile-name" className={b2cFieldLabel}>
-                  Name
-                </label>
-                <input
-                  id="profile-name"
-                  type="text"
-                  value={user.name}
-                  disabled
-                  className={b2cSettingsFieldInputDisabled}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="profile-email" className={b2cFieldLabel}>
-                  Email
-                </label>
-                <input
-                  id="profile-email"
-                  type="email"
-                  value={user.email}
-                  disabled
-                  className={b2cSettingsFieldInputDisabled}
-                />
-              </div>
-
-              <WorkspaceList user={user} />
-            </B2CPanelCardBody>
-            <B2CPanelCardFooter>
-              <ModalSecondaryButton
-                type="button"
-                onClick={() => setIsPasswordModalOpen(true)}
-                className="gap-2"
-              >
-                <HiOutlineKey className="h-4 w-4" aria-hidden />
-                Change Password
-              </ModalSecondaryButton>
-            </B2CPanelCardFooter>
-          </B2CPanelCard>
-        )}
+        {(user: Me) => <AccountForm key={user.id} user={user} onSaved={() => me.reload()} />}
       </AsyncBoundary>
+
+      {/*
+        The CV, for the one arm that is scored off a portfolio. The orthopaedic
+        interview reads a portfolio rather than a consultation, so this is the
+        material the practice questions are generated from — and `POST /cv` had
+        been served for weeks with no screen calling it. Gated on holding the
+        exam rather than shown to everybody, which is how the old profile had it.
+      */}
+      {holdsOrtho ? <CvPanel /> : null}
+    </SettingsTabShell>
+  );
+}
+
+/**
+ * The account card, with the name write and the password modal inside it.
+ *
+ * Saving refreshes the *session* as well as re-reading `/me`. The nav footer on
+ * two arms prints `session.user.name`, so a patch that only re-reads the panel
+ * leaves the rail calling you by the name you just retired.
+ */
+function AccountForm({ user, onSaved }: { user: Me; onSaved: () => void }) {
+  const { refresh } = useSession();
+  const [name, setName] = useState(user.name);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = name.trim();
+    setError(null);
+    setSaved(false);
+    if (trimmed.length < NAME_MIN) {
+      setFieldError(`Name must be at least ${NAME_MIN} characters`);
+      return;
+    }
+    if (trimmed.length > NAME_MAX) {
+      setFieldError(`Name must be less than ${NAME_MAX} characters`);
+      return;
+    }
+    setFieldError(null);
+    setSaving(true);
+    try {
+      await updateMe({ name: trimmed });
+      await refresh();
+      setSaved(true);
+      onSaved();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={(event) => void submit(event)}>
+      <B2CPanelCard className="mt-0">
+        <B2CPanelCardHeader>
+          <LuUserCog className={b2cSettingsCardHeaderIcon} aria-hidden />
+          Account
+        </B2CPanelCardHeader>
+        <B2CPanelCardBody className="space-y-4">
+          <ModalHelper className="mt-0">
+            Your sign-in details and account actions.
+          </ModalHelper>
+
+          {error ? <Alert tone="danger">{error}</Alert> : null}
+          {saved ? <Alert tone="success">Profile updated.</Alert> : null}
+
+          <div>
+            <label htmlFor="profile-name" className={b2cFieldLabel}>
+              Name
+            </label>
+            <input
+              id="profile-name"
+              type="text"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSaved(false);
+              }}
+              aria-invalid={fieldError ? true : undefined}
+              className={`${b2cSettingsFieldInput} mt-1.5${
+                fieldError ? " border-osce-danger" : ""
+              }`}
+            />
+            {fieldError ? (
+              <p className="mt-1 text-osce-meta text-osce-danger">{fieldError}</p>
+            ) : null}
+          </div>
+
+          <div>
+            <label htmlFor="profile-email" className={b2cFieldLabel}>
+              Email
+            </label>
+            <input
+              id="profile-email"
+              type="email"
+              value={user.email}
+              disabled
+              className={b2cSettingsFieldInputDisabled}
+            />
+          </div>
+
+          <WorkspaceList user={user} />
+        </B2CPanelCardBody>
+        <B2CPanelCardFooter>
+          <ModalSecondaryButton
+            type="button"
+            onClick={() => setIsPasswordModalOpen(true)}
+            className="gap-2"
+          >
+            <HiOutlineKey className="h-4 w-4" aria-hidden />
+            Change Password
+          </ModalSecondaryButton>
+          <ModalPrimaryButton type="submit" disabled={saving} className="gap-2">
+            {saving ? (
+              <>
+                <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
+                Updating...
+              </>
+            ) : (
+              <>
+                <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
+                Update Profile
+              </>
+            )}
+          </ModalPrimaryButton>
+        </B2CPanelCardFooter>
+      </B2CPanelCard>
 
       {isPasswordModalOpen ? (
         <Modal
@@ -103,9 +201,10 @@ export default function ProfilePanel() {
           <ChangePassword />
         </Modal>
       ) : null}
-    </SettingsTabShell>
+    </form>
   );
 }
+
 
 /**
  * The workspaces this account reaches.

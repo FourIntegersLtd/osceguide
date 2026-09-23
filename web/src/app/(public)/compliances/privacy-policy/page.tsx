@@ -152,7 +152,7 @@ export default function PrivacyPolicy() {
                 <li>Providing simulation services</li>
                 <li>Generating performance feedback</li>
                 <li>Service improvement and optimization</li>
-                <li>Analyzing user behavior and engagement through Mixpanel</li>
+                <li>Analyzing user behavior and engagement through Google Analytics</li>
               </ul>
             </div>
 
@@ -288,12 +288,6 @@ export default function PrivacyPolicy() {
                     <td className="px-6 py-4">Audio data</td>
                     <td className="px-6 py-4">USA</td>
                   </tr>
-                  <tr>
-                    <td className="px-6 py-4">Mixpanel</td>
-                    <td className="px-6 py-4">User analytics</td>
-                    <td className="px-6 py-4">User interaction data</td>
-                    <td className="px-6 py-4">USA</td>
-                  </tr>{" "}
                   <tr>
                     <td className="px-6 py-4">Google Analytics</td>
                     <td className="px-6 py-4">Website analytics</td>

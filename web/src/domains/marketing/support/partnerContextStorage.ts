@@ -1,4 +1,4 @@
-import type { ParsedReferralParams } from "./partnerTypes";
+import type { ParsedReferralParams } from "../../../foundation/attribution/partnerTypes";
 
 export const PARTNER_CONTEXT_STORAGE_KEY = "osce_partner_context";
 

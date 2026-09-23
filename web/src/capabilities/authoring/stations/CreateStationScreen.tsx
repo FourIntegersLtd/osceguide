@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Button, getInputClassName } from "@/foundation/ui";
-import { b2bWizardTabActive, b2bWizardTabInactive } from "@/b2b/theme/b2bUi";
+import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
 import { listStationTemplates } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
@@ -14,6 +14,26 @@ import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateSt
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
+import { EXAM_CODES } from "@/foundation/session/examSelection";
+
+/**
+ * What each exam is called, for a selector that has to say it.
+ *
+ * The codes themselves come from `EXAM_CODES`, which is the one list the rest of
+ * the app normalises against — spelling them out again here is how a fifth exam
+ * ends up generatable but not selectable.
+ */
+const EXAM_LABELS: Record<(typeof EXAM_CODES)[number], string> = {
+  sca: "RCGP SCA",
+  plab: "GMC PLAB 2",
+  casc: "RCPsych CASC",
+  ortho: "Orthopaedic interviews",
+};
+
+const EXAMS = EXAM_CODES.map((code) => ({ code, label: EXAM_LABELS[code] }));
+
+/** The four ortho station kinds, as the generation route names them. */
+const ORTHO_STATION_TYPES = ["clinical", "communication", "prioritisation", "portfolio"] as const;
 
 export function CreateStationScreen() {
   const scope = useAuthoringScope();
@@ -51,8 +71,7 @@ export function CreateStationScreen() {
 
   const canSave =
     Boolean(form.title.trim()) &&
-    Boolean(form.templateVersionId) &&
-    Boolean(form.structure) &&
+    Boolean(form.examCode || form.templateVersionId) &&
     !form.busy;
 
   return (
@@ -66,8 +85,15 @@ export function CreateStationScreen() {
       {templates.error ? (
         <Alert tone="danger">{templates.error.message}</Alert>
       ) : published.length === 0 && !templates.loading ? (
-        <Alert tone="warning">
-          Publish a station template first, then you can create stations from it.
+        /*
+         * A hint, no longer a wall. There was a version of this screen that
+         * offered nothing at all until a template existed, which made a one-off
+         * case impossible to write without first authoring a reusable template
+         * for it — and `CreateStation` never required one.
+         */
+        <Alert tone="info">
+          No published templates yet. You can still write a station straight from a prompt by
+          choosing its exam below.
         </Alert>
       ) : null}
 
@@ -124,7 +150,7 @@ export function CreateStationScreen() {
               disabled={templates.loading}
               className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline disabled:opacity-60"
             >
-              <option value="">Select a template…</option>
+              <option value="">No template — write it from a prompt</option>
               {choices.map((choice) => (
                 <option key={choice.id} value={choice.id}>
                   {choice.label}
@@ -132,12 +158,63 @@ export function CreateStationScreen() {
               ))}
             </select>
             <p className="mt-1 text-osce-caption text-b2b-mid">
-              Only published templates can be used for stations.
+              Only published templates can be used for stations. A station with no template is
+              still a real station — it just borrows the exam&apos;s own shape rather than a reusable
+              one.
             </p>
           </div>
+
+          {/*
+            Which exam, when the template is not saying. A chosen template already
+            carries its exam, so this asks only in the template-less case — and
+            `ortho` is the one exam whose generation route takes a further
+            discriminator, because an orthopaedic station is a type as much as a
+            topic.
+          */}
+          {!form.templateVersionId ? (
+            <div>
+              <label className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
+              <select
+                value={form.examCode}
+                onChange={(e) => form.setExamCode(e.target.value)}
+                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+              >
+                <option value="">Select an exam…</option>
+                {EXAMS.map((exam) => (
+                  <option key={exam.code} value={exam.code}>
+                    {exam.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {!form.templateVersionId && form.examCode === "ortho" ? (
+            <div>
+              <label className="block text-osce-body font-semibold text-b2b-headline">
+                Station type
+              </label>
+              <select
+                value={form.orthoStationType}
+                onChange={(e) => form.setOrthoStationType(e.target.value)}
+                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+              >
+                <option value="">Choose the kind of ortho station…</option>
+                {ORTHO_STATION_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-osce-caption text-b2b-mid">
+                The four interview stations are scored differently, so the prompt is steered by the
+                type rather than left to guess.
+              </p>
+            </div>
+          ) : null}
         </div>
 
-        {form.mode === "ai" && form.structure ? (
+        {form.mode === "ai" && (form.structure || form.examCode) ? (
           <div className="rounded-lg border border-b2b-border bg-white p-4">
             <p className="text-osce-body font-semibold text-b2b-headline">Generate draft</p>
             <p className="mt-1 text-osce-body text-b2b-mid">
@@ -157,7 +234,8 @@ export function CreateStationScreen() {
                 variant="commit"
                 disabled={
                   form.generating ||
-                  !form.templateVersionId ||
+                  (!form.templateVersionId && !form.examCode) ||
+                  (form.examCode === "ortho" && !form.templateVersionId && !form.orthoStationType) ||
                   !form.prompt.trim() ||
                   form.saving
                 }

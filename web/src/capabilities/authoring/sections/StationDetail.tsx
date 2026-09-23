@@ -11,7 +11,7 @@ import {
 import { Alert, Button } from "@/foundation/ui";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
 import { validateStationContentScoped } from "@/capabilities/authoring/lib/b2cStationContentScope";
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import {
   AuthoringIconAction,

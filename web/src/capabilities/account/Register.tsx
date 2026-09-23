@@ -20,6 +20,7 @@ import {
   type FieldErrors,
 } from "@/capabilities/account/support/validateAuthForm";
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
+import { creditThisSignup } from "@/foundation/attribution/acquisition";
 
 type RegisterField = "username" | "email" | "password" | "confirmPassword";
 
@@ -83,6 +84,14 @@ export default function Register() {
       });
       rememberExamSelection(authenticated.user.id, examCode);
       await refresh();
+      /*
+       * Credit the partner who sent them, if anybody did. This is the spend for
+       * the visitor key the edge minted on arrival, and it has to happen after
+       * `refresh()` — the endpoint is authenticated, so it needs the token the
+       * session has now adopted. Awaiting it rather than firing it loose so the
+       * request survives the navigation that follows.
+       */
+      await creditThisSignup();
       router.replace(examCode ? `/app/${PERSONAL_SLUG}` : "/app");
     } catch (error) {
       const mapped = mapAuthApiError<RegisterField>(

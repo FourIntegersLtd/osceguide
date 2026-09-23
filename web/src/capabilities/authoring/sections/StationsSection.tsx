@@ -85,7 +85,6 @@ export function StationsSection() {
             variant="commit"
             size="sm"
             className="gap-2"
-            disabled={published.length === 0}
             onClick={() => router.push(stationNewPath(hrefFor))}
           >
             <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />

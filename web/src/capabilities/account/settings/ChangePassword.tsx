@@ -52,8 +52,13 @@ const FIELDS: { name: PasswordField; label: string; hint?: string }[] = [
  * institution's supervisor — who signs off results — had no way to rotate
  * their own password without an administrator. It is the same endpoint for
  * everybody, so it is the same screen for everybody.
+ *
+ * `onChanged` is what tells the two callers apart. Left out, the card stays
+ * put and simply says it worked — which is right inside Settings. Supplied by
+ * the forced screen, it runs after the success message lands, so the session
+ * can be re-read and the person sent on.
  */
-export default function ChangePassword() {
+export default function ChangePassword({ onChanged }: { onChanged?: () => Promise<void> }) {
   const [values, setValues] = useState({
     currentPassword: "",
     newPassword: "",
@@ -87,6 +92,7 @@ export default function ChangePassword() {
       await changePassword(values.currentPassword, values.newPassword);
       setSuccessMessage("Password updated. Use it next time you sign in.");
       setValues({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      if (onChanged) await onChanged();
     } catch (error) {
       /*
        * The code, never the wording. The retiring screen branched on HTTP 401

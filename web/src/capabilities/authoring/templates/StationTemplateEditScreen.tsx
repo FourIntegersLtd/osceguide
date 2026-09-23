@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { StructureBuilder } from "@/b2b/components/features/stations/templates/builder/StructureBuilder";
+import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import { Alert } from "@/foundation/ui";
 import { Button } from "@/foundation/ui";
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import {
   b2bTemplateTitleSchema,
   zodErrorFirstMessage,
-} from "@/b2b/lib/validation";
+} from "@/capabilities/authoring/structure/b2b/lib/validation";
 import { useSurface } from "@/capabilities";
 import {
   editStationTemplateVersion,

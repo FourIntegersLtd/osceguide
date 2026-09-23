@@ -124,7 +124,12 @@ function StationRow({ station }: { station: StationReport }) {
         ) : (
           <Badge variant="neutral">{station.marked ? "Awaiting review" : "Not marked"}</Badge>
         )}
-        <Link href={hrefFor(`/slots/${station.slot_id}/review`)} className={b2bTokens.b2bLink}>
+        <Link
+          href={hrefFor(
+            `/slots/${station.slot_id}/review${station.attempt_id ? `?attempt=${station.attempt_id}` : ""}`,
+          )}
+          className={b2bTokens.b2bLink}
+        >
           Review
         </Link>
       </div>

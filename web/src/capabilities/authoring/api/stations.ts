@@ -114,3 +114,33 @@ export function editStationBrief(
     body: { reading_brief },
   });
 }
+
+/**
+ * Write a station from a prompt, with no template behind it.
+ *
+ * The platform's own generation route — the staff half of the legacy
+ * "auto-station" screen. It answers content shaped by the exam's structure and
+ * nothing else, so the caller treats the result as a filled-in draft: the
+ * author still reads it, and still has to save it.
+ *
+ * `template_version_id` is optional on `CreateStation`, which is what makes a
+ * template-less station legal at all. The create screen used to refuse to open
+ * until a template existed, so this route had no caller and an author could not
+ * write a one-off case without first authoring a reusable template for it.
+ */
+export function generateStation(input: {
+  prompt: string;
+  examCode: string;
+  orthoStationType?: string | null;
+}): Promise<{ content: Json }> {
+  return platformRequest<{ content: Json }>("/api/v1/platform/generate/station", {
+    method: "POST",
+    body: {
+      prompt: input.prompt,
+      exam_code: input.examCode,
+      // Only meaningful for ortho, and the backend ignores it otherwise; sent
+      // as null rather than omitted so the absence is explicit.
+      ortho_station_type: input.orthoStationType ?? null,
+    },
+  });
+}

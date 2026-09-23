@@ -61,6 +61,7 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "newSitting",
   "newCircuit",
   "circuitConsole",
+  "circuitEdit",
   "live",
   "sittingResults",
   "slotReview",

@@ -16,21 +16,44 @@ function Resolving() {
   );
 }
 
-/** Everything behind a login. Sends anonymous visitors to sign in, and back afterwards. */
+/**
+ * Everything behind a login.
+ *
+ * Two people are sent somewhere else before they see the page they asked for:
+ * an anonymous visitor, who goes to sign in and comes back, and an account the
+ * backend has flagged `must_change_password` — one created by an invitation,
+ * still holding a password somebody else set. The second is not a
+ * convenience. Until it is changed, an administrator knows the credentials and
+ * nothing in the product says otherwise, so the flag has to gate the whole
+ * surface rather than sit unread on `/me` as it did in the first cut of this
+ * port.
+ *
+ * `change-password` is not under this guard, which is what stops the redirect
+ * from looping: it is the one place a flagged account is allowed to be.
+ */
 export function RequireSession({ children }: { children: ReactNode }) {
-  const { status, ready } = useSession();
+  const { status, ready, session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const mustChange = session?.user.must_change_password === true;
 
   useEffect(() => {
-    if (ready && status === "anonymous") {
-      const next = encodeURIComponent(pathname ?? "/");
+    if (!ready) return;
+    const next = encodeURIComponent(pathname ?? "/");
+    if (status === "anonymous") {
       router.replace(`/login?next=${next}`);
+      return;
     }
-  }, [ready, status, pathname, router]);
+    if (mustChange) {
+      router.replace(`/change-password?next=${next}`);
+    }
+  }, [ready, status, mustChange, pathname, router]);
 
   if (!ready || status === "loading") return <Resolving />;
   if (status === "anonymous") return <Resolving />;
+  // Render nothing while the redirect above is in flight. A page that paints
+  // for one frame is a page whose data somebody has already read off the screen.
+  if (mustChange) return <Resolving />;
   return <>{children}</>;
 }
 

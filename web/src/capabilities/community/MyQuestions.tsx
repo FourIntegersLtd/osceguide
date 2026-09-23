@@ -17,25 +17,25 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listQuestions, type Post, type Room } from "@/capabilities/community/api";
 import { PAGE_SIZE } from "@/capabilities/community/QuestionList";
-import { formatPostedDate, useViewer } from "@/capabilities/community/posts";
+import { formatPostedDate } from "@/capabilities/community/posts";
 
 const { b2cButtonPrimarySm } = productTokens;
 
 /**
  * The questions this person asked.
  *
- * `platform-api` has no "mine" filter on the feed, so this is the feed's first
- * page narrowed to the viewer — bounded, and therefore honest about what it
- * can show. `docs/port-gaps.md` names the filter that would make it complete.
+ * `mine=true` narrows the feed in SQL. It used to fetch the feed's first page
+ * and drop the rows that were not the viewer's, which was honest but bounded:
+ * somebody with a long history saw only whatever was recent enough to be on
+ * page one, and had no way to tell the two apart.
  */
 export function MyQuestions({ room }: { room: Room }) {
-  const viewer = useViewer();
   const state = useAsync(
     async (signal) => {
-      const page = await listQuestions({ room, limit: PAGE_SIZE }, signal);
-      return page.items.filter((item) => item.author_id === viewer.id);
+      const page = await listQuestions({ room, limit: PAGE_SIZE, mine: true }, signal);
+      return page.items;
     },
-    [room.visibility, room.orgId, viewer.id],
+    [room.visibility, room.orgId],
   );
 
   return (

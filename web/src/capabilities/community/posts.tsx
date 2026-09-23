@@ -42,11 +42,15 @@ export function useViewer(): { id: string | null; name: string } {
 /**
  * `@somebody`.
  *
- * `PostRead` carries an author id and no name, so a stranger reads as
- * "@a colleague" until the backend serves one — see `docs/port-gaps.md`.
+ * The name now comes from `PostRead.author_name`, joined by the backend a page
+ * at a time. The fallback is what a post by a deleted account reads as — the id
+ * is deliberately not the fallback, because printing a uuid where a name
+ * belongs is the thing the roster screen was already criticised for.
  */
 export function authorLabel(post: Post, viewerId: string | null, viewerName: string): string {
-  return post.author_id === viewerId ? `@${viewerName}` : "@a colleague";
+  if (post.author_id === viewerId) return `@${viewerName}`;
+  const name = post.author_name?.trim();
+  return name ? `@${name}` : "@a colleague";
 }
 
 const URL_PATTERN = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;

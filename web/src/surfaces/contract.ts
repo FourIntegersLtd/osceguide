@@ -31,6 +31,7 @@ export type ScreenName =
   | "newSitting"
   | "newCircuit"
   | "circuitConsole"
+  | "circuitEdit"
   | "live"
   | "slotReview"
   | "trainees"

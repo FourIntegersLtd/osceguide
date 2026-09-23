@@ -6,9 +6,24 @@
  * signed-in screen under `/app/<workspace>`, so each old path needs an answer
  * rather than a 404.
  *
- * Kept as data, in one file, with a test: a redirect table written inline in
- * middleware is where redirect loops come from, and this one has to be read
- * alongside the route tree when either changes.
+ * Two rules about this table, both learned the hard way:
+ *
+ * 1. **Every destination must be a route that exists.** A redirect that lands
+ *    on a 404 is worse than no redirect at all, because the address bar has
+ *    changed and the reader assumes they mistyped it. Several words changed
+ *    underneath these rules — a *session* became a **sitting**, a slot's
+ *    *feedback* screen became the **review** screen, `[orgSlug]/templates`
+ *    became the **station-templates** section of Authoring, a *feedback* became
+ *    an **attempt** — and the table kept spelling the old word in the new URL.
+ *    `legacyRedirects.test.ts` now checks destinations against the route tree
+ *    instead of restating this file.
+ * 2. **Specific before generic.** `PREFIX_REDIRECTS` is first-match-wins, so a
+ *    rule that renames a sub-tree must sit above the rule that merely drops the
+ *    arm prefix, or the generic one swallows it.
+ *
+ * Where a retiring screen has no counterpart, the rule points at the arm's
+ * landing screen — `dashboard` is the one screen every arm declares — rather
+ * than at a plausible-looking path that answers nothing.
  */
 
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
@@ -16,7 +31,7 @@ import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 export interface LegacyRedirect {
   /** The retiring path, without a query string. */
   from: string;
-  /** Where it goes now. `:slug` is filled from the matched old path. */
+  /** Where it goes now. `$1` is filled from the matched old path. */
   to: string;
 }
 
@@ -38,21 +53,52 @@ export const CONSUMER_REDIRECTS: readonly LegacyRedirect[] = [
   { from: "/summary", to: personal("/summary") },
   { from: "/podcast", to: personal("/podcast") },
   { from: "/articles", to: personal("/articles") },
+  { from: "/blogs", to: personal("/articles") },
   { from: "/community", to: personal("/discussion") },
   { from: "/discussion", to: personal("/discussion") },
   { from: "/marketplace", to: personal("/peers") },
   { from: "/peers", to: personal("/peers") },
+  { from: "/partner-marketplace", to: personal("/peers") },
   { from: "/human-practice", to: personal("/peers") },
   { from: "/transcripts", to: personal("/transcripts") },
-  { from: "/debriefs", to: personal("/debriefs") },
-  { from: "/feedbacks", to: personal("/feedbacks") },
+  /*
+   * One debrief is still a page of its own; the *list* was never a page here —
+   * `DebriefHistory` is a panel on the attempt it belongs to. So the list of
+   * everything they have sat is where this lands, and it is the same list the
+   * old screen showed.
+   */
+  { from: "/debriefs", to: personal("/transcripts") },
+  /*
+   * A *feedback* was the retiring backend's name for one marked attempt, and
+   * the screen is `/attempts/<id>` now. The old address carries a document id
+   * that is not an attempt id, so there is nothing to carry across: the list of
+   * everything they have sat is both what `/feedbacks` showed and the only
+   * honest destination for one row of it.
+   */
+  { from: "/feedbacks", to: personal("/transcripts") },
   { from: "/achievements", to: personal("/achievements") },
   { from: "/settings", to: personal("/settings") },
   { from: "/messages", to: personal("/messages") },
   // Billing lives under Settings, where the retiring client kept it. `/access`
   // was briefly a destination of its own rendering the same panel.
   { from: "/access", to: `${personal("/settings")}?tab=payments` },
-  { from: "/welcome", to: personal("/welcome") },
+  { from: "/settings/referrals", to: `${personal("/settings")}?tab=referrals` },
+  /*
+   * The welcome video went with the voice-onboarding flow that owned it, and
+   * nothing replaces that yet — so the bookmark lands where a new person
+   * actually starts rather than on a page that no longer exists.
+   */
+  { from: "/welcome", to: personal("/dashboard") },
+  // Stripe's return addresses. The backend hardcodes these two against
+  // platform-web, so an emailed receipt link from the old app still arrives.
+  { from: "/payments/success", to: "/billing/complete" },
+  { from: "/payments/cancel", to: "/pricing" },
+  // Back-office addresses; there is one console now.
+  { from: "/admin", to: "/staff" },
+  { from: "/admin/general", to: "/staff" },
+  { from: "/admin/partner-attribution", to: "/staff/growth" },
+  { from: "/users", to: "/staff/users" },
+  { from: "/comments", to: "/staff/moderation" },
   { from: "/auth/login", to: "/login" },
   { from: "/auth/register", to: "/register" },
   { from: "/auth/forgot-password", to: "/forgot-password" },
@@ -62,33 +108,124 @@ export const CONSUMER_REDIRECTS: readonly LegacyRedirect[] = [
 /**
  * Prefix rewrites, applied in order, first match wins.
  *
- * `$1` is the remainder of the path after the matched prefix.
+ * `$1` is the first capture group of the matched pattern.
  */
 export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
+  /*
+   * The four console sign-ins. There is one sign-in now and the workspace a
+   * person lands in comes from their memberships, so all of them are the same
+   * page. They are listed first because the generic org rule below would
+   * otherwise read "platform", "institution" or "partner" as a workspace slug
+   * and send a signed-out visitor to a 404.
+   */
+  { pattern: /^\/b2b\/(?:platform|institution|partner|trainee)\/login$/, to: "/login" },
+  { pattern: /^\/b2b\/login$/, to: "/login" },
+  { pattern: /^\/b2b\/practice\/[^/]+\/login$/, to: "/login" },
+  { pattern: /^\/b2b\/\(auth\)\/change-password$/, to: "/change-password" },
+  { pattern: /^\/b2b\/\(auth\)\/login$/, to: "/login" },
+  { pattern: /^\/b2b\/select-workspace$/, to: "/app" },
+  // A marketing page, not a workspace.
+  { pattern: /^\/b2b\/institutions$/, to: "/institutions" },
+  { pattern: /^\/b2b(?:\/(?:partner|practice))?$/, to: "/login" },
+
   // The staff console. Checked before the generic org rule so that
   // `/b2b/platform` is never read as an organisation called "platform".
   { pattern: /^\/b2b\/platform(\/.*)?$/, to: "/staff$1" },
-  // A rostered trainee, who is inside an organisation the token already names.
-  { pattern: /^\/b2b\/trainee(\/.*)?$/, to: "/app$1" },
-  // Partner and practice arms carried their own prefix; the workspace slug
-  // that follows is enough now.
+
+  /*
+   * A rostered trainee is inside an organisation the token already names, so
+   * the arm prefix and the `trainee` segment both fall away — and what is left
+   * is the personal workspace's `trainee` screens. `/app/practice` would read
+   * "practice" as a workspace slug, which is what the old rule here did.
+   */
+  { pattern: /^\/b2b\/trainee\/sessions\/([^/]+)\/result$/, to: personal("/trainee/results/$1") },
+  { pattern: /^\/b2b\/trainee\/sessions\/([^/]+)$/, to: personal("/trainee/sittings/$1") },
+  { pattern: /^\/b2b\/trainee\/(?:sessions|circuit-feedback|join)(\/.*)?$/, to: personal("/trainee") },
+  { pattern: /^\/b2b\/trainee\/transcript$/, to: personal("/transcripts") },
+  { pattern: /^\/b2b\/trainee(?:\/(.*))?$/, to: personal("/trainee/$1") },
+
+  /*
+   * An institution's examination tree. A *session* is a **sitting** now, a
+   * circuit's console is addressed by the circuit alone, and the run screen's
+   * per-slot *feedback* page is the review screen — so the sub-paths cannot be
+   * carried across verbatim, and are renamed above the rule that drops the arm
+   * prefix.
+   */
+  {
+    pattern: /^\/b2b\/([^/]+)\/sessions\/[^/]+\/circuits\/[^/]+\/run\/slots\/([^/]+)(\/feedback)?$/,
+    to: "/app/$1/slots/$2/review",
+  },
+  { pattern: /^\/b2b\/([^/]+)\/sessions\/([^/]+)\/circuits\/new$/, to: "/app/$1/sittings/$2/circuits/new" },
+  { pattern: /^\/b2b\/([^/]+)\/sessions\/([^/]+)\/circuits\/([^/]+)(\/.*)?$/, to: "/app/$1/circuits/$3" },
+  { pattern: /^\/b2b\/([^/]+)\/sessions\/([^/]+)\/candidates\/[^/]+(?:\/.*)?$/, to: "/app/$1/sittings/$2/results" },
+  { pattern: /^\/b2b\/([^/]+)\/sessions\/([^/]+)\/edit$/, to: "/app/$1/sittings/$2" },
+  { pattern: /^\/b2b\/([^/]+)\/sessions(\/.*)?$/, to: "/app/$1/sittings$2" },
+  // Org-level results were a list of exam sittings; there is no separate screen.
+  { pattern: /^\/b2b\/([^/]+)\/results$/, to: "/app/$1/sittings" },
+
+  /*
+   * Content sat on `[orgSlug]/stations` and `[orgSlug]/templates`; both are
+   * sections of one Authoring screen now, and the feedback-template builder
+   * merged into rubric versions.
+   */
+  { pattern: /^\/b2b\/([^/]+)\/stations\/templates(\/new)?$/, to: "/app/$1/authoring/station-templates$2" },
+  { pattern: /^\/b2b\/([^/]+)\/stations\/feedback-templates(?:\/.*)?$/, to: "/app/$1/authoring/rubrics" },
+  { pattern: /^\/b2b\/([^/]+)\/stations(?:\/.*)?$/, to: "/app/$1/authoring/stations" },
+  { pattern: /^\/b2b\/([^/]+)\/templates(\/new)?$/, to: "/app/$1/authoring/station-templates$2" },
+  // The team hub's sub-screens are tabs of one screen now.
+  { pattern: /^\/b2b\/([^/]+)\/team(?:\/.*)?$/, to: "/app/$1/team" },
+
+  // A partner's catalogue is the same Authoring sections, scoped to their org.
+  { pattern: /^\/b2b\/partner\/([^/]+)\/exams(?:\/.*)?$/, to: "/app/$1/authoring/exams" },
+  { pattern: /^\/b2b\/partner\/([^/]+)\/templates(?:\/.*)?$/, to: "/app/$1/authoring/station-templates" },
+  { pattern: /^\/b2b\/partner\/([^/]+)\/stations(?:\/.*)?$/, to: "/app/$1/authoring/stations" },
+  { pattern: /^\/b2b\/partner\/([^/]+)\/users(?:\/.*)?$/, to: "/app/$1/team" },
   { pattern: /^\/b2b\/partner\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
-  { pattern: /^\/b2b\/practice\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
-  // An institution workspace. `dashboard` was its landing screen.
-  { pattern: /^\/b2b\/([^/]+)\/sessions(\/.*)?$/, to: "/app/$1/sessions$2" },
+  /*
+   * A practice account's self-service screens had no counterpart until the
+   * institution arm grew its own trainee views, and even those need the arm to
+   * mount them. The landing screen is the destination that is true for every
+   * workspace, so history and exams both start there.
+   */
+  { pattern: /^\/b2b\/practice\/([^/]+)(\/.*)?$/, to: "/app/$1/dashboard" },
+  // An institution workspace's remaining screens are named the same thing.
   { pattern: /^\/b2b\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
+
   // The first cut of platform-web, before ADR 0002.
-  { pattern: /^\/assess\/trainee(\/.*)?$/, to: "/app$1" },
+  { pattern: /^\/assess\/trainee(?:\/.*)?$/, to: personal("/trainee") },
   { pattern: /^\/assess\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
   { pattern: /^\/hire\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
   { pattern: /^\/platform(\/.*)?$/, to: "/staff$1" },
-  // Consumer sub-trees whose leaf varies.
-  { pattern: /^\/mocks(\/.+)$/, to: `/app/${PERSONAL_SLUG}/mocks$1` },
-  { pattern: /^\/summary(\/.+)$/, to: `/app/${PERSONAL_SLUG}/library$1` },
-  { pattern: /^\/transcripts(\/.+)$/, to: `/app/${PERSONAL_SLUG}/transcripts$1` },
-  { pattern: /^\/debriefs(\/.+)$/, to: `/app/${PERSONAL_SLUG}/debriefs$1` },
-  { pattern: /^\/feedbacks(\/.+)$/, to: `/app/${PERSONAL_SLUG}/feedbacks$1` },
-  { pattern: /^\/community\/(.+)$/, to: `/app/${PERSONAL_SLUG}/discussion/$1` },
+
+  /*
+   * Consumer sub-trees whose leaf varies. Ordered specific-first for the same
+   * reason as the console above: `/mocks/list` and `/mocks/customise` are not
+   * set ids, and `/mocks/<id>/update` has no edit screen to go to.
+   */
+  { pattern: /^\/mocks\/(?:list|customise)$/, to: personal("/mocks") },
+  { pattern: /^\/mocks\/([^/]+)\/update$/, to: personal("/mocks/$1") },
+  { pattern: /^\/mocks(\/.+)$/, to: personal("/mocks$1") },
+  { pattern: /^\/summary(\/.+)$/, to: personal("/summary") },
+  { pattern: /^\/blogs(\/.+)$/, to: personal("/articles") },
+  { pattern: /^\/transcripts(\/.+)$/, to: personal("/transcripts$1") },
+  { pattern: /^\/debriefs(\/.+)$/, to: personal("/debriefs$1") },
+  { pattern: /^\/feedbacks(\/.+)?$/, to: personal("/transcripts") },
+  // The feed opens one thread off a query, so a question id survives the move.
+  { pattern: /^\/community\/question\/([^/]+)$/, to: `${personal("/discussion")}?question=$1` },
+  { pattern: /^\/community(?:\/.*)?$/, to: personal("/discussion") },
+  { pattern: /^\/human-practice(?:\/.*)?$/, to: personal("/peers") },
+  { pattern: /^\/practice(?:\/.*)?$/, to: personal("/dashboard") },
+  { pattern: /^\/settings\/referrals(?:\/.*)?$/, to: `${personal("/settings")}?tab=referrals` },
+  { pattern: /^\/settings(?:\/.*)?$/, to: personal("/settings") },
+  { pattern: /^\/payments\/success$/, to: "/billing/complete" },
+  { pattern: /^\/payments(?:\/.*)?$/, to: "/pricing" },
+  { pattern: /^\/admin(?:\/.*)?$/, to: "/staff" },
+  { pattern: /^\/users(?:\/.*)?$/, to: "/staff/users" },
+  { pattern: /^\/comments(?:\/.*)?$/, to: "/staff/moderation" },
+  // Feature requests were superseded by the landing's own sections.
+  { pattern: /^\/features(?:\/.*)?$/, to: "/" },
+  { pattern: /^\/partner\/([^/]+)\/reporting$/, to: "/app/$1/reporting" },
+  { pattern: /^\/partner(?:\/.*)?$/, to: "/institutions" },
   /*
    * `/app/<workspace>/access` was a destination of platform-web's own for a
    * few weeks, rendering the Settings panel that shows what somebody has

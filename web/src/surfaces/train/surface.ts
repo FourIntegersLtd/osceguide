@@ -30,5 +30,23 @@ export const trainSurface: SurfaceManifest = {
   label: "My practice",
   workspaceKinds: ["personal"],
   nav,
-  screenNames: ["dashboard", "mocks", "mockDetail", "mockStation", "attempt"],
+  /*
+   * Every key `trainScreens` answers, not merely the ones the sidebar offers.
+   *
+   * `mockComplete` and `practiceStation` were missing from this list even
+   * though the arm renders both — the manifest described the navigation rather
+   * than the surface, so `ownsScreen()` said no about a route that was serving
+   * traffic. It only worked because the `Screen` component loads from the map
+   * and never asks; the day anything does ask, this was a lie waiting to be
+   * believed.
+   */
+  screenNames: [
+    "dashboard",
+    "mocks",
+    "mockDetail",
+    "mockStation",
+    "mockComplete",
+    "practiceStation",
+    "attempt",
+  ],
 };

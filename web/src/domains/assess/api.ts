@@ -110,6 +110,39 @@ export function createSitting(
 export type Circuit = components["schemas"]["CircuitRead"];
 
 /**
+ * A circuit's shape, in the words the builder uses.
+ *
+ * One type for both writes, because creating one and changing one are the same
+ * question — who is on it, which stations, for how long — and the second is only
+ * allowed to answer it while nothing on the circuit means anything yet.
+ */
+export interface CircuitShape {
+  name: string;
+  stationVersionIds: string[];
+  /** `user` ids, not roster ids: a slot names a user. */
+  traineeIds: string[];
+  supervisorUserId: string | null;
+  timing: CircuitTiming;
+}
+
+/**
+ * The clock, in the builder's words.
+ *
+ * `breaks` are 1-based station numbers the break falls *after*, and
+ * `breakMinutes` is one length for all of them — the platform's `Timing` carries
+ * a single `break_minutes` where the retiring client carried a duration per
+ * break. `sittings/domain.py` drops both outside exam mode and clamps them
+ * inside it; `domains/assess/timing.ts` mirrors that so the form only offers
+ * answers the server will keep.
+ */
+export interface CircuitTiming {
+  readingMinutes: number;
+  simulationMinutes: number;
+  breakMinutes: number;
+  breaks: number[];
+}
+
+/**
  * Add a circuit to a sitting.
  *
  * An exam circuit is one candidate through every station, capped at twelve. A
@@ -120,13 +153,7 @@ export type Circuit = components["schemas"]["CircuitRead"];
 export function createCircuit(
   slug: string,
   sittingId: string,
-  input: {
-    name: string;
-    stationVersionIds: string[];
-    traineeIds: string[];
-    supervisorUserId: string | null;
-    timing: { readingMinutes: number; simulationMinutes: number };
-  },
+  input: CircuitShape,
 ): Promise<Circuit> {
   return platformRequest<Circuit>(
     `${org(slug)}/sittings/${encodeURIComponent(sittingId)}/circuits`,
@@ -140,9 +167,59 @@ export function createCircuit(
         timing: {
           reading_minutes: input.timing.readingMinutes,
           simulation_minutes: input.timing.simulationMinutes,
+          break_minutes: input.timing.breakMinutes,
+          breaks: input.timing.breaks,
         },
       },
     },
+  );
+}
+
+/**
+ * Change a circuit that already exists.
+ *
+ * The slots are rebuilt from scratch, so `trainee_ids` and
+ * `station_version_ids` go whole rather than as a patch — the same rule create
+ * follows, and the reason this is refused once a consultation has run, a station
+ * has been sat, or feedback has been recorded. The backend answers
+ * `circuit_locked` (409) when that has happened; `readEditLock` is what lets the
+ * screen say so before anybody has typed anything.
+ *
+ * This route existed on platform-api and nothing in the product called it, which
+ * is how "a circuit cannot be corrected" looked like a backend limitation rather
+ * than a missing screen.
+ */
+export function rebuildCircuit(
+  slug: string,
+  circuitId: string,
+  input: CircuitShape,
+): Promise<Circuit> {
+  return platformRequest<Circuit>(`${org(slug)}/circuits/${encodeURIComponent(circuitId)}`, {
+    method: "PUT",
+    body: {
+      name: input.name,
+      station_version_ids: input.stationVersionIds,
+      trainee_ids: input.traineeIds,
+      supervisor_user_id: input.supervisorUserId,
+      timing: {
+        reading_minutes: input.timing.readingMinutes,
+        simulation_minutes: input.timing.simulationMinutes,
+        break_minutes: input.timing.breakMinutes,
+        breaks: input.timing.breaks,
+      },
+    },
+  });
+}
+
+/** Whether a circuit's slots may be rebuilt right now, and what stops it. */
+export function readEditLock(
+  slug: string,
+  circuitId: string,
+  signal?: AbortSignal,
+): Promise<components["schemas"]["EditLock"]> {
+  return platformRequest<components["schemas"]["EditLock"]>(
+    `${org(slug)}/circuits/${encodeURIComponent(circuitId)}/edit-lock`,
+    { signal },
   );
 }
 

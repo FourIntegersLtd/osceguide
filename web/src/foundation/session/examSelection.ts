@@ -1,4 +1,8 @@
 const EXAMS = ["sca", "plab", "casc", "ortho"] as const;
+
+/** The four consumer exams, exported so a selector cannot drift from this list. */
+export const EXAM_CODES = EXAMS;
+
 export const EXAM_SELECTION_EVENT = "osceguide:exam-selection";
 export function normalizeExamCode(value: string | null | undefined): string | null {
   const code = value?.trim().toLowerCase();

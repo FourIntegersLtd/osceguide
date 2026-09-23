@@ -1,7 +1,7 @@
 "use client";
 
-import { StationInstanceBlocks } from "@/b2b/components/features/stations/pages/StationInstanceBlocks";
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import { StationInstanceBlocks } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceBlocks";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import {
   contentSliceForSection,
   mergeSectionIntoContent,

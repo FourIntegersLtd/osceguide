@@ -7,7 +7,7 @@ import { Button } from "@/foundation/ui";
 import type { LandingType } from "./landingTypography";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
-import { REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
+import { REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
 const EXAM_CONFIGS = {
   SCA: {

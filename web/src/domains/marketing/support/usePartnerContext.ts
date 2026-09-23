@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { parseReferralParams } from "@/domains/marketing/support/parseReferralParams";
+import { parseReferralParams } from "@/foundation/attribution/parseReferralParams";
 import {
   readPartnerContext,
   savePartnerContext,

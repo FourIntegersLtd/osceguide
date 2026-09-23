@@ -5,6 +5,29 @@ Written 2026-09-20 after a deep review of `frontend/` against `platform-web/`
 and a read of the full gap register, `port-plan.md` (J16, B1–B3) and recent
 `platform-api` history.
 
+**Status 2026-09-23: Phases 0 and 1 are closed and verified** (backend
+`f5dd9d6`/`155032f`, web `061fe44`, plus the feedback-counter and reading-brief
+follow-ups; full suite 6,057 passed / 3 known-local-artifact failures; web CI
+216/216). The five decisions from the closure round (S2 hardening, lint
+cleanup, backend breakage, countdown parity, feedback counter) all went yes —
+see Q1–Q5 below. Phase 2 (parity sweep) and Phases 3–4 are open.
+
+**Later on 2026-09-23.** A screen-by-screen audit of `frontend/` against
+`platform-web/` — rather than a read of this plan — found ten things that are
+*broken* rather than merely unported, and fixed them: the examiner's marking
+screen received no attempt so scored nothing, the retiring client's session URLs
+redirected to a name the route tree had changed, join links and the four console
+sign-ins landed on pages that do not exist, `must_change_password` was never
+enforced, the partner arm could not invite an editor, `PUT /circuits/{id}` had no
+caller, partner attribution recorded no arrivals and spent no signups, analytics
+and consent and `robots.txt`/`sitemap.xml` had no new home, and `platform-web`
+still imported `frontend/src/b2b` and `frontend/src/shared` through a build
+alias — so it could not outlive the tree it replaces. Each row, with evidence and
+the fix, is in `port-gaps.md` under "2026-09-23 — a full re-check". Web CI is
+222/222 with those included, and `npm run build` no longer needs `frontend/` at
+all. The lesson for this file: it describes a plan, not the tree — re-verify in
+code before scheduling work from a row here.
+
 Standing acceptance rule for all of it: **a ported screen, modal, button or
 flow must be an exact match of the legacy UI wherever the legacy screen
 exists.** The old screen is the specification; the implementation may be
@@ -12,7 +35,7 @@ rewritten, the pixels may not.
 
 ---
 
-## Phase 0 — Security first — **in progress**
+## Phase 0 — Security first — **done**
 
 Blocks everything else. All three are backend (`platform-api`) fixes.
 
@@ -22,7 +45,7 @@ Blocks everything else. All three are backend (`platform-api`) fixes.
 | S2 | The circuit runner shows no reading brief during reading time (same root cause as S1). | Solved by S1's candidate-scoped read; the runner wires it (or `GET /attempts/{id}/brief` where an attempt already exists). |
 | S3 | `POST /stations/{id}/comments` with a nonexistent station id answers `internal_error` instead of `station_not_found`. | Map the FK failure in the service. |
 
-## Phase 1 — Wire what the backend already serves — **in progress**
+## Phase 1 — Wire what the backend already serves — **done**
 
 Frontend-only. These endpoints landed (platform-api c04411e, b1c597d,
 ff2450c) and nothing calls them yet.

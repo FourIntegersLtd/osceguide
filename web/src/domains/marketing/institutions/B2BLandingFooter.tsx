@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FaFacebook, FaLinkedin } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 import { landingSectionSurfaces } from "@/domains/marketing/landingSectionSurfaces";
 import { b2bLinkMuted } from "@/foundation/ui/b2bTokens";
 

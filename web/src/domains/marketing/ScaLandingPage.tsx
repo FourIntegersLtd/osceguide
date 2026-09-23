@@ -24,7 +24,7 @@ import type { LandingIconColor } from "./landingIconPalette";
 import { LandingFeedbackShowcase } from "./showcases/LandingFeedbackShowcase";
 import { LandingProgressShowcase } from "./showcases/LandingProgressShowcase";
 import { LandingSimulationShowcase } from "./showcases/LandingSimulationShowcase";
-import { LOGIN_PATH, REGISTER_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH, REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
 const scaDomains = CAPABILITIES.slice(0, 6).map((item) => item.capability);
 

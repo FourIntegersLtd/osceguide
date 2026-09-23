@@ -1,6 +1,12 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { legacyDestination } from "@/foundation/routing/legacyRedirects";
 import { examLandingRewritePath } from "@/foundation/routing/examSubdomainLanding";
+import { parseReferralParams } from "@/foundation/attribution/parseReferralParams";
+import {
+  applyVisitorKeyCookie,
+  recordArrival,
+  resolveVisitorKey,
+} from "@/foundation/attribution/arrivalCapture";
 
 /**
  * Answers for the addresses the retiring client is still serving.
@@ -15,7 +21,38 @@ import { examLandingRewritePath } from "@/foundation/routing/examSubdomainLandin
  * would be guessing. `RequireSession` does it in the browser where the answer
  * is actually known.
  */
-export function middleware(request: NextRequest) {
+export function middleware(request: NextRequest, event: NextFetchEvent) {
+  /*
+   * First-touch partner attribution, before anything else decides the response.
+   *
+   * The retiring client did this in `proxy.ts` and this port shipped the parser
+   * without the caller, so a visitor from a partner link was recorded nowhere.
+   * It is the edge's job rather than a landing component's: the key has to exist
+   * before the register form is reached, and a referral landing is the one
+   * request where the browser may not run any JavaScript at all.
+   */
+  const { visitorKey, isFirstTouch } = resolveVisitorKey(request);
+  const referral = parseReferralParams({
+    host: request.headers.get("host"),
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+  });
+
+  const response = route(request);
+
+  if (referral) {
+    if (isFirstTouch) {
+      applyVisitorKeyCookie(response, visitorKey, request.nextUrl.protocol === "https:");
+    }
+    // The visitor is already being answered; the ledger entry may arrive after.
+    event.waitUntil(recordArrival(referral, visitorKey, request.nextUrl.origin));
+  }
+
+  return response;
+}
+
+/** The answer this URL needs, ignoring attribution: an old address, an exam host, or itself. */
+function route(request: NextRequest): NextResponse {
   const destination = legacyDestination(request.nextUrl.pathname);
   if (destination) {
     const url = request.nextUrl.clone();

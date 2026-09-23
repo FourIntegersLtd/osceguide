@@ -1,4 +1,4 @@
-import type { StationStructure } from "@/b2b/types/b2bStationTemplateTypes";
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 
 export function emptyMarkingLayout(): StationStructure {
   return { schemaVersion: 1, sections: [] };

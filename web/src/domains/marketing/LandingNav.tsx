@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { ButtonLink } from "@/foundation/ui";
 import { landingNavConfig } from "./landingConfig";
 import { useLandingVariant } from "./LandingVariantContext";
-import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 
 export function LandingNav() {
   const partner = usePartnerContext();

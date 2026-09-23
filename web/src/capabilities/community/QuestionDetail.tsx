@@ -16,9 +16,8 @@ import {
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { listQuestions, listReplies, removePost, type Post, type Room } from "@/capabilities/community/api";
+import { listReplies, readQuestion, removePost, type Post } from "@/capabilities/community/api";
 import { AnswerQuestion } from "@/capabilities/community/AnswerQuestion";
-import { PAGE_SIZE } from "@/capabilities/community/QuestionList";
 import {
   DeleteButton,
   LikeButton,
@@ -31,28 +30,27 @@ import {
 /**
  * One question and its answers.
  *
- * `platform-api` has no read for a single question — only the paged list — so
- * the thread is found in the page the feed already serves. A question older
- * than that page reads as "not found", which is the honest answer until the
- * endpoint exists; `docs/port-gaps.md` carries it.
+ * The thread is read by id. It used to be searched for in the page the feed
+ * already served, which meant a question older than that page read as "not
+ * found" and a link shared last month was a dead end — the same shape as
+ * `findLibraryStation`, and now the same fix.
  */
-export function QuestionDetail({ questionId, room }: { questionId: string; room: Room }) {
+export function QuestionDetail({ questionId }: { questionId: string }) {
   const toast = useToast();
   // A like answers with the whole post, so the toggle keeps its own copy of
-  // the question rather than re-reading the feed to move one number.
+  // the question rather than re-reading the thread to move one number.
   const [likedQuestion, setLikedQuestion] = useState<Post | null>(null);
   const [confirmingQuestion, setConfirmingQuestion] = useState(false);
 
   const thread = useAsync(
     async (signal) => {
-      const [page, replies] = await Promise.all([
-        listQuestions({ room, limit: PAGE_SIZE }, signal),
+      const [question, replies] = await Promise.all([
+        readQuestion(questionId, signal),
         listReplies(questionId, signal),
       ]);
-      const found = page.items.find((item) => item.id === questionId) ?? null;
-      return { question: found, replies: replies.items };
+      return { question, replies: replies.items };
     },
-    [questionId, room.visibility, room.orgId],
+    [questionId],
   );
 
   if (thread.loading && thread.data === null) {

@@ -20,17 +20,10 @@ export interface LandingStats {
  * The figures, from `GET /site/statistics`.
  *
  * The retiring backend served these from `/api/landing` with the `all_*`
- * spellings; the replacement serves `consultations`, `debriefs`, `users` and
- * `stations`, and this function is the mapping between the two shapes.
- *
- * One figure has no counter of its own: **feedback reports**. The band's
- * fourth card ("AI feedback reports generated") read the retiring backend's
- * `all_feedback`, and `SiteStatistics` does not carry an equivalent. Every
- * completed consultation produces one AI feedback report, and the retiring
- * backend's two counters never differed by more than a fraction of a percent
- * (its own logs show 10,057 consultations beside 10,113 reports), so the
- * consultation count stands in until the backend grows a dedicated counter —
- * tracked in `docs/port-gaps.md`.
+ * spellings; the replacement serves `consultations`, `debriefs`, `feedback`,
+ * `users` and `stations`, and this function is the mapping between the two
+ * shapes. The feedback counter counts evaluated attempts — the dedicated
+ * stand-in for the retiring `all_feedback` is gone.
  *
  * A failure returns `null` and both callers hide their figures, which is what
  * a failed request produced before: an unverifiable marketing number is worse
@@ -42,7 +35,7 @@ export async function fetchLandingStats(): Promise<LandingStats | null> {
     return {
       all_consultations: stats.consultations,
       all_debriefs: stats.debriefs,
-      all_feedback: stats.consultations,
+      all_feedback: stats.feedback,
       all_users: stats.users,
       all_stations: stats.stations,
       as_of: stats.as_of,

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { FaBars, FaTimes } from "react-icons/fa";
 import { Logo } from "@/foundation/ui";
 import { B2BIconTooltipButton } from "@/domains/marketing/institutions/B2BIconTooltipButton";
-import { LOGIN_PATH } from "@/domains/marketing/support/partnerConstants";
+import { LOGIN_PATH } from "@/foundation/attribution/partnerConstants";
 import {
   DEMO_MAILTO,
   INSTITUTIONS_NAV,

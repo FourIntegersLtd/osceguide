@@ -1,4 +1,8 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import {
+  platformRequest,
+  rememberPlatformSession,
+  type components,
+} from "@/foundation/platform-client";
 
 /**
  * Everything the account capability asks the backend.
@@ -145,6 +149,7 @@ export function updateMe(body: UpdateMe, signal?: AbortSignal): Promise<Me> {
 }
 
 export type SsoSignIn = components["schemas"]["SsoSignIn"];
+export type SsoSession = components["schemas"]["SsoSession"];
 
 /**
  * Whether this visitor's organisation signs in somewhere else.
@@ -172,4 +177,79 @@ export async function readSsoSignIn(
   } catch {
     return null;
   }
+}
+
+/**
+ * Where to send the browser to sign in to that organisation.
+ *
+ * `POST /auth/sso/login` is unauthenticated like the read above it — it is the
+ * first step of signing in, before anybody has — and it returns a URL rather
+ * than following it, because the frontend owns navigation and the platform sets
+ * no cookies. The broker is told to come back to `/auth/sso/callback`, which is
+ * this app's own page.
+ *
+ * Unlike discovery, a failure here *is* the caller's problem: the button was
+ * pressed expecting a redirect, so the error propagates rather than being
+ * swallowed into a null.
+ */
+export async function startSsoSignIn(orgSlug: string): Promise<string> {
+  const result = await platformRequest<components["schemas"]["SsoLoginResult"]>(
+    "/api/v1/auth/sso/login",
+    { method: "POST", body: { org_slug: orgSlug } },
+  );
+  return result.sign_in_url;
+}
+
+/**
+ * Finish the sign-in the broker started.
+ *
+ * The token arrives on the query string of the callback page. It is posted to
+ * the backend and **verified there** — the platform decodes nothing itself, and
+ * an unverified JWT accepted on this side would be a way to sign in as anybody.
+ * On success the pair it answers is adopted as the session, so the caller only
+ * has to refresh and navigate.
+ */
+export async function completeSsoSignIn(
+  orgSlug: string,
+  token: string,
+): Promise<SsoSession> {
+  const session = await platformRequest<SsoSession>("/api/v1/auth/sso/callback", {
+    method: "POST",
+    body: { org_slug: orgSlug, token },
+  });
+  rememberPlatformSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_in: session.expires_in,
+  });
+  return session;
+}
+
+/* ---------- the orthopaedic CV ---------- */
+
+export type StructuredCv = components["schemas"]["StructuredCv"];
+export type CvRead = components["schemas"]["CvRead"];
+
+/** Your own CVs, most recent first, with whatever has been read so far. */
+export function listCvs(signal?: AbortSignal): Promise<components["schemas"]["CvList"]> {
+  return platformRequest<components["schemas"]["CvList"]>("/api/v1/cv", { signal });
+}
+
+/**
+ * Send a CV for reading.
+ *
+ * The answer is a row, not a parsed CV: the text is pulled from the PDF in the
+ * route and the structuring is a background job, so `status` says `processing`
+ * and the sections arrive on the next read. The upload is rate limited because
+ * each one buys a model call.
+ */
+export function uploadCv(file: File): Promise<components["schemas"]["CvUploadResult"]> {
+  const form = new FormData();
+  // The field name is the backend's parameter name, `file` — the retiring
+  // client's Flask route took `cv`, and copying that here would 422.
+  form.append("file", file);
+  return platformRequest<components["schemas"]["CvUploadResult"]>("/api/v1/cv", {
+    method: "POST",
+    formData: form,
+  });
 }

@@ -17,7 +17,7 @@ import {
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
-import { readSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
+import { readSsoSignIn, startSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
 import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 import { sanitizeReturnTo } from "@/capabilities/account/support/sessionEvents";
 import {
@@ -67,9 +67,10 @@ export default function Login() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sso, setSso] = useState<SsoSignIn | null>(null);
-  // Set when somebody clicks the organisation's button: there is no sign-in
-  // flow to take them to yet (S-1), so they get told rather than stared at.
-  const [ssoNotice, setSsoNotice] = useState(false);
+  // Why the organisation's button did not take them somewhere: the broker may
+  // be unconfigured, or the arrangement switched off since discovery answered.
+  const [ssoNotice, setSsoNotice] = useState<string | null>(null);
+  const [ssoBusy, setSsoBusy] = useState(false);
 
   /*
    * Discovery, once, on the host the visitor actually arrived at. It is a
@@ -217,10 +218,14 @@ export default function Login() {
       {sso ? (
         <div className="space-y-3">
           {/*
-           * The organisation's own wording, from the discovery answer. The
-           * sign-in behind it is the backend's open decision (S-1): there is
-           * no `/auth/sso/login` to redirect to, so the button says what it is
-           * and points at support rather than pretending to be a door.
+           * The organisation's own wording, from the discovery answer.
+           *
+           * This used to open a notice saying organisation sign-in was not
+           * available, because `POST /auth/sso/login` did not exist yet. It
+           * does: the backend returns the broker's URL and tells the broker to
+           * come back to `/auth/sso/callback`, which posts the token it was
+           * handed and adopts the session. So the button is now the door it
+           * always looked like.
            */}
           <Button
             type="button"
@@ -228,19 +233,34 @@ export default function Login() {
             themeType="b2c"
             fullWidth
             size="lg"
+            disabled={ssoBusy}
             className={showPasswordForm ? undefined : authButtonPrimary}
-            onClick={() => setSsoNotice(true)}
+            onClick={() => {
+              setSsoBusy(true);
+              setSsoNotice(null);
+              void startSsoSignIn(sso.org_slug)
+                // A whole-page navigation: the person is leaving for the
+                // identity provider and returning with none of this page's
+                // state intact, so a client route would be a lie.
+                .then((url) => window.location.assign(url))
+                // Stay put and say why. On a host that still shows the password
+                // form the reader has a way in; on an `sso_only` host the notice
+                // below points at support. Either way a silent no-op is worse.
+                .catch((cause: unknown) => {
+                  setSsoBusy(false);
+                  setSsoNotice(
+                    cause instanceof Error
+                      ? cause.message
+                      : "We could not reach your organisation's sign-in.",
+                  );
+                });
+            }}
           >
-            {sso.sign_in_label}
+            {ssoBusy ? "Opening sign-in…" : sso.sign_in_label}
           </Button>
           {ssoNotice ? (
-            <p role="status" className="text-center text-osce-meta text-b2c-text-muted">
-              Organisation sign-in is not available on this site yet. Need
-              help?{" "}
-              <a href={`mailto:${SUPPORT_EMAIL}`} className={authLink}>
-                Contact support
-              </a>
-              .
+            <p role="alert" className="text-center text-osce-meta text-osce-danger">
+              {ssoNotice}
             </p>
           ) : null}
           {!showPasswordForm ? (

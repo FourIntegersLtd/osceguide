@@ -3,11 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/ensure-legacy-frontend-node-modules.mjs",
     "dev": "next dev --port 3100 --turbopack",
-    "predev:webpack": "node scripts/ensure-legacy-frontend-node-modules.mjs",
     "dev:webpack": "next dev --port 3100 --webpack",
-    "prebuild": "node scripts/ensure-legacy-frontend-node-modules.mjs",
     "build": "next build --webpack",
     "start": "next start --port 3100",
     "lint": "eslint .",
