@@ -19,6 +19,9 @@ class PostRead(BaseModel):
     author_name: str | None
     title: str | None
     body: str
+    # Normalized on write — trimmed, lowercased, de-duplicated. Empty for a
+    # reply or a station comment: a tag describes what a question is about.
+    tags: list[str]
     like_count: int
     liked_by_me: bool
     reply_count: int
@@ -30,6 +33,10 @@ class CreateQuestion(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     body: str = Field(min_length=1)
     exam_code: str | None = None
+    # Checked against the count and length limits in `domain.clean_tags`, not
+    # here: a refusal answers `too_many_tags` or `tag_too_long`, which a Field
+    # constraint cannot say.
+    tags: list[str] = Field(default_factory=list)
     # Public unless the author says otherwise. A reply is never given its own
     # audience: it inherits the question's.
     audience: AudienceIn = Field(default_factory=AudienceIn)

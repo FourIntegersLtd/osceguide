@@ -25,6 +25,7 @@ async def create_post(
     parent_id: uuid.UUID | None = None,
     exam_id: uuid.UUID | None = None,
     station_id: uuid.UUID | None = None,
+    tags: list[str] | None = None,
 ) -> Post:
     row = Post(
         kind=kind,
@@ -34,6 +35,9 @@ async def create_post(
         parent_id=parent_id,
         exam_id=exam_id,
         station_id=station_id,
+        # Already normalized by `domain.clean_tags` — the repository stores
+        # what it is given and repeats no rule.
+        tags=tags or [],
         visibility=str(audience.visibility),
         audience_org_id=audience.org_id,
         audience_group_id=audience.group_id,
@@ -63,6 +67,7 @@ async def list_questions(
     exam_id: uuid.UUID | None = None,
     audience: Audience | None = None,
     author_id: uuid.UUID | None = None,
+    tag: str | None = None,
 ) -> tuple[list[Post], str | None]:
     """Questions this viewer may see, newest first.
 
@@ -79,6 +84,11 @@ async def list_questions(
     if audience is not None:
         # Narrowing to one room, on top of everything the viewer may see.
         stmt = stmt.where(addressed_to(Post, audience))
+    if tag:
+        # One more AND on top of the visibility filter, never a replacement
+        # for it: a tag narrows what the viewer may see and cannot widen it.
+        # Containment against the normalized (lowercase) stored form.
+        stmt = stmt.where(Post.tags.contains([tag]))
     return await keyset_page(
         session, stmt, sort_col=Post.created_at, id_col=Post.id, limit=limit, cursor=cursor
     )

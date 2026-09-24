@@ -26,6 +26,8 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.NotYours: errors.NotYoursError,
     domain.EmptyContent: errors.EmptyContentError,
     domain.ContentTooLong: errors.ContentTooLongError,
+    domain.TagTooLong: errors.TagTooLongError,
+    domain.TooManyTags: errors.TooManyTagsError,
 }
 
 
@@ -37,9 +39,14 @@ async def ask(
     body: str,
     exam_code: str | None,
     audience: Audience = PUBLIC,
+    tags: list[str] | None = None,
 ) -> PostRead:
     try:
         domain.ensure_postable(body)
+        # A question is what tags describe: they are how the feed is narrowed.
+        # A reply is never given its own, for the reason it is never given its
+        # own audience — it belongs to its question's thread and topic.
+        cleaned_tags = domain.clean_tags(tags or [])
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
     ensure_may_address(audience, await audiences_for(session, author_id))
@@ -56,6 +63,7 @@ async def ask(
         body=domain.clean(body),
         exam_id=exam_id,
         audience=audience,
+        tags=cleaned_tags,
     )
     return await service_reads.read_one(session, row, viewer_id=author_id)
 
@@ -160,6 +168,7 @@ async def list_questions(
     cursor: dict[str, Any] | None,
     audience: Audience | None = None,
     mine: bool = False,
+    tag: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
     viewer = await audiences_for(session, viewer_id)
     rows, next_cursor = await repository.list_questions(
@@ -169,6 +178,9 @@ async def list_questions(
         cursor=cursor,
         audience=audience,
         author_id=viewer_id if mine else None,
+        # Normalized the way tags are stored, so "Cardiology" finds
+        # "cardiology". A blank filter is no filter.
+        tag=domain.normalize_tag(tag) if tag else None,
     )
     return await service_reads.read_many(session, rows, viewer_id=viewer_id), next_cursor
 

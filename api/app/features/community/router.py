@@ -31,11 +31,13 @@ async def list_questions(
     page: Annotated[CursorParams, Depends()],
     room: Annotated[AudienceFilter, Depends()],
     mine: Annotated[bool, Query(description="Only the caller's own questions.")] = False,
+    tag: Annotated[str | None, Query(description="Only questions carrying this tag.")] = None,
 ) -> Page[schemas.PostRead]:
     """Everything this caller may see, or one room of it.
 
     Without a filter the answer spans the public pool and every institution and
-    group the caller belongs to, which is what a single feed should be.
+    group the caller belongs to, which is what a single feed should be. `tag`
+    narrows that answer and can never widen it.
     """
     items, next_cursor = await service.list_questions(
         session,
@@ -44,6 +46,7 @@ async def list_questions(
         cursor=page.cursor,
         audience=room.audience,
         mine=mine,
+        tag=tag,
     )
     return Page(items=items, next_cursor=next_cursor)
 
@@ -91,7 +94,13 @@ async def read_question(
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
-        errors.UnknownExamError, Unauthenticated, errors.EmptyContentError, InvalidAudience, AudienceNotYours
+        errors.UnknownExamError,
+        Unauthenticated,
+        errors.EmptyContentError,
+        errors.TagTooLongError,
+        errors.TooManyTagsError,
+        InvalidAudience,
+        AudienceNotYours,
     ),
 )
 async def ask(
@@ -104,6 +113,7 @@ async def ask(
         body=body.body,
         exam_code=body.exam_code,
         audience=body.audience.to_audience(),
+        tags=body.tags,
     )
 
 

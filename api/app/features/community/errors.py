@@ -35,6 +35,16 @@ class ContentTooLongError(InvalidInput):
     default_message = "That post is too long"
 
 
+class TagTooLongError(InvalidInput):
+    code = "tag_too_long"
+    default_message = "That tag is too long"
+
+
+class TooManyTagsError(InvalidInput):
+    code = "too_many_tags"
+    default_message = "That question has too many tags"
+
+
 class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError`, and shares its code.
 

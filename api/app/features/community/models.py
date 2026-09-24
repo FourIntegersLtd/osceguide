@@ -10,7 +10,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import AUDIENCE_CHECK, Addressed, Base, Timestamps, UUIDPrimaryKey
@@ -36,6 +37,9 @@ class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
         # The list query filters on these before anything else.
         Index("ix_posts_audience_org_id", "audience_org_id", "created_at"),
         Index("ix_posts_audience_group_id", "audience_group_id", "created_at"),
+        # The `tag` filter on the question feed is a JSONB containment, which
+        # this makes an index lookup rather than a scan.
+        Index("ix_posts_tags", "tags", postgresql_using="gin"),
     )
 
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -46,6 +50,12 @@ class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
     station_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("stations.id", ondelete="CASCADE"))
     title: Mapped[str | None] = mapped_column(String(300))
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    # A question's tags — short lowercase keys, see `domain.clean_tags`. An
+    # array column on the row rather than a join table: tags are never looked
+    # up in their own right, they are read with the post and used to narrow a
+    # list, which is what JSONB containment does in one clause. Replies and
+    # comments carry none; the default keeps every pre-tag row a real list.
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     removed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 

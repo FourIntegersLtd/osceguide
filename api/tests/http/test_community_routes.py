@@ -251,3 +251,153 @@ async def test_the_feed_can_narrow_to_my_questions(client: AsyncClient, make_act
 
     response = await client.get("/api/v1/community/questions?mine=true", headers=bearer(mine))
     assert [item["title"] for item in response.json()["items"]] == ["Mine"]
+
+
+# -------------------------------------------------------------------- tags
+
+
+async def ask_tagged(client: AsyncClient, token: str, title: str, tags: list[str]) -> dict:
+    response = await client.post(
+        "/api/v1/community/questions",
+        json={"title": title, "body": "Tagged question.", "tags": tags},
+        headers=bearer(token),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def test_a_question_carries_its_tags(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The feature the ported screens had to drop: an asker tags a question
+    and the feed shows the tags. Normalized on write — trimmed, lowercased,
+    de-duplicated, blanks dropped — so what reads back is what the filter
+    matches."""
+    token = await make_actor("tagger@example.com")
+    asked = await ask_tagged(client, token, "Chest pain", ["  Cardiology ", "cardiology", "", "neurology"])
+    assert asked["tags"] == ["cardiology", "neurology"]
+
+    listed = await client.get("/api/v1/community/questions", headers=bearer(token))
+    assert listed.json()["items"][0]["tags"] == ["cardiology", "neurology"]
+
+
+async def test_a_question_without_tags_reads_back_an_empty_list(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("untagged@example.com")
+    asked = await ask(client, token)
+    assert asked["tags"] == []
+
+
+async def test_an_over_long_tag_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("verbose@example.com")
+    response = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "T", "body": "B", "tags": ["x" * 33]},
+        headers=bearer(token),
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "tag_too_long"
+
+
+async def test_too_many_tags_are_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Refused rather than truncated: posting a question tagged differently
+    from what its author asked is the silent wrong answer."""
+    token = await make_actor("hoarder@example.com")
+    response = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "T", "body": "B", "tags": [f"tag-{i}" for i in range(6)]},
+        headers=bearer(token),
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "too_many_tags"
+
+
+async def test_a_reply_carries_no_tags(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A reply belongs to its question's thread and topic, the way it belongs
+    to its question's audience: tags sent on a reply are refused by having
+    nowhere to go, and the reply reads back with none."""
+    asker = await make_actor("tag-asker@example.com")
+    responder = await make_actor("tag-responder@example.com")
+    question = await ask_tagged(client, asker, "Tagged thread", ["cardiology"])
+
+    reply = await client.post(
+        f"/api/v1/community/questions/{question['id']}/replies",
+        json={"body": "History first.", "tags": ["surgery"]},
+        headers=bearer(responder),
+    )
+    assert reply.status_code == 201, reply.text
+    assert reply.json()["tags"] == []
+
+    # The question keeps its own.
+    detail = await client.get(f"/api/v1/community/questions/{question['id']}", headers=bearer(asker))
+    assert detail.json()["tags"] == ["cardiology"]
+
+
+async def test_the_feed_narrows_to_one_tag(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("filterer@example.com")
+    await ask_tagged(client, token, "Heart", ["cardiology"])
+    await ask_tagged(client, token, "Brain", ["neurology"])
+    await ask(client, token, title="Untagged")
+
+    filtered = await client.get("/api/v1/community/questions?tag=cardiology", headers=bearer(token))
+    assert [item["title"] for item in filtered.json()["items"]] == ["Heart"]
+
+    # The filter is normalized the way tags are stored, so casing and
+    # padding on the query do not change the answer.
+    sloppy = await client.get("/api/v1/community/questions?tag=%20Cardiology%20", headers=bearer(token))
+    assert [item["title"] for item in sloppy.json()["items"]] == ["Heart"]
+
+
+async def test_the_tag_filter_never_widens_what_a_caller_may_see(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor
+) -> None:
+    """An institution's tagged question stays invisible to an outsider who
+    happens to know the tag: the filter is one more AND on top of visibility,
+    never a way around it."""
+    from tests.http.test_audiences import a_member, an_org, org_audience
+
+    org_id, _ = await an_org(client, make_actor, "tags-leak")
+    member = await a_member(make_actor, org_id, "tags-leak", "tag-member@example.com")
+    outsider = await make_actor("tag-outsider@example.com")
+
+    asked = await client.post(
+        "/api/v1/community/questions",
+        json={
+            "title": "Ward round",
+            "body": "Internal.",
+            "tags": ["ward-round"],
+            "audience": org_audience(org_id),
+        },
+        headers=bearer(member),
+    )
+    assert asked.status_code == 201, asked.text
+
+    inside = await client.get("/api/v1/community/questions?tag=ward-round", headers=bearer(member))
+    assert "Ward round" in [q["title"] for q in inside.json()["items"]]
+
+    outside = await client.get("/api/v1/community/questions?tag=ward-round", headers=bearer(outsider))
+    assert outside.json()["items"] == []
+
+
+async def test_a_row_from_before_the_tags_column_reads_back_with_an_empty_list(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """The migration's promise, tested the way production meets it: a row
+    inserted without naming `tags` — what every existing row was — gets the
+    column default and reads as `[]`, not NULL where the schema expects a
+    list."""
+    from sqlalchemy import text
+
+    token = await make_actor("premigration@example.com")
+    mine = await ask(client, token)
+
+    await db_session.execute(
+        text(
+            "INSERT INTO posts (id, kind, author_id, title, body, visibility) "
+            "VALUES (gen_random_uuid(), 'question', :author, 'Legacy row', 'Written "
+            "before tags existed.', 'public')"
+        ),
+        {"author": uuid.UUID(mine["author_id"])},
+    )
+    await db_session.flush()
+
+    listed = await client.get("/api/v1/community/questions", headers=bearer(token))
+    legacy = next(item for item in listed.json()["items"] if item["title"] == "Legacy row")
+    assert legacy["tags"] == []

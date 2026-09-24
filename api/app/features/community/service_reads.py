@@ -40,6 +40,11 @@ async def read_many(session: AsyncSession, rows: list[Post], *, viewer_id: uuid.
             author_name=people[r.author_id].name if r.author_id in people else None,
             title=r.title,
             body=r.body,
+            # `or []` for a row written before tags existed and read back
+            # NULL by a driver, though the column default says that cannot
+            # happen: a None here would fail the schema instead of reading
+            # as the empty list it means.
+            tags=list(r.tags or []),
             audience=AudienceOut.of(r),
             like_count=counts.get(r.id, 0),
             liked_by_me=r.id in mine,

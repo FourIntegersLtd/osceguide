@@ -40,6 +40,30 @@ product — twelve in total — and the same handler logic copied across them.
   counts twice and nothing can be undone. Liking is idempotent both ways.
 - A question has no parent; a reply must have one. A check constraint, not a
   convention.
+- **A question carries tags; a reply never does.** The legacy client let an
+  asker tag a question with specialties and the list screen narrow to one.
+  Tags describe what a question is about, which is exactly how the feed filter
+  uses them, and a reply belongs to its question's thread and topic for the
+  same reason it inherits the question's audience — so `CreateReply` has no
+  tags field and a reply's `tags` always reads back `[]`.
+  - *Storage*: a JSONB array column on `posts`, not a join table. Nothing else
+    in the codebase stores a tag-like collection (grep finds no ARRAY columns
+    and no shared tag concept in `media` or `catalog` to reuse); the
+    established pattern for small document-shaped data on a row is JSONB
+    (`media.content`, `sittings.timing`, `rubrics.structure`). A tag is read
+    with its post and used to narrow a list, never looked up in its own right
+    or shared between rows — the case a join table is for (see `sso`'s
+    bindings, which *are* looked up on their own). One containment clause
+    (`tags @> '["x"]'`, GIN-indexed) does the filtering.
+  - *Validation* (`domain.clean_tags`, beside the content rules): each tag is
+    trimmed and lowercased — the legacy client's tags were lowercase specialty
+    keys, and a filter matching "Cardiology" but not "cardiology" reads as a
+    bug. Blank tags are dropped and duplicates de-duplicated rather than
+    refused: the author meant one tag and the list should say so. Over-long
+    (> 32 chars, `tag_too_long`) and over-many (> 5 after de-duplication,
+    `too_many_tags`) are refusals, because guessing which to drop would post a
+    question tagged differently from what its author asked. The legacy route
+    stored whatever arrived, unvalidated.
 - Removal is soft, so a thread does not lose its shape when one reply goes.
 - Content is trimmed at the ends and left alone in the middle — collapsing
   internal whitespace would quietly reformat someone's code block.
@@ -49,7 +73,7 @@ product — twelve in total — and the same handler logic copied across them.
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET/POST | `/api/v1/community/questions` | bearer | cursor-paginated |
+| GET/POST | `/api/v1/community/questions` | bearer | cursor-paginated; `tag` narrows to questions carrying one tag (AND-ed with visibility, so it can only narrow what the caller may see), `tag_too_long`/`too_many_tags` (422) on POST |
 | GET/POST | `/api/v1/community/questions/{id}/replies` | bearer | |
 | POST/DELETE | `/api/v1/community/posts/{id}/like` | bearer | idempotent both ways |
 | DELETE | `/api/v1/community/posts/{id}` | author or platform admin | `post_not_yours` (403) |

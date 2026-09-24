@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-68 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+69 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -431,6 +431,26 @@ yesterday.
 | `status`, `published_at/by`, `archived_at/by` | as for template versions | |
 
 UNIQUE `(station_id, version)`.
+
+### `station_flags`
+A report that a station is wrong, and what staff did about it. The retiring
+client appended `{station_id, mock_id, flagged: true}` to the *user's* document
+instead, so a report was visible only to the person who made it and the content
+team never saw one at all.
+
+| Field | Type | Notes |
+|---|---|---|
+| `station_id` | `uuid not null` → `stations.id` CASCADE | what the report is about, which is why this is a table of its own rather than a column on `users` |
+| `user_id` | `uuid not null` → `users.id` CASCADE | who reported it |
+| `status` | `varchar(16) not null default 'open'` | `open` \| `resolved` |
+| `resolution_note` | `text null` | what staff wrote when they closed it; never shown to the reporter — a queue, not an inbox |
+| `resolved_by` | `uuid null` → `users.id` SET NULL | |
+| `resolved_at` | `timestamptz null` | cleared when a report is reopened, so an `open` row never answers twice |
+
+UNIQUE `(station_id, user_id)`: a second tap on the button is the same report,
+and the legacy answer to a repeat was a 400 the client surfaced as a failure.
+CHECK `ck_station_flags_status`; index `(status, created_at)` — the queue is
+"what is still open, oldest first".
 
 ### `feedback_templates`
 A narrowing of a rubric: the domains one set of reviewers works through. Owned
@@ -1007,6 +1027,7 @@ Carries the `Addressed` columns (`visibility`, `audience_org_id`, `audience_grou
 | `station_id` | `uuid null` → `stations.id` CASCADE | a comment about a specific station, which b2c keeps in its own collection. Indexed |
 | `title` | `varchar(300) null` | |
 | `body` | `text not null` | `MAX_CONTENT = 10_000` |
+| `tags` | `jsonb not null default '[]'` | a question's tags — ≤ 5 normalized lowercase keys, ≤ 32 chars each (`domain.clean_tags`). GIN-indexed (`ix_posts_tags`) for the feed's `tag` containment filter. Replies and comments carry `[]` |
 | `removed_at` / `removed_by` | `timestamptz null` / `uuid null` → `users.id` SET NULL | |
 
 CHECK `ck_posts_parent_matches_kind`: a question starts a thread (no parent), a reply
