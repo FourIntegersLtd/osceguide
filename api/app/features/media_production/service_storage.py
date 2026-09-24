@@ -27,3 +27,13 @@ def put_object(settings: Settings, handle: BinaryIO, key: str) -> str:
 def remove_object(settings: Settings, url: str) -> None:
     """Delete whatever a stored URL points at."""
     s3.delete_object(settings, url)
+
+
+def object_exists(settings: Settings, key: str) -> bool:
+    """Whether something has been stored at `key` yet."""
+    return s3.object_exists(settings, key)
+
+
+def readable_url(settings: Settings, key: str, *, expires_in: int = 3600) -> str:
+    """A temporary URL anything can read `key` through, credentials and all."""
+    return s3.presigned_url(settings, key, expires_in=expires_in)

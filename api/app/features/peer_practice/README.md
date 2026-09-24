@@ -50,6 +50,18 @@ the patient.
 - `never_doctor` is a column. b2c hardcodes three personal email addresses into
   the matcher; it is a property of a person, so it lives on the person.
 - A stranger asking about a session gets 404, not 403.
+- **A recording is best-effort; a consultation is not.** An egress that cannot
+  be started, or a bucket that is not configured, is logged and the session
+  carries on. Two people practising is the thing being protected; feedback
+  built from it afterwards is not worth ending a consultation for.
+- **Only the doctor is marked.** The rubric is written for the doctor's
+  performance, and the patient is playing a part. The patient is never given
+  the doctor's attempt id, which is why `session_read` withholds it rather than
+  the client choosing not to show it.
+- A peer session becomes **one attempt**, `kind='peer'`, pointing back at the
+  session through `attempts.peer_session_id`. From there it is marked by the
+  same engine, against the same frozen rubric, as a mock — there is no second
+  scoring path to keep in step.
 
 ## Routes
 | Method | Path | Auth | Notes |
@@ -63,14 +75,35 @@ the patient.
 | POST | `/api/v1/me/practice-sessions/{id}/end` | participant | |
 | POST | `/api/v1/me/practice-sessions/{id}/voice-token` | bearer | Join the room the pair were matched into; `practice_session_ended` (409) |
 
-## Jobs
-`try_match_practice_room` — deferred when somebody joins the queue (same
-transaction as the queue row). `match_practice_queue` — periodic, every minute,
-drains every room as a safety net. `expire_practice_queue` — marks waiting
-entries past ten minutes as `expired`.
+There is deliberately no `start-egress`, `transcribe` or `feedback-status`
+route. The retiring client needed all three because its browser drove the
+recording; here the phase machine on the server already knows when the
+consultation starts and stops, and the feedback is read back through the
+attempt the session names — `GET /api/v1/attempts/{id}/result` and
+`/stream` — rather than through a second set of routes that would have to be
+kept in step with them.
 
-The procrastinate worker must be running for matching and expiry.
+## Jobs
+| Task | Queue | When |
+|---|---|---|
+| `try_match_practice_room` | `matching` | somebody joins the queue, in the same transaction as the queue row |
+| `match_practice_queue` | `matching` | every minute; drains every room as a safety net |
+| `expire_practice_queue` | `matching` | marks waiting entries past ten minutes as `expired` |
+| `transcribe_peer_session` | `transcription` | the consultation phase ends, in the same transaction as the stopped recording |
+
+`transcribe_peer_session` waits for the recording to land in S3 — egress upload
+lags the stop by seconds — and reschedules itself rather than sleeping in the
+worker, giving up after twenty looks and recording why on the session. It then
+transcribes, recovers the doctor's and the patient's turns from the one mixed
+track, and hands the transcript to `attempts.service_offline`, which freezes
+the rubric, stores the turns and queues the marking.
+
+The procrastinate worker must be running for matching, expiry and
+transcription.
 
 ## Cross-slice dependencies
-Calls `catalog` to resolve an exam. Recording and transcription of a peer
-session are not ported — see `docs/OPEN-QUESTIONS.md` P-1.
+Calls `catalog` to resolve an exam, `voice.service_recording` for the room
+recorder, `media_production.service_storage` for the object store, and
+`attempts.service_offline` to turn a finished transcript into a marked attempt.
+Each of those is a named function on a service, which is the only door a slice
+offers another.

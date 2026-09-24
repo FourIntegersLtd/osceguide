@@ -35,6 +35,10 @@ os.environ.setdefault("AWS_REGION", "eu-west-2")
 # A local `.env` OpenAI key would otherwise make `build_material_index` look
 # configured, and the tutor would claim it searched material it never read.
 os.environ["OPENAI_API_KEY"] = ""
+# Set, not `setdefault`: a developer's `.env` namespaces their agents so two
+# people can share one LiveKit project, and that prefix must not change what
+# the dispatch tests assert the worker is called.
+os.environ["LIVEKIT_AGENT_NAMESPACE"] = ""
 # The legacy login bridge. Set here so the exchange route is exercised in
 # its configured state; `test_legacy_exchange_routes` covers the unset one
 # by overriding the setting, because an unset secret must fail closed.

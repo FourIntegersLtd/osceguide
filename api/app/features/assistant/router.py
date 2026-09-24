@@ -11,7 +11,7 @@ from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep, VoiceTokens
 from app.core.settings import SettingsDep
-from app.features.assistant import errors, schemas, service
+from app.features.assistant import errors, schemas, service, service_content
 
 router = APIRouter(tags=["assistant"])
 
@@ -61,4 +61,26 @@ async def issue_session_voice_token(
         requester_id=principal.user_id,
         tokens=tokens,
         settings=settings,
+    )
+
+
+@router.get(
+    "/assistant/onboarding-scenes",
+    response_model=schemas.OnboardingScenes,
+    responses=error_responses(Unauthenticated),
+)
+async def read_onboarding_scenes(principal: CurrentPrincipal, session: Session) -> schemas.OnboardingScenes:
+    """The demo scenarios a first-time user is walked through.
+
+    Answered from the same pack the onboarding session's instructions are
+    rendered from, and for the caller's own exam — a headache for SCA, chest
+    pain for PLAB — so the introduction is to the thing they are sitting.
+    """
+    pack = await service_content.pack_for(session, user_id=principal.user_id, extras={})
+    return schemas.OnboardingScenes(
+        scenes=[
+            schemas.OnboardingScene(patientLine=scene.patient_line, question=scene.question)
+            for scene in pack.onboarding_scenes
+        ],
+        persona=schemas.AssistantPersona(assistantName=pack.persona.assistant_name),
     )

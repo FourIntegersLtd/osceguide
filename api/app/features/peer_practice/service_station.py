@@ -111,7 +111,25 @@ async def session_read(
         end_reason=row.end_reason,
         station=station,
         partner_joined=partner_joined,
+        doctor_attempt_id=row.doctor_attempt_id if is_doctor else None,
+        feedback_state=_feedback_state(row) if is_doctor else "none",
     )
+
+
+def _feedback_state(row: PracticeSession) -> str:
+    """What the doctor can be told about their marking, in one word.
+
+    Derived from the recording rather than stored: the states are already
+    written on the row by the recorder and the job, and a second field saying
+    the same thing is a second field to get wrong.
+    """
+    if row.doctor_attempt_id is not None:
+        return "ready"
+    if row.recording_state == "failed":
+        return "failed"
+    if row.recording_state == "none":
+        return "none"
+    return "pending"
 
 
 async def station_read_for_version(

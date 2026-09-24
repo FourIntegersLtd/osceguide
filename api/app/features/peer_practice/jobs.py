@@ -1,8 +1,16 @@
-"""Matching people who are waiting."""
+"""Matching people who are waiting, and marking what they did.
+
+Two queues, because they fail differently. Matching is quick and idempotent and
+runs every minute whether or not anybody joined. Transcription waits on an
+upload it does not control, costs a model call, and must not be retried into a
+second attempt for the same session — hence the queueing lock keyed on the
+session and the state guard in `service_feedback`.
+"""
 
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +22,14 @@ log = get_logger(__name__)
 
 MATCHING_QUEUE = "matching"
 TRY_MATCH_TASK = "try_match_practice_room"
+TRANSCRIPTION_QUEUE = "transcription"
+TRANSCRIBE_TASK = "transcribe_peer_session"
+
+# Egress finishes writing after it is told to stop. Waiting is the normal case,
+# not the exceptional one, so the first look is deliberately late.
+FIRST_LOOK_SECONDS = 30
+RETRY_SECONDS = 30
+MAX_LOOKS = 20
 
 
 def audience_lock_key(exam_id: uuid.UUID, audience: Audience) -> str:
@@ -41,6 +57,26 @@ async def enqueue_try_match(session: AsyncSession, *, exam_id: uuid.UUID, audien
             "org_id": str(audience.org_id) if audience.org_id else None,
             "group_id": str(audience.group_id) if audience.group_id else None,
         },
+    )
+
+
+async def enqueue_transcription(
+    session: AsyncSession, *, session_id: uuid.UUID, now: datetime, attempt: int = 0
+) -> None:
+    """Queue the marking of a finished session, in the caller's transaction.
+
+    The lock carries the attempt number so a reschedule is not refused as a
+    duplicate of the job that scheduled it, while two callers stopping the same
+    recording still collapse into one.
+    """
+    await defer_in_transaction(
+        session,
+        queue=TRANSCRIPTION_QUEUE,
+        task=TRANSCRIBE_TASK,
+        queueing_lock=f"transcribe:{session_id}:{attempt}",
+        ignore_lock_conflict=True,
+        scheduled_at=now + timedelta(seconds=FIRST_LOOK_SECONDS if attempt == 0 else RETRY_SECONDS),
+        args={"session_id": str(session_id), "attempt": attempt},
     )
 
 
@@ -76,6 +112,33 @@ def register() -> None:
             count = await drain_waiting_room(session, uuid.UUID(exam_id), audience=audience)
             if count:
                 log.info("practice pairs matched on join nudge", exam_id=exam_id, pairs=count)
+
+    @app.task(name=TRANSCRIBE_TASK, queue=TRANSCRIPTION_QUEUE)
+    async def transcribe_peer_session(session_id: str, attempt: int = 0) -> None:
+        """Transcribe a finished consultation and put it through marking.
+
+        A recording that has not landed yet reschedules rather than fails: the
+        upload is LiveKit's, on its own clock, and a session whose audio was
+        three minutes late is still a session somebody wants feedback on. After
+        `MAX_LOOKS` it is given up on and said so on the row, because a
+        recording that never arrived is not one that will.
+        """
+        from app.core.db import job_session
+        from app.features.peer_practice import repository_sessions, service_feedback
+
+        practice_id = uuid.UUID(session_id)
+        async with job_session() as session:
+            now = datetime.now(UTC)
+            try:
+                await service_feedback.build_feedback(session, practice_id, now=now)
+            except service_feedback.RecordingNotReady:
+                if attempt >= MAX_LOOKS:
+                    await repository_sessions.set_recording_state(
+                        session, practice_id, state="failed", error="the recording never arrived"
+                    )
+                    log.warning("peer recording never arrived", session_id=session_id)
+                    return
+                await enqueue_transcription(session, session_id=practice_id, now=now, attempt=attempt + 1)
 
     @app.periodic(cron="* * * * *")
     @app.task(name="match_practice_queue", queue="matching")

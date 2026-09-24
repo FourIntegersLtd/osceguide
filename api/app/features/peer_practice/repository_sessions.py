@@ -118,3 +118,37 @@ async def advance_phase(
     session: AsyncSession, session_id: uuid.UUID, *, values: Mapping[str, object]
 ) -> None:
     await session.execute(update(PracticeSession).where(PracticeSession.id == session_id).values(**values))
+
+
+async def set_recording_started(
+    session: AsyncSession, session_id: uuid.UUID, *, egress_id: str, key: str
+) -> None:
+    """Record that a recording is running, and where it will land.
+
+    Guarded on the state rather than written blind: two presence heartbeats can
+    observe the same phase change, and the second must not overwrite the first
+    recording's id with its own and orphan a running egress.
+    """
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id, PracticeSession.recording_state == "none")
+        .values(egress_id=egress_id, recording_key=key, recording_state="recording")
+    )
+
+
+async def set_recording_state(
+    session: AsyncSession, session_id: uuid.UUID, *, state: str, error: str | None = None
+) -> None:
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(recording_state=state, recording_error=error)
+    )
+
+
+async def set_doctor_attempt(session: AsyncSession, session_id: uuid.UUID, *, attempt_id: uuid.UUID) -> None:
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(doctor_attempt_id=attempt_id, recording_state="scored", recording_error=None)
+    )

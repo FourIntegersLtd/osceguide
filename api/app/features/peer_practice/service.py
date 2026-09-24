@@ -19,11 +19,18 @@ from app.core.events import publish_after_commit, user_topic
 from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
-from app.features.peer_practice import domain, errors, repository, repository_sessions
+from app.features.peer_practice import (
+    domain,
+    errors,
+    repository,
+    repository_sessions,
+    service_recording,
+)
 from app.features.peer_practice.jobs import enqueue_try_match
 from app.features.peer_practice.models import PracticeSession, QueueEntry
 from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus
 from app.features.peer_practice.service_lifecycle import advance_phases_if_due, record_presence
+from app.features.peer_practice.service_station import session_read as _session_read
 from app.features.peer_practice.station_pick import pick_station_version_id
 
 # What the queue stream reacts to. Named here because this is where it happens.
@@ -210,6 +217,11 @@ async def end_session(
         raise errors.SessionNotFound()
     if row.status == "ended":
         raise errors.SessionAlreadyEnded()
+    # Ending early is the common way a consultation finishes — one of the pair
+    # presses the button rather than letting the clock run out — so the
+    # recording has to be stopped and queued here too, not only on the
+    # `consultation -> debrief` transition.
+    await service_recording.stop_recording_and_queue(session, row, now=now)
     await repository_sessions.end_session(session, session_id, at=now, reason=reason)
     refreshed = await repository_sessions.session_by_id(session, session_id)
     return await _session_read(session, refreshed, viewer_id=user_id)  # type: ignore[arg-type]
@@ -231,11 +243,3 @@ async def _status(session: AsyncSession, entry: QueueEntry) -> QueueStatus:
         session_id=entry.matched_session_id,
         audience=AudienceOut.of(entry),
     )
-
-
-async def _session_read(
-    session: AsyncSession, row: PracticeSession, *, viewer_id: uuid.UUID
-) -> PracticeSessionRead:
-    from app.features.peer_practice.service_station import session_read
-
-    return await session_read(session, row, viewer_id=viewer_id)

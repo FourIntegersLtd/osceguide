@@ -45,7 +45,13 @@ async def assistant_scene(
     session_id: uuid.UUID, body: schemas.SceneRequest, session: Session
 ) -> schemas.SceneInstructions:
     return schemas.SceneInstructions(
-        instructions=await service_worker.scene_instructions(session, session_id, phase=body.phase)
+        instructions=await service_worker.scene_instructions(
+            session,
+            session_id,
+            phase=body.phase,
+            question=body.question,
+            patient_line=body.patientLine,
+        )
     )
 
 

@@ -292,6 +292,19 @@
         "title": "AssessmentResultRead",
         "type": "object"
       },
+      "AssistantPersona": {
+        "properties": {
+          "assistantName": {
+            "title": "Assistantname",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assistantName"
+        ],
+        "title": "AssistantPersona",
+        "type": "object"
+      },
       "AssistantTranscriptPost": {
         "properties": {
           "candidate_ref": {
@@ -6435,6 +6448,45 @@
         "title": "NoteRead",
         "type": "object"
       },
+      "OnboardingScene": {
+        "description": "One demo scenario. The spelling is the worker's and the browser's, which is b2c's.",
+        "properties": {
+          "patientLine": {
+            "title": "Patientline",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patientLine",
+          "question"
+        ],
+        "title": "OnboardingScene",
+        "type": "object"
+      },
+      "OnboardingScenes": {
+        "properties": {
+          "persona": {
+            "$ref": "#/components/schemas/AssistantPersona"
+          },
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/OnboardingScene"
+            },
+            "title": "Scenes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "scenes",
+          "persona"
+        ],
+        "title": "OnboardingScenes",
+        "type": "object"
+      },
       "OrgAtRisk": {
         "description": "An organisation the console should look at before it looks at anything else.",
         "properties": {
@@ -9378,6 +9430,18 @@
             ],
             "title": "Current Phase"
           },
+          "doctor_attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Attempt Id"
+          },
           "doctor_joined_at": {
             "anyOf": [
               {
@@ -9415,6 +9479,11 @@
           },
           "exam_code": {
             "title": "Exam Code",
+            "type": "string"
+          },
+          "feedback_state": {
+            "default": "none",
+            "title": "Feedback State",
             "type": "string"
           },
           "id": {
@@ -15718,6 +15787,47 @@
         "summary": "Reindex Material",
         "tags": [
           "tutor-memory"
+        ]
+      }
+    },
+    "/api/v1/assistant/onboarding-scenes": {
+      "get": {
+        "description": "The demo scenarios a first-time user is walked through.\n\nAnswered from the same pack the onboarding session's instructions are\nrendered from, and for the caller's own exam \u2014 a headache for SCA, chest\npain for PLAB \u2014 so the introduction is to the thing they are sitting.",
+        "operationId": "assistant_read_onboarding_scenes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingScenes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Onboarding Scenes",
+        "tags": [
+          "assistant"
         ]
       }
     },

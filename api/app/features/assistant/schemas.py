@@ -53,6 +53,22 @@ class SceneInstructions(BaseModel):
     instructions: str
 
 
+class OnboardingScene(BaseModel):
+    """One demo scenario. The spelling is the worker's and the browser's, which is b2c's."""
+
+    patientLine: str  # noqa: N815 - the contract's own spelling
+    question: str
+
+
+class AssistantPersona(BaseModel):
+    assistantName: str  # noqa: N815 - the contract's own spelling
+
+
+class OnboardingScenes(BaseModel):
+    scenes: list[OnboardingScene]
+    persona: AssistantPersona
+
+
 class AssistantTranscriptPost(BaseModel):
     session_id: str
     worker_type: str

@@ -63,7 +63,16 @@ class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
     """Two people practising, one as doctor and one as patient."""
 
     __tablename__ = "practice_sessions"
-    __table_args__ = (Index("ix_practice_sessions_participants", "doctor_user_id", "patient_user_id"),)
+    __table_args__ = (
+        Index("ix_practice_sessions_participants", "doctor_user_id", "patient_user_id"),
+        # Partial, because a session that was never recorded is the uninteresting
+        # majority and the transcription job only ever asks after the rest.
+        Index(
+            "ix_practice_sessions_recording_state",
+            "recording_state",
+            postgresql_where=text("recording_state <> 'none'"),
+        ),
+    )
 
     exam_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("exams.id", ondelete="RESTRICT"), nullable=False)
     doctor_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -91,6 +100,26 @@ class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
     feedback_rating: Mapped[int | None] = mapped_column(Integer)
     feedback_comment: Mapped[str | None] = mapped_column(String(2000))
     would_practice_again: Mapped[bool | None] = mapped_column(Boolean)
+
+    # Recording, and what it eventually becomes. Two people practising have no
+    # agent in the room keeping a transcript the way an attempt's patient
+    # does, so this recording is the only record there will ever be, and the
+    # marking is built from it afterwards (P-1).
+    egress_id: Mapped[str | None] = mapped_column(String(128))
+    # The object key, not a URL: the bucket is private, so what a reader needs
+    # is a presigned URL minted per read, and storing one would store something
+    # that expires.
+    recording_key: Mapped[str | None] = mapped_column(String(512))
+    recording_state: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'none'"))
+    # Why the recording or the marking did not happen, for the one person who
+    # asks where their feedback is. Null while nothing has gone wrong.
+    recording_error: Mapped[str | None] = mapped_column(String(200))
+    # The doctor's scored attempt. `attempts.peer_session_id` points back the
+    # other way; without this the session read cannot say where the feedback
+    # is without scanning attempts for one that names it.
+    doctor_attempt_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("attempts.id", ondelete="SET NULL", use_alter=True)
+    )
 
 
 class PracticeHistory(Base, UUIDPrimaryKey, Timestamps):

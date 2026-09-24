@@ -91,6 +91,33 @@ class ProfileRenderer(Protocol):
         ...
 
 
+class TranscriptionFailed(Exception):
+    """The audio could not be turned into text."""
+
+
+@runtime_checkable
+class Transcriber(Protocol):
+    """Turns recorded audio into words.
+
+    A port because which service listens is a backend decision, and because a
+    slice that turns a peer session into a marked attempt should be testable
+    without an API key and without a real recording.
+
+    It answers one block of text rather than speaker turns: a room-composite
+    recording is a single mixed track, so who said what is not in the audio to
+    begin with and is recovered afterwards by whoever asked.
+    """
+
+    async def transcribe(self, *, audio_url: str) -> str:
+        """Return what was said, or raise `TranscriptionFailed`.
+
+        `audio_url` must be fetchable by the adapter without credentials of its
+        own — a presigned URL, not a bucket path — because the store the
+        recording sits in is the caller's business, not the transcriber's.
+        """
+        ...
+
+
 class SummaryFailed(Exception):
     """The model could not produce a summary in the shape asked for."""
 

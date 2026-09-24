@@ -3,11 +3,9 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Annotated, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends
-from openai import AsyncOpenAI, OpenAIError
-from openai.types.chat import ChatCompletionMessageParam
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
@@ -18,6 +16,9 @@ from app.features.assistant.schemas_help import KnowledgeChat, KnowledgeReply
 from app.features.catalog import service as catalog
 from app.features.media import service as media
 from app.features.media import service_search
+
+if TYPE_CHECKING:  # pragma: no cover - a type, never imported at runtime
+    from openai.types.chat import ChatCompletionMessageParam
 
 _MAX_QUERY = 2_000
 
@@ -76,6 +77,12 @@ async def answer(
         )
     if not settings.openai_api_key.strip():
         raise KnowledgeUnavailable()
+    # Imported here, not at module scope: `tests/contract/test_engine_adapter.py`
+    # holds this backend to ADR 0013's claim that importing the engine pulls in
+    # no LLM SDK, and an eager import here is also startup time every process
+    # pays — including the worker, which never answers a knowledge question.
+    from openai import AsyncOpenAI, OpenAIError  # noqa: PLC0415 - optional dependency
+
     system = (
         "You are Athena, OSCE Guide's exam revision assistant. "
         "Answer using only the reference summaries below. "
@@ -90,7 +97,10 @@ async def answer(
                 max_completion_tokens=4000,
                 messages=[
                     {"role": "system", "content": system},
-                    *[cast(ChatCompletionMessageParam, message.model_dump()) for message in body.messages],
+                    # The name is quoted because it is imported under TYPE_CHECKING only:
+                    # `cast` evaluates its first argument at runtime, so the bare
+                    # name raised NameError on every grounded answer.
+                    *[cast("ChatCompletionMessageParam", message.model_dump()) for message in body.messages],
                 ],
             )
         reply = (result.choices[0].message.content or "").strip()

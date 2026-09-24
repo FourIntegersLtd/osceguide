@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import openai
 import pytest
 
 from app.features.assistant import service_knowledge as service
@@ -51,7 +52,10 @@ async def test_answers_use_only_unlocked_exam_material(monkeypatch, has_access, 
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=completion)))
     manager = AsyncMock()
     manager.__aenter__.return_value = client
-    monkeypatch.setattr(service, "AsyncOpenAI", lambda **kwargs: manager)
+    # `answer` imports the SDK lazily inside the call, so ADR 0013 holds and
+    # importing the engine pulls in no LLM SDK. Patch the source module: the
+    # from-import resolves at call time, and `service` has no such attribute.
+    monkeypatch.setattr(openai, "AsyncOpenAI", lambda **kwargs: manager)
     result = await service.answer(
         None,
         KnowledgeChat(messages=[{"role": "user", "content": "Hypertension?"}]),

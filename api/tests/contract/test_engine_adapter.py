@@ -9,6 +9,7 @@ imports it.
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -102,14 +103,22 @@ def test_the_engine_only_needs_pydantic() -> None:
 
     If the engine grows an LLM SDK or a database driver, depending on it from
     here stops being cheap and the packaging decision needs revisiting.
-    """
-    import osce_assessment.contracts.models  # noqa: F401
 
-    heavy = {"sqlalchemy", "psycopg", "fastapi", "django", "openai", "anthropic"}
-    loaded = {name.split(".")[0] for name in sys.modules}
-    assert not (heavy & loaded & {"openai", "anthropic"}), (
-        "importing the engine's contracts pulled in an LLM SDK"
+    Asked in a fresh interpreter, because `sys.modules` is shared by the whole
+    test session: read in-process, this passed alone and failed in a full run,
+    and the failure named the engine when the culprit was an unrelated module
+    importing an SDK eagerly. A subprocess asks the question the test means.
+    """
+    probe = (
+        "import osce_assessment.contracts.models, sys; "
+        "heavy = {'sqlalchemy', 'psycopg', 'fastapi', 'django', 'openai', 'anthropic'}; "
+        "print(','.join(sorted(heavy & {n.split('.')[0] for n in sys.modules})))"
     )
+    result = subprocess.run(  # noqa: S603 - this interpreter, a literal program
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+    )
+    pulled = result.stdout.strip()
+    assert not pulled, f"importing the engine's contracts pulled in {pulled}"
 
 
 async def test_the_adapter_builds_every_object_the_engine_expects() -> None:

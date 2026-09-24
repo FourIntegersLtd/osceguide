@@ -10,14 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
-from app.features.assistant import domain, errors, repository
+from app.features.assistant import domain, errors, repository, service_content
 from app.features.assistant import service_seams as seams
 from app.features.assistant.doctor_prompt import consulting_doctor_instructions
 from app.features.assistant.models import AssistantSession
 from app.features.assistant.schemas import RoomGrant, SessionRead
 
-# Placeholder text until content packs are ported. Rendered here rather than in
-# the worker, which holds no templates by design.
+# The last resort, after the seam and the content pack have both declined.
+# `domain.ensure_dispatchable` refuses a session with no instructions at all,
+# and a generic assistant is better than a session that cannot start.
 _INSTRUCTIONS = {
     "help": "You are helping someone use OSCE Guide. Answer from the FAQ you have been given.",
     "onboarding": "You are introducing OSCE Guide to someone using it for the first time.",
@@ -72,8 +73,20 @@ async def start_session(
     # Asked before the placeholder is used, not instead of it: a slice above
     # this one renders the kinds it knows about and answers `None` for the rest.
     rendered = await seams._render(session, worker_type, user_id, now) if seams._render else None
-    instructions = str(rendered["instructions"]) if rendered else _INSTRUCTIONS[worker_type]
+    instructions = str(rendered["instructions"]) if rendered else ""
     greeting = str(rendered["greeting"]) if rendered and rendered.get("greeting") else None
+    # The pack speaks for `help` and `onboarding`; the seam owns `dashboard`
+    # and answers `None` for everything else, by design.
+    from_pack = (
+        None
+        if rendered
+        else await service_content.render(session, worker_type=worker_type, user_id=user_id, extras=extras)
+    )
+    if from_pack is not None:
+        instructions = from_pack.instructions
+        greeting = from_pack.greeting
+        extras = {**extras, **from_pack.extras}
+    instructions = instructions or _INSTRUCTIONS[worker_type]
     if worker_type == "consulting-doctor":
         station_instructions = consulting_doctor_instructions(extras)
         if station_instructions:

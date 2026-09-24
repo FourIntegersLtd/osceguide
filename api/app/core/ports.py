@@ -45,6 +45,12 @@ from app.core.ports_models import (
     SummaryFailed as SummaryFailed,
 )
 from app.core.ports_models import (
+    Transcriber as Transcriber,
+)
+from app.core.ports_models import (
+    TranscriptionFailed as TranscriptionFailed,
+)
+from app.core.ports_models import (
     TranscriptSummariser as TranscriptSummariser,
 )
 from app.core.ports_models import (
@@ -58,6 +64,15 @@ from app.core.ports_retrieval import (
 )
 from app.core.ports_retrieval import (
     Passage as Passage,
+)
+from app.core.ports_voice import (
+    RoomAgents as RoomAgents,
+)
+from app.core.ports_voice import (
+    RoomRecorder as RoomRecorder,
+)
+from app.core.ports_voice import (
+    VoiceTokens as VoiceTokens,
 )
 
 
@@ -114,61 +129,6 @@ def get_clock() -> Clock:
 
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
-
-
-@runtime_checkable
-class VoiceTokens(Protocol):
-    """Mints the token a browser uses to join a LiveKit room.
-
-    A port because the SDK is an implementation detail, and because a test
-    should be able to assert what a token was asked to grant without a LiveKit
-    project existing.
-    """
-
-    def issue(
-        self,
-        *,
-        identity: str,
-        room: str,
-        agent_name: str | None,
-        dispatch_metadata: dict[str, str] | None,
-        room_admin: bool = False,
-        can_publish: bool = True,
-        ttl_seconds: int = 3600,
-    ) -> str:
-        """Return a signed join token.
-
-        `can_publish=False` is an examiner watching a station: they hear the
-        consultation and cannot be heard in it. Enforced in the token rather
-        than by hiding a button, because a muted microphone is a UI state and
-        this has to be a guarantee — a candidate must not be able to be
-        prompted, and the transcript must stay theirs.
-        """
-        ...
-
-
-@runtime_checkable
-class RoomAgents(Protocol):
-    """Putting an agent into a room that already exists, and taking it out.
-
-    Distinct from `VoiceTokens`, which dispatches implicitly: a candidate
-    joining their own attempt carries the agent in their token's room
-    configuration. A supervisor running a circuit has no such moment — the room
-    is already up and the candidates are already in it — so the agent has to be
-    dispatched explicitly, into a room, on demand.
-    """
-
-    async def remove_agents(self, room: str) -> int:
-        """Remove every agent participant. Returns how many were removed."""
-        ...
-
-    async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
-        """Ask LiveKit to put `agent_name` into `room`.
-
-        Raises `VoiceUnavailable` if LiveKit cannot be reached: a supervisor
-        pressing the button needs to know it did not happen.
-        """
-        ...
 
 
 @runtime_checkable

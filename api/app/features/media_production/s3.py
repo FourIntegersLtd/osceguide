@@ -45,3 +45,34 @@ def delete_object(settings: Settings, url: str) -> None:
     if not key:
         return
     s3_client(settings).delete_object(Bucket=settings.aws_s3_bucket, Key=key)
+
+
+def object_exists(settings: Settings, key: str) -> bool:
+    """Whether `key` is in the bucket yet.
+
+    Egress writes the recording after the stop is acknowledged, so a reader
+    that does not check finds nothing and concludes the session was silent.
+    """
+    client = s3_client(settings)
+    try:
+        client.head_object(Bucket=settings.aws_s3_bucket, Key=key)
+    except client.exceptions.ClientError:
+        return False
+    return True
+
+
+def presigned_url(settings: Settings, key: str, *, expires_in: int) -> str:
+    """A URL that grants a read of one object for a while.
+
+    The bucket is private, so anything that has to fetch an object without
+    credentials of its own — a transcription service, a browser playing a
+    recording back — is handed one of these rather than the object URL, which
+    would answer 403.
+    """
+    return str(
+        s3_client(settings).generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.aws_s3_bucket, "Key": key},
+            ExpiresIn=expires_in,
+        )
+    )

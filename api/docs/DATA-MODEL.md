@@ -1097,6 +1097,21 @@ consultation, feedback — driven by the circuit clock), `phase_ends_at timestam
 `end_reason varchar(32) null`, `feedback_rating int null`,
 `feedback_comment varchar(2000) null`, `would_practice_again bool null`.
 
+Recording and feedback: `egress_id varchar(128) null` (the LiveKit Egress the stop has
+to find), `recording_key varchar(512) null` (the S3 object key — the URL is presigned
+on demand, never stored), `recording_state varchar(16) not null default 'none'`
+(`none` | `recording` | `stopped` | `failed`; a recording that started and never
+stopped is otherwise invisible), `recording_error varchar(200) null`,
+`doctor_attempt_id` → `attempts.id` SET NULL — the doctor's scored `kind='peer'`
+attempt. It is the readable half of the link `attempts.peer_session_id` already
+provides in the other direction; without it the session read cannot tell the client
+where its feedback is without a reverse scan. Only the doctor is marked: the rubric is
+written for the doctor's performance, so the patient's session carries no attempt.
+
+Partial index `ix_practice_sessions_recording_state` on `recording_state` WHERE
+`recording_state <> 'none'` — a session that was never recorded is the uninteresting
+majority, and the transcription job only ever asks after the rest.
+
 ### `practice_history`
 What part someone last played, and how often they have practised. A row rather than
 fields on the user: it is peer-practice's business, and b2c putting it on the user

@@ -15,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.assistant import domain, errors, repository
 from app.features.assistant import service_seams as seams
+from app.features.assistant.content.prompts.onboarding import OnboardingInstructions
 from app.features.assistant.schemas import WorkerSessionPayload
 from app.features.assistant.service import TOOLS_KEY, require_session
+from app.features.assistant.service_content import SCENES_KEY
 
 
 async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessionPayload:
@@ -52,10 +54,59 @@ async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessi
     )
 
 
-async def scene_instructions(session: AsyncSession, session_id: uuid.UUID, *, phase: str | None) -> str:
-    """Instructions for the next scene of an onboarding demo."""
+async def scene_instructions(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    phase: str | None,
+    question: str | None = None,
+    patient_line: str | None = None,
+) -> str:
+    """Instructions for the next scene of an onboarding demo.
+
+    The scene comes from what was frozen onto the session when it started, for
+    the same reason the tools are frozen there: the walkthrough the worker
+    performs minutes later has to be the one its opening script promised. What
+    the worker sends is preferred only when it names a scene this session was
+    actually given — otherwise a request could hand the model any script it
+    liked.
+    """
     row = await require_session(session, session_id)
-    return f"{row.instructions}\n\nScene: {phase or 'next'}."
+    scenes = [s for s in (row.extras or {}).get(SCENES_KEY, []) if isinstance(s, dict)]
+    scene = _matching_scene(scenes, question=question, patient_line=patient_line)
+    if scene is None and phase != "intro":
+        scene = scenes[0] if scenes else None
+    if scene is None and phase != "intro":
+        # Nothing to demonstrate: the pack resolved to no scenes, so the
+        # session keeps the instructions it opened with rather than being
+        # handed an empty scenario to improvise around.
+        return row.instructions
+    return OnboardingInstructions(
+        question=str(scene.get("question", "")) if scene else "",
+        patient_line=str(scene.get("patientLine", "")) if scene else "",
+        phase=phase or "demo",
+        user_name=await _user_name(session, row.user_id),
+    ).get_onboarding_instructions()
+
+
+def _matching_scene(
+    scenes: list[dict[str, Any]], *, question: str | None, patient_line: str | None
+) -> dict[str, Any] | None:
+    wanted = (question or "").strip()
+    line = (patient_line or "").strip()
+    for scene in scenes:
+        if wanted and str(scene.get("question", "")).strip() == wanted:
+            return scene
+        if line and str(scene.get("patientLine", "")).strip() == line:
+            return scene
+    return None
+
+
+async def _user_name(session: AsyncSession, user_id: uuid.UUID) -> str:
+    from app.features.identity import service_platform as identity
+
+    user = await identity.user_by_id(session, user_id)
+    return user.name if user else ""
 
 
 async def accept_transcript(

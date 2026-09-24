@@ -148,6 +148,11 @@ class PracticeSessionRead(BaseModel):
     end_reason: str | None = None
     station: PracticeStationRead | None = None
     partner_joined: bool = False
+    # The doctor's marked attempt, and where it has got to. Only the doctor is
+    # scored — the rubric is written for the doctor's performance — so the
+    # patient always reads `none` and never sees somebody else's attempt id.
+    doctor_attempt_id: uuid.UUID | None = None
+    feedback_state: str = "none"
 
 
 class SessionFeedback(BaseModel):

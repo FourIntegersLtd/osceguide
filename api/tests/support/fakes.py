@@ -192,6 +192,54 @@ class FakeRoomAgents:
         self.dispatched.append({"room": room, "agent_name": agent_name, "metadata": metadata})
 
 
+@dataclass
+class FakeRoomRecorder:
+    """Records what it was asked to record, instead of calling Egress.
+
+    Keeps every start and stop, because the invariant is that a session is
+    started once and stopped once: a fake that only kept the last call could
+    not tell a double-start from a single one, and a double start is an
+    orphaned egress nobody ever stops.
+    """
+
+    started: list[tuple[str, str]] = field(default_factory=list)
+    stopped: list[str] = field(default_factory=list)
+    fail_start: bool = False
+    fail_stop: bool = False
+
+    async def start(self, *, room: str, key: str) -> str:
+        if self.fail_start:
+            from app.features.voice.errors import VoiceUnavailable
+
+            raise VoiceUnavailable("LiveKit is unreachable")
+        self.started.append((room, key))
+        return f"EG_{len(self.started)}"
+
+    async def stop(self, *, egress_id: str) -> None:
+        if self.fail_stop:
+            from app.features.voice.errors import VoiceUnavailable
+
+            raise VoiceUnavailable("LiveKit is unreachable")
+        self.stopped.append(egress_id)
+
+
+@dataclass
+class FakeTranscriber:
+    """Answers canned speech, or refuses, without a model or a recording."""
+
+    text: str = "Hello, what brings you in today? I have had a headache for a week."
+    fail: bool = False
+    asked: list[str] = field(default_factory=list)
+
+    async def transcribe(self, *, audio_url: str) -> str:
+        self.asked.append(audio_url)
+        if self.fail:
+            from app.core.ports_models import TranscriptionFailed
+
+            raise TranscriptionFailed("the recording could not be transcribed")
+        return self.text
+
+
 class FakeTranscriptSummariser:
     """Returns a canned payload and records what it was asked to summarise."""
 

@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
+from app.core.ports import RoomRecorder
 from app.features.catalog import service as catalog
-from app.features.peer_practice import domain, repository_sessions
+from app.features.peer_practice import domain, repository_sessions, service_recording
 from app.features.peer_practice.models import PracticeSession
 from app.features.peer_practice.station_pick import pick_station_version_id
 from app.features.peer_practice.timers import durations_for
@@ -64,8 +65,19 @@ async def create_runtime_for_peer_booking(
 
 
 async def advance_phases_if_due(
-    session: AsyncSession, row: PracticeSession, *, exam_code: str, now: datetime
+    session: AsyncSession,
+    row: PracticeSession,
+    *,
+    exam_code: str,
+    now: datetime,
+    recorder: RoomRecorder | None = None,
 ) -> PracticeSession:
+    """Move the clock on, recording the consultation for as long as it lasts.
+
+    `recorder` is threaded rather than built inside `service_recording` so a
+    test can wire a fake the way every other port is wired here. Production
+    passes nothing and the real Egress adapter is built on demand.
+    """
     if row.status == "ended" or row.current_phase is None or row.phase_ends_at is None:
         return row
     if now < row.phase_ends_at:
@@ -95,6 +107,13 @@ async def advance_phases_if_due(
         values["status"] = "ended"
         values["ended_at"] = now
         values["end_reason"] = "phases_complete"
+    if next_phase == "consultation":
+        # Recording starts here rather than when the pair were matched: the
+        # preparation phase is somebody reading a brief alone, and there is
+        # nothing in it to mark.
+        await service_recording.start_recording(session, row, exam_code=exam_code, recorder=recorder)
+    elif row.current_phase == "consultation":
+        await service_recording.stop_recording_and_queue(session, row, now=now, recorder=recorder)
     await repository_sessions.advance_phase(session, row.id, values=values)
     refreshed = await repository_sessions.session_by_id(session, row.id)
     assert refreshed is not None
@@ -104,7 +123,12 @@ async def advance_phases_if_due(
 
 
 async def record_presence(
-    session: AsyncSession, row: PracticeSession, *, user_id: uuid.UUID, now: datetime
+    session: AsyncSession,
+    row: PracticeSession,
+    *,
+    user_id: uuid.UUID,
+    now: datetime,
+    recorder: RoomRecorder | None = None,
 ) -> PracticeSession:
     exam_code = await catalog.exam_code_by_id(session, row.exam_id) or ""
     updates: dict[str, datetime] = {}
@@ -137,4 +161,4 @@ async def record_presence(
         for participant in (row.doctor_user_id, row.patient_user_id):
             publish_after_commit(session, user_topic(participant), SESSION_UPDATED)
 
-    return await advance_phases_if_due(session, row, exam_code=exam_code, now=now)
+    return await advance_phases_if_due(session, row, exam_code=exam_code, now=now, recorder=recorder)

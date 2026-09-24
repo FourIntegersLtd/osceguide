@@ -116,3 +116,79 @@ async def test_a_session_that_does_not_exist_is_a_404(
     )
     assert response.status_code == 404
     assert response.json()["code"] == "assistant_session_not_found"
+
+
+async def test_a_help_session_speaks_from_the_faq_rather_than_a_placeholder(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """The whole of A-2: this used to be one sentence of placeholder text."""
+    from app.features.assistant import repository
+    from app.features.assistant.content.prompts.faq_block import FAQ_BLOCK_HEADER
+
+    token = await make_actor("assistant-help@example.com")
+    session_id = await a_session(client, token, "help")
+
+    row = await repository.by_id(db_session, uuid.UUID(session_id))
+    assert row is not None
+    assert FAQ_BLOCK_HEADER in row.instructions
+
+
+async def test_a_help_session_is_answered_for_the_screen_the_user_is_on(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """The client's own navigation decides the labels and which entries exist."""
+    from app.features.assistant import repository
+
+    token = await make_actor("assistant-help-nav@example.com")
+    created = await client.post(
+        "/api/v1/assistant/sessions",
+        json={
+            "session_type": "help",
+            "extras": {
+                "client": {
+                    "surface": "exam",
+                    "route": "/app/me/practice",
+                    "navigation": [{"key": "messages", "label": "Talk to us", "path": "/messages"}],
+                }
+            },
+        },
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+
+    row = await repository.by_id(db_session, uuid.UUID(created.json()["id"]))
+    assert row is not None
+    assert "Talk to us" in row.instructions
+    assert "/app/me/practice" in row.instructions
+
+
+async def test_an_onboarding_session_carries_the_scenes_it_will_demonstrate(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Frozen with the session, so the demo matches the script that promised it."""
+    from app.features.assistant import repository
+    from app.features.assistant.service_content import SCENES_KEY
+
+    token = await make_actor("assistant-onboarding@example.com")
+    session_id = await a_session(client, token, "onboarding")
+
+    row = await repository.by_id(db_session, uuid.UUID(session_id))
+    assert row is not None
+    assert (row.extras or {}).get(SCENES_KEY)
+    assert "Athena" in row.instructions
+
+
+async def test_the_onboarding_scenes_are_offered_to_the_browser(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("assistant-scenes@example.com")
+
+    response = await client.get("/api/v1/assistant/onboarding-scenes", headers=bearer(token))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["persona"]["assistantName"] == "Athena"
+    assert body["scenes"]
+    assert all(scene["patientLine"] and scene["question"] for scene in body["scenes"])
+
+
+async def test_the_scenes_route_needs_somebody_signed_in(client: AsyncClient) -> None:
+    assert (await client.get("/api/v1/assistant/onboarding-scenes")).status_code == 401

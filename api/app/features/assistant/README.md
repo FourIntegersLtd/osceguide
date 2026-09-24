@@ -53,6 +53,7 @@ this slice — see **Three fates** below.
 |---|---|---|---|
 | POST | `/api/v1/assistant/sessions` | bearer | |
 | POST | `/api/v1/assistant/sessions/{id}/voice-token` | bearer | owner only, dispatches the worker |
+| GET | `/api/v1/assistant/onboarding-scenes` | bearer | the caller's exam's demo scenes and the assistant's name, for the browser's walkthrough |
 | GET | `/api/worker/assistant-sessions/{id}` | worker secret | |
 | POST | `/api/worker/assistant-sessions/{id}/scene` | worker secret | |
 | POST | `/api/worker/assistant-sessions/{id}/transcript` | worker secret | retained, summarised or discarded by kind |
@@ -90,9 +91,37 @@ as plain data rather than mapped rows.
   decides which deployment the worker runs on. This slice owns who may ask.
 
 A **dashboard** session is rendered by `tutor_memory` from the learner's own
-history and carries four backend-defined tools. `help`, `onboarding` and
-`consulting-doctor` are still the three placeholder strings, and the FAQ pack
-is unported (A-2).
+history and carries four backend-defined tools. Everything else is rendered
+here: `help` and `onboarding` from the content pack (below), and
+`consulting-doctor` from the station in `extras`.
+
+## Content packs
+`content/` is b2c's `assistant_content` ported verbatim — pure data and pure
+functions, no I/O. `resolve_client_profile` turns the `client` block the
+browser sends (surface, route, navigation) plus the caller's exam and role into
+a profile; `resolve_content_pack` layers the base packs, then the exam's, then
+the surface's, and `overlay.apply` refuses a duplicate or an unknown entry id
+rather than letting one silently win.
+
+That layering is the whole point of the `client` block: an FAQ entry that
+`requires_nav` is dropped when the screen has no such link, and `{nav.<key>}`
+is replaced with the label *this* client uses, so the same pack says "open
+Sittings" on an institution screen and "open Mocks" on a consumer one.
+
+A help session carries the entire FAQ inline, as b2c does deliberately — the
+model reads every entry itself and there is no search tool. `_INSTRUCTIONS`
+survives as a last resort only because `domain.ensure_dispatchable` refuses a
+blank instruction; a pack that fails to resolve must still leave something
+sayable.
+
+One adaptation: exam identity is `exam_code` here, where b2c used `app_type`.
+The `employer` surface is still refused — the employer arm is B2B exam mode,
+so a caller declaring one is a bug, not a customer.
+
+Onboarding scenes are frozen into `extras` when the session starts, for the
+same reason the tools are: what the worker is offered minutes later must match
+the instructions it was given. `POST .../scene` will only render a scene the
+session was actually handed.
 
 ## Help browser and knowledge chat
 

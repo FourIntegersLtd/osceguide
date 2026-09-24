@@ -105,6 +105,14 @@ ignore = ["S101", "N818"]  # assert is fine in tests; error classes are named fo
 # Verbatim B2C prompt literals. Wrapping them would change the model input
 # and inflate the file past the 250-line cap the guards enforce.
 "app/features/generation/exam_prompts.py" = ["E501"]
+# Same reason: the diarisation prompt is ported verbatim from b2c, and where a
+# turn is cut decides what the rubric is marked against (P-1).
+"app/features/peer_practice/transcript_prompt.py" = ["E501"]
+# Same reason again: the assistant's FAQ entries and prompt templates are b2c's
+# wording, ported unchanged. Rewrapping an answer changes what is said aloud
+# (A-2), and these files are data, not logic.
+"app/features/assistant/content/packs/*.py" = ["E501"]
+"app/features/assistant/content/prompts/*.py" = ["E501"]
 # The error classes are named for the HTTP conditions they carry, which is how
 # they read at the raise site and in the handler that maps them to a status.
 # An `Error` suffix on each buys nothing there; they all subclass `AppError`.

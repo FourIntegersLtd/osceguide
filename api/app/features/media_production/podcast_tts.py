@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
 from pydub import AudioSegment
 
 from app.core.settings import Settings
@@ -24,6 +23,8 @@ def _require_av_settings(settings: Settings) -> None:
 
 
 def generate_script(settings: Settings, source_text: str) -> str:
+    from openai import OpenAI  # noqa: PLC0415 - optional dependency
+
     client = OpenAI(api_key=settings.openai_api_key)
     prompt = PODCAST_PROMPT.format(text=source_text)
     response = client.chat.completions.create(
