@@ -73,6 +73,14 @@ class Referral(Base, UUIDPrimaryKey, Timestamps):
     __table_args__ = (
         UniqueConstraint("code", name="uq_referrals_code"),
         Index("ix_referrals_referrer", "referrer_user_id"),
+        # Redeemed rows only: the settlement queue never asks about a code
+        # nobody has used, and indexing those would be indexing the majority
+        # of the table for a query that excludes them.
+        Index(
+            "ix_referrals_payout_status",
+            "payout_status",
+            postgresql_where=text("redeemed_at IS NOT NULL"),
+        ),
     )
 
     referrer_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -82,3 +90,16 @@ class Referral(Base, UUIDPrimaryKey, Timestamps):
     referred_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     earned_pence: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
+    # Nothing here moves money: settlement happens outside the product and this
+    # is the record of whether it has. `unpaid` until somebody says otherwise,
+    # which is the legacy vocabulary (`payout_status`) kept on purpose.
+    #
+    # `paid_at` and `paid_by_user_id` are what the retiring app lacked: it
+    # recorded the flag and nothing else, so "when was this settled, and who
+    # says so" had no answer on the row a year later.
+    payout_status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'unpaid'"))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paid_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # The bank transfer's own reference, so a row can be tied back to a
+    # statement. This is what replaces storing anybody's account number.
+    payout_reference: Mapped[str | None] = mapped_column(String(64))

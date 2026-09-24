@@ -67,3 +67,26 @@ class CreditSignup(BaseModel):
     """
 
     visitor_key: str = Field(min_length=1, max_length=64)
+
+
+class ReferralAdminRead(BaseModel):
+    """One referral, as the person settling it needs to see it.
+
+    Emails rather than ids: whoever is reconciling bank transfers is matching
+    names on a statement, and a uuid is not on the statement.
+    """
+
+    id: uuid.UUID
+    code: str
+    referrer_email: str
+    referred_email: str | None
+    redeemed_at: datetime | None
+    earned_pence: int
+    payout_status: str
+    paid_at: datetime | None
+    payout_reference: str | None
+
+
+class SetReferralPayout(BaseModel):
+    payout_status: str = Field(pattern="^(unpaid|paid)$")
+    payout_reference: str | None = Field(default=None, max_length=64)

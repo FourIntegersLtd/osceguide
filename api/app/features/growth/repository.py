@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import keyset_page
 from app.features.growth.models import Acquisition, PartnerArrival, PartnerReporter, Referral
 
 
@@ -149,4 +150,57 @@ async def redeem(
         update(Referral)
         .where(Referral.id == referral_id, Referral.redeemed_at.is_(None))
         .values(referred_user_id=referred_user_id, redeemed_at=at, earned_pence=earned_pence)
+    )
+
+
+async def redeemed_referrals_page(
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    payout_status: str | None = None,
+) -> tuple[list[Referral], str | None]:
+    """The referrals somebody may owe money for, newest first.
+
+    Only redeemed rows: an outstanding code is not a referral yet, and a queue
+    of codes nobody has used is not what the person settling transfers is
+    looking at.
+    """
+    stmt = select(Referral).where(Referral.redeemed_at.is_not(None))
+    if payout_status:
+        stmt = stmt.where(Referral.payout_status == payout_status)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Referral.redeemed_at,
+        id_col=Referral.id,
+        limit=limit,
+        cursor=cursor,
+        descending=True,
+    )
+
+
+async def referral_by_id(session: AsyncSession, referral_id: uuid.UUID) -> Referral | None:
+    stmt = select(Referral).where(Referral.id == referral_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def set_payout(
+    session: AsyncSession,
+    referral_id: uuid.UUID,
+    *,
+    payout_status: str,
+    payout_reference: str | None,
+    paid_at: datetime | None,
+    paid_by_user_id: uuid.UUID | None,
+) -> None:
+    await session.execute(
+        update(Referral)
+        .where(Referral.id == referral_id)
+        .values(
+            payout_status=payout_status,
+            payout_reference=payout_reference,
+            paid_at=paid_at,
+            paid_by_user_id=paid_by_user_id,
+        )
     )

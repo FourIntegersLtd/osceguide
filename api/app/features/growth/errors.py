@@ -37,3 +37,14 @@ class ReferralNotFound(NotFound):
 class ReferralAlreadyRedeemed(Conflict):
     code = "referral_already_redeemed"
     default_message = "That referral code has already been used"
+
+
+class ReferralNotRedeemed(Conflict):
+    """A code nobody has used has no payout to record.
+
+    Paid or unpaid is a fact about a referral that happened; an outstanding
+    code is neither.
+    """
+
+    code = "referral_not_redeemed"
+    default_message = "That referral has not been redeemed, so it has no payout"

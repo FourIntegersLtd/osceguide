@@ -1,0 +1,115 @@
+"""Referral payouts: what is owed, and whether it has been settled.
+
+Split from `service.py` at the file cap. Nothing here moves money — referrals
+are paid by a bank transfer somebody makes outside the product — so this slice
+is only ever the record of whether that happened, who says so, and against
+which transfer reference.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.growth import domain, errors, repository
+from app.features.growth.schemas import ReferralAdminRead
+from app.features.identity import service as identity
+
+
+async def list_redeemed_referrals(
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    payout_status: str | None = None,
+) -> tuple[list[ReferralAdminRead], str | None]:
+    """The settlement queue, newest referral first.
+
+    Emails are resolved in one lookup rather than per row: the queue is read
+    far more often than it is written, and a join per row is how a list screen
+    becomes the slowest page in a console.
+    """
+    status = domain.normalise_payout_status(payout_status) if payout_status else None
+    rows, next_cursor = await repository.redeemed_referrals_page(
+        session, limit=limit, cursor=cursor, payout_status=status
+    )
+    ids = {r.referrer_user_id for r in rows} | {
+        r.referred_user_id for r in rows if r.referred_user_id is not None
+    }
+    people = await identity.user_refs_by_ids(session, list(ids))
+    out: list[ReferralAdminRead] = []
+    for row in rows:
+        referrer = people.get(row.referrer_user_id)
+        referred = people.get(row.referred_user_id) if row.referred_user_id else None
+        out.append(
+            ReferralAdminRead(
+                id=row.id,
+                code=row.code,
+                referrer_email=referrer.email if referrer else str(row.referrer_user_id),
+                referred_email=referred.email if referred else None,
+                redeemed_at=row.redeemed_at,
+                earned_pence=row.earned_pence,
+                payout_status=row.payout_status,
+                paid_at=row.paid_at,
+                payout_reference=row.payout_reference,
+            )
+        )
+    return out, next_cursor
+
+
+async def set_referral_payout(
+    session: AsyncSession,
+    referral_id: uuid.UUID,
+    *,
+    payout_status: str,
+    payout_reference: str | None,
+    actor_user_id: uuid.UUID,
+    now: datetime,
+) -> ReferralAdminRead:
+    """Record that a referral has been settled, or that it has not after all.
+
+    Reversible on purpose: the flag is somebody's word about a bank transfer,
+    and a person who ticks the wrong row needs to be able to say so. Marking
+    it unpaid clears the stamp rather than leaving a paid date on an unpaid
+    row.
+    """
+    status = domain.normalise_payout_status(payout_status)
+    row = await repository.referral_by_id(session, referral_id)
+    if row is None:
+        raise errors.ReferralNotFound()
+    if row.redeemed_at is None:
+        raise errors.ReferralNotRedeemed()
+    paid = status == "paid"
+    await repository.set_payout(
+        session,
+        referral_id,
+        payout_status=status,
+        payout_reference=payout_reference if paid else None,
+        paid_at=now if paid else None,
+        paid_by_user_id=actor_user_id if paid else None,
+    )
+    refreshed = await repository.referral_by_id(session, referral_id)
+    if refreshed is None:  # pragma: no cover - the row was just written
+        raise errors.ReferralNotFound()
+    return await _referral_admin_read(session, refreshed)
+
+
+async def _referral_admin_read(session: AsyncSession, row) -> ReferralAdminRead:  # type: ignore[no-untyped-def]
+    ids = [row.referrer_user_id] + ([row.referred_user_id] if row.referred_user_id else [])
+    people = await identity.user_refs_by_ids(session, ids)
+    referrer = people.get(row.referrer_user_id)
+    referred = people.get(row.referred_user_id) if row.referred_user_id else None
+    return ReferralAdminRead(
+        id=row.id,
+        code=row.code,
+        referrer_email=referrer.email if referrer else str(row.referrer_user_id),
+        referred_email=referred.email if referred else None,
+        redeemed_at=row.redeemed_at,
+        earned_pence=row.earned_pence,
+        payout_status=row.payout_status,
+        paid_at=row.paid_at,
+        payout_reference=row.payout_reference,
+    )

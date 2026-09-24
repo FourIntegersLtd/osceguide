@@ -369,3 +369,137 @@ async def test_references_are_refused_for_an_unknown_partner(client: AsyncClient
     response = await client.get("/api/v1/growth/partners/acme/ref-ids", headers=bearer(token))
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_partner"
+
+
+# --- referral payouts -------------------------------------------------------
+
+
+async def _a_redeemed_referral(client: AsyncClient, db_session: AsyncSession, make_actor, tag: str):  # type: ignore[no-untyped-def]
+    """One referrer, one referee, one redeemed code."""
+    referrer = await make_actor(f"{tag}-referrer@example.com")
+    code = (await client.post("/api/v1/me/referral-code", headers=bearer(referrer))).json()["code"]
+    await make_actor(f"{tag}-referee@example.com")
+    referee = await identity_repo.user_by_email(db_session, f"{tag}-referee@example.com")
+    assert referee is not None
+    await service.redeem_code(db_session, code=code, referred_user_id=referee.id, earned_pence=500, now=now())
+    await db_session.flush()
+    return code
+
+
+async def test_the_payout_queue_lists_redeemed_referrals_as_unpaid(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """A referral starts life owed. Nothing in the product pays it — this is the
+
+    record of whether somebody has, settled by hand outside the app.
+    """
+    await _a_redeemed_referral(client, db_session, make_actor, "queue")
+    admin = await make_actor("payouts-admin@osceguide.com", platform_admin=True)
+
+    response = await client.get("/api/v1/growth/referrals", headers=bearer(admin))
+
+    assert response.status_code == 200, response.text
+    rows = response.json()["items"]
+    assert len(rows) == 1
+    assert rows[0]["payout_status"] == "unpaid"
+    assert rows[0]["referrer_email"] == "queue-referrer@example.com"
+    assert rows[0]["referred_email"] == "queue-referee@example.com"
+    assert rows[0]["earned_pence"] == 500
+    assert rows[0]["paid_at"] is None
+
+
+async def test_marking_a_referral_paid_records_who_and_when(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The retiring app kept the flag and nothing else, so "when was this
+
+    settled, and on whose word" had no answer. Both are on the row now.
+    """
+    await _a_redeemed_referral(client, db_session, make_actor, "paid")
+    admin = await make_actor("marks-paid@osceguide.com", platform_admin=True)
+    referral_id = (await client.get("/api/v1/growth/referrals", headers=bearer(admin))).json()["items"][0][
+        "id"
+    ]
+
+    response = await client.post(
+        f"/api/v1/growth/referrals/{referral_id}/payout",
+        json={"payout_status": "paid", "payout_reference": "FT-2026-09-24"},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["payout_status"] == "paid"
+    assert response.json()["payout_reference"] == "FT-2026-09-24"
+    assert response.json()["paid_at"] is not None
+
+
+async def test_marking_it_unpaid_again_clears_the_stamp(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Somebody ticks the wrong row. Leaving a paid date on an unpaid referral
+
+    would be worse than the mistake.
+    """
+    await _a_redeemed_referral(client, db_session, make_actor, "undo")
+    admin = await make_actor("undoes@osceguide.com", platform_admin=True)
+    referral_id = (await client.get("/api/v1/growth/referrals", headers=bearer(admin))).json()["items"][0][
+        "id"
+    ]
+    url = f"/api/v1/growth/referrals/{referral_id}/payout"
+    await client.post(url, json={"payout_status": "paid", "payout_reference": "X"}, headers=bearer(admin))
+
+    response = await client.post(url, json={"payout_status": "unpaid"}, headers=bearer(admin))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["payout_status"] == "unpaid"
+    assert response.json()["paid_at"] is None
+    assert response.json()["payout_reference"] is None
+
+
+async def test_the_queue_filters_by_payout_status(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    await _a_redeemed_referral(client, db_session, make_actor, "filter")
+    admin = await make_actor("filters@osceguide.com", platform_admin=True)
+    referral_id = (await client.get("/api/v1/growth/referrals", headers=bearer(admin))).json()["items"][0][
+        "id"
+    ]
+    await client.post(
+        f"/api/v1/growth/referrals/{referral_id}/payout",
+        json={"payout_status": "paid"},
+        headers=bearer(admin),
+    )
+
+    unpaid = await client.get("/api/v1/growth/referrals?payout_status=unpaid", headers=bearer(admin))
+    paid = await client.get("/api/v1/growth/referrals?payout_status=paid", headers=bearer(admin))
+
+    assert unpaid.json()["items"] == []
+    assert len(paid.json()["items"]) == 1
+
+
+async def test_an_unredeemed_code_has_no_payout_to_record(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """An outstanding code is neither paid nor unpaid."""
+    token = await make_actor("outstanding@example.com")
+    await client.post("/api/v1/me/referral-code", headers=bearer(token))
+    user = await identity_repo.user_by_email(db_session, "outstanding@example.com")
+    assert user is not None
+    rows = await repository.referrals_for(db_session, user.id)
+    admin = await make_actor("checks@osceguide.com", platform_admin=True)
+
+    response = await client.post(
+        f"/api/v1/growth/referrals/{rows[0].id}/payout",
+        json={"payout_status": "paid"},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "referral_not_redeemed"
+
+
+async def test_only_staff_may_read_the_payout_queue(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """It names both sides of every referral and what is owed on it."""
+    token = await make_actor("curious@example.com")
+    response = await client.get("/api/v1/growth/referrals", headers=bearer(token))
+    assert response.status_code == 403

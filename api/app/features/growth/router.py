@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -8,10 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import PlatformAdmin
-from app.features.growth import errors, schemas, service
+from app.features.growth import errors, schemas, service, service_payouts
 
 router = APIRouter(tags=["growth"])
 
@@ -144,3 +145,54 @@ async def issue_code(principal: CurrentPrincipal, session: Session) -> schemas.R
 )
 async def read_my_referrals(principal: CurrentPrincipal, session: Session) -> schemas.ReferralRead:
     return await service.read_my_referrals(session, principal.user_id)
+
+
+@router.get(
+    "/growth/referrals",
+    response_model=Page[schemas.ReferralAdminRead],
+    responses=error_responses(Forbidden),
+)
+async def list_referrals(
+    admin: PlatformAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    payout_status: str | None = None,
+) -> Page[schemas.ReferralAdminRead]:
+    """The settlement queue: redeemed referrals, and whether each has been paid.
+
+    Platform admin only, and deliberately not a partner's or a referrer's
+    view — it names both sides of every referral and what is owed on it.
+    """
+    _ = admin
+    items, next_cursor = await service_payouts.list_redeemed_referrals(
+        session, limit=page.limit, cursor=page.cursor, payout_status=payout_status
+    )
+    return Page(items=items, next_cursor=next_cursor)
+
+
+@router.post(
+    "/growth/referrals/{referral_id}/payout",
+    response_model=schemas.ReferralAdminRead,
+    responses=error_responses(Forbidden, errors.ReferralNotFound, errors.ReferralNotRedeemed),
+)
+async def set_referral_payout(
+    referral_id: uuid.UUID,
+    body: schemas.SetReferralPayout,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.ReferralAdminRead:
+    """Record a settlement made outside the product.
+
+    Nothing here moves money. It writes down that somebody did, who said so
+    and when, which is the whole of what the retiring app's `payout_status`
+    flag meant and rather more than it recorded.
+    """
+    return await service_payouts.set_referral_payout(
+        session,
+        referral_id,
+        payout_status=body.payout_status,
+        payout_reference=body.payout_reference,
+        actor_user_id=admin.user_id,
+        now=clock.now(),
+    )

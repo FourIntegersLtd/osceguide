@@ -105,3 +105,18 @@ class Funnel:
 
 def funnel(*, arrivals: int, signups: int, purchases: int) -> Funnel:
     return Funnel(arrivals=arrivals, signups=signups, purchases=purchases)
+
+
+# --- referral payouts -------------------------------------------------------
+
+# The legacy vocabulary, unchanged: a referral is `unpaid` until somebody
+# settles it by hand and says so. There is deliberately no third state —
+# "pending" would describe the queue, not the money.
+PAYOUT_STATUSES = ("unpaid", "paid")
+
+
+def normalise_payout_status(value: str) -> str:
+    key = (value or "").strip().lower()
+    if key not in PAYOUT_STATUSES:
+        raise ValueError(f"A payout is {' or '.join(PAYOUT_STATUSES)}, not {value!r}.")
+    return key
