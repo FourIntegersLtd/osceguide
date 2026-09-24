@@ -984,7 +984,13 @@ UNIQUE `(partner, email)`.
 ### `referrals`
 `referrer_user_id` → `users.id` CASCADE (indexed), `code varchar(32) not null unique`,
 `referred_user_id` → `users.id` SET NULL, `redeemed_at timestamptz null`,
-`earned_pence int not null default 0`.
+`earned_pence int not null default 0`. Settlement happens outside the product;
+these four are the record of whether it has: `payout_status varchar(16) not
+null default 'unpaid'` (indexed with `redeemed_at IS NOT NULL`, since the
+settlement queue never asks about a code nobody has used), `paid_at
+timestamptz null`, `paid_by_user_id` → `users.id` SET NULL, and
+`payout_reference varchar(64) null` — the bank transfer's own reference,
+which is what replaces storing anybody's account number.
 
 ---
 
