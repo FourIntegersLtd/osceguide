@@ -55,8 +55,15 @@ class SsoBroker(Protocol):
         """
         ...
 
-    async def verify(self, *, token: str) -> SsoIdentity | None:
+    async def verify(self, *, token: str, issuer: str | None = None) -> SsoIdentity | None:
         """Check a token the broker handed back, and say who it is for.
+
+        `issuer` is the same organisation-stored value `sign_in_url` reads —
+        a Clerk broker ignores it (one secret key serves every partner); a
+        multi-tenant OIDC broker like Entra needs it to know which tenant's
+        token endpoint and signing keys to check the token against, since the
+        token itself (an authorization code, for that flow) names none of
+        that.
 
         Returns None when the token does not verify; raises
         `SsoBrokerUnavailable` when the broker could not be reached. Never

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import SsoIdentity
 from app.features.sso.service_login import get_sso_broker
@@ -130,19 +131,52 @@ async def test_an_organisation_with_no_arrangement_signs_in_here(client: AsyncCl
     assert missing.json()["code"] == "sso_not_configured"
 
 
-async def test_a_provider_with_no_flow_here_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_an_entra_organisation_signs_in_through_its_own_flow(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Direct OIDC, dispatched the same way Clerk is — `for_provider` picks
+    the adapter, the rest of the flow does not know which one it got."""
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await _enable(
         client,
         root,
         "kings",
         provider="entra",
-        issuer="https://login.microsoftonline.com/kings",
+        issuer="a1b2c3d4-tenant-id",
         sso_only=False,
     )
+    fake = FakeSsoBroker(
+        identity=SsoIdentity(email="doctor@kings.nhs.uk", name="Dr Who", subject="entra_oid_1")
+    )
+    _use(client, fake)
+
+    found = await client.post(LOGIN, json={"org_slug": "kings"})
+    assert found.status_code == 200, found.text
+
+    result = await client.post(CALLBACK, json={"org_slug": "kings", "token": "auth-code"})
+    assert result.status_code == 200, result.text
+    me = await client.get("/api/v1/me", headers=bearer(result.json()["access_token"]))
+    assert me.json()["email"] == "doctor@kings.nhs.uk"
+
+
+async def test_an_unrecognised_provider_stored_on_a_row_is_refused(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Every value the write path accepts is one of the two `Provider` names,
+    so this can only happen to a row that predates today's schema — a read
+    that finds one must still answer cleanly rather than raising."""
+    from app.features.sso.models import OrganizationSso
+    from app.features.tenancy import repository as tenancy_repository
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _org(client, root, "legacy")
+    org = await tenancy_repository.organization_by_slug(db_session, "legacy")
+    assert org is not None
+    db_session.add(OrganizationSso(org_id=org.id, provider="okta", issuer="legacy.okta.com", enabled=True))
+    await db_session.flush()
     _use(client, FakeSsoBroker())
 
-    refused = await client.post(LOGIN, json={"org_slug": "kings"})
+    refused = await client.post(LOGIN, json={"org_slug": "legacy"})
     assert refused.status_code == 503, refused.text
     assert refused.json()["code"] == "sso_provider_unsupported"
 
@@ -155,3 +189,41 @@ async def test_a_broker_that_cannot_be_reached_fails_closed(client: AsyncClient,
     down = await client.post(CALLBACK, json={"org_slug": "bmj", "token": "t"})
     assert down.status_code == 503, down.text
     assert down.json()["code"] == "sso_login_unavailable"
+
+
+async def test_an_sso_only_arrangement_refuses_a_password_login(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The account this callback provisions cannot then sign in with a
+    password anybody guesses, resets or is handed — the whole point of
+    `sso_only`, made a stated refusal rather than an accident of a missing
+    hash (`docs/decisions-2026-09-24.md`, item 2)."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _enable(client, root, "bmj")  # `_config()` defaults `sso_only: True`
+    fake = FakeSsoBroker(identity=SsoIdentity(email="locked@bmj.com", name="Locked Out", subject="c1"))
+    _use(client, fake)
+    await client.post(CALLBACK, json={"org_slug": "bmj", "token": "t"})
+
+    refused = await client.post(
+        "/api/v1/auth/login", json={"email": "locked@bmj.com", "password": "whatever-it-might-be"}
+    )
+    assert refused.status_code == 401, refused.text
+    assert refused.json()["code"] == "password_login_disabled"
+
+    # The forgot-password flow answers the same non-leaking 202 an unknown
+    # address gets, and issues no token — it must not become the back door.
+    reset = await client.post("/api/v1/auth/password-reset", json={"email": "locked@bmj.com"})
+    assert reset.status_code == 202, reset.text
+
+
+async def test_an_org_without_sso_only_leaves_the_password_form_open(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _enable(client, root, "guys", sso_only=False)
+    fake = FakeSsoBroker(identity=SsoIdentity(email="both-ways@guys.com", name="Either", subject="c2"))
+    _use(client, fake)
+    await client.post(CALLBACK, json={"org_slug": "guys", "token": "t"})
+
+    reset = await client.post("/api/v1/auth/password-reset", json={"email": "both-ways@guys.com"})
+    assert reset.status_code == 202, reset.text

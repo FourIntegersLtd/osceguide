@@ -115,6 +115,15 @@ class Settings(BaseSettings):
     clerk_secret_key: str = ""
     clerk_publishable_key: str = ""
 
+    # Direct OIDC to Microsoft Entra, for an institution that brings its own
+    # tenant rather than going through Clerk. One multi-tenant app
+    # registration serves every institution — `organization_sso.issuer`
+    # carries the *institution's* Entra tenant id. Also not one of the
+    # required ten; `sso/entra.py` refuses the flow rather than trusting an
+    # unverified token, same as Clerk above.
+    entra_client_id: str = ""
+    entra_client_secret: str = ""
+
     # LiveKit. `voice_backend_label` is the key the worker looks this API up by
     # in its own VOICE_BACKENDS_JSON, so all three deployments can coexist
     # under different labels during a cutover.
@@ -179,6 +188,10 @@ class Settings(BaseSettings):
     # comma-separated form in `.env.example` failed at startup.
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     frontend_url: str = "http://localhost:3000"
+    # Where a safety report (abuse, no-show) lands. The retiring backend sent
+    # these straight to an inbox; this queues the same email through the
+    # notification outbox rather than an ad-hoc send inside the request.
+    support_email: str = "support@osceguide.com"
 
     # --- Observability ---
     log_level: str = "INFO"

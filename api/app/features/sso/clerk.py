@@ -87,7 +87,10 @@ class ClerkBroker:
             raise SsoBrokerUnavailable("This organisation has no Clerk frontend domain configured")
         return f"https://{domain}/sign-in?redirect_url={quote(redirect_url, safe='')}"
 
-    async def verify(self, *, token: str) -> SsoIdentity | None:
+    async def verify(self, *, token: str, issuer: str | None = None) -> SsoIdentity | None:
+        # One secret key verifies every partner's session; `issuer` (a
+        # Clerk frontend domain) is only needed to build the sign-in URL.
+        del issuer
         payload = _decode_payload(token)
         if payload is None:
             return None

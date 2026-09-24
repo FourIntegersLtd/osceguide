@@ -38,6 +38,11 @@ async def begin_password_reset(
     user = await repository.user_by_email(session, email)
     if user is None:
         return None
+    if user.password_login_disabled:
+        # Same non-answer an unknown address gets — sending a reset link
+        # would hand an SSO-only account a password to sign in with, and a
+        # distinct response here would leak which addresses are SSO-only.
+        return None
     raw, token_hash = new_token()
     await repository.create_reset_token(
         session, user_id=user.id, token_hash=token_hash, expires_at=now + timedelta(minutes=ttl_minutes)
@@ -60,6 +65,14 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
         raise WeakPasswordError(str(exc)) from exc
     record = await repository.reset_token_by_hash(session, hash_token(token))
     if record is None or record.used_at is not None or now >= record.expires_at:
+        raise InvalidResetToken()
+    user = await repository.user_by_id(session, record.user_id)
+    if user is not None and user.password_login_disabled:
+        # Defense in depth: `begin_password_reset` above never issues a
+        # token for one of these accounts, but a token could in principle
+        # reach here by another path (`service_invitations.py` also mints
+        # reset tokens, for a roster admin's invite/resend — not yet checked
+        # against this flag; see `docs/decisions-2026-09-24.md` item 2).
         raise InvalidResetToken()
     await repository.mark_reset_token_used(session, token_id=record.id, at=now)
     await repository.set_password_hash(session, record.user_id, hash_password(password))

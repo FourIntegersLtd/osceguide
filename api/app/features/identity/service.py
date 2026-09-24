@@ -46,10 +46,9 @@ class UserRef:
     exam_code: str | None = None
 
 
-# Bound by `main.py` to `roster`, which sits above this slice. An institution
-# rosters people by email before they have ever signed in, and `trainees.user_id`
-# is how the two halves meet; nothing filled it, so a person invited to a
-# sitting and then registering stayed two unconnected records forever.
+# Bound by `main.py` to `roster`, above this slice. `trainees.user_id` is how
+# a person rostered by email before they signed in gets linked once they do —
+# unfilled before, so an invited person who registered stayed unconnected.
 _on_registered: list[Callable[[AsyncSession, uuid.UUID, str], Awaitable[None]]] = []
 
 
@@ -82,6 +81,9 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         exam_date=user.exam_date,
         extra_reading_percent=user.extra_reading_percent,
         exam_code=user.exam_code,
+        ai_training_consent=user.ai_training_consent,
+        colleague_waiting_email=user.colleague_waiting_email,
+        replay_onboarding=user.replay_onboarding,
         memberships=[
             MembershipRead(
                 org_id=m.org_id,
@@ -163,6 +165,11 @@ async def update_me(
         exam_date=body.exam_date,
         extra_reading_percent=body.extra_reading_percent,
         exam_code=body.exam_code,
+        ai_training_consent=body.ai_training_consent if "ai_training_consent" in fields_sent else None,
+        colleague_waiting_email=(
+            body.colleague_waiting_email if "colleague_waiting_email" in fields_sent else None
+        ),
+        replay_onboarding=body.replay_onboarding if "replay_onboarding" in fields_sent else None,
         # A PATCH that cannot tell "not mentioned" from "set to nothing" makes
         # clearing an exam date impossible.
         clear_exam_date="exam_date" in fields_sent and body.exam_date is None,
@@ -241,9 +248,3 @@ async def account_status(session: AsyncSession, user_id: uuid.UUID) -> str | Non
     on its next request rather than its next refresh."""
     user = await repository.user_by_id(session, user_id)
     return None if user is None else user.status
-
-
-async def end_sessions(session: AsyncSession, user_id: uuid.UUID, *, now: datetime, reason: str) -> None:
-    """Revoke every refresh chain this person holds. Deactivating an account
-    has to end its sessions; the token check above ends its access."""
-    await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason=reason)

@@ -25,6 +25,7 @@ from app.features.identity.errors import (
     AccountSuspended,
     InvalidCredentials,
     InvalidRefreshToken,
+    PasswordLoginDisabled,
     RefreshTokenReused,
 )
 from app.features.identity.models import User
@@ -112,6 +113,12 @@ async def login_with_memberships(
         # the response *time* still says whether the account exists.
         verify_absent_password(password)
         raise InvalidCredentials()
+    if user.password_login_disabled:
+        # Checked before the hash: a hash-less SSO account would fail
+        # `verify_password` anyway, but that is an accident of storage, not
+        # a stated refusal, and it would not catch an account that somehow
+        # does carry a hash (an old row from before SSO was configured).
+        raise PasswordLoginDisabled()
     if not verify_password(user.password_hash, password):
         raise InvalidCredentials()
     if user.status != "active":

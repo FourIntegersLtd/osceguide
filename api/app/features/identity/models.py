@@ -34,6 +34,18 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'active'"))
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # Set when `sso.service_login.complete_callback` provisions or signs this
+    # person in against an `sso_only` arrangement. `identity` sits below `sso`
+    # in the layer contract and cannot ask an organisation's configuration at
+    # login time, so the fact travels down and is stored here instead — the
+    # same shape `catalog`/`roster` use for a check they cannot make upward,
+    # except written once at provision time rather than checked per request.
+    # A hash-less account already fails `verify_password`; this is what makes
+    # that a stated refusal rather than an accident, and what also blocks the
+    # forgot-password flow from handing the account a password to log in with.
+    password_login_disabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # When they are sitting the real thing. The consumer dashboard counts down
@@ -56,6 +68,15 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     # fixed amount inside the timer component; a percentage says what was
     # actually granted, and 25 is what a bare "yes" used to mean.
     extra_reading_percent: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # The other three preferences the retiring settings tab saved. Consent is
+    # whether this person's consultations may be used to train models. The
+    # waiting email is a peer-practice nudge. Replay asks the dashboard to
+    # offer the guided tour again.
+    ai_training_consent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    colleague_waiting_email: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    replay_onboarding: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     consumer_role: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'user'"))
 
 

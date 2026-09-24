@@ -23,10 +23,6 @@ class MembershipRead(BaseModel):
     surface: str | None = None
 
 
-class FlagStationBody(BaseModel):
-    station_id: uuid.UUID
-
-
 class UserRead(BaseModel):
     id: uuid.UUID
     email: str
@@ -46,6 +42,9 @@ class UserRead(BaseModel):
     # is not resolved against the catalogue here because `identity` sits below
     # it. `GET /me/dashboard` is what turns it into an exam somebody can use.
     exam_code: str | None = None
+    ai_training_consent: bool = False
+    colleague_waiting_email: bool = False
+    replay_onboarding: bool = False
 
 
 class UpdateMe(BaseModel):
@@ -55,6 +54,16 @@ class UpdateMe(BaseModel):
     exam_date: date | None = None
     extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
     exam_code: str | None = Field(default=None, min_length=1, max_length=32)
+    ai_training_consent: bool | None = None
+    colleague_waiting_email: bool | None = None
+    replay_onboarding: bool | None = None
+
+
+class CloseAccount(BaseModel):
+    """Confirm closing the account. A password when one is set, otherwise the word delete."""
+
+    password: str | None = None
+    confirm: str | None = None
 
 
 class TokenPair(BaseModel):

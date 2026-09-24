@@ -362,7 +362,8 @@ class FakeCheckoutSessions:
 
 @dataclass
 class FakeSsoBroker:
-    """Stands in for Clerk: builds a sign-in URL and vouches for a fixed person.
+    """Stands in for either provider: builds a sign-in URL and vouches for a
+    fixed person, whichever the flow asks `for_provider` for.
 
     `identity` is what `verify` returns; leave it None to make verification
     fail, which is how a test exercises the refused callback without a broker.
@@ -376,6 +377,14 @@ class FakeSsoBroker:
     sign_in_urls: list[str] = field(default_factory=list)
     verified: list[str] = field(default_factory=list)
 
+    def for_provider(self, provider: object) -> FakeSsoBroker:
+        """Overriding `get_sso_broker` with a bare fake stands in for
+        `SsoBrokers` too — one fake serves whichever provider is configured,
+        since a test cares what the flow *did* with the broker, not which
+        adapter it would have been in production."""
+        del provider
+        return self
+
     def sign_in_url(self, *, redirect_url: str, issuer: str | None) -> str:
         if self.unavailable:
             raise SsoBrokerUnavailable("fake broker is down")
@@ -386,7 +395,8 @@ class FakeSsoBroker:
         self.sign_in_urls.append(url)
         return url
 
-    async def verify(self, *, token: str) -> SsoIdentity | None:
+    async def verify(self, *, token: str, issuer: str | None = None) -> SsoIdentity | None:
+        del issuer
         if self.unavailable:
             raise SsoBrokerUnavailable("fake broker is down")
         self.verified.append(token)

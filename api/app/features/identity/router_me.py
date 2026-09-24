@@ -9,14 +9,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
-from app.features.identity import schemas, service
+from app.core.ports import ClockDep
+from app.features.identity import schemas, service, service_close_account
+from app.features.identity.errors import InvalidCredentials
 
 router = APIRouter(tags=["identity"])
 
@@ -56,3 +58,24 @@ async def read_me(
     memberships_for: MembershipsFor,
 ) -> schemas.UserRead:
     return await service.read_me(session, principal=principal, memberships_for=memberships_for)
+
+
+@router.post(
+    "/me/close",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated, InvalidCredentials),
+)
+async def close_me(
+    body: schemas.CloseAccount,
+    principal: CurrentPrincipal,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    clock: ClockDep,
+) -> None:
+    """Close this account. Sign-in stops; the consultations stay."""
+    await service_close_account.close_account(
+        session,
+        user_id=principal.user_id,
+        password=body.password,
+        confirm=body.confirm,
+        now=clock.now(),
+    )

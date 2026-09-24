@@ -28,6 +28,7 @@ async def create_user(
     is_platform_admin: bool = False,
     must_change_password: bool = False,
     exam_code: str | None = None,
+    password_login_disabled: bool = False,
 ) -> User:
     user = User(
         email=normalize_email(email),
@@ -36,10 +37,10 @@ async def create_user(
         is_platform_admin=is_platform_admin,
         must_change_password=must_change_password,
         exam_code=exam_code,
+        password_login_disabled=password_login_disabled,
     )
     session.add(user)
-    # Flushed and refreshed here so the caller gets the generated id and the
-    # server-side defaults, rather than reaching into the session itself.
+    # Flushed and refreshed so the caller gets the generated id and defaults.
     await session.flush()
     await session.refresh(user)
     return user
@@ -66,6 +67,12 @@ async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_
 
 async def record_login(session: AsyncSession, user_id: uuid.UUID, at: datetime) -> None:
     await session.execute(update(User).where(User.id == user_id).values(last_login_at=at))
+
+
+async def disable_password_login(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Written once, never cleared here: stays true even if the org's config
+    later changes — the safer direction for a flag that only ever refuses."""
+    await session.execute(update(User).where(User.id == user_id).values(password_login_disabled=True))
 
 
 # --- external identities ---------------------------------------------------
@@ -173,6 +180,22 @@ async def mark_reset_token_used(session: AsyncSession, *, token_id: uuid.UUID, a
     )
 
 
+async def mark_unused_reset_tokens_used(session: AsyncSession, *, user_id: uuid.UUID, at: datetime) -> None:
+    """Spend every link this account has not used yet.
+
+    Called when a fresh one is minted for the same person, so the last email is
+    the only live one. The table does not record which link was an invitation
+    and which a reset — they are the same kind of credential — so this spends
+    them together, which is the safe direction: it can strand a link nobody has
+    clicked, never leave two ways into an account open at once.
+    """
+    await session.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user_id, PasswordResetToken.used_at.is_(None))
+        .values(used_at=at)
+    )
+
+
 async def users_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> list[User]:
     """Several people in one query.
 
@@ -194,6 +217,9 @@ async def update_profile(
     extra_reading_percent: int | None,
     clear_exam_date: bool,
     exam_code: str | None = None,
+    ai_training_consent: bool | None = None,
+    colleague_waiting_email: bool | None = None,
+    replay_onboarding: bool | None = None,
 ) -> User | None:
     """Write only what was sent.
 
@@ -210,6 +236,12 @@ async def update_profile(
         user.extra_reading_percent = extra_reading_percent
     if exam_code is not None:
         user.exam_code = exam_code
+    if ai_training_consent is not None:
+        user.ai_training_consent = ai_training_consent
+    if colleague_waiting_email is not None:
+        user.colleague_waiting_email = colleague_waiting_email
+    if replay_onboarding is not None:
+        user.replay_onboarding = replay_onboarding
     if clear_exam_date:
         user.exam_date = None
     elif exam_date is not None:

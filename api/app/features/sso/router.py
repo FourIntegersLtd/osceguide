@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
-from app.core.ports import ClockDep, SsoBroker
+from app.core.ports import ClockDep
 from app.core.rate_limit import SSO_CALLBACK, TooManyRequests, caller_key, check
 from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
@@ -17,7 +17,7 @@ from app.features.sso import errors, schemas, service, service_login
 router = APIRouter(tags=["sso"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
-Broker = Annotated[SsoBroker, Depends(service_login.get_sso_broker)]
+Brokers = Annotated[service_login.SsoBrokers, Depends(service_login.get_sso_broker)]
 
 
 @router.get(
@@ -68,7 +68,7 @@ async def read_sign_in(
 async def sso_login(
     body: schemas.SsoLoginRequest,
     session: Session,
-    broker: Broker,
+    brokers: Brokers,
     settings: SettingsDep,
 ) -> schemas.SsoLoginResult:
     """Where to send the browser to sign in to this organisation.
@@ -79,7 +79,7 @@ async def sso_login(
     (ADR 0004) — and points the broker back at a frontend page that posts the
     token to `POST /auth/sso/callback`.
     """
-    return await service_login.build_login(session, body.org_slug, broker=broker, settings=settings)
+    return await service_login.build_login(session, body.org_slug, brokers=brokers, settings=settings)
 
 
 @router.post(
@@ -101,7 +101,7 @@ async def sso_callback(
     request: Request,
     body: schemas.SsoCallbackRequest,
     session: Session,
-    broker: Broker,
+    brokers: Brokers,
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
@@ -118,7 +118,7 @@ async def sso_callback(
         session,
         body.org_slug,
         token=body.token,
-        broker=broker,
+        brokers=brokers,
         settings=settings,
         now=clock.now(),
         memberships_for=memberships_for,

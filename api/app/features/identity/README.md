@@ -68,6 +68,9 @@ live inside it and are never addressed independently.
 the same transaction as the row they concern. `service_invitations.invite_user`
 is what `tenancy` and `roster` call for an address with no account: the token it
 mails is an ordinary reset token, so `password-reset/confirm` finishes the job.
+`service_invitations.reissue_invitation` is the same email for an account that
+has one and has not used it — it mints a fresh token, because only the hash of
+the first was ever stored, and refuses an account that already has a password.
 
 ## The exam an account is for
 `users.exam_code` is set at sign-up and changed on `PATCH /me`. The retiring

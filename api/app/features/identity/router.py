@@ -59,7 +59,9 @@ async def register(
 @router.post(
     "/auth/login",
     response_model=schemas.AuthResult,
-    responses=error_responses(errors.InvalidCredentials, errors.AccountSuspended, TooManyRequests),
+    responses=error_responses(
+        errors.InvalidCredentials, errors.AccountSuspended, errors.PasswordLoginDisabled, TooManyRequests
+    ),
 )
 async def login(
     request: Request,
@@ -227,14 +229,3 @@ async def change_password(
         now=clock.now(),
     )
     return schemas.Accepted()
-
-
-@router.post(
-    "/me/station-flags",
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Unauthenticated),
-)
-async def flag_station(body: schemas.FlagStationBody, principal: CurrentPrincipal) -> None:
-    """Report a library station to the content team. Persistence is TODO."""
-    _ = principal
-    _ = body

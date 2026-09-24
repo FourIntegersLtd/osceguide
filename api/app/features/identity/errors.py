@@ -48,6 +48,20 @@ class AccountSuspended(Unauthenticated):
     default_message = "This account is not active"
 
 
+class PasswordLoginDisabled(Unauthenticated):
+    """Distinct from `InvalidCredentials` on purpose: the account's own
+    organisation already published that it signs in through SSO
+    (`GET /auth/sso/sign-in`), so naming this here leaks nothing a visitor
+    could not already learn — and telling a genuine SSO user "wrong
+    password" instead of "sign in through your organisation" would send
+    them to a reset flow that can only ever refuse them too."""
+
+    code = "password_login_disabled"
+    default_message = (
+        "This account signs in through your organisation. Use your organisation's sign-in instead."
+    )
+
+
 class UserNotFound(NotFound):
     """No such account.
 

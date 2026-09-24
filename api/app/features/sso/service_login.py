@@ -26,23 +26,40 @@ from app.features.sso.models import OrganizationSso
 from app.features.tenancy import service as tenancy
 
 
-def get_sso_broker(settings: SettingsDep) -> SsoBroker:
-    """The broker adapter, as the router's dependency. Overridden in tests.
+class SsoBrokers:
+    """Both adapters, selected by the organisation's own configured provider.
+
+    Built once per request from settings, the way `get_sso_broker` used to
+    build a single Clerk instance — neither adapter holds per-tenant state
+    (Entra's tenant id and Clerk's frontend domain both travel as `issuer` on
+    each call instead), so one instance of each serves every organisation
+    that names it.
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+
+    def for_provider(self, provider: domain.Provider) -> SsoBroker:
+        # Imported here, not at module load: a deployment with neither
+        # provider configured must still be able to import this module.
+        from app.features.sso.clerk import build_clerk_broker  # noqa: PLC0415
+        from app.features.sso.entra import build_entra_broker  # noqa: PLC0415
+
+        builder = build_clerk_broker if provider is domain.Provider.CLERK else build_entra_broker
+        try:
+            return builder(self._settings)
+        except SsoBrokerUnavailable as exc:
+            raise errors.SsoLoginUnavailable() from exc
+
+
+def get_sso_broker(settings: SettingsDep) -> SsoBrokers:
+    """The broker selector, as the router's dependency. Overridden in tests.
 
     `SettingsDep` rather than a bare `Settings` for the reason `billing`'s
     `get_checkout` gives: FastAPI reads a dependency's own signature, and an
     un-annotated pydantic model there is taken for a second request body.
-
-    Clerk is the only provider with a built flow, so this always builds the
-    Clerk adapter; an organisation configured for `entra` is refused by the
-    use cases below, which name the provider rather than the adapter.
     """
-    from app.features.sso.clerk import build_clerk_broker  # noqa: PLC0415
-
-    try:
-        return build_clerk_broker(settings)
-    except SsoBrokerUnavailable as exc:
-        raise errors.SsoLoginUnavailable() from exc
+    return SsoBrokers(settings)
 
 
 async def _enabled_config(session: AsyncSession, org_slug: str) -> OrganizationSso:
@@ -61,11 +78,14 @@ async def _enabled_config(session: AsyncSession, org_slug: str) -> OrganizationS
     return config
 
 
-def _require_clerk(config: OrganizationSso) -> domain.Provider:
-    provider = domain.normalise_provider(config.provider)
-    if provider is not domain.Provider.CLERK:
-        raise errors.SsoProviderUnsupported()
-    return provider
+def _configured_provider(config: OrganizationSso) -> domain.Provider:
+    """The provider this arrangement names, or `sso_provider_unsupported`
+    for a stored value nothing here can read — never `invalid_provider`,
+    which is a write-time refusal, not a read-time one."""
+    try:
+        return domain.normalise_provider(config.provider)
+    except domain.InvalidProvider as exc:
+        raise errors.SsoProviderUnsupported() from exc
 
 
 def _callback_redirect_url(settings: Settings, org_slug: str) -> str:
@@ -82,11 +102,11 @@ def _callback_redirect_url(settings: Settings, org_slug: str) -> str:
 
 
 async def build_login(
-    session: AsyncSession, org_slug: str, *, broker: SsoBroker, settings: Settings
+    session: AsyncSession, org_slug: str, *, brokers: SsoBrokers, settings: Settings
 ) -> schemas.SsoLoginResult:
     """Where to send this organisation's people to sign in."""
     config = await _enabled_config(session, org_slug)
-    _require_clerk(config)
+    broker = brokers.for_provider(_configured_provider(config))
     try:
         url = broker.sign_in_url(
             redirect_url=_callback_redirect_url(settings, org_slug), issuer=config.issuer
@@ -101,16 +121,17 @@ async def complete_callback(
     org_slug: str,
     *,
     token: str,
-    broker: SsoBroker,
+    brokers: SsoBrokers,
     settings: Settings,
     now: datetime,
     memberships_for: MembershipLookup,
 ) -> schemas.SsoSession:
     """Verify the broker's token, provision the person, answer with a session."""
     config = await _enabled_config(session, org_slug)
-    provider = _require_clerk(config)
+    provider = _configured_provider(config)
+    broker = brokers.for_provider(provider)
     try:
-        identity = await broker.verify(token=token)
+        identity = await broker.verify(token=token, issuer=config.issuer)
     except SsoBrokerUnavailable as exc:
         raise errors.SsoLoginUnavailable() from exc
     if identity is None:
@@ -127,6 +148,7 @@ async def complete_callback(
         settings=settings,
         now=now,
         memberships_for=memberships_for,
+        sso_only=config.sso_only,
     )
     return schemas.SsoSession(
         access_token=auth.access_token,

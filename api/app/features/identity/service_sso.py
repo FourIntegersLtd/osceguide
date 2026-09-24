@@ -43,6 +43,7 @@ async def sign_in_external(
     settings: Settings,
     now: datetime,
     memberships_for: MembershipLookup,
+    sso_only: bool = False,
 ) -> AuthResult:
     """Find or provision the user a broker vouched for, and issue a session.
 
@@ -57,11 +58,22 @@ async def sign_in_external(
         user = await repository.user_by_email(session, email)
     if user is None:
         user = await repository.create_user(
-            session, email=email, name=name or email, password_hash=None, exam_code=exam_code
+            session,
+            email=email,
+            name=name or email,
+            password_hash=None,
+            exam_code=exam_code,
+            password_login_disabled=sso_only,
         )
         # The same hook registration and invitation run: a partner's trainee may
         # already be on a roster somewhere, and those rows await this account.
         await _announce_registration(session, user.id, user.email)
+    elif sso_only and not user.password_login_disabled:
+        # An account that existed before this organisation's arrangement was
+        # `sso_only` — or was matched by email rather than created here — is
+        # brought under the same rule rather than staying password-reachable
+        # just because it predates the configuration.
+        await repository.disable_password_login(session, user.id)
     if user.status != "active":
         raise AccountSuspended()
     if link is None:
