@@ -14,6 +14,7 @@ import { authoringCapability } from "@/capabilities/authoring/capability";
 import { staffMediaCapability } from "@/capabilities/staff-media/capability";
 import { staffGrowthCapability } from "@/capabilities/staff-growth/capability";
 import { staffModerationCapability } from "@/capabilities/staff-moderation/capability";
+import { achievementsCapability } from "@/capabilities/account/achievementsCapability";
 
 /**
  * Every capability, and the surfaces each is mounted on.
@@ -35,6 +36,7 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
   debriefCapability,
   transcriptsCapability,
   accountCapability,
+  achievementsCapability,
   authoringCapability,
   staffMediaCapability,
   staffGrowthCapability,

@@ -20,16 +20,12 @@ const { b2cButtonPrimary, b2cIconEmptyLg } = productTokens;
 /**
  * Station badges, streak badges and the longest streak.
  *
- * **`platform-api` serves none of this** — see `docs/port-gaps.md`. The
- * retiring version counted badges from `user.station_progress` and computed
- * streaks in the browser from the transcript list, and neither exists here:
- * progress is attempts, and there is no streak anywhere on the backend.
- *
- * So the screen is ported as its own empty state and asks for nothing. That is
- * deliberate rather than lazy: a screen that renders zeroes from a call it
- * never made is honest, where one that fetched a 404 and showed zeroes would
- * be indistinguishable from a real beginner — the exact failure the UX audit
- * found 173 times in the old client.
+ * Served by `GET /me/achievements` since 2026-09-24
+ * (`docs/decisions-2026-09-24.md`, item 1) — `AchievementsLive.tsx` is the
+ * only caller and reads real numbers through `AsyncBoundary`, so a failed
+ * load renders as a retry prompt rather than silently as a beginner's zeroes.
+ * This component itself stays prop-driven and default-to-zero so it also
+ * works as a Storybook-style preview with no backend behind it.
  */
 export default function Achievements({
   stationCount = 0,
