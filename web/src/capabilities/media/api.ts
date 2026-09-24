@@ -393,9 +393,12 @@ export function psychosocialAspects(item: MediaItem): string[] {
 /**
  * The specialties an item is filed under.
  *
- * `MediaRead` has no specialty column, so this reads the authoring payload.
- * The facets it feeds hide themselves when nothing carries one — see
- * `docs/port-gaps.md`.
+ * Reads the authoring payload (`content`), not `MediaRead.specialty`: the
+ * content payload is what authors set and what the whole library was tagged
+ * through, so it is the source that has data behind it. `MediaRead` does now
+ * carry a root `specialty` column (see `openapi.json`), but nothing in the
+ * porting wrote to it, and the facets these feed hide themselves when nothing
+ * carries one — see `docs/port-gaps.md`.
  */
 export function specialtiesOf(item: MediaItem): string[] {
   const one = stringField(item, "specialty");
@@ -403,7 +406,13 @@ export function specialtiesOf(item: MediaItem): string[] {
   return many.length > 0 ? many : one ? [one] : [];
 }
 
-/** B2C blogs stored `updated_at` on the document, not on `MediaRead`. */
+/**
+ * Blog/document "updated" stamp, read off the authoring payload.
+ *
+ * B2C stored it on the document; `MediaRead` also has a root `updated_at`
+ * now, but it is not what these screens were built against, so the payload
+ * stays the source. See also `specialtiesOf`.
+ */
 export function contentUpdatedAt(item: MediaItem): string | null {
   return stringField(item, "updated_at");
 }

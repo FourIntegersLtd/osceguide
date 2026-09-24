@@ -12,12 +12,10 @@ const { b2cFieldLabel, b2cInputBase } = productTokens;
 const STANDARD_EXTRA = 25;
 
 /**
- * Access arrangements.
+ * Access arrangements and the three choices that used to sit beside them.
  *
- * One field, where the retiring tab had four. The other three — AI training
- * consent, "email me when a colleague is waiting", and replaying the tutor's
- * onboarding — have nowhere to be stored, and a checkbox that cannot save is
- * worse than no checkbox. They are in `docs/port-gaps.md`.
+ * Extra reading time is a percentage. AI-training consent, the waiting-email
+ * nudge, and showing the guided tour again are stored on the account.
  *
  * Extra reading time is a percentage rather than the old boolean, because a
  * percentage says what was actually granted; the old client carried a bare
@@ -34,14 +32,33 @@ export default function PreferencesPanel() {
   return (
     <SettingsTabShell>
       <AsyncBoundary state={state}>
-        {(me) => <PreferencesForm key={me.id} initial={me.extra_reading_percent ?? 0} />}
+        {(me) => (
+          <PreferencesForm
+            key={me.id}
+            initial={me.extra_reading_percent ?? 0}
+            consent={me.ai_training_consent ?? false}
+            waitingEmail={me.colleague_waiting_email ?? false}
+            replay={me.replay_onboarding ?? false}
+          />
+        )}
       </AsyncBoundary>
     </SettingsTabShell>
   );
 }
 
-function PreferencesForm({ initial }: { initial: number }) {
+function PreferencesForm({
+  initial,
+  consent,
+  waitingEmail,
+  replay,
+}: {
+  initial: number;
+  consent: boolean;
+  waitingEmail: boolean;
+  replay: boolean;
+}) {
   const [percent, setPercent] = useState(initial);
+  const [flags, setFlags] = useState({ consent, waitingEmail, replay });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +129,71 @@ function PreferencesForm({ initial }: { initial: number }) {
           </div>
         </div>
       )}
+
+      <PrefToggle
+        checked={flags.consent}
+        title="Allow my consultations to train OSCE Guide's models"
+        detail="Off unless you turn it on. You can change this whenever you like."
+        onChange={(checked) => void saveFlag("ai_training_consent", "consent", checked)}
+      />
+      <PrefToggle
+        checked={flags.waitingEmail}
+        title="Email me when a colleague is waiting to practise"
+        detail="A note when someone is in the peer-practice queue for your exam."
+        onChange={(checked) => void saveFlag("colleague_waiting_email", "waitingEmail", checked)}
+      />
+      <PrefToggle
+        checked={flags.replay}
+        title="Show the guided tour again"
+        detail="The dashboard will offer the voice introduction the next time you open it."
+        onChange={(checked) => void saveFlag("replay_onboarding", "replay", checked)}
+      />
     </div>
+  );
+
+  async function saveFlag(
+    field: "ai_training_consent" | "colleague_waiting_email" | "replay_onboarding",
+    key: "consent" | "waitingEmail" | "replay",
+    checked: boolean,
+  ) {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await updateMe({ [field]: checked });
+      setFlags((current) => ({ ...current, [key]: checked }));
+      setSaved(true);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
+}
+
+function PrefToggle({
+  checked,
+  title,
+  detail,
+  onChange,
+}: {
+  checked: boolean;
+  title: string;
+  detail: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1 h-4 w-4 shrink-0"
+      />
+      <span>
+        <span className="block text-osce-body text-osce-ink-900">{title}</span>
+        <span className="block text-osce-meta text-b2c-text-muted">{detail}</span>
+      </span>
+    </label>
   );
 }

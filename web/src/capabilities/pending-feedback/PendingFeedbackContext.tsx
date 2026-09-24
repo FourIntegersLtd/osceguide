@@ -194,14 +194,14 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
 
   const release = useCallback(
     (key: string) => {
-      const next = jobsRef.current.map((job) =>
-        job.key === key ? { ...job, notify: true } : job,
+      // Leaving the station arms the toast. It does not fire yet: the watcher
+      // shows it when a result actually exists, so walking away mid-marking
+      // does not claim the feedback is ready.
+      commit(
+        jobsRef.current.map((job) => (job.key === key ? { ...job, notify: true } : job)),
       );
-      commit(next);
-      const job = next.find((entry) => entry.key === key);
-      if (job?.notify) showReady(job);
     },
-    [commit, showReady],
+    [commit],
   );
 
   const resolve = useCallback(

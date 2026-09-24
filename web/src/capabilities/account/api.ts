@@ -22,9 +22,19 @@ export type TutorMemory = components["schemas"]["TutorMemoryRead"];
 export type TutorNote = components["schemas"]["NoteRead"];
 export type TutorEvent = components["schemas"]["EventRead"];
 export type ForgottenCounts = components["schemas"]["ForgottenCounts"];
+export type Achievements = components["schemas"]["AchievementsRead"];
 
 export function readMe(signal?: AbortSignal): Promise<Me> {
   return platformRequest<Me>("/api/v1/me", { signal });
+}
+
+/**
+ * This person's practice record, computed server-side over their whole marked
+ * history. Replaces the client-side calculator that ran over a capped page of
+ * 100 attempts and forgot itself on every refresh past that.
+ */
+export function readAchievements(signal?: AbortSignal): Promise<Achievements> {
+  return platformRequest<Achievements>("/api/v1/me/achievements", { signal });
 }
 
 export function listEntitlements(signal?: AbortSignal): Promise<{ items: Entitlement[] }> {
@@ -146,6 +156,21 @@ export type UpdateMe = components["schemas"]["UpdateMe"];
  */
 export function updateMe(body: UpdateMe, signal?: AbortSignal): Promise<Me> {
   return platformRequest<Me>("/api/v1/me", { method: "PATCH", body, signal });
+}
+
+/**
+ * Close the signed-in account. The row stays; sign-in stops.
+ *
+ * A password holder confirms with it; an account the backend never gave one
+ * to (SSO, or an invitation never accepted) confirms with the word "delete"
+ * instead — the backend decides which is required from whether it holds a
+ * password hash, not from anything sent here.
+ */
+export function closeAccount(input: { password: string | null; confirm: string | null }): Promise<void> {
+  return platformRequest<void>("/api/v1/me/close", {
+    method: "POST",
+    body: { password: input.password, confirm: input.confirm },
+  });
 }
 
 export type SsoSignIn = components["schemas"]["SsoSignIn"];

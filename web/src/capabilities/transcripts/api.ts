@@ -1,8 +1,7 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
 import { readTranscript, type Transcript } from "@/capabilities/feedback";
+import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
 
-export type RecentAttempt = components["schemas"]["RecentAttempt"];
-type Dashboard = components["schemas"]["Dashboard"];
+export type RecentAttempt = AttemptHistoryItem;
 
 export type { Transcript };
 export { readTranscript };
@@ -28,6 +27,10 @@ export function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind.replace(/_/g, " ");
 }
 
+const PAGE_LIMIT = 100;
+/** 2,500 attempts is generous for one person's history and bounds the walk. */
+const MAX_PAGES = 25;
+
 /**
  * The attempts a person could have a transcript for.
  *
@@ -35,10 +38,22 @@ export function kindLabel(kind: string): string {
  * transcript belongs to an attempt, so the attempt history *is* the list. An
  * attempt still in `created` never reached the room, so it is left out rather
  * than offered as a page that would only ever say "nothing was transcribed".
+ *
+ * This walks `/me/attempts` rather than reading `/me/dashboard`'s
+ * `recent_attempts` — that list is capped at ten for the dashboard's own
+ * purposes, which meant an eleventh consultation was unreachable from here no
+ * matter how the table was searched or sorted.
  */
 export async function listTranscribableAttempts(signal?: AbortSignal): Promise<RecentAttempt[]> {
-  const dashboard = await platformRequest<Dashboard>("/api/v1/me/dashboard", { signal });
-  return (dashboard.recent_attempts ?? [])
+  const items: RecentAttempt[] = [];
+  let cursor: string | null = null;
+  for (let index = 0; index < MAX_PAGES; index += 1) {
+    const page = await listMyAttempts({ limit: PAGE_LIMIT, cursor }, signal);
+    items.push(...page.items);
+    cursor = page.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  return items
     .filter((attempt) => attempt.status !== "created")
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 }
