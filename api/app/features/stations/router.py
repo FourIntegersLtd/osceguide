@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -18,7 +18,6 @@ from app.features.stations import (
     schemas,
     service,
     service_library_reads,
-    service_photos,
     service_versions,
     station_autogenerate,
 )
