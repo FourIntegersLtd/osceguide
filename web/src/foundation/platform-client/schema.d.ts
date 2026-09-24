@@ -964,6 +964,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/growth/referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Referrals
+         * @description The settlement queue: redeemed referrals, and whether each has been paid.
+         *
+         *     Platform admin only, and deliberately not a partner's or a referrer's
+         *     view — it names both sides of every referral and what is owed on it.
+         */
+        get: operations["growth_list_referrals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/referrals/{referral_id}/payout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Referral Payout
+         * @description Record a settlement made outside the product.
+         *
+         *     Nothing here moves money. It writes down that somebody did, who said so
+         *     and when, which is the whole of what the retiring app's `payout_status`
+         *     flag meant and rather more than it recorded.
+         */
+        post: operations["growth_set_referral_payout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/help/articles": {
         parameters: {
             query?: never;
@@ -1118,6 +1165,29 @@ export interface paths {
         patch: operations["identity_update_me"];
         trace?: never;
     };
+    "/api/v1/me/achievements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Achievements
+         * @description This person's practice record: stations touched, and the streak it adds up to.
+         *
+         *     Nobody with zero marked attempts is refused — an empty answer is what a
+         *     person who has never sat anything gets, not an error.
+         */
+        get: operations["dashboard_read_achievements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/activity": {
         parameters: {
             query?: never;
@@ -1200,6 +1270,26 @@ export interface paths {
          *     to sit its examination.
          */
         post: operations["sittings_join_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Me
+         * @description Close this account. Sign-in stops; the consultations stay.
+         */
+        post: operations["identity_close_me"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2708,7 +2798,15 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Org Exam
+         * @description Remove an exam nothing was ever built on. Retire the rest.
+         *
+         *     `exam_in_use` (409) is the answer for anything real: a station, a
+         *     sitting, an attempt, a rubric binding. This is only for a draft an
+         *     institution changed its mind about before it went anywhere.
+         */
+        delete: operations["catalog_delete_org_exam"];
         options?: never;
         head?: never;
         /**
@@ -3573,6 +3671,54 @@ export interface paths {
         patch: operations["stations_edit_brief"];
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/stations/{station_id}/versions/{version}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Station Photos
+         * @description Put images on a station.
+         *
+         *     An orthopaedic station is a radiograph and a question about it, so a
+         *     catalogue that cannot take an image cannot hold one at all. The field name
+         *     is `files`, as the retiring uploader sent it.
+         */
+        post: operations["stations_add_station_photos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/stations/{station_id}/versions/{version}/photos/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove Station Photo
+         * @description Take one image off a station, and out of the bucket.
+         *
+         *     A POST rather than a DELETE because the URL to remove travels in the body:
+         *     it is long, it is not this resource's identifier, and a query string is
+         *     the wrong place for it.
+         */
+        post: operations["stations_remove_station_photo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/stations/{station_id}/versions/{version}/publish": {
         parameters: {
             query?: never;
@@ -3732,7 +3878,14 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Trainee
+         * @description Remove a roster row nothing was ever decided about.
+         *
+         *     `trainee_in_use` (409) is the answer for a real decision. Revoking access
+         *     is the mechanism for everyone else — see `service_edit.delete_trainee`.
+         */
+        delete: operations["roster_delete_trainee"];
         options?: never;
         head?: never;
         /**
@@ -3758,6 +3911,27 @@ export interface paths {
          *     routes invite one of them to be forgotten.
          */
         post: operations["roster_set_access"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/anonymise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anonymise Trainee
+         * @description GDPR erasure for a trainee `delete` refuses — real history stays,
+         *     the person's name and address do not. See `service_edit.anonymise_trainee`.
+         */
+        post: operations["roster_anonymise_trainee"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4987,6 +5161,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/stations/{station_id}/versions/{version}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Platform Station Photos
+         * @description The library's own images — an ortho station is a radiograph, chiefly.
+         */
+        post: operations["stations_add_platform_station_photos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/stations/{station_id}/versions/{version}/photos/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove Platform Station Photo */
+        post: operations["stations_remove_platform_station_photo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/stations/{station_id}/versions/{version}/publish": {
         parameters: {
             query?: never;
@@ -5701,6 +5912,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AchievementsRead
+         * @description A person's practice record, computed from their whole marked history.
+         *
+         *     Ported from the client-side calculator the consumer screen used to run
+         *     over its last 100 attempts (`achievementsFromAttempts.ts`) — same
+         *     definition, same numbers, now a durable read over everything rather than
+         *     a snapshot that forgot itself on refresh past the hundredth attempt.
+         */
+        AchievementsRead: {
+            /** Current Streak */
+            current_streak: number;
+            longest_streak?: components["schemas"]["StreakRead"] | null;
+            /** Station Count */
+            station_count: number;
+            /** Streak Badge Count */
+            streak_badge_count: number;
+        };
         /** AcquisitionRead */
         AcquisitionRead: {
             /**
@@ -6064,6 +6293,22 @@ export interface components {
              */
             file: string;
         };
+        /** Body_stations_add_platform_station_photos */
+        Body_stations_add_platform_station_photos: {
+            /**
+             * Files
+             * @description PNG or JPEG images
+             */
+            files: string[];
+        };
+        /** Body_stations_add_station_photos */
+        Body_stations_add_station_photos: {
+            /**
+             * Files
+             * @description PNG or JPEG images
+             */
+            files: string[];
+        };
         /**
          * BulkCreateMemberships
          * @description A team at once, in one request.
@@ -6291,6 +6536,16 @@ export interface components {
             id: string;
             /** Merged Notes */
             merged_notes: string | null;
+        };
+        /**
+         * CloseAccount
+         * @description Confirm closing the account. A password when one is set, otherwise the word delete.
+         */
+        CloseAccount: {
+            /** Confirm */
+            confirm?: string | null;
+            /** Password */
+            password?: string | null;
         };
         /**
          * CloudCapacityRead
@@ -7067,6 +7322,26 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * DomainComposition
+         * @description How many marked attempts landed red, amber or green on one domain.
+         *
+         *     Classed from the same 0–100 domain score the bars already use: 83 and
+         *     above is green (a clear G), 50 to 83 is amber, below that is red. Counts,
+         *     not a new mark.
+         */
+        DomainComposition: {
+            /** Amber */
+            amber: number;
+            /** Green */
+            green: number;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Red */
+            red: number;
+        };
+        /**
          * DomainScore
          * @description One bar of the radar: a rubric domain, averaged across the attempts.
          */
@@ -7187,7 +7462,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "tag_too_long" | "template_not_published" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "tag_too_long" | "template_not_published" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -8332,6 +8607,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** Page[ReferralAdminRead] */
+        Page_ReferralAdminRead_: {
+            /** Items */
+            items: components["schemas"]["ReferralAdminRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[RubricRead] */
         Page_RubricRead_: {
             /** Items */
@@ -8523,6 +8805,8 @@ export interface components {
          *     an empty string would be a code.
          */
         Performance: {
+            /** Composition */
+            composition?: components["schemas"]["DomainComposition"][];
             /** Domains */
             domains?: components["schemas"]["DomainScore"][];
             /** Exam Code */
@@ -8545,6 +8829,13 @@ export interface components {
             fail_rate: number;
             /** Pass Rate */
             pass_rate: number;
+        };
+        /** PhotoUploadFailure */
+        PhotoUploadFailure: {
+            /** Error */
+            error: string;
+            /** Filename */
+            filename: string;
         };
         /** PlanRead */
         PlanRead: {
@@ -9014,6 +9305,8 @@ export interface components {
             current_phase?: string | null;
             /** Doctor Joined At */
             doctor_joined_at?: string | null;
+            /** End Reason */
+            end_reason?: string | null;
             /** Ended At */
             ended_at?: string | null;
             /** Exam Code */
@@ -9337,6 +9630,36 @@ export interface components {
             /** Code */
             code: string;
         };
+        /**
+         * ReferralAdminRead
+         * @description One referral, as the person settling it needs to see it.
+         *
+         *     Emails rather than ids: whoever is reconciling bank transfers is matching
+         *     names on a statement, and a uuid is not on the statement.
+         */
+        ReferralAdminRead: {
+            /** Code */
+            code: string;
+            /** Earned Pence */
+            earned_pence: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Paid At */
+            paid_at: string | null;
+            /** Payout Reference */
+            payout_reference: string | null;
+            /** Payout Status */
+            payout_status: string;
+            /** Redeemed At */
+            redeemed_at: string | null;
+            /** Referred Email */
+            referred_email: string | null;
+            /** Referrer Email */
+            referrer_email: string;
+        };
         /** ReferralRead */
         ReferralRead: {
             /** Code */
@@ -9385,6 +9708,11 @@ export interface components {
             retired: number;
             /** Sources */
             sources: number;
+        };
+        /** RemoveStationPhoto */
+        RemoveStationPhoto: {
+            /** Photo Url */
+            photo_url: string;
         };
         /**
          * RenewContract
@@ -9786,6 +10114,13 @@ export interface components {
             name: string;
             /** Total Entries */
             total_entries: number;
+        };
+        /** SetReferralPayout */
+        SetReferralPayout: {
+            /** Payout Reference */
+            payout_reference?: string | null;
+            /** Payout Status */
+            payout_status: string;
         };
         /** SetSummary */
         SetSummary: {
@@ -10198,6 +10533,20 @@ export interface components {
             slot_id: string;
         };
         /**
+         * StationPhotosResult
+         * @description The version as it now stands, and anything that did not make it.
+         *
+         *     A partial upload is a result rather than an error: the files that worked
+         *     are on the station, and the caller is told which ones were not.
+         */
+        StationPhotosResult: {
+            /** Failed */
+            failed?: components["schemas"]["PhotoUploadFailure"][];
+            /** Uploaded */
+            uploaded: number;
+            version: components["schemas"]["StationVersionRead"];
+        };
+        /**
          * StationProgressChange
          * @description What one of the two actions did, in numbers the toast can print.
          */
@@ -10419,6 +10768,21 @@ export interface components {
             status: string;
             /** Version */
             version: number;
+        };
+        /** StreakRead */
+        StreakRead: {
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Length */
+            length: number;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
         };
         /**
          * StreamTicket
@@ -10683,6 +11047,11 @@ export interface components {
         TraineeRead: {
             /** Access Revoked */
             access_revoked: boolean;
+            /**
+             * Anonymised
+             * @default false
+             */
+            anonymised: boolean;
             /** Cohort Id */
             cohort_id: string | null;
             /** Email */
@@ -10712,6 +11081,8 @@ export interface components {
             acknowledged_at?: string | null;
             /** Assessment Outcome */
             assessment_outcome: string | null;
+            /** Assessment Score */
+            assessment_score?: number | null;
             /** Rationale */
             rationale: string | null;
             /** Released At */
@@ -10866,6 +11237,10 @@ export interface components {
          * @description What a person may change about themselves. Absent means "leave it".
          */
         UpdateMe: {
+            /** Ai Training Consent */
+            ai_training_consent?: boolean | null;
+            /** Colleague Waiting Email */
+            colleague_waiting_email?: boolean | null;
             /** Exam Code */
             exam_code?: string | null;
             /** Exam Date */
@@ -10874,6 +11249,8 @@ export interface components {
             extra_reading_percent?: number | null;
             /** Name */
             name?: string | null;
+            /** Replay Onboarding */
+            replay_onboarding?: boolean | null;
         };
         /** UpdateMedia */
         UpdateMedia: {
@@ -10988,6 +11365,8 @@ export interface components {
             structure: {
                 [key: string]: unknown;
             };
+            /** Title */
+            title?: string | null;
         };
         /**
          * UpdateTrainee
@@ -11021,6 +11400,16 @@ export interface components {
         UserRead: {
             /** Active Org Slug */
             active_org_slug?: string | null;
+            /**
+             * Ai Training Consent
+             * @default false
+             */
+            ai_training_consent: boolean;
+            /**
+             * Colleague Waiting Email
+             * @default false
+             */
+            colleague_waiting_email: boolean;
             /** Email */
             email: string;
             /** Exam Code */
@@ -11047,6 +11436,11 @@ export interface components {
             must_change_password: boolean;
             /** Name */
             name: string;
+            /**
+             * Replay Onboarding
+             * @default false
+             */
+            replay_onboarding: boolean;
         };
         /**
          * UserSummary
@@ -11445,6 +11839,11 @@ export interface components {
          *     is how two slices come to be unable to change it separately.
          */
         app__features__sittings__schemas__RoomGrant: {
+            /**
+             * Can Publish
+             * @default true
+             */
+            can_publish: boolean;
             /** Room */
             room: string;
             /** Server Url */
@@ -12535,7 +12934,7 @@ export interface operations {
                     "application/json": components["schemas"]["AuthResult"];
                 };
             };
-            /** @description invalid_credentials, account_suspended */
+            /** @description invalid_credentials, account_suspended, password_login_disabled */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -14066,6 +14465,111 @@ export interface operations {
             };
         };
     };
+    growth_list_referrals: {
+        parameters: {
+            query?: {
+                payout_status?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ReferralAdminRead_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    growth_set_referral_payout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                referral_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetReferralPayout"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralAdminRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description referral_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description referral_not_redeemed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     assistant_articles: {
         parameters: {
             query?: {
@@ -14568,6 +15072,35 @@ export interface operations {
             };
         };
     };
+    dashboard_read_achievements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AchievementsRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     tutor_memory_record_activity: {
         parameters: {
             query?: never;
@@ -14746,6 +15279,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    identity_close_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseAccount"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended, invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -19032,6 +19605,64 @@ export interface operations {
             };
         };
     };
+    catalog_delete_org_exam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exam_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description exam_in_use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     catalog_update_org_exam: {
         parameters: {
             query?: never;
@@ -21488,6 +22119,7 @@ export interface operations {
     stations_list_stations: {
         parameters: {
             query?: {
+                search?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -21962,6 +22594,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_add_station_photos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+                version: number;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_stations_add_station_photos"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationPhotosResult"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description version_not_found, photo_not_on_station */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_editable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_photo */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description photo_storage_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stations_remove_station_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+                version: number;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveStationPhoto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationVersionRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description version_not_found, photo_not_on_station */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_editable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_photo */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description photo_storage_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -22484,6 +23264,64 @@ export interface operations {
             };
         };
     };
+    roster_delete_trainee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trainee_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description trainee_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description trainee_in_use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     roster_edit_trainee: {
         parameters: {
             query?: never;
@@ -22555,6 +23393,57 @@ export interface operations {
                 "application/json": components["schemas"]["TraineeAccess"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraineeRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description trainee_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_anonymise_trainee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trainee_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -26120,6 +27009,7 @@ export interface operations {
     stations_list_platform_stations: {
         parameters: {
             query?: {
+                search?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -26509,6 +27399,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_add_platform_station_photos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_stations_add_platform_station_photos"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationPhotosResult"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found, version_not_found, photo_not_on_station */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_editable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_photo */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description photo_storage_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stations_remove_platform_station_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveStationPhoto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationVersionRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found, version_not_found, photo_not_on_station */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_editable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_photo */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description photo_storage_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
