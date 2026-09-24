@@ -12,40 +12,129 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.roster import domain, errors, repository
+from app.features.roster import domain, errors, repository_groups
 from app.features.roster.models import Cohort, TraineeGroup
 from app.features.roster.schemas import (
     CohortRead,
     GroupRead,
     ResolvedRoster,
     RosterWarningRead,
+    UpdateCohort,
 )
 from app.features.roster.service import _require_trainee
+
+# `academic_year` can be cleared and `name` cannot, so the two are not treated
+# alike: an absent key leaves the value alone in both cases.
+_COHORT_FIELDS = ("name", "academic_year")
 
 
 async def add_cohort(
     session: AsyncSession, org_id: uuid.UUID, *, name: str, academic_year: str | None
 ) -> CohortRead:
-    row = await repository.create_cohort(session, org_id, name=name, academic_year=academic_year)
+    if await repository_groups.cohort_by_name(session, org_id, name) is not None:
+        raise errors.CohortExists()
+    row = await repository_groups.create_cohort(session, org_id, name=name, academic_year=academic_year)
     return _cohort_read(row)
 
 
 async def list_cohorts(session: AsyncSession, org_id: uuid.UUID) -> list[CohortRead]:
-    return [_cohort_read(r) for r in await repository.list_cohorts(session, org_id)]
+    return [_cohort_read(r) for r in await repository_groups.list_cohorts(session, org_id)]
+
+
+async def update_cohort(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    cohort_id: uuid.UUID,
+    *,
+    body: UpdateCohort,
+    fields_sent: set[str],
+) -> CohortRead:
+    """Rename an intake, or say which academic year it is. Only what was sent.
+
+    The name is what an upload is matched against and what a list is read by,
+    so a rename is a real edit rather than a label change — and it is a rename
+    of the *row*, which is why a trainee who was in it is still in it after.
+    """
+    row = await _require_cohort(session, org_id, cohort_id)
+    named = set(_COHORT_FIELDS) & fields_sent
+    name = body.name if "name" in named else None
+    if name is not None and name != row.name:
+        # `(org_id, name)` is unique, and the database refuses it, which an
+        # administrator reading "internal error" cannot act on.
+        taken = await repository_groups.cohort_by_name(session, org_id, name)
+        if taken is not None and taken.id != row.id:
+            raise errors.CohortExists()
+    await repository_groups.update_cohort(
+        session,
+        org_id,
+        cohort_id,
+        name=name,
+        academic_year=body.academic_year if "academic_year" in named else None,
+        clear_academic_year="academic_year" in named and body.academic_year is None,
+    )
+    return _cohort_read(await _require_cohort(session, org_id, cohort_id))
+
+
+async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
+    """Remove an intake that nothing is attached to any more.
+
+    Refuses while trainees still belong to it. Their `cohort_id` is `SET NULL`,
+    so a delete that went ahead would not fail — it would quietly leave a year
+    group of people with no intake at all, and the screen that listed them
+    would show the result of the mistake rather than the mistake. Moving them
+    is a decision somebody has to make on purpose: `PATCH /trainees/{id}`.
+    """
+    await _require_cohort(session, org_id, cohort_id)
+    if await repository_groups.count_trainees_in_cohort(session, org_id, cohort_id):
+        raise errors.CohortInUse()
+    await repository_groups.delete_cohort(session, org_id, cohort_id)
 
 
 async def add_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) -> GroupRead:
-    if await repository.group_by_label(session, org_id, label) is not None:
+    if await repository_groups.group_by_label(session, org_id, label) is not None:
         raise errors.GroupExists()
-    row = await repository.create_group(session, org_id, label=label)
+    row = await repository_groups.create_group(session, org_id, label=label)
     return GroupRead(id=row.id, label=row.label, member_count=0)
 
 
 async def list_groups(session: AsyncSession, org_id: uuid.UUID) -> list[GroupRead]:
     return [
         GroupRead(id=g.id, label=g.label, member_count=count)
-        for g, count in await repository.list_groups(session, org_id)
+        for g, count in await repository_groups.list_groups(session, org_id)
     ]
+
+
+async def rename_group(
+    session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID, *, label: str
+) -> GroupRead:
+    """Rename a group, keeping its members.
+
+    b2b could not offer this safely: it matched a trainee's `cohort` string
+    against the group's label, so the only way to rename a group was to rewrite
+    every one of those strings too, and getting it wrong emptied the group in
+    silence. Membership here is a table, so the name can change on its own.
+    """
+    group = await _require_group(session, org_id, group_id)
+    if label != group.label:
+        clash = await repository_groups.group_by_label(session, org_id, label)
+        if clash is not None and clash.id != group.id:
+            raise errors.GroupExists()
+        await repository_groups.update_group_label(session, org_id, group_id, label=label)
+    return GroupRead(id=group.id, label=label, member_count=await _member_count(session, group_id))
+
+
+async def delete_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> None:
+    """Remove a group that nobody is in.
+
+    Refuses while it still has members. The membership rows go with the group,
+    and so does anything addressed to it — a circuit built from this list would
+    lose its people without a word — so the caller states the emptied list
+    first, on purpose, through `PUT /trainee-groups/{id}/members`.
+    """
+    await _require_group(session, org_id, group_id)
+    if await repository_groups.group_member_ids(session, group_id):
+        raise errors.GroupNotEmpty()
+    await repository_groups.delete_group(session, org_id, group_id)
 
 
 async def set_group_members(
@@ -56,9 +145,8 @@ async def set_group_members(
         # Checked against this org, so a trainee id from elsewhere cannot be
         # added by guessing one.
         await _require_trainee(session, org_id, trainee_id)
-    await repository.set_group_members(session, group_id, trainee_ids=trainee_ids)
-    members = await repository.group_member_ids(session, group_id)
-    return GroupRead(id=group.id, label=group.label, member_count=len(members))
+    await repository_groups.set_group_members(session, group_id, trainee_ids=trainee_ids)
+    return GroupRead(id=group.id, label=group.label, member_count=await _member_count(session, group_id))
 
 
 async def resolve_roster(
@@ -76,7 +164,7 @@ async def resolve_roster(
     groups: list[domain.GroupRef] = []
     for group_id in group_ids:
         await _require_group(session, org_id, group_id)
-        members = await repository.group_member_ids(session, group_id)
+        members = await repository_groups.group_member_ids(session, group_id)
         groups.append(domain.GroupRef(group_id=str(group_id), members=[str(m) for m in members]))
 
     resolved, warnings = domain.resolve_roster(explicit=[str(t) for t in trainee_ids], groups=groups)
@@ -86,10 +174,21 @@ async def resolve_roster(
     )
 
 
+async def _member_count(session: AsyncSession, group_id: uuid.UUID) -> int:
+    return len(await repository_groups.group_member_ids(session, group_id))
+
+
 async def _require_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> TraineeGroup:
-    row = await repository.group_by_id(session, org_id, group_id)
+    row = await repository_groups.group_by_id(session, org_id, group_id)
     if row is None:
         raise errors.GroupNotFound()
+    return row
+
+
+async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> Cohort:
+    row = await repository_groups.cohort_by_id(session, org_id, cohort_id)
+    if row is None:
+        raise errors.CohortNotFound()
     return row
 
 

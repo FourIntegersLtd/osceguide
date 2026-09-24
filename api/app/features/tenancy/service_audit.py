@@ -11,6 +11,7 @@ A platform act has no organisation: `org_id` is left empty, which is what
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -39,6 +40,35 @@ async def record(
     await repository.write_audit(
         session,
         org_id=None,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action=action,
+        at=at,
+        target_type=target_type,
+        target_id=target_id,
+        summary=summary,
+        meta=meta,
+    )
+
+
+async def record_for_org(
+    session: AsyncSession,
+    *,
+    org_id: uuid.UUID,
+    actor: Principal,
+    action: str,
+    target_type: str,
+    target_id: str,
+    summary: str | None = None,
+    meta: dict[str, Any] | None = None,
+    at: datetime | None = None,
+) -> None:
+    """`record`'s twin for an institution's own act on its own data — an
+    organisation admin anonymising a trainee, say — read back by
+    `GET /orgs/{org_slug}/audit` rather than the platform's own log."""
+    await repository.write_audit(
+        session,
+        org_id=org_id,
         actor_user_id=actor.user_id,
         actor_email=actor.email,
         action=action,

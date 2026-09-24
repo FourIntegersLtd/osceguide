@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audience import ViewerAudiences
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
-from app.features.roster import domain, errors, repository
+from app.features.roster import domain, errors, repository, repository_groups
 from app.features.roster.models import Trainee
 from app.features.roster.schemas import (
     TraineeRead,
@@ -105,6 +105,7 @@ def _trainee_read(row: Trainee) -> TraineeRead:
         cohort_id=row.cohort_id,
         user_id=row.user_id,
         access_revoked=row.access_revoked_at is not None,
+        anonymised=row.anonymised_at is not None,
     )
 
 
@@ -153,7 +154,7 @@ async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> Vie
     the answer. Organisations come from membership, groups from the roster.
     """
     memberships = await tenancy.memberships_for_token(session, user_id)
-    groups = await repository.group_ids_for_user(session, user_id)
+    groups = await repository_groups.group_ids_for_user(session, user_id)
     return ViewerAudiences(
         org_ids=frozenset(m.org_id for m in memberships),
         group_ids=frozenset(groups),

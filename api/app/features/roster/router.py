@@ -11,9 +11,13 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.roster import errors, schemas, service, service_bulk, service_groups
+from app.features.roster import errors, router_admin, schemas, service, service_bulk, service_groups
 
 router = APIRouter(tags=["roster"])
+# The routes that change an existing entry live in `router_admin.py` — this
+# file is the roster's reads and its additions, and it is the only thing
+# `main.py` mounts from the slice. Same tag, same prefix, one flat document.
+router.include_router(router_admin.router)
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 
@@ -99,9 +103,11 @@ async def list_cohorts(workspace: OrgReader, session: Session) -> Page[schemas.C
     "/orgs/{org_slug}/cohorts",
     response_model=schemas.CohortRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden),
+    responses=error_responses(Forbidden, errors.CohortExists),
 )
 async def add_cohort(body: schemas.CreateCohort, workspace: OrgAdmin, session: Session) -> schemas.CohortRead:
+    """An intake is named once per organisation: `(org, name)` is unique, and a
+    spreadsheet that repeats one is a mistake worth naming."""
     return await service_groups.add_cohort(
         session, workspace.org_id, name=body.name, academic_year=body.academic_year
     )

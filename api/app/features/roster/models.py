@@ -48,6 +48,10 @@ class Trainee(Base, UUIDPrimaryKey, Timestamps):
     last_name: Mapped[str | None] = mapped_column(String(100))
     cohort_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cohorts.id", ondelete="SET NULL"))
     access_revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # GDPR erasure for a row a plain `DELETE` refuses (`trainee_in_use`) —
+    # a real decision exists and stays; the address and name naming the
+    # person do not. Written once, never cleared: see `service_edit.anonymise_trainee`.
+    anonymised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class TraineeGroup(Base, UUIDPrimaryKey, Timestamps):

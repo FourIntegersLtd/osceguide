@@ -59,8 +59,16 @@ class CandidateResultRevision(Base, UUIDPrimaryKey):
     sitting_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("sittings.id", ondelete="CASCADE"), nullable=False
     )
+    # `RESTRICT`, not `CASCADE`: a decision revision is the defensible record
+    # a candidate's result actually is, the same reason `attempts.slot_id` is
+    # `RESTRICT` rather than `SET NULL`. It was `CASCADE` until 2026-09-24 —
+    # nothing had exercised the path, but a trainee delete would have taken
+    # their whole decision history with them silently. Roster's own
+    # `delete_trainee` (added the same day) depends on this: it refuses with
+    # `trainee_in_use` for exactly this table, rather than cascading through
+    # it.
     trainee_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("trainees.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("trainees.id", ondelete="RESTRICT"), nullable=False
     )
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     supersedes_revision: Mapped[int | None] = mapped_column(Integer)
