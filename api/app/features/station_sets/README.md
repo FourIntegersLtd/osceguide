@@ -16,6 +16,7 @@ Both produce rows in the one `attempts` table.
 - As a **consumer**, I re-attempt a station until I have used my attempts.
 - As a **consumer**, I talk an attempt through afterwards, against a separate limit.
 - As a **consumer**, I debrief a station I have already run.
+- As a **consumer**, I rename a set, and throw away one I have not started.
 - As a **consumer** whose access lapsed, my sets are still there when I renew.
 
 ## Aggregates & invariants
@@ -25,7 +26,19 @@ Both produce rows in the one `attempts` table.
   unlimited.
 - A debrief needs a completed attempt: there is nothing to talk about otherwise.
   Debriefs count against their own limit.
-- A locked set refuses new attempts and is never deleted.
+- A locked set refuses new attempts and is never deleted **by the platform**:
+  locking is what happens to somebody's work when their access lapses, and it
+  is not a reason to destroy it. The owner may still throw a locked set away,
+  because that is them choosing to.
+- **A set is deletable; a recording is not.** An entry is what a set attempt
+  points at, and the schema refuses to take an entry out from under a recording
+  (`RESTRICT`, and the CHECK that a set attempt must name its entry). So the
+  delete asks `attempts` — never its own counters, which the console zeroes
+  while keeping the recording — and refuses with `set_has_attempts` rather than
+  deleting the consultation, its transcript and its marking to get an answer.
+  The retiring client deleted the session and its progress rows and left the
+  transcripts behind; the orphan is what this refuses, and the erasure is what
+  the console's audited `delete-progress` route is for.
 - A set is complete when every entry has been attempted; an empty set is not
   complete, or one created and never populated would report itself finished.
 - Counters are incremented in SQL inside the attempt's transaction, not read then
@@ -37,6 +50,8 @@ Both produce rows in the one `attempts` table.
 |---|---|---|---|
 | GET/POST | `/api/v1/me/station-sets` | bearer | each set carries its own progress |
 | GET | `/api/v1/me/station-sets/{id}` | owner | `set_not_found` (404) |
+| PATCH | `/api/v1/me/station-sets/{id}` | owner | rename; the name and nothing else — a set holds no description and its length is the exam's timings summed over its stations. `set_not_found` (404), blank rejected |
+| DELETE | `/api/v1/me/station-sets/{id}` | owner | throw a set away with its entries. `set_not_found` (404); `set_has_attempts` (409) while a recording of a consultation still points at one of them |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/attempts` | owner | `attempt_limit_reached` (409), `set_locked` (409) |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/debriefs` | owner | Talk through an attempt already made; `nothing_to_debrief` (409), `attempt_limit_reached` (409) |
 | GET | `/api/v1/platform/users/{id}/stations` | platform admin | one row per station the person has sat: attempts that exist, how many were marked, the newest, and the counters on their set entries; `user_not_found` (404) |
@@ -48,7 +63,10 @@ None. Locking on expiry belongs with `entitlements` and is not yet wired.
 
 ## Cross-slice dependencies
 Calls `catalog` for the exam and its attempt limit, and `attempts` to create the
-attempt — which applies the entitlement check.
+attempt — which applies the entitlement check. Deleting a set asks `attempts`
+which of its entries a recording still points at, because that is the fact that
+decides whether the delete may happen; the entry's own counter is not it, since
+the console zeroes the counter and keeps the recording.
 
 The console routes (`service_platform.py`) also read `stations` for a
 station's title and versions, ask `attempts` to delete a person's attempts at

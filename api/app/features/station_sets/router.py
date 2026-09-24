@@ -62,6 +62,41 @@ async def read_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Sess
     return await service.read_set(session, principal.user_id, set_id)
 
 
+@router.patch(
+    "/me/station-sets/{set_id}",
+    response_model=schemas.SetRead,
+    responses=error_responses(Unauthenticated, errors.SetNotFound),
+)
+async def rename_set(
+    set_id: uuid.UUID, body: schemas.UpdateSet, principal: CurrentPrincipal, session: Session
+) -> schemas.SetRead:
+    """Rename one of your own practice sets.
+
+    Owner-only, and a set that is not yours answers 404 rather than 403: an id
+    is not something a stranger should be able to confirm exists by the shape
+    of the refusal.
+    """
+    return await service.rename_set(session, principal.user_id, set_id, name=body.name)
+
+
+@router.delete(
+    "/me/station-sets/{set_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated, errors.SetNotFound, errors.SetHasAttemptsError),
+)
+async def delete_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> None:
+    """Throw a practice set away.
+
+    The retiring client's delete took the session and its progress counters and
+    left the transcripts of what had been sat inside it orphaned. Here the
+    recordings cannot be left pointing at a row that has gone — the schema
+    refuses — so a set somebody has started a station in is refused rather than
+    emptied of its history. The console route that deletes a person's progress
+    on a stated reason is the one that takes a set's attempts with it.
+    """
+    await service.delete_set(session, principal.user_id, set_id)
+
+
 @router.post(
     "/me/station-sets/{set_id}/entries/{entry_id}/attempts",
     response_model=schemas.StartedAttempt,

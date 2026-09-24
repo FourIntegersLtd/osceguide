@@ -34,6 +34,22 @@ class SetLockedError(Conflict):
     default_message = "This set is locked because your access has lapsed"
 
 
+class SetHasAttemptsError(Conflict):
+    """A set somebody has run a station in is not only a name and a list.
+
+    Its entries are what those attempts point at, and an attempt is a recording
+    and a marking: the schema says so with `RESTRICT`, and with the CHECK that a
+    set attempt must name its entry — so the delete cannot be finished by
+    nulling a pointer either. Retiring client deleted the session and its
+    progress counters and left the transcripts behind, which is the orphan this
+    refuses; it does not delete the recordings instead, because that is the
+    removal the console asks a reason and an audit row for.
+    """
+
+    code = "set_has_attempts"
+    default_message = "This set still has attempts recorded against it"
+
+
 class NothingToDebriefError(Conflict):
     code = "nothing_to_debrief"
     default_message = "Run the station before asking for a debrief"

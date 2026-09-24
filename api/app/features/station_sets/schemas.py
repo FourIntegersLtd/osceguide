@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EntryRead(BaseModel):
@@ -30,6 +30,23 @@ class CreateSet(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     exam_code: str = Field(min_length=1, max_length=32)
     station_version_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class UpdateSet(BaseModel):
+    """What a learner may still change about a set they have built.
+
+    The name, and only the name. A set carries no description and no timings —
+    the length of a session is the sum of its stations' exam timings, which the
+    exam owns — so there is nothing else to write, and the retiring client's
+    edit screen asked for a name and a list of stations and nothing more.
+
+    Whitespace strips to nothing, which is then too short: a set called `"   "`
+    is an unlabelled row in the list the learner has to keep.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=200)
 
 
 class StartedAttempt(BaseModel):

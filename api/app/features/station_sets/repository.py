@@ -43,6 +43,25 @@ async def set_by_id(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uui
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def rename_set(session: AsyncSession, row: StationSet, *, name: str) -> None:
+    """Write the name. The owner was checked by whoever loaded the row."""
+    row.name = name
+    await session.flush()
+
+
+async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> None:
+    """Throw a set away, its entries with it.
+
+    The entries go on the foreign key's `ON DELETE CASCADE`, which is what the
+    retiring client's delete did to a session's progress rows. Attempts are the
+    ones that do not cascade — they `RESTRICT` — so whoever calls this has
+    already asked whether the set holds any.
+    """
+    await session.execute(
+        delete(StationSet).where(StationSet.owner_user_id == owner_user_id, StationSet.id == set_id)
+    )
+
+
 async def entries_for(session: AsyncSession, set_id: uuid.UUID) -> list[StationSetEntry]:
     stmt = select(StationSetEntry).where(StationSetEntry.set_id == set_id).order_by(StationSetEntry.position)
     return list((await session.execute(stmt)).scalars())

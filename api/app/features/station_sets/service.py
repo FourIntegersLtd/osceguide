@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.attempts import service as attempts
+from app.features.attempts import service_reads as attempts_reads
 from app.features.attempts.errors import AttemptNotFinished, AttemptNotReady
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
@@ -52,6 +53,43 @@ async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid
     entries = await repository.entries_for(session, set_id)
     code = await catalog.exam_code_by_id(session, row.exam_id)
     return _set_read(row, code or "", entries)
+
+
+async def rename_set(
+    session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID, *, name: str
+) -> SetRead:
+    """Change what a set is called.
+
+    The retiring client's edit screen asked for two things — a name and the
+    list of stations — and this is the first. Replacing the second is not a
+    rename: an entry carries the counters for what was sat in it and is what an
+    attempt points at, so swapping the list would be deleting somebody's
+    history and numbering a new one from zero. That is its own use case, and it
+    is not this route pretending to be it.
+    """
+    row = await _require(session, owner_user_id, set_id)
+    await repository.rename_set(session, row, name=name)
+    return await read_set(session, owner_user_id, set_id)
+
+
+async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> None:
+    """Throw a set away — as long as nothing was actually sat in it.
+
+    The delete is the learner's, so it goes to a set that has become a bookmark
+    list they no longer want. A set with attempts in it is a different object:
+    its entries are what those recordings point at, and the schema refuses to
+    take an entry out from under one. Deleting the recordings to get the answer
+    the learner asked for would take a transcript and its marking with it, so
+    this refuses and says what is in the way. The console, which may destroy a
+    person's progress on a stated reason and an audit row, is the route that
+    does the destroying.
+    """
+    await _require(session, owner_user_id, set_id)
+    entries = await repository.entries_for(session, set_id)
+    sat = await attempts_reads.set_entries_with_attempts(session, [entry.id for entry in entries])
+    if sat:
+        raise errors.SetHasAttemptsError()
+    await repository.delete_set(session, owner_user_id, set_id)
 
 
 async def list_sets(
