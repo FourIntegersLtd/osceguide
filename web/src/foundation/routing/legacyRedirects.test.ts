@@ -133,7 +133,14 @@ const LEGACY_SAMPLE: readonly [string, string][] = [
   ["/b2b/institution/login", "/login"],
   ["/b2b/partner/login", "/login"],
   ["/b2b/practice/kings/login", "/login"],
-  ["/b2b/(auth)/change-password", "/change-password"],
+  /*
+   * The real URL, spelled the way Next serves it: the legacy page lived in an
+   * `(auth)` route group, which never appears in an address. A sample spelled
+   * "/b2b/(auth)/change-password" tested a URL nobody could type, and the day
+   * the rule was written against that spelling the real one started landing
+   * on /app/change-password — a workspace that does not exist.
+   */
+  ["/b2b/change-password", "/change-password"],
   ["/b2b/select-workspace", "/app"],
   ["/b2b/institutions", "/institutions"],
   ["/b2b/platform", "/staff"],
@@ -142,7 +149,9 @@ const LEGACY_SAMPLE: readonly [string, string][] = [
   ["/b2b/partner/bmj", "/app/bmj"],
   ["/b2b/partner/bmj/exams", "/app/bmj/authoring/exams"],
   ["/b2b/partner/bmj/users/editors", "/app/bmj/team"],
-  ["/b2b/practice/kings/history", "/app/kings/dashboard"],
+  ["/b2b/practice/kings/history", "/app/kings/mocks"],
+  ["/b2b/practice/kings/exams", "/app/kings/mocks"],
+  ["/b2b/practice/kings/mocks/s1/stations/e1", "/app/kings/mocks/s1/stations/e1"],
   // platform-web's own first cut, and the arm prefixes it tried.
   ["/assess/kings/sittings", "/app/kings/sittings"],
   ["/assess/trainee", "/app/me/trainee"],
@@ -204,7 +213,9 @@ describe("legacy redirects", () => {
   it("drops the arm prefix from every old workspace URL", () => {
     assert.equal(destination("/b2b/kings/dashboard"), "/app/kings/dashboard");
     assert.equal(destination("/b2b/partner/bmj/exams"), "/app/bmj/authoring/exams");
-    assert.equal(destination("/b2b/practice/kings/history"), "/app/kings/dashboard");
+    assert.equal(destination("/b2b/practice/kings/history"), "/app/kings/mocks");
+    assert.equal(destination("/b2b/practice/kings/exams"), "/app/kings/mocks");
+    assert.equal(destination("/b2b/practice/kings"), "/app/kings/dashboard");
     assert.equal(destination("/assess/kings/sittings"), "/app/kings/sittings");
     assert.equal(destination("/hire/acme/sittings"), "/app/acme/sittings");
   });

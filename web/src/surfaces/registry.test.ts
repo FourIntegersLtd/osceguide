@@ -181,10 +181,16 @@ describe("surface registry", () => {
       "Billing",
       "Messages",
       "Audit log",
+      "Referral payouts",
       "Machinery",
     ]);
     assert.deepEqual(bySection[1], ["Authoring"]);
-    assert.deepEqual(bySection[2], ["Study material", "Growth", "Moderation"]);
+    assert.deepEqual(bySection[2], [
+      "Station reports",
+      "Study material",
+      "Growth",
+      "Moderation",
+    ]);
   });
 
   it("groups the consumer navigation the way the product does", () => {
@@ -223,7 +229,7 @@ describe("surface registry", () => {
     // Contact & Feedback leads Connect: the retiring sidebar carried it too,
     // ahead of the community, and a capability mounts it on this arm only.
     assert.deepEqual(bySection("connect"), ["Contact & Feedback", "Community", "Marketplace"]);
-    assert.deepEqual(bySection("general"), ["Settings"]);
+    assert.deepEqual(bySection("general"), ["Settings", "Achievements"]);
     // Nothing ungrouped: an item with no section would render above the
     // headings, which on this arm means somebody forgot to name one.
     assert.deepEqual(

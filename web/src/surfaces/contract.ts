@@ -39,6 +39,10 @@ export type ScreenName =
   | "billing"
   | "audit"
   | "ops"
+  // The staff queue of reports about library and org stations alike.
+  | "stationFlags"
+  // Referrals are settled by hand outside the product; this is the record.
+  | "referralPayouts"
   | "myTraining"
   | "mySitting"
   | "myResult"

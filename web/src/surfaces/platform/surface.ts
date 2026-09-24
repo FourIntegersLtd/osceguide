@@ -1,4 +1,4 @@
-import { LuActivity, LuBuilding2, LuGauge, LuInbox, LuReceipt, LuScrollText, LuShieldCheck, LuUsers } from "react-icons/lu";
+import { LuActivity, LuBuilding2, LuFlag, LuGauge, LuHandCoins, LuInbox, LuReceipt, LuScrollText, LuShieldCheck, LuUsers } from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -33,6 +33,20 @@ function nav({ href }: NavContext): NavItem[] {
     { key: "billing", label: "Billing", href: href("/billing"), icon: LuReceipt, section: "console" },
     { key: "messages", label: "Messages", href: href("/messages"), icon: LuInbox, section: "console" },
     { key: "audit", label: "Audit log", href: href("/audit"), icon: LuScrollText, section: "console" },
+    {
+      key: "stationFlags",
+      label: "Station reports",
+      href: href("/station-flags"),
+      icon: LuFlag,
+      section: "content",
+    },
+    {
+      key: "referralPayouts",
+      label: "Referral payouts",
+      href: href("/referral-payouts"),
+      icon: LuHandCoins,
+      section: "console",
+    },
     { key: "ops", label: "Machinery", href: href("/ops"), icon: LuActivity, section: "console" },
   ];
 }
@@ -43,5 +57,15 @@ export const platformSurface: SurfaceManifest = {
   // Reached by permission, not by belonging to a workspace.
   workspaceKinds: [],
   nav,
-  screenNames: ["dashboard", "organizations", "users", "team", "billing", "audit", "ops"],
+  screenNames: [
+    "dashboard",
+    "organizations",
+    "users",
+    "team",
+    "billing",
+    "audit",
+    "ops",
+    "stationFlags",
+    "referralPayouts",
+  ],
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ScreenMap } from "@/surfaces/contract";
-import { BillingQueue, Ops, Organizations, PlatformAudit, PlatformOverview, PlatformTeam, Users } from "@/domains/platform";
+import { BillingQueue, Ops, Organizations, PlatformAudit, PlatformOverview, PlatformTeam, ReferralPayouts, StationFlags, Users } from "@/domains/platform";
 
 export const platformScreens: ScreenMap = {
   dashboard: PlatformOverview,
@@ -11,4 +11,6 @@ export const platformScreens: ScreenMap = {
   billing: BillingQueue,
   audit: PlatformAudit,
   ops: Ops,
+  stationFlags: StationFlags,
+  referralPayouts: ReferralPayouts,
 };

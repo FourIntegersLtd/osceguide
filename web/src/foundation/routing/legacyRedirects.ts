@@ -121,8 +121,14 @@ export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
   { pattern: /^\/b2b\/(?:platform|institution|partner|trainee)\/login$/, to: "/login" },
   { pattern: /^\/b2b\/login$/, to: "/login" },
   { pattern: /^\/b2b\/practice\/[^/]+\/login$/, to: "/login" },
-  { pattern: /^\/b2b\/\(auth\)\/change-password$/, to: "/change-password" },
-  { pattern: /^\/b2b\/\(auth\)\/login$/, to: "/login" },
+  /*
+   * Spelled without the `(auth)` route group: a group is invisible in the
+   * URL, so the address the retiring client actually served is
+   * `/b2b/change-password`. The rule that matched the literal group name
+   * never fired, and the generic org rule below read "change-password" as a
+   * workspace and sent the visitor to a 404.
+   */
+  { pattern: /^\/b2b\/change-password$/, to: "/change-password" },
   { pattern: /^\/b2b\/select-workspace$/, to: "/app" },
   // A marketing page, not a workspace.
   { pattern: /^\/b2b\/institutions$/, to: "/institutions" },
@@ -190,11 +196,12 @@ export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
   { pattern: /^\/b2b\/partner\/([^/]+)\/users(?:\/.*)?$/, to: "/app/$1/team" },
   { pattern: /^\/b2b\/partner\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
   /*
-   * A practice account's self-service screens had no counterpart until the
-   * institution arm grew its own trainee views, and even those need the arm to
-   * mount them. The landing screen is the destination that is true for every
-   * workspace, so history and exams both start there.
+   * A practice account sat exams through the same mock screens an institution
+   * now mounts. Exams, a mock, and history all open that list; anything else
+   * under the account still starts at the dashboard.
    */
+  { pattern: /^\/b2b\/practice\/([^/]+)\/mocks(\/.*)?$/, to: "/app/$1/mocks$2" },
+  { pattern: /^\/b2b\/practice\/([^/]+)\/(?:exams|history)(?:\/.*)?$/, to: "/app/$1/mocks" },
   { pattern: /^\/b2b\/practice\/([^/]+)(\/.*)?$/, to: "/app/$1/dashboard" },
   // An institution workspace's remaining screens are named the same thing.
   { pattern: /^\/b2b\/([^/]+)(\/.*)?$/, to: "/app/$1$2" },
