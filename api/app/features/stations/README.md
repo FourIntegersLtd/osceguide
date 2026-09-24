@@ -29,6 +29,13 @@ Catalog: `GET /api/v1/station-generation-profiles`. Detail responses return **ef
   the platform's — and publish it.
 - As a **trainee or supervisor**, I browse the stations available to my organisation,
   which includes the platform library.
+- As **anyone following a link to one library station**, I am told what it is
+  without being shown what it holds.
+- As a **station author**, I read a station's revision history — which versions
+  were published, which were withdrawn, and what each said.
+- As a **reader** sitting any station — the platform's or another organisation's —
+  I report that it is wrong, and a **platform admin** works the queue of those
+  reports and closes them with a note.
 - As the **platform**, I resolve a station version into a scenario when an attempt starts.
 
 ## Aggregates & invariants
@@ -51,14 +58,36 @@ beside the rubric they narrow).
   doctor's information — and never the patient's persona or the examiner's
   material. An org admin, an assigned supervisor or a platform admin reads the
   whole document.
+- **Opening a library station from a link is still browsing.** The per-station
+  read answers with the row the browse page gives — a title and the ids needed
+  to bind it — and does not project the document at all: what a candidate may
+  read of a station is disclosed by their own attempt, and a link is not an
+  attempt. Should a screen ever need candidate-facing material before a station
+  is sat, `domain_content.candidate_content` is the only shape it may be served
+  in. The revision history, which is every version's whole document including
+  the withdrawn ones, is staff-only for the same reason seen from the other side.
 - `owner_kind='platform'` requires `org_id IS NULL`; `owner_kind='org'` requires it
   set. A check constraint, not a convention.
 - Attempts reference a `station_version`, never a station.
+- **A report about a station is a row about that station**, deduped per person by
+  a unique `(station_id, user_id)`. It used to be served by `identity` with the
+  body discarded and a docstring saying persistence was TODO, while the runner's
+  button went on confirming reports nobody received; legacy stored the array on
+  the *user's* document, so the content team never saw one and a repeat tap read
+  back as a failure. Deduped, because a second tap is the same report — and
+  counted per person, because three people saying one case is wrong is the
+  signal that decides whether it gets re-reviewed.
+- Anyone may report any station, whatever its owner: a reader inside nobody's
+  institution can still find a case wrong, and refusing them is how a bad case
+  survives. Only the reporter reads their own list; only a platform admin reads
+  the queue or closes a row.
 
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/v1/stations` | bearer | platform library, cursor-paginated; **no station content** — browsing is not reading the answers. Scoped to the exams the caller may open: `?exam_code=` must be one of them (`not_entitled`, 403), and omitting it gives theirs rather than everybody's. A platform admin browses the whole catalogue |
+| GET | `/api/v1/stations` | bearer | platform library, cursor-paginated; **no station content** — browsing is not reading the answers. Scoped to the exams the caller may open: `?exam_code=` must be one of them (`not_entitled`, 403), and omitting it gives theirs rather than everybody's. A platform admin browses the whole catalogue. `?search=` is a fragment of a title, matched in SQL |
+| GET | `/api/v1/stations/{station_id}` | bearer | one library station, and the same row the browse page gives — `station_not_found` (404) for anything that is not the library's, which answers a draft and another organisation's own case identically, and `not_entitled` (403) when the station's exam is not one the caller may open. Replaces the browser's walk of every page. See the invariant about reading |
+| GET | `/api/v1/stations/{station_id}/versions` | platform admin, or an admin of the org that owns the station | every revision, newest first, whole documents: `station_not_found` (404), `forbidden` (403). The lifecycle had writes and no reader |
 | GET | `/api/v1/orgs/{org_slug}/stations` | org member | the org's own; a trainee-only reader gets the candidate-facing projection of each `content` (see the invariant above) |
 | POST | `/api/v1/orgs/{org_slug}/stations` | org admin | |
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions` | org admin | seeded from the latest published |
@@ -74,6 +103,10 @@ beside the rubric they narrow).
 | GET/POST | `/api/v1/platform/stations` | platform admin | the library, drafts included |
 | POST | `/api/v1/platform/stations/{id}/versions[...]` | platform admin | as the org routes, with `org_id=None` |
 | GET/POST | `/api/v1/platform/station-templates[...]` | platform admin | |
+| POST | `/api/v1/me/station-flags` | bearer | report one station. **204 and idempotent** — a second tap is the same report, not a duplicate and not a 400. `station_not_found` (404) |
+| GET | `/api/v1/me/station-flags` | bearer | what this person reported, newest first, each with the case's title (resolved server-side; the legacy screen printed "Unknown Station" for anything off the page it had fetched) |
+| GET | `/api/v1/platform/station-flags` | platform admin | the queue, **oldest first**, cursor-paginated; `?status=open\|resolved`, omitted for both |
+| PATCH | `/api/v1/platform/station-flags/{id}` | platform admin | resolve with a note, or reopen — which clears `resolved_at` so an open row never answers twice. `station_flag_not_found` (404) |
 
 A template says what a station of this kind contains and what each block is
 **for**: its `role`. That is what the renderer places blocks by, which is why
@@ -86,4 +119,5 @@ A station version may only be built on a **published** template version (T3).
 None. Prompt rendering happens when an attempt is created, in `attempts`.
 
 ## Cross-slice dependencies
-Calls `catalog` to resolve an exam and `tenancy` for org access.
+Calls `catalog` to resolve an exam, `tenancy` for org access, and
+`entitlements.service_access` for the exams a reader may open the library of.

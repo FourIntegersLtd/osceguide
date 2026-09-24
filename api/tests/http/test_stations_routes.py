@@ -210,6 +210,28 @@ async def test_another_orgs_stations_are_invisible(client: AsyncClient, make_act
     assert response.json()["items"] == []
 
 
+async def test_an_org_station_search_matches_a_title_fragment(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """In SQL, not in the browser: a term must match the whole catalogue, not
+
+    only the page a client happened to have already walked.
+    """
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    for title in ("Chest pain", "Abdominal pain", "Headache"):
+        response = await client.post(
+            "/api/v1/orgs/kings/stations",
+            json={"title": title, "exam_code": "sca", "content": CONTENT},
+            headers=bearer(token),
+        )
+        assert response.status_code == 201, response.text
+
+    response = await client.get(
+        "/api/v1/orgs/kings/stations", params={"search": "pain"}, headers=bearer(token)
+    )
+    assert response.status_code == 200
+    assert {s["title"] for s in response.json()["items"]} == {"Chest pain", "Abdominal pain"}
+
+
 async def test_a_trainee_may_browse_stations(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await seed_org(client, make_actor)
     await make_station(client, await member(make_actor, org_id, "kings", "owner"))

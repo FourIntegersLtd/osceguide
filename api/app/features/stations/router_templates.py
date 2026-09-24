@@ -83,7 +83,7 @@ async def edit_station_template_version(
     session: Session,
 ) -> schemas.StationTemplateVersionRead:
     return await service_templates.edit_version(
-        session, workspace.org_id, template_id, version, structure=body.structure
+        session, workspace.org_id, template_id, version, structure=body.structure, title=body.title
     )
 
 

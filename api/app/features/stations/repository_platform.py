@@ -1,10 +1,11 @@
-"""Reads across every owner, for the platform console.
+"""Reads across every owner, for the staff who work on one station by id.
 
 Split from `repository.py` at the file cap and by tenancy rule: everything
 there takes `org_id` first because a caller is always somebody's member. The
 console is nobody's member and may read any station for support, so this is
-the one place a station is found by id alone. Only `PlatformAdmin` routes
-reach it.
+the one place a station is found by id alone. Reaching it is not the same as
+being allowed to know what was found: each route decides that for itself, and
+for an organisation's own station the answer is its administrators.
 """
 
 from __future__ import annotations

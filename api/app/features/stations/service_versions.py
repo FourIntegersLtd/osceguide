@@ -14,8 +14,10 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import raise_mapped
-from app.features.stations import domain, errors, repository
+from app.core.auth import Principal
+from app.core.errors import Forbidden, raise_mapped
+from app.core.tenancy import admin_org_ids
+from app.features.stations import domain, errors, repository, repository_platform
 from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
@@ -115,6 +117,36 @@ async def _version(
     return row
 
 
+async def version_history(
+    session: AsyncSession, station_id: uuid.UUID, *, caller: Principal
+) -> list[StationVersionRead]:
+    """Every revision this station has had, newest first. An author's read.
+
+    The authoring routes reach a station through an organisation's slug, which
+    is how they know who is asking. A history asked for by station id has no
+    slug to carry, so the owner is read off the station and matched against the
+    caller's own memberships: a platform admin sees any station's — curating
+    the library and supporting an institution are both that — and an
+    organisation's admin sees the stations that belong to it. A trainee of the
+    same organisation is refused, because what is listed here is every
+    version's whole document, including the revisions that were withdrawn: the
+    patient's persona and the examiner's material for the case they may be
+    examined on, and for the ones nobody settled.
+
+    Newest first rather than the ascending order the seed walk reads, because a
+    history is read from the present backwards.
+    """
+    found = await repository_platform.station_with_versions(session, station_id)
+    if found is None:
+        raise errors.StationNotFound()
+    station, versions = found
+    if not caller.is_platform_admin and (
+        station.org_id is None or station.org_id not in admin_org_ids(caller)
+    ):
+        raise Forbidden()
+    return [_version_read(row) for row in reversed(versions)]
+
+
 def _version_read(row: StationVersion) -> StationVersionRead:
     return StationVersionRead(
         id=row.id,
@@ -123,6 +155,7 @@ def _version_read(row: StationVersion) -> StationVersionRead:
         status=row.status,
         content=dict(row.content),
         published_at=row.published_at,
+        archived_at=row.archived_at,
     )
 
 

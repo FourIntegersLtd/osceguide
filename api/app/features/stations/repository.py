@@ -144,10 +144,16 @@ async def list_for_org(
     limit: int,
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
+    search: str | None = None,
 ) -> tuple[list[Station], str | None]:
     stmt = select(Station).where(owned_by(Station, org_id))
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
+    if search and search.strip():
+        # Matched the same way the library's search is (`library_page`): a
+        # title fragment, in SQL, so a term matches the whole catalogue rather
+        # than only the page the screen had already walked.
+        stmt = stmt.where(Station.title.ilike(f"%{search.strip()}%"))
     return await _station_page(session, stmt, limit=limit, cursor=cursor)
 
 
@@ -159,20 +165,6 @@ async def versions_by_ids(
     stmt = select(StationVersion).where(StationVersion.id.in_(version_ids))
     rows = (await session.execute(stmt)).scalars().all()
     return {row.id: row for row in rows}
-
-
-async def list_platform_library(
-    session: AsyncSession,
-    *,
-    limit: int,
-    cursor: dict[str, Any] | None = None,
-    exam_id: uuid.UUID | None = None,
-) -> tuple[list[Station], str | None]:
-    """The library every organisation can draw on. Deliberately not org-scoped."""
-    stmt = select(Station).where(Station.owner_kind == "platform", Station.status == "published")
-    if exam_id is not None:
-        stmt = stmt.where(Station.exam_id == exam_id)
-    return await _station_page(session, stmt, limit=limit, cursor=cursor)
 
 
 async def _station_page(
@@ -211,6 +203,27 @@ async def version_for_attempt(
 
 async def count_for_org(session: AsyncSession, org_id: uuid.UUID | None) -> int:
     stmt = select(func.count()).select_from(Station).where(owned_by(Station, org_id))
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def count_platform_library(session: AsyncSession, exam_ids: list[uuid.UUID]) -> int:
+    """Published library stations for the exams an organisation offers.
+
+    What it may run without authoring anything, which is why the dashboard asks
+    for it alongside `count_for_org`. Empty is a flat zero: `in_([])` matches
+    nothing, and an organisation offering no exam has no library to draw on.
+    """
+    if not exam_ids:
+        return 0
+    stmt = (
+        select(func.count())
+        .select_from(Station)
+        .where(
+            Station.owner_kind == "platform",
+            Station.status == "published",
+            Station.exam_id.in_(exam_ids),
+        )
+    )
     return int((await session.execute(stmt)).scalar_one())
 
 

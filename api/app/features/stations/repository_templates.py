@@ -93,6 +93,16 @@ async def add_template_version(
     return row
 
 
+async def set_template_title(
+    session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, *, title: str
+) -> None:
+    await session.execute(
+        update(StationTemplate)
+        .where(owned_by(StationTemplate, org_id), StationTemplate.id == template_id)
+        .values(title=title)
+    )
+
+
 async def set_template_version_structure(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID, *, structure: dict[str, Any]
 ) -> None:

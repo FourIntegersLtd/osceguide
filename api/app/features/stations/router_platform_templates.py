@@ -78,7 +78,9 @@ async def edit_platform_template_version(
     admin: PlatformAdmin,
     session: Session,
 ) -> schemas.StationTemplateVersionRead:
-    return await service_templates.edit_version(session, None, template_id, version, structure=body.structure)
+    return await service_templates.edit_version(
+        session, None, template_id, version, structure=body.structure, title=body.title
+    )
 
 
 @router.post(

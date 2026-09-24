@@ -13,6 +13,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -123,3 +124,44 @@ class StationVersion(Base, UUIDPrimaryKey, Timestamps):
     published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     archived_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
+class StationFlag(Base, UUIDPrimaryKey, Timestamps):
+    """A report that a library station is wrong, and what staff did about it.
+
+    The retiring client appended `{station_id, mock_id, flagged: true}` to the
+    *user's own document*, so a report was visible only to the person who made
+    it and the content team never saw one at all. That is why this is a row
+    about a station: a flag is a queue of things to look at, not a bookmark.
+
+    One row per (station, person), because a second tap on the button is the
+    same report and the button's state has to survive a reload. A resolved flag
+    stays rather than being deleted: "we looked, and it is deliberate" is the
+    answer the next reporter's investigation needs, and the count of reports on
+    a station is the signal that decides whether it gets re-reviewed.
+    """
+
+    __tablename__ = "station_flags"
+    __table_args__ = (
+        UniqueConstraint("station_id", "user_id", name="uq_station_flags_station_user"),
+        CheckConstraint(
+            "status IN ('open', 'resolved')",
+            name="ck_station_flags_status",
+        ),
+        # The staff queue is "what is still open, oldest first", which is the
+        # one thing the content team actually filters on.
+        Index("ix_station_flags_status_created_at", "status", "created_at"),
+    )
+
+    station_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("stations.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'open'"))
+
+    # What staff wrote when they closed it. Not shown to the reporter: a flag is
+    # a work queue, not a conversation, and an inbox nobody answers is worse
+    # than none.
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

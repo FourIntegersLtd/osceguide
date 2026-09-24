@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.core.errors import Conflict, NotFound
+from app.core.errors import Conflict, InvalidInput, NotFound, Unavailable
 
 
 class StationNotFound(NotFound):
@@ -11,6 +11,11 @@ class StationNotFound(NotFound):
 class VersionNotFound(NotFound):
     code = "version_not_found"
     default_message = "No such version"
+
+
+class StationFlagNotFound(NotFound):
+    code = "station_flag_not_found"
+    default_message = "No such report on a station"
 
 
 class NotEditableError(Conflict):
@@ -93,3 +98,24 @@ from app.features.entitlements.errors import NotEntitled  # noqa: E402
 from app.features.generation.errors import GenerationUnavailable  # noqa: E402
 
 __all__ = ["NotEntitled", "GenerationUnavailable"]
+
+
+class InvalidPhotoError(InvalidInput):
+    code = "invalid_photo"
+    default_message = "That file cannot be used as a station image"
+
+
+class PhotoNotOnStationError(NotFound):
+    """Deleting an image that is not on this station.
+
+    The retiring route deleted whatever key it was handed, so any authorised
+    caller could destroy any object in the bucket by naming its URL.
+    """
+
+    code = "photo_not_on_station"
+    default_message = "That image is not on this station"
+
+
+class PhotoStorageUnavailable(Unavailable):
+    code = "photo_storage_unavailable"
+    default_message = "Image storage is not configured"

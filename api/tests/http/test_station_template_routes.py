@@ -73,6 +73,30 @@ async def test_a_template_is_created_with_a_first_draft(client: AsyncClient, mak
     assert template["versions"][0]["status"] == "draft"
 
 
+async def test_renaming_a_draft_is_what_the_list_reads_back(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The editor used to validate a new title and then save the structure alone."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    template = await a_template(client, admin)
+
+    renamed = await client.patch(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1",
+        json={"structure": STRUCTURE, "title": "  Chest pain  "},
+        headers=bearer(admin),
+    )
+    assert renamed.status_code == 200, renamed.text
+
+    listed = await client.get("/api/v1/orgs/kings/station-templates", headers=bearer(admin))
+    assert listed.status_code == 200
+    assert [t["title"] for t in listed.json()["items"]] == ["Chest pain"]
+
+    blank = await client.patch(
+        f"/api/v1/orgs/kings/station-templates/{template['id']}/versions/1",
+        json={"structure": STRUCTURE, "title": "   "},
+        headers=bearer(admin),
+    )
+    assert blank.status_code == 422
+
+
 async def test_a_template_is_listed(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     await a_template(client, admin)

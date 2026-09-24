@@ -82,6 +82,7 @@ async def list_stations(
     limit: int,
     cursor: dict[str, Any] | None,
     full_content: bool,
+    search: str | None = None,
 ) -> tuple[list[StationRead], str | None]:
     """The stations this owner has authored.
 
@@ -91,8 +92,15 @@ async def list_stations(
     and never the patient's persona or the examiner's material. Required
     rather than defaulted, so a new call site decides who it is serving
     instead of inheriting the whole document.
+
+    `search` is a title fragment, answered in SQL rather than by walking every
+    page: the org and platform authoring lists had a client-side filter over
+    whatever had already been fetched, which silently stopped matching past
+    the walk's own page cap.
     """
-    rows, next_cursor = await repository.list_for_org(session, org_id, limit=limit, cursor=cursor)
+    rows, next_cursor = await repository.list_for_org(
+        session, org_id, limit=limit, cursor=cursor, search=search
+    )
     out = []
     for station in rows:
         versions = await repository.versions_for_station(session, org_id, station.id)

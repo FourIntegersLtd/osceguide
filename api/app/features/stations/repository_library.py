@@ -1,19 +1,82 @@
-"""Queries that join a version to its station.
+"""Queries against the platform's own half of the station table.
 
-Split from `repository.py` at the file cap. These are bulk reads for screens
-that already hold a set of version ids, or for a re-index of the library.
+Split from `repository.py` at the file cap. The library is the one body of
+stations that is nobody's — `owner_kind = 'platform'`, `org_id IS NULL` — and
+every question asked of it is spelled the same way: narrow by exam or title,
+page by the shared keyset cursor, and never by an organisation that does not
+exist here. The rest are the joins a bulk reader needs when it holds version
+ids rather than stations.
 """
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
+from app.core.pagination import keyset_page
 from app.features.stations.models import Station, StationVersion
+
+
+async def library_page(
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    exam_id: uuid.UUID | None = None,
+    search: str | None = None,
+) -> tuple[list[Station], str | None]:
+    """A page of the published library, narrowed by exam and by title.
+
+    `search` belongs in SQL rather than in whoever asked. The catalogue is
+    paginated, so a filter applied to a page can only ever match the rows that
+    page already contained — which is what a screen did a hundred rows at a
+    time, and why it kept offering "load more" while a term was being typed.
+    """
+    stmt = select(Station).where(Station.owner_kind == "platform", Station.status == "published")
+    if exam_id is not None:
+        stmt = stmt.where(Station.exam_id == exam_id)
+    if search and search.strip():
+        # Matched like the console's other title filters, including its LIKE
+        # wildcards: a `%` typed into a search box widens the query here too.
+        stmt = stmt.where(Station.title.ilike(f"%{search.strip()}%"))
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Station.created_at,
+        id_col=Station.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
+    )
+
+
+async def library_station(
+    session: AsyncSession, station_id: uuid.UUID
+) -> tuple[Station, StationVersion] | None:
+    """One published library station with the version it currently points at.
+
+    The join is the tenancy rule as well as the shape of the answer: a draft,
+    an archived-never-published row, and any organisation's own station are all
+    absent from the library, and this returns None for each rather than saying
+    which. A station id is something a stranger may guess at, and the library
+    answers only for the library's own.
+    """
+    stmt = (
+        select(Station, StationVersion)
+        .join(StationVersion, StationVersion.id == Station.current_version_id)
+        .where(
+            Station.id == station_id,
+            Station.owner_kind == "platform",
+            Station.status == "published",
+        )
+    )
+    row = (await session.execute(stmt)).first()
+    return (row[0], row[1]) if row else None
 
 
 async def versions_with_stations(

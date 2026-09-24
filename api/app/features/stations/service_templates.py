@@ -102,6 +102,7 @@ async def edit_version(
     version: int,
     *,
     structure: dict[str, Any],
+    title: str | None = None,
 ) -> StationTemplateVersionRead:
     row = await _version(session, org_id, template_id, version)
     try:
@@ -109,6 +110,8 @@ async def edit_version(
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     _ensure_valid_structure(structure, org_id=org_id)
+    if title is not None:
+        await repository.set_template_title(session, org_id, template_id, title=title)
     await repository.set_template_version_structure(session, org_id, row.id, structure=structure)
     return _version_read(await _version(session, org_id, template_id, version))
 

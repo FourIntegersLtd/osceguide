@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -17,7 +17,8 @@ from app.features.stations import (
     errors,
     schemas,
     service,
-    service_reads,
+    service_library_reads,
+    service_photos,
     service_versions,
     station_autogenerate,
 )
@@ -38,6 +39,7 @@ async def browse_library(
     clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
     exam_code: str | None = None,
+    search: str | None = None,
 ) -> Page[schemas.LibraryStationRead]:
     """The published platform library, scoped to what the caller may open.
 
@@ -45,12 +47,16 @@ async def browse_library(
     a practice set from it and an institution draws on it to build a circuit.
     The rows carry no station content — see `LibraryStationRead`.
 
+    `search` is a fragment of a title, matched in SQL. Typing one used to mean
+    paging the catalogue in the browser and filtering what had arrived, so a
+    term could only ever match what the screen had already fetched.
+
     A platform admin browses the whole catalogue, because curating it is their
     job. Everybody else gets their own exam, and asking for another is refused
     rather than answered — the retiring client had one exam per deployment and
     no picker at all.
     """
-    items, next_cursor = await service_reads.browse_library(
+    items, next_cursor = await service_library_reads.browse_library(
         session,
         exam_code=exam_code,
         limit=page.limit,
@@ -58,6 +64,7 @@ async def browse_library(
         user_id=principal.user_id,
         now=clock.now(),
         all_exams=principal.is_platform_admin,
+        search=search,
     )
     return Page(items=items, next_cursor=next_cursor)
 
@@ -68,7 +75,10 @@ async def browse_library(
     responses=error_responses(Forbidden),
 )
 async def list_stations(
-    workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgReader,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: str | None = None,
 ) -> Page[schemas.StationRead]:
     """The stations this organisation has authored.
 
@@ -85,6 +95,7 @@ async def list_stations(
         limit=page.limit,
         cursor=page.cursor,
         full_content=workspace.is_platform_admin or may_run_circuit_policy()(workspace.role),
+        search=search,
     )
     return Page(items=items, next_cursor=next_cursor)
 
