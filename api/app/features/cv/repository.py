@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.cv.domain import Status
@@ -42,6 +42,17 @@ async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: int
     """
     stmt = select(Cv).where(Cv.user_id == user_id).order_by(Cv.created_at.desc()).limit(limit)
     return (await session.execute(stmt)).scalars().all()
+
+
+async def delete_cv(session: AsyncSession, cv_id: uuid.UUID, user_id: uuid.UUID) -> int:
+    """Delete one CV of this person's, and say whether there was one to delete.
+
+    The owner is in the WHERE clause rather than checked beforehand, so a delete
+    cannot reach somebody else's row and "not yours" and "not there" come back
+    as the same zero — which is what lets the service answer both alike.
+    """
+    result = await session.execute(delete(Cv).where(Cv.id == cv_id, Cv.user_id == user_id))
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 async def mark_completed(

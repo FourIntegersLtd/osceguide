@@ -1,10 +1,11 @@
-"""Uploading a CV, reading it back, and the job that structures it.
+"""Uploading a CV, reading it back, deleting it, and the job that structures it.
 
 The upload parses the PDF in the request, so these tests build a real one —
 a single-page Helvetica PDF assembled byte by byte, with a correct xref table,
 because that is what `pypdf` reads. The model call is a background job and is
-not run here; the one job path that needs no model — no API key configured — is
-exercised directly against the session.
+not run here; the two job paths that need no model — no API key configured, and
+a row that has been deleted from under it — are exercised directly against the
+session.
 """
 
 from __future__ import annotations
@@ -168,3 +169,80 @@ async def test_a_random_id_is_not_found(client: AsyncClient, make_actor) -> None
     missing = await client.get(f"{CV}/{uuid.uuid4()}", headers=bearer(token))
     assert missing.status_code == 404
     assert missing.json()["code"] == "cv_not_found"
+
+
+async def test_deleting_your_own_cv_takes_it_out_of_the_list(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("doctor@example.com")
+    cv_id = (await _upload(client, token)).json()["id"]
+    assert (await client.get(CV, headers=bearer(token))).json()["total"] == 1
+
+    deleted = await client.delete(f"{CV}/{cv_id}", headers=bearer(token))
+    assert deleted.status_code == 204, deleted.text
+
+    listed = await client.get(CV, headers=bearer(token))
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["total"] == 0
+    assert listed.json()["cvs"] == []
+
+    # Gone for the person who deleted it, not merely hidden from the list.
+    reread = await client.get(f"{CV}/{cv_id}", headers=bearer(token))
+    assert reread.status_code == 404, reread.text
+    assert reread.json()["code"] == "cv_not_found"
+
+
+async def test_deleting_somebody_elses_cv_is_not_found_and_leaves_it_alone(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor
+) -> None:
+    """A delete must not be a second way to probe an id, and must not reach the row."""
+    mine = await make_actor("doctor@example.com")
+    theirs = await make_actor("other@example.com")
+
+    cv_id = (await _upload(client, mine)).json()["id"]
+
+    probed = await client.delete(f"{CV}/{cv_id}", headers=bearer(theirs))
+    assert probed.status_code == 404, probed.text
+    assert probed.json()["code"] == "cv_not_found"
+
+    # The refusal changed nothing: the owner's CV is still there to read.
+    assert (await client.get(f"{CV}/{cv_id}", headers=bearer(mine))).status_code == 200
+    assert (await client.get(CV, headers=bearer(mine))).json()["total"] == 1
+
+
+async def test_deleting_a_random_id_is_not_found(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The same answer as somebody else's, so the two cannot be told apart."""
+    token = await make_actor("doctor@example.com")
+    missing = await client.delete(f"{CV}/{uuid.uuid4()}", headers=bearer(token))
+    assert missing.status_code == 404, missing.text
+    assert missing.json()["code"] == "cv_not_found"
+
+
+async def test_a_cv_still_being_read_can_be_deleted(client: AsyncClient, make_actor, db_session) -> None:  # type: ignore[no-untyped-def]
+    """Deleting is allowed at `processing`, and the job then writes nothing back.
+
+    The job is never run in these tests, so an uploaded CV is `processing` —
+    asserted rather than assumed, because that is the state the delete has to
+    accept. What must not happen is the read that is already in flight coming
+    back and resurrecting a row the person has just removed.
+    """
+    from datetime import UTC, datetime
+
+    token = await make_actor("doctor@example.com")
+    created = await _upload(client, token)
+    cv_id = uuid.UUID(created.json()["id"])
+    assert created.json()["status"] == domain.Status.PROCESSING.value
+
+    deleted = await client.delete(f"{CV}/{cv_id}", headers=bearer(token))
+    assert deleted.status_code == 204, deleted.text
+    assert await repository.get(db_session, cv_id) is None
+
+    # The job, arriving now, finds no row and returns without calling a model.
+    await service.run_extraction_job(db_session, cv_id, settings=get_settings(), now=datetime.now(UTC))
+    await db_session.flush()
+
+    # And a read that had already fetched the row before the delete lands has
+    # nothing to update: it must not raise, and must not bring the CV back.
+    await repository.mark_completed(
+        db_session, cv_id, structured={"summary": "too late"}, at=datetime.now(UTC)
+    )
+    await db_session.flush()
+    assert await repository.get(db_session, cv_id) is None

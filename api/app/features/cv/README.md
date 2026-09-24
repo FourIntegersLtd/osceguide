@@ -27,7 +27,15 @@ Here it is one slice, exam-agnostic — a CV belongs to a person, not to a produ
   neither the bytes nor a re-parseable file, and nothing here needs to.
 - **A CV is yours or it is nobody's.** Reading another person's id answers
   `cv_not_found`, not `forbidden`, so an id cannot be probed to learn whose it
-  is. The list is filtered by the token's user and never takes a user id.
+  is. Deleting answers the same way for the same reason, and puts the owner in
+  the `WHERE` clause rather than checking it beforehand. The list is filtered by
+  the token's user and never takes a user id.
+- **Deleting is final, and is allowed at any status.** The row is hard-deleted:
+  nothing else reads `Cv` and no foreign key references `cvs`, so there is
+  nothing to orphan, and a soft delete would keep the text of a document the
+  person asked to have removed. A CV that is still `processing` goes too — the
+  job finds no row and returns, so a read caught in flight is wasted rather than
+  broken.
 - **Cheap checks run first.** Type, size and "did this PDF hold any text" are
   domain rules refused before any model is paid to read a scan or a wrong file.
 
@@ -38,6 +46,7 @@ Here it is one slice, exam-agnostic — a CV belongs to a person, not to a produ
 | POST | `/api/v1/cv` | bearer | multipart `file`; 201 with a `processing` row. `invalid_cv_file` (422), `too_many_requests` (429) |
 | GET | `/api/v1/cv` | bearer | your own, most recent first, capped |
 | GET | `/api/v1/cv/{cv_id}` | bearer | `cv_not_found` (404) if it is not yours |
+| DELETE | `/api/v1/cv/{cv_id}` | bearer | your own, at any status; 204. `cv_not_found` (404) if it is not yours |
 
 ## Jobs
 
@@ -45,7 +54,9 @@ Here it is one slice, exam-agnostic — a CV belongs to a person, not to a produ
 model and records the outcome on the row. Enqueued by `upload` in its own
 transaction. A failure — no API key, a model error, an empty parse — is written
 to the row's `error` and its `status` set to `failed`, so the person sees why
-rather than watching `processing` forever.
+rather than watching `processing` forever. A row deleted since it was queued is
+left alone: the job finds nothing and returns, which is what makes deleting a
+`processing` CV safe.
 
 ## Cross-slice dependencies
 

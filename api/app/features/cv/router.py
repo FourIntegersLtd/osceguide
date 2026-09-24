@@ -62,3 +62,17 @@ async def list_cv(principal: CurrentPrincipal, session: Session) -> schemas.CvLi
 async def read_cv(cv_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> schemas.CvRead:
     """One CV. Somebody else's is `not found`, so an id cannot be probed."""
     return await service.read(session, cv_id, user_id=principal.user_id)
+
+
+@router.delete(
+    "/cv/{cv_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Unauthenticated, errors.CvNotFound),
+)
+async def delete_cv(cv_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> None:
+    """Throw your own CV away, including one still being read.
+
+    Somebody else's is `not found` rather than `forbidden`, the same answer a
+    read gives, so a delete cannot be used to probe an id either.
+    """
+    await service.delete(session, cv_id, user_id=principal.user_id)
