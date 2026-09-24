@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineCog6Tooth } from "react-icons/hi2";
@@ -17,6 +18,7 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet } from "@/domains/train/api";
@@ -61,6 +63,7 @@ export function MockSetup({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
 
   const stations = useExamStations(workspace, examCode);
   const attempted = useMemo(() => attemptedVersionIds(workspace.sets), [workspace.sets]);
@@ -73,10 +76,12 @@ export function MockSetup({
     setSuccessMessage("");
     if (picked.length === 0) {
       setError("There are no stations to put in this session yet.");
+      setNeedsUpgrade(false);
       return;
     }
     setIsSubmitting(true);
     setError(null);
+    setNeedsUpgrade(false);
     try {
       const set = await createSet({
         name: name.trim() || "Untitled session",
@@ -87,7 +92,15 @@ export function MockSetup({
       onCreated();
       router.push(hrefFor(`/mocks/${set.id}`));
     } catch (cause) {
-      setError(errorMessage(cause));
+      // A lapsed or unpurchased plan answers `not_entitled` here, and the
+      // retiring client opened its upgrade modal on exactly this refusal. A
+      // sentence with nowhere to act on it is worse than the modal was.
+      if (hasCode(cause, "not_entitled")) {
+        setNeedsUpgrade(true);
+        setError("Your access to this exam has ended.");
+      } else {
+        setError(errorMessage(cause));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -105,7 +118,23 @@ export function MockSetup({
 
       <ModalContent className="max-w-2xl space-y-3">
         {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-        {error ? <Alert tone="danger">{error}</Alert> : null}
+        {error ? (
+          <Alert tone="danger">
+            {error}
+            {needsUpgrade ? (
+              <>
+                {" "}
+                <Link
+                  href={`${hrefFor("/settings")}?tab=payments`}
+                  className="font-semibold underline"
+                >
+                  Renew your plan
+                </Link>{" "}
+                to keep practising.
+              </>
+            ) : null}
+          </Alert>
+        ) : null}
 
         <B2CPanelCard className="mt-0">
           <B2CPanelCardHeader className={productTokens.b2cPanelCardTitle}>

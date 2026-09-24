@@ -7,6 +7,7 @@ import { HiOutlineClock, HiOutlineCreditCard, HiOutlineLockClosed } from "react-
 import { B2CEmptyState, ModalHelper, cn, productTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import type { StationSet } from "@/domains/train/api";
+import { SessionCardActions } from "@/domains/train/mocks/SessionCardActions";
 import { SessionGroup } from "@/domains/train/mocks/SessionGroup";
 import { groupSets, sessionAction, sessionMinutes, sessionState } from "@/domains/train/mocks/model";
 import { examByCode, type MockWorkspace } from "@/domains/train/mocks/useMockWorkspace";
@@ -17,8 +18,19 @@ import { examByCode, type MockWorkspace } from "@/domains/train/mocks/useMockWor
  * Sorting is the backend's order — sets come back newest first — where the old
  * list re-sorted client-side on a `created_at` string it had to normalise
  * through a UTC helper because two products wrote it two ways.
+ *
+ * Each card carries the retiring list's two writes: the pencil that renames it
+ * and the bin that throws it away. `onChanged` is the same reload the Setup tab
+ * uses after creating one, so what appears after a write is what the server
+ * says rather than what this screen guessed.
  */
-export function MockSessions({ workspace }: { workspace: MockWorkspace }) {
+export function MockSessions({
+  workspace,
+  onChanged,
+}: {
+  workspace: MockWorkspace;
+  onChanged: () => void;
+}) {
   const groups = groupSets(workspace.sets);
   const isEmpty =
     groups.currentSubscription.length === 0 && groups.inactiveSubscriptions.length === 0;
@@ -36,7 +48,7 @@ export function MockSessions({ workspace }: { workspace: MockWorkspace }) {
   const grid = (items: StationSet[]) => (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {items.map((set) => (
-        <SessionCard key={set.id} set={set} workspace={workspace} />
+        <SessionCard key={set.id} set={set} workspace={workspace} onChanged={onChanged} />
       ))}
     </div>
   );
@@ -74,9 +86,11 @@ export function MockSessions({ workspace }: { workspace: MockWorkspace }) {
 const SessionCard = memo(function SessionCard({
   set,
   workspace,
+  onChanged,
 }: {
   set: StationSet;
   workspace: MockWorkspace;
+  onChanged: () => void;
 }) {
   const { hrefFor } = useSurface();
   const exam = examByCode(workspace, set.exam_code);
@@ -125,6 +139,8 @@ const SessionCard = memo(function SessionCard({
           </span>
         </div>
       )}
+
+      <SessionCardActions set={set} onChanged={onChanged} />
 
       <Link href={hrefFor(`/mocks/${set.id}`)} className="block h-full">
         <div className="mt-4 min-w-0">

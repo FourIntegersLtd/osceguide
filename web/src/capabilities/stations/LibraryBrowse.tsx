@@ -41,13 +41,12 @@ export function LibraryBrowse() {
         state={state}
         isEmpty={(rows) => rows.length === 0}
         empty={
-          library.search.trim() && library.total > 0
+          library.applied
             ? {
                 title: "Nothing matches that",
-                description:
-                  "No station loaded so far has that in its title. Load more stations, or clear the search.",
+                description: `No published station has "${library.applied}" in its title. Try a shorter word, or clear the search.`,
                 action: (
-                  <Button variant="secondary" size="sm" onClick={() => library.setSearch("")}>
+                  <Button variant="secondary" size="sm" onClick={() => library.clearSearch()}>
                     Clear search
                   </Button>
                 ),

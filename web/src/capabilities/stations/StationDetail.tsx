@@ -20,11 +20,12 @@ import {
 import { b2cBodyText, b2cBodyTextMuted, b2cPageTitle } from "@/foundation/ui/productTokens";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { findLibraryStation, listExams } from "@/capabilities/stations/api";
+import { listExams, readLibraryStation } from "@/capabilities/stations/api";
 // The thread lives in `community`: it is the same post model as every other
 // discussion, with the same likes, the same deletion rule and the same
 // audience scoping. Two jobs built this at once and this is the faithful one.
 import { StationComments } from "@/capabilities/community";
+import { StationNotFound } from "@/capabilities/stations/StationNotFound";
 import { libraryHref, practiseHref } from "@/capabilities/stations/routes";
 
 type DetailTab = "brief" | "discussion";
@@ -44,7 +45,7 @@ export function StationDetail({ stationId }: { stationId: string }) {
   const { hrefFor } = useSurface();
   const [tab, setTab] = useState<DetailTab>("brief");
 
-  const station = useAsync((signal) => findLibraryStation(stationId, signal), [stationId]);
+  const station = useAsync((signal) => readLibraryStation(stationId, signal), [stationId]);
   const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
   const exam = exams.data?.find((item) => item.code === station.data?.exam_code) ?? null;
 
@@ -60,13 +61,16 @@ export function StationDetail({ stationId }: { stationId: string }) {
         <span>Back to the library</span>
       </Link>
 
-      <AsyncBoundary
-        state={station}
-        empty={{
-          title: "We could not find that station",
-          description: "It may have been withdrawn, or replaced by a newer version.",
-        }}
-      >
+      {/*
+       * A link to a station that is gone, or was never this person's, settles on
+       * `null` rather than failing — and `AsyncBoundary` renders nothing at all
+       * for a null result, which is how a dead link came to look like a blank
+       * page. So the sentence is drawn here, above the boundary that has no
+       * error to report.
+       */}
+      {station.data === null && !station.loading && !station.error ? <StationNotFound /> : null}
+
+      <AsyncBoundary state={station}>
         {(found) => (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

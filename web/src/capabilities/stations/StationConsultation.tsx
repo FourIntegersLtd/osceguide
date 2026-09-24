@@ -7,7 +7,8 @@ import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { AttemptRunner, createAttempt, useExtraReadingPercent, withExtraReadingTime } from "@/capabilities/attempt-runner";
-import { findLibraryStation, listExams } from "@/capabilities/stations/api";
+import { listExams, readLibraryStation } from "@/capabilities/stations/api";
+import { StationNotFound } from "@/capabilities/stations/StationNotFound";
 import { stationHref } from "@/capabilities/stations/routes";
 
 /**
@@ -27,7 +28,7 @@ export function StationConsultation({ stationId }: { stationId: string }) {
   const { hrefFor } = useSurface();
   const extraReadingPercent = useExtraReadingPercent();
 
-  const station = useAsync((signal) => findLibraryStation(stationId, signal), [stationId]);
+  const station = useAsync((signal) => readLibraryStation(stationId, signal), [stationId]);
   const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
   const exam = exams.data?.find((item) => item.code === station.data?.exam_code) ?? null;
 
@@ -54,13 +55,11 @@ export function StationConsultation({ stationId }: { stationId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <AsyncBoundary
-        state={station}
-        empty={{
-          title: "We could not find that station",
-          description: "It may have been withdrawn, or replaced by a newer version.",
-        }}
-      >
+      {/* See `StationDetail`: a settled `null` is the not-found answer, and the
+          boundary renders nothing for it. */}
+      {station.data === null && !station.loading && !station.error ? <StationNotFound /> : null}
+
+      <AsyncBoundary state={station}>
         {(found) => (
           <>
             <Link

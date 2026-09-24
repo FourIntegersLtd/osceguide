@@ -5,7 +5,7 @@ import { useAsync, type AsyncState } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { browseLibrary, type LibraryPage, type LibraryStation } from "@/capabilities/stations/api";
 
-/** One page. Large enough that the client-side search has something to search. */
+/** The most the library endpoint will answer in one page; more is a 422. */
 const PAGE_SIZE = 100;
 
 /** Pages fetched after the first, and where the cursor got to. */
@@ -21,14 +21,19 @@ interface Paged {
 export interface StationLibraryState {
   /** The first page, which owns the loading and failure states. */
   first: AsyncState<LibraryPage>;
-  /** Everything fetched so far, filtered by the search term. */
+  /** Everything fetched for the applied filter, in the server's order. */
   stations: LibraryStation[];
-  /** Fetched but filtered out — so the empty state can say which kind of empty. */
-  total: number;
+  /** The term actually sent. Empty means the whole exam. */
+  applied: string;
   /** The exam being browsed. The app's, not this screen's — see `useCurrentExam`. */
   examCode: string | null;
+  /** What is in the box, which is not yet what is being searched for. */
   search: string;
   setSearch: (term: string) => void;
+  /** Send what is typed. The search is submitted, not typed — see below. */
+  applySearch: () => void;
+  /** Drop the term and the pages that were fetched under it. */
+  clearSearch: () => void;
   hasMore: boolean;
   loadingMore: boolean;
   loadMore: () => void;
@@ -44,14 +49,20 @@ export interface StationLibraryState {
  * caller may not open, so the chips would have been a row of buttons that
  * mostly 403.
  *
- * The search is applied here rather than sent, because that endpoint takes an
- * exam code and a cursor and nothing else. That is a real limit and it is
- * recorded in `docs/port-gaps.md`: a term only matches what has been paged in,
- * which is why "Load more" stays offered while one is typed.
+ * The term is sent, not applied here. It used to be filtered over whatever had
+ * been paged in, because the endpoint took an exam code and a cursor and
+ * nothing else; `?search=` matches a title fragment in SQL now, so "nothing
+ * matches" means the library, not the part of it that arrived first. The page
+ * is refetched from the top under a new term — a cursor into the unfiltered
+ * list is not a cursor into the filtered one — and a term is committed on
+ * submit rather than on every keystroke, which is how the retiring client's
+ * list searched and how `capabilities/media` still does: one request per thing
+ * somebody meant, not one per letter.
  */
 export function useStationLibrary(): StationLibraryState {
   const { code: examCode, loading: examLoading } = useCurrentExam();
-  const [search, setSearch] = useState("");
+  const [search, setSearchTerm] = useState("");
+  const [applied, setApplied] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
 
   const first = useAsync(
@@ -60,12 +71,12 @@ export function useStationLibrary(): StationLibraryState {
     // show a different exam's stations for one frame.
     (signal) =>
       examCode
-        ? browseLibrary({ examCode, limit: PAGE_SIZE }, signal)
+        ? browseLibrary({ examCode, search: applied, limit: PAGE_SIZE }, signal)
         : Promise.resolve({ items: [], next_cursor: null } as LibraryPage),
-    [examCode],
+    [examCode, applied],
   );
 
-  const key = examCode ?? "";
+  const key = `${examCode ?? ""}|${applied}`;
   const [paged, setPaged] = useState<Paged>({ key, items: [], cursor: null, started: false });
   // A different filter is a different list. Reset during render rather than in
   // an effect: an effect would paint one frame of the old exam's stations
@@ -75,9 +86,12 @@ export function useStationLibrary(): StationLibraryState {
   const cursor = paged.started ? paged.cursor : (first.data?.next_cursor ?? null);
 
   const loadMore = useCallback(() => {
-    if (!cursor || loadingMore) return;
+    // Also refused while the first page of the current filter is still coming
+    // in: the only cursor to hand is then the previous filter's, and a cursor
+    // out of the unfiltered list is not a cursor into the filtered one.
+    if (!cursor || loadingMore || first.loading) return;
     setLoadingMore(true);
-    browseLibrary({ examCode, cursor, limit: PAGE_SIZE })
+    browseLibrary({ examCode, search: applied, cursor, limit: PAGE_SIZE })
       .then((page) => {
         setPaged((current) =>
           current.key !== key
@@ -97,27 +111,40 @@ export function useStationLibrary(): StationLibraryState {
         setPaged((current) => ({ ...current, cursor: null, started: true }));
       })
       .finally(() => setLoadingMore(false));
-  }, [cursor, examCode, key, loadingMore]);
+  }, [applied, cursor, examCode, first.loading, key, loadingMore]);
 
-  const loaded = useMemo(
+  const setSearch = useCallback((term: string) => {
+    setSearchTerm(term);
+    // Emptying the box is not a draft search — it is the request to stop
+    // filtering, and the native ✕ in a `type="search"` control writes exactly
+    // that without ever going near the submit button.
+    if (term === "") setApplied("");
+  }, []);
+
+  const applySearch = useCallback(() => setApplied(search.trim()), [search]);
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm("");
+    setApplied("");
+  }, []);
+
+  const stations = useMemo(
     () => [...(first.data?.items ?? []), ...(paged.key === key ? paged.items : [])],
     [first.data, paged, key],
   );
 
-  const stations = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return loaded;
-    return loaded.filter((station) => station.title.toLowerCase().includes(term));
-  }, [loaded, search]);
-
   return {
     first: examLoading ? { ...first, loading: true } : first,
     stations,
-    total: loaded.length,
+    applied,
     examCode,
     search,
     setSearch,
-    hasMore: cursor !== null,
+    applySearch,
+    clearSearch,
+    // Withdrawn while a new term's first page is on the wire, for the same
+    // reason `loadMore` refuses then.
+    hasMore: cursor !== null && !first.loading,
     loadingMore,
     loadMore,
   };
