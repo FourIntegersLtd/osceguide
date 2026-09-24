@@ -44,6 +44,7 @@ from app.features.community.router import router as community_router
 from app.features.community.router_platform import router as community_platform_router
 from app.features.cv.router import router as cv_router
 from app.features.dashboard.router import router as dashboard_router
+from app.features.dashboard.router_achievements import router as achievements_router
 from app.features.dashboard.router_live import router as live_board_router
 from app.features.dashboard.router_platform import router as platform_directory_router
 from app.features.entitlements.router import router as entitlements_router
@@ -71,7 +72,9 @@ from app.features.sso.router import router as sso_router
 from app.features.station_sets.router import router as station_sets_router
 from app.features.station_sets.router_platform import router as platform_station_sets_router
 from app.features.stations.router import router as stations_router
+from app.features.stations.router_flags import router as station_flags_router
 from app.features.stations.router_generation_profiles import router as station_generation_profiles_router
+from app.features.stations.router_photos import router as station_photos_router
 from app.features.stations.router_platform import router as platform_stations_router
 from app.features.stations.router_platform_templates import router as platform_station_templates_router
 from app.features.stations.router_templates import router as station_templates_router
@@ -111,9 +114,11 @@ def api_v1_router() -> APIRouter:
     router.include_router(rubrics_router)
     router.include_router(org_rubrics_router)
     router.include_router(stations_router)
+    router.include_router(station_flags_router)
     router.include_router(station_templates_router)
     router.include_router(station_generation_profiles_router)
     router.include_router(platform_stations_router)
+    router.include_router(station_photos_router)
     router.include_router(platform_station_templates_router)
     router.include_router(attempts_router)
     router.include_router(attempts_coverage_router)
@@ -135,6 +140,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(station_sets_router)
     router.include_router(platform_station_sets_router)
     router.include_router(dashboard_router)
+    router.include_router(achievements_router)
     router.include_router(platform_directory_router)
     router.include_router(live_board_router)
     router.include_router(assistant_router)
