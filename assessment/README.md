@@ -310,29 +310,43 @@ candidate, plays the audio and checks that turns are streamed, the transcript
 is delivered exactly once, a duplicate dispatch leaves one agent, and an
 absent candidate delivers nothing.
 
-`scripts/parity_run.py` is the cutover gate: `play` drives a backend-created
-room (legacy-routed or assessment-routed) with the same audio; `compare`
-normalises the two stored transcripts (legacy b2c, legacy b2b or engine shape),
-compares turn and role counts, and with `--evaluate` scores both through the
-shared evaluator and compares the result sections.
+`scripts/parity_run.py` compares a legacy session against an assessment-routed
+one: `play` drives a backend-created room (legacy-routed or assessment-routed)
+with the same audio; `compare` normalises the two stored transcripts (legacy
+b2c, legacy b2b or engine shape), compares turn and role counts, and with
+`--evaluate` scores both through the shared evaluator and compares the result
+sections. Use it when a change to the engine or a prompt could move a mark.
 
-## Cutover from the legacy `livekit/` workers
+## Routing to these workers is unconditional
 
-Both backends route to the new workers behind allow-lists that default to off;
-rollback is emptying the variable. Gate every widening on the parity harness
-(`scripts/parity_run.py compare --evaluate` against a legacy transcript of the
-same type) and a manual smoke of that session type.
+**There is no allow-list and no rollback to the legacy `livekit/` workers.**
+Both backends resolve an agent name and dispatch, for every user and every
+organisation: `resolve_b2c_route` in
+`backend/b2c-api/b2c/shared/services/livekit_agent_routing.py` and
+`resolve_b2b_route` in `backend/b2b-api/app/features/livekit/agent_routing.py`.
+Neither consults a user allow-list, an org allow-list or a session-type gate;
+both branch only on self-hosted versus LiveKit Cloud (see
+`LIVEKIT_B2C_ASSESSMENT_ROUTING_MODE` below, which is a placement decision, not
+an on/off switch). An earlier version of this README described staged
+allow-lists that the backends never implemented; the variables it named do not
+exist.
 
-1. B2C conversations: `LIVEKIT_B2C_ASSESSMENT_WORKER_TYPES=conversation,admin-test`
-   with `LIVEKIT_B2C_ASSESSMENT_USER_ALLOWLIST=<a few emails>`, then `*`.
-2. B2C debriefs: add `debrief` to the same list once conversations are stable;
-   confirm the highlighted lines and recommendations render in the debrief screen.
-3. B2C assistant sessions: `LIVEKIT_B2C_ASSISTANT_WORKER_TYPES=help`, then
-   `help,onboarding,dashboard,athena-doctor`; allow-list a few users, then `*`.
-4. B2B: `LIVEKIT_B2B_ASSESSMENT_ORG_SLUGS=<pilot org>`, then `*`.
-5. Retire legacy: stop the Railway `livekit-b2c` / `livekit-b2b` services, delete
-   the Cloud agents in `livekit/livekit.b2c.toml` and `livekit.b2b.toml`, and
-   mark `livekit/` archived in the root `AGENTS.md`.
+So if a worker release misbehaves under load, recovery is a **redeploy or a K3s
+rollback**, not an environment change:
+
+```sh
+kubectl -n assessment-platform rollout undo deployment/assessment-worker
+kubectl -n assessment-platform rollout status deployment/assessment-worker
+# ...and deployment/assistant-worker for the assistant side.
+```
+
+Roll the image back to the previous digest in `k8s/deployment*.yaml` if the
+rollout history has already been pruned. Because there is no gate, treat the
+parity harness and a manual smoke of the affected session type as a
+**pre-merge** step rather than a pre-widening one — there is no smaller
+blast radius to widen from.
+
+Retiring the legacy tree is tracked in `livekit/README.md`.
 
 Differences from the legacy workers to keep in mind:
 

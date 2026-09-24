@@ -127,5 +127,11 @@ documented `anthropic >=0.41,<1.0.0` httpx constraint.
 ## Cutover discipline
 
 New workers register new agent names and take traffic through the backend
-routing resolvers behind an allow-list. Legacy workers are never modified to
-accommodate the new ones. Every widening is gated on the parity harness.
+routing resolvers. That traffic is **unconditional** — there is no allow-list,
+no per-user or per-org gate, and no route back to `livekit/`, so a bad release
+is recovered by a redeploy or a K3s rollback rather than an environment change
+(see `README.md`). Because nothing gates a widening, the parity harness and a
+manual smoke of the affected session type belong before the merge, not before a
+rollout.
+
+Legacy workers in `livekit/` are never modified to accommodate the new ones.
