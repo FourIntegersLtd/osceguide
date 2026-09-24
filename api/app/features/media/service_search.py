@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
-from app.core.errors import AppError, raise_mapped
+from app.core.errors import AppError, InvalidInput, raise_mapped
+from app.core.pagination import encode_cursor
 from app.core.ports import VectorIndex
 from app.features.catalog import service as catalog
 from app.features.entitlements import service as entitlements
@@ -22,9 +23,15 @@ from app.features.media.schemas import SearchHit
 # Mirrors the entitlements slice's own trial window.
 _STUDY_TRIAL_DAYS = 14
 
+# How deep the index is asked to rank. `VectorIndex.search` takes a limit and
+# nothing else — no cursor of its own — so a page beyond this window does not
+# exist to be fetched, and paging is keyset *within* it.
+_RETRIEVAL_LIMIT = 100
+
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.EmptyQuery: errors.EmptyQueryError,
     domain.QueryTooLong: errors.EmptyQueryError,
+    domain.UnknownMediaKind: errors.UnknownMediaKindError,
 }
 
 
@@ -34,6 +41,7 @@ async def search(
     query: str,
     index: VectorIndex,
     limit: int = 10,
+    kind: str | None = None,
     unlocked: frozenset[uuid.UUID] = frozenset(),
 ) -> list[SearchHit]:
     """Search the index, then read the rows it named.
@@ -46,9 +54,14 @@ async def search(
     (`tutor_memory.service_search`): a hit names a title, and a search over
     every exam's material is a table of contents for the ones you have not
     bought. Free material — no exam — is searchable by everybody.
+
+    Ranked best first, ties broken by id: `search_page` cursors through this
+    list, and a cursor over an order two calls could disagree about skips or
+    repeats whatever sits on the boundary.
     """
     try:
         cleaned = domain.clean_query(query)
+        wanted = domain.normalize_kind(kind) if kind else None
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
@@ -57,13 +70,67 @@ async def search(
     rows = await repository.by_ids(session, list(scores))
     return sorted(
         (
-            SearchHit(id=r.id, kind=r.kind, slug=r.slug, title=r.title, score=scores.get(r.id, 0.0))
+            SearchHit(
+                id=r.id,
+                kind=r.kind,
+                slug=r.slug,
+                title=r.title,
+                score=scores.get(r.id, 0.0),
+                excerpt=domain.excerpt(r.summary, r.title),
+            )
             for r in rows
-            if domain.is_public(status=r.status) and (r.exam_id is None or r.exam_id in unlocked)
+            if domain.is_public(status=r.status)
+            and (wanted is None or r.kind == wanted)
+            and (r.exam_id is None or r.exam_id in unlocked)
         ),
-        key=lambda hit: hit.score,
+        key=lambda hit: (hit.score, hit.id),
         reverse=True,
     )
+
+
+async def search_page(
+    session: AsyncSession,
+    *,
+    query: str,
+    index: VectorIndex,
+    kind: str | None = None,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    unlocked: frozenset[uuid.UUID] = frozenset(),
+) -> tuple[list[SearchHit], str | None, int]:
+    """One page of the ranked hits, what comes after it, and how many matched.
+
+    Keyset on `(score, id)` rather than an offset into the ranked list, so a
+    result that outranks something while the reader is paging cannot push a
+    row they have already seen back onto the next page. The count is of the
+    whole match, cursor aside: a search box says "18 found", and the page it
+    is showing is not the answer to that question.
+    """
+    hits = await search(
+        session, query=query, index=index, limit=_RETRIEVAL_LIMIT, kind=kind, unlocked=unlocked
+    )
+    return _keyset_slice(hits, cursor=cursor, limit=limit)
+
+
+def _keyset_slice(
+    hits: list[SearchHit], *, cursor: dict[str, Any] | None, limit: int
+) -> tuple[list[SearchHit], str | None, int]:
+    """Drop what a previous page already served, then take one page of the rest."""
+    total = len(hits)
+    remaining = hits
+    if cursor:
+        try:
+            boundary = (float(cursor["s"]), uuid.UUID(cursor["i"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise InvalidInput("Invalid cursor") from exc
+        # Strictly behind the boundary in the order `search` returned: the row
+        # the cursor names was the last one the reader saw.
+        remaining = [hit for hit in hits if (hit.score, hit.id) < boundary]
+    if len(remaining) <= limit:
+        return remaining, None, total
+    page = remaining[:limit]
+    last = page[-1]
+    return page, encode_cursor({"s": last.score, "i": str(last.id)}), total
 
 
 async def unlocked_exam_ids(

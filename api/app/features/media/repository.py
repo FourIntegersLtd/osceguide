@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -57,6 +57,43 @@ async def update_item(session: AsyncSession, item_id: uuid.UUID, **values: Any) 
     await session.execute(update(MediaItem).where(MediaItem.id == item_id).values(**values))
 
 
+def _catalog_filters(
+    *,
+    kind: str | None,
+    statuses: tuple[str, ...] | None,
+    exam_id: uuid.UUID | None = None,
+    search: str | None = None,
+) -> list[Any]:
+    """The conditions the catalogue narrows by, shared with its count.
+
+    One list rather than two copies of the same clauses, because the count has
+    to describe exactly the rows the page came from — a `total_count` that
+    ignored a filter would print a bigger number than the filter can ever
+    reach.
+    """
+    conditions: list[Any] = []
+    if statuses is None:
+        conditions.append(MediaItem.status == "published")
+    elif len(statuses) == 1:
+        conditions.append(MediaItem.status == statuses[0])
+    else:
+        conditions.append(MediaItem.status.in_(statuses))
+    if kind:
+        conditions.append(MediaItem.kind == kind)
+    if exam_id is not None:
+        # Material tagged with no exam is free material and belongs on every
+        # exam's list, which is what the consumer screens already showed: an
+        # "all exams" article rail is the free half of the library, not a
+        # fifth exam.
+        conditions.append(or_(MediaItem.exam_id == exam_id, MediaItem.exam_id.is_(None)))
+    term = (search or "").strip()
+    if term:
+        # Matched like the station library's title filter, including its LIKE
+        # wildcards: a `%` typed into a search box widens the query here too.
+        conditions.append(or_(MediaItem.title.ilike(f"%{term}%"), MediaItem.summary.ilike(f"%{term}%")))
+    return conditions
+
+
 async def list_catalog(
     session: AsyncSession,
     *,
@@ -64,16 +101,19 @@ async def list_catalog(
     statuses: tuple[str, ...] | None,
     limit: int,
     cursor: dict[str, Any] | None = None,
+    exam_id: uuid.UUID | None = None,
+    search: str | None = None,
 ) -> tuple[list[MediaItem], str | None]:
-    stmt = select(MediaItem)
-    if statuses is None:
-        stmt = stmt.where(MediaItem.status == "published")
-    elif len(statuses) == 1:
-        stmt = stmt.where(MediaItem.status == statuses[0])
-    else:
-        stmt = stmt.where(MediaItem.status.in_(statuses))
-    if kind:
-        stmt = stmt.where(MediaItem.kind == kind)
+    """A page of the catalogue, narrowed by kind, status, exam and a title or summary fragment.
+
+    `search` belongs in SQL rather than in whoever asked. The catalogue is
+    paginated, so a filter applied to a page can only match the rows that page
+    already contained — which is what the consumer's browser did, six hundred
+    items at a time, before it could say whether a term matched anything.
+    """
+    stmt = select(MediaItem).where(
+        *_catalog_filters(kind=kind, statuses=statuses, exam_id=exam_id, search=search)
+    )
     return await keyset_page(
         session,
         stmt,
@@ -82,6 +122,28 @@ async def list_catalog(
         limit=limit,
         cursor=cursor,
     )
+
+
+async def count_catalog(
+    session: AsyncSession,
+    *,
+    kind: str | None,
+    statuses: tuple[str, ...] | None,
+    exam_id: uuid.UUID | None = None,
+    search: str | None = None,
+) -> int:
+    """How many items the same filters match, ignoring the cursor.
+
+    The count a page cannot give about itself: `items` says what this page
+    holds, and a screen that printed its length announced "25 found" for a
+    library of six hundred.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(MediaItem)
+        .where(*_catalog_filters(kind=kind, statuses=statuses, exam_id=exam_id, search=search))
+    )
+    return int((await session.execute(stmt)).scalar_one())
 
 
 async def list_published(

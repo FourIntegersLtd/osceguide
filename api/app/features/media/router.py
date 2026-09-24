@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal, MaybePrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
-from app.core.pagination import CursorParams, Page
+from app.core.pagination import CursorParams
 from app.core.ports import ClockDep, VectorIndex
 from app.core.tenancy import PlatformAdmin
 from app.features.media import errors, schemas, service, service_search
@@ -22,7 +22,7 @@ Index = Annotated[VectorIndex, Depends(service_search.get_vector_index)]
 
 @router.get(
     "/media",
-    response_model=Page[schemas.MediaRead],
+    response_model=schemas.MediaPage,
     responses=error_responses(errors.UnknownExamError, errors.UnknownMediaKindError),
 )
 async def list_published(
@@ -35,7 +35,12 @@ async def list_published(
         str | None,
         Query(description="Authoring filter: draft, published, or all (platform admin only)."),
     ] = None,
-) -> Page[schemas.MediaRead]:
+    exam_code: Annotated[
+        str | None,
+        Query(description="Only this exam's material, plus material tagged with no exam."),
+    ] = None,
+    q: Annotated[str | None, Query(description="A fragment of a title or a summary.", max_length=300)] = None,
+) -> schemas.MediaPage:
     """Published material: the titles to anybody, the bodies to subscribers.
 
     No token required, because a signed-out visitor still needs the landing
@@ -43,21 +48,27 @@ async def list_published(
     What a token changes is `content`: the slide decks and the A to Z are the
     paid half of the product and used to come back in full to anyone who asked,
     signed in or not.
+
+    `exam_code` and `q` narrow the query rather than the answer. A client that
+    filtered in the browser had to pull the whole library down to do it, six
+    pages at a time, and could only ever match what those pages contained.
     """
     is_admin = bool(principal and principal.is_platform_admin)
     unlocked = await service_search.unlocked_exam_ids(
         session, principal.user_id if principal else None, now=clock.now()
     )
-    items, next_cursor = await service.list_catalog(
+    items, next_cursor, total_count = await service.list_catalog(
         session,
         kind=kind,
         limit=page.limit,
         cursor=page.cursor,
         status=status,
         viewer_is_admin=is_admin,
+        exam_code=exam_code,
+        search=q,
         unlocked=unlocked,
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return schemas.MediaPage(items=items, next_cursor=next_cursor, total_count=total_count)
 
 
 @router.get(
@@ -72,24 +83,35 @@ async def read_by_id(item_id: uuid.UUID, admin: PlatformAdmin, session: Session)
 
 @router.get(
     "/media-search",
-    response_model=Page[schemas.SearchHit],
-    responses=error_responses(Unauthenticated, errors.EmptyQueryError),
+    response_model=schemas.MediaSearchPage,
+    responses=error_responses(Unauthenticated, errors.EmptyQueryError, errors.UnknownMediaKindError),
 )
 async def search(
     principal: CurrentPrincipal,
     session: Session,
     index: Index,
     clock: ClockDep,
+    page: Annotated[CursorParams, Depends()],
     q: Annotated[str, Query(description="What to search for")],
-) -> Page[schemas.SearchHit]:
-    """Over the material this reader holds, not the whole library."""
-    items = await service_search.search(
+    kind: Annotated[
+        str | None, Query(description="Only this kind of material: slide_deck, summary, blog, podcast.")
+    ] = None,
+) -> schemas.MediaSearchPage:
+    """Over the material this reader holds, not the whole library.
+
+    Paged like every other list here: `total_count` is how many hits the query
+    matched, `next_cursor` continues past the ones this page carried.
+    """
+    items, next_cursor, total_count = await service_search.search_page(
         session,
         query=q,
         index=index,
+        kind=kind,
+        limit=page.limit,
+        cursor=page.cursor,
         unlocked=await service_search.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
     )
-    return Page(items=items, next_cursor=None)
+    return schemas.MediaSearchPage(items=items, next_cursor=next_cursor, total_count=total_count)
 
 
 @router.get(

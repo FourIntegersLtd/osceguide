@@ -159,7 +159,16 @@
         "type": "object"
       },
       "AppendTrainees": {
+        "description": "Who has just arrived, and where they go.\n\n`station_version_ids` is the pairing `CreateCircuit` already uses \u2014 the nth\narrival takes the nth station \u2014 because b2b's live \"add trainee\" dialog\nnamed a station with each person rather than assuming it. Omit the list and\neveryone joins the station the circuit is already running, which is what a\nsingle latecomer to a group practice wants and what this route used to do\nwhatever the caller meant.",
         "properties": {
+          "station_version_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Station Version Ids",
+            "type": "array"
+          },
           "trainee_ids": {
             "items": {
               "format": "uuid",
@@ -876,6 +885,25 @@
         "title": "Body_cv_upload_cv",
         "type": "object"
       },
+      "BulkCreateMemberships": {
+        "description": "A team at once, in one request.\n\nThe retiring backend's \"invite the whole team\" path was a CSV upload it\nparsed and wrote row by row, with a temporary password in the file or\ngenerated in the browser. Here the browser parses the sheet and posts rows,\nand no password is involved: an address with no account is invited and\nchooses one. Capped so one request cannot invite a whole hospital by\naccident.",
+        "properties": {
+          "memberships": {
+            "items": {
+              "$ref": "#/components/schemas/CreateMembership"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Memberships",
+            "type": "array"
+          }
+        },
+        "required": [
+          "memberships"
+        ],
+        "title": "BulkCreateMemberships",
+        "type": "object"
+      },
       "BulkCreateTrainees": {
         "description": "A spreadsheet's worth of trainees in one request.\n\nThe browser parses the file; the API takes rows. Capped so one request\ncannot invite a whole university at once by accident.",
         "properties": {
@@ -893,6 +921,27 @@
           "trainees"
         ],
         "title": "BulkCreateTrainees",
+        "type": "object"
+      },
+      "BulkMembershipsResult": {
+        "description": "Who joined and who was already there, so a partial upload is not a mystery.",
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/app__features__tenancy__schemas__MembershipRead"
+            },
+            "title": "Created",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedMembership"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "title": "BulkMembershipsResult",
         "type": "object"
       },
       "BulkTraineesResult": {
@@ -2608,6 +2657,13 @@
             ],
             "title": "Exam Code"
           },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "title": {
             "maxLength": 300,
             "minLength": 1,
@@ -3913,10 +3969,13 @@
               "circuit_not_paused",
               "circuit_not_started",
               "circuit_paused",
+              "cohort_exists",
+              "cohort_in_use",
               "cohort_not_found",
               "conflict",
               "content_too_long",
               "cv_not_found",
+              "decision_revised",
               "email_taken",
               "empty_content",
               "empty_query",
@@ -3934,6 +3993,7 @@
               "generation_unavailable",
               "gone",
               "group_exists",
+              "group_not_empty",
               "group_not_found",
               "incompatible_outcomes",
               "internal_error",
@@ -3957,6 +4017,7 @@
               "invalid_sso_binding",
               "invalid_webhook",
               "invalid_workflow",
+              "invitation_not_pending",
               "knowledge_unavailable",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
@@ -4014,8 +4075,10 @@
               "rubric_version_not_found",
               "rubric_version_not_published",
               "set_entry_not_found",
+              "set_has_attempts",
               "set_locked",
               "set_not_found",
+              "sitting_locked",
               "sitting_not_found",
               "slot_not_found",
               "slug_taken",
@@ -4025,13 +4088,18 @@
               "sso_not_configured",
               "sso_provider_unsupported",
               "sso_verification_failed",
+              "station_flag_not_found",
               "station_not_found",
+              "station_not_on_circuit",
               "station_not_published",
               "station_template_not_found",
               "station_template_version_not_found",
+              "tag_too_long",
               "template_not_published",
               "too_many_requests",
+              "too_many_tags",
               "tool_arguments_invalid",
+              "trainee_already_on_circuit",
               "trainee_exists",
               "trainee_not_found",
               "trainee_revoked",
@@ -4377,6 +4445,7 @@
         "type": "object"
       },
       "FlagStationBody": {
+        "description": "A report that one station is wrong.\n\nWas served by `identity` with a docstring saying persistence is TODO, so the\nbutton in the runner confirmed a report that went nowhere.",
         "properties": {
           "station_id": {
             "format": "uuid",
@@ -4983,6 +5052,25 @@
         "title": "InterviewQuestionRead",
         "type": "object"
       },
+      "InvitationRead": {
+        "description": "A re-sent invitation, answered with what the email actually says.\n\nThe token itself is not here: it is a credential, and it goes only to the\naddress it was minted for.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "invited_to": {
+            "title": "Invited To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "invited_to"
+        ],
+        "title": "InvitationRead",
+        "type": "object"
+      },
       "InvitePlatformAdmin": {
         "properties": {
           "email": {
@@ -5176,7 +5264,7 @@
         "type": "object"
       },
       "LibraryStationRead": {
-        "description": "A platform library station as it appears in a browse list.\n\nDeliberately without `content`. The library is browsable by every signed-in\nuser, and the content is the patient brief, the examiner's context and the\nmarking guidance \u2014 reading it before sitting the station is reading the\nanswers. `version_id` is what a practice set or a circuit binds, so a\ncaller never needs the body to use one.",
+        "description": "A platform library station as a browser sees it \u2014 the list, and a link\nto one station by id.\n\nDeliberately without `content`. The library is browsable by every signed-in\nuser, and the content is the patient brief, the examiner's context and the\nmarking guidance \u2014 reading it before sitting the station is reading the\nanswers. `version_id` is what a practice set or a circuit binds, so a\ncaller never needs the body to use one.",
         "properties": {
           "exam_code": {
             "title": "Exam Code",
@@ -5653,6 +5741,72 @@
           }
         },
         "title": "ManagementPlanRead",
+        "type": "object"
+      },
+      "MediaPage": {
+        "description": "A page of the catalogue, and how many items the filters matched.\n\n`core.pagination.Page` carries `items` and `next_cursor` and is shared by\nevery slice, so it cannot grow a count for one screen's sake. A page that\nreports only what it returned made the media library print \"24 found\" for\na library of six hundred, because that is all a cursor page knows. Media\ngets its own wrapper instead; the two field names `Page` had are unchanged,\nso a client reading `items` and `next_cursor` keeps working.\n\n`total_count` counts everything matching the filters, not the entitlement\nof the reader: a locked item is still an item the search found, and it is\nlisted with `locked: true` rather than dropped.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "MediaPage",
+        "type": "object"
+      },
+      "MediaSearchPage": {
+        "description": "A page of search hits, and how many the query matched.\n\nSeparate from `MediaPage` for the same reason: `core.pagination.Page` is\nshared and cannot be widened from here.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "MediaSearchPage",
         "type": "object"
       },
       "MessageAccepted": {
@@ -6189,6 +6343,10 @@
       "OrgCounts": {
         "description": "What the setup checklist counts. Four legacy calls existed to produce these.",
         "properties": {
+          "library_stations": {
+            "title": "Library Stations",
+            "type": "integer"
+          },
           "programmes_with_markable_exam": {
             "title": "Programmes With Markable Exam",
             "type": "integer"
@@ -6213,6 +6371,7 @@
         "required": [
           "trainees",
           "stations",
+          "library_stations",
           "staff",
           "programmes_with_markable_exam",
           "sittings"
@@ -6270,8 +6429,8 @@
             "title": "Ready To Run",
             "type": "boolean"
           },
-          "stations_authored": {
-            "title": "Stations Authored",
+          "stations_available": {
+            "title": "Stations Available",
             "type": "boolean"
           },
           "team_invited": {
@@ -6285,7 +6444,7 @@
         },
         "required": [
           "trainees_added",
-          "stations_authored",
+          "stations_available",
           "team_invited",
           "programme_exam_rubric_ready",
           "ready_to_run"
@@ -6688,33 +6847,6 @@
         "title": "Page[LibraryStationRead]",
         "type": "object"
       },
-      "Page_MediaRead_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "Page[MediaRead]",
-        "type": "object"
-      },
       "Page_MembershipRead_": {
         "properties": {
           "items": {
@@ -7012,33 +7144,6 @@
         "title": "Page[RubricRead]",
         "type": "object"
       },
-      "Page_SearchHit_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SearchHit"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "Page[SearchHit]",
-        "type": "object"
-      },
       "Page_SetRead_": {
         "properties": {
           "items": {
@@ -7091,6 +7196,33 @@
           "items"
         ],
         "title": "Page[SittingRead]",
+        "type": "object"
+      },
+      "Page_StationFlagRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StationFlagRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[StationFlagRead]",
         "type": "object"
       },
       "Page_StationRead_": {
@@ -9573,6 +9705,86 @@
         "title": "QueueStatus",
         "type": "object"
       },
+      "ReadoutSitting": {
+        "description": "The sitting, as the head of the document states it.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required_station_count": {
+            "title": "Required Station Count",
+            "type": "integer"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "sitting_id": {
+            "title": "Sitting Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sitting_id",
+          "name",
+          "required_station_count"
+        ],
+        "title": "ReadoutSitting",
+        "type": "object"
+      },
+      "ReadoutSummary": {
+        "description": "What the cohort adds up to. Counts, not judgements.",
+        "properties": {
+          "average_assessment_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Assessment Score"
+          },
+          "cohort_size": {
+            "title": "Cohort Size",
+            "type": "integer"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "fully_complete_count": {
+            "title": "Fully Complete Count",
+            "type": "integer"
+          },
+          "priorities": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Priorities",
+            "type": "object"
+          }
+        },
+        "required": [
+          "cohort_size",
+          "fully_complete_count",
+          "average_assessment_score",
+          "computed_at"
+        ],
+        "title": "ReadoutSummary",
+        "type": "object"
+      },
       "RebuildCircuit": {
         "description": "A circuit's new shape. Everything omitted is left as it is.\n\nThe trainees and the stations are sent whole rather than as a patch: the\nslots are rebuilt from them, and a partial edit would leave the API\nguessing which pairing the supervisor meant.",
         "properties": {
@@ -10398,6 +10610,7 @@
         "type": "object"
       },
       "SaveDecision": {
+        "description": "Drafting a decision.\n\n`expected_revision` is the revision this screen last read, or 0 when it has\nread nothing. A save that does not name the current one is refused with\n`decision_revised` (409), so two administrators cannot overwrite each\nother's draft. The release route reuses this body and does not consult it,\nbecause a release is already guarded by the workflow state and by the\nevidence fingerprint.",
         "properties": {
           "assessment_outcome": {
             "anyOf": [
@@ -10415,6 +10628,12 @@
             "additionalProperties": true,
             "title": "Evidence",
             "type": "object"
+          },
+          "expected_revision": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
           },
           "moderation_notes": {
             "anyOf": [
@@ -10677,7 +10896,13 @@
         "type": "object"
       },
       "SearchHit": {
+        "description": "One match.\n\n`excerpt` defaults to empty rather than being required so a client that\nbuilds hits of its own stays valid \u2014 the retiring A-to-Z's substring\nfallback did, and `platform-web` still carries a copy of it. This backend\nalways fills it in.",
         "properties": {
+          "excerpt": {
+            "default": "",
+            "title": "Excerpt",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -11134,6 +11359,58 @@
         "title": "SittingRead",
         "type": "object"
       },
+      "SittingReadout": {
+        "description": "Everything the read-out says, in the order it says it.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CohortCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "methodology": {
+            "title": "Methodology",
+            "type": "string"
+          },
+          "org_slug": {
+            "title": "Org Slug",
+            "type": "string"
+          },
+          "readout_version": {
+            "default": "1",
+            "title": "Readout Version",
+            "type": "string"
+          },
+          "recommendations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "sitting": {
+            "$ref": "#/components/schemas/ReadoutSitting"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ReadoutSummary"
+          }
+        },
+        "required": [
+          "generated_at",
+          "org_slug",
+          "sitting",
+          "summary",
+          "methodology"
+        ],
+        "title": "SittingReadout",
+        "type": "object"
+      },
       "SittingReport": {
         "properties": {
           "candidates": {
@@ -11155,6 +11432,29 @@
           "totals"
         ],
         "title": "SittingReport",
+        "type": "object"
+      },
+      "SkippedMembership": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role",
+          "code"
+        ],
+        "title": "SkippedMembership",
         "type": "object"
       },
       "SkippedTrainee": {
@@ -11699,6 +11999,82 @@
           "attempts_used"
         ],
         "title": "StartedAttempt",
+        "type": "object"
+      },
+      "StationFlagRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reporter_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporter Name"
+          },
+          "resolution_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Note"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "station_id": {
+            "format": "uuid",
+            "title": "Station Id",
+            "type": "string"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "station_id",
+          "status",
+          "created_at"
+        ],
+        "title": "StationFlagRead",
         "type": "object"
       },
       "StationOverride": {
@@ -12256,6 +12632,18 @@
       },
       "StationVersionRead": {
         "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
           "content": {
             "additionalProperties": true,
             "title": "Content",
@@ -13261,6 +13649,38 @@
         "title": "UpdateBrief",
         "type": "object"
       },
+      "UpdateCohort": {
+        "description": "Rename an intake, or say which academic year it belongs to.\n\nAbsent means \"leave it alone\". b2b's `examIds` is not here: which exams a\ncohort is bound to is `catalog`'s answer, and this slice's row carries no\nsuch column, so exposing the field would promise a write that goes nowhere.",
+        "properties": {
+          "academic_year": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Year"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateCohort",
+        "type": "object"
+      },
       "UpdateExam": {
         "description": "Everything but the code, which existing plans and ref ids depend on.",
         "properties": {
@@ -13341,6 +13761,22 @@
           }
         },
         "title": "UpdateExam",
+        "type": "object"
+      },
+      "UpdateGroup": {
+        "description": "Rename a group. Who is in it does not move with the name \u2014 that is the\nwhole of why membership is a table here and a matched string in b2b.",
+        "properties": {
+          "label": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "UpdateGroup",
         "type": "object"
       },
       "UpdateMe": {
@@ -13596,6 +14032,120 @@
         "title": "UpdateProgramme",
         "type": "object"
       },
+      "UpdateSet": {
+        "description": "What a learner may still change about a set they have built.\n\nThe name, and only the name. A set carries no description and no timings \u2014\nthe length of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write, and the retiring client's\nedit screen asked for a name and a list of stations and nothing more.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.",
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "UpdateSet",
+        "type": "object"
+      },
+      "UpdateSitting": {
+        "description": "The sitting edit screen's fields. Absent means \"leave it alone\", which is\nwhat the legacy PUT meant too: it sent only what the screen had changed.\n\nThe b2b screen offered a name, a type and a feedback template. This backend\nresolves the template through the programme, so the third of those is\n`programme_id` here and the bound rubric moves with it. `status` is not\noffered: that is the run machine's to move, and a route that could set it\nwould let a screen end an examination by editing a name.",
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "pattern": "^(training|exam)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "programme_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programme Id"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "sitting_type": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitting Type"
+          }
+        },
+        "title": "UpdateSitting",
+        "type": "object"
+      },
+      "UpdateStationFlag": {
+        "description": "Closing a report, or reopening one.\n\nOne body for both because they are one decision \u2014 has this been dealt with?\n\u2014 and a separate `reopen` route would be the same write with the flag\nreversed.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "UpdateStationFlag",
+        "type": "object"
+      },
       "UpdateStationTemplateVersion": {
         "properties": {
           "structure": {
@@ -13608,6 +14158,49 @@
           "structure"
         ],
         "title": "UpdateStationTemplateVersion",
+        "type": "object"
+      },
+      "UpdateTrainee": {
+        "description": "The roster edit screen's fields. Absent means \"leave it alone\", sent means\n\"write this\", including a null that clears it.\n\nNot the address: `email` is what identifies the entry inside the\norganisation (unique per org, and the account link is made against it), so\nediting it is not correcting a typo but re-pointing a person's results. The\nb2b edit screen offered first name, last name and the group; the group is\n`cohort_id` here, and the other half of the legacy's `cohort` string \u2014 the\nlist a circuit is built from \u2014 is a membership row rather than a field, so\nit is set by `PUT /trainee-groups/{id}/members`.",
+        "properties": {
+          "cohort_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cohort Id"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          }
+        },
+        "title": "UpdateTrainee",
         "type": "object"
       },
       "UpdateVersion": {
@@ -14095,6 +14688,13 @@
             "title": "Reply Count",
             "type": "integer"
           },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "title": {
             "anyOf": [
               {
@@ -14115,6 +14715,7 @@
           "author_name",
           "title",
           "body",
+          "tags",
           "like_count",
           "liked_by_me",
           "reply_count",
@@ -14284,7 +14885,7 @@
         "type": "object"
       },
       "app__features__media__schemas__MediaRead": {
-        "description": "One piece of study material.\n\n`content` is the body \u2014 the slide deck, the summary, the article \u2014 and it\nis the paid half. It is `None` for a reader who does not hold the exam it\nbelongs to, and `locked` says which of the two happened, so the client can\nshow the upgrade prompt the retiring app showed rather than an empty page.\n\nEverything else is deliberately public: the landing page's article rail and\na shared link both need a title and a summary without a token.",
+        "description": "One piece of study material.\n\n`content` is the body \u2014 the slide deck, the summary, the article \u2014 and it\nis the paid half. It is `None` for a reader who does not hold the exam it\nbelongs to, and `locked` says which of the two happened, so the client can\nshow the upgrade prompt the retiring app showed rather than an empty page.\n\nEverything else is deliberately public: the landing page's article rail and\na shared link both need a title and a summary without a token.\n\n`specialty` and `updated_at` are read out of `content` by the projection\n(`service_reads`) rather than stored in columns of their own. Both are\nfields the authoring payload has always carried and only some kinds use, so\na column for either would be null for most rows \u2014 and a screen that wants\none should not have to know the document's shape to get it.",
         "properties": {
           "content": {
             "anyOf": [
@@ -14344,6 +14945,17 @@
             "title": "Slug",
             "type": "string"
           },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -14362,6 +14974,11 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
           }
         },
         "required": [
@@ -14373,7 +14990,8 @@
           "exam_code",
           "status",
           "created_at",
-          "published_at"
+          "published_at",
+          "updated_at"
         ],
         "title": "MediaRead",
         "type": "object"
@@ -15401,7 +16019,7 @@
     },
     "/api/v1/attempts/{attempt_id}/result": {
       "get": {
-        "description": "A page rather than one result: re-scoring under a new policy adds beside\nthe old, so a candidate's history stays readable.",
+        "description": "A page rather than one result: re-scoring under a new policy adds beside\nthe old, so a candidate's history stays readable \u2014 to the same two people as\nthe transcript, which is `service_access.ensure_readable`.",
         "operationId": "attempts_read_results",
         "parameters": [
           {
@@ -15810,6 +16428,7 @@
     },
     "/api/v1/attempts/{attempt_id}/transcript": {
       "get": {
+        "description": "The candidate's own turns, and the examiner named on their circuit.",
         "operationId": "attempts_read_transcript",
         "parameters": [
           {
@@ -17286,7 +17905,7 @@
     },
     "/api/v1/community/questions": {
       "get": {
-        "description": "Everything this caller may see, or one room of it.\n\nWithout a filter the answer spans the public pool and every institution and\ngroup the caller belongs to, which is what a single feed should be.",
+        "description": "Everything this caller may see, or one room of it.\n\nWithout a filter the answer spans the public pool and every institution and\ngroup the caller belongs to, which is what a single feed should be. `tag`\nnarrows that answer and can never widen it.",
         "operationId": "community_list_questions",
         "parameters": [
           {
@@ -17299,6 +17918,24 @@
               "description": "Only the caller's own questions.",
               "title": "Mine",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "Only questions carrying this tag.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only questions carrying this tag.",
+              "title": "Tag"
             }
           },
           {
@@ -17514,9 +18151,11 @@
                 }
               }
             },
-            "description": "empty_content, invalid_audience",
+            "description": "empty_content, tag_too_long, too_many_tags, invalid_audience",
             "x-codes": [
               "empty_content",
+              "tag_too_long",
+              "too_many_tags",
               "invalid_audience"
             ]
           }
@@ -17984,6 +18623,73 @@
       }
     },
     "/api/v1/cv/{cv_id}": {
+      "delete": {
+        "description": "Throw your own CV away, including one still being read.\n\nSomebody else's is `not found` rather than `forbidden`, the same answer a\nread gives, so a delete cannot be used to probe an id either.",
+        "operationId": "cv_delete_cv",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cv_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cv Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cv_not_found",
+            "x-codes": [
+              "cv_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Cv",
+        "tags": [
+          "cv"
+        ]
+      },
       "get": {
         "description": "One CV. Somebody else's is `not found`, so an id cannot be probed.",
         "operationId": "cv_read_cv",
@@ -21589,9 +22295,52 @@
       }
     },
     "/api/v1/me/station-flags": {
+      "get": {
+        "description": "What this person has reported, so the runner's button and the list agree.",
+        "operationId": "stations_my_reports",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StationFlagRead"
+                  },
+                  "title": "Response Stations My Reports",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Reports",
+        "tags": [
+          "stations"
+        ]
+      },
       "post": {
-        "description": "Report a library station to the content team. Persistence is TODO.",
-        "operationId": "identity_flag_station",
+        "description": "Report one station the caller can see as wrong.\n\nIdempotent: reporting the same station twice is the same report, not a\nduplicate and not an error.",
+        "operationId": "stations_report_station",
         "requestBody": {
           "content": {
             "application/json": {
@@ -21620,6 +22369,19 @@
               "account_suspended"
             ]
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found",
+            "x-codes": [
+              "station_not_found"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -21636,9 +22398,9 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Flag Station",
+        "summary": "Report Station",
         "tags": [
-          "identity"
+          "stations"
         ]
       }
     },
@@ -21836,6 +22598,86 @@
       }
     },
     "/api/v1/me/station-sets/{set_id}": {
+      "delete": {
+        "description": "Throw a practice set away.\n\nThe retiring client's delete took the session and its progress counters and\nleft the transcripts of what had been sat inside it orphaned. Here the\nrecordings cannot be left pointing at a row that has gone \u2014 the schema\nrefuses \u2014 so a set somebody has started a station in is refused rather than\nemptied of its history. The console route that deletes a person's progress\non a stated reason is the one that takes a set's attempts with it.",
+        "operationId": "station_sets_delete_set",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found",
+            "x-codes": [
+              "set_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_has_attempts",
+            "x-codes": [
+              "set_has_attempts"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Set",
+        "tags": [
+          "station-sets"
+        ]
+      },
       "get": {
         "operationId": "station_sets_read_set",
         "parameters": [
@@ -21905,6 +22747,90 @@
           }
         ],
         "summary": "Read Set",
+        "tags": [
+          "station-sets"
+        ]
+      },
+      "patch": {
+        "description": "Rename one of your own practice sets.\n\nOwner-only, and a set that is not yours answers 404 rather than 403: an id\nis not something a stranger should be able to confirm exists by the shape\nof the refusal.",
+        "operationId": "station_sets_rename_set",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found",
+            "x-codes": [
+              "set_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Set",
         "tags": [
           "station-sets"
         ]
@@ -22310,7 +23236,7 @@
     },
     "/api/v1/media": {
       "get": {
-        "description": "Published material: the titles to anybody, the bodies to subscribers.\n\nNo token required, because a signed-out visitor still needs the landing\npage's article rail and a shared link still needs to say what it points at.\nWhat a token changes is `content`: the slide decks and the A to Z are the\npaid half of the product and used to come back in full to anyone who asked,\nsigned in or not.",
+        "description": "Published material: the titles to anybody, the bodies to subscribers.\n\nNo token required, because a signed-out visitor still needs the landing\npage's article rail and a shared link still needs to say what it points at.\nWhat a token changes is `content`: the slide decks and the A to Z are the\npaid half of the product and used to come back in full to anyone who asked,\nsigned in or not.\n\n`exam_code` and `q` narrow the query rather than the answer. A client that\nfiltered in the browser had to pull the whole library down to do it, six\npages at a time, and could only ever match what those pages contained.",
         "operationId": "media_list_published",
         "parameters": [
           {
@@ -22345,6 +23271,43 @@
               ],
               "description": "Authoring filter: draft, published, or all (platform admin only).",
               "title": "Status"
+            }
+          },
+          {
+            "description": "Only this exam's material, plus material tagged with no exam.",
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this exam's material, plus material tagged with no exam.",
+              "title": "Exam Code"
+            }
+          },
+          {
+            "description": "A fragment of a title or a summary.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A fragment of a title or a summary.",
+              "title": "Q"
             }
           },
           {
@@ -22383,7 +23346,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_MediaRead_"
+                  "$ref": "#/components/schemas/MediaPage"
                 }
               }
             },
@@ -22516,7 +23479,7 @@
     },
     "/api/v1/media-search": {
       "get": {
-        "description": "Over the material this reader holds, not the whole library.",
+        "description": "Over the material this reader holds, not the whole library.\n\nPaged like every other list here: `total_count` is how many hits the query\nmatched, `next_cursor` continues past the ones this page carried.",
         "operationId": "media_search",
         "parameters": [
           {
@@ -22529,6 +23492,54 @@
               "title": "Q",
               "type": "string"
             }
+          },
+          {
+            "description": "Only this kind of material: slide_deck, summary, blog, podcast.",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this kind of material: slide_deck, summary, blog, podcast.",
+              "title": "Kind"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -22536,7 +23547,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_SearchHit_"
+                  "$ref": "#/components/schemas/MediaSearchPage"
                 }
               }
             },
@@ -22564,9 +23575,10 @@
                 }
               }
             },
-            "description": "empty_query",
+            "description": "empty_query, unknown_media_kind",
             "x-codes": [
-              "empty_query"
+              "empty_query",
+              "unknown_media_kind"
             ]
           }
         },
@@ -23776,7 +24788,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/append-trainees": {
       "post": {
-        "description": "Add people to a training circuit, into the room it is already using.",
+        "description": "Add people to a training circuit, into the room it is already using.\n\nEach arrival may name the station it takes, positionally with\n`trainee_ids`; name none and they all join the station the circuit is on.\nEither way the station has to be one this circuit already runs \u2014 bringing a\nnew one in is a change to what the circuit is, which is the structural edit.",
         "operationId": "sittings_append_trainees",
         "parameters": [
           {
@@ -23857,11 +24869,13 @@
                 }
               }
             },
-            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_revoked",
+            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked",
             "x-codes": [
               "circuit_already_ended",
               "not_permitted_in_mode",
               "invalid_circuit",
+              "trainee_already_on_circuit",
+              "station_not_on_circuit",
               "trainee_revoked"
             ]
           },
@@ -25633,6 +26647,7 @@
         ]
       },
       "post": {
+        "description": "An intake is named once per organisation: `(org, name)` is unique, and a\nspreadsheet that repeats one is a mistake worth naming.",
         "operationId": "roster_add_cohort",
         "parameters": [
           {
@@ -25682,6 +26697,19 @@
               "organization_suspended"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_exists",
+            "x-codes": [
+              "cohort_exists"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -25700,6 +26728,208 @@
         ],
         "summary": "Add Cohort",
         "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/cohorts/{cohort_id}": {
+      "delete": {
+        "description": "Refused while trainees still belong to it \u2014 a silent `SET NULL` would\nread as those people having never had an intake.",
+        "operationId": "roster_remove_cohort",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cohort_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cohort Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_not_found",
+            "x-codes": [
+              "cohort_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_in_use",
+            "x-codes": [
+              "cohort_in_use"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Cohort",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      },
+      "patch": {
+        "operationId": "roster_edit_cohort",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cohort_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cohort Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCohort"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CohortRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_not_found",
+            "x-codes": [
+              "cohort_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_exists",
+            "x-codes": [
+              "cohort_exists"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Cohort",
+        "tags": [
+          "roster",
           "roster"
         ]
       }
@@ -26804,6 +28034,80 @@
           }
         ],
         "summary": "Add Membership",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/memberships/bulk": {
+      "post": {
+        "description": "A team at once: the browser parses the spreadsheet, this takes the rows.\n\nEach row is the single act below it, so an unknown address is invited and\nan existing one is not re-invited. A person already holding the role is\nreported in `skipped` rather than failing the other rows \u2014 the retiring\nbackend's staff upload wrote a team row by row and an administrator reads\nthe result as a list of names, not as an error page.",
+        "operationId": "tenancy_add_memberships",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateMemberships"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMembershipsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Memberships",
         "tags": [
           "tenancy"
         ]
@@ -28421,6 +29725,119 @@
         "tags": [
           "sittings"
         ]
+      },
+      "put": {
+        "description": "Correct a sitting that has already been scheduled.\n\nOnly what was sent is written, so the edit screen restates nothing. The name\nand the date stay open for the life of the record; what the sitting examines\n\u2014 its mode, its type, the programme its rubric is resolved from \u2014 freezes the\nmoment any circuit on it has started, because the marks already given were\ngiven against the other answer.",
+        "operationId": "sittings_update_sitting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSitting"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SittingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found, programme_not_found, rubric_version_not_found",
+            "x-codes": [
+              "sitting_not_found",
+              "programme_not_found",
+              "rubric_version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_locked, invalid_circuit, exam_rubric_not_ready, rubric_version_not_published",
+            "x-codes": [
+              "sitting_locked",
+              "invalid_circuit",
+              "exam_rubric_not_ready",
+              "rubric_version_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Sitting",
+        "tags": [
+          "sittings"
+        ]
       }
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision": {
@@ -28519,7 +29936,7 @@
         ]
       },
       "put": {
-        "description": "Each save is a new revision. The table is append-only, so what was\npreviously considered survives.",
+        "description": "Each save is a new revision. The table is append-only, so what was\npreviously considered survives.\n\n`expected_revision` names the revision this screen read; a save against a\nstale one is refused with `decision_revised` rather than superseding it.",
         "operationId": "results_save_decision",
         "parameters": [
           {
@@ -28610,9 +30027,10 @@
                 }
               }
             },
-            "description": "invalid_workflow",
+            "description": "invalid_workflow, decision_revised",
             "x-codes": [
-              "invalid_workflow"
+              "invalid_workflow",
+              "decision_revised"
             ]
           },
           "422": {
@@ -29068,6 +30486,96 @@
           }
         ],
         "summary": "Read Cohort Summary",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout": {
+      "get": {
+        "description": "The document a course lead downloads after an examination: the cohort\nranked, what it adds up to, and what the ranking recommends. Org admin, as the\nlegacy export was \u2014 it names every candidate and their score in one payload,\nand is written to be printed. Exam sittings only, on the cohort's own rule.",
+        "operationId": "dashboard_read_sitting_readout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SittingReadout"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_an_exam_sitting",
+            "x-codes": [
+              "not_an_exam_sitting"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Sitting Readout",
         "tags": [
           "dashboard"
         ]
@@ -31369,6 +32877,209 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/trainee-groups/{group_id}": {
+      "delete": {
+        "description": "Refused while anybody is still in it: the membership, and anything\naddressed to the group, goes with it, so the emptied list is stated first.",
+        "operationId": "roster_remove_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "group_not_found",
+            "x-codes": [
+              "group_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "group_not_empty",
+            "x-codes": [
+              "group_not_empty"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Group",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      },
+      "patch": {
+        "description": "Rename a group. Its members stay \u2014 that is the rule the whole roster\nslice exists to hold, where b2b matched a label and a rename emptied it.",
+        "operationId": "roster_rename_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "group_not_found",
+            "x-codes": [
+              "group_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "group_exists",
+            "x-codes": [
+              "group_exists"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Group",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/trainee-groups/{group_id}/members": {
       "put": {
         "description": "PUT, not POST: the body states who is in the group. b2b has no\nmembership table at all and matches a label instead.",
@@ -31720,6 +33431,105 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/trainees/{trainee_id}": {
+      "patch": {
+        "description": "Only what was sent is written, so a screen that corrects a spelling does\nnot clear the intake beside it.",
+        "operationId": "roster_edit_trainee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrainee"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraineeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_not_found, cohort_not_found",
+            "x-codes": [
+              "trainee_not_found",
+              "cohort_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Trainee",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/access": {
       "post": {
         "description": "One route for revoke and restore: they are the same decision, and two\nroutes invite one of them to be forgotten.",
@@ -31813,6 +33623,107 @@
         ],
         "summary": "Set Access",
         "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/resend-invitation": {
+      "post": {
+        "description": "Send the choose-a-password link again.\n\nA new token, not the one in the first email: that one is stored hashed, so\nnobody here can read it back out. `invitation_not_pending` is the answer\nwhen the person has already chosen a password, because mailing a\nset-password link to somebody who can sign in is an invitation to take over\ntheir account.",
+        "operationId": "roster_resend_invitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_not_found",
+            "x-codes": [
+              "trainee_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invitation_not_pending",
+            "x-codes": [
+              "invitation_not_pending"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resend Invitation",
+        "tags": [
+          "roster",
           "roster"
         ]
       }
@@ -36721,6 +38632,218 @@
         ]
       }
     },
+    "/api/v1/platform/station-flags": {
+      "get": {
+        "description": "Every report on every station, oldest first. `status=open` is the queue.\n\nNamed `report_status` in Python because `status` is FastAPI's own import\nhere; the query parameter stays `status`, which is what a client reads.",
+        "operationId": "stations_station_flag_queue",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(open|resolved)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_StationFlagRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Station Flag Queue",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/station-flags/{flag_id}": {
+      "patch": {
+        "description": "Close a report with a note, or reopen a closed one.",
+        "operationId": "stations_decide_station_flag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flag_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Flag Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStationFlag"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationFlagRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_flag_not_found",
+            "x-codes": [
+              "station_flag_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide Station Flag",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
     "/api/v1/platform/station-templates": {
       "get": {
         "operationId": "stations_list_platform_station_templates",
@@ -39738,7 +41861,7 @@
     },
     "/api/v1/stations": {
       "get": {
-        "description": "The published platform library, scoped to what the caller may open.\n\nEvery signed-in user, because the library is the product: a consumer builds\na practice set from it and an institution draws on it to build a circuit.\nThe rows carry no station content \u2014 see `LibraryStationRead`.\n\nA platform admin browses the whole catalogue, because curating it is their\njob. Everybody else gets their own exam, and asking for another is refused\nrather than answered \u2014 the retiring client had one exam per deployment and\nno picker at all.",
+        "description": "The published platform library, scoped to what the caller may open.\n\nEvery signed-in user, because the library is the product: a consumer builds\na practice set from it and an institution draws on it to build a circuit.\nThe rows carry no station content \u2014 see `LibraryStationRead`.\n\n`search` is a fragment of a title, matched in SQL. Typing one used to mean\npaging the catalogue in the browser and filtering what had arrived, so a\nterm could only ever match what the screen had already fetched.\n\nA platform admin browses the whole catalogue, because curating it is their\njob. Everybody else gets their own exam, and asking for another is refused\nrather than answered \u2014 the retiring client had one exam per deployment and\nno picker at all.",
         "operationId": "stations_browse_library",
         "parameters": [
           {
@@ -39755,6 +41878,22 @@
                 }
               ],
               "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
             }
           },
           {
@@ -39856,6 +41995,95 @@
           }
         ],
         "summary": "Browse Library",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/stations/{station_id}": {
+      "get": {
+        "description": "One station from the platform library, for whoever a link found them to be.\n\nThe row the browse page already gives \u2014 a title and the ids needed to bind\nit \u2014 and none of the document inside it. A shared link used to be answered\nby walking that page a hundred stations at a time in the browser, because\nthere was no read that took an id and no organisation's slug.\n\nOne refusal covers every station that is not the library's: another\ninstitution's private case and a draft nobody has published answer\nidentically, because which of them it was is somebody else's tenant.",
+        "operationId": "stations_read_library_station",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryStationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_entitled",
+            "x-codes": [
+              "not_entitled"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found",
+            "x-codes": [
+              "station_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Library Station",
         "tags": [
           "stations"
         ]
@@ -40020,6 +42248,99 @@
         "summary": "Comment On Station",
         "tags": [
           "community"
+        ]
+      }
+    },
+    "/api/v1/stations/{station_id}/versions": {
+      "get": {
+        "description": "Every revision this station has had, newest first. The author's own view.\n\nThe lifecycle had no reader: a station could be drafted, published,\nsuperseded and archived, and nothing listed the revisions those acts\nproduced \u2014 so the authoring screen could not offer a previous one. Whole\ndocuments, which is why the audience is staff and not the station's org\nmembers at large (the rule, and why, are in `service_versions`).",
+        "operationId": "stations_station_version_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StationVersionRead"
+                  },
+                  "title": "Response Stations Station Version History",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found",
+            "x-codes": [
+              "station_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Station Version History",
+        "tags": [
+          "stations"
         ]
       }
     },

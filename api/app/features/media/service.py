@@ -10,9 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.core.ports import VectorIndex
-from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
-from app.features.media import domain, errors, repository
+from app.features.media import domain, errors, repository, service_reads
 from app.features.media.models import MediaItem
 from app.features.media.schemas import MediaRead
 
@@ -58,7 +57,7 @@ async def create(
         exam_id=exam_id,
         author_id=author_id,
     )
-    return await _read(session, row)
+    return await service_reads.read_one(session, row)
 
 
 async def update(
@@ -84,7 +83,7 @@ async def update(
         values["content"] = content
     if values:
         await repository.update_item(session, item_id, **values)
-    return await _read(session, await _require(session, item_id))
+    return await service_reads.read_one(session, await _require(session, item_id))
 
 
 async def publish(
@@ -107,7 +106,7 @@ async def publish(
         text=f"{row.title}\n{row.summary or ''}",
         metadata={"kind": row.kind, "slug": row.slug},
     )
-    return await _read(session, await _require(session, item_id), unlocked_exam_ids=None)
+    return await service_reads.read_one(session, await _require(session, item_id), unlocked_exam_ids=None)
 
 
 async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_admin: bool) -> MediaRead:
@@ -115,7 +114,7 @@ async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_adm
     if not domain.is_public(status=row.status) and not viewer_is_admin:
         raise errors.ItemNotFound()
     unlocked = None if viewer_is_admin else frozenset[uuid.UUID]()
-    return await _read(session, row, unlocked_exam_ids=unlocked)
+    return await service_reads.read_one(session, row, unlocked_exam_ids=unlocked)
 
 
 async def read_by_slug(
@@ -129,7 +128,7 @@ async def read_by_slug(
     if row is None or (not domain.is_public(status=row.status) and not viewer_is_admin):
         # 404 for an unpublished draft: its existence is not public either.
         raise errors.ItemNotFound()
-    return await _read(session, row, unlocked_exam_ids=None if viewer_is_admin else unlocked)
+    return await service_reads.read_one(session, row, unlocked_exam_ids=None if viewer_is_admin else unlocked)
 
 
 async def list_catalog(
@@ -140,8 +139,23 @@ async def list_catalog(
     cursor: dict[str, Any] | None,
     status: str | None,
     viewer_is_admin: bool,
+    exam_code: str | None = None,
+    search: str | None = None,
     unlocked: frozenset[uuid.UUID] = frozenset(),
-) -> tuple[list[MediaRead], str | None]:
+) -> tuple[list[MediaRead], str | None, int]:
+    """A page of the catalogue, what comes after it, and how many items match.
+
+    `exam_code` and `search` are answered here rather than in the browser that
+    asked. Both used to be applied to pages a client had already pulled down —
+    the whole library, six pages of a hundred at a time, filtered in memory —
+    so "no matches" meant "not in the first six hundred" and a scoped list cost
+    the transfer of every exam's material. A code that names no published exam
+    is refused, the way `POST /media` refuses it, rather than quietly answering
+    with the free material alone.
+
+    The count is of everything the filters match, cursor aside, so a screen can
+    say how much there is rather than how much it was sent.
+    """
     if kind:
         try:
             kind = domain.normalize_kind(kind)
@@ -153,15 +167,17 @@ async def list_catalog(
             statuses = domain.parse_authoring_status(status)
         except domain.InvalidListStatus as exc:
             raise_mapped(exc, _REFUSALS)
-    rows, next_cursor = await repository.list_catalog(
-        session, kind=kind, statuses=statuses, limit=limit, cursor=cursor
-    )
+    exam_id = (await resolve_exam(session, exam_code)).id if exam_code else None
+    narrowed: dict[str, Any] = {"kind": kind, "statuses": statuses, "exam_id": exam_id, "search": search}
+    rows, next_cursor = await repository.list_catalog(session, limit=limit, cursor=cursor, **narrowed)
+    total = await repository.count_catalog(session, **narrowed)
     # Staff listing the public catalogue still get bodies: a slug read already
     # unlocks for admins, and the episode player loads its playlist from this
     # list. Locking the list while unlocking the page made every episode
     # render as "no audio attached".
     read_unlocked = None if viewer_is_admin else unlocked
-    return [await _read(session, r, unlocked_exam_ids=read_unlocked) for r in rows], next_cursor
+    items = await service_reads.read_many(session, rows, unlocked_exam_ids=read_unlocked)
+    return items, next_cursor, total
 
 
 async def list_published(
@@ -172,7 +188,12 @@ async def list_published(
     cursor: dict[str, Any] | None,
     unlocked: frozenset[uuid.UUID] = frozenset(),
 ) -> tuple[list[MediaRead], str | None]:
-    return await list_catalog(
+    """The consumer catalogue, for a caller that walks it rather than showing it.
+
+    No count: the tutor's material index reads every page in turn and has no
+    screen to tell a total to.
+    """
+    items, next_cursor, _ = await list_catalog(
         session,
         kind=kind,
         limit=limit,
@@ -181,6 +202,7 @@ async def list_published(
         viewer_is_admin=False,
         unlocked=unlocked,
     )
+    return items, next_cursor
 
 
 async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
@@ -197,34 +219,3 @@ async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
     if row is None:
         raise errors.ItemNotFound()
     return row
-
-
-async def _read(
-    session: AsyncSession, row: MediaItem, *, unlocked_exam_ids: frozenset[uuid.UUID] | None = None
-) -> MediaRead:
-    """One item, with its body only for a reader entitled to it.
-
-    `unlocked_exam_ids` is `None` for a caller that has already decided the
-    reader may see everything — a platform admin, on authoring routes and on
-    the public listing (the episode player loads its playlist from the list).
-    For everybody else it is the set of exams they hold a **live** grant for,
-    and an item belonging to any other exam comes back locked. Material with
-    no exam at all is free material and is never locked.
-    """
-    exam_code = await catalog.exam_code_by_id(session, row.exam_id) if row.exam_id else None
-    locked = (
-        unlocked_exam_ids is not None and row.exam_id is not None and row.exam_id not in unlocked_exam_ids
-    )
-    return MediaRead(
-        id=row.id,
-        kind=row.kind,
-        slug=row.slug,
-        title=row.title,
-        summary=row.summary,
-        content=None if locked else dict(row.content or {}),
-        locked=locked,
-        exam_code=exam_code,
-        status=row.status,
-        created_at=row.created_at,
-        published_at=row.published_at,
-    )
