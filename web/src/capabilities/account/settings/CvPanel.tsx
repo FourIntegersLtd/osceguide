@@ -12,6 +12,7 @@ import {
   HiOutlineCog8Tooth,
   HiOutlineCurrencyPound,
   HiOutlineNewspaper,
+  HiOutlineTrash,
   HiOutlineUser,
   HiOutlineXMark,
 } from "react-icons/hi2";
@@ -25,11 +26,12 @@ import {
   B2CPanelCardFooter,
   B2CPanelCardHeader,
   Button,
+  ConfirmModal,
   ModalHelper,
   Spinner,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { listCvs, readCv, uploadCv, type CvRead, type StructuredCv } from "@/capabilities/account/api";
+import { listCvs, deleteCv, readCv, uploadCv, type CvRead, type StructuredCv } from "@/capabilities/account/api";
 
 /**
  * The CV an orthopaedic applicant uploads, and the sections it is read into.
@@ -103,7 +105,34 @@ export function CvPanel() {
     return () => window.clearInterval(timer);
   }, [watching, stillReading, reloadList, reloadWatched]);
 
+  /*
+   * Offered at any status, `processing` included: the server allows it and the
+   * extraction job tolerates a row that has gone. Somebody who uploaded the
+   * wrong file should not have to wait for a model to finish reading a document
+   * they have disowned before they are permitted to remove it.
+   */
+  const [confirming, setConfirming] = useState<CvRead | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
+
+  async function remove(cv: CvRead) {
+    setDeleting(true);
+    setDeleteFailure(null);
+    try {
+      await deleteCv(cv.id);
+      setConfirming(null);
+      // Stop following a row that no longer exists, then re-read the list.
+      setWatching(null);
+      reloadList();
+    } catch (cause) {
+      setDeleteFailure(errorMessage(cause));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
+    <>
     <AsyncBoundary state={state}>
       {(list) => {
         // The row being followed outranks the list's newest while it lasts,
@@ -134,18 +163,49 @@ export function CvPanel() {
               ) : null}
               {latest?.structured ? <Sections structured={latest.structured} /> : null}
             </B2CPanelCardBody>
-            {latest && latest.status === "completed" ? (
+            {latest ? (
               <B2CPanelCardFooter>
                 <p className="text-osce-meta text-b2c-text-muted">
-                  {latest.original_filename} · uploaded{" "}
-                  {new Date(latest.uploaded_at).toLocaleDateString("en-GB")}
+                  {latest.original_filename}
+                  {latest.status === "completed"
+                    ? ` · uploaded ${new Date(latest.uploaded_at).toLocaleDateString("en-GB")}`
+                    : null}
                 </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setConfirming(latest)}
+                >
+                  <HiOutlineTrash className="h-4 w-4" aria-hidden />
+                  Delete
+                </Button>
               </B2CPanelCardFooter>
             ) : null}
           </B2CPanelCard>
         );
       }}
     </AsyncBoundary>
+      {deleteFailure ? (
+        <Alert tone="danger" className="mt-3">
+          {deleteFailure}
+        </Alert>
+      ) : null}
+      <ConfirmModal
+        isOpen={confirming !== null}
+        onCancel={() => {
+          if (!deleting) setConfirming(null);
+        }}
+        onConfirm={() => {
+          if (confirming) void remove(confirming);
+        }}
+        isLoading={deleting}
+        title="Delete this CV?"
+        confirmText="Delete"
+        message="The file and everything read from it are removed. This cannot be undone."
+      />
+    </>
   );
 }
 

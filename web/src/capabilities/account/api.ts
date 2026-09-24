@@ -249,6 +249,17 @@ export function readCv(cvId: string, signal?: AbortSignal): Promise<CvRead> {
 }
 
 /**
+ * Throw your own CV away, including one still being read.
+ *
+ * The server answers 204 and nothing else, and somebody else's cv comes back as
+ * `cv_not_found` rather than `forbidden` — the same answer a read gives, so a
+ * delete cannot be used to find out whose ids exist.
+ */
+export function deleteCv(cvId: string): Promise<void> {
+  return platformRequest<void>(`/api/v1/cv/${encodeURIComponent(cvId)}`, { method: "DELETE" });
+}
+
+/**
  * Send a CV for reading.
  *
  * The answer is a row, not a parsed CV: the text is pulled from the PDF in the
