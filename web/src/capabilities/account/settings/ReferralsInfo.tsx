@@ -24,7 +24,7 @@ export default function ReferralsInfo() {
     <AboutInfo>
       <AboutInfoHeader
         title="Understanding our referral program"
-        description="Share OSCE Guide with your friends and earn rewards while helping them with their exams."
+        description="Share a code. Redemptions are counted on this page. The balance shown is a record, not a payment."
       />
       <AboutInfoSection title="How it works" tone="sky">
         <AboutInfoList>
@@ -43,15 +43,15 @@ export default function ReferralsInfo() {
                 <HiOutlineBanknotes className="h-3.5 w-3.5" />
               </AboutInfoIconMarker>
             }
-            title="Earn rewards"
-            description="You earn on every subscription bought with your code. Your running total is on this page."
+            title="A recorded balance"
+            description="Redemptions add to the total on this page. It is not paid by bank transfer, and it does not change the price at checkout."
           />
         </AboutInfoList>
       </AboutInfoSection>
       <AboutInfoSection title="Benefits for your friends" tone="green">
         <AboutInfoBullets
           items={[
-            "A discount on their subscription",
+            "A code they can redeem on their own account",
             "Full access to all OSCE Guide features including realistic patient interactions, instant feedback and detailed analytics across all domains",
             "Access to our OSCE Guide community and support forum",
           ]}

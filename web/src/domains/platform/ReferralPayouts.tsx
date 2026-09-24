@@ -1,0 +1,203 @@
+"use client";
+
+import { useState } from "react";
+import { LuHandCoins } from "react-icons/lu";
+import { Alert, AsyncBoundary, Badge, Button, Input } from "@/foundation/ui";
+import { errorMessage, useAsync } from "@/foundation/hooks";
+import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import {
+  listReferralPayouts,
+  setReferralPayout,
+  type ReferralPayout,
+} from "@/domains/platform/api";
+import { Row, RowList, Section } from "@/domains/platform/chrome";
+import { formatMoment } from "@/domains/platform/support";
+
+const FILTERS = [
+  { id: "unpaid", label: "Owed" },
+  { id: "paid", label: "Settled" },
+  { id: "", label: "Everything" },
+] as const;
+
+function pounds(pence: number): string {
+  return `£${(pence / 100).toFixed(2)}`;
+}
+
+/**
+ * What we owe referrers, and what has been sent.
+ *
+ * Nothing on this screen moves money. Referrals are settled by a bank
+ * transfer somebody makes by hand, so the only thing the product owes is an
+ * honest record of whether that has happened — which is why marking a row is
+ * reversible, and why a reference can be written against it.
+ *
+ * Owed first, because that is the list somebody is working through. A settled
+ * row stays visible: "did we already pay this one?" is the question this
+ * screen exists to answer, and a queue that hides the answer sends the money
+ * twice.
+ */
+export function ReferralPayouts() {
+  const [status, setStatus] = useState<string>("unpaid");
+  const queue = useAsync(
+    (signal) => listReferralPayouts({ payoutStatus: status || null }, signal),
+    [status],
+  );
+  const [settling, setSettling] = useState<ReferralPayout | null>(null);
+  const [reference, setReference] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const record = async (
+    referral: ReferralPayout,
+    input: { payoutStatus: "paid" | "unpaid"; payoutReference?: string | null },
+  ) => {
+    setBusy(true);
+    setFailure(null);
+    try {
+      await setReferralPayout(referral.id, input);
+      setSettling(null);
+      setReference("");
+      queue.reload();
+    } catch (cause) {
+      setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PlatformPageHeader
+        title="Referral payouts"
+        description="What referrers are owed, and what has been sent to them."
+        icon={LuHandCoins}
+      />
+      {failure ? <Alert tone="danger">{failure}</Alert> : null}
+      <Section
+        title="The queue"
+        description="Settled outside the product. This is the record of whether a transfer was made, not a way to make one."
+        actions={
+          <>
+            {FILTERS.map((filter) => (
+              <Button
+                key={filter.id || "all"}
+                variant={status === filter.id ? "primary" : "secondary"}
+                size="sm"
+                onClick={() => setStatus(filter.id)}
+              >
+                {filter.label}
+              </Button>
+            ))}
+          </>
+        }
+      >
+        <AsyncBoundary
+          state={queue}
+          isEmpty={(page) => page.items.length === 0}
+          empty={{
+            title: status === "unpaid" ? "Nothing owed" : "Nothing here",
+            description:
+              status === "unpaid"
+                ? "Every referral that has been redeemed is settled."
+                : "No referrals match this filter yet.",
+          }}
+        >
+          {(page) => (
+            <RowList>
+              {page.items.map((referral) => (
+                <Row key={referral.id}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">
+                      {referral.referrer_email} · {pounds(referral.earned_pence)}
+                    </p>
+                    <p className="truncate text-xs text-ink-subtle">
+                      referred {referral.referred_email ?? "someone"} ·{" "}
+                      {referral.redeemed_at ? formatMoment(referral.redeemed_at) : "not redeemed"}
+                      {referral.paid_at ? ` · paid ${formatMoment(referral.paid_at)}` : ""}
+                    </p>
+                    {referral.payout_reference ? (
+                      <p className="mt-1 text-xs text-ink-muted">
+                        Reference {referral.payout_reference}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge tone={referral.payout_status === "paid" ? "success" : "warning"}>
+                      {referral.payout_status === "paid" ? "Settled" : "Owed"}
+                    </Badge>
+                    {referral.payout_status === "paid" ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void record(referral, { payoutStatus: "unpaid" })}
+                      >
+                        Not paid after all
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => {
+                          setSettling(referral);
+                          setReference("");
+                        }}
+                      >
+                        Mark paid
+                      </Button>
+                    )}
+                  </div>
+                </Row>
+              ))}
+              {settling ? (
+                <Row className="flex-col items-stretch gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">
+                      Mark {pounds(settling.earned_pence)} to {settling.referrer_email} as paid
+                    </p>
+                    <p className="text-xs text-ink-subtle">
+                      The transfer&rsquo;s own reference, so this row can be found on a statement
+                      later. Optional.
+                    </p>
+                  </div>
+                  <Input
+                    label="Payment reference"
+                    value={reference}
+                    onChange={(event) => setReference(event.target.value)}
+                    placeholder="e.g. FT-2026-09-24"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() =>
+                        void record(settling, {
+                          payoutStatus: "paid",
+                          payoutReference: reference.trim() || null,
+                        })
+                      }
+                    >
+                      Record payment
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        setSettling(null);
+                        setReference("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </Row>
+              ) : null}
+            </RowList>
+          )}
+        </AsyncBoundary>
+      </Section>
+    </div>
+  );
+}

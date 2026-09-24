@@ -123,12 +123,12 @@ function ReferralCodeCard({
       </B2CPanelCardHeader>
       <B2CPanelCardBody className="space-y-4">
         <ModalHelper className="mt-0">
-          Share your referral code and earn rewards.
+          Share your code. Redemptions are counted here. The balance is recorded and is not paid out.
         </ModalHelper>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
-            <p className={b2cFieldLabel}>Total referral earnings</p>
+            <p className={b2cFieldLabel}>Recorded balance (not paid out)</p>
             <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
               £{(referral.earned_pence / 100).toFixed(2)}
             </p>

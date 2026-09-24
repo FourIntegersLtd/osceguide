@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { LuMail, LuPlus } from "react-icons/lu";
 import { Alert, AsyncBoundary, Button, Card, EmptyState, Input, PageHeader } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { can, useSession } from "@/foundation/session";
 import { addReporter, listRefIds, type RefIdPage } from "@/domains/partner/api";
 
 /**
@@ -15,7 +16,16 @@ import { addReporter, listRefIds, type RefIdPage } from "@/domains/partner/api";
  * placements actually worked.
  */
 export function PartnerReporting({ partner }: { partner: string }) {
+  const { session } = useSession();
   const refIds = useAsync((signal) => listRefIds(partner, signal), [partner]);
+  /*
+   * A reporter is appointed by OSCE Guide staff, not by the partner — the
+   * backend route is platform-admin only ("partners do not appoint their own
+   * reporters"). The form used to render for every partner team member and
+   * 403 on submit; this reads the same permission the backend checks rather
+   * than repeating that discovery for each of them.
+   */
+  const canAddReporter = can(session, "administer_platform");
 
   return (
     <div className="flex flex-col gap-6">
@@ -24,7 +34,16 @@ export function PartnerReporting({ partner }: { partner: string }) {
         description="Your tracking references, and who can see the numbers."
       />
       <AsyncBoundary state={refIds}>{(data) => <RefIds data={data} />}</AsyncBoundary>
-      <AddReporter partner={partner} />
+      {canAddReporter ? (
+        <AddReporter partner={partner} />
+      ) : (
+        <Card title="Who can read this">
+          <p className="text-sm text-ink-muted">
+            A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add
+            someone — reporters are appointed by us, not by your team.
+          </p>
+        </Card>
+      )}
     </div>
   );
 }
