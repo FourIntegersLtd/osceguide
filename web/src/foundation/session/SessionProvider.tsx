@@ -6,6 +6,7 @@ import {
   hasStoredSession,
   installPlatformAuth,
   logout as apiLogout,
+  PlatformError,
   platformRequest,
   switchWorkspace as apiSwitchWorkspace,
 } from "@/foundation/platform-client";
@@ -43,12 +44,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    * answer is not knowable before mount, so nothing pretends to know it.
    */
   const [status, setStatus] = useState<SessionStatus>("loading");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [ready, setReady] = useState(false);
   const inFlight = useRef<Promise<void> | null>(null);
 
   const load = useCallback(async () => {
     if (!hasStoredSession()) {
       setSession(null);
+      setSessionExpired(false);
       setStatus("anonymous");
       setReady(true);
       return;
@@ -59,11 +62,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         platformRequest<PlatformCapabilities>("/api/v1/me/capabilities"),
       ]);
       setSession({ user, capabilities });
+      setSessionExpired(false);
       setStatus("authenticated");
-    } catch {
-      // A refused /me means the stored pair is spent. Treating it as anonymous
-      // sends the person to sign in rather than leaving a half-built shell.
+    } catch (cause) {
+      // A 401 means the stored pair was presented and refused. A network
+      // failure is not that: the person still has a session, the server just
+      // did not answer, and "your session expired" would be a lie.
       setSession(null);
+      setSessionExpired(cause instanceof PlatformError && cause.status === 401);
       setStatus("anonymous");
     } finally {
       setReady(true);
@@ -86,6 +92,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await apiLogout();
     setSession(null);
+    setSessionExpired(false);
     setStatus("anonymous");
   }, []);
 
@@ -100,8 +107,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<SessionState>(
-    () => ({ status, session, ready, refresh, signOut, selectWorkspace }),
-    [status, session, ready, refresh, signOut, selectWorkspace],
+    () => ({ status, session, ready, sessionExpired, refresh, signOut, selectWorkspace }),
+    [status, session, ready, sessionExpired, refresh, signOut, selectWorkspace],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

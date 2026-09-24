@@ -27,6 +27,13 @@ export interface SessionState {
   session: Session | null;
   /** True once the first resolution has happened, however it went. */
   ready: boolean;
+  /**
+   * A stored token was presented and refused.
+   *
+   * Distinct from a first visit, which is anonymous and has never held one.
+   * The login page uses it to explain the redirect; a signed-out click does not.
+   */
+  sessionExpired: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
   /** `null` is the person's own practice. */

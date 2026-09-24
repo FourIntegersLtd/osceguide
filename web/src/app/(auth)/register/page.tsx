@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Register } from "@/capabilities/account";
+import { RequireAnonymous } from "@/foundation/session";
 
 export const metadata: Metadata = { title: "Create your account" };
 
@@ -9,7 +10,9 @@ export default function Page() {
   // router. Nothing to show while it resolves: the form is the page.
   return (
     <Suspense fallback={null}>
-      <Register />
+      <RequireAnonymous>
+        <Register />
+      </RequireAnonymous>
     </Suspense>
   );
 }

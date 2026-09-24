@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
-import { Button } from "@/foundation/ui";
+import { Alert, Button } from "@/foundation/ui";
 import { login } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
@@ -26,8 +26,14 @@ import {
   type FieldErrors,
 } from "@/capabilities/account/support/validateAuthForm";
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
+import { readAuthNotice, type AuthNoticeTone } from "@/capabilities/account/support/authNotices";
 
 type LoginField = "email" | "password";
+
+function noticeTone(tone: AuthNoticeTone): "info" | "success" | "danger" {
+  if (tone === "error") return "danger";
+  return tone;
+}
 
 /**
  * One sign-in, for every product.
@@ -49,8 +55,11 @@ type LoginField = "email" | "password";
  * answers `null` and the page is the ordinary password form. **`sso_only` is a
  * display rule only** — it hides the password form; nothing here refuses a
  * password login, because who verifies an identity is still an open backend
- * decision (`docs/port-gaps.md`, S-1). There is no SSO redirect to make yet,
- * so the button is a labelled placeholder rather than a door.
+ * decision (`docs/port-gaps.md`, S-1). The door itself works: the button
+ * follows `POST /auth/sso/login`'s `sign_in_url` out and `/auth/sso/callback`
+ * completes the return. What has no screen yet is the *other* half — claiming
+ * a host for an organisation (`GET`/`PUT /platform/orgs/{slug}/sso` are
+ * served and called by nothing).
  */
 export default function Login() {
   const router = useRouter();
@@ -71,6 +80,7 @@ export default function Login() {
   // be unconfigured, or the arrangement switched off since discovery answered.
   const [ssoNotice, setSsoNotice] = useState<string | null>(null);
   const [ssoBusy, setSsoBusy] = useState(false);
+  const arrivalNotice = readAuthNotice(new URLSearchParams(searchParams.toString()));
 
   /*
    * Discovery, once, on the host the visitor actually arrived at. It is a
@@ -156,6 +166,11 @@ export default function Login() {
       subtitle="Sign in to your account"
       sidePanel={<AuthQuotePanel />}
     >
+      {arrivalNotice ? (
+        <Alert tone={noticeTone(arrivalNotice.tone)} className="mb-4">
+          {arrivalNotice.message}
+        </Alert>
+      ) : null}
       {showPasswordForm && (
         <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
           <AuthFormField

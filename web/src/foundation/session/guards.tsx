@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Spinner } from "@/foundation/ui";
+import { loginHref } from "@/foundation/session/loginHref";
 import { useSession } from "@/foundation/session/SessionProvider";
 import { can } from "@/foundation/session/types";
 import type { Permission } from "@/foundation/session/permissions";
@@ -32,7 +33,7 @@ function Resolving() {
  * from looping: it is the one place a flagged account is allowed to be.
  */
 export function RequireSession({ children }: { children: ReactNode }) {
-  const { status, ready, session } = useSession();
+  const { status, ready, session, sessionExpired } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const mustChange = session?.user.must_change_password === true;
@@ -41,19 +42,40 @@ export function RequireSession({ children }: { children: ReactNode }) {
     if (!ready) return;
     const next = encodeURIComponent(pathname ?? "/");
     if (status === "anonymous") {
-      router.replace(`/login?next=${next}`);
+      router.replace(loginHref(pathname ?? "/", sessionExpired));
       return;
     }
     if (mustChange) {
       router.replace(`/change-password?next=${next}`);
     }
-  }, [ready, status, mustChange, pathname, router]);
+  }, [ready, status, sessionExpired, mustChange, pathname, router]);
 
   if (!ready || status === "loading") return <Resolving />;
   if (status === "anonymous") return <Resolving />;
   // Render nothing while the redirect above is in flight. A page that paints
   // for one frame is a page whose data somebody has already read off the screen.
   if (mustChange) return <Resolving />;
+  return <>{children}</>;
+}
+
+/**
+ * Sign-in and registration, for whoever has neither yet.
+ *
+ * A visitor who is already signed in and opens `/login` or `/register` used
+ * to see the form anyway — register would mint a second account and silently
+ * overwrite the stored session with it. This is the other half of
+ * `RequireSession`: instead of sending an anonymous visitor to sign in, it
+ * sends a signed-in one on to their workspace.
+ */
+export function RequireAnonymous({ children }: { children: ReactNode }) {
+  const { status, ready } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (ready && status === "authenticated") router.replace("/app");
+  }, [ready, status, router]);
+
+  if (ready && status === "authenticated") return <Resolving />;
   return <>{children}</>;
 }
 

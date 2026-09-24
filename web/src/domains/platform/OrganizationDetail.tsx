@@ -18,6 +18,7 @@ import { OrganizationSettings } from "@/domains/platform/OrganizationSettings";
 import { SeatMemberPanel } from "@/domains/platform/SeatMemberPanel";
 import { MembersSection } from "@/domains/platform/MembersSection";
 import { AuditSection } from "@/domains/platform/AuditSection";
+import { SsoSection } from "@/domains/platform/SsoSection";
 import { renewContract } from "@/domains/platform/support/api";
 import { asContractDate } from "@/domains/platform/support";
 import { Input } from "@/foundation/ui";
@@ -26,11 +27,12 @@ import { STATUS_HELP, formatDay, permitsSignIn } from "@/domains/platform/suppor
 /**
  * One organisation, from the outside.
  *
- * The retiring screen also showed four counts, a member list, the tenant's
- * audit log and a delete. None of the four are this console's to read: a
- * Member list and audit log are available on dedicated platform support routes
- * when platform-api serves them. Delete does not exist — a tenant's rows include
- * candidate results that have to stay defensible.
+ * The retiring screen also showed four counts and a delete. The counts stay
+ * unread: they need per-org activity counters the platform does not aggregate
+ * (see the staff overview's own gap). The member list and the tenant's audit
+ * log, which the first cut of this comment said to wait for, are served by
+ * dedicated platform routes and rendered below. Delete does not exist — a
+ * tenant's rows include candidate results that have to stay defensible.
  *
  * The read itself is `GET /orgs/{slug}`, not a platform route — there is no
  * `GET /platform/organizations/{slug}`, and the org-scoped read admits a
@@ -82,6 +84,8 @@ export function OrganizationDetail({ slug }: { slug: string }) {
               <MembersSection slug={current.slug} />
 
               <AuditSection slug={current.slug} />
+
+              <SsoSection slug={current.slug} />
             </>
           );
         }}

@@ -27,6 +27,7 @@ import { useCurrentExam } from "@/foundation/session/useCurrentExam";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
+import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
 const {
@@ -46,8 +47,7 @@ const NAME_MAX = 50;
  * The name is editable because `PATCH /me` accepts it. The address stays read
  * back: changing the thing you sign in with is a different flow with its own
  * verification, and no `platform-api` route does it. The retiring screen's
- * "Danger zone" is still absent — soft-deleting an account has no endpoint
- * here either, and a button that cannot save is worse than no button.
+ * "Danger zone" closes the account: sign-in stops, the record stays.
  */
 export default function ProfilePanel() {
   const me = useAsync((signal) => readMe(signal), []);
@@ -68,6 +68,7 @@ export default function ProfilePanel() {
         exam rather than shown to everybody, which is how the old profile had it.
       */}
       {holdsOrtho ? <CvPanel /> : null}
+      <CloseAccount />
     </SettingsTabShell>
   );
 }
