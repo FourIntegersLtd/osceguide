@@ -13,6 +13,7 @@ import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/S
 import { validateStationContentScoped } from "@/capabilities/authoring/lib/b2cStationContentScope";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
+import { StationVersionHistory } from "@/capabilities/authoring/sections/StationVersionHistory";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
@@ -33,6 +34,7 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { BriefEditor } from "@/capabilities/authoring/sections/BriefEditor";
+import { StationPhotosCard } from "@/capabilities/authoring/sections/StationPhotosCard";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
 
 function structureForTemplateVersion(
@@ -231,6 +233,21 @@ export function StationDetail({
             onChange={setEditContent}
             readOnly={!isDraft}
           />
+          {/*
+            Images are editable on a published version for the same reason the
+            reading brief is: they are what a candidate is shown rather than
+            what they are marked against, and an attempt freezes its own copy
+            of the scenario. An archived version still refuses.
+          */}
+          <StationPhotosCard
+            scope={scope}
+            stationId={station.id}
+            version={version}
+            examCode={station.exam_code}
+            content={editContent}
+            onChanged={setEditContent}
+            readOnly={status === "archived"}
+          />
           {isDraft ? (
             <div className="mt-6 flex justify-end border-t border-b2b-border pt-4">
               <Button
@@ -255,6 +272,8 @@ export function StationDetail({
           ) : null}
         </AuthoringCard>
       ) : null}
+
+      <StationVersionHistory stationId={station.id} />
     </div>
   );
 }

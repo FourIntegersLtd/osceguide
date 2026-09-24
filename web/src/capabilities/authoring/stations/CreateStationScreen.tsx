@@ -77,6 +77,9 @@ export function CreateStationScreen() {
     Boolean(form.title.trim()) &&
     Boolean(form.examCode || form.templateVersionId) &&
     !form.busy;
+  // A template form is the draft. Generated text with no template is the draft
+  // only once it is on screen — publishing before that shipped unseen content.
+  const publishAllowed = Boolean(form.structure) || hasDraftContent(form.content);
 
   return (
     <PlatformTemplateWizardPageLayout
@@ -272,12 +275,17 @@ export function CreateStationScreen() {
             content={form.content}
             onChange={form.setContent}
           />
+        ) : hasDraftContent(form.content) ? (
+          <GeneratedDraft content={form.content} />
         ) : (
           <div className="rounded-lg border border-dashed border-b2b-border bg-b2b-cream/40 px-4 py-8 text-center">
-            <p className="text-osce-body font-medium text-b2b-headline">Select a template</p>
+            <p className="text-osce-body font-medium text-b2b-headline">
+              {form.needsTemplateForLayout ? "This exam needs a template" : "Choose a template or an exam"}
+            </p>
             <p className="mt-1 text-osce-body text-b2b-mid">
-              The full station form (collapsible sections per template) appears here as soon as you
-              pick a published template.
+              {form.needsTemplateForLayout
+                ? "This exam has no built-in station layout, so pick a published template to write against."
+                : "The full station form appears here as soon as you pick a published template, or say which exam this station is for."}
             </p>
           </div>
         )}
@@ -285,12 +293,18 @@ export function CreateStationScreen() {
         <label className="flex cursor-pointer items-center gap-2 text-osce-body text-b2b-graphite">
           <input
             type="checkbox"
-            checked={form.publishNow}
+            checked={publishAllowed && form.publishNow}
+            disabled={!publishAllowed || form.generating}
             onChange={(e) => form.setPublishNow(e.target.checked)}
-            className="h-4 w-4 rounded border-b2b-border text-b2b-accent"
+            className="h-4 w-4 rounded border-b2b-border text-b2b-accent disabled:cursor-not-allowed disabled:opacity-50"
           />
           Publish immediately (makes station selectable in circuits)
         </label>
+        {!publishAllowed ? (
+          <p className="text-osce-meta text-b2b-mid">
+            Generate a draft, or pick a template, before publishing. The text has to be on screen first.
+          </p>
+        ) : null}
       </div>
 
       <div className={platformTemplateWizardFooterClass}>
@@ -313,5 +327,32 @@ export function CreateStationScreen() {
         </Button>
       </div>
     </PlatformTemplateWizardPageLayout>
+  );
+}
+
+function hasDraftContent(content: Record<string, unknown>): boolean {
+  return Object.keys(content).length > 0;
+}
+
+function GeneratedDraft({ content }: { content: Record<string, unknown> }) {
+  return (
+    <div className="rounded-lg border border-b2b-border bg-white p-4">
+      <p className="text-osce-body font-semibold text-b2b-headline">Generated draft</p>
+      <p className="mt-1 text-osce-body text-b2b-mid">
+        Read this before you publish. It is not live until you save.
+      </p>
+      <dl className="mt-4 space-y-3">
+        {Object.entries(content).map(([key, value]) => (
+          <div key={key}>
+            <dt className="text-osce-meta font-medium text-b2b-mid">{key}</dt>
+            <dd className="mt-1 whitespace-pre-wrap text-osce-body text-b2b-headline">
+              {typeof value === "string" || typeof value === "number"
+                ? String(value)
+                : JSON.stringify(value, null, 2)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }

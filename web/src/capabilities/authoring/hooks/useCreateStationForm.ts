@@ -13,6 +13,7 @@ import {
   supportsPromptGeneration,
   type AuthoringScope,
 } from "@/capabilities/authoring/api/scope";
+import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
 import { validateStationContent } from "@/capabilities/authoring/structure/b2b/lib/stations/validateStationContent";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import {
@@ -60,6 +61,28 @@ export function useCreateStationForm({
   const [publishNow, setPublishNow] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /*
+   * The layout the author writes into.
+   *
+   * A chosen template supplies one. Without a template the station borrows the
+   * exam's own shape — the same accordion the retiring b2c admin wrote library
+   * stations in — rather than showing nothing at all. Showing nothing is what
+   * let "No template" mean "publish an empty station": the content panel was
+   * gated on a template, so the fields never appeared, and the create and
+   * publish routes check no content.
+   *
+   * An exam with no built-in layout (an institution's own) still resolves to
+   * null, and the screen says so instead of pretending there is a form.
+   */
+  const effectiveStructure =
+    structure ??
+    (examCode
+      ? legacyB2cStationStructure(examCode, {
+          ...content,
+          station_type: content.station_type ?? orthoStationType,
+        })
+      : null);
+
   const reset = useCallback(() => {
     setMode("manual");
     setTitle("");
@@ -81,6 +104,7 @@ export function useCreateStationForm({
       setStructure(null);
       setExamCode("");
       setContent({});
+      setPublishNow(false);
       return;
     }
     const resolved = resolvePublishedVersion(templates, versionId);
@@ -145,6 +169,7 @@ export function useCreateStationForm({
           template_version_id: templateVersionId,
         });
         setContent(r.content ?? {});
+        setPublishNow(false);
         if (!title.trim() && r.suggested_title) {
           setTitle(r.suggested_title);
         }
@@ -155,6 +180,7 @@ export function useCreateStationForm({
           orthoStationType: examCode === "ortho" ? orthoStationType : null,
         });
         setContent(r.content ?? {});
+        setPublishNow(false);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to generate content.");
@@ -173,10 +199,17 @@ export function useCreateStationForm({
       setError("Choose a template, or say which exam this is for.");
       return;
     }
-    // Validated only against a structure that exists. A template-less station
-    // has none, and the backend is the authority on what its content must hold.
-    if (structure) {
-      const v = validateStationContent(structure, content);
+    /*
+     * Validated against whichever structure the author was actually shown.
+     *
+     * A template-less station borrows the exam's own layout, so it has one too
+     * — and it has to be checked here, because the create and publish routes
+     * validate no content at all. Without this a "No template" station could
+     * be published into circuits with no brief, no patient and no marking
+     * scheme in it, which is what was happening.
+     */
+    if (effectiveStructure) {
+      const v = validateStationContent(effectiveStructure, content);
       if (!v.ok) {
         setError(v.errors[0] ?? "Please fill all required fields.");
         return;
@@ -190,7 +223,8 @@ export function useCreateStationForm({
         content,
         template_version_id: templateVersionId || null,
       });
-      if (publishNow) {
+      const draftVisible = Boolean(effectiveStructure) || Object.keys(content).length > 0;
+      if (publishNow && draftVisible) {
         await publishStationVersion(scope, created.id, created.version);
       }
       reset();
@@ -215,7 +249,9 @@ export function useCreateStationForm({
     setTitle,
     templateVersionId,
     handleTemplateSelect,
-    structure,
+    structure: effectiveStructure,
+    /** True when the exam has no built-in layout and no template was chosen. */
+    needsTemplateForLayout: !structure && Boolean(examCode) && effectiveStructure === null,
     content,
     setContent,
     prompt,

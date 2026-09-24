@@ -6,10 +6,6 @@ import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/compone
 import { Alert } from "@/foundation/ui";
 import { Button } from "@/foundation/ui";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import {
-  b2bTemplateTitleSchema,
-  zodErrorFirstMessage,
-} from "@/capabilities/authoring/structure/b2b/lib/validation";
 import { useSurface } from "@/capabilities";
 import {
   editStationTemplateVersion,
@@ -20,6 +16,7 @@ import { useAsync } from "@/foundation/hooks";
 import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterEndClass } from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
+import { b2bInputBase } from "@/foundation/ui/b2bTokens";
 
 export function StationTemplateEditScreen({
   templateId,
@@ -43,15 +40,15 @@ export function StationTemplateEditScreen({
     return { title: template.title, structure, status: row.status };
   }, [templates.data, templateId, version]);
 
-  const [title, setTitle] = useState("");
   const [structure, setStructure] = useState<StationStructure | null>(null);
+  const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!match) return;
-    setTitle(match.title);
     setStructure(match.structure);
+    setTitle(match.title);
   }, [match]);
 
   const loading = templates.loading && !templates.data;
@@ -60,7 +57,7 @@ export function StationTemplateEditScreen({
   return (
     <PlatformTemplateWizardPageLayout
       eyebrow="Station template"
-      title="Edit draft"
+      title={match?.title || "Edit draft"}
       subtitle={`Version ${version}. Published versions cannot be edited — cut a new draft from the list first.`}
       backHref={listHref}
       backLabel="Station templates"
@@ -74,13 +71,18 @@ export function StationTemplateEditScreen({
       ) : structure ? (
         <>
           <div className="px-5 py-6 sm:px-6">
-            <StructureBuilder
-              value={structure}
-              onChange={setStructure}
-              title={title}
-              onTitleChange={setTitle}
-              flatChrome
-            />
+            <label className="mb-5 block">
+              <span className="mb-1.5 block text-osce-meta font-medium text-b2b-mid">Title</span>
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                disabled={match?.status !== "draft"}
+                maxLength={200}
+                className={b2bInputBase}
+                aria-label="Template title"
+              />
+            </label>
+            <StructureBuilder value={structure} onChange={setStructure} flatChrome />
             {error ? (
               <Alert tone="danger" className="mt-4">
                 {error}
@@ -96,18 +98,18 @@ export function StationTemplateEditScreen({
               disabled={saving || match?.status !== "draft"}
               onClick={async () => {
                 setError(null);
-                const titleParsed = b2bTemplateTitleSchema.safeParse(title);
-                if (!titleParsed.success) {
-                  setError(zodErrorFirstMessage(titleParsed.error));
-                  return;
-                }
                 if (match?.status !== "draft") {
                   setError("Only a draft version can be edited.");
                   return;
                 }
+                const nextTitle = title.trim();
+                if (!nextTitle) {
+                  setError("Enter a title.");
+                  return;
+                }
                 try {
                   setSaving(true);
-                  await editStationTemplateVersion(scope, templateId, version, structure);
+                  await editStationTemplateVersion(scope, templateId, version, structure, nextTitle);
                   router.push(listHref);
                 } catch (e: unknown) {
                   setError(e instanceof Error ? e.message : "Failed to save draft.");

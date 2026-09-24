@@ -35,6 +35,9 @@ export {
   archiveStationVersion,
   publishStationVersion,
   editStationBrief,
+  uploadStationPhotos,
+  removeStationPhoto,
+  type StationPhotosResult,
 } from "@/capabilities/authoring/api/stations";
 
 export {
@@ -63,6 +66,7 @@ export {
   updateExam,
   publishExam,
   retireExam,
+  deleteExam,
   listProgrammes,
   addProgramme,
   updateProgramme,

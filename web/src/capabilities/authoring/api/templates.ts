@@ -62,10 +62,14 @@ export function editStationTemplateVersion(
   template: string,
   version: number,
   structure: Json,
+  title?: string,
 ): Promise<StationTemplateVersion> {
   return platformRequest(`${scope.base}/station-templates/${pathId(template)}/versions/${version}`, {
     method: "PATCH",
-    body: { structure: platformStructure(structure) },
+    body: {
+      structure: platformStructure(structure),
+      ...(title !== undefined ? { title } : {}),
+    },
   });
 }
 

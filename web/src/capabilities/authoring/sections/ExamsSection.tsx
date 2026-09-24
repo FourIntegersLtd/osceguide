@@ -6,8 +6,9 @@ import {
   HiOutlineNoSymbol,
   HiOutlinePencilSquare,
   HiOutlinePlusCircle,
+  HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert } from "@/foundation/ui";
+import { Alert, ConfirmModal } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -17,6 +18,7 @@ import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRo
 import { useAsync } from "@/foundation/hooks";
 import {
   createExam,
+  deleteExam,
   listExams,
   publishExam,
   retireExam,
@@ -51,6 +53,7 @@ export function ExamsSection() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<ExamDraft>(blankExam);
   const [editing, setEditing] = useState<Exam | null>(null);
+  const [deleting, setDeleting] = useState<Exam | null>(null);
 
   const items = exams.data?.items ?? [];
 
@@ -157,6 +160,16 @@ export function ExamsSection() {
                     <HiOutlineNoSymbol className="h-4 w-4" aria-hidden />
                   </AuthoringIconAction>
                 ) : null}
+                {locked ? null : (
+                  <AuthoringIconAction
+                    variant="danger"
+                    label="Delete"
+                    disabled={action.busy !== null}
+                    onClick={() => setDeleting(exam)}
+                  >
+                    <HiOutlineTrash className="h-4 w-4" aria-hidden />
+                  </AuthoringIconAction>
+                )}
               </AuthoringRowActions>
             </AuthoringListRow>
           );
@@ -217,6 +230,23 @@ export function ExamsSection() {
       >
         <ExamFields value={form} onChange={setForm} codeDisabled />
       </AuthoringDialog>
+
+      <ConfirmModal
+        isOpen={deleting !== null}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          if (!deleting) return;
+          void action.run(`delete:${deleting.id}`, () => deleteExam(scope, deleting.id)).then((ok) => {
+            if (ok) setDeleting(null);
+          });
+        }}
+        isLoading={deleting !== null && action.busy === `delete:${deleting.id}`}
+        tone="danger"
+        title={deleting ? `Delete "${deleting.name}"?` : "Confirm"}
+        confirmText="Delete exam"
+        error={action.error}
+        message="Only a draft nothing was ever built on can be deleted this way. Anything with a station, a sitting or an attempt against it is refused — retire it instead."
+      />
     </div>
   );
 }

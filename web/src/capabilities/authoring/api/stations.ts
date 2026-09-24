@@ -144,3 +144,42 @@ export function generateStation(input: {
     },
   });
 }
+
+/* ------------------------------------------------------- station photos */
+
+export type StationPhotosResult = S["StationPhotosResult"];
+
+/**
+ * Put images on a station's version.
+ *
+ * The field name is `files`, repeated once per image — the backend's
+ * parameter name, and the same one the retiring uploader sent. A partial
+ * upload comes back as a result rather than an error: the images that worked
+ * are on the station and `failed` names the rest.
+ */
+export function uploadStationPhotos(
+  scope: AuthoringScope,
+  station: string,
+  version: number,
+  files: File[],
+): Promise<StationPhotosResult> {
+  const form = new FormData();
+  for (const file of files) form.append("files", file);
+  return platformRequest<StationPhotosResult>(
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/photos`,
+    { method: "POST", formData: form },
+  );
+}
+
+/** Take one image off a station, and out of the bucket. */
+export function removeStationPhoto(
+  scope: AuthoringScope,
+  station: string,
+  version: number,
+  photoUrl: string,
+): Promise<StationVersion> {
+  return platformRequest<StationVersion>(
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/photos/remove`,
+    { method: "POST", body: { photo_url: photoUrl } },
+  );
+}

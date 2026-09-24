@@ -58,6 +58,16 @@ export function retireExam(scope: AuthoringScope, exam: string): Promise<Exam> {
   return platformRequest(`${scope.base}/exams/${pathId(exam)}/retire`, { method: "POST" });
 }
 
+/**
+ * Remove a draft nothing was ever built on. Refuses (`exam_in_use`, 409) the
+ * moment a station, sitting or attempt names it — `retireExam` above is the
+ * lifecycle exit for those. Org exams only; the platform catalogue has no
+ * delete at all, same as everywhere else in this scope.
+ */
+export function deleteExam(scope: AuthoringScope, exam: string): Promise<void> {
+  return platformRequest(`${scope.base}/exams/${pathId(exam)}`, { method: "DELETE" });
+}
+
 export function listProgrammes(
   scope: AuthoringScope,
   signal?: AbortSignal,

@@ -117,15 +117,29 @@ export function ExamFields({
           </select>
         </Field>
       </div>
-      <label className="flex cursor-pointer items-center gap-2 text-osce-body text-b2b-graphite">
-        <input
-          type="checkbox"
-          checked={value.partnerPilot}
-          onChange={(e) => set({ partnerPilot: e.target.checked })}
-          className="h-4 w-4 rounded border-b2b-border"
-        />
-        Partner pilot
-      </label>
+      {/*
+       * The backend refuses this on the org-scoped route on purpose — "a
+       * school cannot put its own private exam into the funnel by asking"
+       * (`test_an_org_exam_is_never_a_partner_pilot`) — and silently writes
+       * `false` regardless of what this box says. Offering it here would be a
+       * control that lies about what pressing it does, so it is shown only
+       * where the write actually takes.
+       */}
+      {scope.kind === "platform" ? (
+        <label className="flex cursor-pointer items-center gap-2 text-osce-body text-b2b-graphite">
+          <input
+            type="checkbox"
+            checked={value.partnerPilot}
+            onChange={(e) => set({ partnerPilot: e.target.checked })}
+            className="h-4 w-4 rounded border-b2b-border"
+          />
+          Partner pilot
+        </label>
+      ) : (
+        <p className="text-osce-caption text-b2b-mid">
+          Partner-pilot status is set by OSCE Guide staff, not from here.
+        </p>
+      )}
     </>
   );
 }
