@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { CandidateReport, StationReport } from "@/domains/assess/results/api";
+import type { CandidateReport, SittingReadout, StationReport } from "@/domains/assess/results/api";
 import {
   ASSESSMENT_OUTCOMES,
   evidenceFor,
   outcomeTone,
+  readoutAsMarkdown,
+  readoutFilename,
   releasable,
   signOffBlockers,
   workflowLabel,
@@ -117,4 +119,82 @@ test("only a signed-off decision that is not yet out can be released", () => {
 test("a decision nobody has started is not called a draft", () => {
   assert.equal(workflowLabel(null), "Not started");
   assert.equal(workflowLabel("signed_off"), "Signed off");
+});
+
+/* ---------- the examination read-out, as a file ---------- */
+
+function readout(over: Partial<SittingReadout> = {}): SittingReadout {
+  return {
+    org_slug: "kings",
+    readout_version: "1",
+    generated_at: "2026-09-24T09:00:00Z",
+    methodology: "The worst rating wins per domain.",
+    recommendations: ["Speak to the candidate marked incomplete."],
+    sitting: {
+      sitting_id: "s1",
+      name: "Autumn sitting",
+      required_station_count: 8,
+      scheduled_for: null,
+    },
+    summary: {
+      cohort_size: 2,
+      fully_complete_count: 1,
+      average_assessment_score: 71.5,
+      computed_at: "2026-09-24T09:00:00Z",
+      priorities: { high: 1 },
+    },
+    candidates: [
+      {
+        rank: 1,
+        assessment_score: 82,
+        completion_rate: 1,
+        review_priority: "low",
+        stations_completed: 8,
+        stations_total: 8,
+        trainee: { user_id: "u1", name: "Amara Okafor", email: null, trainee_id: null },
+      },
+      {
+        rank: 2,
+        assessment_score: null,
+        completion_rate: 0.5,
+        review_priority: "high",
+        stations_completed: 4,
+        stations_total: 8,
+        trainee: { user_id: "u2", name: "Rowan | Pipe", email: null, trainee_id: null },
+      },
+    ],
+    ...over,
+  } as SittingReadout;
+}
+
+test("the read-out is the markdown document the retiring screen handed over", () => {
+  const document = readoutAsMarkdown(readout());
+
+  assert.match(document, /^# Autumn sitting — examination read-out\n/);
+  assert.ok(document.includes("## Cohort"), document);
+  assert.ok(document.includes("| Cohort size | 2 |"), document);
+  assert.ok(document.includes("## Candidates"), document);
+  assert.ok(document.includes("| 1 | Amara Okafor |"), document);
+  assert.ok(document.includes("| 8/8 |"), document);
+  assert.ok(document.includes("### Review priorities"), document);
+  assert.ok(document.includes("## Recommendations"), document);
+  assert.ok(document.includes("- Speak to the candidate marked incomplete."), document);
+  assert.ok(document.includes("## Methodology"), document);
+  assert.ok(document.includes("The worst rating wins per domain."), document);
+});
+
+test("a pipe in somebody's name cannot shift every column after it", () => {
+  // Names come from people, and an unescaped pipe ends the cell early — which
+  // in a document somebody files away is a silently wrong table, not a crash.
+  assert.ok(readoutAsMarkdown(readout()).includes("Rowan \\| Pipe"));
+});
+
+test("an examination nobody sat still renders a document", () => {
+  const document = readoutAsMarkdown(readout({ candidates: [] }));
+  assert.ok(document.includes("Nobody was rostered onto this examination."), document);
+  assert.ok(!document.includes("| Rank |"), document);
+});
+
+test("the file is named for what it now is", () => {
+  assert.equal(readoutFilename(readout()), "s1-exam-readout.md");
 });

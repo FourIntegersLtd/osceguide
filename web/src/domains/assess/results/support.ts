@@ -1,4 +1,9 @@
-import type { CandidateReport, CohortCandidate, Evidence } from "@/domains/assess/results/api";
+import type {
+  CandidateReport,
+  CohortCandidate,
+  Evidence,
+  SittingReadout,
+} from "@/domains/assess/results/api";
 
 /**
  * The vocabulary and the arithmetic behind the results screens.
@@ -155,4 +160,102 @@ export function signOffBlockers(input: {
 export function releasable(candidate: CandidateReport): boolean {
   const decision = candidate.decision;
   return Boolean(decision?.signed_off_at) && !decision?.released_at;
+}
+
+/**
+ * The read-out file's name: the sitting it came from, then what it is.
+ *
+ * The retiring client took the name off the server's `content-disposition`
+ * because the server rendered the document. Here the browser writes the file, so
+ * the name is made here — and it is the same shape the old downloads had, so two
+ * of them in a Downloads folder still say which exam each belongs to.
+ */
+export function readoutFilename(readout: SittingReadout): string {
+  return `${readout.sitting.sitting_id}-exam-readout.md`;
+}
+
+/**
+ * The read-out as the markdown document the retiring screen handed over.
+ *
+ * The platform serves the read-out as the JSON it actually is and renders
+ * nothing, so the document is written here. It is built from the same
+ * `candidateName`, `formatScore`, `formatCompletion` and `PRIORITY_LABEL` the
+ * cohort table on screen uses, which is the only way a file somebody files away
+ * and a screen somebody reads can be guaranteed to say the same thing about the
+ * same candidate — a second set of formatters is a second opinion.
+ */
+export function readoutAsMarkdown(readout: SittingReadout): string {
+  const { sitting, summary } = readout;
+  const candidates = readout.candidates ?? [];
+  const stamp = (value: string) => new Date(value).toLocaleString("en-GB");
+  const lines: string[] = [];
+
+  lines.push(`# ${sitting.name} — examination read-out`, "");
+  lines.push(
+    `Sitting \`${sitting.sitting_id}\` · organisation \`${readout.org_slug}\` · read-out v${readout.readout_version}`,
+    "",
+  );
+  lines.push(
+    `- Scheduled: ${sitting.scheduled_for ? stamp(sitting.scheduled_for) : "not scheduled"}`,
+    `- Stations required: ${sitting.required_station_count}`,
+    `- Generated: ${stamp(readout.generated_at)}`,
+    "",
+  );
+
+  lines.push("## Cohort", "", "| Measure | Value |", "| --- | --- |");
+  lines.push(`| Cohort size | ${summary.cohort_size} |`);
+  lines.push(`| Fully complete | ${summary.fully_complete_count} |`);
+  lines.push(`| Average assessment score | ${cell(formatScore(summary.average_assessment_score))} |`);
+  lines.push(`| Computed at | ${stamp(summary.computed_at)} |`, "");
+
+  const priorities = Object.entries(summary.priorities ?? {});
+  if (priorities.length > 0) {
+    lines.push("### Review priorities", "");
+    for (const [key, count] of priorities) {
+      lines.push(`- ${PRIORITY_LABEL[key] ?? key}: ${count}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("## Candidates", "");
+  if (candidates.length === 0) {
+    lines.push("Nobody was rostered onto this examination.", "");
+  } else {
+    lines.push(
+      "| Rank | Candidate | Assessment score | Stations | Completion | Review priority |",
+      "| --- | --- | --- | --- | --- | --- |",
+    );
+    for (const candidate of candidates) {
+      const row = [
+        candidate.rank,
+        cell(candidateName(candidate.trainee)),
+        cell(formatScore(candidate.assessment_score)),
+        `${candidate.stations_completed}/${candidate.stations_total}`,
+        cell(formatCompletion(candidate.completion_rate)),
+        cell(PRIORITY_LABEL[candidate.review_priority] ?? candidate.review_priority),
+      ];
+      lines.push(`| ${row.join(" | ")} |`);
+    }
+    lines.push("");
+  }
+
+  const recommendations = readout.recommendations ?? [];
+  if (recommendations.length > 0) {
+    lines.push("## Recommendations", "");
+    for (const item of recommendations) lines.push(`- ${item}`);
+    lines.push("");
+  }
+
+  lines.push("## Methodology", "", readout.methodology, "");
+  return lines.join("\n");
+}
+
+/**
+ * One markdown table cell.
+ *
+ * A pipe in a name ends the cell early and shifts every column after it, and
+ * names and priorities arrive from people and from data rather than from us.
+ */
+function cell(value: string): string {
+  return value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }

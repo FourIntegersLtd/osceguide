@@ -6,6 +6,7 @@ import { Alert, AsyncBoundary, Button, Modal } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { TranscriptView } from "@/capabilities/feedback";
 import { listMyAttempts, readTranscript } from "@/capabilities/attempt-runner";
+import { downloadTranscript } from "@/capabilities/attempt-runner/transcriptDocument";
 
 /**
  * What was said, in the panel that held the brief during the consultation.
@@ -66,7 +67,7 @@ export function TranscriptStep({
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => download(transcript.data)}
+          onClick={() => transcript.data && downloadTranscript(transcript.data)}
           disabled={!transcript.data?.messages.length}
         >
           <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden /> Download Transcript
@@ -141,23 +142,4 @@ function PreviousAttempts({
       </div>
     </Modal>
   );
-}
-
-/**
- * Save the transcript as text.
- *
- * A blob rather than a link to the API: there is no download route, and the
- * transcript is already in the page.
- */
-function download(transcript: { messages: { role: string; message: string }[] } | null): void {
-  if (!transcript) return;
-  const text = transcript.messages
-    .map((message) => `${message.role === "user" ? "Doctor" : "Patient"}: ${message.message}`)
-    .join("\n\n");
-  const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "transcript.txt";
-  link.click();
-  URL.revokeObjectURL(url);
 }
