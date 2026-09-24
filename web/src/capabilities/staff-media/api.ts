@@ -6,7 +6,7 @@ type S = components["schemas"];
 export type MediaItem = S["app__features__media__schemas__MediaRead"];
 export type CreateMediaInput = S["CreateMedia"];
 export type UpdateMediaInput = S["UpdateMedia"];
-type MediaPage = S["Page_MediaRead_"];
+type MediaPage = S["MediaPage"];
 
 type GenerateResult = S["GenerateResult"];
 

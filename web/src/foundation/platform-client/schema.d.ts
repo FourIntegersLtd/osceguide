@@ -191,7 +191,8 @@ export interface paths {
         /**
          * Read Results
          * @description A page rather than one result: re-scoring under a new policy adds beside
-         *     the old, so a candidate's history stays readable.
+         *     the old, so a candidate's history stays readable — to the same two people as
+         *     the transcript, which is `service_access.ensure_readable`.
          */
         get: operations["attempts_read_results"];
         put?: never;
@@ -273,7 +274,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read Transcript */
+        /**
+         * Read Transcript
+         * @description The candidate's own turns, and the examiner named on their circuit.
+         */
         get: operations["attempts_read_transcript"];
         put?: never;
         post?: never;
@@ -688,7 +692,8 @@ export interface paths {
          * @description Everything this caller may see, or one room of it.
          *
          *     Without a filter the answer spans the public pool and every institution and
-         *     group the caller belongs to, which is what a single feed should be.
+         *     group the caller belongs to, which is what a single feed should be. `tag`
+         *     narrows that answer and can never widen it.
          */
         get: operations["community_list_questions"];
         put?: never;
@@ -807,7 +812,14 @@ export interface paths {
         get: operations["cv_read_cv"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Cv
+         * @description Throw your own CV away, including one still being read.
+         *
+         *     Somebody else's is `not found` rather than `forbidden`, the same answer a
+         *     read gives, so a delete cannot be used to probe an id either.
+         */
+        delete: operations["cv_delete_cv"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1724,13 +1736,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * My Reports
+         * @description What this person has reported, so the runner's button and the list agree.
+         */
+        get: operations["stations_my_reports"];
         put?: never;
         /**
-         * Flag Station
-         * @description Report a library station to the content team. Persistence is TODO.
+         * Report Station
+         * @description Report one station the caller can see as wrong.
+         *
+         *     Idempotent: reporting the same station twice is the same report, not a
+         *     duplicate and not an error.
          */
-        post: operations["identity_flag_station"];
+        post: operations["stations_report_station"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1770,10 +1789,29 @@ export interface paths {
         get: operations["station_sets_read_set"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Set
+         * @description Throw a practice set away.
+         *
+         *     The retiring client's delete took the session and its progress counters and
+         *     left the transcripts of what had been sat inside it orphaned. Here the
+         *     recordings cannot be left pointing at a row that has gone — the schema
+         *     refuses — so a set somebody has started a station in is refused rather than
+         *     emptied of its history. The console route that deletes a person's progress
+         *     on a stated reason is the one that takes a set's attempts with it.
+         */
+        delete: operations["station_sets_delete_set"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename Set
+         * @description Rename one of your own practice sets.
+         *
+         *     Owner-only, and a set that is not yours answers 404 rather than 403: an id
+         *     is not something a stranger should be able to confirm exists by the shape
+         *     of the refusal.
+         */
+        patch: operations["station_sets_rename_set"];
         trace?: never;
     };
     "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts": {
@@ -1887,6 +1925,10 @@ export interface paths {
          *     What a token changes is `content`: the slide decks and the A to Z are the
          *     paid half of the product and used to come back in full to anyone who asked,
          *     signed in or not.
+         *
+         *     `exam_code` and `q` narrow the query rather than the answer. A client that
+         *     filtered in the browser had to pull the whole library down to do it, six
+         *     pages at a time, and could only ever match what those pages contained.
          */
         get: operations["media_list_published"];
         put?: never;
@@ -1908,6 +1950,9 @@ export interface paths {
         /**
          * Search
          * @description Over the material this reader holds, not the whole library.
+         *
+         *     Paged like every other list here: `total_count` is how many hits the query
+         *     matched, `next_cursor` continues past the ones this page carried.
          */
         get: operations["media_search"];
         put?: never;
@@ -2166,6 +2211,11 @@ export interface paths {
         /**
          * Append Trainees
          * @description Add people to a training circuit, into the room it is already using.
+         *
+         *     Each arrival may name the station it takes, positionally with
+         *     `trainee_ids`; name none and they all join the station the circuit is on.
+         *     Either way the station has to be one this circuit already runs — bringing a
+         *     new one in is a change to what the circuit is, which is the structural edit.
          */
         post: operations["sittings_append_trainees"];
         delete?: never;
@@ -2517,12 +2567,38 @@ export interface paths {
         /** List Cohorts */
         get: operations["roster_list_cohorts"];
         put?: never;
-        /** Add Cohort */
+        /**
+         * Add Cohort
+         * @description An intake is named once per organisation: `(org, name)` is unique, and a
+         *     spreadsheet that repeats one is a mistake worth naming.
+         */
         post: operations["roster_add_cohort"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/cohorts/{cohort_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Cohort
+         * @description Refused while trainees still belong to it — a silent `SET NULL` would
+         *     read as those people having never had an intake.
+         */
+        delete: operations["roster_remove_cohort"];
+        options?: never;
+        head?: never;
+        /** Edit Cohort */
+        patch: operations["roster_edit_cohort"];
         trace?: never;
     };
     "/api/v1/orgs/{org_slug}/dashboard": {
@@ -2747,6 +2823,32 @@ export interface paths {
          *     person is emailed a link to choose a password. `invited` says which.
          */
         post: operations["tenancy_add_membership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/memberships/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Memberships
+         * @description A team at once: the browser parses the spreadsheet, this takes the rows.
+         *
+         *     Each row is the single act below it, so an unknown address is invited and
+         *     an existing one is not re-invited. A person already holding the role is
+         *     reported in `skipped` rather than failing the other rows — the retiring
+         *     backend's staff upload wrote a team row by row and an administrator reads
+         *     the result as a list of names, not as an error page.
+         */
+        post: operations["tenancy_add_memberships"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3008,7 +3110,17 @@ export interface paths {
          *     needs all three and would otherwise fetch them one by one.
          */
         get: operations["sittings_read_sitting"];
-        put?: never;
+        /**
+         * Update Sitting
+         * @description Correct a sitting that has already been scheduled.
+         *
+         *     Only what was sent is written, so the edit screen restates nothing. The name
+         *     and the date stay open for the life of the record; what the sitting examines
+         *     — its mode, its type, the programme its rubric is resolved from — freezes the
+         *     moment any circuit on it has started, because the marks already given were
+         *     given against the other answer.
+         */
+        put: operations["sittings_update_sitting"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3029,6 +3141,9 @@ export interface paths {
          * Save Decision
          * @description Each save is a new revision. The table is append-only, so what was
          *     previously considered survives.
+         *
+         *     `expected_revision` names the revision this screen read; a save against a
+         *     stale one is refused with `decision_revised` rather than superseding it.
          */
         put: operations["results_save_decision"];
         post?: never;
@@ -3114,6 +3229,29 @@ export interface paths {
          *     Exam sittings only — `not_an_exam_sitting` (422) for a training one.
          */
         get: operations["dashboard_read_cohort_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Sitting Readout
+         * @description The document a course lead downloads after an examination: the cohort
+         *     ranked, what it adds up to, and what the ranking recommends. Org admin, as the
+         *     legacy export was — it names every candidate and their score in one payload,
+         *     and is written to be printed. Exam sittings only, on the cohort's own rule.
+         */
+        get: operations["dashboard_read_sitting_readout"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3493,6 +3631,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/trainee-groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Group
+         * @description Refused while anybody is still in it: the membership, and anything
+         *     addressed to the group, goes with it, so the emptied list is stated first.
+         */
+        delete: operations["roster_remove_group"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename Group
+         * @description Rename a group. Its members stay — that is the rule the whole roster
+         *     slice exists to hold, where b2b matched a label and a rename emptied it.
+         */
+        patch: operations["roster_rename_group"];
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/trainee-groups/{group_id}/members": {
         parameters: {
             query?: never;
@@ -3558,6 +3722,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/trainees/{trainee_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Trainee
+         * @description Only what was sent is written, so a screen that corrects a spelling does
+         *     not clear the intake beside it.
+         */
+        patch: operations["roster_edit_trainee"];
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/access": {
         parameters: {
             query?: never;
@@ -3573,6 +3758,32 @@ export interface paths {
          *     routes invite one of them to be forgotten.
          */
         post: operations["roster_set_access"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/resend-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Invitation
+         * @description Send the choose-a-password link again.
+         *
+         *     A new token, not the one in the first email: that one is stored hashed, so
+         *     nobody here can read it back out. `invitation_not_pending` is the answer
+         *     when the person has already chosen a password, because mailing a
+         *     set-password link to somebody who can sign in is an invitation to take over
+         *     their account.
+         */
+        post: operations["roster_resend_invitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4557,6 +4768,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/station-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Station Flag Queue
+         * @description Every report on every station, oldest first. `status=open` is the queue.
+         *
+         *     Named `report_status` in Python because `status` is FastAPI's own import
+         *     here; the query parameter stays `status`, which is what a client reads.
+         */
+        get: operations["stations_station_flag_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/station-flags/{flag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Decide Station Flag
+         * @description Close a report with a note, or reopen a closed one.
+         */
+        patch: operations["stations_decide_station_flag"];
+        trace?: never;
+    };
     "/api/v1/platform/station-templates": {
         parameters: {
             query?: never;
@@ -5144,12 +5398,45 @@ export interface paths {
          *     a practice set from it and an institution draws on it to build a circuit.
          *     The rows carry no station content — see `LibraryStationRead`.
          *
+         *     `search` is a fragment of a title, matched in SQL. Typing one used to mean
+         *     paging the catalogue in the browser and filtering what had arrived, so a
+         *     term could only ever match what the screen had already fetched.
+         *
          *     A platform admin browses the whole catalogue, because curating it is their
          *     job. Everybody else gets their own exam, and asking for another is refused
          *     rather than answered — the retiring client had one exam per deployment and
          *     no picker at all.
          */
         get: operations["stations_browse_library"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stations/{station_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Library Station
+         * @description One station from the platform library, for whoever a link found them to be.
+         *
+         *     The row the browse page already gives — a title and the ids needed to bind
+         *     it — and none of the document inside it. A shared link used to be answered
+         *     by walking that page a hundred stations at a time in the browser, because
+         *     there was no read that took an id and no organisation's slug.
+         *
+         *     One refusal covers every station that is not the library's: another
+         *     institution's private case and a draft nobody has published answer
+         *     identically, because which of them it was is somebody else's tenant.
+         */
+        get: operations["stations_read_library_station"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5170,6 +5457,32 @@ export interface paths {
         put?: never;
         /** Comment On Station */
         post: operations["community_comment_on_station"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stations/{station_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Station Version History
+         * @description Every revision this station has had, newest first. The author's own view.
+         *
+         *     The lifecycle had no reader: a station could be drafted, published,
+         *     superseded and archived, and nothing listed the revisions those acts
+         *     produced — so the authoring screen could not offer a previous one. Whole
+         *     documents, which is why the audience is staff and not the station's org
+         *     members at large (the rule, and why, are in `service_versions`).
+         */
+        get: operations["stations_station_version_history"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5450,8 +5763,20 @@ export interface components {
             /** Email */
             email: string;
         };
-        /** AppendTrainees */
+        /**
+         * AppendTrainees
+         * @description Who has just arrived, and where they go.
+         *
+         *     `station_version_ids` is the pairing `CreateCircuit` already uses — the nth
+         *     arrival takes the nth station — because b2b's live "add trainee" dialog
+         *     named a station with each person rather than assuming it. Omit the list and
+         *     everyone joins the station the circuit is already running, which is what a
+         *     single latecomer to a group practice wants and what this route used to do
+         *     whatever the caller meant.
+         */
         AppendTrainees: {
+            /** Station Version Ids */
+            station_version_ids?: string[];
             /** Trainee Ids */
             trainee_ids: string[];
         };
@@ -5740,6 +6065,21 @@ export interface components {
             file: string;
         };
         /**
+         * BulkCreateMemberships
+         * @description A team at once, in one request.
+         *
+         *     The retiring backend's "invite the whole team" path was a CSV upload it
+         *     parsed and wrote row by row, with a temporary password in the file or
+         *     generated in the browser. Here the browser parses the sheet and posts rows,
+         *     and no password is involved: an address with no account is invited and
+         *     chooses one. Capped so one request cannot invite a whole hospital by
+         *     accident.
+         */
+        BulkCreateMemberships: {
+            /** Memberships */
+            memberships: components["schemas"]["CreateMembership"][];
+        };
+        /**
          * BulkCreateTrainees
          * @description A spreadsheet's worth of trainees in one request.
          *
@@ -5749,6 +6089,16 @@ export interface components {
         BulkCreateTrainees: {
             /** Trainees */
             trainees: components["schemas"]["CreateTrainee"][];
+        };
+        /**
+         * BulkMembershipsResult
+         * @description Who joined and who was already there, so a partial upload is not a mystery.
+         */
+        BulkMembershipsResult: {
+            /** Created */
+            created?: components["schemas"]["app__features__tenancy__schemas__MembershipRead"][];
+            /** Skipped */
+            skipped?: components["schemas"]["SkippedMembership"][];
         };
         /**
          * BulkTraineesResult
@@ -6361,6 +6711,8 @@ export interface components {
             body: string;
             /** Exam Code */
             exam_code?: string | null;
+            /** Tags */
+            tags?: string[];
             /** Title */
             title: string;
         };
@@ -6835,7 +7187,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_locked" | "set_not_found" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_not_found" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "template_not_published" | "too_many_requests" | "tool_arguments_invalid" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "feedback_template_not_found" | "feedback_template_not_published" | "feedback_template_version_not_found" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "tag_too_long" | "template_not_published" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -6958,7 +7310,13 @@ export interface components {
             /** Merged Notes */
             merged_notes?: string | null;
         };
-        /** FlagStationBody */
+        /**
+         * FlagStationBody
+         * @description A report that one station is wrong.
+         *
+         *     Was served by `identity` with a docstring saying persistence is TODO, so the
+         *     button in the runner confirmed a report that went nowhere.
+         */
         FlagStationBody: {
             /**
              * Station Id
@@ -7216,6 +7574,19 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * InvitationRead
+         * @description A re-sent invitation, answered with what the email actually says.
+         *
+         *     The token itself is not here: it is a credential, and it goes only to the
+         *     address it was minted for.
+         */
+        InvitationRead: {
+            /** Email */
+            email: string;
+            /** Invited To */
+            invited_to: string;
+        };
         /** InvitePlatformAdmin */
         InvitePlatformAdmin: {
             /**
@@ -7299,7 +7670,8 @@ export interface components {
         };
         /**
          * LibraryStationRead
-         * @description A platform library station as it appears in a browse list.
+         * @description A platform library station as a browser sees it — the list, and a link
+         *     to one station by id.
          *
          *     Deliberately without `content`. The library is browsable by every signed-in
          *     user, and the content is the patient brief, the examiner's context and the
@@ -7485,6 +7857,44 @@ export interface components {
             social_concerns?: string[];
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * MediaPage
+         * @description A page of the catalogue, and how many items the filters matched.
+         *
+         *     `core.pagination.Page` carries `items` and `next_cursor` and is shared by
+         *     every slice, so it cannot grow a count for one screen's sake. A page that
+         *     reports only what it returned made the media library print "24 found" for
+         *     a library of six hundred, because that is all a cursor page knows. Media
+         *     gets its own wrapper instead; the two field names `Page` had are unchanged,
+         *     so a client reading `items` and `next_cursor` keeps working.
+         *
+         *     `total_count` counts everything matching the filters, not the entitlement
+         *     of the reader: a locked item is still an item the search found, and it is
+         *     listed with `locked: true` rather than dropped.
+         */
+        MediaPage: {
+            /** Items */
+            items: components["schemas"]["app__features__media__schemas__MediaRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Total Count */
+            total_count: number;
+        };
+        /**
+         * MediaSearchPage
+         * @description A page of search hits, and how many the query matched.
+         *
+         *     Separate from `MediaPage` for the same reason: `core.pagination.Page` is
+         *     shared and cannot be widened from here.
+         */
+        MediaSearchPage: {
+            /** Items */
+            items: components["schemas"]["SearchHit"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Total Count */
+            total_count: number;
         };
         /**
          * MessageAccepted
@@ -7680,6 +8090,8 @@ export interface components {
          * @description What the setup checklist counts. Four legacy calls existed to produce these.
          */
         OrgCounts: {
+            /** Library Stations */
+            library_stations: number;
             /** Programmes With Markable Exam */
             programmes_with_markable_exam: number;
             /** Sittings */
@@ -7719,8 +8131,8 @@ export interface components {
             programme_exam_rubric_ready: boolean;
             /** Ready To Run */
             ready_to_run: boolean;
-            /** Stations Authored */
-            stations_authored: boolean;
+            /** Stations Available */
+            stations_available: boolean;
             /** Team Invited */
             team_invited: boolean;
             /** Trainees Added */
@@ -7850,13 +8262,6 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
-        /** Page[MediaRead] */
-        Page_MediaRead_: {
-            /** Items */
-            items: components["schemas"]["app__features__media__schemas__MediaRead"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-        };
         /** Page[MembershipRead] */
         Page_MembershipRead_: {
             /** Items */
@@ -7934,13 +8339,6 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
-        /** Page[SearchHit] */
-        Page_SearchHit_: {
-            /** Items */
-            items: components["schemas"]["SearchHit"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-        };
         /** Page[SetRead] */
         Page_SetRead_: {
             /** Items */
@@ -7952,6 +8350,13 @@ export interface components {
         Page_SittingRead_: {
             /** Items */
             items: components["schemas"]["SittingRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[StationFlagRead] */
+        Page_StationFlagRead_: {
+            /** Items */
+            items: components["schemas"]["StationFlagRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -8773,6 +9178,41 @@ export interface components {
             waiting_count: number;
         };
         /**
+         * ReadoutSitting
+         * @description The sitting, as the head of the document states it.
+         */
+        ReadoutSitting: {
+            /** Name */
+            name: string;
+            /** Required Station Count */
+            required_station_count: number;
+            /** Scheduled For */
+            scheduled_for?: string | null;
+            /** Sitting Id */
+            sitting_id: string;
+        };
+        /**
+         * ReadoutSummary
+         * @description What the cohort adds up to. Counts, not judgements.
+         */
+        ReadoutSummary: {
+            /** Average Assessment Score */
+            average_assessment_score: number | null;
+            /** Cohort Size */
+            cohort_size: number;
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** Fully Complete Count */
+            fully_complete_count: number;
+            /** Priorities */
+            priorities?: {
+                [key: string]: number;
+            };
+        };
+        /**
          * RebuildCircuit
          * @description A circuit's new shape. Everything omitted is left as it is.
          *
@@ -9115,7 +9555,17 @@ export interface components {
             /** Version */
             version: number;
         };
-        /** SaveDecision */
+        /**
+         * SaveDecision
+         * @description Drafting a decision.
+         *
+         *     `expected_revision` is the revision this screen last read, or 0 when it has
+         *     read nothing. A save that does not name the current one is refused with
+         *     `decision_revised` (409), so two administrators cannot overwrite each
+         *     other's draft. The release route reuses this body and does not consult it,
+         *     because a release is already guarded by the workflow state and by the
+         *     evidence fingerprint.
+         */
         SaveDecision: {
             /** Assessment Outcome */
             assessment_outcome?: string | null;
@@ -9123,6 +9573,11 @@ export interface components {
             evidence?: {
                 [key: string]: unknown;
             };
+            /**
+             * Expected Revision
+             * @default 0
+             */
+            expected_revision: number;
             /** Moderation Notes */
             moderation_notes?: string | null;
             /** Rationale */
@@ -9208,8 +9663,21 @@ export interface components {
             /** Status */
             status: string;
         };
-        /** SearchHit */
+        /**
+         * SearchHit
+         * @description One match.
+         *
+         *     `excerpt` defaults to empty rather than being required so a client that
+         *     builds hits of its own stays valid — the retiring A-to-Z's substring
+         *     fallback did, and `platform-web` still carries a copy of it. This backend
+         *     always fills it in.
+         */
         SearchHit: {
+            /**
+             * Excerpt
+             * @default
+             */
+            excerpt: string;
             /**
              * Id
              * Format: uuid
@@ -9389,12 +9857,47 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * SittingReadout
+         * @description Everything the read-out says, in the order it says it.
+         */
+        SittingReadout: {
+            /** Candidates */
+            candidates?: components["schemas"]["CohortCandidate"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Methodology */
+            methodology: string;
+            /** Org Slug */
+            org_slug: string;
+            /**
+             * Readout Version
+             * @default 1
+             */
+            readout_version: string;
+            /** Recommendations */
+            recommendations?: string[];
+            sitting: components["schemas"]["ReadoutSitting"];
+            summary: components["schemas"]["ReadoutSummary"];
+        };
         /** SittingReport */
         SittingReport: {
             /** Candidates */
             candidates?: components["schemas"]["CandidateReport"][];
             sitting: components["schemas"]["ConsoleSitting"];
             totals: components["schemas"]["ReportTotals"];
+        };
+        /** SkippedMembership */
+        SkippedMembership: {
+            /** Code */
+            code: string;
+            /** Email */
+            email: string;
+            /** Role */
+            role: string;
         };
         /** SkippedTrainee */
         SkippedTrainee: {
@@ -9656,6 +10159,34 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** StationFlagRead */
+        StationFlagRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reporter Name */
+            reporter_name?: string | null;
+            /** Resolution Note */
+            resolution_note?: string | null;
+            /** Resolved At */
+            resolved_at?: string | null;
+            /**
+             * Station Id
+             * Format: uuid
+             */
+            station_id: string;
+            /** Station Title */
+            station_title?: string | null;
+            /** Status */
+            status: string;
+        };
         /** StationOverride */
         StationOverride: {
             /** Reason */
@@ -9866,6 +10397,8 @@ export interface components {
         };
         /** StationVersionRead */
         StationVersionRead: {
+            /** Archived At */
+            archived_at?: string | null;
             /** Content */
             content: {
                 [key: string]: unknown;
@@ -10288,6 +10821,20 @@ export interface components {
             reading_brief: string;
         };
         /**
+         * UpdateCohort
+         * @description Rename an intake, or say which academic year it belongs to.
+         *
+         *     Absent means "leave it alone". b2b's `examIds` is not here: which exams a
+         *     cohort is bound to is `catalog`'s answer, and this slice's row carries no
+         *     such column, so exposing the field would promise a write that goes nowhere.
+         */
+        UpdateCohort: {
+            /** Academic Year */
+            academic_year?: string | null;
+            /** Name */
+            name?: string | null;
+        };
+        /**
          * UpdateExam
          * @description Everything but the code, which existing plans and ref ids depend on.
          */
@@ -10304,6 +10851,15 @@ export interface components {
             rubric_version_id?: string | null;
             /** Station Attempt Limit */
             station_attempt_limit?: number | null;
+        };
+        /**
+         * UpdateGroup
+         * @description Rename a group. Who is in it does not move with the name — that is the
+         *     whole of why membership is a table here and a matched string in b2b.
+         */
+        UpdateGroup: {
+            /** Label */
+            label: string;
         };
         /**
          * UpdateMe
@@ -10370,12 +10926,89 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * UpdateSet
+         * @description What a learner may still change about a set they have built.
+         *
+         *     The name, and only the name. A set carries no description and no timings —
+         *     the length of a session is the sum of its stations' exam timings, which the
+         *     exam owns — so there is nothing else to write, and the retiring client's
+         *     edit screen asked for a name and a list of stations and nothing more.
+         *
+         *     Whitespace strips to nothing, which is then too short: a set called `"   "`
+         *     is an unlabelled row in the list the learner has to keep.
+         */
+        UpdateSet: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * UpdateSitting
+         * @description The sitting edit screen's fields. Absent means "leave it alone", which is
+         *     what the legacy PUT meant too: it sent only what the screen had changed.
+         *
+         *     The b2b screen offered a name, a type and a feedback template. This backend
+         *     resolves the template through the programme, so the third of those is
+         *     `programme_id` here and the bound rubric moves with it. `status` is not
+         *     offered: that is the run machine's to move, and a route that could set it
+         *     would let a screen end an examination by editing a name.
+         */
+        UpdateSitting: {
+            /** Mode */
+            mode?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Programme Id */
+            programme_id?: string | null;
+            /** Scheduled For */
+            scheduled_for?: string | null;
+            /** Sitting Type */
+            sitting_type?: string | null;
+        };
+        /**
+         * UpdateStationFlag
+         * @description Closing a report, or reopening one.
+         *
+         *     One body for both because they are one decision — has this been dealt with?
+         *     — and a separate `reopen` route would be the same write with the flag
+         *     reversed.
+         */
+        UpdateStationFlag: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "resolved";
+        };
         /** UpdateStationTemplateVersion */
         UpdateStationTemplateVersion: {
             /** Structure */
             structure: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * UpdateTrainee
+         * @description The roster edit screen's fields. Absent means "leave it alone", sent means
+         *     "write this", including a null that clears it.
+         *
+         *     Not the address: `email` is what identifies the entry inside the
+         *     organisation (unique per org, and the account link is made against it), so
+         *     editing it is not correcting a typo but re-pointing a person's results. The
+         *     b2b edit screen offered first name, last name and the group; the group is
+         *     `cohort_id` here, and the other half of the legacy's `cohort` string — the
+         *     list a circuit is built from — is a membership row rather than a field, so
+         *     it is set by `PUT /trainee-groups/{id}/members`.
+         */
+        UpdateTrainee: {
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** Last Name */
+            last_name?: string | null;
         };
         /** UpdateVersion */
         UpdateVersion: {
@@ -10614,6 +11247,8 @@ export interface components {
             parent_id: string | null;
             /** Reply Count */
             reply_count: number;
+            /** Tags */
+            tags: string[];
             /** Title */
             title: string | null;
         };
@@ -10692,6 +11327,12 @@ export interface components {
          *
          *     Everything else is deliberately public: the landing page's article rail and
          *     a shared link both need a title and a summary without a token.
+         *
+         *     `specialty` and `updated_at` are read out of `content` by the projection
+         *     (`service_reads`) rather than stored in columns of their own. Both are
+         *     fields the authoring payload has always carried and only some kinds use, so
+         *     a column for either would be null for most rows — and a screen that wants
+         *     one should not have to know the document's shape to get it.
          */
         app__features__media__schemas__MediaRead: {
             /** Content */
@@ -10721,12 +11362,19 @@ export interface components {
             published_at: string | null;
             /** Slug */
             slug: string;
+            /** Specialty */
+            specialty?: string | null;
             /** Status */
             status: string;
             /** Summary */
             summary: string | null;
             /** Title */
             title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * MediaRead
@@ -12653,6 +13301,8 @@ export interface operations {
             query?: {
                 /** @description Only the caller's own questions. */
                 mine?: boolean;
+                /** @description Only questions carrying this tag. */
+                tag?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -12754,7 +13404,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description empty_content, invalid_audience */
+            /** @description empty_content, tag_too_long, too_many_tags, invalid_audience */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -13059,6 +13709,53 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CvRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cv_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cv_delete_cv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cv_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description unauthenticated, account_suspended */
             401: {
@@ -15277,7 +15974,36 @@ export interface operations {
             };
         };
     };
-    identity_flag_station: {
+    stations_my_reports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationFlagRead"][];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stations_report_station: {
         parameters: {
             query?: never;
             header?: never;
@@ -15299,6 +16025,15 @@ export interface operations {
             };
             /** @description unauthenticated, account_suspended */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15447,6 +16182,115 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description set_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    station_sets_delete_set: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description set_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description set_has_attempts */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    station_sets_rename_set: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                set_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSet"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -15744,6 +16588,10 @@ export interface operations {
                 kind?: string | null;
                 /** @description Authoring filter: draft, published, or all (platform admin only). */
                 status?: string | null;
+                /** @description Only this exam's material, plus material tagged with no exam. */
+                exam_code?: string | null;
+                /** @description A fragment of a title or a summary. */
+                q?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -15760,7 +16608,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_MediaRead_"];
+                    "application/json": components["schemas"]["MediaPage"];
                 };
             };
             /** @description unknown_exam */
@@ -15848,6 +16696,11 @@ export interface operations {
             query: {
                 /** @description What to search for */
                 q: string;
+                /** @description Only this kind of material: slide_deck, summary, blog, podcast. */
+                kind?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -15861,7 +16714,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_SearchHit_"];
+                    "application/json": components["schemas"]["MediaSearchPage"];
                 };
             };
             /** @description unauthenticated, account_suspended */
@@ -15873,7 +16726,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description empty_query */
+            /** @description empty_query, unknown_media_kind */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -16676,7 +17529,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_revoked */
+            /** @description circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -17744,6 +18597,137 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description cohort_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_remove_cohort: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cohort_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cohort_in_use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_edit_cohort: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cohort_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCohort"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CohortRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cohort_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cohort_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -18390,6 +19374,51 @@ export interface operations {
             };
             /** @description membership_exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_add_memberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkCreateMemberships"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkMembershipsResult"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19320,6 +20349,70 @@ export interface operations {
             };
         };
     };
+    sittings_update_sitting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitting_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSitting"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SittingRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_not_found, programme_not_found, rubric_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_locked, invalid_circuit, exam_rubric_not_ready, rubric_version_not_published */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     results_read_decision: {
         parameters: {
             query?: never;
@@ -19417,7 +20510,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_workflow */
+            /** @description invalid_workflow, decision_revised */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -19647,6 +20740,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CohortSummary"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sitting_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_an_exam_sitting */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dashboard_read_sitting_readout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sitting_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SittingReadout"];
                 };
             };
             /** @description forbidden, organization_suspended */
@@ -21019,6 +22163,128 @@ export interface operations {
             };
         };
     };
+    roster_remove_group: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description group_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description group_not_empty */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_rename_group: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGroup"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description group_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description group_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     roster_set_group_members: {
         parameters: {
             query?: never;
@@ -21218,6 +22484,61 @@ export interface operations {
             };
         };
     };
+    roster_edit_trainee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trainee_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTrainee"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraineeRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description trainee_not_found, cohort_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     roster_set_access: {
         parameters: {
             query?: never;
@@ -21255,6 +22576,66 @@ export interface operations {
             };
             /** @description trainee_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_resend_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trainee_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description trainee_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invitation_not_pending */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24193,6 +25574,120 @@ export interface operations {
             };
         };
     };
+    stations_station_flag_queue: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_StationFlagRead_"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_decide_station_flag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                flag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStationFlag"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationFlagRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_flag_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stations_list_platform_station_templates: {
         parameters: {
             query?: never;
@@ -26052,6 +27547,7 @@ export interface operations {
         parameters: {
             query?: {
                 exam_code?: string | null;
+                search?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -26090,6 +27586,64 @@ export interface operations {
                 };
             };
             /** @description unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_read_library_station: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryStationRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_entitled */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -26207,6 +27761,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stations_station_version_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationVersionRead"][];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

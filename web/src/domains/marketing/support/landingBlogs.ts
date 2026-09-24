@@ -1,7 +1,7 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { Blog } from "@/domains/marketing/support/blog";
 
-type MediaPage = components["schemas"]["Page_MediaRead_"];
+type MediaPage = components["schemas"]["MediaPage"];
 type MediaItem = components["schemas"]["app__features__media__schemas__MediaRead"];
 
 function bodyOf(item: MediaItem): string {

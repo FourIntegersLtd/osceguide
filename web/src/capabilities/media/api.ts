@@ -3,7 +3,7 @@ import { b2cDeckSlides } from "@/capabilities/media/b2cDeckSlides";
 
 export type MediaItem =
   components["schemas"]["app__features__media__schemas__MediaRead"];
-export type MediaPage = components["schemas"]["Page_MediaRead_"];
+export type MediaPage = components["schemas"]["MediaPage"];
 
 /**
  * The four kinds the `media` slice stores.
@@ -28,11 +28,25 @@ export function isMediaKind(value: string): value is MediaKind {
 }
 
 export function listMedia(
-  params: { kind?: MediaKind | null; cursor?: string | null; limit?: number },
+  params: {
+    kind?: MediaKind | null;
+    cursor?: string | null;
+    limit?: number;
+    /** Narrow to one exam. The server keeps unexamined material, which is free material. */
+    examCode?: string | null;
+    /** Matched against title and summary, in SQL rather than in the browser. */
+    q?: string | null;
+  },
   signal?: AbortSignal,
 ): Promise<MediaPage> {
   return platformRequest<MediaPage>("/api/v1/media", {
-    query: { kind: params.kind ?? undefined, cursor: params.cursor ?? undefined, limit: params.limit },
+    query: {
+      kind: params.kind ?? undefined,
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+      exam_code: params.examCode ?? undefined,
+      q: params.q ?? undefined,
+    },
     signal,
   });
 }
@@ -67,6 +81,42 @@ export async function listAllMedia(
   return items;
 }
 
+/**
+ * Everything matching a filter, with the filtering done by the server.
+ *
+ * `listAllMedia` walks the whole catalogue and leaves the caller to narrow it,
+ * which was the only option when `GET /media` took `kind` and nothing else. It
+ * takes `exam_code` and `q` now, so a search that used to pull six pages down to
+ * match one word against them asks for the matches instead — and stops being
+ * wrong about a library bigger than six hundred items, which is the failure the
+ * page cap was hiding.
+ */
+export async function listMatchingMedia(
+  params: { kind?: MediaKind | null; examCode?: string | null; q?: string | null },
+  signal?: AbortSignal,
+): Promise<MediaItem[]> {
+  const items: MediaItem[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const result = await listMedia(
+      {
+        kind: params.kind ?? null,
+        examCode: params.examCode ?? null,
+        q: params.q ?? null,
+        cursor,
+        limit: MAX_PAGE,
+      },
+      signal,
+    );
+    items.push(...result.items);
+    cursor = result.next_cursor ?? null;
+    if (!cursor) break;
+  }
+
+  return items;
+}
+
 function normalizeMediaSlug(slug: string): string {
   const trimmed = slug.trim();
   if (!trimmed) return trimmed;
@@ -86,18 +136,39 @@ export function readMedia(slug: string, signal?: AbortSignal): Promise<MediaItem
 }
 
 export type SearchHit = components["schemas"]["SearchHit"];
+export type MediaSearchPage = components["schemas"]["MediaSearchPage"];
 
-export function searchMedia(q: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_SearchHit_"]>("/api/v1/media-search", {
-    query: { q },
+/**
+ * The server's own search: `q`, an optional `kind`, and a real cursor.
+ *
+ * Paging is keyset over `(score, id)` and bounded to the index's top hundred
+ * hits, because the vector index answers with a limit and nothing else — there
+ * is no page 101, and that slice's README says so rather than hiding it behind
+ * an offset.
+ */
+export function searchMedia(
+  q: string,
+  options: { kind?: MediaKind | null; cursor?: string | null } = {},
+  signal?: AbortSignal,
+): Promise<MediaSearchPage> {
+  return platformRequest<MediaSearchPage>("/api/v1/media-search", {
+    query: {
+      q,
+      kind: options.kind ?? undefined,
+      cursor: options.cursor ?? undefined,
+    },
     signal,
   });
 }
 
 /**
- * Vector search first; if nothing matches (empty index, missing key, or no
- * embeddings yet), fall back to title/summary substring over the catalogue —
- * the behaviour the retiring A-to-Z search had before pgvector.
+ * Substring hits, for when the vector search has nothing to say.
+ *
+ * An empty index, a missing key, or a catalogue nobody has embedded yet all
+ * answer with no hits — and "no results" for a word that is plainly in a title
+ * is a failure, not the retiring A-to-Z's behaviour. The *matching* now asks the
+ * server, since `q` on `GET /media` is an ILIKE over title and summary; what is
+ * left here is only the body match the server does not attempt.
  */
 function substringSearchHits(items: MediaItem[], normalized: string): SearchHit[] {
   return items
@@ -113,6 +184,9 @@ function substringSearchHits(items: MediaItem[], normalized: string): SearchHit[
       slug: item.slug,
       title: item.title,
       score: 1,
+      // A real hit carries the server's excerpt; a synthesized one still has to
+      // say something, and the summary is what it has.
+      excerpt: item.summary ?? item.title,
     }));
 }
 
@@ -120,33 +194,35 @@ export async function searchMediaWithFallback(
   q: string,
   options: { examCode?: string | null; kind?: MediaKind | null } = {},
   signal?: AbortSignal,
-): Promise<components["schemas"]["Page_SearchHit_"]> {
+): Promise<MediaSearchPage> {
   const trimmed = q.trim();
   const normalized = trimmed.toLowerCase();
-  if (!normalized) return { items: [], next_cursor: null };
+  if (!normalized) return { items: [], next_cursor: null, total_count: 0 };
 
   const kind = options.kind ?? null;
-  const examFilter = options.examCode ?? null;
+  const examCode = options.examCode ?? null;
 
-  /** Per-tab search matches the retiring client: substring over that kind's list. */
-  if (kind) {
-    const catalogue = await listAllMedia(kind, signal);
-    const scoped = filterMediaByExam(catalogue, examFilter);
-    return { items: substringSearchHits(scoped, normalized), next_cursor: null };
+  /*
+   * Whole-catalogue search is the vector index's job, and it now answers with an
+   * excerpt, a total and a cursor of its own. It cannot narrow by exam — a hit
+   * carries no exam code — so that path stays unfiltered, as it always was. The
+   * substring fallback does narrow, because a catalogue item carries one.
+   */
+  if (!kind) {
+    try {
+      const page = await searchMedia(trimmed, {}, signal);
+      if (page.items.length > 0) return page;
+    } catch {
+      // A search that could not run is not a search that found nothing.
+    }
   }
 
-  let vectorItems: SearchHit[] = [];
-  try {
-    const page = await searchMedia(trimmed, signal);
-    vectorItems = page.items;
-  } catch {
-    vectorItems = [];
-  }
-  if (vectorItems.length > 0) return { items: vectorItems, next_cursor: null };
-
-  const catalogue = await listAllMedia(null, signal);
-  const scoped = filterMediaByExam(catalogue, examFilter);
-  return { items: substringSearchHits(scoped, normalized), next_cursor: null };
+  const matches = await listMatchingMedia({ kind, examCode, q: trimmed }, signal);
+  return {
+    items: substringSearchHits(matches, normalized),
+    next_cursor: null,
+    total_count: matches.length,
+  };
 }
 
 /** Items for the current exam, like the old client scoped lists by `app_type`. */
