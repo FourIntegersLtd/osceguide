@@ -185,6 +185,21 @@ async def retire_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Sess
     return await service_authoring.retire_exam(session, exam_id, workspace.org_id)
 
 
+@router.delete(
+    "/orgs/{org_slug}/exams/{exam_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.UnknownExamError, errors.ExamInUse),
+)
+async def delete_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> None:
+    """Remove an exam nothing was ever built on. Retire the rest.
+
+    `exam_in_use` (409) is the answer for anything real: a station, a
+    sitting, an attempt, a rubric binding. This is only for a draft an
+    institution changed its mind about before it went anywhere.
+    """
+    await service_authoring.delete_exam(session, exam_id, workspace.org_id)
+
+
 @router.get(
     "/orgs/{org_slug}/programmes",
     response_model=Page[schemas.ProgrammeRead],

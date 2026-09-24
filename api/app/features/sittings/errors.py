@@ -39,17 +39,38 @@ class NotPermittedInModeError(Conflict):
     default_message = "That action does not apply to this kind of circuit"
 
 
-# Binding a feedback template is `rubrics`' rule and binding a station is
-# `stations`', so both slices' errors are this slice's vocabulary too.
-# Re-exported rather than redefined: the previous local classes were never
-# raised, so the routes advertised codes that could not happen while the
-# invariants they named went unenforced.
+class SittingLockedError(Conflict):
+    """An assessment-bearing change to a sitting that is already running.
+
+    Its own code rather than `circuit_locked`, because the thing being refused
+    is a change to the sitting — the rubric, the mode, the type — and the client
+    says something different about it: not "someone is mid-station" but "people
+    have been examined against this, so what it examines is fixed".
+    """
+
+    code = "sitting_locked"
+    default_message = "This sitting has begun, so what it examines cannot be changed"
+
+
+class TraineeAlreadyOnCircuitError(Conflict):
+    code = "trainee_already_on_circuit"
+    default_message = "That person is already on this circuit"
+
+
+class StationNotOnCircuitError(Conflict):
+    code = "station_not_on_circuit"
+    default_message = "That station is not on this circuit"
+
+
+# Binding a rubric is `rubrics`' rule and binding a station is `stations`',
+# so both slices' errors are this slice's vocabulary too. Re-exported rather
+# than redefined: the previous local classes were never raised, so the
+# routes advertised codes that could not happen while the invariants they
+# named went unenforced.
 from app.features.catalog.errors import ProgrammeNotFound  # noqa: E402
 from app.features.rubrics.errors import (  # noqa: E402
-    FeedbackTemplateNotPublished,
     RubricVersionNotFound,
     RubricVersionNotPublished,
-    TemplateVersionNotFound,
 )
 from app.features.stations.errors import TemplateNotPublishedError  # noqa: E402
 
@@ -60,13 +81,11 @@ from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 
 __all__ = [
     "ExamRubricNotReady",
-    "FeedbackTemplateNotPublished",
     "ProgrammeNotFound",
     "ProgrammeRequired",
     "RubricVersionNotFound",
     "RubricVersionNotPublished",
     "TemplateNotPublishedError",
-    "TemplateVersionNotFound",
     "TraineeRevokedError",
     "VoiceUnavailable",
 ]

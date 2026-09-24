@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
@@ -93,6 +93,18 @@ async def create_exam(
 async def update_exam(session: AsyncSession, exam_id: uuid.UUID, **fields: Any) -> None:
     if fields:
         await session.execute(update(Exam).where(Exam.id == exam_id).values(**fields))
+
+
+async def delete_exam(session: AsyncSession, exam_id: uuid.UUID) -> None:
+    """Delete the row and flush, so a `RESTRICT` foreign key fails here.
+
+    The `flush()` is deliberate: without it the `DELETE` sits unsent until
+    something else touches the session, and the constraint violation would
+    surface at a wildly unrelated point in the request instead of inside
+    `service_authoring.delete_exam`'s `try`.
+    """
+    await session.execute(delete(Exam).where(Exam.id == exam_id))
+    await session.flush()
 
 
 async def pilot_exam_codes(session: AsyncSession) -> list[str]:
@@ -201,3 +213,14 @@ async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uui
         )
     )
     return int((await session.execute(stmt)).scalar_one())
+
+
+async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Which exams this organisation offers. A programme *is* that statement.
+
+    Asked for by the dashboard, which has to know whether the platform's
+    library holds anything for this org before telling it to go and author a
+    station of its own.
+    """
+    stmt = select(Programme.exam_id).where(Programme.org_id == org_id).distinct()
+    return list((await session.execute(stmt)).scalars())

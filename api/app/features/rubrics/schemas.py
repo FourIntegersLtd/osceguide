@@ -49,32 +49,3 @@ class EditRubricVersion(BaseModel):
     marking_layout: dict[str, Any] | None = None
 
 
-class FeedbackTemplateVersionRead(BaseModel):
-    id: uuid.UUID
-    template_id: uuid.UUID
-    version: int
-    status: str
-    field_selection: dict[str, Any]
-    published_at: datetime | None = None
-
-
-class FeedbackTemplateRead(BaseModel):
-    id: uuid.UUID
-    title: str
-    owner_kind: str
-    rubric_version_id: uuid.UUID
-    versions: list[FeedbackTemplateVersionRead]
-
-
-class CreateFeedbackTemplate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    # The rubric this template narrows. Was an optional exam code, which named
-    # whichever schema that exam happened to bind and so could not be checked.
-    rubric_version_id: uuid.UUID
-    # `{"domains": [...]}` or `{"paths": ["domain.score", ...]}`; see
-    # `domain.reviewable_domains`.
-    field_selection: dict[str, Any] = Field(default_factory=dict)
-
-
-class UpdateFeedbackTemplateVersion(BaseModel):
-    field_selection: dict[str, Any]

@@ -15,11 +15,13 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import (
     ExamCodeTaken,
+    ExamInUse,
     ExamNotOwned,
     ExamNotPublishable,
     InvalidExamCodeError,
@@ -137,6 +139,27 @@ async def retire_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UU
         raise ExamNotPublishable(str(exc)) from exc
     await repository.update_exam(session, exam.id, status=status)
     return exam_read(await exam_row(session, exam_id))
+
+
+async def delete_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID) -> None:
+    """Remove an org's own exam outright, if nothing was ever built on it.
+
+    Org-scoped by construction — `org_id` is required, not `None` — the
+    platform catalogue keeps `retire` as its only lifecycle exit, the same as
+    every institution's exam that has actually been used. An exam nobody has
+    touched yet (no station, no sitting, no attempt) is different: it is a
+    draft somebody changed their mind about, not a record anything depends
+    on, and there is no reason to make them retire something that never ran.
+
+    `catalog` cannot ask "does anything reference this exam" itself — see
+    `ExamInUse` — so the database's own `RESTRICT` constraints are the check,
+    caught here rather than left to answer an unmapped `internal_error`.
+    """
+    exam = await _owned_exam(session, exam_id, org_id)
+    try:
+        await repository.delete_exam(session, exam.id)
+    except IntegrityError as exc:
+        raise ExamInUse() from exc
 
 
 async def _owned_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID | None) -> Exam:

@@ -87,49 +87,9 @@ class RubricVersion(Base, UUIDPrimaryKey, Timestamps):
     archived_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
-class FeedbackTemplate(Base, UUIDPrimaryKey, Timestamps):
-    """A narrowing of a rubric: the domains one set of reviewers works through.
-
-    It used to name an exam and narrow "the platform marking schema", which
-    meant whichever of four schemas that exam happened to bind. It now names
-    the rubric version it narrows outright, so a template and the thing it
-    selects from cannot come apart.
-    """
-
-    __tablename__ = "feedback_templates"
-    __table_args__ = (CheckConstraint(_OWNER_MATCHES_ORG, name="ck_feedback_templates_owner_matches_org"),)
-
-    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
-    rubric_version_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("rubric_versions.id", ondelete="RESTRICT"), nullable=False
-    )
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-
-
-class FeedbackTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
-    """One revision of a narrowing.
-
-    `field_selection` names the domains it keeps, or the paths into the
-    rubric's derived schema, which is why it is JSON: it is a selection over a
-    document, not a relation.
-    """
-
-    __tablename__ = "feedback_template_versions"
-    __table_args__ = (
-        UniqueConstraint("template_id", "version", name="uq_feedback_template_versions_template_version"),
-        CheckConstraint(_OWNER_MATCHES_ORG, name="ck_feedback_template_versions_owner_matches_org"),
-    )
-
-    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
-    template_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("feedback_templates.id", ondelete="CASCADE"), nullable=False
-    )
-    version: Mapped[int] = mapped_column(Integer, nullable=False)
-    field_selection: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'draft'"))
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    archived_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+# `FeedbackTemplate`/`FeedbackTemplateVersion` (a narrowing of a rubric) were
+# removed 2026-09-24: authored 2026-09, never mounted in `main.py`, never
+# called by any live route, service or frontend caller — confirmed by a
+# whole-tree grep before deletion. A sitting's rubric comes via its
+# programme (D3, `docs/parity-fix-plan.md`), not a bound feedback template.
+# See migration `d3e4f5a6b7c8` for the table drop.

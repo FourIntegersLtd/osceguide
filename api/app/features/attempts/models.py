@@ -98,18 +98,11 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
     # with it. `SET NULL` is not available either — the CHECK above requires
     # an `exam_slot` attempt to name its slot.
     slot_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("slots.id", ondelete="RESTRICT"))
-    # Which feedback template narrowed this attempt's marking, if a sitting
-    # bound one. `attempts` is below `sittings` in the layers and cannot walk
-    # up to the sitting, so the binding travels with the attempt.
-    feedback_template_version_id: Mapped[uuid.UUID | None] = mapped_column(
-        # Named explicitly: the convention's generated name is 66 characters,
-        # over Postgres's 63-character identifier limit.
-        ForeignKey(
-            "feedback_template_versions.id",
-            ondelete="RESTRICT",
-            name="fk_attempts_feedback_template_version_id",
-        )
-    )
+    # `feedback_template_version_id` (a binding to the now-removed
+    # `feedback_template_versions` table) was dropped 2026-09-24: the
+    # parameter it was written from was never called with a real value
+    # anywhere in the codebase, and nothing ever read the column back. See
+    # `rubrics/models.py` for the removal of the table it pointed at.
     set_entry_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("station_set_entries.id", ondelete="RESTRICT")
     )

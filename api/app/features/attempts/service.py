@@ -176,7 +176,6 @@ async def restart_for_slot(
     station_version_id: uuid.UUID | None,
     room_name: str,
     now: datetime,
-    feedback_template_version_id: uuid.UUID | None = None,
 ) -> Attempt:
     """The attempt a supervisor's dispatch will run (C6).
 
@@ -203,7 +202,6 @@ async def restart_for_slot(
         station_version_id=station_version_id,
         slot_id=slot_id,
         room_name=room_name,
-        feedback_template_version_id=feedback_template_version_id,
     )
 
 

@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-69 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+67 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -91,10 +91,14 @@ names both.
 | `status` | `varchar(32) not null default 'active'` | |
 | `is_platform_admin` | `bool not null default false` | |
 | `must_change_password` | `bool not null default false` | gates all but `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED` |
+| `password_login_disabled` | `bool not null default false` | set once by `identity.service_sso.sign_in_external` when this person signs in through an `sso_only` organisation; `identity` sits below `sso` and cannot read that configuration at login time, so the fact is written down here instead. Never cleared automatically |
 | `last_login_at` | `timestamptz null` | |
 | `exam_date` | `date null` | when they sit the real thing; the consumer dashboard counts down to it |
 | `exam_code` | `varchar(32) null` | which exam they signed up for; a preference, not a grant |
 | `extra_reading_percent` | `int not null default 0` | an access arrangement, as a percentage of extra reading time. CHECK 0–100. Applies to their own practice, never to a circuit's clock — one clock serves everybody on it |
+| `ai_training_consent` | `bool not null default false` | whether this person's consultations may be used to train models |
+| `colleague_waiting_email` | `bool not null default false` | email when a peer is waiting to practise |
+| `replay_onboarding` | `bool not null default false` | offer the guided voice tour again on the dashboard |
 | `consumer_role` | `varchar(32) not null default 'user'` | staff vs learner on the consumer product |
 
 Domain: `MIN_PASSWORD_LENGTH = 12`.
@@ -452,34 +456,11 @@ and the legacy answer to a repeat was a 400 the client surfaced as a failure.
 CHECK `ck_station_flags_status`; index `(status, created_at)` — the queue is
 "what is still open, oldest first".
 
-### `feedback_templates`
-A narrowing of a rubric: the domains one set of reviewers works through. Owned
-by the platform or by an org, like everything else authored here.
-
-| Field | Type | Notes |
-|---|---|---|
-| `owner_kind` | `varchar(16) not null` | `platform` or `org` |
-| `org_id` | `uuid null` → `organizations.id` CASCADE | null exactly when `owner_kind='platform'` |
-| `rubric_version_id` | `uuid not null` → `rubric_versions.id` RESTRICT | what it narrows; was a nullable `exam_id`, which named whichever schema that exam happened to bind and so could not be checked |
-| `title` | `varchar(200) not null` | |
-
-CHECK `ck_feedback_templates_owner_matches_org`.
-
-### `feedback_template_versions`
-One revision of a narrowing.
-
-| Field | Type | Notes |
-|---|---|---|
-| `owner_kind` | `varchar(16) not null` | mirrors the template's owner |
-| `org_id` | `uuid null` → `organizations.id` CASCADE | |
-| `template_id` | `uuid not null` → `feedback_templates.id` CASCADE | |
-| `version` | `int not null` | |
-| `field_selection` | `jsonb not null` | the domains it keeps, or paths into the rubric's derived schema — a selection over a document, not a relation, which is why it is JSON. Validated against the rubric's own domains when written |
-| `status`, `published_at/by`, `archived_at/by` | as above | |
-
-UNIQUE `(template_id, version)`; CHECK `ck_feedback_template_versions_owner_matches_org`.
-`rubrics.domain.NON_SCORING_SECTIONS = {actionable_feedback, clinical_analysis, overall_priorities}`
-are always kept by a narrowing: they are what the candidate reads.
+`feedback_templates`/`feedback_template_versions` (a narrowing of a rubric)
+were dropped 2026-09-24, migration `45481a44b73d`: authored but never
+mounted in `main.py`, never called by any live route, service or frontend
+caller, confirmed by a whole-tree grep before deletion. A sitting's rubric
+comes via its programme instead — see `attempts.rubric_version_id` below.
 
 ## station_sets — 2 tables
 
@@ -551,7 +532,6 @@ recording.
 | `exam_id` | `uuid not null` → `exams.id` RESTRICT | |
 | `station_version_id` | `uuid null` → `station_versions.id` RESTRICT | indexed |
 | `slot_id` | `uuid null` → `slots.id` **RESTRICT** | |
-| `feedback_template_version_id` | `uuid null` → `feedback_template_versions.id` RESTRICT | what narrowed this attempt's marking, if a sitting bound one. `attempts` is below `sittings` in the layers and cannot walk up to find it, so the binding travels on the attempt — without it the narrowing was silently ignored |
 | `set_entry_id` | `uuid null` → `station_set_entries.id` **RESTRICT** | |
 | `peer_session_id` | `uuid null` → `practice_sessions.id` **RESTRICT** | |
 | `source_attempt_id` | `uuid null` → `attempts.id` SET NULL | what a `debrief` is about |
@@ -871,6 +851,7 @@ people before they have ever signed in — `user_id` is filled when they do.
 | `first_name` / `last_name` | `varchar(100) null` | |
 | `cohort_id` | `uuid null` → `cohorts.id` SET NULL | |
 | `access_revoked_at` | `timestamptz null` | raises `TraineeRevoked` |
+| `anonymised_at` | `timestamptz null` | GDPR erasure for a row `DELETE` refuses (`trainee_in_use`) — `service_edit.anonymise_trainee` scrubs `email`/`first_name`/`last_name` and sets this, keeping any decision on record |
 
 UNIQUE `(org_id, email)`.
 
@@ -1108,7 +1089,7 @@ consultation, feedback — driven by the circuit clock), `phase_ends_at timestam
 `doctor_joined_at` / `patient_joined_at` / `preparation_started_at timestamptz null`
 (per-participant timing), `started_at` / `ended_at timestamptz null`,
 `end_reason varchar(32) null`, `feedback_rating int null`,
-`feedback_comment varchar(2000) null`.
+`feedback_comment varchar(2000) null`, `would_practice_again bool null`.
 
 ### `practice_history`
 What part someone last played, and how often they have practised. A row rather than

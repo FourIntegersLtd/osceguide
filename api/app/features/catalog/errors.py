@@ -45,6 +45,22 @@ class ExamNotPublishable(Conflict):
     default_message = "That exam cannot be published as it stands"
 
 
+class ExamInUse(Conflict):
+    """Refused by the database, not by a pre-check this slice ran itself.
+
+    `catalog` sits near the bottom of the layer contract — nearly every other
+    slice imports it, not the reverse — so it cannot ask "does anything
+    reference this exam" the way `station_sets` asks about its own attempts.
+    A `RESTRICT` foreign key somewhere above answers instead: retire an exam
+    with real history, this is what the delete becomes.
+    """
+
+    code = "exam_in_use"
+    default_message = (
+        "This exam has stations, sittings or attempts recorded against it. Retire it instead of deleting it."
+    )
+
+
 class RubricVersionNotFound(NotFound):
     """Mirrors `rubrics.errors.RubricVersionNotFound`.
 

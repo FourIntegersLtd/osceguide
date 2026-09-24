@@ -340,3 +340,57 @@ async def test_a_consumer_cannot_name_a_schools_exam(client: AsyncClient, make_a
     )
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_exam"
+
+
+async def test_a_school_deletes_a_draft_it_changed_its_mind_about(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Nothing was ever built on it, so there is nothing for `retire` to protect."""
+    org_id = await seed_org(client, make_actor, "ashford")
+    token = await org_admin(make_actor, org_id, "ashford")
+    exam = await author_exam(client, token, "ashford", code="draft-only", publish=False)
+
+    response = await client.delete(f"/api/v1/orgs/ashford/exams/{exam['id']}", headers=bearer(token))
+    assert response.status_code == 204
+
+    gone = await client.patch(
+        f"/api/v1/orgs/ashford/exams/{exam['id']}", json={"name": "x"}, headers=bearer(token)
+    )
+    assert gone.status_code == 404
+    assert gone.json()["code"] == "unknown_exam"
+
+
+async def test_deleting_an_exam_with_a_station_on_it_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`catalog` cannot check every table that names an exam itself (it sits
+    below almost everything in the layer contract), so the database's own
+    `RESTRICT` is the refusal — mapped to a clean 409, not a raw 500."""
+    org_id = await seed_org(client, make_actor, "ashford")
+    token = await org_admin(make_actor, org_id, "ashford")
+    exam = await author_exam(client, token, "ashford", code="live-one")
+    station = await client.post(
+        "/api/v1/orgs/ashford/stations",
+        json={
+            "title": "S1",
+            "exam_code": "live-one",
+            "content": {"patient_information": {"persona": "anxious"}},
+        },
+        headers=bearer(token),
+    )
+    assert station.status_code == 201, station.text
+
+    response = await client.delete(f"/api/v1/orgs/ashford/exams/{exam['id']}", headers=bearer(token))
+    assert response.status_code == 409
+    assert response.json()["code"] == "exam_in_use"
+
+
+async def test_a_school_cannot_delete_the_platforms_exam(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The platform's own catalogue answers the same `unknown_exam` a stranger's
+    exam id would — an institution must not be able to tell the two apart."""
+    org_id = await seed_org(client, make_actor, "ashford")
+    token = await org_admin(make_actor, org_id, "ashford")
+    root = await make_actor("root2@osceguide.com", platform_admin=True)
+    platform_exam = await create_exam(client, root, code="plab2")
+
+    response = await client.delete(
+        f"/api/v1/orgs/ashford/exams/{platform_exam['id']}", headers=bearer(token)
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "unknown_exam"

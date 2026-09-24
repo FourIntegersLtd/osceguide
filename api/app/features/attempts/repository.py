@@ -8,6 +8,7 @@ worker-facing reads take an attempt id because that is all a worker is given.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -28,7 +29,6 @@ async def create_attempt(
     org_id: uuid.UUID | None = None,
     station_version_id: uuid.UUID | None = None,
     slot_id: uuid.UUID | None = None,
-    feedback_template_version_id: uuid.UUID | None = None,
     set_entry_id: uuid.UUID | None = None,
     peer_session_id: uuid.UUID | None = None,
     source_attempt_id: uuid.UUID | None = None,
@@ -41,7 +41,6 @@ async def create_attempt(
         org_id=org_id,
         station_version_id=station_version_id,
         slot_id=slot_id,
-        feedback_template_version_id=feedback_template_version_id,
         set_entry_id=set_entry_id,
         peer_session_id=peer_session_id,
         source_attempt_id=source_attempt_id,
@@ -106,6 +105,13 @@ async def latest_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -
         .limit(1)
     )
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    if not entry_ids:
+        return set()
+    stmt = select(Attempt.set_entry_id).where(Attempt.set_entry_id.in_(list(entry_ids))).distinct()
+    return {row for row in (await session.execute(stmt)).scalars() if row is not None}
 
 
 async def list_for_user(
