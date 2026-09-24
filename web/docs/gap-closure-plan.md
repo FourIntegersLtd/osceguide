@@ -101,39 +101,67 @@ Each bundle is one coherent platform-api PR (endpoint + tests + migration)
 plus its platform-web wiring, closing the matching `port-gaps.md` rows
 (annotate, don't delete).
 
-**B4 · Identity & account** — `PATCH /me` (name); a `preferences` object and
-write (AI consent, extra reading time, colleague-waiting email, Athena
-onboarding replay); soft account deletion.
+**B4 · Identity & account** — ~~`PATCH /me` (name)~~ **served and wired**
+(`ProfilePanel`); ~~extra reading time~~ **served and wired** (`PreferencesPanel`
+writes `extra_reading_percent`). Still open: a `preferences` object for AI
+training consent / colleague-waiting email / Athena onboarding replay; soft
+account deletion.
 
-**B5 · Community & media** — `author_name` on `PostRead` (most visible gap in
-the register); `GET /community/questions/{id}`; `GET /community/replies?
-author=me`; `mine` filter on the feed; `q` + `exam_code` on `GET /media`;
-specialty/tag column; `updated_at`; `total_count`; search excerpts; media
-asset upload (pairs with the object-store decision).
+**B5 · Community & media** — ~~`author_name` on `PostRead`~~,
+~~`GET /community/questions/{id}`~~, ~~`GET /community/replies?author=me`~~,
+~~`mine` filter on the feed~~ — **all four served and wired** (2026-09-23).
+Still open: `q` + `exam_code` on `GET /media`; specialty/tag column;
+`updated_at`; `total_count`; search excerpts; media asset upload (pairs with the
+object-store decision).
 
-**B6 · Mocks & attempts** — `PATCH`/`DELETE /me/station-sets/{id}`;
-`GET /attempts/{id}/debrief` + `POST /attempts/{id}/debriefs` (library
-debrief, examiner read, cheaper debrief page); a `coverage` event on
-`GET /attempts/{id}/stream` (restore LiveCoveragePanel/Feed); persist station
-flags; widen attempt result/transcript visibility to org members (GP lead).
+**B6 · Mocks & attempts** — ~~persist station flags~~ **done 2026-09-23** (the
+`station_flags` table, `/me/station-flags`, `/platform/station-flags`, the
+consumer "Flagged Stations" tab and the `/staff/station-flags` queue).
+~~`PATCH`/`DELETE /me/station-sets/{id}`~~ **done 2026-09-23** —
+`SessionCardActions` puts the pencil and bin on each card in `MockSessions`.
+Still open: `GET /attempts/{id}/debrief` +
+`POST /attempts/{id}/debriefs`; a `coverage` event on
+`GET /attempts/{id}/stream`; widening attempt result/transcript visibility —
+**the transcript/result half is done** (named circuit supervisor now reads
+them, and `AttemptTranscript.tsx` on the examiner's `SlotReview` screen is the
+caller); the GP-lead-across-org half is a decision, not a gap.
 
-**B7 · Roster & team** — email join on `GET /memberships`;
-`POST /memberships/{id}/resend-invite`; `PATCH`/`DELETE` trainee-groups and
-cohorts; `PATCH /trainees/{id}`; `GET /trainee-groups/{id}/members`;
-`POST /memberships/bulk`.
+**B7 · Roster & team** — the invitation re-send (`POST /api/v1/orgs/{org_slug}/trainees/{trainee_id}/resend-invitation`),
+trainee-group and cohort `PATCH`/`DELETE`, `PATCH /api/v1/orgs/{org_slug}/trainees/{trainee_id}`,
+and `POST /api/v1/orgs/{org_slug}/memberships/bulk` — **served and wired
+2026-09-23**: `TraineeEditDialog`, `TraineeRowActions` (resend),
+`GroupEditDialogs`, `CohortsPanel` + `CohortEditDialogs`, and `BulkInviteDialog`
+with `team/csv.ts`. Still open: email join on `GET
+/api/v1/orgs/{org_slug}/memberships`; a `GET …/trainee-groups/{group_id}/members`
+(the path is `PUT`-only today, so the group editor still resolves membership
+through `POST /roster/resolve`).
 
-**B8 · Results, reviews & circuits** — `GET /me/sittings/{id}/circuit-review`
-(largest thing J14 could not port); finalize-state read on circuit review;
-`GET .../slots/{id}/reviews/mine`; `revision` on `SaveDecision`; bulk release
-+ notify candidates; cohort export.
+**B8 · Results, reviews & circuits** — ~~`revision` on `SaveDecision`~~
+**done 2026-09-23** (`expected_revision` + `decision_revised` 409). ~~bulk
+release + notify candidates~~ — **done, but read it correctly:** there is no
+bulk *endpoint*. `Results.tsx` fans the per-candidate
+`POST …/decision/release` out over the signed-off rows and reports each
+candidate's refusal individually, and the release itself enqueues the
+notification unconditionally (`results/service.py`). A server route would be a
+different, transactional thing and nobody has asked for one. Still open:
+`GET /me/sittings/{id}/circuit-review`;
+finalize-state read on circuit review; `GET .../slots/{id}/reviews/mine`;
+~~cohort export~~ **served and wired** (`GET …/sittings/{id}/readout`,
+exported by `results/ReadoutExport.tsx`).
 
-**B9 · Authoring & platform console** — platform-scope brief `PATCH` +
-version `DELETE`; `GET .../stations/{id}` and `.../versions`; `q`/exam
-filters; `cursor` on template listings; station-usage count; library-import
-copy endpoint; contract dates + parent on `OrganizationRead`;
-`is_platform_admin` on `UserSummary`; directory search params; moderation
-queue endpoint everywhere; audit actor/action filters; referral per-referee
-history + admin console under `/staff`.
+**B9 · Authoring & platform console** — ~~`GET .../stations/{id}` and
+`.../versions`~~, ~~`q`/exam filters~~ (`?search=` on the library), ~~contract
+dates + parent on `OrganizationRead`~~ (contract dates served; `parent` still
+absent), ~~`is_platform_admin` on `UserSummary`~~, ~~audit actor/action filters~~
+(`GET /platform/audit` takes `actor_email`/`action`/`org_slug`), ~~moderation
+queue endpoint everywhere~~ (`/platform/moderation/posts` served and mounted at
+`/staff/moderation`) — **served 2026-09-23**. Still open: platform-scope brief
+`PATCH` + version `DELETE` (product decision D4); `cursor` on template listings;
+station-usage count; ~~library-import copy endpoint~~ (**not a gap** — the
+retiring modal never copied: `StationDetailPanel` has no write, and an org
+already adopts by reference through `visible_to` plus the library picker inside
+`CircuitBuilder`); directory search
+params; referral per-referee history + admin console under `/staff`.
 
 ## Phase 4 — Product decisions (unblock in parallel)
 

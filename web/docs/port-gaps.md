@@ -86,16 +86,16 @@ below.
 | What | Where | Today |
 |---|---|---|
 | Landing statistics band | `domains/marketing/Numbers.tsx` | **Wired 2026-09-21; stopgap closed.** `fetchLandingStats` reads `GET /site/statistics` through `domains/marketing/api.ts`, and the band and the hero's social proof render again. The band's fourth card ("AI feedback reports generated") read the retiring backend's `all_feedback`; the consultation stand-in that replaced it is gone — `SiteStatistics` now carries a dedicated `feedback` counter (evaluated attempts) and the card shows its own number. |
-| Achievements | `capabilities/account/Achievements.tsx` | **Ported as its own empty state, and it asks for nothing.** The old screen counted station badges from `user.station_progress` and computed streaks in the browser from the transcript list; `platform-api` has neither — progress is attempts, and a streak exists nowhere on the backend. The component takes the four numbers as props and defaults them to zero, so the day something serves them it is a one-line change at the call site rather than a port. It has no route: see "Route files the account capability still needs". |
+| Achievements | `capabilities/account/Achievements.tsx` | **Routed, and it asks for nothing. [2026-09-24: reachable from navigation.]** `app/app/[workspace]/achievements/page.tsx` renders it (the old `/achievements`). An `achievementsCapability` (path `/achievements`, icon `LuTrophy`, section `general`) is registered on `train` and shows in the sidebar alongside Settings. What is still true is the data gap: the old screen counted station badges from `user.station_progress` and computed streaks in the browser from the transcript list, and `platform-api` has neither — progress is attempts, and a streak exists nowhere on the backend. The component takes the four numbers as props and defaults them to zero, so the day something serves them it is a one-line change at the call site rather than a port. |
 | Messages / contact | `capabilities/help/Messages.tsx` | **Ported 2026-09-21.** The old `/messages` screen — "Contact & Feedback", two tabs — is a straight port over `POST /site/messages` (`kind: "contact"`), at `/app/<workspace>/messages` through its own `messages` capability, which puts "Contact & Feedback" back in the consumer sidebar ahead of Community; the redirect table already sent `/messages` there. One adaptation: the old screen widened when the help dock expanded, read off a context the shell owned; the shells here keep that state private, so the width is the fixed `max-w-2xl` every sibling port settled on. |
 | Product feedback form | `domains/marketing/sections/LandingFeedbackSection.tsx` | **Wired 2026-09-21.** The "Help Us Improve" section is back in `landingSections` with the retiring landing's two-tab widget ("Harsh Truth" / "Feature Wishlist") ported as it was, posting `kind: "product_feedback"` to `POST /site/messages`. The signed-in product-feedback form (stars, testimonial question) is ported beside the contact tab in `capabilities/help/ProductFeedbackForm.tsx`. |
 | Push notifications | not ported | `web-push` is deliberately not a dependency here yet. |
-| SSO configuration | `capabilities/account/Login.tsx` | **Discovery wired 2026-09-21.** The sign-in page asks `GET /auth/sso/sign-in?host=<this host>` on mount (`readSsoSignIn` in the account capability's `api.ts`); a host nobody has claimed answers 404 and the ordinary password form stands. On an answer the organisation's button renders with the backend's `sign_in_label`, and on `sso_only` the password form is not drawn — a display rule only, nothing refuses a password login. **The button is not a door**: `/auth/sso/login` does not exist (the sign-in half — who verifies the identity — is still open decision S-1), so clicking it says organisation sign-in is not available yet and points at support **[2026-09-23: the button is a door now.]** `POST /auth/sso/login` and `/auth/sso/callback` are served, and `startSsoSignIn`/`completeSsoSignIn` in the account capability's `api.ts` use them: the button redirects to the broker's URL and `app/(auth)/auth/sso/callback/page.tsx` posts the token it was handed and adopts the session. Decision S-1 is closed. The token is verified by the backend, never decoded here. |
+| SSO configuration | `capabilities/account/Login.tsx` | **Discovery wired 2026-09-21.** The sign-in page asks `GET /auth/sso/sign-in?host=<this host>` on mount (`readSsoSignIn` in the account capability's `api.ts`); a host nobody has claimed answers 404 and the ordinary password form stands. On an answer the organisation's button renders with the backend's `sign_in_label`, and on `sso_only` the password form is not drawn — a display rule only, nothing refuses a password login. **The button is not a door**: `/auth/sso/login` does not exist (the sign-in half — who verifies the identity — is still open decision S-1), so clicking it says organisation sign-in is not available yet and points at support **[2026-09-23: the button is a door now.]** `POST /auth/sso/login` and `/auth/sso/callback` are served, and `startSsoSignIn`/`completeSsoSignIn` in the account capability's `api.ts` use them: the button redirects to the broker's URL and `app/(auth)/auth/sso/callback/page.tsx` posts the token it was handed and adopts the session. Decision S-1 is closed. The token is verified by the backend, never decoded here. **[2026-09-24: admin config screen wired.]** `GET/PUT /platform/orgs/{slug}/sso` (`PlatformAdmin`-gated) now has a frontend caller: `SsoSection` composed into `OrganizationDetail.tsx`, reading and writing the provider, issuer, bindings, enabled/sso-only toggles and default exam code through `readSsoConfig`/`saveSsoConfig` in `domains/platform/api.ts`. |
 | Public user profiles | not ported | `/users/[userId]`. The old `b2c/components/shared/users` was not a public profile at all: it is an **administrator's** user list and user detail — plan editing, station-progress resetting, hard delete, filters by plan type. None of it is servable. See "The old `users/` folder" below. |
-| Blog authoring | not ported | Reading is `capabilities/media`; authoring has no endpoint. |
+| Blog authoring | `capabilities/staff-media/` | **Ported.** Reading is `capabilities/media`; authoring is the staff-media capability (`MediaNewScreen.tsx` + `createMedia`, which `POST`s the platform `/media` route). It is a staff surface, not a consumer one — a learner does not author library articles. |
 | Public blog listing | `domains/marketing/support/landingBlogs.ts` | **Wired 2026-09-21.** `GET /media` is public, so the rail asks again — signed-out visitors included — and links each card by the item's slug. |
-| Exam wishes | `capabilities/account/ExamWishes.tsx` | Ported, and nothing renders it. It was shown in the week of somebody's exam, and `UserRead` carries no `exam_date` — the same gap the dashboard countdown hits. |
-| Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | The old client read `accessibility.needs_extra_reading_time` off the user and extended the clock from inside the timer. No such field on `platform-api`. The timer takes the duration it is given; when the field exists, whoever creates the attempt applies it. |
+| Exam wishes | `capabilities/account/ExamWishes.tsx` | Ported, and nothing renders it — not for a missing field. `UserRead.exam_date` exists and `PATCH /api/v1/me` writes it (the Settings "Exam" tab does), and the dashboard countdown reads it; what is genuinely absent is the old component's mount point, a mount decision rather than a backend gap. |
+| Accessibility settings (extra reading time) | `foundation/ui/Timer.tsx` | **Served now.** The field exists — `UserRead.extra_reading_percent`, written by `PATCH /api/v1/me` on the Preferences tab — and the runner applies it to the person's own practice, not from inside the timer. It is deliberately *not* applied to a circuit's clock: an institution runs one clock for everybody on it, so an accommodation in an exam hall is made to the circuit timing by whoever runs it. |
 | Photo upload | `foundation/ui/PhotoUpload.tsx` | Posted to the old backend's `/api/upload_photos/{id}`. The component takes an `upload` function now, and nothing supplies one yet. |
 
 ## The station library
@@ -106,9 +106,9 @@ for. The first row used to be the biggest of them and is now served.
 | What | Where | Today |
 |---|---|---|
 | The candidate brief, patient information and management plan | `capabilities/attempt-runner/material/` | **Served.** `LibraryStationRead` still carries no `content` — the library is browsable by every signed-in user and the content is the brief and the marking guidance — but a candidate reads their own station through their *attempt*: `GET /attempts/{id}/brief` from the moment it is created, and `GET /attempts/{id}/review` once the consultation is over. How the patient is played (persona, opening line, expanded history) and the examiner's context never leave the server at all. |
-| `GET /api/v1/stations/{station_id}` | `findLibraryStation` in `capabilities/stations/api.ts` | There is no per-station read for a learner — every one of them is an authoring route under `/orgs/{slug}/…` or `/platform/…`, gated on permissions a candidate does not have. A station opened by link is found by walking the browse list, bounded at twenty pages. It works and it is cheap, because a row is a title and two ids, but a shared link to a station beyond that is a "we could not find that station". |
-| Searching the library | `useStationLibrary.ts` | `browse_library` takes `exam_code`, `cursor` and `limit`. The search box filters what has been paged in, which is why "Load more" stays offered while a term is typed. A `q` on the endpoint would make it a real search. |
-| Flagging a station | `StationHeader` + `POST /me/station-flags` | The runner shows the flag control again. The route accepts a report today; persisting flags for the content team and returning them on `/me` is still open. |
+| `GET /api/v1/stations/{station_id}` | `readLibraryStation` in `capabilities/stations/api.ts` | **Served and wired 2026-09-23.** One request returns the same row the browse page gives — a title and the two ids needed to bind an attempt — and none of the document inside it, because browsing the library is still not reading the answers. The old page-walk (`findLibraryStation`, twenty pages of a hundred rows, which answered "not found" past whatever it had covered) is gone, so a shared link reaches any station the caller may read. A withdrawn or unreadable station answers `station_not_found` and the screens show their existing "we could not find that station"; other refusals still raise. |
+| Searching the library | `useStationLibrary.ts` | **Server-side now.** `?search=` matches a title fragment in SQL, so "nothing matches" means the library rather than the part that arrived first. The page refetches from the top under a new term (a cursor into the unfiltered list is not a cursor into the filtered one), and the term is committed on submit — one request per thing somebody meant, not one per letter — as the retiring client and `capabilities/media` both do. |
+| Flagging a station | `StationHeader` + `POST /me/station-flags` | **Landed 2026-09-23.** A `station_flags` row per (station, reporter) with `status`, and the route moved out of `identity` — where it discarded the body and said "Persistence is TODO" — into `stations`. `/staff/station-flags` is the content team's queue (`GET /platform/station-flags`, `PATCH .../{id}` to answer or reopen), and the reporter reads their own back from `GET /me/station-flags`. Two things the retiring client got wrong are deliberately not repeated: a repeat tap is the same report rather than a 400, and the title comes from the server rather than from whatever station list the browser happened to have fetched. |
 | Attempts used, out of the exam's limit | **Served for a session's station.** | `EntryRead.attempts` and `ExamRead.station_attempt_limit` are the pill's two halves, and the station screen shows them. Free practice from the library has no counter, because the limit is counted per set entry and a library station is not one. |
 | Live marking during a consultation | not ported | `live/LiveCoveragePanel.tsx` and `LiveCoverageFeed.tsx` subscribed to `/api/live-coverage-stream` and showed competencies as they were covered. `GET /api/v1/attempts/{id}/stream` pushes `AttemptRead` snapshots until the attempt is marked — the right stream, without the coverage frames. Adding a `coverage` event to it is what this needs; the feed is worth bringing back, because it is the one thing in the old runner people asked for by name. |
 | Station photos on legacy hosts | `material/StationBrief.tsx` | Rendered with a plain `<img>` rather than `next/image`. The URLs are absolute, on hosts this app does not configure, and an unconfigured host is a build-time error in `next/image` rather than a slow picture. Adding `remotePatterns` for the image hosts would let it back. |
@@ -140,8 +140,8 @@ where that row carries less than the four old collections did.
 | A total, for paging | `PagedGrid` in `MediaLibrary.tsx` | Cursor pagination with no `total_count`, so there is no page count until every page has been walked. The library walks the cursor (six pages of a hundred, which the A-to-Z needs anyway) and pages in the browser. A library past six hundred items needs a real page. |
 | `updated_at` on an item | `ArticleView.tsx` | The old article header printed "Published … · Updated …". `MediaRead` carries `published_at` only, so the Updated line is gone. |
 | Audio for an episode | `EpisodeView.tsx`, the Listen button on a summary | A `podcast` item plays only what `content.audio_url` (or `content.podcast_url` on a summary) points at, and nothing uploads one — there is no media asset endpoint. The seeded episode has no audio and the player says so. |
-| The upgrade path on a locked read | not ported | The old A-to-Z answered `403` with `show_upgrade_modal` for an unsubscribed reader and offered "Upgrade to Pro" in place of the list. `GET /api/v1/media` gates nothing today (its own tests pin that search is deliberately unfiltered by what a reader has bought), and `/billing/checkout` is unwired — see J8. When the read becomes entitlement-gated, this screen needs that prompt back. |
-| Blog authoring, and a public listing | not ported | Covered above: reading is this capability, authoring has no endpoint, and an anonymous read would also bring back the landing's blog rail. |
+| The upgrade path on a locked read | `LockedMediaGate.tsx` | **Ported.** A `locked: true` read renders "Upgrade to read this" with the item's title and exam, and a **View plans** link into `/settings?tab=payments`; `POST /billing/checkout` is wired through `PlanPicker`, and `PaymentReturn` handles the two ways Stripe sends somebody back. What is *not* ported is the old list-level behaviour: `GET /api/v1/media` still lists everything to everybody (its own tests pin that search is deliberately unfiltered by what a reader has bought), so the gate is on the read rather than on the row. |
+| Blog authoring, and a public listing | `capabilities/staff-media/`, `domains/marketing/support/landingBlogs.ts` | **Both halves landed** — staff authoring (`MediaNewScreen` + `createMedia`) and the public/anonymous read that brings back the landing's blog rail. See "Blog authoring" and "Public blog listing" in the table above; this row is kept only to cross-reference them. |
 
 Two things from the old folders are deliberately elsewhere. `shared/media/` is
 `MicrophoneCheck` — a pre-flight for the consultation runner, not study
@@ -158,10 +158,10 @@ something `platform-api` does not.
 
 | What | Where | Today |
 |---|---|---|
-| A display name on a post | `posts.tsx`, `authorLabel` | `PostRead` carries `author_id` and nothing else, so only the viewer's own posts can be bylined. A stranger reads as "@a colleague" where the old screens read "@somebody". One `author_name` on `PostRead` fixes every screen here at once — it is the single most visible gap in this capability. |
-| `GET /community/questions/{id}` | `QuestionDetail.tsx` | There is no read for one question; only the paged list and the replies. A thread is found in the page the feed already serves, so a question older than the first hundred opens as "Question not found." The same shape as `findLibraryStation`, and the same fix. |
-| Questions I asked | `MyQuestions.tsx` | No `mine` or `author_id` filter on the feed, so the tab narrows the first page (100) to the viewer. Bounded, and therefore honest, but somebody with a long history sees only their recent questions. |
-| Answers I wrote | `MyAnswers.tsx` | Nothing lists one person's replies — replies are read per question, so assembling the tab means a request per question in the feed. The screen keeps its empty state rather than being built on a hundred requests. A `GET /community/replies?author=me` is the whole of what it needs. |
+| A display name on a post | `posts.tsx`, `authorLabel` | **Served.** `PostRead.author_name` is joined server-side (a page at a time, not once per row) and `authorLabel` reads it, so a stranger's question is bylined rather than "@a colleague". |
+| `GET /community/questions/{id}` | `QuestionDetail.tsx` | **Served.** One question reads one request, so a thread older than the first page of the feed opens. The station library got the same treatment on 2026-09-23 — `readLibraryStation` replaced its page-walk. |
+| Questions I asked | `MyQuestions.tsx` | **Served.** `GET /community/questions?mine=true` filters in SQL, so the tab is a real listing rather than "the first hundred questions, minus the ones that were not mine". |
+| Answers I wrote | `MyAnswers.tsx` | **Served.** `GET /community/replies?author=me` is the whole of what it needed, and the tab is a cursor-paged read of it instead of a request per question. |
 | Tags on a question | not ported | The old composer offered `MEDICAL_SPECIALTIES_CATEGORIES` as chips and the cards showed them back. `posts` has no tags. `exam_code` is the nearest thing the table has and `PostRead` does not return it, so tagging would write something nobody could read. |
 | Images on a post | not ported | The old question, reply and answer forms all carried an `images` array, always posted empty because the upload endpoint went with the retiring backend (see *Photo upload*). Nothing is lost that was working. |
 
@@ -264,12 +264,12 @@ for, and three places the two systems disagree about what a session is.
 
 | What | Where | Today |
 |---|---|---|
-| Deleting a session | `domains/train/mocks/MockSessions.tsx` | The old card had a bin next to its title (`DELETE /api/delete_mock/{mock}/{user}`). There is no `DELETE /me/station-sets/{id}`, so the card has no bin. A session is cheap and locks rather than disappearing when access lapses, so this is the least painful of the six — but somebody with fifty sessions has no way to tidy them, and `scripts/smoke.mjs` leaves a "Smoke session" behind on every run for the same reason. |
-| Editing a session | not ported | `UpdateMock.tsx` renamed a session and added or removed its stations (`PUT /api/update_mock/{id}`). `/me/station-sets` serves `GET` and `POST` and nothing else, so a session is immutable once created and the pencil is gone from the card with the bin. The screen is a straight port the day a `PATCH` exists. |
-| Listing a station's previous attempts | `domains/train/mocks/MockStationsTable.tsx` | The expander under each station showed "All previous Transcripts (3)" and "All previous Feedbacks (2)", linking to `/transcripts` and `/feedbacks` filtered by station. `EntryRead` carries a count of attempts and the date of the last one, but no attempt **ids**, and there is no `GET /me/attempts`, so there is nothing to count and nothing to link to. The row still opens and still shows the two empty states. A listing filtered by set entry is what this needs. |
-| "Review Last Attempt" | `domains/train/mocks/MockStationsTable.tsx` | Same cause: no attempt id to review. The act it stood for — go back over the station you sat — is served by `POST /me/station-sets/{set}/entries/{entry}/debriefs`, so the button is wired to that and reads "Talk Through Last Attempt". When an attempt listing exists, the old link belongs beside it rather than instead of it. |
+| Deleting a session | `domains/train/mocks/MockSessions.tsx` | **Served 2026-09-23:** `DELETE /api/v1/me/station-sets/{set_id}` (204), so the old card's bin has an endpoint to call. A set that has been sat in answers 409 `set_has_attempts` rather than erasing the recordings with it — legacy deleted the mock document and left the transcripts behind, which is the state nobody can explain afterwards. |
+| Editing a session | **Backend served 2026-09-23** | `UpdateMock.tsx` renamed a session and added or removed its stations (`PUT /api/update_mock/{id}`). `PATCH /api/v1/me/station-sets/{set_id}` renames it and `DELETE …/{set_id}` throws one away (204; 409 `set_has_attempts` once it has been sat in). The screen is being wired to the rename this round. What stays deliberately unported is **replacing the station list**: set entries carry the attempt counters attempts point at, so legacy's swap-then-lose-your-progress edit was the data-losing half. |
+| Listing a station's previous attempts | `domains/train/mocks/MockStationsTable.tsx` | **Wired.** `GET /api/v1/me/attempts` takes `station_version_id` and `set_entry_id`, and the expander under each station now counts that entry's transcripts and markings and links to them — the two links the retiring client had, over a real listing instead of a hardcoded "No transcripts yet". |
+| "Review Last Attempt" | `domains/train/mocks/MockStationsTable.tsx` | **Wired.** The review link goes to the last attempt's feedback (`?action=review&tab=feedback&attempt=…`) once an attempt id exists for the entry, and the "Talk Through Last Attempt" debrief button (`POST /me/station-sets/{set}/entries/{entry}/debriefs`) sits beside it rather than instead of it, which is what the old screen had. |
 | "Feedback" badge on a session card | `domains/train/mocks/model.ts` | The old list read a `has_feedback` the retiring backend wrote onto the mock, and used it to turn "Start" into "Review". `SetRead` has no such field. `sessionAction` branches on `locked` and `completed_at` instead, which agrees with the old behaviour everywhere except a session whose marking is still running — that reads "Start" for a few minutes longer than it used to. |
-| The exam-date prompt | not ported | `CustomizeMock` opened a modal asking for the candidate's exam date on first visit. `UserRead` carries no `exam_date` — the same gap the dashboard's countdown hits — so the modal is not there. |
+| The exam-date prompt | `CustomizeMock`'s first-visit modal | The field exists — `UserRead.exam_date`, written by `PATCH /api/v1/me` and read by the dashboard countdown and `ExamWishes`. What is not ported is that specific interrupt on the practice form; the date is set once, on Settings, rather than asked again where it is not needed. |
 
 ### Shape disagreements
 
@@ -299,9 +299,11 @@ is a state of the session — `set.completed_at` — rather than a URL you could
 reload into congratulations for work finished last week. `update` has no
 backend (above) and needs no route.
 
-`MockCore`'s other two tabs are somebody else's work rather than gaps:
-"Consultation Tips" is the help capability's content and "Flagged Stations"
-belongs with the station library, which has its own flagging gap above.
+Of the retiring client's four tabs, three are here in the order it had them —
+Setup, Combine Stations, Flagged Stations — plus "Your Sessions", which was a
+separate route there. `FlaggedStations.tsx` mounted on 2026-09-23 with the same
+two columns and the same empty-state sentence. The one tab not ported is
+"Consultation Tips", which is the help capability's content and mounts there.
 
 ## Feedback, transcripts and debriefs
 
@@ -378,10 +380,10 @@ arms. Most of it is wired; these are the parts of the retiring screens that
 
 | What | The old screen | Today |
 |---|---|---|
-| Editing your own name | `settings/profile/Profile.tsx` had an editable username and an "Update Profile" button | `/api/v1/me` is **read-only** — there is no `PUT` or `PATCH`. The name and the email are rendered as disabled fields. A box that discards what you typed is worse than a box you cannot type in. |
+| Editing your own name | `capabilities/account/settings/ProfilePanel.tsx` | **Wired.** `PATCH /api/v1/me` exists (`identity/router_me.py`) and the panel writes the name through `updateMe`, then refreshes the session, because both nav footers print `session.user.name`. The email stays disabled: changing it is not a self-service act here. |
 | Deleting your own account | The "Danger zone" card, `DELETE /api/soft_delete_user/{email}` | No endpoint. The card is not ported; nothing on the screen implies you can leave. |
-| Preferences | `settings/preferences/SettingsPreferences.tsx` — AI training consent, extra reading time, "email me when a colleague is waiting", replaying the Athena onboarding | **None of these four fields exist on `platform-api`.** `UserRead` is id, email, name, `is_platform_admin`, `must_change_password` and memberships. The whole tab is left out rather than rendered with checkboxes that cannot save. It needs a `preferences` object on the user and a write for it. |
-| The Exam tab | `settings/exam/SettingsExam.tsx` — exam type and exam date | An account is not bound to one exam any more; entitlements carry exam codes and are shown on the Access tab. The exam **date** has no field (the same gap the dashboard countdown hits). |
+| Preferences | `settings/preferences/SettingsPreferences.tsx` — AI training consent, extra reading time, "email me when a colleague is waiting", replaying the Athena onboarding | **One of the four is served, and the tab is `PreferencesPanel.tsx`.** `PATCH /me` writes `extra_reading_percent` — a percentage rather than the old boolean, because a percentage says what was granted, and 25 is what a bare "yes" used to mean. The other three have nowhere to be stored on `platform-api` and are left out rather than rendered as checkboxes that cannot save. Analytics consent is a separate, client-side decision (`hasAnsweredAnalyticsConsent`, gating the tag) and is not the same field. |
+| The Exam tab | `settings/exam/SettingsExam.tsx` — exam type and exam date | **Both halves exist now**, in `ExamPanel.tsx`: `users.exam_date` and `users.exam_code` are columns, `PATCH /me` writes the date, and the dashboard countdown reads it. What changed shape is the type: an account is not bound to one exam, so the panel *shows* the chosen code and entitlements decide what may be opened — the switcher is on the Access tab, not a dropdown here. |
 | Bank details for referral payouts | `settings/referrals/user/BankDetails.tsx` (293 lines) | The growth slice tracks a code, a redemption count and pence earned. There is nowhere to store a sort code, and nothing pays anybody out. Not ported. |
 | Referral history per referee | `settings/referrals/user/ReferralHistory.tsx`, `ReferralDetail.tsx` | `GET /me/referrals` answers one `ReferralRead` — `{code, redeemed_count, earned_pence}` — with no per-referee rows, no join dates and no payout status. The screen shows the two totals it can prove. A listing endpoint would bring the table back unchanged. |
 | The admin referral console | `settings/referrals/admin/*` (665 lines) | Marking payouts paid across all users. No endpoint, and it belongs to the staff console (J15) rather than to an account capability, since it is about other people. |
@@ -445,7 +447,7 @@ Still not there, and recorded so it is not mistaken for dropped:
 |---|---|
 | Hard delete of an account, and the bulk delete (which the old list had disabled) | No delete; deactivation is the off switch. See "Deleting a tenant is gone" for the reason. |
 | The "completed" tick per station | No such flag; a station is done when an attempt is `evaluated`, which the row shows. |
-| Flagged stations | No `flagged_stations` on the platform — the same gap "Flagging a station" records above. |
+| Flagged stations | `station_flags` rows exist now and `/staff/station-flags` is the queue they feed. This screen does not read them per person yet — that is a `?reporter=` filter on the same route, not a missing fact. |
 | Referral code and earnings on the detail | `GET /me/referrals` is a person's own read; no console read of it. |
 | Terms-of-service agreement date | Not recorded on `platform-api`. |
 | The prev / next user pager | Fetched a thousand users to index into; not ported. |
@@ -495,13 +497,13 @@ runtime.
 
 | What | Where | Today |
 |---|---|---|
-| A station's version history | `sections/StationDetail.tsx` | There is no `GET …/stations/{id}/versions`, only the writes against one. `StationRead` carries the current version and its content, so the detail screen works on that version and holds whatever `POST …/versions` last returned. It cannot show a history, which is the one thing an author asks for before republishing. |
-| One station | `sections/StationsSection.tsx` | No `GET …/stations/{id}` either. The list row is the only source, so opening a station carries the row across rather than re-reading it. |
-| Searching or filtering stations | `sections/StationsSection.tsx` | `GET …/stations` takes `cursor` and `limit` and nothing else — no `q`, no exam filter. The old screen's search box is kept and filters the page already loaded (100 rows). Past that it silently searches less than everything, which is the gap. |
+| A station's version history | `sections/StationVersionHistory.tsx` | **Served and mounted 2026-09-23.** `GET /api/v1/stations/{id}/versions` answers every revision newest first, and the authoring detail screen opens it in a disclosure that reads lazily — first open costs a request, a closed panel costs nothing. Each row is a whole document (persona, examiner material, including drafts nobody settled on), which is why the endpoint answers staff only: an org's admin for their own station, a platform admin for the library. |
+| One station | `sections/StationsSection.tsx` | **Served.** `GET …/stations/{id}` now exists, so a station opened by link is read rather than carried across from whichever list page happened to hold it. |
+| Searching or filtering stations | `sections/StationsSection.tsx` | The **organisation's own** list (`GET /orgs/{org_slug}/stations`) still takes `cursor` and `limit` and nothing else — no `q`, no exam filter. Its search box therefore filters the page already loaded (100 rows); past that it silently searches less than everything. (The *library* route, `GET /stations`, took `?search=` on 2026-09-23 and matches in SQL — the gap is only on the org list.) |
 | Paging template listings | `api/templates.ts` | `GET …/station-templates` answers a `Page_…` with a `next_cursor` but accepts no `cursor` parameter, so only the first page is reachable. Feedback templates were removed from platform-api; examiner layout lives on `rubric_versions.marking_layout`. |
 | What a station is used by | `sections/StationsSection.tsx` | The old delete dialog counted the circuits and slots referencing a station and required a "delete anyway" tick. Nothing answers that question, so the version-level delete has no usage warning. |
 | Deleting an exam or a template | `sections/ExamsSection.tsx` | The partner's exam catalogue had a delete. Exams retire and templates only gain versions; neither has a `DELETE`. Retire is offered; delete is not. |
-| Importing from the OSCE Guide library | not ported | The institution's screen had "Import from OSCE Guide library", which copied a platform station into the organisation. Platform-owned rows already appear in an organisation's listing (`owner_kind`), but there is no endpoint that copies one, so the modal has no action to call. |
+| Importing from the OSCE Guide library | `CircuitBuilder.tsx` + `/app/[workspace]/stations` | **Not a gap — there was never a copy to port.** Re-checked in the retiring client: `StationLibraryModal` → `OSCEGuideStationLibraryTable` → `StationDetailPanel` is a *read-only* preview (its Action column opens a detail panel; no POST, no add, no import call anywhere in `b2b/lib/stations/`), so the old modal never copied anything either. Here a library station is adopted by **reference**, which is what the rows already do: `core.ownership.visible_to` gives an organisation "its own, plus the platform library", and `StationLibrary` — mounted both at `/app/[workspace]/stations` and inside `CircuitBuilder` — lets an admin put a library station straight onto a circuit. A copy would go stale the moment the platform fixed the original, which is the outcome an "import" was ever meant to avoid. |
 
 ### No backend at all
 
@@ -633,14 +635,16 @@ gone, which is the only way the field can be null.
 
 The platform splits what the old client held in one free-text `cohort` string:
 a **cohort** is an intake a trainee belongs to, a **group** is a list you put on
-a circuit. That is better, and it costs four operations the old screen had:
+a circuit. That is better, and for a while it cost five operations the old
+screen had. All five are wired as of 2026-09-23:
 
 | What the old screen did | Here |
 |---|---|
-| Rename a group (and rewrite every trainee's label to match) | No `PATCH /trainee-groups/{id}`. A group is created and populated; the name is fixed. |
-| Delete a group | No `DELETE`. |
-| Change a trainee's cohort after they are added, or move a selection into a group in bulk | No `PATCH /trainees/{id}`. A cohort is set when the trainee is created; group membership is edited through `PUT /trainee-groups/{id}/members`, which is the whole list at once. |
-| Rename, archive or delete a cohort | Only `GET` and `POST` exist. |
+| Rename a group (and rewrite every trainee's label to match) | **Wired 2026-09-23:** `RenameGroupDialog` on each row of `GroupsPanel` calls `PATCH /orgs/{org_slug}/trainee-groups/{group_id}` (409 `group_exists` onto a taken label; membership is kept). The old rewrite-every-label step is gone because membership is a table now, not a string on each trainee. |
+| Delete a group | **Wired:** `DeleteGroupDialog` → `DELETE …/trainee-groups/{group_id}` (204), refused with 409 `group_not_empty` while it holds members, and the dialog stays open with where to go instead — deliberately not legacy, which deleted a label a roster still pointed at. |
+| Change a trainee's cohort after they are added, or move a selection into a group in bulk | **Wired:** `TraineeEditDialog` (from the "Edit" action on each `TraineesPanel` row) calls `PATCH /orgs/{org_slug}/trainees/{trainee_id}` — absent-means-unchanged, email shown read-only with the reason, and the legacy "other cohort not in the list" free text deliberately not ported (this backend needs an existing row). Moving a *selection* into a group in bulk remains `PUT /trainee-groups/{id}/members`, which is the whole list at once. |
+| Rename, archive or delete a cohort | **Wired:** `CohortsPanel` (split out of `GroupsPanel` for the file cap) with `CohortEditDialogs` → `PATCH …/cohorts/{cohort_id}` (409 `cohort_exists`) and `DELETE …/cohorts/{cohort_id}` (409 `cohort_in_use`, naming where to move the trainees). Archive is still absent — nothing on the platform reads `cohorts.status`, so it would be a settable field with no effect, and stays a product decision. |
+| Re-send an invitation | **Wired:** the "Resend invitation" action in `TraineeRowActions` calls `POST …/trainees/{trainee_id}/resend-invitation`. `TraineeRead` carries no invitation field (an invitation is a row on the *account*, and `roster` never reads `identity`), so the button is offered on active rows and the backend's `invitation_not_pending` is what retires it into a disabled "Already joined"; a never-linked migrated row (`user_id` null) reads "Send invitation", which is what the backend does with it. |
 
 There is also **no endpoint that lists a group's members** — `GroupRead` carries
 a count and nothing else. The group editor reads membership with
@@ -650,13 +654,22 @@ circuit builder would get. It works and it is honest, but a
 
 The CSV import accepts a `cohort` column and matches it to an existing cohort by
 name. An unrecognised name is reported *before* the upload and those rows import
-with no cohort, because there is no way to set one afterwards.
+with no cohort; since 2026-09-23 one can be set afterwards through
+`PATCH /orgs/{org_slug}/trainees/{trainee_id}`, so a mistyped row is corrected
+rather than re-imported.
 
-### Staff cannot be imported from a spreadsheet
+### Importing staff from a spreadsheet
 
-`POST /trainees/bulk` exists; there is no equivalent for memberships, so the old
-import's "Trainees or Staff?" step is now trainees only. Staff go in one at a
-time.
+`POST /trainees/bulk` long had no equivalent for memberships, so the old
+import's "Trainees or Staff?" step was trainees only. **Closed 2026-09-23**,
+both halves: `POST /api/v1/orgs/{org_slug}/memberships/bulk` is served (201
+`BulkMembershipsResult` of `created`/`skipped`, cap 500, an already-seated
+address reported in `skipped` rather than fatal), placed in `tenancy` because
+staff here are memberships and `roster` owns no staff table; and
+`BulkInviteDialog.tsx` opens from the "Import a spreadsheet" card in
+`InvitePanel.tsx` and parses the sheet through `team/csv.ts` — the browser parses
+and posts rows exactly like the trainee import, so the legacy role column is
+unchanged. `team/csv.test.ts` covers the parser, the role vocabulary and the cap.
 
 ### Exam access had no screen at all
 
@@ -688,35 +701,46 @@ examination from a browser. Most of what is not here is not missing — it is
 something the backend now does, or deliberately refuses. Both kinds are below,
 because a reader comparing the two screens will notice either way.
 
-### No microphone, no camera, no video tiles — and that is the design
+### Microphone, camera and video tiles — training mode only, since 2026-09-24
+
+**[2026-09-24: served for training circuits. Exam circuits keep the
+subscribe-only guarantee below unchanged — see `parity-fix-plan.md` §8,
+Task 1.]**
 
 The retiring runner gave a supervisor a full LiveKit room: a tile grid, a
 camera, and a microphone described in its own copy as "you can coach or
-intervene". None of that ports.
+intervene". A training circuit's observer token now grants `can_publish`
+(`sittings/service_join.py:observer_token`, keyed on the sitting's `mode`),
+and `ObserverPanel.tsx` renders `ObserverVideoGrid` — the supervisor's own
+camera/mic toggle plus a tile per participant — whenever the grant says so.
 
-- `POST /circuits/{id}/observer-token` mints a **subscribe-only** token — the
-  grant carries `can_publish=False`, so there is no microphone to mute and no
-  camera to turn off. It is a guarantee rather than a UI state on purpose: a
-  candidate must not be promptable mid-consultation, and the transcript has to
-  stay a record of what they said to the patient.
-- Nothing in this product publishes video. The candidate's own room is voice
-  (`VoiceRoom` asks for audio only), and the patient is a voice agent. A tile
-  grid here would be a grid of black rectangles, which reads as a broken camera
-  rather than as a voice call.
+An **exam** circuit is unchanged and still refuses this on purpose:
 
-What is here instead is `ObserverPanel`: the server's clock, who is actually in
-the room, and who is speaking. The one thing genuinely lost is a supervisor
-being able to speak into a training circuit, which the old runner allowed and
-this backend does not offer a token for.
+- `POST /circuits/{id}/observer-token` mints a **subscribe-only** token for
+  an exam sitting — the grant carries `can_publish=False`, so there is no
+  microphone to mute and no camera to turn off. It is a guarantee rather
+  than a UI state on purpose: a candidate must not be promptable
+  mid-consultation, and the transcript has to stay a record of what they
+  said to the patient.
+- The candidate's own room is still voice-only in both modes (`VoiceRoom`
+  asks for audio only on that side) — this was never a symmetric video call,
+  training or exam. It is "the supervisor may demonstrate," not "the
+  candidate is now on camera."
 
-### The reading brief is not in the runner
+`ObserverPanel` still carries the server's clock, who is in the room and who
+is speaking as the fallback exam-mode view — unchanged from before.
 
-**[2026-09-23: stale — it is in the runner.]** `sessions/SupervisorReadingBrief.tsx` is mounted in `CircuitRunner.tsx` and resolves the active slot's brief for the supervisor, and the candidate has `trainee/SlotReadingBrief.tsx` off the attempt read. This row describes the state before the candidate-scoped brief read landed.
+### The reading brief in the runner
 
-The old runner showed the station's brief in a sidebar while reading time ran.
-`CircuitConsole` carries a station's title and version and no content, for the
-same reason the station library does not — see "The station library" above. A
-candidate-scoped brief read is what this needs.
+**[2026-09-23: stale — it is in the runner, and has been since the brief read landed.]**
+
+Both halves are mounted: `sessions/SupervisorReadingBrief.tsx` resolves the
+active slot's brief for the supervisor inside `CircuitRunner.tsx`, and a
+candidate reads their own through `trainee/SlotReadingBrief.tsx` off
+`GET /attempts/{id}/brief`. `CircuitConsole` still carries a station's title and
+version and no content — that is deliberate, for the same reason the library
+listing carries none — and the brief comes from the candidate-scoped read
+instead. Nothing is left in this row.
 
 ### Nothing says whether a circuit's feedback has already been published
 
@@ -806,14 +830,17 @@ overwrote it. `SlotReview` now finds its own review in
 user. A `GET .../reviews/mine` would make that a direct read; it is a small
 thing and it was a real data-loss bug.
 
-### A decision has no optimistic concurrency
+### A decision now refuses a stale save
 
-`SaveGpLeadReview` takes a `revision` and refuses a stale save — two leads with
-the same station open cannot overwrite each other. `SaveDecision` takes no such
-field, so two administrators editing the same candidate's decision silently
-overwrite one another. Every save is a new revision and nothing is lost from
-the record, but the last writer wins and neither is told. The retiring client
-sent an `expectedRevision`; there is nothing on this backend to send it to.
+`SaveGpLeadReview` takes a `revision` and refuses a stale save, and since
+2026-09-23 so does `SaveDecision`: `expected_revision` (0 = "I have read
+nothing"), refused with 409 `decision_revised` and `details.current_revision`.
+Two administrators editing the same candidate's decision cannot silently
+overwrite one another; `CandidateDecision.tsx` says so and offers to load the
+latest rather than discarding what was typed. Sign-off and release needed no
+change — they were already guarded by the workflow state and the evidence
+fingerprint, which is why the retiring client's `expectedRevision` on those two
+calls is not ported.
 
 ### Releasing: no bulk route, and no notification
 
@@ -862,19 +889,20 @@ platform listing decides by who is asking, so the query is not sent there.
 
 ## The institution dashboard and the exam-day board
 
-### "Ready to run" counts an organisation's own stations only
+### "Ready to run" counts what an organisation can run
 
-`OrgSetup.stations_authored` is `count_stations(org_id) > 0`, which counts what
-this institution has **authored**. An organisation that runs the platform's
-catalogue — a legitimate and probably common way to use this — has none of its
-own, so `ready_to_run` stays false and the dashboard offers "continue setting
-up" to somebody already running examinations. The seeded demo org is exactly
-that case.
+Fixed 2026-09-23, in the backend's direction rather than the screen's.
+`OrgSetup.stations_authored` was `count_stations(org_id) > 0` — what an
+institution had **authored** — so an organisation running the platform's
+catalogue, a legitimate and probably common way to use this, was told to keep
+setting up while it was already examining people. It is
+`OrgSetup.stations_available` now: its own stations, or a published library
+station for an exam it offers (`OrgCounts.library_stations`, counted through
+`catalog.org_exam_ids`), and `ready_to_run` gates on the same predicate.
 
-The screen does not paper over it: the step says the count is of your own
-cases, and the tile is labelled "Your stations" rather than "Stations". The fix
-is the backend's — either count adopted catalogue stations towards it, or say
-`stations_available` and mean it.
+The step reads "Have stations to run" and its hint says which two things
+satisfy it. "Your stations" remains the label on the count tile, because that
+number is still only the org's own.
 
 ### The board has no history
 
@@ -1037,75 +1065,62 @@ remove both the duplicate and the poller.
 
 `b2b/components/features/platform` (9 files, 2.3k lines) is now
 `domains/platform` (eight files). The overview, the tenant directory, an
-organisation's own screen and the user search all came across. Four things did
-not, and one of them is a deliberate decision rather than a hole.
+organisation's own screen and the user search all came across. Of the four
+things that did not, three closed on 2026-09-23 — the members and audit reads,
+the platform-administrator list, and the contract dates — leaving the
+per-organisation activity counts below. (Hard delete is a fifth, and it is a
+decision rather than a hole; see the end of this section.)
 
-### A platform admin cannot read an organisation's members or its audit log
+### Reading an organisation's members and audit log from the console
 
 **[2026-09-23: stale.]** `domains/platform/api.ts` calls `GET /platform/organizations/{slug}/memberships` and `…/audit`, and `MembersSection.tsx` / `AuditSection.tsx` render and act on them (role, revoke, restore). The platform-admin routes are the ones the console uses; the org-scoped `/orgs/{slug}/…` reads remain `OrgAdmin`-only, which is the policy the row cites and is unchanged.
 
-The largest gap, and the reason the organisation screen ends with a card saying
-so. `GET /orgs/{slug}/memberships` and `GET /orgs/{slug}/audit` are both
-`OrgAdmin`, which is declared `allow_platform_admin=False` — on purpose:
-"a platform admin may read any organisation for support, but does not thereby
-become its administrator", and the legacy policy is emphatic that a console
-admin inherits no org powers. So both answer 403 to this console, and the old
-`PlatformAuditPage` (filters by org slug and actor email) and the member list
-on `PlatformOrganizationDetailPage` have nothing to render.
-
-What the console can still do is seat the **first** member —
-`POST /platform/organizations/{slug}/memberships` exists exactly because a new
-tenant has nobody to add anybody — so provisioning is not blocked. Changing a
-role, revoking one, and reading the log are the organisation's own.
-
-Two ways out, and they are different decisions: open the two reads to a
-platform admin (one `allow_platform_admin` on each), or add a
-`/platform/audit` that reads across tenants, which is what the retiring console
-actually had and what "who suspended this tenant, and when?" needs. The second
-is the one worth having; the first would quietly widen `OrgAdmin`'s promise.
+That is the history, not the state. The reads were the largest gap in the
+console and are closed: `GET /platform/organizations/{org_slug}/memberships` and
+`…/audit` are served, and the console reads those rather than the
+`OrgAdmin`-only `/orgs/{slug}/…` pair — so "a platform admin may read any
+organisation for support, but does not thereby become its administrator" still
+holds. Role change, revoke, restore and the audit filter are on
+`MembersSection.tsx` / `AuditSection.tsx`; `OrganizationDetail.tsx` ends with
+them, not with a card saying the console cannot see them.
 
 `scripts/smoke.mjs` walks both routes and allows either answer, because the
 smoke account is a member of the org it switched into and so reads them through
-its membership. Against an organisation it does not belong to, both are 403.
+its membership.
 
-### There is no list of platform administrators, and no field saying who is one
+### The list of platform administrators, and who is one
 
 **[2026-09-23: stale.]** `GET`/`POST /api/v1/platform/admins` exists and `domains/platform/PlatformTeam.tsx` lists, invites and revokes through it, mounted at `/staff/team`.
 
-`PlatformTeamPage` listed them, granted by email and revoked by id. On
-`platform-api`, `PUT /platform/users/{id}/platform-admin` is the whole of it:
-there is no listing, and `UserSummary` — the only shape `/platform/users`
-answers — carries `id`, `email`, `name` and `created_at`. `is_platform_admin`
-exists on `UserRead`, which is `/me` only.
-
-So the grant lives on the user row, and the screen does not pretend to know the
-current state: it offers Grant and Revoke as two explicit acts behind a
-disclosure, and shows what *this session* just did rather than what is stored.
-Adding `is_platform_admin` to `UserSummary` is the one-field fix; a
-`?platform_admin=true` filter on the same listing would bring the team screen
-back whole.
+`PlatformTeamPage` listed them, granted by email and revoked by id, and the
+console does the same: `GET`/`POST /api/v1/platform/admins` is the listing and
+the grant, and `PUT /platform/users/{id}/platform-admin` is the per-account
+switch on the user screen. `UserSummary` now carries `is_platform_admin`, so a
+directory row says who is one without a second request, and the team screen
+shows what is stored rather than what this session did.
 
 ### An organisation's counts, and its at-risk list
 
 `PlatformDashboardPage` showed active users and sessions over thirty days and a
-list of at-risk tenants derived from contract dates;
-`PlatformOrganizationDetailPage` showed trainees, sessions, practice users and
-memberships-by-role for one tenant. `GET /platform/overview` answers two
-integers — `organizations` and `users` — and `OrganizationRead` carries no
-stats at all, so none of the six counts survive.
+list of at-risk tenants derived from contract dates. The at-risk list **is**
+served — `PlatformOverview.at_risk` is a list of `{slug, name, status,
+contract_ends_at, reason}`, which is the more useful half of what the old page
+had — and `organizations_by_status` says how many tenants are in each state.
+What is still absent is the *activity* half: no active-users-or-sessions-over-
+thirty-days counter, and `OrganizationRead` carries no per-tenant counts
+(trainees, sessions, practice users, memberships-by-role), so an organisation's
+own screen cannot show the six numbers the old detail page showed.
 
-"Needs attention" is therefore the organisations whose status does not permit
-signing in, which is servable from the directory and catches the same tenants:
-the sweep that suspends a lapsed contract puts them in exactly that state.
+"Needs attention" is therefore the backend's own at-risk list rather than a
+screen-side guess from the directory's status field.
 
-### Contract dates are write-only
+### Contract dates, and suspending a lapsed one
 
-`UpdateOrganization` takes `contract_starts_at` and `contract_ends_at`, and
-they matter — `jobs.py` suspends an organisation whose contract has lapsed.
-`OrganizationRead` returns neither, so the form cannot show what is stored and
-says so on the screen. It also never sends a blank field, because submitting
-one would silently clear a date this console cannot see; clearing is its own
-button. Putting the two columns on `OrganizationRead` is the fix.
+`contract_starts_at` and `contract_ends_at` are on `OrganizationRead`, so the
+form shows what is stored, and a nightly sweep (`jobs.py`) suspends an
+organisation whose contract has lapsed — which is why the field is not
+decoration. Clearing is its own action rather than an empty input, because
+submitting a blank would silently delete a date the console can now see.
 
 ### Deleting a tenant is gone, and that is the decision
 
@@ -1125,15 +1140,15 @@ the organisation screen offers. This is not a gap to fill.
 |---|---|---|
 | Bootstrap admin credentials | `ProvisionPanel.tsx` | The old form took an admin email and a temporary password generated in the browser, displayed it in `TenantAdminProvisioningPanel` for an administrator to relay by hand, and offered "Send login email". There is no bootstrap-admin route and no login-email route; the first member is seated by address and the backend emails a link. No password passes through this app, which is the improvement rather than the loss. |
 | Reprovisioning an org's admin | not ported | `b2bReprovisionTenantAdmin` — same absence. Seating another member is the nearest thing, and it does not reset anybody's password. |
-| Resetting somebody's password from the console | `domains/platform/UserDetail.tsx` | Wired to `POST /platform/users/{id}/reset-password` when platform-api serves it; otherwise the button fails with the API error. |
-| Revoking one person's access to one organisation | not ported | `b2bPlatformRevokeOrgAccess` / `…Restore`. That is `POST /orgs/{slug}/memberships/{id}/revoke`, which is `OrgAdmin` — not on the platform support routes. |
-| A user's memberships, last login, and whether they must change their password | `domains/platform/UserDetail.tsx` | Wired to `GET /platform/users/{id}` when served. Search rows show `is_platform_admin` when `UserSummary` carries it. |
-| Platform org member list and audit from the console | `OrganizationDetail.tsx` | Wired to `GET /platform/organizations/{slug}/memberships` and `…/audit` when platform-api serves them; org-scoped routes still 403 for a console-only admin. |
+| Resetting somebody's password from the console | `domains/platform/UserDetail.tsx` | Wired to `POST /platform/users/{user_id}/reset-password`. |
+| Revoking one person's access to one organisation | `MembersSection.tsx` | **Ported.** `POST /platform/organizations/{org_slug}/memberships/{membership_id}/revoke` and `/restore` are served and the console calls them, so a console admin suspends one person's seat without being that organisation's admin. The org-scoped `/orgs/{slug}/…` pair remains `OrgAdmin`-only. |
+| A user's memberships, last login, and whether they must change their password | `domains/platform/UserDetail.tsx` | Wired to `GET /platform/users/{user_id}` (`PlatformUserDetail`, which carries the memberships, `last_login_at`, `must_change_password`, the consumer role and the legacy ids). Search rows show `is_platform_admin` — `UserSummary` carries it, so the directory says who is an administrator without a second request. |
+| Platform org member list and audit from the console | `OrganizationDetail.tsx` | Wired to `GET /platform/organizations/{org_slug}/memberships` and `…/audit` (both served; see the members/audit section above). The org-scoped `/orgs/{slug}/…` pair stays `OrgAdmin` and answers 403 to a console-only token, by design. |
 | LLM + AV production (staff) | `capabilities/staff-media/MediaDetailScreen.tsx` | Draft text: `POST /api/v1/platform/generate/*`. Summary podcast / slide AV / episode audio: `media_production` (`generate-podcast`, `regenerate-av`, `generate-audio`) via procrastinate — needs `OPENAI_API_KEY`, `CARTESIA_API_KEY`, AWS S3, ffmpeg on workers. B2C Flask pipelines unchanged. |
-| Moderation queue | `capabilities/staff-moderation/` | `GET /platform/moderation/posts` — not on every platform-api build yet. |
+| Moderation queue | `capabilities/staff-moderation/` | **Served and mounted** at `/staff/moderation` — `GET /api/v1/platform/moderation/posts` (params `days`, `limit`) through `listModerationPosts`, which also carries the act/hide/reinstate actions. What is still absent is a *report* concept behind it: this reads flagged/unusual posts, not the reader-filed `station_flags` queue, which is its own screen (`/staff/station-flags`). |
 | Searching or filtering the directory on the backend | `Organizations.tsx` | `GET /platform/organizations` takes `status`, `cursor` and `limit`. The type filter and the search box work over what has been paged in, which is why the whole directory is walked (25 pages of 100). Past that it silently searches less than everything. |
 | The organisation hierarchy | `Organizations.tsx` | The old directory showed an institution's parent partner, from `parentOrgId`. `OrganizationRead` has no parent, so a row shows its type and not who it sits under. |
-| Filtering the audit log by actor | not ported | Part of the audit gap above. The org-scoped log takes `cursor` and `limit` only, so even where it is readable there is no actor or action filter — `domains/assess/team`'s History tab has the same limit. |
+| Filtering the audit log by actor | `domains/platform/PlatformAudit.tsx` | **Ported on the console side.** `GET /api/v1/platform/audit` takes `actor_email`, `action` and `org_slug`, and the screen has all three ("Actor email", "Action"), so "who suspended this tenant, and when?" is a filtered read rather than a walk. The per-organisation reads (`GET /orgs/{slug}/audit` and `…/platform/organizations/{slug}/audit`) still take `cursor` and `limit` only, so `domains/assess/team`'s History tab has the old limit. |
 
 ## Help dock parity
 
