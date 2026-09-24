@@ -38,7 +38,7 @@ export function authoringScope(surface: string, orgSlug: string | null): Authori
   throw new Error("Authoring needs an organisation or the staff surface");
 }
 
-/* Four asymmetries in the backend, named rather than discovered at runtime.
+/* Five asymmetries in the backend, named rather than discovered at runtime.
  * `docs/port-gaps.md` carries the detail. */
 
 /**
@@ -65,6 +65,18 @@ export const supportsProgrammes = (s: AuthoringScope) => s.kind === "org";
 export const supportsBrief = (s: AuthoringScope) => s.kind === "org";
 /** Throwing a draft away is org-only; the catalogue archives instead. */
 export const supportsVersionDelete = (s: AuthoringScope) => s.kind === "org";
+/**
+ * Drafting a station from a prompt alone, with no template behind it.
+ *
+ * The inverse of the three above, and the asymmetry that surfaced as a 403
+ * rather than as a missing control: `POST /platform/generate/station` takes
+ * `PlatformAdmin`, while an organisation generates through
+ * `…/stations/autogenerate-draft`, which is bound to a published template
+ * version. An institution may still *write* a one-off station by hand —
+ * `CreateStation.template_version_id` is optional — it just cannot ask the model
+ * to draft one with nothing to draft against.
+ */
+export const supportsPromptGeneration = (s: AuthoringScope) => s.kind === "platform";
 
 type S = components["schemas"];
 

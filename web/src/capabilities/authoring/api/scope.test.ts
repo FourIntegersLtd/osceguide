@@ -5,6 +5,7 @@ import {
   examListPath,
   supportsBrief,
   supportsProgrammes,
+  supportsPromptGeneration,
   supportsVersionDelete,
 } from "@/capabilities/authoring/api/scope";
 
@@ -47,6 +48,13 @@ describe("authoring scope", () => {
       assert.equal(supports(org), true);
       assert.equal(supports(platform), false);
     }
+  });
+
+  it("names the one thing only the platform's scope serves", () => {
+    // Prompt-only drafting is the catalogue's, so an institution must not be
+    // offered it: the route answers PlatformAdmin and would 403 on click.
+    assert.equal(supportsPromptGeneration(authoringScope("platform", null)), true);
+    assert.equal(supportsPromptGeneration(authoringScope("assess", "kings")), false);
   });
 });
 

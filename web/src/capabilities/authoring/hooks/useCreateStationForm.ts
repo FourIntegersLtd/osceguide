@@ -9,7 +9,10 @@ import {
   type Station,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
-import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
+import {
+  supportsPromptGeneration,
+  type AuthoringScope,
+} from "@/capabilities/authoring/api/scope";
 import { validateStationContent } from "@/capabilities/authoring/structure/b2b/lib/stations/validateStationContent";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import {
@@ -117,6 +120,21 @@ export function useCreateStationForm({
      */
     if (!templateVersionId && !examCode) {
       setError("Choose a template, or say which exam this is for.");
+      return;
+    }
+    /*
+     * Refused here rather than by the server. The template-less route is the
+     * platform catalogue's (`POST /platform/generate/station` takes
+     * PlatformAdmin); an organisation generates through `autogenerate-draft`,
+     * which needs a published template to generate against. Without this the
+     * button answered a bare Forbidden, which reads as the feature being broken
+     * rather than as a thing this workspace does not have. The screen hides the
+     * control too — this is the backstop for state that got there another way.
+     */
+    if (!templateVersionId && !supportsPromptGeneration(scope)) {
+      setError(
+        "Drafting from a prompt alone is the platform catalogue's. Choose a published template to generate against, or write the station yourself below.",
+      );
       return;
     }
     setGenerating(true);

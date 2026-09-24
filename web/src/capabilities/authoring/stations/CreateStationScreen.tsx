@@ -7,6 +7,7 @@ import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authori
 import { useSurface } from "@/capabilities";
 import { listStationTemplates } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
+import { supportsPromptGeneration } from "@/capabilities/authoring/api/scope";
 import { useAsync } from "@/foundation/hooks";
 import { hasPublishedVersion } from "@/capabilities/authoring/sections/StationsSection";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
@@ -37,6 +38,9 @@ const ORTHO_STATION_TYPES = ["clinical", "communication", "prioritisation", "por
 
 export function CreateStationScreen() {
   const scope = useAuthoringScope();
+  // Drafting from a prompt with no template behind it is the catalogue's route;
+  // an institution generates against a published template or writes by hand.
+  const promptGeneration = supportsPromptGeneration(scope);
   const { hrefFor } = useSurface();
   const router = useRouter();
   const listHref = stationsListPath(hrefFor);
@@ -92,8 +96,9 @@ export function CreateStationScreen() {
          * for it — and `CreateStation` never required one.
          */
         <Alert tone="info">
-          No published templates yet. You can still write a station straight from a prompt by
-          choosing its exam below.
+          {promptGeneration
+            ? "No published templates yet. You can still write a station straight from a prompt by choosing its exam below."
+            : "No published templates yet. You can still write a station by choosing its exam below — generating one from a prompt needs a published template to generate against."}
         </Alert>
       ) : null}
 
@@ -214,7 +219,21 @@ export function CreateStationScreen() {
           ) : null}
         </div>
 
-        {form.mode === "ai" && (form.structure || form.examCode) ? (
+        {/*
+          The AI tab stays selectable for an institution, because with a
+          template chosen it genuinely works (`autogenerate-draft`). What it
+          cannot do is draft from a prompt alone, so say that instead of
+          rendering an empty panel underneath a tab somebody just clicked.
+        */}
+        {form.mode === "ai" && !form.structure && !promptGeneration ? (
+          <Alert tone="info">
+            Generating a draft needs a published template to generate against. Choose one above, or
+            switch to Manual and write the station yourself — a station with no template is still a
+            real station.
+          </Alert>
+        ) : null}
+
+        {form.mode === "ai" && (form.structure || (form.examCode && promptGeneration)) ? (
           <div className="rounded-lg border border-b2b-border bg-white p-4">
             <p className="text-osce-body font-semibold text-b2b-headline">Generate draft</p>
             <p className="mt-1 text-osce-body text-b2b-mid">
