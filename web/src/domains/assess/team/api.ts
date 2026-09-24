@@ -14,6 +14,8 @@ export type Membership = components["schemas"]["app__features__tenancy__schemas_
 export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
 export type AuditEvent = components["schemas"]["AuditRead"];
 export type AuditPage = components["schemas"]["Page_AuditRead_"];
+export type BulkMembershipsResult = components["schemas"]["BulkMembershipsResult"];
+export type SkippedMembership = components["schemas"]["SkippedMembership"];
 
 export function listMemberships(
   slug: string,
@@ -46,6 +48,29 @@ export function inviteMember(
   return platformRequest<Membership>(`${orgPath(slug)}/memberships`, {
     method: "POST",
     body: { email: input.email, role: input.role },
+  });
+}
+
+/**
+ * A spreadsheet's worth of staff in one request.
+ *
+ * The browser parses the file and the API takes rows, so an import is an
+ * ordinary JSON call rather than a multipart upload the server re-parses — and
+ * no password is involved: an unknown address is invited and chooses its own.
+ * Each row is the single act above it, so the same rules apply: a person
+ * already holding that role comes back in `skipped` with `membership_exists`
+ * rather than failing the other rows, which is what makes a half-recognised
+ * file a list of names an administrator can act on instead of an error page.
+ */
+export function bulkInviteTeam(
+  slug: string,
+  rows: { email: string; role: string }[],
+): Promise<BulkMembershipsResult> {
+  return platformRequest<BulkMembershipsResult>(`${orgPath(slug)}/memberships/bulk`, {
+    method: "POST",
+    body: {
+      memberships: rows.map((row) => ({ email: row.email, role: row.role })),
+    },
   });
 }
 

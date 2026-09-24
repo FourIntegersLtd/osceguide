@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiOutlineBriefcase, HiOutlineUserPlus } from "react-icons/hi2";
+import {
+  HiOutlineArrowUpTray,
+  HiOutlineBriefcase,
+  HiOutlineUserPlus,
+} from "react-icons/hi2";
 import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { PanelCard } from "@/domains/assess/team/chrome";
 import { inviteMember, type Membership } from "@/domains/assess/team/api";
+import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import {
   ASSIGNABLE_ROLES,
   ROLE_DESCRIPTIONS,
@@ -22,6 +27,12 @@ import {
  * instead: an address with no account gets one and a link to choose a
  * password, and the response says which happened. So this form is an address
  * and a role, and nothing here ever holds a credential.
+ *
+ * The spreadsheet below it is the same act done to a list. The retiring client
+ * had a staff upload that wrote a team row by row and generated a password per
+ * person; here the browser parses the sheet, one request posts the rows, and an
+ * address already on the team is reported rather than fatal — which is what
+ * makes re-running last month's file harmless.
  */
 export function InvitePanel({
   orgSlug,
@@ -37,6 +48,7 @@ export function InvitePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Membership | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const submit = useCallback(async () => {
     const address = email.trim();
@@ -143,6 +155,23 @@ export function InvitePanel({
           </Button>
         </form>
       </PanelCard>
+
+      <PanelCard
+        title="Import a spreadsheet"
+        subtitle="Upload a list of staff from Excel or Google Sheets (.csv). Everyone already on the team is reported, not fatal."
+        icon={<HiOutlineArrowUpTray className="h-5 w-5" aria-hidden />}
+      >
+        <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
+          Import from spreadsheet
+        </Button>
+      </PanelCard>
+
+      <BulkInviteDialog
+        orgSlug={orgSlug}
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={onInvited}
+      />
     </div>
   );
 }

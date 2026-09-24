@@ -1,18 +1,23 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiOutlineRectangleGroup, HiOutlineUserGroup } from "react-icons/hi2";
+import { HiOutlineUserGroup } from "react-icons/hi2";
 import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { PanelCard } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
-import {
-  addCohort,
-  addTraineeGroup,
-  type Cohort,
-  type TraineeGroup,
-} from "@/domains/assess/roster/api";
+import { addTraineeGroup, type Cohort, type TraineeGroup } from "@/domains/assess/roster/api";
+import { CohortsPanel } from "@/domains/assess/roster/CohortsPanel";
 import { GroupMembersDialog } from "@/domains/assess/roster/GroupMembersDialog";
+import {
+  DeleteGroupDialog,
+  RenameGroupDialog,
+} from "@/domains/assess/roster/GroupEditDialogs";
+
+type Pending =
+  | { kind: "rename"; group: TraineeGroup }
+  | { kind: "delete"; group: TraineeGroup }
+  | null;
 
 /**
  * Cohorts and groups, which the old client conflated into one free-text label.
@@ -20,8 +25,12 @@ import { GroupMembersDialog } from "@/domains/assess/roster/GroupMembersDialog";
  * A cohort is an intake a trainee belongs to — one each, set when they are
  * added. A group is a list you put on a circuit, and somebody can be in
  * several. The old roster had a single `cohort` string doing both jobs, which
- * is why "move to group" rewrote a field on every selected person and a
- * renamed group orphaned everyone in it.
+ * is why "move to group" rewrote a field on every selected person and a renamed
+ * group orphaned everyone in it.
+ *
+ * The cohorts card is `CohortsPanel` and a group row's dialogs are
+ * `GroupEditDialogs`; what is left here is the groups list, its create form and
+ * the one error area they share.
  */
 export function GroupsPanel({
   orgSlug,
@@ -38,29 +47,11 @@ export function GroupsPanel({
   canManage: boolean;
   onChanged: () => void;
 }) {
-  const [cohortName, setCohortName] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
   const [groupLabel, setGroupLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<TraineeGroup | null>(null);
-
-  const createCohort = useCallback(async () => {
-    const name = cohortName.trim();
-    if (!name) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await addCohort(orgSlug, { name, academicYear: academicYear.trim() || null });
-      setCohortName("");
-      setAcademicYear("");
-      onChanged();
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  }, [cohortName, academicYear, orgSlug, onChanged]);
+  const [pending, setPending] = useState<Pending>(null);
 
   const createGroup = useCallback(async () => {
     const label = groupLabel.trim();
@@ -78,69 +69,21 @@ export function GroupsPanel({
     }
   }, [groupLabel, orgSlug, onChanged]);
 
+  const open = (next: NonNullable<Pending>) => {
+    setError(null);
+    setPending(next);
+  };
+
   return (
     <div className="space-y-6">
       {error ? <Alert tone="danger">{error}</Alert> : null}
 
-      <PanelCard
-        title="Cohorts"
-        subtitle="An intake. Everyone on the roster belongs to at most one, and it is set when they are added."
-        icon={<HiOutlineRectangleGroup className="h-5 w-5" aria-hidden />}
-      >
-        {cohorts.length === 0 ? (
-          <p className="text-osce-body text-b2b-mid">
-            No cohorts yet. Create one below, or leave people without.
-          </p>
-        ) : (
-          <ul className="space-y-2" aria-label="Cohorts">
-            {cohorts.map((cohort) => (
-              <li
-                key={cohort.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-b2b-border px-3 py-2"
-              >
-                <span className="min-w-0 truncate text-osce-body font-medium text-b2b-headline">
-                  {cohort.name}
-                </span>
-                <span className="shrink-0 text-osce-caption text-b2b-mid">
-                  {cohort.academic_year ?? cohort.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {canManage ? (
-          <div className="mt-5 border-t border-b2b-border pt-4">
-            <p className="text-osce-body font-semibold text-b2b-headline">Create a cohort</p>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-              <input
-                aria-label="Cohort name"
-                value={cohortName}
-                onChange={(event) => setCohortName(event.target.value)}
-                className={`${b2bTokens.b2bInputBase} min-w-0 flex-1`}
-                placeholder="e.g. June 2026 intake"
-                autoComplete="off"
-              />
-              <input
-                aria-label="Academic year"
-                value={academicYear}
-                onChange={(event) => setAcademicYear(event.target.value)}
-                className={`${b2bTokens.b2bInputBase} sm:w-40`}
-                placeholder="2026/27"
-                autoComplete="off"
-              />
-              <Button
-                themeType="b2b"
-                variant="secondary"
-                disabled={busy || cohortName.trim() === ""}
-                onClick={() => void createCohort()}
-              >
-                {busy ? "Working…" : "Create cohort"}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </PanelCard>
+      <CohortsPanel
+        orgSlug={orgSlug}
+        cohorts={cohorts}
+        canManage={canManage}
+        onChanged={onChanged}
+      />
 
       <PanelCard
         title="Groups"
@@ -166,14 +109,32 @@ export function GroupsPanel({
                     {group.member_count} {group.member_count === 1 ? "person" : "people"}
                   </span>
                   {canManage ? (
-                    <Button
-                      themeType="b2b"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setEditing(group)}
-                    >
-                      People
-                    </Button>
+                    <span className="flex items-center gap-2">
+                      <Button
+                        themeType="b2b"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setEditing(group)}
+                      >
+                        People
+                      </Button>
+                      <Button
+                        themeType="b2b"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => open({ kind: "rename", group })}
+                      >
+                        Rename
+                      </Button>
+                      <Button
+                        themeType="b2b"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => open({ kind: "delete", group })}
+                      >
+                        Delete
+                      </Button>
+                    </span>
                   ) : null}
                 </span>
               </li>
@@ -215,6 +176,20 @@ export function GroupsPanel({
         trainees={trainees}
         onClose={() => setEditing(null)}
         onSaved={onChanged}
+      />
+
+      <RenameGroupDialog
+        orgSlug={orgSlug}
+        group={pending?.kind === "rename" ? pending.group : null}
+        onClose={() => setPending(null)}
+        onSaved={onChanged}
+      />
+
+      <DeleteGroupDialog
+        orgSlug={orgSlug}
+        group={pending?.kind === "delete" ? pending.group : null}
+        onClose={() => setPending(null)}
+        onDeleted={onChanged}
       />
     </div>
   );

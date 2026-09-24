@@ -25,6 +25,7 @@ export type SkippedTrainee = components["schemas"]["SkippedTrainee"];
 export type ResolvedRoster = components["schemas"]["ResolvedRoster"];
 export type Entitlement = components["schemas"]["EntitlementRead"];
 export type Exam = components["schemas"]["ExamRead"];
+export type Invitation = components["schemas"]["InvitationRead"];
 
 export function listTrainees(
   slug: string,
@@ -96,6 +97,88 @@ export function setTraineeAccess(
   );
 }
 
+/**
+ * Remove a roster row nobody ever examined.
+ *
+ * Refused (`trainee_in_use`, 409) the moment a decision exists — revoking
+ * access is what stays on the roster with their results intact; this is only
+ * for a row added by mistake, or one who left before anything ran.
+ */
+export function deleteTrainee(slug: string, traineeId: string): Promise<void> {
+  return platformRequest<void>(`${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * GDPR erasure for a row `deleteTrainee` refuses (`trainee_in_use`): the
+ * address and name are scrubbed, any decision recorded about them stays.
+ * Idempotent — calling this twice is a no-op that still answers 200.
+ */
+export function anonymiseTrainee(slug: string, traineeId: string): Promise<Trainee> {
+  return platformRequest<Trainee>(
+    `${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}/anonymise`,
+    { method: "POST" },
+  );
+}
+
+/**
+ * What the roster edit sheet may correct about somebody already on it.
+ *
+ * The address is deliberately absent: it identifies the entry inside the
+ * organisation and is what the account link was made against, so changing it
+ * re-points a person's results rather than fixing a typo. Group membership is
+ * absent too — a group is a row of its own, written by `setGroupMembers`.
+ */
+export interface TraineeEdit {
+  firstName: string | null;
+  lastName: string | null;
+  cohortId: string | null;
+}
+
+/**
+ * Correct a roster entry.
+ *
+ * PATCH with partial semantics: a key left out is one the server must not
+ * touch, and an explicit null is a clear. So a form may send all three only
+ * when it rendered all three — which the edit dialog does — and the `undefined`
+ * case is for a caller that edits one field on its own.
+ */
+export function updateTrainee(
+  slug: string,
+  traineeId: string,
+  edit: Partial<TraineeEdit>,
+): Promise<Trainee> {
+  const body: components["schemas"]["UpdateTrainee"] = {};
+  if (edit.firstName !== undefined) body.first_name = edit.firstName;
+  if (edit.lastName !== undefined) body.last_name = edit.lastName;
+  if (edit.cohortId !== undefined) body.cohort_id = edit.cohortId;
+  return platformRequest<Trainee>(
+    `${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}`,
+    { method: "PATCH", body },
+  );
+}
+
+/**
+ * Send the choose-a-password link again.
+ *
+ * An institution rosters people by address long before they sign in and the one
+ * email can be lost; with no button the candidate sits unexamined while the
+ * organisation believes it told them. The answer is the address and the
+ * institution — never the token, which goes only to the person it was minted
+ * for.
+ *
+ * The backend answers `invitation_not_pending` (409) when the person has
+ * already chosen a password: mailing a set-password link to somebody who can
+ * sign in is an invitation to take over their account. Branch on the code.
+ */
+export function resendInvitation(slug: string, traineeId: string): Promise<Invitation> {
+  return platformRequest<Invitation>(
+    `${orgPath(slug)}/trainees/${encodeURIComponent(traineeId)}/resend-invitation`,
+    { method: "POST" },
+  );
+}
+
 export function listCohorts(slug: string, signal?: AbortSignal) {
   return platformRequest<components["schemas"]["Page_CohortRead_"]>(`${orgPath(slug)}/cohorts`, {
     signal,
@@ -112,6 +195,39 @@ export function addCohort(
   });
 }
 
+/**
+ * Rename an intake, or say which academic year it belongs to.
+ *
+ * Which exams a cohort is bound to is not here: the roster row carries no such
+ * column, so a field for it would promise a write that goes nowhere.
+ */
+export function renameCohort(
+  slug: string,
+  cohortId: string,
+  input: { name?: string; academicYear?: string | null },
+): Promise<Cohort> {
+  const body: components["schemas"]["UpdateCohort"] = {};
+  if (input.name !== undefined) body.name = input.name;
+  if (input.academicYear !== undefined) body.academic_year = input.academicYear;
+  return platformRequest<Cohort>(
+    `${orgPath(slug)}/cohorts/${encodeURIComponent(cohortId)}`,
+    { method: "PATCH", body },
+  );
+}
+
+/**
+ * Remove an intake.
+ *
+ * Refused with `cohort_in_use` (409) while trainees still belong to it: a
+ * silent clear would read as those people having never had an intake, so the
+ * screen must say so and let the administrator move them first.
+ */
+export function deleteCohort(slug: string, cohortId: string): Promise<void> {
+  return platformRequest<void>(`${orgPath(slug)}/cohorts/${encodeURIComponent(cohortId)}`, {
+    method: "DELETE",
+  });
+}
+
 export function listTraineeGroups(slug: string, signal?: AbortSignal) {
   return platformRequest<components["schemas"]["Page_GroupRead_"]>(
     `${orgPath(slug)}/trainee-groups`,
@@ -124,6 +240,32 @@ export function addTraineeGroup(slug: string, label: string): Promise<TraineeGro
     method: "POST",
     body: { label },
   });
+}
+
+/**
+ * Rename a group. Its members stay — that is the rule this whole slice exists
+ * to hold, where the retiring client matched a copied label and a rename
+ * emptied the group out from under everybody in it.
+ */
+export function renameGroup(slug: string, groupId: string, label: string): Promise<TraineeGroup> {
+  return platformRequest<TraineeGroup>(
+    `${orgPath(slug)}/trainee-groups/${encodeURIComponent(groupId)}`,
+    { method: "PATCH", body: { label } satisfies components["schemas"]["UpdateGroup"] },
+  );
+}
+
+/**
+ * Remove a group.
+ *
+ * Refused with `group_not_empty` (409) while anybody is in it — the membership,
+ * and anything addressed to the group, would go with it, so the emptied list is
+ * stated first rather than discovered afterwards.
+ */
+export function deleteGroup(slug: string, groupId: string): Promise<void> {
+  return platformRequest<void>(
+    `${orgPath(slug)}/trainee-groups/${encodeURIComponent(groupId)}`,
+    { method: "DELETE" },
+  );
 }
 
 /**
