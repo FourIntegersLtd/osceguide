@@ -20,6 +20,12 @@ two outcomes, and an outbox rather than an inline email.
 - Revisions and events are **append-only, enforced by a database trigger**. A
   correction is a new revision superseding the old, so what was considered
   survives and the record stays defensible months later.
+- **A draft save names the revision it was written from** (`expected_revision`,
+  `0` for "nothing recorded yet"), and a stale one is refused with
+  `decision_revised` (409). Append-only made a stale save *look* safe — no row
+  was lost — while both administrators kept editing on a screen that no longer
+  matched the database, and the revision that reached sign-off was whichever
+  request landed last. The same rule already guarded the GP lead's review.
 - `draft → signed_off → released`. A draft cannot be released directly, and a
   released decision is final.
 - Sign-off requires an assessment outcome **and** a rationale — somebody has to

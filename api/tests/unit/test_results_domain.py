@@ -106,6 +106,29 @@ def test_revisions_are_numbered_from_one_and_chain() -> None:
 
 
 # --------------------------------------------------------------------------
+# Concurrency
+# --------------------------------------------------------------------------
+
+
+def test_writing_against_the_current_revision_is_allowed() -> None:
+    domain.ensure_current(stored=3, presented=3)
+
+
+def test_writing_against_a_stale_revision_is_refused() -> None:
+    """Two administrators with the same candidate open. Append-only saved the
+    rows but not the outcome: the draft that reached sign-off was whoever typed
+    last, and the other screen never knew."""
+    with pytest.raises(domain.StaleDecision):
+        domain.ensure_current(stored=4, presented=3)
+
+
+def test_claiming_nothing_is_recorded_yet_only_holds_while_the_chain_is_empty() -> None:
+    domain.ensure_current(stored=None, presented=0)
+    with pytest.raises(domain.StaleDecision):
+        domain.ensure_current(stored=1, presented=0)
+
+
+# --------------------------------------------------------------------------
 # Evidence fingerprint
 # --------------------------------------------------------------------------
 

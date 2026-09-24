@@ -38,6 +38,17 @@ class EvidenceChangedError(Conflict):
     default_message = "The evidence has changed since sign-off; review and sign off again"
 
 
+class DecisionRevisedError(Conflict):
+    """The decision was saved by someone else since the caller read it.
+
+    Its own code rather than the bare `conflict`, because the client's response
+    is "reload and re-check", not "your request was wrong".
+    """
+
+    code = "decision_revised"
+    default_message = "This decision has changed since you loaded it"
+
+
 class NotReleased(NotFound):
     code = "result_not_released"
     default_message = "Your result has not been released yet"

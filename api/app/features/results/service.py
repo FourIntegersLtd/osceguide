@@ -34,12 +34,18 @@ async def save_draft(
     rationale: str | None,
     moderation_notes: str | None,
     evidence: dict[str, Any],
+    expected_revision: int,
     actor_id: uuid.UUID,
 ) -> DecisionRead:
     """Record a decision without committing to it.
 
     A new revision rather than an edit: the table is append-only, so the history
     of what was considered survives.
+
+    `expected_revision` is what makes a *draft* safe to write from two screens at
+    once. Being append-only meant a stale save looked harmless — nothing was
+    deleted — while the author kept editing a rationale that had already been
+    superseded, and the revision that went to sign-off was whoever typed last.
     """
     # Before anything is written: the foreign key would catch a bad id, but as
     # an unhandled integrity error rather than a refusal the caller can read.
@@ -48,6 +54,13 @@ async def save_draft(
     latest = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if latest and latest.workflow_state == "released":
         raise_mapped(domain.InvalidWorkflow("A released result cannot be redrafted."), _REFUSALS)
+
+    try:
+        domain.ensure_current(stored=latest.revision if latest else None, presented=expected_revision)
+    except domain.StaleDecision as exc:
+        raise errors.DecisionRevisedError(
+            str(exc), details={"current_revision": latest.revision if latest else 0}
+        ) from exc
 
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None

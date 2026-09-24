@@ -74,7 +74,12 @@ async def test_a_decision_is_saved_as_a_revision(
 
     first = await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={
+            "assessment_outcome": "pass",
+            "rationale": "Met the standard.",
+            "evidence": EVIDENCE,
+            "expected_revision": 0,
+        },
         headers=bearer(admin),
     )
     assert first.status_code == 200
@@ -82,10 +87,44 @@ async def test_a_decision_is_saved_as_a_revision(
 
     second = await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Revised.", "evidence": EVIDENCE},
+        json={
+            "assessment_outcome": "pass",
+            "rationale": "Revised.",
+            "evidence": EVIDENCE,
+            "expected_revision": 1,
+        },
         headers=bearer(admin),
     )
+    assert second.status_code == 200, second.text
     assert second.json()["revision"] == 2, "a save is a new revision, not an edit"
+
+
+async def test_a_save_against_a_revision_you_never_read_is_refused(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The table is append-only, so a stale save looked harmless. It was not:
+    both screens kept saying "Revision 2" about different words, and sign-off
+    took whichever draft landed last."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    body = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
+
+    await client.put(url(sitting, trainee), json={**body, "expected_revision": 0}, headers=bearer(admin))
+
+    stale = await client.put(
+        url(sitting, trainee), json={**body, "expected_revision": 0}, headers=bearer(admin)
+    )
+    assert stale.status_code == 409
+    assert stale.json()["code"] == "decision_revised"
+    assert stale.json()["details"]["current_revision"] == 1
+
+    # Omitting it is the same claim as 0, so a client that never read the
+    # decision cannot clobber one that exists.
+    omitted = await client.put(url(sitting, trainee), json=body, headers=bearer(admin))
+    assert omitted.status_code == 409
+
+    nothing_newer = await client.get(url(sitting, trainee), headers=bearer(admin))
+    assert nothing_newer.json()["revision"] == 1, "a refused save writes no revision"
 
 
 async def test_incompatible_outcomes_are_refused(
@@ -210,6 +249,10 @@ async def test_a_candidate_reads_their_released_result(
     assert mine.status_code == 200, mine.text
     assert mine.json()["assessment_outcome"] == "pass"
     assert mine.json()["rationale"] == "Met the standard."
+    # Nothing was marked, so there is no number to show. A pass threshold is
+    # not on the decision at all.
+    assert mine.json()["assessment_score"] is None
+    assert "pass_threshold" not in mine.json()
     # The internal record stays internal.
     assert "moderation_notes" not in mine.json()
     assert "evidence" not in mine.json()

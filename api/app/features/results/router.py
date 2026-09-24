@@ -36,7 +36,11 @@ async def read_decision(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision",
     response_model=schemas.DecisionRead,
     responses=error_responses(
-        Forbidden, errors.TraineeNotFound, errors.IncompatibleOutcomesError, errors.InvalidWorkflowError
+        Forbidden,
+        errors.TraineeNotFound,
+        errors.IncompatibleOutcomesError,
+        errors.InvalidWorkflowError,
+        errors.DecisionRevisedError,
     ),
 )
 async def save_decision(
@@ -47,7 +51,11 @@ async def save_decision(
     session: Session,
 ) -> schemas.DecisionRead:
     """Each save is a new revision. The table is append-only, so what was
-    previously considered survives."""
+    previously considered survives.
+
+    `expected_revision` names the revision this screen read; a save against a
+    stale one is refused with `decision_revised` rather than superseding it.
+    """
     return await service.save_draft(
         session,
         workspace.org_id,
@@ -58,6 +66,7 @@ async def save_decision(
         rationale=body.rationale,
         moderation_notes=body.moderation_notes,
         evidence=body.evidence,
+        expected_revision=body.expected_revision,
         actor_id=workspace.principal.user_id,
     )
 

@@ -54,6 +54,10 @@ class EvidenceChanged(Exception):
     pass
 
 
+class StaleDecision(Exception):
+    pass
+
+
 # Oracle: `_OUTCOME_MATRIX`. A failed candidate cannot be hired or held in
 # reserve, and an unresolved assessment cannot resolve recruitment either way.
 _COMPATIBLE: Mapping[Assessment, frozenset[Recruitment]] = {
@@ -100,6 +104,21 @@ def transition(current: Workflow, target: Workflow) -> Workflow:
 
 def next_revision(stored: int | None) -> int:
     return (stored or 0) + 1
+
+
+def ensure_current(*, stored: int | None, presented: int) -> None:
+    """Optimistic concurrency for a decision being drafted in two browsers.
+
+    The table is append-only, so a stale save did not lose rows — it lost the
+    *author's* belief about what was saved. Both administrators saw "Revision 2"
+    on a screen whose words were no longer theirs, and the outcome that went to
+    sign-off was whichever request landed last.
+
+    `0` is the caller's assertion that nothing has been recorded yet, so a
+    second save off the same read is refused rather than silently superseded.
+    """
+    if (stored or 0) != presented:
+        raise StaleDecision("Someone else has saved this decision since you opened it. Reload it first.")
 
 
 def fingerprint(evidence: Mapping[str, Any]) -> str:

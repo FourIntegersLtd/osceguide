@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.results import errors, repository
 from app.features.results.models import CandidateResultRevision
 from app.features.results.schemas import ResultAcknowledgement, TraineeResultRead
+from app.features.reviews import service_summary as reviews
 from app.features.roster import service as roster
+from app.features.sittings import service_reads as sittings
 
 ACKNOWLEDGED = "acknowledged"
 
@@ -48,6 +50,7 @@ async def read_my_result(
         rationale=row.rationale,
         released_at=row.released_at,
         acknowledged_at=await _acknowledged_at(session, row.id, user_id),
+        assessment_score=await _assessment_score(session, row, user_id),
     )
 
 
@@ -77,6 +80,27 @@ async def acknowledge_my_result(
         idempotency_key=key,
     )
     return ResultAcknowledgement(sitting_id=sitting_id, acknowledged_at=event.at)
+
+
+async def _assessment_score(
+    session: AsyncSession, row: CandidateResultRevision, user_id: uuid.UUID
+) -> float | None:
+    """This person's mean station score, on the scale the cohort ranking uses.
+
+    Asked of the reviews slice rather than recomputed here, so a candidate and
+    a course lead cannot be shown two different numbers for the same marking.
+    Slots are keyed by the user, which is what the token carries; a sitting
+    with no marked station of theirs answers null, not zero.
+    """
+    slots = await sittings.slots_for_sitting(session, row.org_id, row.sitting_id)
+    mine = [slot.id for slot in slots if slot.trainee_id == user_id]
+    if not mine:
+        return None
+    scores = await reviews.scores_for_slots(session, row.org_id, mine)
+    marked = [score for score in scores.values() if score is not None]
+    if not marked:
+        return None
+    return round(sum(marked) / len(marked), 1)
 
 
 async def _released_for(
