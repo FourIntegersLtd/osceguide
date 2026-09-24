@@ -389,8 +389,6 @@ async def test_a_school_cannot_delete_the_platforms_exam(client: AsyncClient, ma
     root = await make_actor("root2@osceguide.com", platform_admin=True)
     platform_exam = await create_exam(client, root, code="plab2")
 
-    response = await client.delete(
-        f"/api/v1/orgs/ashford/exams/{platform_exam['id']}", headers=bearer(token)
-    )
+    response = await client.delete(f"/api/v1/orgs/ashford/exams/{platform_exam['id']}", headers=bearer(token))
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_exam"

@@ -71,9 +71,7 @@ async def test_an_unmarked_attempt_does_not_count(
     assert response.json()["longest_streak"] is None
 
 
-async def test_a_gap_breaks_the_streak(
-    client: AsyncClient, db_session: AsyncSession, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_a_gap_breaks_the_streak(client: AsyncClient, db_session: AsyncSession, make_actor) -> None:  # type: ignore[no-untyped-def]
     token, user_id = await a_learner(db_session, make_actor, "ach-gap@example.com")
     exam = await ensure_exam(db_session)
     await an_attempt(db_session, user_id, exam, sat_at=DAY1, payload=GREEN)

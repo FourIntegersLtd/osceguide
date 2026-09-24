@@ -131,9 +131,7 @@ async def test_an_organisation_with_no_arrangement_signs_in_here(client: AsyncCl
     assert missing.json()["code"] == "sso_not_configured"
 
 
-async def test_an_entra_organisation_signs_in_through_its_own_flow(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_an_entra_organisation_signs_in_through_its_own_flow(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """Direct OIDC, dispatched the same way Clerk is — `for_provider` picks
     the adapter, the rest of the flow does not know which one it got."""
     root = await make_actor("root@osceguide.com", platform_admin=True)
@@ -191,9 +189,7 @@ async def test_a_broker_that_cannot_be_reached_fails_closed(client: AsyncClient,
     assert down.json()["code"] == "sso_login_unavailable"
 
 
-async def test_an_sso_only_arrangement_refuses_a_password_login(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_an_sso_only_arrangement_refuses_a_password_login(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """The account this callback provisions cannot then sign in with a
     password anybody guesses, resets or is handed — the whole point of
     `sso_only`, made a stated refusal rather than an accident of a missing
@@ -216,9 +212,7 @@ async def test_an_sso_only_arrangement_refuses_a_password_login(
     assert reset.status_code == 202, reset.text
 
 
-async def test_an_org_without_sso_only_leaves_the_password_form_open(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_an_org_without_sso_only_leaves_the_password_form_open(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await _enable(client, root, "guys", sso_only=False)
     fake = FakeSsoBroker(identity=SsoIdentity(email="both-ways@guys.com", name="Either", subject="c2"))

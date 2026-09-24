@@ -47,5 +47,3 @@ class EditRubricVersion(BaseModel):
     pacing: dict[str, Any]
     result_schema_override: dict[str, Any] | None = None
     marking_layout: dict[str, Any] | None = None
-
-

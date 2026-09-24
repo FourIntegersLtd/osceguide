@@ -485,9 +485,7 @@ async def test_a_supervisor_cannot_resend_an_invitation(client: AsyncClient, mak
     assert refused.status_code == 403, refused.text
 
 
-async def test_a_roster_entry_nobody_examined_can_be_deleted(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_a_roster_entry_nobody_examined_can_be_deleted(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """No decision, so nothing for `trainee_in_use` to protect."""
     org_id, admin = await org_with_admin(client, make_actor)
     trainee = await add_trainee(client, admin, "mistake@example.com")
@@ -495,9 +493,7 @@ async def test_a_roster_entry_nobody_examined_can_be_deleted(
     response = await client.delete(f"{KINGS}/trainees/{trainee}", headers=bearer(admin))
     assert response.status_code == 204
 
-    gone = await client.patch(
-        f"{KINGS}/trainees/{trainee}", json={"first_name": "x"}, headers=bearer(admin)
-    )
+    gone = await client.patch(f"{KINGS}/trainees/{trainee}", json={"first_name": "x"}, headers=bearer(admin))
     assert gone.status_code == 404
     assert gone.json()["code"] == "trainee_not_found"
 
@@ -526,9 +522,7 @@ async def test_deleting_a_trainee_with_a_decision_is_refused(
     )
     assert decided.status_code == 200, decided.text
 
-    response = await client.delete(
-        f"/api/v1/orgs/decidedorg/trainees/{trainee}", headers=bearer(admin)
-    )
+    response = await client.delete(f"/api/v1/orgs/decidedorg/trainees/{trainee}", headers=bearer(admin))
     assert response.status_code == 409
     assert response.json()["code"] == "trainee_in_use"
 
@@ -572,9 +566,7 @@ async def test_anonymising_a_decided_trainee_scrubs_the_person_and_keeps_the_dec
     assert kept.json()["assessment_outcome"] == "pass"
 
 
-async def test_anonymising_twice_is_a_no_op_not_a_second_audit_row(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_anonymising_twice_is_a_no_op_not_a_second_audit_row(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     trainee = await add_trainee(client, admin, "twice@example.com")
 
@@ -592,9 +584,7 @@ async def test_anonymising_twice_is_a_no_op_not_a_second_audit_row(
     assert len(anonymise_rows) == 1
 
 
-async def test_anonymising_someone_never_decided_about_still_works(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
+async def test_anonymising_someone_never_decided_about_still_works(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """Offered unconditionally — it is `delete` that is the narrow tool here,
     not `anonymise`, since scrubbing a name never needs a `RESTRICT`'s
     protection."""
