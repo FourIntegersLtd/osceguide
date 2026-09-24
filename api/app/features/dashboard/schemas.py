@@ -94,6 +94,21 @@ class TrendPoint(BaseModel):
     score: float
 
 
+class DomainComposition(BaseModel):
+    """How many marked attempts landed red, amber or green on one domain.
+
+    Classed from the same 0–100 domain score the bars already use: 83 and
+    above is green (a clear G), 50 to 83 is amber, below that is red. Counts,
+    not a new mark.
+    """
+
+    id: str
+    label: str
+    red: int
+    amber: int
+    green: int
+
+
 class Performance(BaseModel):
     """The charts on the consumer exam dashboard, in one call.
 
@@ -107,6 +122,7 @@ class Performance(BaseModel):
     summary: PerformanceSummary
     domains: list[DomainScore] = Field(default_factory=list)
     trend: list[TrendPoint] = Field(default_factory=list)
+    composition: list[DomainComposition] = Field(default_factory=list)
 
 
 class MySlot(BaseModel):

@@ -24,6 +24,7 @@ from app.features.attempts import service_reads as attempts_reads
 from app.features.catalog import service as catalog
 from app.features.dashboard import performance
 from app.features.dashboard.schemas import (
+    DomainComposition,
     DomainScore,
     Performance,
     PerformanceSummary,
@@ -86,6 +87,7 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, exam_code: str | N
         summary=_summary(marked),
         domains=_domains(marked, structure),
         trend=[TrendPoint(date=m.at, score=round(m.score, 1)) for m in marked],
+        composition=_composition(marked, structure),
     )
 
 
@@ -203,6 +205,38 @@ def _domains(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> 
             )
         )
     return out
+
+
+def _band(score: float) -> str:
+    if score >= 83:
+        return "green"
+    if score >= 50:
+        return "amber"
+    return "red"
+
+
+def _composition(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> list[DomainComposition]:
+    labels = performance.domain_labels(structure)
+    rows: list[DomainComposition] = []
+    for domain_id in performance.scored_domain_ids(structure):
+        counts = {"red": 0, "amber": 0, "green": 0}
+        for item in marked:
+            score = item.domains.get(domain_id)
+            if score is None:
+                continue
+            counts[_band(score)] += 1
+        if not any(counts.values()):
+            continue
+        rows.append(
+            DomainComposition(
+                id=domain_id,
+                label=labels.get(domain_id, domain_id),
+                red=counts["red"],
+                amber=counts["amber"],
+                green=counts["green"],
+            )
+        )
+    return rows
 
 
 def _empty(exam_code: str | None) -> Performance:

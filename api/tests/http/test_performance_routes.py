@@ -105,6 +105,7 @@ async def test_nothing_attempted_is_an_empty_answer(client: AsyncClient, make_ac
         "summary": {"pass_rate": 0.0, "fail_rate": 0.0, "critical_rate": 0.0},
         "domains": [],
         "trend": [],
+        "composition": [],
     }
 
 

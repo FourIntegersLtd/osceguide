@@ -19,6 +19,10 @@ class OrgCounts(BaseModel):
 
     trainees: int
     stations: int
+    # What the platform's library offers for the exams this org runs. `stations`
+    # alone said "you have nothing to examine anybody with" to an institution
+    # that had adopted the catalogue whole — see `OrgSetup.stations_available`.
+    library_stations: int
     staff: int
     programmes_with_markable_exam: int
     sittings: int
@@ -40,7 +44,11 @@ class OrgSetup(BaseModel):
     """
 
     trainees_added: bool
-    stations_authored: bool
+    # "There is something to run", not "you have written it yourself". An
+    # institution that adopted the platform catalogue can examine somebody
+    # today, and telling it otherwise sent it off to author stations it did not
+    # need. `OrgCounts.stations` still carries its own authoring separately.
+    stations_available: bool
     team_invited: bool
     programme_exam_rubric_ready: bool
     ready_to_run: bool

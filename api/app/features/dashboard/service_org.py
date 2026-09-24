@@ -37,21 +37,30 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
     the number 1000.
     """
     org = await tenancy.read_organization(session, org_id)
+    # The library an org may draw on is the library of the exams it offers, so
+    # this is one lookup feeding two counts.
+    exam_ids = await catalog.org_exam_ids(session, org_id)
     counts = OrgCounts(
         trainees=await roster.count_trainees(session, org_id),
         stations=await stations.count_stations(session, org_id),
+        library_stations=await stations.count_library_stations(session, exam_ids),
         staff=await memberships.count_staff(session, org_id),
         programmes_with_markable_exam=await catalog.count_programmes_with_markable_exam(session, org_id),
         sittings=await sittings.count_sittings(session, org_id),
     )
+    # A station is *available* if this organisation wrote it or the platform
+    # published it for an exam the organisation runs. Only the first used to
+    # count, so a catalogue-only institution was told to keep setting up while
+    # it was already running examinations.
+    stations_available = counts.stations > 0 or counts.library_stations > 0
     setup = OrgSetup(
         trainees_added=counts.trainees > 0,
-        stations_authored=counts.stations > 0,
+        stations_available=stations_available,
         team_invited=counts.staff > 0,
         programme_exam_rubric_ready=counts.programmes_with_markable_exam > 0,
         ready_to_run=(
             counts.trainees > 0
-            and counts.stations > 0
+            and stations_available
             and counts.staff > 0
             and counts.programmes_with_markable_exam > 0
         ),

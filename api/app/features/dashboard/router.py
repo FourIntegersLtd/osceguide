@@ -15,22 +15,19 @@ from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.core.tenancy import (
-    OrgAdmin,
-    OrgReader,
-    may_read_org_policy,
-    resolve_workspace,
-)
+from app.core.tenancy import OrgAdmin, OrgReader, may_read_org_policy, resolve_workspace
 from app.features.dashboard import (
     errors,
     schemas,
     schemas_org,
+    schemas_readout,
     schemas_report,
     service,
     service_cohort,
     service_console,
     service_org,
     service_performance,
+    service_readout,
     service_report,
     service_streams,
     service_trainee,
@@ -176,6 +173,23 @@ async def read_cohort_summary(
     Exam sittings only — `not_an_exam_sitting` (422) for a training one.
     """
     return await service_cohort.build_cohort_summary(session, workspace.org_id, sitting_id)
+
+
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/readout",
+    response_model=schemas_readout.SittingReadout,
+    responses=error_responses(Forbidden, errors.SittingNotFound, errors.NotAnExamSitting),
+)
+async def read_sitting_readout(
+    sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas_readout.SittingReadout:
+    """The document a course lead downloads after an examination: the cohort
+    ranked, what it adds up to, and what the ranking recommends. Org admin, as the
+    legacy export was — it names every candidate and their score in one payload,
+    and is written to be printed. Exam sittings only, on the cohort's own rule."""
+    return await service_readout.build_readout(
+        session, workspace.org_id, workspace.org_slug, sitting_id, now=clock.now()
+    )
 
 
 @router.get(

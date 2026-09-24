@@ -19,6 +19,8 @@ from tests.http.test_sittings_routes import (
     org_with_admin,
     published_station,
 )
+from tests.support.catalog import create_exam
+from tests.support.sittings import add_programme
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -73,6 +75,29 @@ async def a_sitting(client: AsyncClient, admin: str, slug: str, *, mode: str = "
     return created.json()
 
 
+async def a_library_station(
+    client: AsyncClient, make_actor, *, exam_code: str = "sca", title: str = "Wheezy child"
+) -> str:  # type: ignore[no-untyped-def]
+    """One published platform-library station, as a platform author writes it."""
+    root = await make_actor(f"library-{uuid.uuid4().hex[:8]}@osceguide.com", platform_admin=True)
+    await create_exam(client, root, code=exam_code)
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={
+            "title": title,
+            "exam_code": exam_code,
+            "content": {"who_you_are": "Ben, 6.", "why_you_came": "Noisy breathing."},
+        },
+        headers=bearer(root),
+    )
+    assert created.status_code == 201, created.text
+    published = await client.post(
+        f"/api/v1/platform/stations/{created.json()['id']}/versions/1/publish", headers=bearer(root)
+    )
+    assert published.status_code == 200, published.text
+    return created.json()["id"]
+
+
 # --- the org dashboard -----------------------------------------------------
 
 
@@ -97,6 +122,7 @@ async def test_the_org_dashboard_counts_without_listing(
     assert body["counts"] == {
         "trainees": 1,
         "stations": 1,
+        "library_stations": 0,
         "staff": 1,
         "programmes_with_markable_exam": 1,
         "sittings": 1,
@@ -105,12 +131,61 @@ async def test_the_org_dashboard_counts_without_listing(
     assert [s["name"] for s in body["recent_sittings"]] == ["Finals"]
 
 
+async def test_a_library_only_institution_is_told_it_is_ready(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """It wrote nothing and can still examine somebody.
+
+    The checklist counted the org's own stations, so an institution that adopted
+    the platform catalogue was told to go and author cases while it was already
+    running examinations against the library.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    await a_library_station(client, make_actor)
+    await add_programme(client, admin, org_slug="kings")
+    await client.post(
+        "/api/v1/orgs/kings/trainees",
+        json={"email": "lib-only@example.com", "first_name": "Ada"},
+        headers=bearer(admin),
+    )
+
+    body = (await client.get("/api/v1/orgs/kings/dashboard", headers=bearer(admin))).json()
+    assert body["counts"]["stations"] == 0
+    assert body["counts"]["library_stations"] == 1
+    assert body["setup"]["stations_available"] is True
+    assert body["setup"]["ready_to_run"] is True
+
+
+async def test_the_library_counts_only_what_is_published_for_an_exam_offered(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Two ways the number must not inflate: somebody else's draft, and an exam
+    this institution does not run."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    await add_programme(client, admin, org_slug="kings")
+
+    root = await make_actor(f"library-{uuid.uuid4().hex[:8]}@osceguide.com", platform_admin=True)
+    draft = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "Unpublished", "exam_code": "sca", "content": {"who_you_are": "x"}},
+        headers=bearer(root),
+    )
+    assert draft.status_code == 201, draft.text
+    await a_library_station(client, make_actor, exam_code="plab")
+
+    body = (await client.get("/api/v1/orgs/kings/dashboard", headers=bearer(admin))).json()
+    # Neither a draft somebody else is still writing nor a station for an exam
+    # this institution does not offer is something it can run.
+    assert body["counts"]["library_stations"] == 0
+    assert body["setup"]["stations_available"] is False
+
+
 async def test_an_empty_org_is_told_what_it_is_missing(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor, slug="empty")
     body = (await client.get("/api/v1/orgs/empty/dashboard", headers=bearer(admin))).json()
     assert body["setup"] == {
         "trainees_added": False,
-        "stations_authored": False,
+        "stations_available": False,
         "team_invited": True,
         "programme_exam_rubric_ready": False,
         "ready_to_run": False,
