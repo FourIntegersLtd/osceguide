@@ -8,6 +8,7 @@ import { listInterventions } from "@/domains/assess/sessions/api";
 
 /** The override actions, as an examiner would write them in a report. */
 const ACTION_LABEL: Record<string, string> = {
+  advance: "Advanced to the next station",
   pause: "Paused",
   resume: "Resumed",
   extend_clock: "Clock extended",

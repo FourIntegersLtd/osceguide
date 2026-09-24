@@ -77,6 +77,7 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                 staff={staff}
                 initial={draftFrom(data)}
                 submitLabel={blocked ? "Rebuild refused" : "Save changes"}
+                disabled={blocked !== null}
                 above={
                   blocked ? (
                     <>

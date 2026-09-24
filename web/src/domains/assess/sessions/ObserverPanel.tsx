@@ -8,16 +8,20 @@ import { ExamClock } from "@/capabilities/attempt-runner";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import type { ObserverRoom } from "@/domains/assess/sessions/useCircuitRun";
 import { phaseLabel } from "@/domains/assess/sessions/support";
+import { ObserverVideoGrid } from "@/domains/assess/sessions/ObserverVideoGrid";
 
 /**
- * Listening in on a running station.
+ * Listening in on a running station — subscribe-only in an **exam**, where the
+ * backend token carries no publish permission at all: a candidate cannot be
+ * prompted mid-consultation and the transcript stays a record of what they
+ * said to the patient alone.
  *
- * Subscribe-only, and not as a courtesy: the observer token the backend mints
- * carries no publish permission, so there is no microphone here to mute and no
- * camera to turn off. A candidate cannot be prompted mid-consultation and the
- * transcript stays a record of what they said to the patient. The retiring
- * runner gave a supervisor both, and a tile grid to watch them in — see
- * `docs/port-gaps.md`.
+ * A **training** circuit's grant relaxes that on purpose
+ * (`sittings/service_join.py:observer_token`), and `RoomGrant.can_publish`
+ * says so — the retiring runner let a supervisor demonstrate on camera while
+ * a trainee practised, and a training circuit carries no result a prompted
+ * answer could corrupt. `ObserverVideoGrid` renders only then; the text-only
+ * occupant list below is what an exam circuit still gets.
  */
 export function ObserverPanel({
   data,
@@ -66,13 +70,28 @@ export function ObserverPanel({
         {observer.failure ? <Alert tone="danger">{observer.failure}</Alert> : null}
 
         {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-          <ExamClock secondsLeft={circuit.remaining_seconds} label={phaseLabel(circuit.phase)} />
+          <ExamClock
+            secondsLeft={circuit.remaining_seconds}
+            label={phaseLabel(circuit.phase)}
+            tick
+            paused={circuit.paused}
+          />
         ) : null}
 
         {observer.grant ? (
-          <VoiceRoom grant={observer.grant} audio={false} onDisconnected={() => observer.leave()}>
-            <Occupants />
-          </VoiceRoom>
+          (() => {
+            const canPublish = observer.grant.can_publish === true;
+            return (
+              <VoiceRoom
+                grant={observer.grant}
+                audio={canPublish}
+                video={canPublish}
+                onDisconnected={() => observer.leave()}
+              >
+                {canPublish ? <ObserverVideoGrid /> : <Occupants />}
+              </VoiceRoom>
+            );
+          })()
         ) : (
           <p className="text-osce-caption leading-relaxed text-b2b-mid">
             You can hear the consultation without being heard in it. Nothing you do here reaches

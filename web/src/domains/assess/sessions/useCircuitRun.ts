@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorMessage, useAsync, useEventStream, type AsyncState } from "@/foundation/hooks";
 import type { RoomGrant } from "@/foundation/livekit";
 import {
@@ -47,11 +47,26 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
     (signal) => readConsole(orgSlug, circuitId, signal),
     [orgSlug, circuitId],
   );
-  const stream = useEventStream<CircuitConsole>(consoleStreamPath(orgSlug, circuitId));
+  /*
+   * The server closes this stream for good once the circuit ends — it sends
+   * one last snapshot, then the connection goes away (`core/sse.py`'s
+   * `Snapshot.final`). A browser reads a clean server-side close as an error
+   * and reconnects on a backoff regardless of why it closed, so without this
+   * an ended circuit left open in a background tab retries forever. The last
+   * frame this hook ever saw is the only place "ended" can be read from, since
+   * that is exactly the frame the stream will not be replacing.
+   */
+  const [ended, setEnded] = useState(false);
+  const stream = useEventStream<CircuitConsole>(consoleStreamPath(orgSlug, circuitId), {
+    enabled: !ended,
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
   const data = stream.data ?? initial.data;
+  useEffect(() => {
+    if (data?.circuit.ended_at != null) setEnded(true);
+  }, [data]);
   const slots = useMemo(() => (data ? orderedSlots(data) : []), [data]);
   const activeSlot = useMemo(
     () => slots.find((slot) => slot.id === data?.circuit.active_slot_id) ?? null,

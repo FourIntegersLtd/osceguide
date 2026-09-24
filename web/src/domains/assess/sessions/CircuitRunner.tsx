@@ -10,6 +10,7 @@ import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { AddTraineesDialog } from "@/domains/assess/sessions/AddTraineesDialog";
 import { CircuitFeedbackCard } from "@/domains/assess/sessions/CircuitFeedbackCard";
 import { InterventionsLog } from "@/domains/assess/sessions/InterventionsLog";
+import { LiveMarkingSidebar } from "@/domains/assess/sessions/LiveMarkingSidebar";
 import { ObserverPanel } from "@/domains/assess/sessions/ObserverPanel";
 import { RunnerHelpPanel } from "@/domains/assess/sessions/RunnerHelpPanel";
 import { RunnerStepper } from "@/domains/assess/sessions/RunnerStepper";
@@ -128,6 +129,8 @@ function Runner({
             <ExamClock
               secondsLeft={circuit.remaining_seconds}
               label={phaseLabel(circuit.phase)}
+              tick
+              paused={circuit.paused}
             />
           ) : null}
           {!isExam && live ? (
@@ -179,6 +182,8 @@ function Runner({
 
       <ObserverPanel data={data} observer={observer} />
 
+      <LiveMarkingSidebar data={data} orgSlug={orgSlug} />
+
       <CircuitFeedbackCard
         data={data}
         orgSlug={orgSlug}
@@ -189,9 +194,9 @@ function Runner({
 
       <InterventionsLog orgSlug={orgSlug} circuitId={circuitId} />
 
-      {!isExam ? (
+      {!isExam && adding ? (
         <AddTraineesDialog
-          open={adding}
+          open
           data={data}
           orgSlug={orgSlug}
           circuitId={circuitId}

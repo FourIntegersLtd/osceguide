@@ -85,12 +85,29 @@ export function listProgrammes(slug: string, signal?: AbortSignal) {
   );
 }
 
-/** A sitting binds to a programme; the exam's published rubric is resolved server-side. */
+/**
+ * The sitting type that goes with a mode.
+ *
+ * The retiring client had a session type and a mode as two independent picks;
+ * here the one is derived from the other, which is what `NewSitting` already
+ * did inline and what the edit form must keep doing — two screens disagreeing
+ * about the derivation is how a sitting ends up `exam` typed `group_training`.
+ */
+export function sittingTypeForMode(mode: SittingMode): string {
+  return mode === "exam" ? "examination" : "group_training";
+}
+
+/** A sitting's mode, in the words the form and the API share. */
+export type SittingMode = "training" | "exam";
+
+/**
+ * A sitting binds to a programme; the exam's published rubric is resolved server-side.
+ */
 export function createSitting(
   slug: string,
   input: {
     name: string;
-    mode: "training" | "exam";
+    mode: SittingMode;
     programmeId: string;
     scheduledFor: string | null;
   },
@@ -100,10 +117,55 @@ export function createSitting(
     body: {
       name: input.name,
       mode: input.mode,
-      sitting_type: input.mode === "exam" ? "examination" : "group_training",
+      sitting_type: sittingTypeForMode(input.mode),
       programme_id: input.programmeId,
       scheduled_for: input.scheduledFor,
     },
+  });
+}
+
+/**
+ * What the edit screen may ask to change.
+ *
+ * A partial PUT: a field that is absent is left alone, which is what the
+ * retiring route meant too. `scheduledFor: null` is a real request to clear
+ * the date — "not scheduled" is a state a sitting can be in — while a null on
+ * any of the others is the schema's default read as "not asked for", which is
+ * why they are `undefined` here and not nullable. `status` is deliberately
+ * absent: that belongs to the run machine, and a route that could set it would
+ * let a screen end an examination by editing a name.
+ *
+ * The refusals, all of them surfaced by the form rather than retried:
+ * `sitting_locked` (409) — an assessment-bearing field was sent after a circuit
+ * started; `invalid_circuit` (409) — the mode was sent while circuits exist,
+ * which would relabel what they are; `exam_rubric_not_ready` and
+ * `rubric_version_not_published` — the new programme has nothing to mark with.
+ */
+export interface SittingChanges {
+  name?: string;
+  mode?: SittingMode;
+  sittingType?: string;
+  scheduledFor?: string | null;
+  programmeId?: string;
+}
+
+export function updateSitting(
+  slug: string,
+  sittingId: string,
+  changes: SittingChanges,
+): Promise<Sitting> {
+  const body: components["schemas"]["UpdateSitting"] = {};
+  if (changes.name !== undefined) body.name = changes.name;
+  if (changes.mode !== undefined) body.mode = changes.mode;
+  if (changes.sittingType !== undefined) body.sitting_type = changes.sittingType;
+  // `null` is meaningful on this one field, so it is tested for absence and not
+  // for truthiness.
+  if (changes.scheduledFor !== undefined) body.scheduled_for = changes.scheduledFor;
+  if (changes.programmeId !== undefined) body.programme_id = changes.programmeId;
+
+  return platformRequest<Sitting>(`${org(slug)}/sittings/${encodeURIComponent(sittingId)}`, {
+    method: "PUT",
+    body,
   });
 }
 
@@ -182,8 +244,9 @@ export function createCircuit(
  * `station_version_ids` go whole rather than as a patch — the same rule create
  * follows, and the reason this is refused once a consultation has run, a station
  * has been sat, or feedback has been recorded. The backend answers
- * `circuit_locked` (409) when that has happened; `readEditLock` is what lets the
- * screen say so before anybody has typed anything.
+ * `circuit_locked` (409) when that has happened; the edit screen knows sooner
+ * because it reads `editable`/`edit_block` off the console frame it already
+ * loads, so it can say so before anybody has typed anything.
  *
  * This route existed on platform-api and nothing in the product called it, which
  * is how "a circuit cannot be corrected" looked like a backend limitation rather
@@ -211,21 +274,34 @@ export function rebuildCircuit(
   });
 }
 
-/** Whether a circuit's slots may be rebuilt right now, and what stops it. */
-export function readEditLock(
-  slug: string,
-  circuitId: string,
-  signal?: AbortSignal,
-): Promise<components["schemas"]["EditLock"]> {
-  return platformRequest<components["schemas"]["EditLock"]>(
-    `${org(slug)}/circuits/${encodeURIComponent(circuitId)}/edit-lock`,
-    { signal },
-  );
-}
-
 /* ---------- marking ---------- */
 
 export type SlotReview = components["schemas"]["SlotReviewRead"];
+export type Transcript = components["schemas"]["TranscriptRead"];
+
+/**
+ * The examiner's read of what was actually said.
+ *
+ * `capabilities/attempt-runner` already calls this route for the candidate who
+ * sat it, and the route used to answer anybody else with `attempt_not_yours` —
+ * which is why the marking was reviewable and the consultation underneath it
+ * was not. The authorisation is now widened to exactly one other person: the
+ * supervisor named on the attempt's circuit. This is that reader's call, kept
+ * in the assess slice because the assess screens are the ones that need it and
+ * the runner module above them is a candidate's module.
+ *
+ * Nothing here decides who may read it; the server does, and a refusal is
+ * surfaced by the screen rather than retried.
+ */
+export function readAttemptTranscript(
+  attemptId: string,
+  signal?: AbortSignal,
+): Promise<Transcript> {
+  return platformRequest<Transcript>(
+    `/api/v1/attempts/${encodeURIComponent(attemptId)}/transcript`,
+    { signal },
+  );
+}
 /*
  * `mine` is a PUT and nothing else: there is no read for one's own review, so
  * a screen finds it in the slot's review list by the id on it. See
@@ -242,7 +318,7 @@ export type SlotReview = components["schemas"]["SlotReviewRead"];
 export function saveReview(
   slug: string,
   slotId: string,
-  input: { fieldValues: Record<string, unknown>; notes: string | null; status: "draft" | "submitted" },
+  input: { fieldValues: Record<string, unknown>; notes: string | null; status: "draft" | "completed" },
 ): Promise<SlotReview> {
   return platformRequest<SlotReview>(
     `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,

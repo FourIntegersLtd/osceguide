@@ -2,10 +2,11 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, Button, Card, Input, PageHeader, Spinner, cn } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, Card, Input, PageHeader, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { createSitting, listProgrammes } from "@/domains/assess/api";
+import { createSitting, listProgrammes, type Programme, type SittingMode } from "@/domains/assess/api";
+import { ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
 
 /** Schedule a sitting against a programme (exam + published rubric). */
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
@@ -39,7 +40,7 @@ function Form({
   onCreated,
 }: {
   orgSlug: string;
-  programmes: { id: string; exam_name: string; exam_code: string; status: string }[];
+  programmes: Programme[];
   onCreated: (sittingId: string) => void;
 }) {
   const activeProgrammes = useMemo(
@@ -48,7 +49,7 @@ function Form({
   );
 
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<"training" | "exam">("training");
+  const [mode, setMode] = useState<SittingMode>("training");
   const [programmeId, setProgrammeId] = useState<string>(activeProgrammes[0]?.id ?? "");
   const [scheduledFor, setScheduledFor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,8 +86,6 @@ function Form({
     );
   }
 
-  const selected = activeProgrammes.find((p) => p.id === programmeId) ?? activeProgrammes[0];
-
   return (
     <Card>
       <form onSubmit={submit} className="flex max-w-xl flex-col gap-4">
@@ -100,57 +99,15 @@ function Form({
           placeholder="March mock OSCE"
         />
 
-        <fieldset className="flex flex-col gap-1.5">
-          <legend className="text-sm font-medium text-ink">Mode</legend>
-          <div className="flex gap-2">
-            {(["training", "exam"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setMode(option)}
-                aria-pressed={mode === option}
-                className={cn(
-                  "rounded-control border px-3 py-1.5 text-sm capitalize",
-                  mode === option
-                    ? "border-accent bg-accent text-ink-inverse"
-                    : "border-border-strong bg-surface text-ink-muted hover:text-ink",
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-          <p className="text-sm text-ink-muted">
-            {mode === "exam"
-              ? "One candidate through every station, at most twelve. Trainees cannot be appended once it runs."
-              : "Each trainee is paired with one station, and they rotate."}
-          </p>
-        </fieldset>
+        <ModeField value={mode} onChange={setMode} />
 
-        <Select
-          label="Programme"
+        <ProgrammeField
           value={programmeId}
           onChange={setProgrammeId}
-          options={activeProgrammes.map((programme) => ({
-            value: programme.id,
-            label: `${programme.exam_name} (${programme.exam_code})`,
-          }))}
+          programmes={activeProgrammes}
         />
 
-        {selected ? (
-          <p className="text-sm text-ink-muted">
-            Marking uses the published rubric bound to {selected.exam_name}. You do not pick a
-            separate feedback template.
-          </p>
-        ) : null}
-
-        <Input
-          label="Scheduled for"
-          type="datetime-local"
-          value={scheduledFor}
-          onChange={(event) => setScheduledFor(event.target.value)}
-          hint="Leave empty to schedule it later."
-        />
+        <ScheduledForField value={scheduledFor} onChange={setScheduledFor} />
 
         <div className="flex justify-end">
           <Button type="submit" disabled={busy || name.trim().length === 0 || !programmeId}>
@@ -159,34 +116,5 @@ function Form({
         </div>
       </form>
     </Card>
-  );
-}
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-ink">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

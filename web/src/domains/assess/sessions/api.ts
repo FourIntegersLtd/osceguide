@@ -96,15 +96,39 @@ export function listInterventions(
   );
 }
 
-/** Late arrivals. Appended to the end of the circuit, never inserted. */
+/**
+ * Late arrivals, and where they go.
+ *
+ * Appended to the end of the circuit, never inserted. `stationVersionIds` is
+ * positional against `traineeIds` — the nth arrival takes the nth station —
+ * exactly as circuit creation pairs them. Omit it and everybody joins the
+ * station the circuit is already running, which is what a single latecomer to a
+ * group practice wants and is the default the dialog offers.
+ *
+ * The refusals this can now answer, all of them shown rather than retried:
+ * `trainee_already_on_circuit` (409) — they are already on it, and the slots
+ * did not change; `station_not_on_circuit` (409) — a station nobody here is
+ * sitting is not where a latecomer belongs, because naming one would change
+ * what the circuit is; `invalid_circuit` (409) — the two lists did not line up;
+ * `not_permitted_in_mode` (409) — an examination is one candidate by
+ * construction, and appending is refused there by design.
+ */
 export function appendTrainees(
   slug: string,
   circuitId: string,
   traineeIds: string[],
+  stationVersionIds?: string[],
 ): Promise<Circuit> {
   return platformRequest<Circuit>(`${circuit(slug, circuitId)}/append-trainees`, {
     method: "POST",
-    body: { trainee_ids: traineeIds },
+    body: {
+      trainee_ids: traineeIds,
+      // Absent means "the active station", so an empty list is not sent as an
+      // empty list — that would be the short-list case the server refuses.
+      ...(stationVersionIds && stationVersionIds.length > 0
+        ? { station_version_ids: stationVersionIds }
+        : {}),
+    },
   });
 }
 

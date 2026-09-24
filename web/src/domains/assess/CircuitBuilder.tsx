@@ -70,6 +70,7 @@ export function CircuitBuilder({
   submitLabel,
   onSubmit,
   above,
+  disabled = false,
 }: {
   mode: string;
   trainees: TraineeRow[];
@@ -80,6 +81,8 @@ export function CircuitBuilder({
   onSubmit: (shape: CircuitShape) => Promise<void>;
   /** Anything the caller needs said above the fields — a lock notice, chiefly. */
   above?: React.ReactNode;
+  /** True when the caller already knows the submit will be refused — an edit lock, chiefly. */
+  disabled?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [stations, setStations] = useState<PickedStation[]>(initial?.stations ?? []);
@@ -350,7 +353,7 @@ export function CircuitBuilder({
       <div className="flex justify-end">
         <Button
           onClick={submit}
-          disabled={busy || stations.length === 0 || picked.size === 0 || tooManyStations}
+          disabled={disabled || busy || stations.length === 0 || picked.size === 0 || tooManyStations}
         >
           {busy ? <Spinner label={submitLabel} /> : submitLabel}
         </Button>
