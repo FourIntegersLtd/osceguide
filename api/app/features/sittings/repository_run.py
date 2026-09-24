@@ -49,6 +49,20 @@ async def live_circuits_for_org(session: AsyncSession, org_id: uuid.UUID) -> lis
     return [(c, s) for c, s in (await session.execute(stmt)).all()]
 
 
+async def sitting_mode_for_circuit(session: AsyncSession, circuit_id: uuid.UUID) -> str | None:
+    """The mode (`training`/`exam`) of the sitting a circuit belongs to.
+
+    One column, not the row, because the only caller (the observer grant)
+    needs a single fact to decide a publish permission — see `service_join`.
+    `None` if the circuit does not exist, which the caller treats as the
+    safer default (no publish).
+    """
+    stmt = (
+        select(Sitting.mode).join(Circuit, Circuit.sitting_id == Sitting.id).where(Circuit.id == circuit_id)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_seconds: int) -> list[DueCircuit]:
     """Live circuits whose phase ended and which nothing has moved on.
 

@@ -90,3 +90,93 @@ async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id
         .order_by(Slot.slot_index)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def sitting_has_begun(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> bool:
+    """Whether any circuit on this sitting has been started.
+
+    One limited read rather than a load of the circuits: the edit route asks it
+    to decide what it may write, and a sitting with twelve circuits is exactly
+    the case where asking is expensive.
+    """
+    stmt = (
+        select(Circuit.id)
+        .where(
+            Circuit.org_id == org_id,
+            Circuit.sitting_id == sitting_id,
+            Circuit.started_at.is_not(None),
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None
+
+
+async def count_sitting_circuits(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> int:
+    """How many circuits this sitting is composed of.
+
+    The edit route asks it about `mode` alone: the mode is what a circuit is
+    composed *from*, so once there is anything composed, changing it would leave
+    the composition describing something the sitting no longer says it is.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(Circuit)
+        .where(Circuit.org_id == org_id, Circuit.sitting_id == sitting_id)
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def circuit_supervisor_for_slot(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> uuid.UUID | None:
+    """The user named as supervisor of the circuit a slot belongs to.
+
+    Asked by `attempts`, which sits below this slice and cannot read the tables
+    itself — it reaches this through the seam in `composition.py`. It answers
+    nothing on its own: a caller must already hold a role that may run a circuit
+    in `org_id`, and being named here is what makes *this* attempt readable.
+    """
+    stmt = (
+        select(Circuit.supervisor_user_id)
+        .join(Slot, Slot.circuit_id == Circuit.id)
+        .where(Slot.org_id == org_id, Slot.id == slot_id)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def circuit_station_ids(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
+) -> list[uuid.UUID]:
+    """The stations this circuit runs, in position order.
+
+    What an append is allowed to aim at: b2b's dialog could name any station in
+    the organisation, and this one is the circuit's own list, so a latecomer
+    cannot be pointed at a station nobody here is sitting.
+    """
+    stmt = (
+        select(CircuitStation.station_version_id)
+        .join(Circuit, Circuit.id == CircuitStation.circuit_id)
+        .where(Circuit.org_id == org_id, CircuitStation.circuit_id == circuit_id)
+        .order_by(CircuitStation.position)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def circuit_trainee_ids(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
+) -> list[uuid.UUID]:
+    """Everyone already on this circuit, whether or not they have a slot yet.
+
+    The roster list and the slots are two rows apiece by design — a trainee is
+    attached to a circuit before the circuit is started and their first slot
+    exists — so "is this person already here" has to ask the roster list, which
+    is what b2b's duplicate refusal asked.
+    """
+    stmt = (
+        select(CircuitTrainee.trainee_id)
+        .join(Circuit, Circuit.id == CircuitTrainee.circuit_id)
+        .where(Circuit.org_id == org_id, CircuitTrainee.circuit_id == circuit_id)
+        .order_by(CircuitTrainee.position)
+    )
+    return list((await session.execute(stmt)).scalars())

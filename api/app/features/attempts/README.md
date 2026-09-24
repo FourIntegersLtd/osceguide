@@ -35,6 +35,16 @@ and the job that scores a delivered transcript.
 - Exactly one optional reference matches the kind — a CHECK, because six paths
   create attempts and only one needs to be wrong.
 - A slot has at most one attempt that has not failed: a partial unique index.
+- **The transcript and the marking have two readers, not one.** The candidate who
+  spoke them, and the supervisor named on the circuit they were spoken in —
+  `service_access.ensure_readable`. Being named *is* the permission, as being
+  rostered on is the permission to join the room; a supervisor of another
+  circuit, an administrator who was not named, and a platform job that brings no
+  memberships are all refused, as they were before. Nothing else this slice serves
+  was widened: the brief, the model answer, the attempt row and the stream still
+  answer to their owner alone. `attempts` sits below `sittings`, so it cannot read
+  who a circuit names — the question is asked through a seam tied in
+  `composition.py`, and unbound every examiner read would answer 403.
 - Chunks are idempotent on `(attempt_id, message_id)`; the completed transcript
   is accepted once; scoring is idempotent per `policy_version`.
 - The bootstrap payload **never** contains `evaluation_policy`. Marking is the
@@ -46,8 +56,8 @@ and the job that scores a delivered transcript.
 | POST | `/api/v1/attempts` | bearer | kind-specific body; checks entitlement |
 | POST | `/api/v1/attempts/{id}/abandon` | owner | `invalid_attempt_state` (409) once the interaction is complete |
 | GET | `/api/v1/attempts/{id}` | owner or org admin | |
-| GET | `/api/v1/attempts/{id}/transcript` | owner or org admin | |
-| GET | `/api/v1/attempts/{id}/result` | owner or org admin | |
+| GET | `/api/v1/attempts/{id}/transcript` | owner, platform admin, or the named examiner | `attempt_not_yours` (403) for every other supervisor, and for an org admin not named on the circuit |
+| GET | `/api/v1/attempts/{id}/result` | owner, platform admin, or the named examiner | the same pair of reads, widened together |
 | GET | `/api/v1/attempts/{id}/brief` | owner or org admin | The candidate's reading-time brief. Readable from `created`: the attempt exists before the reading period does |
 | GET | `/api/v1/attempts/{id}/review` | owner or org admin | The model answer — the patient's ideas and concerns, and the management plan. `attempt_not_finished` (409) until the interaction is over |
 | GET | `/api/v1/attempts/{id}/roleplay` | owner | Post-consultation patient script for practising as the patient; explicit field allowlist |

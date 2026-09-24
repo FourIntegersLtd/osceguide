@@ -74,6 +74,24 @@ class CreateSitting(BaseModel):
     scheduled_for: datetime | None = None
 
 
+class UpdateSitting(BaseModel):
+    """The sitting edit screen's fields. Absent means "leave it alone", which is
+    what the legacy PUT meant too: it sent only what the screen had changed.
+
+    The b2b screen offered a name, a type and a feedback template. This backend
+    resolves the template through the programme, so the third of those is
+    `programme_id` here and the bound rubric moves with it. `status` is not
+    offered: that is the run machine's to move, and a route that could set it
+    would let a screen end an examination by editing a name.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    mode: str | None = Field(default=None, pattern="^(training|exam)$")
+    sitting_type: str | None = Field(default=None, max_length=32)
+    scheduled_for: datetime | None = None
+    programme_id: uuid.UUID | None = None
+
+
 class TimingIn(BaseModel):
     reading_minutes: int | None = None
     simulation_minutes: int | None = None
@@ -164,7 +182,18 @@ class EditLock(BaseModel):
 
 
 class AppendTrainees(BaseModel):
+    """Who has just arrived, and where they go.
+
+    `station_version_ids` is the pairing `CreateCircuit` already uses — the nth
+    arrival takes the nth station — because b2b's live "add trainee" dialog
+    named a station with each person rather than assuming it. Omit the list and
+    everyone joins the station the circuit is already running, which is what a
+    single latecomer to a group practice wants and what this route used to do
+    whatever the caller meant.
+    """
+
     trainee_ids: list[uuid.UUID] = Field(min_length=1)
+    station_version_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class RoomGrant(BaseModel):
@@ -183,3 +212,8 @@ class RoomGrant(BaseModel):
     token: str
     server_url: str
     room: str
+    # A candidate's grant is always `True`, so this field is only interesting
+    # on the observer grant, where it now varies with the sitting's mode. The
+    # browser needs to know before it offers a camera button, not discover it
+    # from a publish failure the token silently enforces.
+    can_publish: bool = True

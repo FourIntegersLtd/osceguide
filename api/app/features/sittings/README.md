@@ -18,7 +18,10 @@ things here: a LiveKit room, an HTTP session, and a database session.
   wrong — pause and resume the clock, extend or reset it, send the patient in
   again, give a station back, jump to another station, move on early, or hand
   the circuit to a human entirely.
-- As a **supervisor**, I add a trainee to a circuit already running.
+- As a **supervisor**, I add a trainee to a circuit already running, and say
+  which station they take.
+- As an **org admin**, I correct a sitting I scheduled wrong — its name, its
+  date, the programme it offers — up until somebody is examined against it.
 - As an **examiner**, I step into a candidate's room and listen without being
   heard.
 - As a **trainee**, I join the room at the start and stay in it for the whole
@@ -35,9 +38,24 @@ things here: a LiveKit room, an HTTP session, and a database session.
 - Structural edits and deletion are refused while a slot is live or any feedback
   exists, because rebuilding the slots would delete the one somebody is sitting.
   `force` overrides it, as in b2b, for when a session has gone wrong mid-circuit.
-- Appending trainees is training-only. Jumping to a station is not: an exam
-  candidate whose station fails needs moving as much as a training group does,
-  and the old training-only rule left nobody able to do it.
+- Appending trainees is training-only, and a latecomer is placed at a station
+  this circuit already runs. An exam circuit is one candidate by construction
+  (C1), so a second person on it is not a late arrival but a second candidate
+  sharing one room, one clock and one recording; the equivalent act is another
+  circuit on the same sitting, which `POST /sittings/{id}/circuits` allows while
+  it is running. b2b refused the same thing ("use Edit circuit for exam
+  sessions"), and naming a station the circuit does not run is the structural
+  edit, not this one.
+- **A sitting's assessment-bearing fields freeze when it begins.** `mode`,
+  `sitting_type` and `programme_id` — the last because the rubric is resolved
+  from the programme, so it is how the marking basis is changed — cannot move
+  once any circuit on the sitting has started. The name and the date never stop
+  moving. `mode` freezes earlier still: while there are circuits at all, because
+  it is the rule their slots were composed from and this route composes nothing.
+  A field *restated* is not a field *changed*, so PUTting the document back
+  untouched is a no-op on a running sitting rather than a refusal.
+- Nobody is put on a circuit twice; b2b answered that with 409 and here it
+  reached the unique index and came back as a 500.
 - One slot is active at a time, and a break has none at all.
 - Timing is clamped here — reading 1–30 minutes, simulation 1–180 — rather than
   in the browser, which is where b2b clamps it today while the API accepts
@@ -73,9 +91,10 @@ Scheduling (`router.py`):
 |---|---|---|---|
 | GET/POST | `/api/v1/orgs/{org_slug}/sittings` | org admin | |
 | GET | `/api/v1/orgs/{org_slug}/sittings/{id}` | org member | includes circuits and slots |
+| PUT | `/api/v1/orgs/{org_slug}/sittings/{id}` | org admin | partial: only what was sent is written. `sitting_locked` (409) once a circuit has started and an assessment-bearing field changed, `invalid_circuit` (409) for a mode change over existing circuits |
 | POST | `/api/v1/orgs/{org_slug}/sittings/{id}/circuits` | org admin | `circuit_locked` (409), `trainee_revoked` (409) |
 | PUT | `/api/v1/orgs/{org_slug}/circuits/{id}` | org admin | structural edit (C3); `circuit_locked` (409) once a station has been run |
-| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/append-trainees` | org staff | training only |
+| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/append-trainees` | org staff | training only; each arrival may name its station. `trainee_already_on_circuit`, `station_not_on_circuit`, `invalid_circuit` (409) |
 
 Running (`router_run.py`), all **org staff** — an admin, or the supervisor
 assigned to it. Deliberately not `OrgReader`, which admits the candidate sitting

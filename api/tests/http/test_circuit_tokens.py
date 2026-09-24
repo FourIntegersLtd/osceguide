@@ -41,6 +41,8 @@ async def a_live_circuit(
     client: AsyncClient,
     make_actor,
     db_session: AsyncSession,  # type: ignore[no-untyped-def]
+    *,
+    mode: str = "exam",
 ) -> tuple[str, str, str, uuid.UUID]:
     """An org admin, a started circuit, and the candidate rostered onto it."""
     org_id, admin = await org_with_admin(client, make_actor)
@@ -48,7 +50,7 @@ async def a_live_circuit(
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "S", "programme_id": str(template), "mode": "exam"},
+            json={"name": "S", "programme_id": str(template), "mode": mode},
             headers=bearer(admin),
         )
     ).json()
@@ -166,6 +168,29 @@ async def test_an_examiner_can_listen_and_cannot_be_heard(
     granted = tokens.issued[-1]
     assert granted["can_publish"] is False
     assert granted["agent_name"] is None
+    assert response.json()["can_publish"] is False
+
+
+async def test_a_training_supervisor_may_demonstrate_on_camera(
+    client: AsyncClient, make_actor, db_session: AsyncSession, tokens: FakeVoiceTokens
+) -> None:
+    """The one deliberate exception to the observer guarantee above.
+
+    A training circuit carries no result a prompted answer could corrupt, so
+    a supervisor may publish — matching the retiring client, which let them
+    demonstrate on camera while a trainee practised. Exam mode above is
+    unaffected: this is a per-sitting relaxation, not a change to the rule.
+    """
+    admin, _, circuit_id, _ = await a_live_circuit(client, make_actor, db_session, mode="training")
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/observer-token", headers=bearer(admin)
+    )
+
+    assert response.status_code == 200, response.text
+    granted = tokens.issued[-1]
+    assert granted["can_publish"] is True
+    assert response.json()["can_publish"] is True
 
 
 async def test_an_examiners_identity_is_never_mistaken_for_a_patient(

@@ -180,8 +180,24 @@ def ensure_live(state: CircuitState) -> None:
 
 
 def ensure_can_append_trainees(mode: Mode) -> None:
+    """Latecomers belong to a training circuit, and to nobody else.
+
+    The rule is b2b's, which answered an exam-mode append with "only supported
+    for training circuits — use Edit circuit for exam sessions". It is not a
+    missing feature, it is the shape of the aggregate: an exam circuit is one
+    candidate through every station (C1), so a second person on it is not a late
+    arrival but a second candidate sharing one room, one clock and one recording
+    — and one transcript that would then be marked as though a single doctor had
+    produced it.
+
+    What an examination has instead is another circuit on the same sitting, which
+    `POST /sittings/{id}/circuits` allows while the sitting is running. Being let
+    into one already under way is a disclosure and grading question, not a route.
+    """
     if mode is not Mode.TRAINING:
-        raise NotPermittedInMode("Candidates cannot be added to an exam circuit once it exists.")
+        raise NotPermittedInMode(
+            "Candidates cannot be added to an exam circuit. Give them their own circuit on this sitting."
+        )
 
 
 def _clamp(value: int, bounds: tuple[int, int]) -> int:

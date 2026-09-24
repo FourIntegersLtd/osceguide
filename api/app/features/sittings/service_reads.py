@@ -159,6 +159,20 @@ async def sitting_ref(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid
     return None if row is None else _sitting_ref(row)
 
 
+async def supervisor_for_slot(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> uuid.UUID | None:
+    """Whoever is named to supervise the circuit this slot is being run in.
+
+    Bound into `attempts` by `composition.py`, because that slice sits below this
+    one and cannot ask the question of the tables itself — and the question is
+    the whole of an examiner's authority to read a candidate's transcript: not
+    the role, and not the organisation, but being the named person on this
+    circuit. The same thing `observer_token` hands out a room for.
+    """
+    return await repository_reads.circuit_supervisor_for_slot(session, org_id, slot_id)
+
+
 async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> list[SlotRef]:
     """Every slot in the sitting, across all of its circuits.
 

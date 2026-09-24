@@ -10,7 +10,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.tenancy import OrgAdmin, OrgReader, OrgStaff
-from app.features.sittings import errors, schemas, service, service_structure
+from app.features.sittings import errors, schemas, service, service_edit, service_structure
 
 router = APIRouter(tags=["sittings"])
 
@@ -67,6 +67,34 @@ async def read_sitting(sitting_id: uuid.UUID, workspace: OrgReader, session: Ses
     """Circuits and slots embedded, because every screen that opens a sitting
     needs all three and would otherwise fetch them one by one."""
     return await service.read_sitting(session, workspace.org_id, sitting_id)
+
+
+@router.put(
+    "/orgs/{org_slug}/sittings/{sitting_id}",
+    response_model=schemas.SittingRead,
+    responses=error_responses(
+        Forbidden,
+        errors.SittingNotFound,
+        errors.SittingLockedError,
+        errors.InvalidCircuitError,
+        errors.ProgrammeNotFound,
+        errors.ExamRubricNotReady,
+        errors.RubricVersionNotFound,
+        errors.RubricVersionNotPublished,
+    ),
+)
+async def update_sitting(
+    sitting_id: uuid.UUID, body: schemas.UpdateSitting, workspace: OrgAdmin, session: Session
+) -> schemas.SittingRead:
+    """Correct a sitting that has already been scheduled.
+
+    Only what was sent is written, so the edit screen restates nothing. The name
+    and the date stay open for the life of the record; what the sitting examines
+    — its mode, its type, the programme its rubric is resolved from — freezes the
+    moment any circuit on it has started, because the marks already given were
+    given against the other answer.
+    """
+    return await service_edit.update_sitting(session, workspace.org_id, sitting_id, body=body)
 
 
 @router.post(
@@ -138,6 +166,8 @@ async def rebuild_circuit(
         errors.CircuitAlreadyEndedError,
         errors.NotPermittedInModeError,
         errors.InvalidCircuitError,
+        errors.TraineeAlreadyOnCircuitError,
+        errors.StationNotOnCircuitError,
         errors.TraineeRevokedError,
     ),
 )
@@ -147,7 +177,17 @@ async def append_trainees(
     workspace: OrgStaff,
     session: Session,
 ) -> schemas.CircuitRead:
-    """Add people to a training circuit, into the room it is already using."""
+    """Add people to a training circuit, into the room it is already using.
+
+    Each arrival may name the station it takes, positionally with
+    `trainee_ids`; name none and they all join the station the circuit is on.
+    Either way the station has to be one this circuit already runs — bringing a
+    new one in is a change to what the circuit is, which is the structural edit.
+    """
     return await service_structure.append_trainees(
-        session, workspace.org_id, circuit_id, trainee_ids=body.trainee_ids
+        session,
+        workspace.org_id,
+        circuit_id,
+        trainee_ids=body.trainee_ids,
+        station_version_ids=body.station_version_ids,
     )

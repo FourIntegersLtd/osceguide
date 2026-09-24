@@ -1,0 +1,331 @@
+"""An examiner reading the transcript of the candidate they were named to watch.
+
+The gap this closes is not a missing screen: `GET /attempts/{id}/transcript` and
+`/result` were owner-or-platform-admin, so the supervisor named on a circuit —
+the person `observer-token` lets into the room to hear the consultation — could
+not read a word of it afterwards. b2b's rule was
+`policy.can_access_slot_feedback`: the organisation's administrator, or the
+assigned staff whose id is on the circuit. This narrows it to the named one,
+which is what "their candidate" means, and leaves an administrator who was not
+named outside.
+
+Staged the way an examination produces it: a circuit is started, the bell goes,
+the patient is dispatched, and the dispatch is what creates the attempt.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import Membership
+from app.features.attempts import repository_transcript as transcripts
+from app.features.attempts.models import Attempt
+from app.features.identity import repository as identity_repo
+from app.features.sittings import repository as sittings_repo
+from app.features.tenancy import repository as tenancy_repo
+from app.features.voice.service import get_room_agents
+from tests.http.test_sittings_routes import (
+    a_template_version,
+    a_trainee,
+    org_with_admin,
+    published_station,
+)
+from tests.support.fakes import FakeRoomAgents
+from tests.support.tokens import bearer, mint_token
+
+pytestmark = pytest.mark.db
+
+TURNS = (("user", "Hello doctor."), ("assistant", "Tell me what brought you in."))
+
+
+@pytest.fixture
+def agents(client: AsyncClient) -> FakeRoomAgents:
+    """A patient that never reaches LiveKit. The dispatch needs one to exist."""
+    fake = FakeRoomAgents()
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: fake  # type: ignore[attr-defined]
+    return fake
+
+
+async def an_examiner(db_session: AsyncSession, org_id: uuid.UUID, email: str) -> tuple[uuid.UUID, str]:
+    """A real account with a real supervisor membership, and the token for it.
+
+    The id comes back beside the token because the permission under test is
+    *being named on the circuit*, and minting through `make_actor` would hide
+    whose id it just minted for.
+    """
+    user = await identity_repo.create_user(db_session, email=email, name=email, password_hash=None)
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=user.id, role="supervisor")
+    await db_session.flush()
+    token = mint_token(
+        user_id=user.id,
+        email=email,
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="supervisor"),),
+        active_org_slug="kings",
+    )
+    return user.id, token
+
+
+async def a_consultation(
+    client: AsyncClient, db_session: AsyncSession, admin: str, *, examiner: uuid.UUID | None
+) -> tuple[str, str, str]:
+    """One candidate mid-consultation: returns their id, the circuit's, the attempt's."""
+    template = await a_template_version(client, admin)
+    sitting = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json={"name": "Finals", "programme_id": str(template), "mode": "exam"},
+            headers=bearer(admin),
+        )
+    ).json()
+    station = await published_station(client, admin, "kings", "Sore knee")
+    candidate = await a_trainee(db_session, f"cant-{uuid.uuid4().hex[:6]}@example.com")
+    circuit = (
+        await client.post(
+            f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+            json={
+                "name": "Room 1",
+                "trainee_ids": [str(candidate)],
+                "station_version_ids": [station],
+                "supervisor_user_id": None if examiner is None else str(examiner),
+            },
+            headers=bearer(admin),
+        )
+    ).json()
+    url = f"/api/v1/orgs/kings/circuits/{circuit['id']}"
+    await client.post(f"{url}/start", headers=bearer(admin))
+    # Reading, and then the bell: the dispatch is what creates the attempt.
+    await client.post(f"{url}/advance", json={}, headers=bearer(admin))
+
+    attempt_id = await db_session.scalar(
+        select(Attempt.id).where(Attempt.slot_id == circuit["slots"][0]["id"], Attempt.status != "failed")
+    )
+    assert attempt_id is not None, "a consultation started with nothing to record it"
+    return str(candidate), circuit["id"], str(attempt_id)
+
+
+async def a_delivered_transcript(db_session: AsyncSession, attempt_id: str) -> None:
+    """Two turns, so a read has something in it to be allowed or refused."""
+    spoken = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
+    for seq, (role, message) in enumerate(TURNS):
+        await transcripts.add_chunk(
+            db_session,
+            uuid.UUID(attempt_id),
+            message_id=f"m{seq}",
+            seq=seq,
+            role=role,
+            message=message,
+            spoken_at=spoken,
+        )
+    await transcripts.mark_transcript_complete(
+        db_session, uuid.UUID(attempt_id), runtime_label="livekit", at=spoken
+    )
+
+
+# --- the examiner named on the circuit --------------------------------------
+
+
+async def test_the_named_examiner_reads_the_transcript(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """The whole point: the person who was watching may read what they heard."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    examiner, token = await an_examiner(db_session, org_id, "watcher@kings.example")
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=examiner)
+    await a_delivered_transcript(db_session, attempt_id)
+
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(token))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["complete"] is True
+    assert [m["message"] for m in response.json()["messages"]] == [message for _, message in TURNS]
+
+
+async def test_the_named_examiner_reads_the_marking(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """The result beside the transcript: whoever may see one may see the other."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    examiner, token = await an_examiner(db_session, org_id, "marker@kings.example")
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=examiner)
+    await transcripts.save_result(
+        db_session,
+        uuid.UUID(attempt_id),
+        framework_id="rubric-1",
+        policy_version="platform-default@1",
+        payload={"score": 66},
+        model_used="test",
+        at=datetime(2026, 9, 23, 12, 1, tzinfo=UTC),
+    )
+
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/result", headers=bearer(token))
+
+    assert response.status_code == 200, response.text
+    assert [r["policy_version"] for r in response.json()["items"]] == ["platform-default@1"]
+
+
+# --- who may not ------------------------------------------------------------
+
+
+async def test_a_supervisor_not_named_on_that_circuit_is_refused(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """Being staff in the organisation is not the permission. This is the "no broader".
+
+    b2b let any administrator of the organisation read any slot's feedback, and
+    that half is deliberately not ported: a transcript is one candidate's
+    consultation, and the claims on it are the person who spoke it and the person
+    named to watch it.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    examiner, _ = await an_examiner(db_session, org_id, "hers@kings.example")
+    outsider, token = await an_examiner(db_session, org_id, "not-hers@kings.example")
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=examiner)
+    await a_delivered_transcript(db_session, attempt_id)
+
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(token))
+
+    assert response.status_code == 403, response.text
+    assert response.json()["code"] == "attempt_not_yours"
+
+
+async def test_an_administrator_not_named_on_the_circuit_is_refused(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    org_id, admin = await org_with_admin(client, make_actor)
+    examiner, _ = await an_examiner(db_session, org_id, "named@kings.example")
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=examiner)
+    await a_delivered_transcript(db_session, attempt_id)
+
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(admin))
+
+    assert response.status_code == 403, response.text
+    assert response.json()["code"] == "attempt_not_yours"
+
+
+async def test_another_organisations_examiner_is_refused(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """An examiner from elsewhere cannot reach in, and cannot be named into it either.
+
+    The second half matters more than the first: the permission is being named on
+    *this* circuit, so naming somebody who is not this organisation's staff has to
+    stay a refusal rather than becoming a cross-tenant grant.
+    """
+    _, kings = await org_with_admin(client, make_actor, "kings")
+    guys_id, _ = await org_with_admin(client, make_actor, "guys")
+    outsider, token = await an_examiner(db_session, guys_id, "guys-watcher@guys.example")
+    _, circuit_id, attempt_id = await a_consultation(client, db_session, kings, examiner=outsider)
+    await a_delivered_transcript(db_session, attempt_id)
+
+    # The name went on, because a supervisor id is a plain user reference; the
+    # read is what refuses, on the organisation that owns the attempt.
+    named_elsewhere = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(token))
+
+    assert named_elsewhere.status_code == 403, named_elsewhere.text
+    assert named_elsewhere.json()["code"] == "attempt_not_yours"
+    assert circuit_id
+
+
+async def test_moving_the_name_moves_the_read(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """The name on the circuit *is* the permission, so taking it away ends the access.
+
+    Written on the row rather than through the circuit editor, because by this
+    point the candidate has been dispatched and a structural edit is refused for
+    its own reasons. What is being tested is who can read afterwards — and the
+    allowed read comes first, because a refused one rolls the transaction back
+    and would otherwise undo the very change being tested.
+    """
+    org_id, admin = await org_with_admin(client, make_actor)
+    was, was_token = await an_examiner(db_session, org_id, "was@kings.example")
+    now, now_token = await an_examiner(db_session, org_id, "now@kings.example")
+    _, circuit_id, attempt_id = await a_consultation(client, db_session, admin, examiner=was)
+    await a_delivered_transcript(db_session, attempt_id)
+    await sittings_repo.update_circuit(db_session, org_id, uuid.UUID(circuit_id), supervisor_user_id=now)
+
+    allowed = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(now_token))
+    refused = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(was_token))
+
+    assert allowed.status_code == 200, allowed.text
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["code"] == "attempt_not_yours"
+
+
+# --- the candidate, unchanged -----------------------------------------------
+
+
+async def test_the_candidate_still_reads_their_own_transcript(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """Nothing here narrows what the person who spoke the words may see."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    examiner, _ = await an_examiner(db_session, org_id, "watched@kings.example")
+    candidate, _, attempt_id = await a_consultation(client, db_session, admin, examiner=examiner)
+    await a_delivered_transcript(db_session, attempt_id)
+
+    response = await client.get(
+        f"/api/v1/attempts/{attempt_id}/transcript",
+        headers=bearer(mint_token(user_id=uuid.UUID(candidate), email="candidate@example.com")),
+    )
+
+    assert response.status_code == 200, response.text
+    assert len(response.json()["messages"]) == 2
+
+
+async def test_a_circuit_with_no_examiner_named_gives_nobody_a_second_read(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """No name on the circuit, no second reader — a supervisor or not."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    stranger, token = await an_examiner(db_session, org_id, "not-named@kings.example")
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=None)
+    await a_delivered_transcript(db_session, attempt_id)
+
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(token))
+
+    assert response.status_code == 403, response.text
+
+
+async def test_nobody_signed_in_reads_nothing(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    _, admin = await org_with_admin(client, make_actor)
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=None)
+
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript")
+
+    assert response.status_code == 401

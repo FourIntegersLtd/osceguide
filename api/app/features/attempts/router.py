@@ -112,11 +112,13 @@ async def read_attempt(
 async def read_transcript(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> schemas.TranscriptRead:
+    """The candidate's own turns, and the examiner named on their circuit."""
     return await service_reads.read_transcript(
         session,
         attempt_id,
         requester_id=principal.user_id,
         is_admin=principal.is_platform_admin,
+        memberships=principal.memberships,
     )
 
 
@@ -129,12 +131,14 @@ async def read_results(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> Page[schemas.AssessmentResultRead]:
     """A page rather than one result: re-scoring under a new policy adds beside
-    the old, so a candidate's history stays readable."""
+    the old, so a candidate's history stays readable — to the same two people as
+    the transcript, which is `service_access.ensure_readable`."""
     items = await service_reads.read_results(
         session,
         attempt_id,
         requester_id=principal.user_id,
         is_admin=principal.is_platform_admin,
+        memberships=principal.memberships,
     )
     return Page(items=items, next_cursor=None)
 

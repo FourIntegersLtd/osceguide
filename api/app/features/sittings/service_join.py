@@ -81,26 +81,39 @@ async def observer_token(
     tokens: VoiceTokens,
     settings: Settings,
 ) -> RoomGrant:
-    """An examiner's token: they hear the station and cannot be heard in it.
+    """An examiner's token: they hear the station and, in training, may be seen.
 
-    Subscribe-only, enforced in the token. A muted microphone is a UI state and
-    this has to be a guarantee: a candidate must not be able to be prompted,
-    and the transcript must stay a record of what they said to the patient.
+    Subscribe-only is still the default and the only mode an **exam** circuit
+    ever grants, enforced in the token rather than a UI state: a candidate
+    must not be able to be prompted, and the transcript must stay a record of
+    what they said to the patient alone. A **training** circuit relaxes this
+    one guarantee on purpose — the retiring client let a supervisor
+    demonstrate on camera while a trainee practised, and a training circuit
+    carries no result a prompted answer could corrupt. `sitting_mode_for_circuit`
+    returning `None` (circuit vanished mid-request) is treated as exam-strict,
+    the safer default.
     """
     circuit = await service_run.require_live(session, org_id, circuit_id)
     assert circuit.room_name is not None  # require_live
+    mode = await repository_run.sitting_mode_for_circuit(session, circuit_id)
+    can_publish = mode == "training"
     return _grant(
         voice.grant_for_room(
             room=circuit.room_name,
             identity=f"{OBSERVER_PREFIX}{user_id}",
-            can_publish=False,
+            can_publish=can_publish,
             tokens=tokens,
             settings=settings,
-        )
+        ),
+        can_publish=can_publish,
     )
 
 
-def _grant(granted: voice.RoomGrant) -> RoomGrant:
+def _grant(granted: voice.RoomGrant, *, can_publish: bool = True) -> RoomGrant:
     """`voice`'s answer in this slice's words. One field-for-field copy, on
-    purpose: the two shapes agree today and are free to stop."""
-    return RoomGrant(token=granted.token, server_url=granted.server_url, room=granted.room)
+    purpose: the two shapes agree today and are free to stop. `can_publish` is
+    not one of those shared fields — the token already enforces it, this is
+    only so the browser can decide what to render before it tries."""
+    return RoomGrant(
+        token=granted.token, server_url=granted.server_url, room=granted.room, can_publish=can_publish
+    )

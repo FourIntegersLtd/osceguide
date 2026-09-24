@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.roster import service as roster
-from app.features.sittings import domain, domain_run, errors, repository, service_binding
+from app.features.sittings import domain, domain_edit, domain_run, errors, repository, service_binding
 from app.features.sittings.models import Circuit, Sitting
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
@@ -30,6 +30,9 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.NotPermittedInMode: errors.NotPermittedInModeError,
     domain_run.CircuitPaused: errors.CircuitPausedError,
     domain_run.CircuitNotPaused: errors.CircuitNotPausedError,
+    domain_edit.SittingLocked: errors.SittingLockedError,
+    domain_edit.TraineeAlreadyOnCircuit: errors.TraineeAlreadyOnCircuitError,
+    domain_edit.StationNotOnCircuit: errors.StationNotOnCircuitError,
 }
 
 

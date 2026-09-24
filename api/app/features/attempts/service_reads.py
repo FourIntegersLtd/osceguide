@@ -16,7 +16,8 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import errors, repository, repository_slots
+from app.core.auth import Membership
+from app.features.attempts import errors, repository, repository_slots, service_access
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
@@ -43,10 +44,24 @@ async def read_attempt(
 
 
 async def read_transcript(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
+    session: AsyncSession,
+    attempt_id: uuid.UUID,
+    *,
+    requester_id: uuid.UUID,
+    is_admin: bool,
+    memberships: Sequence[Membership] = (),
 ) -> TranscriptRead:
+    """The turns of one consultation.
+
+    Readable by the candidate who spoke them and by the examiner named on the
+    circuit they happened in — the widening lives in `service_access`, because
+    this read is also what the tutor's summaries go through, and those ask as
+    the candidate.
+    """
     attempt = await _require(session, attempt_id)
-    _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
+    await service_access.ensure_readable(
+        session, attempt, requester_id=requester_id, is_admin=is_admin, memberships=memberships
+    )
     record = await transcripts.transcript_for(session, attempt_id)
     rows = await transcripts.chunks_for(session, attempt_id)
     return TranscriptRead(
@@ -60,10 +75,17 @@ async def read_transcript(
 
 
 async def read_results(
-    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
+    session: AsyncSession,
+    attempt_id: uuid.UUID,
+    *,
+    requester_id: uuid.UUID,
+    is_admin: bool,
+    memberships: Sequence[Membership] = (),
 ) -> list[AssessmentResultRead]:
     attempt = await _require(session, attempt_id)
-    _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
+    await service_access.ensure_readable(
+        session, attempt, requester_id=requester_id, is_admin=is_admin, memberships=memberships
+    )
     return [
         AssessmentResultRead(
             framework_id=r.framework_id,
@@ -187,6 +209,17 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
     it with it or fail on the foreign key at the end of the request.
     """
     return await repository_slots.slots_with_attempts(session, list(slot_ids))
+
+
+async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these practice-set entries already have an attempt against them.
+
+    The same question `sittings` asks of its slots, asked by `station_sets`
+    before a learner throws a set away. The answer cannot be read off the
+    entry's own counter, because the console's "reset attempts" zeroes that and
+    keeps the recording — the attempt row is the fact.
+    """
+    return await repository.set_entries_with_attempts(session, list(entry_ids))
 
 
 async def count_consultations(session: AsyncSession) -> int:

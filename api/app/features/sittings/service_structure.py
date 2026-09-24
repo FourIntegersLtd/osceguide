@@ -20,11 +20,13 @@ from app.features.roster import service as roster
 from app.features.sittings import (
     announcements,
     domain,
+    domain_edit,
     errors,
     repository,
     repository_reads,
     service,
 )
+from app.features.sittings.models import Circuit, Slot
 from app.features.sittings.reads import state as _state
 from app.features.sittings.reads import timing_json
 from app.features.sittings.schemas import CircuitRead, TimingIn
@@ -38,11 +40,14 @@ async def append_trainees(
     circuit_id: uuid.UUID,
     *,
     trainee_ids: list[uuid.UUID],
+    station_version_ids: list[uuid.UUID] | None = None,
 ) -> CircuitRead:
     """Add people to a training circuit that may already be running (C8).
 
-    Training only: an exam circuit is one candidate by construction (C1), and
-    adding a second would make the slots mean something different.
+    Training only: an exam circuit is one candidate by construction (C1), and a
+    second would make its slots mean something different. b2b refused the same
+    thing and pointed the supervisor at the circuit editor, which is what
+    `rebuild_circuit` below is.
 
     New slots inherit the circuit's live room, which is the point — without it
     a latecomer's slot has no room, and the trainee portal has nothing to
@@ -58,28 +63,74 @@ async def append_trainees(
 
     await roster.ensure_rosterable(session, org_id, trainee_ids)
 
+    named = station_version_ids or []
     existing = await repository.slots_for_circuit(session, org_id, circuit_id)
-    if not existing:
-        raise errors.InvalidCircuitError("A circuit with no slots has no station to assign.")
+    stations = await repository_reads.circuit_station_ids(session, org_id, circuit_id)
+    targets = _station_targets(named, _standing_station(circuit, existing, stations), len(trainee_ids))
+    if not targets:
+        # Nothing to place anybody at — neither a slot nor a station. Refused
+        # rather than guessed at, as this route always did; the pairing check
+        # below cannot catch it, because an empty target list is otherwise
+        # indistinguishable from "no station named".
+        raise errors.InvalidCircuitError("This circuit has no station to place anybody at.")
+    try:
+        domain_edit.ensure_not_already_rostered(
+            await repository_reads.circuit_trainee_ids(session, org_id, circuit_id), trainee_ids
+        )
+        domain_edit.ensure_appended_pairing(len(trainee_ids), len(named))
+        domain_edit.ensure_stations_are_on_circuit(targets, stations)
+    except (
+        domain_edit.TraineeAlreadyOnCircuit,
+        domain_edit.StationNotOnCircuit,
+        domain.InvalidCircuit,
+    ) as exc:
+        raise_mapped(exc, _REFUSALS)
 
-    # Everyone practises the same station in a training circuit, so a new
-    # arrival takes the one already being run rather than needing a choice.
-    station_version_id = existing[0].station_version_id
-    next_index = max(slot.slot_index for slot in existing) + 1
-
+    next_index = max((slot.slot_index for slot in existing), default=-1) + 1
     await repository.add_circuit_members(session, circuit_id, trainees=trainee_ids, stations=[])
     await repository.create_slots(
         session,
         org_id,
         circuit_id,
         planned=[
-            (next_index + offset, trainee_id, station_version_id)
-            for offset, trainee_id in enumerate(trainee_ids)
+            (next_index + offset, trainee_id, station_id)
+            for offset, (trainee_id, station_id) in enumerate(zip(trainee_ids, targets, strict=True))
         ],
         room_name=circuit.room_name,
     )
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.TRAINEES_APPENDED)
     return await service.read_circuit(session, org_id, circuit_id)
+
+
+def _standing_station(circuit: Circuit, slots: list[Slot], stations: list[uuid.UUID]) -> uuid.UUID | None:
+    """The station an arrival lands on when nobody says otherwise.
+
+    The one the circuit is on, if it is on one — that is what "catch up with us"
+    means mid-session. Then the first of its slots, then the first station it was
+    given, because a circuit whose rotation has not begun has a station list
+    even when nothing has been seated yet. None only when there is neither, which
+    is the case the route refuses rather than invents a station for.
+    """
+    active = next((slot for slot in slots if slot.id == circuit.active_slot_id), None)
+    if active is not None:
+        return active.station_version_id
+    if slots:
+        return slots[0].station_version_id
+    return stations[0] if stations else None
+
+
+def _station_targets(
+    named: list[uuid.UUID], standing: uuid.UUID | None, trainee_count: int
+) -> list[uuid.UUID]:
+    """Where each arrival sits.
+
+    Named stations pair with the arrivals positionally, as a circuit's stations
+    pair with its trainees when it is built. Nothing named is the one case this
+    route has always served: everyone goes to the station the circuit is at.
+    """
+    if named:
+        return list(named)
+    return [standing] * trainee_count if standing is not None else []
 
 
 async def rebuild_circuit(
@@ -95,12 +146,12 @@ async def rebuild_circuit(
 ) -> CircuitRead:
     """Change who is on a circuit and which stations they sit (C3).
 
-    A structural edit rebuilds the slots, which is why it is refused once any
-    of them means something: a consultation in progress would be deleted
-    mid-sentence, and recorded feedback would be left pointing at a slot that
-    no longer exists. `ensure_editable` is that rule; it had no route to refuse
-    anything at, so the only way to correct a circuit was to abandon it and
-    build another.
+    A structural edit rebuilds the slots, which is why it is refused once any of
+    them means something: a consultation in progress would be deleted
+    mid-sentence, and recorded feedback would be left pointing at a slot that no
+    longer exists. `ensure_editable` is that rule; it had no route to refuse
+    anything at, so the only way to correct a circuit was to abandon it and build
+    another.
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
