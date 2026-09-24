@@ -36,7 +36,9 @@ export interface FetchPageResult<T> {
   hasMore?: boolean;
 }
 
-interface Column<T> {
+/** One column. Exported so a screen can name its column list rather than
+ * infer it, which is how the retiring client's screens declared them. */
+export interface Column<T> {
   header: string;
   key: keyof T | ((item: T) => React.ReactNode);
   render?: (item: T) => React.ReactNode;

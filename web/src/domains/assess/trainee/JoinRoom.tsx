@@ -134,5 +134,12 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
  */
 function Clock({ sitting }: { sitting: MySitting }) {
   if (sitting.remaining_seconds === null || sitting.remaining_seconds === undefined) return null;
-  return <ExamClock secondsLeft={sitting.remaining_seconds} label={phaseLabel(sitting.phase)} />;
+  return (
+    <ExamClock
+      secondsLeft={sitting.remaining_seconds}
+      label={phaseLabel(sitting.phase)}
+      tick
+      paused={sitting.paused}
+    />
+  );
 }

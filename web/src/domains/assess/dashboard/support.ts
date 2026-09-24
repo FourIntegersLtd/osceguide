@@ -43,9 +43,9 @@ export function setupSteps(setup: OrgSetup): SetupStep[] {
     },
     {
       key: "stations",
-      done: setup.stations_authored,
-      label: "Author a station",
-      hint: "This counts your own cases only — adopting the platform's catalogue does not satisfy it.",
+      done: setup.stations_available,
+      label: "Have stations to run",
+      hint: "Your own authored cases count, and so does the platform's published library for an exam you offer.",
       path: "/authoring",
     },
     {

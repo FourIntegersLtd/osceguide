@@ -28,6 +28,7 @@ export type PlatformAuditEntry = S["PlatformAuditRead"];
 export type OrgAtRisk = S["OrgAtRisk"];
 export type Job = S["JobRead"];
 export type JobsPage = S["JobsPage"];
+export type TutorMemoryReindex = S["ReindexReport"];
 export type PlatformHealth = S["PlatformHealth"];
 export type CloudCapacity = S["CloudCapacityRead"];
 export type StationProgress = S["StationProgressRead"];
@@ -335,4 +336,20 @@ export function listJobs(
 
 export function readCloudCapacity(signal?: AbortSignal): Promise<CloudCapacity> {
   return platformRequest<CloudCapacity>(`${PLATFORM}/voice/capacity`, { signal });
+}
+
+/**
+ * Rebuild the tutor's material index now, rather than waiting for tonight's run.
+ *
+ * The route has existed since the index did and had no caller, so "the tutor is
+ * quoting a version we corrected" was answered by waiting a day. The backend
+ * runs it synchronously on purpose — an author who has just published a
+ * correction wants to know it is searchable, not a job id to poll — which is
+ * why this button says what it says and waits.
+ */
+export function reindexTutorMemory(signal?: AbortSignal): Promise<TutorMemoryReindex> {
+  return platformRequest<TutorMemoryReindex>("/api/v1/admin/tutor-memory/reindex", {
+    method: "POST",
+    signal,
+  });
 }

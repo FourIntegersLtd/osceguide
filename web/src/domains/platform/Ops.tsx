@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { LuActivity } from "react-icons/lu";
-import { AsyncBoundary, Badge, Button, Card } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { Alert, AsyncBoundary, Badge, Button, Card } from "@/foundation/ui";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
-import { listJobs, readCloudCapacity, readPlatformHealth } from "@/domains/platform/support/api";
+import {
+  listJobs,
+  readCloudCapacity,
+  readPlatformHealth,
+  reindexTutorMemory,
+  type TutorMemoryReindex,
+} from "@/domains/platform/support/api";
 import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { formatMoment, jobStatusTone } from "@/domains/platform/support";
 
@@ -17,6 +23,21 @@ export function Ops() {
   const capacity = useAsync((signal) => readCloudCapacity(signal), []);
   const [status, setStatus] = useState<string>("failed");
   const jobs = useAsync((signal) => listJobs({ status, limit: 100 }, signal), [status]);
+  const [reindexing, setReindexing] = useState(false);
+  const [reindex, setReindex] = useState<TutorMemoryReindex | null>(null);
+  const [reindexFailure, setReindexFailure] = useState<string | null>(null);
+
+  const runReindex = async () => {
+    setReindexing(true);
+    setReindexFailure(null);
+    try {
+      setReindex(await reindexTutorMemory());
+    } catch (cause) {
+      setReindexFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+    } finally {
+      setReindexing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -56,6 +77,31 @@ export function Ops() {
           </AsyncBoundary>
         </Card>
       </div>
+      <Section
+        title="The tutor's material index"
+        description="What the tutor has been told it may quote. It rebuilds nightly; this is for the moment somebody publishes a correction and wants it to be true now."
+        actions={
+          <Button variant="secondary" size="sm" isLoading={reindexing} onClick={() => void runReindex()}>
+            {reindexing ? "Rebuilding…" : "Rebuild now"}
+          </Button>
+        }
+      >
+        {reindexFailure ? <Alert tone="danger">{reindexFailure}</Alert> : null}
+        {reindex ? (
+          <Alert tone="success" title="Index rebuilt">
+            <p>
+              {reindex.sources} sources · {reindex.passages} passages searchable ·{" "}
+              {reindex.retired} retired rows removed.
+            </p>
+          </Alert>
+        ) : null}
+        {!reindex && !reindexFailure ? (
+          <p className="text-sm text-ink-muted">
+            The request runs to completion in the browser rather than returning a job to poll, so a
+            large library takes a while here on purpose.
+          </p>
+        ) : null}
+      </Section>
       <Section
         title="Jobs"
         description="No retry here: a failed marking is re-queued from the attempt it was about."

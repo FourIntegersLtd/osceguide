@@ -9,5 +9,7 @@ export { PlatformAudit } from "@/domains/platform/PlatformAudit";
 export { MessagesInbox } from "@/domains/platform/MessagesInbox";
 export { BillingQueue } from "@/domains/platform/BillingQueue";
 export { Ops } from "@/domains/platform/Ops";
+export { StationFlags } from "@/domains/platform/StationFlags";
+export { ReferralPayouts } from "@/domains/platform/ReferralPayouts";
 export * from "@/domains/platform/api";
 export * from "@/domains/platform/support/api";

@@ -24,6 +24,9 @@ import { AboutModal } from "@/domains/train/dashboard/AboutModals";
 import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
 import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
 import { InsightsList } from "@/domains/train/dashboard/InsightsList";
+import { weakestInsights } from "@/domains/train/dashboard/insights";
+import RagCompositionBars from "@/foundation/charts/RagCompositionBars";
+import CategoryVolumeList from "@/foundation/charts/CategoryVolumeList";
 import { PerformanceSummary } from "@/domains/train/dashboard/PerformanceSummary";
 import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
@@ -130,6 +133,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
       </AsyncBoundary>
 
           <PracticeOptions />
+      <OnboardingOffer />
       <AboutModal config={config} active={about} onClose={() => setAbout(null)} />
 
       {showExamWishes && (
@@ -153,6 +157,7 @@ function ExamSections({
   onAbout: (key: AboutKey) => void;
 }) {
   const summary = performance?.summary ?? null;
+  const composition = performance?.composition ?? [];
 
   return (
     <div className="mb-6 space-y-5 sm:mb-8">
@@ -197,9 +202,69 @@ function ExamSections({
         </DashboardChartSide>
       </DashboardChartGrid>
 
-      {config.sections.insights ? (
-        <InsightsList items={[]} loading={loading} onAbout={() => onAbout("summary")} />
+      {composition.length > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <RagCompositionBars
+            data={composition.map((row) => ({
+              name: row.label,
+              "Requires Development": row.red,
+              "Developing Competency": row.amber,
+              Competent: row.green,
+            }))}
+          />
+          <CategoryVolumeList
+            data={composition.map((row) => ({
+              name: row.label,
+              "Requires Development": row.red,
+              "Developing Competency": row.amber,
+              Competent: row.green,
+            }))}
+          />
+        </div>
       ) : null}
+
+      {config.sections.insights ? (
+        <InsightsList
+          items={weakestInsights(performance?.domains, config.domains)}
+          loading={loading}
+          onAbout={() => onAbout("summary")}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+const ONBOARDING_KEY = "osce-onboarding-seen";
+
+function OnboardingOffer() {
+  const { session } = useSession();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const seen = window.localStorage.getItem(ONBOARDING_KEY) === "1";
+    const replay = session?.user.replay_onboarding === true;
+    setOpen(!seen || replay);
+  }, [session?.user.replay_onboarding]);
+
+  if (!open) return null;
+
+  return (
+    <div className="mb-6 rounded-lg border border-osce-accent-subtle bg-osce-accent-muted px-4 py-4">
+      <p className="text-osce-body font-semibold text-osce-ink-900">A short tour with Athena</p>
+      <p className="mt-1 text-osce-meta text-osce-ink-600">
+        She walks you through a consultation the first time you use OSCE Guide.
+      </p>
+      <button
+        type="button"
+        className="mt-3 text-osce-meta font-medium text-osce-accent hover:underline"
+        onClick={() => {
+          window.localStorage.setItem(ONBOARDING_KEY, "1");
+          setOpen(false);
+          window.dispatchEvent(new CustomEvent("osce:open-athena", { detail: { kind: "onboarding" } }));
+        }}
+      >
+        Start the guided tour
+      </button>
     </div>
   );
 }

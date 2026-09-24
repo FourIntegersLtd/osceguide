@@ -10,12 +10,9 @@ export interface InsightItem {
 /**
  * SCA's "What to work on".
  *
- * Up to three focus points from recent stations. The old screen read them from
- * `/api/dashboard/actionable_feedback`, which the platform has no counterpart
- * for — so today the list renders its own empty state, which is the same thing
- * it did for anyone with too few marked attempts. `docs/port-gaps.md` carries
- * the endpoint; the component takes its items as a prop so wiring it later is
- * one call site.
+ * Up to three domains to practise next, weakest first, from the scores
+ * `/me/performance` already returned. An empty list is "nothing marked yet",
+ * not a heading over a blank column.
  */
 export function InsightsList({
   items,
@@ -53,12 +50,13 @@ export function InsightsList({
 
       {displayItems.length === 0 ? (
         <div className="rounded-lg border border-dashed border-b2c-border bg-b2c-surface-muted py-8 text-center">
-          <p className="text-osce-body font-medium text-b2c-text-muted">No insights yet</p>
+          <p className="text-osce-body font-medium text-b2c-text-muted">Nothing marked yet</p>
           <p className="mt-1 text-osce-meta text-b2c-text-secondary">
-            Complete a few more stations for personalised focus areas.
+            Complete a station and the weakest domains will show up here.
           </p>
         </div>
       ) : (
+        <>
         <ul className="flex flex-col">
           {displayItems.map((item, index) => (
             <li
@@ -77,6 +75,14 @@ export function InsightsList({
             </li>
           ))}
         </ul>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("osce:open-athena", { detail: { kind: "help" } }))}
+          className="mt-4 text-osce-meta font-medium text-osce-accent hover:underline"
+        >
+          Practise these with Athena
+        </button>
+        </>
       )}
     </div>
   );

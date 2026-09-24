@@ -41,6 +41,37 @@ export function createSet(input: {
 }
 
 /**
+ * Change what a session is called. Nothing else.
+ *
+ * The retiring client's edit screen asked for a name *and* the station list,
+ * and the second half is not a rename: an entry carries the counters for what
+ * was sat in it and is what an attempt points at, so swapping the list would be
+ * deleting somebody's history and numbering a new one from zero. That is why
+ * this PATCH takes a title, and why the pencil on the sessions list opens a
+ * name field rather than the old "Update Session" page.
+ */
+export function renameSet(setId: string, name: string): Promise<StationSet> {
+  return platformRequest<StationSet>(`/api/v1/me/station-sets/${encodeURIComponent(setId)}`, {
+    method: "PATCH",
+    body: { name },
+  });
+}
+
+/**
+ * Throw a session away.
+ *
+ * A set somebody has started a station in answers 409 `set_has_attempts` rather
+ * than being emptied: its recordings would be left pointing at rows that have
+ * gone. The caller shows the backend's own sentence for that and does not
+ * retry — asking again gets the same answer.
+ */
+export async function deleteSet(setId: string): Promise<void> {
+  await platformRequest<void>(`/api/v1/me/station-sets/${encodeURIComponent(setId)}`, {
+    method: "DELETE",
+  });
+}
+
+/**
  * Start an attempt at one entry.
  *
  * The counter is incremented in SQL inside the attempt's transaction, so two

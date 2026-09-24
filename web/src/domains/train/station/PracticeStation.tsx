@@ -6,7 +6,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { useCurrentExam } from "@/foundation/session";
 import { createAttempt } from "@/capabilities/attempt-runner";
-import { findLibraryStation, listExams } from "@/capabilities/stations";
+import { listExams, readLibraryStation, StationNotFound } from "@/capabilities/stations";
 import { StationScreen } from "@/capabilities/station-runner/StationScreen";
 import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
@@ -35,7 +35,7 @@ export function PracticeStation({
 
   const context = useAsync(
     async (signal) => {
-      const station = await findLibraryStation(stationId, signal);
+      const station = await readLibraryStation(stationId, signal);
       const exams = await listExams(signal);
       const exam = exams.items.find((item) => item.code === station?.exam_code) ?? null;
       return { station, exam };
@@ -62,26 +62,39 @@ export function PracticeStation({
 
   return (
     <AsyncBoundary state={context}>
-      {({ station, exam }) => (
-        <StationScreen
-          source={{ kind: "practice", stationId }}
-          action={action}
-          step={step}
-          attemptId={attemptId}
-          stationVersionId={station?.version_id ?? null}
-          examCode={station?.exam_code ?? currentExam ?? ""}
-          readingSeconds={exam?.default_reading_seconds ?? 0}
-          simulationSeconds={exam?.default_simulation_seconds ?? 600}
-          index={0}
-          total={1}
-          attemptsUsed={null}
-          attemptLimit={null}
-          createAttempt={create}
-          nextHref={null}
-          completeHref={hrefFor("/stations")}
-          flagStationId={station?.id ?? stationId}
-        />
-      )}
+      {({ station, exam }) =>
+        station === null ? (
+          // The link named a station this person cannot read. The runner is not
+          // drawn against nothing: it would show a clock with no brief behind it.
+          <StationNotFound />
+        ) : (
+          <StationScreen
+            source={{ kind: "practice", stationId }}
+            action={action}
+            step={step}
+            attemptId={attemptId}
+            stationVersionId={station.version_id}
+            examCode={station.exam_code}
+            readingSeconds={exam?.default_reading_seconds ?? 0}
+            simulationSeconds={exam?.default_simulation_seconds ?? 600}
+            index={0}
+            total={1}
+            attemptsUsed={null}
+            attemptLimit={null}
+            createAttempt={create}
+            nextHref={null}
+            /*
+             * Not `/stations` — the library browse screen is institution nav
+             * only (`registry.test.ts` pins that), so it has no route on this
+             * arm and that href 404s. This screen is reached from the
+             * flagged-stations tab of `/mocks`, so that is where finishing
+             * one goes back to.
+             */
+            completeHref={hrefFor("/mocks")}
+            flagStationId={station.id}
+          />
+        )
+      }
     </AsyncBoundary>
   );
 }

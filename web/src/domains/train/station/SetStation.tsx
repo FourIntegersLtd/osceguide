@@ -74,6 +74,7 @@ export function SetStation({
           total={entries.length}
           attemptsUsed={entry?.attempts ?? null}
           attemptLimit={exam?.station_attempt_limit ?? null}
+          flagStationId={station?.id ?? null}
           createAttempt={create}
           nextHref={next ? hrefFor(`/mocks/${setId}/stations/${next.id}`) : null}
           completeHref={hrefFor(`/mocks/${setId}/complete`)}

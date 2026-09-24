@@ -65,6 +65,16 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                 </Badge>
               </div>
 
+              {result.assessment_score != null ? (
+                <div className="rounded-lg border border-b2b-border bg-b2b-subtle px-4 py-3">
+                  <p className={b2bTokens.b2bEyebrow}>Assessment score</p>
+                  <p className="mt-1 text-osce-title font-semibold text-b2b-headline">
+                    {result.assessment_score.toFixed(1)}
+                    <span className="text-osce-body font-medium text-b2b-mid"> / 100</span>
+                  </p>
+                </div>
+              ) : null}
+
               {result.rationale ? (
                 <div>
                   <h2 className={b2bTokens.b2bSectionTitle}>What was said</h2>

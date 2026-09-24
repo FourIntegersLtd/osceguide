@@ -133,14 +133,36 @@ export function readOrganization(slug: string, signal?: AbortSignal): Promise<Or
   return platformRequest<Organization>(`/api/v1/orgs/${encodeURIComponent(slug)}`, { signal });
 }
 
-export function searchUsers(
-  options: { q?: string | null } & PageParams = {},
-  signal?: AbortSignal,
-): Promise<UserPage> {
-  return platformRequest<UserPage>(`${PLATFORM}/users`, {
-    signal,
-    query: { ...pageQuery(options), q: options.q?.trim() || undefined },
-  });
+/* ---------------------------------------------------------- SSO config */
+
+export type SsoConfig = S["SsoConfigRead"];
+export type SsoBinding = S["SsoBinding"];
+export type SaveSsoConfigInput = S["SaveSsoConfig"];
+
+/**
+ * One organisation's SSO arrangement.
+ *
+ * `GET /platform/orgs/{slug}/sso` answers `sso_not_configured` when nothing
+ * has been set up yet — the caller decides whether that is an empty form or
+ * an error.
+ */
+export function readSsoConfig(slug: string, signal?: AbortSignal): Promise<SsoConfig> {
+  return platformRequest<SsoConfig>(
+    `${PLATFORM}/orgs/${encodeURIComponent(slug)}/sso`,
+    { signal },
+  );
+}
+
+/**
+ * Save the arrangement. The read returns flat `bindings`; the write takes
+ * `hosts` and `email_domains` as separate lists — the service flattens them
+ * back on the other side.
+ */
+export function saveSsoConfig(slug: string, input: SaveSsoConfigInput): Promise<SsoConfig> {
+  return platformRequest<SsoConfig>(
+    `${PLATFORM}/orgs/${encodeURIComponent(slug)}/sso`,
+    { method: "PUT", body: input },
+  );
 }
 
 /**
@@ -357,5 +379,82 @@ export function markMessageHandled(messageId: string): Promise<SiteMessage> {
   return platformRequest<SiteMessage>(
     `${PLATFORM}/site/messages/${encodeURIComponent(messageId)}/handled`,
     { method: "POST" },
+  );
+}
+
+/* ---------- the station report queue ---------- */
+
+export type StationFlag = components["schemas"]["StationFlagRead"];
+export type StationFlagPage = components["schemas"]["Page_StationFlagRead_"];
+
+/**
+ * Every report readers have filed about a station, oldest first.
+ *
+ * `status` narrows to the queue (`open`) or to what has been answered. Omitting
+ * it reads both, which is what makes "have we ever seen this case before?"
+ * answerable from one screen rather than from the database.
+ */
+export function listStationFlags(
+  query: { status?: string | null; cursor?: string | null } = {},
+  signal?: AbortSignal,
+): Promise<StationFlagPage> {
+  return platformRequest<StationFlagPage>(`${PLATFORM}/station-flags`, {
+    signal,
+    query: { status: query.status || undefined, cursor: query.cursor || undefined, limit: 100 },
+  });
+}
+
+/** Close a report with what was done about it, or put it back on the queue. */
+export function decideStationFlag(
+  flagId: string,
+  input: { status: "open" | "resolved"; note?: string | null },
+): Promise<StationFlag> {
+  return platformRequest<StationFlag>(
+    `${PLATFORM}/station-flags/${encodeURIComponent(flagId)}`,
+    { method: "PATCH", body: { status: input.status, note: input.note ?? null } },
+  );
+}
+
+/* ------------------------------------------------------ referral payouts */
+
+export type ReferralPayout = components["schemas"]["ReferralAdminRead"];
+export type ReferralPayoutPage = components["schemas"]["Page_ReferralAdminRead_"];
+
+/**
+ * The settlement queue: redeemed referrals, and whether each has been paid.
+ *
+ * Nothing in the product moves money — a referral is settled by bank transfer
+ * outside it — so this is the record of what is owed and what has been sent.
+ * Unredeemed codes are not here: an outstanding code is neither paid nor
+ * unpaid.
+ */
+export function listReferralPayouts(
+  query: { payoutStatus?: string | null; cursor?: string | null } = {},
+  signal?: AbortSignal,
+): Promise<ReferralPayoutPage> {
+  return platformRequest<ReferralPayoutPage>("/api/v1/growth/referrals", {
+    signal,
+    query: {
+      payout_status: query.payoutStatus || undefined,
+      cursor: query.cursor || undefined,
+      limit: 100,
+    },
+  });
+}
+
+/** Write down that a transfer was made, or take it back. */
+export function setReferralPayout(
+  referralId: string,
+  input: { payoutStatus: "paid" | "unpaid"; payoutReference?: string | null },
+): Promise<ReferralPayout> {
+  return platformRequest<ReferralPayout>(
+    `/api/v1/growth/referrals/${encodeURIComponent(referralId)}/payout`,
+    {
+      method: "POST",
+      body: {
+        payout_status: input.payoutStatus,
+        payout_reference: input.payoutReference ?? null,
+      },
+    },
   );
 }

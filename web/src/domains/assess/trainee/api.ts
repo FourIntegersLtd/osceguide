@@ -32,7 +32,10 @@ export function readMySittings(signal?: AbortSignal): Promise<MySittings> {
 export function joinCircuit(circuitId: string, signal?: AbortSignal): Promise<RoomGrant> {
   return platformRequest<RoomGrant>(
     `/api/v1/me/circuits/${encodeURIComponent(circuitId)}/join-token`,
-    { signal },
+    // POST, like the route: the grant is minted per request, not read. The
+    // client's default is GET, and a GET here answers 405 — which is what
+    // kept every candidate out of every room on exam day.
+    { method: "POST", signal },
   );
 }
 

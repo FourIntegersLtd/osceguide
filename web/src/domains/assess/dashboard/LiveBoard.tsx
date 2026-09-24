@@ -104,7 +104,12 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
             {circuitStatus(circuit)}
           </Badge>
           {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-            <ExamClock secondsLeft={circuit.remaining_seconds} label={circuitStatus(circuit)} />
+            <ExamClock
+              secondsLeft={circuit.remaining_seconds}
+              label={circuitStatus(circuit)}
+              tick
+              paused={circuit.paused}
+            />
           ) : null}
         </div>
       </div>

@@ -9,12 +9,13 @@ import {
   nextStep,
   recordingMissing,
   setupProgress,
+  setupSteps,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
   return {
     trainees_added: false,
-    stations_authored: false,
+    stations_available: false,
     team_invited: false,
     programme_exam_rubric_ready: false,
     ready_to_run: false,
@@ -56,6 +57,7 @@ function dashboard(over: Partial<OrgDashboard> = {}): OrgDashboard {
     counts: {
       trainees: 0,
       stations: 0,
+      library_stations: 0,
       staff: 0,
       programmes_with_markable_exam: 0,
       sittings: 0,
@@ -74,7 +76,7 @@ test("the next step is the first one not done, in order", () => {
       setup({
         team_invited: true,
         trainees_added: true,
-        stations_authored: true,
+        stations_available: true,
         programme_exam_rubric_ready: true,
       }),
     ),
@@ -88,6 +90,15 @@ test("progress counts what is done, not what the browser could fetch", () => {
     total: 4,
     percent: 50,
   });
+});
+
+test("the station step follows what is available, not what was authored", () => {
+  // An institution that adopted the platform catalogue can examine somebody
+  // today, so telling it to author a station was a step it had already taken.
+  const done = setupSteps(setup({ stations_available: true })).find((step) => step.key === "stations");
+  const not = setupSteps(setup()).find((step) => step.key === "stations");
+  assert.equal(done?.done, true);
+  assert.equal(not?.done, false);
 });
 
 test("the lead says how much is left, then what to do next", () => {
