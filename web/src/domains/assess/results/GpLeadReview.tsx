@@ -24,7 +24,10 @@ export interface ReviewDomain {
  * same station open cannot silently overwrite each other — the second is told
  * to reload rather than quietly winning.
  *
- * Nothing in the retiring client wired this at all.
+ * Each domain has its own note, stored beside the rating as `domain.comment`.
+ * The overall note stays. Autosave and an AI prefill of the ratings are not
+ * here: a lead still saves when they mean to, and the machine rating is shown
+ * so they can agree or disagree with it.
  */
 export function GpLeadReview({
   orgSlug,
@@ -75,6 +78,7 @@ function Editor({
   onSaved: () => void;
 }) {
   const [scores, setScores] = useState<Record<string, Rag>>(() => readScores(review));
+  const [comments, setComments] = useState<Record<string, string>>(() => readComments(review));
   const [overall, setOverall] = useState<Rag | "">((review?.overall_rag as Rag) ?? "");
   const [notes, setNotes] = useState(review?.notes ?? "");
   const [busy, setBusy] = useState<string | null>(null);
@@ -92,7 +96,7 @@ function Editor({
       try {
         await saveGpLeadReview(orgSlug, slotId, {
           revision: review?.revision ?? 0,
-          fieldValues: scores,
+          fieldValues: fieldValuesFor(scores, comments),
           notes: notes.trim() || null,
           overallRag: overall || null,
           status,
@@ -108,7 +112,7 @@ function Editor({
         setBusy(null);
       }
     },
-    [orgSlug, slotId, review, scores, notes, overall, onSaved],
+    [orgSlug, slotId, review, scores, comments, notes, overall, onSaved],
   );
 
   return (
@@ -157,6 +161,18 @@ function Editor({
                 value={scores[domain.key] ?? null}
                 onPick={(grade) => setScores((current) => ({ ...current, [domain.key]: grade }))}
               />
+              <label className="block">
+                <span className="sr-only">Note on {domain.label}</span>
+                <textarea
+                  rows={2}
+                  value={comments[domain.key] ?? ""}
+                  onChange={(event) =>
+                    setComments((current) => ({ ...current, [domain.key]: event.target.value }))
+                  }
+                  placeholder={`Why this rating for ${domain.label}`}
+                  className={`${b2bTokens.b2bInputBase} w-full`}
+                />
+              </label>
             </li>
           ))}
         </ul>
@@ -240,7 +256,30 @@ function RagRow({
 function readScores(review: Review | null): Record<string, Rag> {
   const out: Record<string, Rag> = {};
   for (const [key, value] of Object.entries(review?.field_values ?? {})) {
+    if (key.endsWith(".comment")) continue;
     if (value === "R" || value === "A" || value === "G") out[key] = value;
   }
   return out;
+}
+
+/** Per-domain notes ride in `field_values` as `domain.comment`, beside the rating. */
+function readComments(review: Review | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(review?.field_values ?? {})) {
+    if (!key.endsWith(".comment") || typeof value !== "string") continue;
+    out[key.slice(0, -".comment".length)] = value;
+  }
+  return out;
+}
+
+function fieldValuesFor(
+  scores: Record<string, Rag>,
+  comments: Record<string, string>,
+): Record<string, string> {
+  const values: Record<string, string> = { ...scores };
+  for (const [key, text] of Object.entries(comments)) {
+    const trimmed = text.trim();
+    if (trimmed) values[`${key}.comment`] = trimmed;
+  }
+  return values;
 }

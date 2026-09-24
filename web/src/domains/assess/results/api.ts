@@ -43,6 +43,33 @@ export function readCohort(
   );
 }
 
+export type SittingReadout = components["schemas"]["SittingReadout"];
+
+/**
+ * The examination's read-out, as one document.
+ *
+ * The head of it (who sat what, the cohort's counts), the candidates in review
+ * order, what to do about them, and the method that produced all three — the
+ * thing an external reviewer is handed. Exam sittings only: a training sitting
+ * answers 422 `not_an_exam_sitting`, which the caller treats as "there is no
+ * read-out here" rather than as a failure, exactly as the cohort screen already
+ * does with the same refusal.
+ *
+ * Served as JSON, and the retiring client's markdown file was rendered from
+ * that same document server-side. Nothing here uploads it anywhere: it is
+ * fetched and written to a file in the browser.
+ */
+export function readSittingReadout(
+  slug: string,
+  sittingId: string,
+  signal?: AbortSignal,
+): Promise<SittingReadout> {
+  return platformRequest<SittingReadout>(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/readout`,
+    { signal },
+  );
+}
+
 /* ------------------------------------------------------------------------
  * One candidate's decision: draft → signed off → released.
  *
@@ -70,12 +97,23 @@ export function readDecision(
  * A PUT, and it was being sent as a POST — which 405s, so nothing recorded a
  * decision at all. `evidence` is the marking the outcome was judged against;
  * the backend fingerprints it at sign-off and re-checks it at release.
+ *
+ * `expectedRevision` is the revision this screen last read, or 0 when it read
+ * nothing. The table is append-only, so a stale save looked harmless and was
+ * not: two administrators each saw "Revision 2" about different words, and the
+ * draft that reached sign-off was whichever request landed last. The backend
+ * refuses it with 409 `decision_revised`.
  */
 export function saveDecision(
   slug: string,
   sittingId: string,
   traineeId: string,
-  input: { assessmentOutcome: string | null; rationale: string | null; evidence: Evidence },
+  input: {
+    assessmentOutcome: string | null;
+    rationale: string | null;
+    evidence: Evidence;
+    expectedRevision: number;
+  },
 ): Promise<Decision> {
   return platformRequest<Decision>(decisionPath(slug, sittingId, traineeId), {
     method: "PUT",
@@ -83,6 +121,7 @@ export function saveDecision(
       assessment_outcome: input.assessmentOutcome,
       rationale: input.rationale,
       evidence: input.evidence,
+      expected_revision: input.expectedRevision,
     },
   });
 }

@@ -4,6 +4,7 @@ import { Alert, Badge, Spinner, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { readCohort } from "@/domains/assess/results/api";
+import { ReadoutExport } from "@/domains/assess/results/ReadoutExport";
 import {
   PRIORITY_LABEL,
   candidateName,
@@ -46,12 +47,18 @@ export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sitting
 
   return (
     <section className="space-y-2">
-      <div>
-        <h2 className={b2bTokens.b2bEyebrow}>Review order</h2>
-        <p className="text-osce-caption text-b2b-mid">
-          {summary.cohort_size} candidate{summary.cohort_size === 1 ? "" : "s"}, ranked on what is
-          unfinished before what is poor.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className={b2bTokens.b2bEyebrow}>Review order</h2>
+          <p className="text-osce-caption text-b2b-mid">
+            {summary.cohort_size} candidate{summary.cohort_size === 1 ? "" : "s"}, ranked on what is
+            unfinished before what is poor.
+          </p>
+        </div>
+        {/* Same place the retiring cohort report put it: beside the ranking it
+            is drawn from. The read-out is the whole document — this table, the
+            recommendations and the method — rather than what is on screen. */}
+        <ReadoutExport orgSlug={orgSlug} sittingId={sittingId} />
       </div>
 
       <ol className={b2bTokens.b2bGroupedShell}>

@@ -6,6 +6,7 @@ import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { latestResult, readResults } from "@/capabilities/attempt-runner";
 import { FeedbackView, normaliseFeedback, RAG_LABEL, type Rag } from "@/capabilities/feedback";
+import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
 import { saveReview } from "@/domains/assess/api";
 import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
 import type { SlotReviews } from "@/domains/assess/results";
@@ -82,6 +83,7 @@ export function SlotReview({
           <Editor
             orgSlug={orgSlug}
             slotId={slotId}
+            attemptId={attemptId}
             payload={data.result?.payload ?? null}
             reviews={data.reviews}
             initial={(data.reviews.items ?? []).find((item) => item.submitted_by === userId) ?? null}
@@ -96,6 +98,7 @@ export function SlotReview({
 function Editor({
   orgSlug,
   slotId,
+  attemptId,
   payload,
   reviews,
   initial,
@@ -103,13 +106,28 @@ function Editor({
 }: {
   orgSlug: string;
   slotId: string;
+  attemptId: string | null;
   payload: Record<string, unknown> | null;
   reviews: SlotReviews;
   initial: { field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
+  /*
+   * `.score` is not decoration: the backend only counts a field path that
+   * ends in it (`domain.score` or `domain.skill.score`, see
+   * `reviews/service.py`'s `_scored_domains`). A bare domain key here writes
+   * a rating that scores, summaries and completion checks all silently
+   * ignore.
+   */
   const domains = useMemo(
-    () => (payload ? normaliseFeedback(payload).groups.map((group) => ({ key: group.key, label: group.label, machine: group.score })) : []),
+    () =>
+      payload
+        ? normaliseFeedback(payload).groups.map((group) => ({
+            key: `${group.key}.score`,
+            label: group.label,
+            machine: group.score,
+          }))
+        : [],
     [payload],
   );
 
@@ -127,14 +145,14 @@ function Editor({
     return out;
   });
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [busy, setBusy] = useState<"draft" | "submitted" | null>(null);
+  const [busy, setBusy] = useState<"draft" | "completed" | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
-  const submitted = initial?.status === "submitted";
+  const submitted = initial?.status === "completed";
 
   const persist = useCallback(
-    async (status: "draft" | "submitted") => {
+    async (status: "draft" | "completed") => {
       setBusy(status);
       setError(null);
       try {
@@ -219,8 +237,8 @@ function Editor({
                 <Button variant="secondary" onClick={() => void persist("draft")} disabled={busy !== null}>
                   {busy === "draft" ? <Spinner /> : "Save draft"}
                 </Button>
-                <Button onClick={() => void persist("submitted")} disabled={busy !== null}>
-                  {busy === "submitted" ? <Spinner /> : "Submit review"}
+                <Button onClick={() => void persist("completed")} disabled={busy !== null}>
+                  {busy === "completed" ? <Spinner /> : "Submit review"}
                 </Button>
               </div>
             )}
@@ -239,7 +257,7 @@ function Editor({
         </Card>
       </div>
 
-      <div>
+      <div className="flex flex-col gap-4">
         {payload ? (
           <FeedbackView payload={payload} />
         ) : (
@@ -249,6 +267,10 @@ function Editor({
             </p>
           </Card>
         )}
+        {/* The marking is the machine's reading of the consultation; this is
+            the consultation. A marker is asked to agree or disagree with the
+            first, which is not a judgement they can make from a score alone. */}
+        <AttemptTranscript attemptId={attemptId} />
       </div>
     </div>
   );

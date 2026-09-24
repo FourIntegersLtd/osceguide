@@ -105,6 +105,18 @@ function Form({
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+
+  // What this screen last read, so a save cannot quietly supersede somebody
+  // else's. `decision` is re-read by the parent after every successful write,
+  // and this component is keyed on its revision.
+  const expectedRevision = decision?.revision ?? 0;
+  const draft = {
+    assessmentOutcome: outcome || null,
+    rationale: rationale.trim() || null,
+    evidence: evidenceFor(candidate),
+    expectedRevision,
+  };
 
   const state = decision?.workflow_state ?? "draft";
   const released = state === "released";
@@ -115,12 +127,18 @@ function Form({
     setBusy(label);
     setFailure(null);
     setNote(null);
+    setStale(false);
     try {
       await action();
       setNote(said);
       onChanged();
     } catch (cause) {
-      setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+      // A refused save says the copy on screen is not the newest, which is a
+      // different thing to say from "your request failed": the words typed
+      // here are still worth keeping, and the latest revision has to be loaded
+      // before another save can go through.
+      if (hasCode(cause, "decision_revised")) setStale(true);
+      else setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
     } finally {
       setBusy(null);
     }
@@ -152,6 +170,25 @@ function Form({
 
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       {note && !failure ? <Alert tone="success">{note}</Alert> : null}
+      {stale && !failure ? (
+        <Alert tone="warning" title="This decision has changed since you loaded it">
+          <p>
+            Somebody else saved a revision while this form was open, so your draft was not written and
+            nothing here was lost. Load the latest version and reapply your change to it.
+          </p>
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            className="mt-2"
+            onClick={() => {
+              setStale(false);
+              onChanged();
+            }}
+          >
+            Load the latest version
+          </Button>
+        </Alert>
+      ) : null}
 
       <fieldset className="space-y-2" disabled={signedOff}>
         <legend className="text-osce-caption font-medium text-b2b-headline">Outcome</legend>
@@ -210,16 +247,7 @@ function Form({
               isLoading={busy === "save"}
               disabled={busy !== null}
               onClick={() =>
-                void run(
-                  "save",
-                  () =>
-                    saveDecision(orgSlug, sittingId, traineeId, {
-                      assessmentOutcome: outcome || null,
-                      rationale: rationale.trim() || null,
-                      evidence: evidenceFor(candidate),
-                    }),
-                  "Draft saved.",
-                )
+                void run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.")
               }
             >
               Save draft
@@ -235,11 +263,7 @@ function Form({
                   async () => {
                     // Sign-off reads what is stored, so the draft goes first —
                     // otherwise it signs off the previous revision's words.
-                    await saveDecision(orgSlug, sittingId, traineeId, {
-                      assessmentOutcome: outcome || null,
-                      rationale: rationale.trim() || null,
-                      evidence: evidenceFor(candidate),
-                    });
+                    await saveDecision(orgSlug, sittingId, traineeId, draft);
                     return signOffDecision(orgSlug, sittingId, traineeId);
                   },
                   "Signed off. It is not with the candidate until it is released.",

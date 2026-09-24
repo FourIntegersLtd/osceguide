@@ -27,7 +27,7 @@ export function SlotReviewers({
   const data = reviews;
   const summary = data.summary;
   const completed = summary.completed_reviews;
-  const drafts = (data.items ?? []).filter((item) => item.status !== "submitted").length;
+  const drafts = (data.items ?? []).filter((item) => item.status !== "completed").length;
   const byDomain = Object.entries(summary.by_domain ?? {});
 
   if (completed === 0) {
