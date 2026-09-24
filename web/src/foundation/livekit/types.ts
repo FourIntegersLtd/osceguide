@@ -9,6 +9,13 @@ export interface RoomGrant {
   room: string;
   server_url: string;
   token: string;
+  /**
+   * Whether this grant may publish audio/video. Always `true` for a
+   * candidate's own grant. For an observer it now varies with the sitting's
+   * mode (training vs exam) — see `sittings/service_join.py:observer_token`
+   * — so a caller must read it rather than assume subscribe-only.
+   */
+  can_publish?: boolean;
 }
 
 /** The agent states LiveKit reports, in the words a candidate should read. */

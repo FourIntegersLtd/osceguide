@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LuCircleHelp, LuX } from "react-icons/lu";
 import { Alert, Button, Spinner } from "@/foundation/ui";
 import { AgentTile, VoiceRoom, useMicPreflight, type RoomGrant } from "@/foundation/livekit";
+import { AssistantCardSlot } from "@/foundation/livekit/guidance";
 import { errorMessage } from "@/foundation/hooks";
 import { assistantSurfaceFor } from "@/capabilities/surface";
 import { useSurface } from "@/capabilities/SurfaceContext";
@@ -55,7 +56,7 @@ export function HelpPanel({
 }
 
 function HelpDialog({ navItems, onClose }: { navItems: HelpNavItem[]; onClose: () => void }) {
-  const { surface } = useSurface();
+  const { surface, hrefFor } = useSurface();
   const pathname = usePathname();
   const mic = useMicPreflight();
   const [grant, setGrant] = useState<RoomGrant | null>(null);
@@ -110,6 +111,7 @@ function HelpDialog({ navItems, onClose }: { navItems: HelpNavItem[]; onClose: (
             onDisconnected={() => setGrant(null)}
             onError={(cause) => setError(cause)}
           >
+            <AssistantCardSlot hrefFor={hrefFor} />
             <AgentTile name="Assistant" detail="Ask about anything on this screen" />
             <Button variant="danger" className="mt-3 w-full" onClick={() => setGrant(null)}>
               End

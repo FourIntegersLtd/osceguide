@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { LuCircleHelp, LuMaximize2, LuMinimize2, LuMousePointer2 } from "react-icons/lu";
 import { BsInfoCircleFill } from "react-icons/bs";
@@ -159,6 +159,8 @@ function NavigateHelpPanel({
   onBack,
   isWide,
   onToggleWide,
+  launch,
+  onLaunched,
 }: {
   appType: string;
   navItems: HelpNavItem[];
@@ -166,6 +168,8 @@ function NavigateHelpPanel({
   onBack: () => void;
   isWide: boolean;
   onToggleWide: () => void;
+  launch: "help" | "onboarding" | null;
+  onLaunched: () => void;
 }) {
   const { surface } = useSurface();
   const pathname = usePathname();
@@ -176,7 +180,7 @@ function NavigateHelpPanel({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const startVoice = useCallback(async (intent: "faq" | "guide" = "faq") => {
+  const startVoice = useCallback(async (intent: "faq" | "guide" = "faq", sessionType: "help" | "onboarding" | "dashboard" = "help") => {
     setVoiceHelpIntent(intent);
     setStarting(true);
     setError(null);
@@ -187,7 +191,7 @@ function NavigateHelpPanel({
         pathname,
         navItems,
       });
-      const session = await startAssistantSession("help", context, undefined, { voice_help_intent: intent, screen_ui_guidance: intent === "guide" && screenGuidanceAvailable });
+      const session = await startAssistantSession(sessionType, context, undefined, { voice_help_intent: intent, screen_ui_guidance: intent === "guide" && screenGuidanceAvailable });
       setGrant(await assistantVoiceToken(session.id));
     } catch (cause) {
       setGrant(null);
@@ -196,6 +200,12 @@ function NavigateHelpPanel({
       setStarting(false);
     }
   }, [mic, navItems, pathname, surface, screenGuidanceAvailable]);
+
+  useEffect(() => {
+    if (!launch) return;
+    onLaunched();
+    void startVoice(launch === "onboarding" ? "guide" : "faq", launch === "onboarding" ? "onboarding" : "dashboard");
+  }, [launch, onLaunched, startVoice]);
 
   const endVoice = useCallback(() => setGrant(null), []);
 
@@ -321,6 +331,18 @@ export function B2CHelpDock({
   const { code } = useCurrentExam();
   const appType = (appTypeOverride ?? code ?? "sca").toLowerCase();
   const [helpMode, setHelpMode] = useState<HelpMode>(null);
+  const [athenaLaunch, setAthenaLaunch] = useState<"help" | "onboarding" | null>(null);
+
+  useEffect(() => {
+    const open = (event: Event) => {
+      const kind = (event as CustomEvent<{ kind?: string }>).detail?.kind;
+      setIsExpanded(true);
+      setHelpMode("navigate");
+      setAthenaLaunch(kind === "onboarding" ? "onboarding" : "help");
+    };
+    window.addEventListener("osce:open-athena", open);
+    return () => window.removeEventListener("osce:open-athena", open);
+  }, [setIsExpanded]);
 
   const handleClose = useCallback(() => {
     setHelpMode(null);
@@ -404,6 +426,8 @@ export function B2CHelpDock({
         onBack={appType === "sca" ? () => setHelpMode(null) : handleClose}
         isWide={isWide}
         onToggleWide={toggleWide}
+        launch={athenaLaunch}
+        onLaunched={() => setAthenaLaunch(null)}
       />
     );
   }

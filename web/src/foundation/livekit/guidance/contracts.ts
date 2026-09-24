@@ -174,6 +174,53 @@ export function parseAssistantCardPayload(raw: unknown): AssistantCardPayload | 
   return parsed.success ? parsed.data : null;
 }
 
+const cardRefSchema = z
+  .object({
+    kind: z.string(),
+    id: z.string(),
+    slug: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const suggestionCardSchema = z.object({
+  type: z.literal(DATA_TYPE_ASSISTANT_CARD),
+  card: z.literal("suggestion"),
+  title: z.string().min(1),
+  reason: z.string().optional(),
+  ref: cardRefSchema.optional(),
+});
+
+const citationItemSchema = z.object({
+  n: z.number().optional(),
+  title: z.string().min(1),
+  section: z.string().nullable().optional(),
+  ref: cardRefSchema.optional(),
+});
+
+const citationsCardSchema = z.object({
+  type: z.literal(DATA_TYPE_ASSISTANT_CARD),
+  card: z.literal("citations"),
+  citations: z.array(citationItemSchema).min(1),
+});
+
+export type SuggestionCard = z.infer<typeof suggestionCardSchema>;
+export type CitationsCard = z.infer<typeof citationsCardSchema>;
+export type KnownAssistantCard = SuggestionCard | CitationsCard;
+
+/**
+ * A card the screen knows how to draw.
+ *
+ * Anything else — a future kind, a suggestion with no title — is ignored
+ * rather than thrown, so one bad packet cannot take down the voice session.
+ */
+export function parseKnownAssistantCard(raw: unknown): KnownAssistantCard | null {
+  const suggestion = suggestionCardSchema.safeParse(raw);
+  if (suggestion.success) return suggestion.data;
+  const citations = citationsCardSchema.safeParse(raw);
+  if (citations.success) return citations.data;
+  return null;
+}
+
 // ── Navigation mode (data channel) ──────────────────────────────────────────
 
 export const navModeChoicePayloadSchema = z.object({

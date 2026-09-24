@@ -21,6 +21,7 @@ export {
   parsePointerPayload,
   guidanceProgressPayloadSchema,
   parseGuidanceProgressPayload,
+  parseKnownAssistantCard,
   performClickRpcRequestSchema,
   performClickRpcResponseSchema,
   performScrollRpcRequestSchema,
@@ -33,6 +34,7 @@ export type {
   PerformClickRpcResponse,
   GuidanceProgressPayload,
   GuidanceProgressStep,
+  KnownAssistantCard,
 } from "./contracts";
 // ── Config ───────────────────────────────────────────────────────────────────
 export { isUiGuidanceEnabled } from "./config";
@@ -54,6 +56,7 @@ export type {
 } from "./useUiGuidance";
 export { UiGuidanceOverlay } from "./UiGuidanceOverlay";
 export { GuidanceProgressPanel } from "./GuidanceProgressPanel";
+export { AssistantCards, AssistantCardSlot } from "./AssistantCards";
 export {
   UI_GUIDANCE_IGNORE_ATTRIBUTE,
   uiGuidanceIgnoreProps,

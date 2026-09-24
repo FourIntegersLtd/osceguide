@@ -4,13 +4,17 @@ import { BarVisualizer, useConnectionState, useVoiceAssistant } from "@livekit/c
 import { ConnectionState } from "livekit-client";
 import { HiOutlinePhoneXMark } from "react-icons/hi2";
 import { AthenaIdentity, Button, cn, productTokens } from "@/foundation/ui";
+import { AssistantCardSlot } from "@/foundation/livekit/guidance";
+import { useSurface } from "@/capabilities/SurfaceContext";
 
 export function DebriefVoiceStage({ onEnd }: { onEnd: () => void }) {
   const { state, audioTrack } = useVoiceAssistant();
   const connection = useConnectionState();
   const connecting = connection !== ConnectionState.Connected;
+  const { hrefFor } = useSurface();
   return (
     <>
+      <AssistantCardSlot hrefFor={hrefFor} />
       <AthenaIdentity title="Athena Moderator" description="Speak naturally to discuss your performance" className="mb-5" />
       <div className="mb-6 w-full overflow-hidden rounded-osce-lg border border-osce-accent-subtle bg-osce-accent-muted px-4 py-4">
         <BarVisualizer state={state} barCount={5} trackRef={audioTrack}

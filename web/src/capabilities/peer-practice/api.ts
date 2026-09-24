@@ -224,7 +224,7 @@ export function recordPracticePresence(sessionId: string): Promise<PracticeSessi
 
 export function submitPracticeFeedback(
   sessionId: string,
-  input: { rating: number; comment?: string | null },
+  input: { rating: number; comment?: string | null; would_practice_again?: boolean | null },
 ): Promise<PracticeSession> {
   return platformRequest<PracticeSession>(
     `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/feedback`,

@@ -76,9 +76,9 @@ export function usePeerSession(sessionId: string) {
     } catch (cause) { setError(asError(cause)); return false; }
     finally { setBusy(false); }
   }, [sessionId]);
-  const submitFeedback = useCallback(async (rating: number, comment: string | null) => {
+  const submitFeedback = useCallback(async (rating: number, comment: string | null, wouldPracticeAgain: boolean | null = null) => {
     setBusy(true); setError(null);
-    try { await submitPracticeFeedback(sessionId, { rating, comment }); return true; }
+    try { await submitPracticeFeedback(sessionId, { rating, comment, would_practice_again: wouldPracticeAgain }); return true; }
     catch (cause) { setError(asError(cause)); return false; }
     finally { setBusy(false); }
   }, [sessionId]);

@@ -16,11 +16,22 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useCurrentExam } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { askQuestion, listQuestions, type Post, type Room } from "@/capabilities/community/api";
-import { fieldClass, formatPostedDate, titleFromBody, useViewer, authorLabel } from "@/capabilities/community/posts";
+import { SPECIALTY_TAGS_SORTED } from "@/capabilities/community/specialtyTags";
+import { fieldClass, formatPostedDate, titleFromBody, useViewer, authorLabel, QuestionTags } from "@/capabilities/community/posts";
 
-const { b2cBodyText, b2cBodyTextMuted, b2cButtonPrimarySm, b2cPanelCardTitle } = productTokens;
+const {
+  b2cBodyText,
+  b2cBodyTextMuted,
+  b2cButtonPrimarySm,
+  b2cGroupedRowTitle,
+  b2cPanelCardTitle,
+  b2cPickerChipBase,
+  b2cPickerChipSelected,
+  b2cPickerChipUnselected,
+} = productTokens;
 
 /** One page of the feed. Questions are cursor-paginated; this is the first page. */
 export const PAGE_SIZE = 100;
@@ -35,9 +46,10 @@ export const PAGE_SIZE = 100;
  * to the world by accident.
  */
 export function QuestionList({ room, roomName }: { room: Room; roomName: string | null }) {
+  const [tag, setTag] = useState<string | null>(null);
   const state = useAsync(
-    (signal) => listQuestions({ room, limit: PAGE_SIZE }, signal),
-    [room.visibility, room.orgId],
+    (signal) => listQuestions({ room, limit: PAGE_SIZE, tag }, signal),
+    [room.visibility, room.orgId, tag],
   );
 
   return (
@@ -58,15 +70,19 @@ export function QuestionList({ room, roomName }: { room: Room; roomName: string 
         <ModalHelper>Browse what others are asking.</ModalHelper>
       </div>
 
+      <TagFilter selected={tag} onSelect={setTag} />
+
       <AsyncBoundary state={state}>
         {(page) =>
           page.items.length === 0 ? (
             <B2CPanelCard className="mt-0">
               <B2CPanelCardBody>
                 <p className={b2cBodyTextMuted}>
-                  {roomName
-                    ? `No questions in ${roomName} yet. Be the first to ask!`
-                    : "No questions yet. Be the first to ask!"}
+                  {tag
+                    ? "No questions with that tag yet."
+                    : roomName
+                      ? `No questions in ${roomName} yet. Be the first to ask!`
+                      : "No questions yet. Be the first to ask!"}
                 </p>
               </B2CPanelCardBody>
             </B2CPanelCard>
@@ -83,10 +99,71 @@ export function QuestionList({ room, roomName }: { room: Room; roomName: string 
   );
 }
 
+function TagFilter({
+  selected,
+  onSelect,
+}: {
+  selected: string | null;
+  onSelect: (tag: string | null) => void;
+}) {
+  return (
+    <div className="touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain whitespace-nowrap pb-1">
+      <div className="flex gap-2" role="group" aria-label="Filter questions by specialty">
+        <FilterChip label="All" pressed={selected === null} onClick={() => onSelect(null)} />
+        {SPECIALTY_TAGS_SORTED.map((specialty) => (
+          <FilterChip
+            key={specialty.key}
+            label={specialty.name}
+            pressed={selected === specialty.key}
+            onClick={() => onSelect(selected === specialty.key ? null : specialty.key)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  pressed,
+  onClick,
+}: {
+  label: string;
+  pressed: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        b2cPickerChipBase,
+        "shrink-0 rounded-md px-3 py-1.5",
+        pressed ? b2cPickerChipSelected : b2cPickerChipUnselected,
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 function Composer({ room, onPosted }: { room: Room; onPosted: () => void }) {
   const [content, setContent] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The retiring client hid the tag row for the ortho app — its stations are
+  // surgical, and the specialty list was GP medicine — and kept it for
+  // everything else, so the gate is on the exam, not on the arm.
+  const { code } = useCurrentExam();
+  const showTags = code !== "ortho";
+
+  const toggleTag = useCallback((key: string) => {
+    setSelectedTags((current) =>
+      current.includes(key) ? current.filter((tag) => tag !== key) : [...current, key],
+    );
+  }, []);
 
   const submit = useCallback(async () => {
     if (!content.trim()) {
@@ -96,15 +173,21 @@ function Composer({ room, onPosted }: { room: Room; onPosted: () => void }) {
     setIsSubmitting(true);
     setError(null);
     try {
-      await askQuestion({ title: titleFromBody(content), body: content, room });
+      await askQuestion({
+        title: titleFromBody(content),
+        body: content,
+        tags: selectedTags,
+        room,
+      });
       setContent("");
+      setSelectedTags([]);
       onPosted();
     } catch (cause) {
       setError(errorMessage(cause) || "Failed to submit question. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
-  }, [content, room, onPosted]);
+  }, [content, selectedTags, room, onPosted]);
 
   return (
     <B2CPanelCard className="mt-0">
@@ -118,6 +201,35 @@ function Composer({ room, onPosted }: { room: Room; onPosted: () => void }) {
           rows={3}
           aria-label="Your question"
         />
+        {showTags ? (
+          <div>
+            <p className={cn("mb-2", b2cGroupedRowTitle, "text-osce-ink-700")}>Tags</p>
+            <p className={cn("mb-2", b2cBodyTextMuted)}>
+              Click to add or remove. Scroll to see all.
+            </p>
+            <div className="touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain whitespace-nowrap pb-1">
+              <div className="flex gap-2">
+                {SPECIALTY_TAGS_SORTED.map((specialty) => {
+                  const selected = selectedTags.includes(specialty.key);
+                  return (
+                    <button
+                      key={specialty.key}
+                      type="button"
+                      onClick={() => toggleTag(specialty.key)}
+                      className={cn(
+                        b2cPickerChipBase,
+                        "shrink-0 rounded-md px-3 py-1.5",
+                        selected ? b2cPickerChipSelected : b2cPickerChipUnselected,
+                      )}
+                    >
+                      {specialty.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
         {error ? <p className={b2cBodyTextMuted}>{error}</p> : null}
       </B2CPanelCardBody>
       <B2CPanelCardFooter>
@@ -143,6 +255,7 @@ function QuestionRow({ question }: { question: Post }) {
         </B2CPanelCardHeader>
         <B2CPanelCardBody className="space-y-3">
           <p className={cn(b2cBodyText, "leading-relaxed text-osce-ink-800")}>{question.body}</p>
+          <QuestionTags tags={question.tags} />
           <div className="flex justify-end border-t border-osce-border-light pt-3">
             <span className={cn(b2cButtonPrimarySm, "pointer-events-none")}>Reply</span>
           </div>

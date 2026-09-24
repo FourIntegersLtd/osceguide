@@ -6,9 +6,11 @@ import { RoomEvent } from "livekit-client";
 import {
   PROGRESS_STEP_DONE,
   parseGuidanceProgressPayload,
+  parseKnownAssistantCard,
   parsePointerPayload,
   TOOL_RUNNING_MESSAGE_TYPE,
   type GuidanceProgressStep,
+  type KnownAssistantCard,
 } from "./contracts";
 
 export type UiGuidancePointer = {
@@ -39,6 +41,7 @@ export function useUiGuidance(
   const [progressStep, setProgressStep] = useState<GuidanceProgressStep | null>(null);
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
   const [legacyToolRunning, setLegacyToolRunning] = useState(false);
+  const [cards, setCards] = useState<KnownAssistantCard[]>([]);
   const prevNavigationKeyRef = useRef<string | null | undefined>(undefined);
 
   // A worker from before the progress panel only sends `tool_running`.
@@ -73,6 +76,12 @@ export function useUiGuidance(
         return; // not ours
       }
 
+      const card = parseKnownAssistantCard(message);
+      if (card) {
+        setCards((current) => [...current.filter((existing) => existing.card !== card.card), card]);
+        return;
+      }
+
       const progress = parseGuidanceProgressPayload(message);
       if (progress) {
         const finished = progress.step === PROGRESS_STEP_DONE;
@@ -100,10 +109,14 @@ export function useUiGuidance(
       setProgressStep(null);
       setProgressLabel(null);
       setLegacyToolRunning(false);
+      setCards([]);
     };
   }, [room]);
 
   const clearPointerTarget = useCallback(() => setPointerTarget(null), []);
+  const dismissCard = useCallback((kind: KnownAssistantCard["card"]) => {
+    setCards((current) => current.filter((card) => card.card !== kind));
+  }, []);
 
   return {
     pointerTarget,
@@ -112,5 +125,7 @@ export function useUiGuidance(
     isGuidanceToolRunning,
     progressStep,
     progressLabel,
+    cards,
+    dismissCard,
   };
 }

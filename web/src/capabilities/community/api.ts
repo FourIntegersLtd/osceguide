@@ -29,11 +29,18 @@ export const PUBLIC_ROOM: Room = { visibility: "public", orgId: null };
  * conversation never mixes with the public board.
  */
 export function listQuestions(
-  params: { room?: Room | null; cursor?: string | null; limit?: number; mine?: boolean },
+  params: {
+    room?: Room | null;
+    cursor?: string | null;
+    limit?: number;
+    mine?: boolean;
+    tag?: string | null;
+  },
   signal?: AbortSignal,
 ): Promise<PostPage> {
   const room = params.room ?? null;
   const scoped = room !== null && room.visibility !== "public";
+  const tag = params.tag?.trim();
   return platformRequest<PostPage>("/api/v1/community/questions", {
     query: {
       visibility: scoped ? room.visibility : undefined,
@@ -43,6 +50,8 @@ export function listQuestions(
       // Narrowed in SQL. Filtering the fetched page would make the tab mean
       // "the first hundred questions, minus the ones that were not mine".
       mine: params.mine ? true : undefined,
+      // One specialty. The route refuses to widen the room; it only narrows it.
+      tag: tag ? tag : undefined,
     },
     signal,
   });
@@ -78,6 +87,7 @@ export function askQuestion(input: {
   title: string;
   body: string;
   examCode?: string | null;
+  tags?: readonly string[];
   room?: Room;
 }): Promise<Post> {
   const room = input.room ?? PUBLIC_ROOM;
@@ -87,6 +97,10 @@ export function askQuestion(input: {
       title: input.title,
       body: input.body,
       exam_code: input.examCode ?? null,
+      // The backend normalises (trim, lowercase, de-dupe) and caps the count,
+      // so the keys go up as chosen and an over-long or over-many selection
+      // comes back as a refusal the composer surfaces.
+      tags: input.tags ? [...input.tags] : [],
       audience: { visibility: room.visibility, org_id: room.orgId },
     },
   });

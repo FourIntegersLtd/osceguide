@@ -2,11 +2,13 @@
 import { LuMousePointer2, LuWand } from "react-icons/lu";
 import { AthenaIdentity } from "@/foundation/ui";
 import { HelpTranscriptions } from "@/foundation/livekit/HelpTranscriptions";
-import { isUiGuidanceEnabled, UiGuidanceOverlay, GuidanceProgressPanel } from "@/foundation/livekit/guidance";
+import { isUiGuidanceEnabled, UiGuidanceOverlay, GuidanceProgressPanel, AssistantCards } from "@/foundation/livekit/guidance";
+import { useSurface } from "@/capabilities/SurfaceContext";
 import { useHelpGuidance } from "./useHelpGuidance";
 export function HelpVoiceContent({ voiceHelpIntent }: { voiceHelpIntent: "faq" | "guide" }) {
   const { state, screenUiGuidanceSession, isGuidanceToolRunning, navigationMode, navPromptHighlight,
-    publishNavigationMode, pointerTarget, progressStep, progressLabel, athenaDescription } = useHelpGuidance(voiceHelpIntent);
+    publishNavigationMode, pointerTarget, progressStep, progressLabel, cards, dismissCard, athenaDescription } = useHelpGuidance(voiceHelpIntent);
+  const { hrefFor } = useSurface();
   return <>
     <div className="mb-4 flex shrink-0 flex-col items-center justify-center"><AthenaIdentity description={athenaDescription} /></div>
           {/* Tool-running loading banner */}
@@ -138,6 +140,7 @@ export function HelpVoiceContent({ voiceHelpIntent }: { voiceHelpIntent: "faq" |
               </div>
             </div>
           )}
+    <AssistantCards cards={cards} onDismiss={dismissCard} hrefFor={hrefFor} />
     <UiGuidanceOverlay pointerTarget={pointerTarget} /><GuidanceProgressPanel step={progressStep} label={progressLabel} />
   </>;
 }

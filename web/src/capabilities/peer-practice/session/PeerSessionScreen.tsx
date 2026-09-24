@@ -23,7 +23,7 @@ export function PeerSessionScreen({ sessionId, onLeave, onRequeue }: { sessionId
   const session = state.session;
   if (state.runnerPhase === "ended" || state.runnerPhase === "completed") return <SessionFeedback
     sessionId={sessionId} busy={state.busy} error={state.error} onSubmit={state.submitFeedback} onLeave={onLeave} onRequeue={onRequeue ? () => onRequeue(session.exam_code) : undefined}
-    partnerEnded={!state.endedByMe && state.runnerPhase !== "completed"} />;
+    partnerEnded={!state.endedByMe && Boolean(session.end_reason) && session.end_reason !== "phases_complete"} />;
   const preparing = state.runnerPhase === "preparation" || state.runnerPhase === "waiting_partner";
   return <div className="flex min-h-dvh flex-col bg-canvas text-ink">
     <SessionHeader sessionId={sessionId} role={session.my_role} phase={state.runnerPhase} countdown={state.phaseCountdown}

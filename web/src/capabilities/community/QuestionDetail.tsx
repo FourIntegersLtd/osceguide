@@ -22,6 +22,7 @@ import {
   DeleteButton,
   LikeButton,
   LinkedText,
+  QuestionTags,
   authorLabel,
   formatPostedAt,
   useViewer,
@@ -92,6 +93,7 @@ export function QuestionDetail({ questionId }: { questionId: string }) {
           <p className="break-words text-osce-body leading-relaxed text-osce-ink-800">
             <LinkedText>{shown.body}</LinkedText>
           </p>
+          <QuestionTags tags={shown.tags} />
           <div className="flex items-center justify-end gap-2 border-t border-osce-border-light pt-3">
             <OwnerActions post={shown} label="Delete question" onDelete={() => setConfirmingQuestion(true)} />
             <LikeButton

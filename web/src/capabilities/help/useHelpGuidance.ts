@@ -20,7 +20,7 @@ export function useHelpGuidance(voiceHelpIntent: "faq" | "guide") {
   const screenGuidanceAvailable = useScreenUiGuidance();
   const screenUiGuidanceSession =
     voiceHelpIntent === "guide" && screenGuidanceAvailable;
-  const { pointerTarget, isGuidanceToolRunning, progressStep, progressLabel } = useUiGuidance(room, {
+  const { pointerTarget, isGuidanceToolRunning, progressStep, progressLabel, cards, dismissCard } = useUiGuidance(room, {
     navigationKey: pathname,
   });
   const [navigationMode, setNavigationMode] = useState<"guide" | "automate">(
@@ -132,5 +132,5 @@ export function useHelpGuidance(voiceHelpIntent: "faq" | "guide") {
       : "Or ask Athena by voice below";
 
   return { state, screenUiGuidanceSession, isGuidanceToolRunning, navigationMode, navPromptHighlight,
-    publishNavigationMode, pointerTarget, progressStep, progressLabel, athenaDescription };
+    publishNavigationMode, pointerTarget, progressStep, progressLabel, cards, dismissCard, athenaDescription };
 }

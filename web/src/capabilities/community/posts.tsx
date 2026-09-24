@@ -6,6 +6,7 @@ import { HiOutlineTrash } from "react-icons/hi2";
 import { cn, linkifyOptions } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { like, unlike, type Post } from "@/capabilities/community/api";
+import { SPECIALTY_TAGS_SORTED } from "@/capabilities/community/specialtyTags";
 
 /**
  * The parts every community screen repeats: who wrote it, when, the like
@@ -51,6 +52,33 @@ export function authorLabel(post: Post, viewerId: string | null, viewerName: str
   if (post.author_id === viewerId) return `@${viewerName}`;
   const name = post.author_name?.trim();
   return name ? `@${name}` : "@a colleague";
+}
+
+/**
+ * A question's specialty tags.
+ *
+ * The stored value stays the key the filter matches on. The chip shows the
+ * name the composer offered, and a key this list does not know stays as stored
+ * so an older spelling does not disappear.
+ */
+export function tagLabel(tag: string): string {
+  return SPECIALTY_TAGS_SORTED.find((specialty) => specialty.key === tag)?.name ?? tag;
+}
+
+export function QuestionTags({ tags }: { tags: readonly string[] | undefined }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="rounded-md border border-osce-accent-subtle bg-osce-accent-muted px-2 py-0.5 text-osce-caption font-medium text-osce-accent"
+        >
+          {tagLabel(tag)}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 const URL_PATTERN = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
