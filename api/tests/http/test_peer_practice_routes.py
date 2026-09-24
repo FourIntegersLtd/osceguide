@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.notifications.models import OutboundMessage
 from app.features.peer_practice import service
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeVoiceTokens
@@ -371,3 +373,90 @@ async def test_somebody_on_their_free_trial_may_still_queue(client: AsyncClient,
     )
 
     assert response.status_code == 201, response.text
+
+
+async def _a_matched_session(client: AsyncClient, make_actor, db_session: AsyncSession, tag: str):  # type: ignore[no-untyped-def]
+    a_token = await make_actor(f"{tag}-a@example.com")
+    b_token = await make_actor(f"{tag}-b@example.com")
+    await join(client, a_token)
+    await join(client, b_token)
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    matched = await service.match_waiting(db_session, exam.id)
+    assert matched is not None
+    await db_session.flush()
+    return matched.id, a_token, b_token
+
+
+async def test_an_abuse_report_is_emailed_to_support(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The retiring backend sent this straight to a support inbox. A report
+
+    that only reached the server log was one nobody read until somebody went
+    looking — this is the fix, not just a log line, which is why the
+    assertion is on what got queued rather than on the 204.
+    """
+    session_id, a_token, _ = await _a_matched_session(client, make_actor, db_session, "abuse")
+
+    response = await client.post(
+        f"/api/v1/me/practice-sessions/{session_id}/report-abuse",
+        json={"message": "They were rude throughout."},
+        headers=bearer(a_token),
+    )
+    assert response.status_code == 204
+
+    queued = (
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "peer_practice_abuse_report")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [m.recipient for m in queued] == ["support@osceguide.com"]
+    assert queued[0].payload["reporter"] == "abuse-a@example.com"
+    assert queued[0].payload["reported"] == "abuse-b@example.com"
+    assert queued[0].payload["message"] == "They were rude throughout."
+
+
+async def test_a_no_show_report_is_emailed_to_support(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    session_id, a_token, _ = await _a_matched_session(client, make_actor, db_session, "noshow")
+
+    response = await client.post(
+        f"/api/v1/me/practice-sessions/{session_id}/report-no-show",
+        json={"message": "Never joined."},
+        headers=bearer(a_token),
+    )
+    assert response.status_code == 204
+
+    queued = (
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "peer_practice_no_show_report")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [m.recipient for m in queued] == ["support@osceguide.com"]
+    assert queued[0].payload["reporter"] == "noshow-a@example.com"
+
+
+async def test_a_stranger_cannot_report_a_session_they_are_not_in(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    session_id, _a_token, _b_token = await _a_matched_session(client, make_actor, db_session, "outsider")
+    stranger = await make_actor("outsider-stranger@example.com")
+
+    response = await client.post(
+        f"/api/v1/me/practice-sessions/{session_id}/report-abuse",
+        json={"message": "Not mine to report"},
+        headers=bearer(stranger),
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "practice_session_not_found"

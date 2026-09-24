@@ -27,6 +27,7 @@ from app.core.memberships import bind_membership_lookup
 from app.core.role_policy import bind_org_access_policy, bind_role_policy
 from app.core.tenancy import bind_org_lookup
 from app.features.assistant.service_seams import bind_assistant_hooks
+from app.features.attempts.service_access import bind_slot_supervisor_lookup
 from app.features.attempts.service_worker import bind_interaction_complete_hook
 from app.features.billing.service import count_payments_for_users
 from app.features.growth.service import bind_purchase_counter
@@ -40,6 +41,7 @@ from app.features.media.index import bind_vector_index
 from app.features.reviews.service import slot_has_review
 from app.features.roster.service import audiences_for_viewer, claim_roster_entries
 from app.features.sittings.service_circuit import bind_feedback_lookup
+from app.features.sittings.service_reads import supervisor_for_slot as sitting_supervisor_for_slot
 from app.features.tenancy.service import (
     default_workspace_for,
     is_institution_admin,
@@ -86,6 +88,13 @@ def bind_seams() -> None:
     bind_org_access_policy(org_permits_access)
     # `reviews` sits above `sittings`, so the edit lock cannot ask it directly.
     bind_feedback_lookup(slot_has_review)
+    # The other half of the same inversion, pointing down instead of up: an
+    # examiner's authority to read a candidate's transcript is that they are the
+    # supervisor named on the attempt's circuit, and `attempts` sits below
+    # `sittings`, so it cannot look that up for itself. Unbound, the two reads
+    # that ask would answer 403 to a supervisor every time — the failure is
+    # quiet, which is why the guards check that this line runs.
+    bind_slot_supervisor_lookup(sitting_supervisor_for_slot)
     # `billing` sits above `growth`, so the partner funnel cannot count
     # purchases for itself. It reported zero until this was bound (G-2).
     bind_purchase_counter(count_payments_for_users)

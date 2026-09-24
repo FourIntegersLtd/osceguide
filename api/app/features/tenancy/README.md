@@ -35,6 +35,13 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 - Naming somebody who has no account **invites** them: the account is created
   without a password and they are emailed a link to choose one. Refusing with
   `user_not_found` meant every tutor had to register unprompted first.
+- **Staff are memberships, not roster entries.** `roster` owns the people an
+  organisation examines; the people who examine them live here, because a
+  membership is what decides what a signed-in person may do. That is why the
+  bulk add the retiring client called "import staff from a spreadsheet" is
+  `POST /memberships/bulk` rather than a `roster` route — and why no temporary
+  password appears in it, or anywhere: an unknown address is invited, exactly as
+  it is one at a time.
 - Org admin is `owner | admin | institution_admin | partner_admin`.
   Institution admin — who alone signs off candidate results — is the narrower
   `owner | admin | institution_admin`.
@@ -49,6 +56,7 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | GET | `/api/v1/orgs/{org_slug}` | org member | |
 | GET | `/api/v1/orgs/{org_slug}/memberships` | org admin | cursor-paginated |
 | POST | `/api/v1/orgs/{org_slug}/memberships` | org admin | `membership_exists` (409); an unknown address is **invited** (`invited: true`) |
+| POST | `/api/v1/orgs/{org_slug}/memberships/bulk` | org admin | up to 500 rows; a person already holding the role is reported in `skipped`, never fatal. Each row is the single act above it |
 | PATCH | `/api/v1/orgs/{org_slug}/memberships/{id}` | org admin | role change |
 | POST | `/api/v1/orgs/{org_slug}/memberships/{id}/revoke` | org admin | |
 | POST | `/api/v1/orgs/{org_slug}/memberships/{id}/restore` | org admin | |

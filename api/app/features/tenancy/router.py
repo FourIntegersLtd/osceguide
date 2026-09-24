@@ -13,7 +13,14 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
-from app.features.tenancy import errors, schemas, service, service_memberships, service_workspace
+from app.features.tenancy import (
+    errors,
+    schemas,
+    service,
+    service_bulk,
+    service_memberships,
+    service_workspace,
+)
 
 router = APIRouter(tags=["tenancy"])
 
@@ -90,6 +97,28 @@ async def add_membership(
         product_surface=body.product_surface,
         actor=workspace.principal,
         now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/memberships/bulk",
+    response_model=schemas.BulkMembershipsResult,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Forbidden),
+)
+async def add_memberships(
+    body: schemas.BulkCreateMemberships, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkMembershipsResult:
+    """A team at once: the browser parses the spreadsheet, this takes the rows.
+
+    Each row is the single act below it, so an unknown address is invited and
+    an existing one is not re-invited. A person already holding the role is
+    reported in `skipped` rather than failing the other rows — the retiring
+    backend's staff upload wrote a team row by row and an administrator reads
+    the result as a list of names, not as an error page.
+    """
+    return await service_bulk.add_memberships(
+        session, workspace.org_id, entries=body.memberships, actor=workspace.principal, now=clock.now()
     )
 
 

@@ -19,7 +19,7 @@ from app.core.events import publish_after_commit, user_topic
 from app.features.attempts import service as attempts
 from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
-from app.features.peer_practice import domain, errors, repository
+from app.features.peer_practice import domain, errors, repository, repository_sessions
 from app.features.peer_practice.jobs import enqueue_try_match
 from app.features.peer_practice.models import PracticeSession, QueueEntry
 from app.features.peer_practice.schemas import PracticeSessionRead, QueueStatus
@@ -108,7 +108,7 @@ async def match_waiting(
     waiting: list[domain.Waiting] = []
     by_user: dict[str, QueueEntry] = {}
     for entry in entries:
-        history = await repository.history_for(session, entry.user_id)
+        history = await repository_sessions.history_for(session, entry.user_id)
         waiting.append(
             domain.Waiting(
                 user_id=str(entry.user_id),
@@ -125,14 +125,14 @@ async def match_waiting(
 
     doctor_id, patient_id = uuid.UUID(pair.doctor), uuid.UUID(pair.patient)
     station_id = await pick_station_version_id(session, exam_id=exam_id, doctor_user_id=doctor_id)
-    practice = await repository.create_session(
+    practice = await repository_sessions.create_session(
         session,
         exam_id=exam_id,
         doctor_user_id=doctor_id,
         patient_user_id=patient_id,
         station_version_id=station_id,
     )
-    await repository.set_room(session, practice.id, room_name=f"practice_{practice.id}")
+    await repository_sessions.set_room(session, practice.id, room_name=f"practice_{practice.id}")
     await repository.mark_matched(
         session,
         [by_user[pair.doctor].id, by_user[pair.patient].id],
@@ -140,8 +140,8 @@ async def match_waiting(
     )
     # Recorded now rather than at the end, so somebody who abandons a session
     # still does not get the same part twice running.
-    await repository.record_role(session, doctor_id, role=str(domain.Role.DOCTOR))
-    await repository.record_role(session, patient_id, role=str(domain.Role.PATIENT))
+    await repository_sessions.record_role(session, doctor_id, role=str(domain.Role.DOCTOR))
+    await repository_sessions.record_role(session, patient_id, role=str(domain.Role.PATIENT))
 
     # Both halves of the pair are told, once the pairing has committed. The
     # matcher is a job rather than a request, and `job_session` flushes what it
@@ -149,13 +149,13 @@ async def match_waiting(
     for waiting_user in (doctor_id, patient_id):
         publish_after_commit(session, user_topic(waiting_user), MATCHED)
 
-    return await repository.session_by_id(session, practice.id)
+    return await repository_sessions.session_by_id(session, practice.id)
 
 
 async def read_session(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime | None = None
 ) -> PracticeSessionRead:
-    row = await repository.session_by_id(session, session_id)
+    row = await repository_sessions.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         # 404 rather than 403: a session id is not something a stranger should
         # be able to confirm exists.
@@ -169,7 +169,7 @@ async def read_session(
 async def touch_presence(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PracticeSessionRead:
-    row = await repository.session_by_id(session, session_id)
+    row = await repository_sessions.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         raise errors.SessionNotFound()
     if row.status == "ended":
@@ -185,12 +185,15 @@ async def submit_feedback(
     user_id: uuid.UUID,
     rating: int,
     comment: str | None,
+    would_practice_again: bool | None = None,
 ) -> PracticeSessionRead:
-    row = await repository.session_by_id(session, session_id)
+    row = await repository_sessions.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         raise errors.SessionNotFound()
-    await repository.record_feedback(session, session_id, rating=rating, comment=comment)
-    refreshed = await repository.session_by_id(session, session_id)
+    await repository_sessions.record_feedback(
+        session, session_id, rating=rating, comment=comment, would_practice_again=would_practice_again
+    )
+    refreshed = await repository_sessions.session_by_id(session, session_id)
     return await _session_read(session, refreshed, viewer_id=user_id)  # type: ignore[arg-type]
 
 
@@ -202,20 +205,20 @@ async def end_session(
     reason: str | None,
     now: datetime,
 ) -> PracticeSessionRead:
-    row = await repository.session_by_id(session, session_id)
+    row = await repository_sessions.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         raise errors.SessionNotFound()
     if row.status == "ended":
         raise errors.SessionAlreadyEnded()
-    await repository.end_session(session, session_id, at=now, reason=reason)
-    refreshed = await repository.session_by_id(session, session_id)
+    await repository_sessions.end_session(session, session_id, at=now, reason=reason)
+    refreshed = await repository_sessions.session_by_id(session, session_id)
     return await _session_read(session, refreshed, viewer_id=user_id)  # type: ignore[arg-type]
 
 
 async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PracticeSessionRead]:
     return [
         await _session_read(session, row, viewer_id=user_id)
-        for row in await repository.sessions_for_user(session, user_id)
+        for row in await repository_sessions.sessions_for_user(session, user_id)
     ]
 
 

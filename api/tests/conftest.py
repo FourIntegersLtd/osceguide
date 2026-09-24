@@ -28,6 +28,10 @@ os.environ.setdefault("WORKER_SECRET", "test-worker-secret")
 os.environ.setdefault("REDIS_DISABLED", "1")
 os.environ.setdefault("LIVEKIT_URL", "wss://livekit.test")
 os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_secret")
+# Station images need a bucket configured for the route to be reachable at
+# all; the S3 client itself is faked at its seam in the tests that use it.
+os.environ.setdefault("AWS_S3_BUCKET", "test-bucket")
+os.environ.setdefault("AWS_REGION", "eu-west-2")
 # A local `.env` OpenAI key would otherwise make `build_material_index` look
 # configured, and the tutor would claim it searched material it never read.
 os.environ["OPENAI_API_KEY"] = ""

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
 from app.features.catalog import service as catalog
-from app.features.peer_practice import domain, repository
+from app.features.peer_practice import domain, repository_sessions
 from app.features.peer_practice.models import PracticeSession
 from app.features.peer_practice.station_pick import pick_station_version_id
 from app.features.peer_practice.timers import durations_for
@@ -23,7 +23,7 @@ async def roles_for_peer_participants(
     """Doctor and patient user ids for a booked pair."""
     histories = []
     for user_id in (owner_id, claimer_id):
-        history = await repository.history_for(session, user_id)
+        history = await repository_sessions.history_for(session, user_id)
         histories.append(
             domain.Waiting(
                 user_id=str(user_id),
@@ -49,7 +49,7 @@ async def create_runtime_for_peer_booking(
 ) -> PracticeSession:
     doctor_id, patient_id = await roles_for_peer_participants(session, owner_user_id, claimer_user_id)
     station_id = await pick_station_version_id(session, exam_id=exam_id, doctor_user_id=doctor_id)
-    practice = await repository.create_session(
+    practice = await repository_sessions.create_session(
         session,
         exam_id=exam_id,
         doctor_user_id=doctor_id,
@@ -57,9 +57,9 @@ async def create_runtime_for_peer_booking(
         station_version_id=station_id,
         peer_session_id=peer_session_id,
     )
-    await repository.set_room(session, practice.id, room_name=f"practice_{practice.id}")
-    await repository.record_role(session, doctor_id, role=str(domain.Role.DOCTOR))
-    await repository.record_role(session, patient_id, role=str(domain.Role.PATIENT))
+    await repository_sessions.set_room(session, practice.id, room_name=f"practice_{practice.id}")
+    await repository_sessions.record_role(session, doctor_id, role=str(domain.Role.DOCTOR))
+    await repository_sessions.record_role(session, patient_id, role=str(domain.Role.PATIENT))
     return practice
 
 
@@ -95,8 +95,8 @@ async def advance_phases_if_due(
         values["status"] = "ended"
         values["ended_at"] = now
         values["end_reason"] = "phases_complete"
-    await repository.advance_phase(session, row.id, values=values)
-    refreshed = await repository.session_by_id(session, row.id)
+    await repository_sessions.advance_phase(session, row.id, values=values)
+    refreshed = await repository_sessions.session_by_id(session, row.id)
     assert refreshed is not None
     for user_id in (refreshed.doctor_user_id, refreshed.patient_user_id):
         publish_after_commit(session, user_topic(user_id), SESSION_UPDATED)
@@ -113,8 +113,8 @@ async def record_presence(
     if user_id == row.patient_user_id and row.patient_joined_at is None:
         updates["patient_joined_at"] = now
     if updates:
-        await repository.advance_phase(session, row.id, values=updates)
-        row = await repository.session_by_id(session, row.id)  # type: ignore[assignment]
+        await repository_sessions.advance_phase(session, row.id, values=updates)
+        row = await repository_sessions.session_by_id(session, row.id)  # type: ignore[assignment]
         assert row is not None
 
     doctor_in = row.doctor_joined_at is not None
@@ -122,7 +122,7 @@ async def record_presence(
     if doctor_in and patient_in and row.preparation_started_at is None:
         durs = durations_for(exam_code)
         prep_end = now + timedelta(seconds=durs.preparation)
-        await repository.advance_phase(
+        await repository_sessions.advance_phase(
             session,
             row.id,
             values={
@@ -132,7 +132,7 @@ async def record_presence(
                 "status": "active",
             },
         )
-        row = await repository.session_by_id(session, row.id)  # type: ignore[assignment]
+        row = await repository_sessions.session_by_id(session, row.id)  # type: ignore[assignment]
         assert row is not None
         for participant in (row.doctor_user_id, row.patient_user_id):
             publish_after_commit(session, user_topic(participant), SESSION_UPDATED)

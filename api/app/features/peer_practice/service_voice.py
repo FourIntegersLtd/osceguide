@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
-from app.features.peer_practice import errors, repository
+from app.features.peer_practice import errors, repository_sessions
 from app.features.peer_practice.schemas import RoomGrant
 from app.features.voice import service as voice
 
@@ -43,7 +43,7 @@ async def voice_grant(
     The room was named when the pair was matched and nothing could mint a
     token for it, so the session existed and could never be held.
     """
-    row = await repository.session_by_id(session, session_id)
+    row = await repository_sessions.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
         raise errors.SessionNotFound()
     if row.status == "ended" or not row.room_name:

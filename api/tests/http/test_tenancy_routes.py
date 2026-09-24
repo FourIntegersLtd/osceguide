@@ -10,6 +10,7 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.support.tokens import bearer
@@ -293,6 +294,105 @@ async def test_an_admin_has_the_team_capability(client: AsyncClient, make_actor)
         "/api/v1/me/capabilities", headers=bearer(await member_token(make_actor, org_id, "kings", "owner"))
     )
     assert response.json()["can"]["manage_team"] is True
+
+
+# --------------------------------------------------------------------------
+# Inviting the whole team at once
+# --------------------------------------------------------------------------
+
+
+async def test_a_team_can_be_invited_in_one_request(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The retiring client imported staff from a spreadsheet; one at a time was
+    all the platform offered, so the import's "Trainees or Staff?" step had no
+    destination. An address with no account is invited exactly as a single add
+    invites it, and no password is written anywhere.
+    """
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    org_id = await seed_org(client, make_actor, "kings")
+    admin = await member_token(make_actor, org_id, "kings", "owner")
+    await make_actor("already-here@example.com")
+
+    response = await client.post(
+        "/api/v1/orgs/kings/memberships/bulk",
+        json={
+            "memberships": [
+                {"email": "tutor-one@example.com", "role": "supervisor"},
+                {"email": "already-here@example.com", "role": "admin"},
+                {"email": "Tutor-One@example.com", "role": "supervisor"},
+            ]
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert [m["email"] for m in body["created"]] == ["tutor-one@example.com", "already-here@example.com"]
+    # The repeat is reported rather than fatal, and it is the upload's own
+    # duplicate caught before a second invitation went out for one person.
+    assert body["skipped"] == [
+        {"email": "Tutor-One@example.com", "role": "supervisor", "code": "membership_exists"}
+    ]
+    assert [m["invited"] for m in body["created"]] == [True, False]
+
+    listed = await client.get("/api/v1/orgs/kings/memberships", headers=bearer(admin))
+    assert len(listed.json()["items"]) == 3  # the owner, plus the two just seated
+
+    queued = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "invitation")
+            )
+        ).scalars()
+    )
+    assert [m.recipient for m in queued] == ["tutor-one@example.com"]
+
+
+async def test_a_person_named_twice_for_two_roles_is_seated_twice(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A membership is unique per `(org, user, role)`, so this is not a
+    duplicate — it is the tutor who supervises and also administers."""
+    org_id = await seed_org(client, make_actor, "bothroles")
+    admin = await member_token(make_actor, org_id, "bothroles", "owner")
+
+    response = await client.post(
+        "/api/v1/orgs/bothroles/memberships/bulk",
+        json={
+            "memberships": [
+                {"email": "wears-two-hats@example.com", "role": "supervisor"},
+                {"email": "wears-two-hats@example.com", "role": "admin"},
+            ]
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 201, response.text
+    assert [m["role"] for m in response.json()["created"]] == ["supervisor", "admin"]
+    assert response.json()["skipped"] == []
+
+
+async def test_a_supervisor_cannot_import_a_team(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor, "kings")
+    supervisor = await member_token(make_actor, org_id, "kings", "supervisor")
+
+    refused = await client.post(
+        "/api/v1/orgs/kings/memberships/bulk",
+        json={"memberships": [{"email": "nobody@example.com", "role": "owner"}]},
+        headers=bearer(supervisor),
+    )
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["code"] == "forbidden"
+
+
+async def test_an_empty_team_upload_is_invalid(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor, "kings")
+    admin = await member_token(make_actor, org_id, "kings", "owner")
+
+    response = await client.post(
+        "/api/v1/orgs/kings/memberships/bulk", json={"memberships": []}, headers=bearer(admin)
+    )
+    assert response.status_code == 422
 
 
 # --------------------------------------------------------------------------

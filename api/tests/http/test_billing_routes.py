@@ -379,6 +379,12 @@ async def test_starting_a_checkout_returns_somewhere_to_pay(
     assert fake.calls[0]["price_id"] == "price_one_month"
     assert fake.calls[0]["customer_email"] == "buyer@example.com"
 
+    # The cancel URL carries a marker, because Stripe sends a cancel there
+    # verbatim and the web has to tell "gave up on checkout" from "typed
+    # /pricing" — otherwise every visitor to the pricing page reads
+    # "Checkout cancelled".
+    assert fake.calls[0]["cancel_url"].endswith("/pricing?cancelled=1")
+
 
 async def test_starting_a_checkout_grants_nothing(
     client: AsyncClient, make_actor, db_session: AsyncSession

@@ -21,8 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.identity import service as identity
+from app.features.identity import service_close_account, service_passwords
 from app.features.identity import service_invitations as invitations
-from app.features.identity import service_passwords
 from app.features.identity import service_platform as accounts
 from app.features.tenancy import repository, repository_platform
 from app.features.tenancy.errors import PlatformAdminExists, UserNotFound
@@ -180,7 +180,7 @@ async def update_user(
         action = "user.updated"
         status = values.get("status")
         if status == "deactivated" and before.status != "deactivated":
-            await identity.end_sessions(session, user_id, now=now, reason="deactivated_by_admin")
+            await service_close_account.end_sessions(session, user_id, now=now, reason="deactivated_by_admin")
             action = "user.deactivated"
         elif status == "active" and before.status != "active":
             action = "user.reactivated"

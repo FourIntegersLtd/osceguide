@@ -145,6 +145,7 @@ class PracticeSessionRead(BaseModel):
     patient_joined_at: datetime | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
+    end_reason: str | None = None
     station: PracticeStationRead | None = None
     partner_joined: bool = False
 

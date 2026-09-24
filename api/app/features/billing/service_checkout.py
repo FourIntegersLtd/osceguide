@@ -68,7 +68,12 @@ async def start_checkout(
             price_id=plan.stripe_price_id,
             customer_email=email,
             success_url=f"{base}/billing/complete?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{base}/pricing",
+            # The `?cancelled=1` marker is the only thing that separates "came
+            # back from Stripe having changed their mind" from "typed /pricing",
+            # because Stripe sends a cancel to this URL verbatim. Without it the
+            # web cannot tell the two apart and shows every visitor the
+            # "Checkout cancelled" card.
+            cancel_url=f"{base}/pricing?cancelled=1",
             client_reference=str(user_id),
         )
     except CheckoutUnavailable as exc:

@@ -108,6 +108,7 @@ async def session_read(
         patient_joined_at=row.patient_joined_at,
         started_at=row.started_at,
         ended_at=row.ended_at,
+        end_reason=row.end_reason,
         station=station,
         partner_joined=partner_joined,
     )

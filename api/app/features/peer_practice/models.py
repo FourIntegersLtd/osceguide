@@ -90,6 +90,7 @@ class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
     end_reason: Mapped[str | None] = mapped_column(String(32))
     feedback_rating: Mapped[int | None] = mapped_column(Integer)
     feedback_comment: Mapped[str | None] = mapped_column(String(2000))
+    would_practice_again: Mapped[bool | None] = mapped_column(Boolean)
 
 
 class PracticeHistory(Base, UUIDPrimaryKey, Timestamps):

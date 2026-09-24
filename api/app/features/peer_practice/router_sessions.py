@@ -24,7 +24,14 @@ from app.core.ports import ClockDep, EventBus, VoiceTokens
 from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.features.peer_practice import errors, schemas, service, service_stream_session, service_voice
+from app.features.peer_practice import (
+    errors,
+    schemas,
+    service,
+    service_reports,
+    service_stream_session,
+    service_voice,
+)
 
 log = get_logger(__name__)
 router = APIRouter(tags=["peer-practice"])
@@ -102,6 +109,7 @@ async def session_feedback(
         user_id=principal.user_id,
         rating=body.rating,
         comment=body.comment,
+        would_practice_again=body.would_practice_again,
     )
 
 
@@ -122,6 +130,9 @@ async def report_abuse(
         reporter=str(principal.user_id),
         message=body.message,
     )
+    await service_reports.report_abuse(
+        session, session_id, reporter_id=principal.user_id, message=body.message
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -141,6 +152,9 @@ async def report_no_show(
         session_id=str(session_id),
         reporter=str(principal.user_id),
         message=body.message or "",
+    )
+    await service_reports.report_no_show(
+        session, session_id, reporter_id=principal.user_id, message=body.message
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import MaterialIndex
 from app.features.catalog import service as catalog
 from app.features.entitlements import service as entitlements
+from app.features.stations import service_library_reads as library_reads
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import (
     domain,
@@ -192,7 +193,9 @@ async def _may_open(
         code = codes.get(exam_id)
         if code is None:
             continue
-        library, _ = await stations.browse_library(session, exam_code=code, limit=LIBRARY_PAGE, cursor=None)
+        library, _ = await library_reads.browse_library(
+            session, exam_code=code, limit=LIBRARY_PAGE, cursor=None
+        )
         if any(row.version_id == version_id for row in library):
             return True
     return False

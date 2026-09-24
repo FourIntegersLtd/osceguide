@@ -165,9 +165,28 @@ def _payment_receipt(data: dict[str, str]) -> str:
     )
 
 
+def _abuse_report(data: dict[str, str]) -> str:
+    return (
+        "<h1>Peer-practice abuse report</h1>"
+        f"<p>Session {data.get('session_id', '')}, reported by {data.get('reporter', '')} "
+        f"against {data.get('reported', '')}.</p>"
+        f"<p>{data.get('message', '') or '(no message given)'}</p>"
+    )
+
+
+def _no_show_report(data: dict[str, str]) -> str:
+    return (
+        "<h1>Peer-practice no-show report</h1>"
+        f"<p>Session {data.get('session_id', '')}, reported by {data.get('reporter', '')}.</p>"
+        f"<p>{data.get('message', '') or '(no message given)'}</p>"
+    )
+
+
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
     "payment_receipt": _payment_receipt,
     "invitation": _invitation,
     "candidate_result_released": _result_released,
+    "peer_practice_abuse_report": _abuse_report,
+    "peer_practice_no_show_report": _no_show_report,
 }

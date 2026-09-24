@@ -142,6 +142,38 @@ class UpdateMembership(BaseModel):
     role: str = Field(min_length=1, max_length=32)
 
 
+MAX_BULK_MEMBERSHIPS = 500
+
+
+class BulkCreateMemberships(BaseModel):
+    """A team at once, in one request.
+
+    The retiring backend's "invite the whole team" path was a CSV upload it
+    parsed and wrote row by row, with a temporary password in the file or
+    generated in the browser. Here the browser parses the sheet and posts rows,
+    and no password is involved: an address with no account is invited and
+    chooses one. Capped so one request cannot invite a whole hospital by
+    accident.
+    """
+
+    memberships: list[CreateMembership] = Field(min_length=1, max_length=MAX_BULK_MEMBERSHIPS)
+
+
+class SkippedMembership(BaseModel):
+    email: str
+    role: str
+    # A stable code the client switches on: `membership_exists` for a person
+    # already holding this role, in this upload or already on the team.
+    code: str
+
+
+class BulkMembershipsResult(BaseModel):
+    """Who joined and who was already there, so a partial upload is not a mystery."""
+
+    created: list[MembershipRead] = Field(default_factory=list)
+    skipped: list[SkippedMembership] = Field(default_factory=list)
+
+
 class SwitchWorkspace(BaseModel):
     """Which workspace to re-issue the token against.
 
