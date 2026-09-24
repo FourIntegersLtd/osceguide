@@ -1,6 +1,40 @@
 {
   "components": {
     "schemas": {
+      "AchievementsRead": {
+        "description": "A person's practice record, computed from their whole marked history.\n\nPorted from the client-side calculator the consumer screen used to run\nover its last 100 attempts (`achievementsFromAttempts.ts`) \u2014 same\ndefinition, same numbers, now a durable read over everything rather than\na snapshot that forgot itself on refresh past the hundredth attempt.",
+        "properties": {
+          "current_streak": {
+            "title": "Current Streak",
+            "type": "integer"
+          },
+          "longest_streak": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StreakRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "station_count": {
+            "title": "Station Count",
+            "type": "integer"
+          },
+          "streak_badge_count": {
+            "title": "Streak Badge Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "station_count",
+          "current_streak",
+          "streak_badge_count"
+        ],
+        "title": "AchievementsRead",
+        "type": "object"
+      },
       "AcquisitionRead": {
         "properties": {
           "acquired_at": {
@@ -885,6 +919,42 @@
         "title": "Body_cv_upload_cv",
         "type": "object"
       },
+      "Body_stations_add_platform_station_photos": {
+        "properties": {
+          "files": {
+            "description": "PNG or JPEG images",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_stations_add_platform_station_photos",
+        "type": "object"
+      },
+      "Body_stations_add_station_photos": {
+        "properties": {
+          "files": {
+            "description": "PNG or JPEG images",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_stations_add_station_photos",
+        "type": "object"
+      },
       "BulkCreateMemberships": {
         "description": "A team at once, in one request.\n\nThe retiring backend's \"invite the whole team\" path was a CSV upload it\nparsed and wrote row by row, with a temporary password in the file or\ngenerated in the browser. Here the browser parses the sheet and posts rows,\nand no password is involved: an address with no account is invited and\nchooses one. Capped so one request cannot invite a whole hospital by\naccident.",
         "properties": {
@@ -1497,6 +1567,35 @@
           "finalized_at"
         ],
         "title": "CircuitReviewRead",
+        "type": "object"
+      },
+      "CloseAccount": {
+        "description": "Confirm closing the account. A password when one is set, otherwise the word delete.",
+        "properties": {
+          "confirm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "title": "CloseAccount",
         "type": "object"
       },
       "CloudCapacityRead": {
@@ -3657,6 +3756,40 @@
         "title": "DoctorInformationRead",
         "type": "object"
       },
+      "DomainComposition": {
+        "description": "How many marked attempts landed red, amber or green on one domain.\n\nClassed from the same 0\u2013100 domain score the bars already use: 83 and\nabove is green (a clear G), 50 to 83 is amber, below that is red. Counts,\nnot a new mark.",
+        "properties": {
+          "amber": {
+            "title": "Amber",
+            "type": "integer"
+          },
+          "green": {
+            "title": "Green",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "red": {
+            "title": "Red",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "red",
+          "amber",
+          "green"
+        ],
+        "title": "DomainComposition",
+        "type": "object"
+      },
       "DomainScore": {
         "description": "One bar of the radar: a rubric domain, averaged across the attempts.",
         "properties": {
@@ -3982,12 +4115,10 @@
               "entitlement_not_found",
               "evidence_changed",
               "exam_code_taken",
+              "exam_in_use",
               "exam_not_in_pilot",
               "exam_not_publishable",
               "exam_rubric_not_ready",
-              "feedback_template_not_found",
-              "feedback_template_not_published",
-              "feedback_template_version_not_found",
               "forbidden",
               "generation_profile_not_found",
               "generation_unavailable",
@@ -4008,6 +4139,7 @@
               "invalid_legacy_token",
               "invalid_media_status",
               "invalid_message",
+              "invalid_photo",
               "invalid_rag",
               "invalid_refresh_token",
               "invalid_reset_token",
@@ -4047,10 +4179,13 @@
               "org_slug_taken",
               "organization_suspended",
               "password_change_required",
+              "password_login_disabled",
               "payment_already_recorded",
               "payment_not_found",
               "peer_session_not_found",
               "peer_session_not_open",
+              "photo_not_on_station",
+              "photo_storage_unavailable",
               "plan_not_available",
               "platform_admin_exists",
               "post_not_found",
@@ -4066,6 +4201,7 @@
               "referral_already_redeemed",
               "referral_code_taken",
               "referral_not_found",
+              "referral_not_redeemed",
               "result_not_found",
               "result_not_released",
               "review_conflict",
@@ -4101,6 +4237,7 @@
               "tool_arguments_invalid",
               "trainee_already_on_circuit",
               "trainee_exists",
+              "trainee_in_use",
               "trainee_not_found",
               "trainee_revoked",
               "tutor_note_not_found",
@@ -7117,6 +7254,33 @@
         "title": "Page[ProgrammeRead]",
         "type": "object"
       },
+      "Page_ReferralAdminRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralAdminRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ReferralAdminRead]",
+        "type": "object"
+      },
       "Page_RubricRead_": {
         "properties": {
           "items": {
@@ -7714,6 +7878,13 @@
       "Performance": {
         "description": "The charts on the consumer exam dashboard, in one call.\n\nThe legacy screen asks four RAG endpoints and a weekly trend for this and\njoins them in the browser. `exam_code` is null only when the caller named\nno exam and has never attempted one \u2014 there is no exam to report on, and\nan empty string would be a code.",
         "properties": {
+          "composition": {
+            "items": {
+              "$ref": "#/components/schemas/DomainComposition"
+            },
+            "title": "Composition",
+            "type": "array"
+          },
           "domains": {
             "items": {
               "$ref": "#/components/schemas/DomainScore"
@@ -7771,6 +7942,24 @@
           "critical_rate"
         ],
         "title": "PerformanceSummary",
+        "type": "object"
+      },
+      "PhotoUploadFailure": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "error"
+        ],
+        "title": "PhotoUploadFailure",
         "type": "object"
       },
       "PlanRead": {
@@ -9201,6 +9390,17 @@
             ],
             "title": "Doctor Joined At"
           },
+          "end_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Reason"
+          },
           "ended_at": {
             "anyOf": [
               {
@@ -10115,6 +10315,91 @@
         "title": "RedeemReferral",
         "type": "object"
       },
+      "ReferralAdminRead": {
+        "description": "One referral, as the person settling it needs to see it.\n\nEmails rather than ids: whoever is reconciling bank transfers is matching\nnames on a statement, and a uuid is not on the statement.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "earned_pence": {
+            "title": "Earned Pence",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payout_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payout Reference"
+          },
+          "payout_status": {
+            "title": "Payout Status",
+            "type": "string"
+          },
+          "redeemed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redeemed At"
+          },
+          "referred_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referred Email"
+          },
+          "referrer_email": {
+            "title": "Referrer Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "referrer_email",
+          "referred_email",
+          "redeemed_at",
+          "earned_pence",
+          "payout_status",
+          "paid_at",
+          "payout_reference"
+        ],
+        "title": "ReferralAdminRead",
+        "type": "object"
+      },
       "ReferralRead": {
         "properties": {
           "code": {
@@ -10230,6 +10515,21 @@
           "retired"
         ],
         "title": "ReindexReport",
+        "type": "object"
+      },
+      "RemoveStationPhoto": {
+        "properties": {
+          "photo_url": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Photo Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "photo_url"
+        ],
+        "title": "RemoveStationPhoto",
         "type": "object"
       },
       "RenewContract": {
@@ -11208,6 +11508,32 @@
         "title": "SetRead",
         "type": "object"
       },
+      "SetReferralPayout": {
+        "properties": {
+          "payout_reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payout Reference"
+          },
+          "payout_status": {
+            "pattern": "^(unpaid|paid)$",
+            "title": "Payout Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payout_status"
+        ],
+        "title": "SetReferralPayout",
+        "type": "object"
+      },
       "SetSummary": {
         "properties": {
           "attempted_entries": {
@@ -12103,6 +12429,31 @@
         "title": "StationOverride",
         "type": "object"
       },
+      "StationPhotosResult": {
+        "description": "The version as it now stands, and anything that did not make it.\n\nA partial upload is a result rather than an error: the files that worked\nare on the station, and the caller is told which ones were not.",
+        "properties": {
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoUploadFailure"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "uploaded": {
+            "title": "Uploaded",
+            "type": "integer"
+          },
+          "version": {
+            "$ref": "#/components/schemas/StationVersionRead"
+          }
+        },
+        "required": [
+          "version",
+          "uploaded"
+        ],
+        "title": "StationPhotosResult",
+        "type": "object"
+      },
       "StationProgressChange": {
         "description": "What one of the two actions did, in numbers the toast can print.",
         "properties": {
@@ -12688,6 +13039,31 @@
           "content"
         ],
         "title": "StationVersionRead",
+        "type": "object"
+      },
+      "StreakRead": {
+        "properties": {
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "length": {
+            "title": "Length",
+            "type": "integer"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "length",
+          "start_date",
+          "end_date"
+        ],
+        "title": "StreakRead",
         "type": "object"
       },
       "StreamTicket": {
@@ -13303,6 +13679,11 @@
             "title": "Access Revoked",
             "type": "boolean"
           },
+          "anonymised": {
+            "default": false,
+            "title": "Anonymised",
+            "type": "boolean"
+          },
           "cohort_id": {
             "anyOf": [
               {
@@ -13396,6 +13777,17 @@
               }
             ],
             "title": "Assessment Outcome"
+          },
+          "assessment_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Score"
           },
           "rationale": {
             "anyOf": [
@@ -13782,6 +14174,28 @@
       "UpdateMe": {
         "description": "What a person may change about themselves. Absent means \"leave it\".",
         "properties": {
+          "ai_training_consent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Training Consent"
+          },
+          "colleague_waiting_email": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colleague Waiting Email"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -13832,6 +14246,17 @@
               }
             ],
             "title": "Name"
+          },
+          "replay_onboarding": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replay Onboarding"
           }
         },
         "title": "UpdateMe",
@@ -14152,6 +14577,19 @@
             "additionalProperties": true,
             "title": "Structure",
             "type": "object"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "required": [
@@ -14230,6 +14668,16 @@
             ],
             "title": "Active Org Slug"
           },
+          "ai_training_consent": {
+            "default": false,
+            "title": "Ai Training Consent",
+            "type": "boolean"
+          },
+          "colleague_waiting_email": {
+            "default": false,
+            "title": "Colleague Waiting Email",
+            "type": "boolean"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -14297,6 +14745,11 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "replay_onboarding": {
+            "default": false,
+            "title": "Replay Onboarding",
+            "type": "boolean"
           }
         },
         "required": [
@@ -15118,6 +15571,11 @@
       "app__features__sittings__schemas__RoomGrant": {
         "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none yet\nand the examiner never will, which is what separates this from the token\nissued against an attempt.\n\nThis slice's own shape rather than `voice`'s, even though the two agree\ntoday: a wire contract belongs to the routes that serve it, and sharing one\nis how two slices come to be unable to change it separately.",
         "properties": {
+          "can_publish": {
+            "default": true,
+            "title": "Can Publish",
+            "type": "boolean"
+          },
           "room": {
             "title": "Room",
             "type": "string"
@@ -16806,10 +17264,11 @@
                 }
               }
             },
-            "description": "invalid_credentials, account_suspended",
+            "description": "invalid_credentials, account_suspended, password_login_disabled",
             "x-codes": [
               "invalid_credentials",
-              "account_suspended"
+              "account_suspended",
+              "password_login_disabled"
             ]
           },
           "422": {
@@ -19186,6 +19645,202 @@
         ]
       }
     },
+    "/api/v1/growth/referrals": {
+      "get": {
+        "description": "The settlement queue: redeemed referrals, and whether each has been paid.\n\nPlatform admin only, and deliberately not a partner's or a referrer's\nview \u2014 it names both sides of every referral and what is owed on it.",
+        "operationId": "growth_list_referrals",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "payout_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Payout Status"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ReferralAdminRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Referrals",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/referrals/{referral_id}/payout": {
+      "post": {
+        "description": "Record a settlement made outside the product.\n\nNothing here moves money. It writes down that somebody did, who said so\nand when, which is the whole of what the retiring app's `payout_status`\nflag meant and rather more than it recorded.",
+        "operationId": "growth_set_referral_payout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetReferralPayout"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralAdminRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "referral_not_found",
+            "x-codes": [
+              "referral_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "referral_not_redeemed",
+            "x-codes": [
+              "referral_not_redeemed"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Referral Payout",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/help/articles": {
       "get": {
         "operationId": "assistant_articles",
@@ -20050,6 +20705,47 @@
         ]
       }
     },
+    "/api/v1/me/achievements": {
+      "get": {
+        "description": "This person's practice record: stations touched, and the streak it adds up to.\n\nNobody with zero marked attempts is refused \u2014 an empty answer is what a\nperson who has never sat anything gets, not an error.",
+        "operationId": "dashboard_read_achievements",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AchievementsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Achievements",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
     "/api/v1/me/activity": {
       "post": {
         "description": "What this person has been reading and practising.\n\nA batch, and accepted rather than created: the browser sends these as it\ngoes, often as a tab is closing, and a repeat inside the dedup window is a\nsuccess that records nothing.",
@@ -20367,6 +21063,61 @@
         "summary": "Join Token",
         "tags": [
           "sittings"
+        ]
+      }
+    },
+    "/api/v1/me/close": {
+      "post": {
+        "description": "Close this account. Sign-in stops; the consultations stay.",
+        "operationId": "identity_close_me",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseAccount"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended, invalid_credentials",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended",
+              "invalid_credentials"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close Me",
+        "tags": [
+          "identity"
         ]
       }
     },
@@ -27410,6 +28161,97 @@
       }
     },
     "/api/v1/orgs/{org_slug}/exams/{exam_id}": {
+      "delete": {
+        "description": "Remove an exam nothing was ever built on. Retire the rest.\n\n`exam_in_use` (409) is the answer for anything real: a station, a\nsitting, an attempt, a rubric binding. This is only for a draft an\ninstitution changed its mind about before it went anywhere.",
+        "operationId": "catalog_delete_org_exam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Exam Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_in_use",
+            "x-codes": [
+              "exam_in_use"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Org Exam",
+        "tags": [
+          "catalog"
+        ]
+      },
       "patch": {
         "description": "Only this institution's own exams. A platform exam answers `unknown_exam`.",
         "operationId": "catalog_update_org_exam",
@@ -31737,6 +32579,22 @@
             }
           },
           {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -32553,6 +33411,278 @@
           }
         ],
         "summary": "Edit Brief",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/stations/{station_id}/versions/{version}/photos": {
+      "post": {
+        "description": "Put images on a station.\n\nAn orthopaedic station is a radiograph and a question about it, so a\ncatalogue that cannot take an image cannot hold one at all. The field name\nis `files`, as the retiring uploader sent it.",
+        "operationId": "stations_add_station_photos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_stations_add_station_photos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationPhotosResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "version_not_found, photo_not_on_station",
+            "x-codes": [
+              "version_not_found",
+              "photo_not_on_station"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable",
+            "x-codes": [
+              "not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_photo",
+            "x-codes": [
+              "invalid_photo"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "photo_storage_unavailable",
+            "x-codes": [
+              "photo_storage_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Station Photos",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/stations/{station_id}/versions/{version}/photos/remove": {
+      "post": {
+        "description": "Take one image off a station, and out of the bucket.\n\nA POST rather than a DELETE because the URL to remove travels in the body:\nit is long, it is not this resource's identifier, and a query string is\nthe wrong place for it.",
+        "operationId": "stations_remove_station_photo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveStationPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationVersionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "version_not_found, photo_not_on_station",
+            "x-codes": [
+              "version_not_found",
+              "photo_not_on_station"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable",
+            "x-codes": [
+              "not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_photo",
+            "x-codes": [
+              "invalid_photo"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "photo_storage_unavailable",
+            "x-codes": [
+              "photo_storage_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Station Photo",
         "tags": [
           "stations"
         ]
@@ -33432,6 +34562,98 @@
       }
     },
     "/api/v1/orgs/{org_slug}/trainees/{trainee_id}": {
+      "delete": {
+        "description": "Remove a roster row nothing was ever decided about.\n\n`trainee_in_use` (409) is the answer for a real decision. Revoking access\nis the mechanism for everyone else \u2014 see `service_edit.delete_trainee`.",
+        "operationId": "roster_delete_trainee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_not_found",
+            "x-codes": [
+              "trainee_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_in_use",
+            "x-codes": [
+              "trainee_in_use"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Trainee",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      },
       "patch": {
         "description": "Only what was sent is written, so a screen that corrects a spelling does\nnot clear the intake beside it.",
         "operationId": "roster_edit_trainee",
@@ -33623,6 +34845,94 @@
         ],
         "summary": "Set Access",
         "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/anonymise": {
+      "post": {
+        "description": "GDPR erasure for a trainee `delete` refuses \u2014 real history stays,\nthe person's name and address do not. See `service_edit.anonymise_trainee`.",
+        "operationId": "roster_anonymise_trainee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trainee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Trainee Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraineeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "trainee_not_found",
+            "x-codes": [
+              "trainee_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Anonymise Trainee",
+        "tags": [
+          "roster",
           "roster"
         ]
       }
@@ -39521,6 +40831,22 @@
         "operationId": "stations_list_platform_stations",
         "parameters": [
           {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -40143,6 +41469,283 @@
           }
         ],
         "summary": "Archive Platform Station Version",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/stations/{station_id}/versions/{version}/photos": {
+      "post": {
+        "description": "The library's own images \u2014 an ortho station is a radiograph, chiefly.",
+        "operationId": "stations_add_platform_station_photos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_stations_add_platform_station_photos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationPhotosResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found, photo_not_on_station",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found",
+              "photo_not_on_station"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable",
+            "x-codes": [
+              "not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_photo",
+            "x-codes": [
+              "invalid_photo"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "photo_storage_unavailable",
+            "x-codes": [
+              "photo_storage_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Platform Station Photos",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/stations/{station_id}/versions/{version}/photos/remove": {
+      "post": {
+        "operationId": "stations_remove_platform_station_photo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveStationPhoto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationVersionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found, photo_not_on_station",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found",
+              "photo_not_on_station"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable",
+            "x-codes": [
+              "not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_photo",
+            "x-codes": [
+              "invalid_photo"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "photo_storage_unavailable",
+            "x-codes": [
+              "photo_storage_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Platform Station Photo",
         "tags": [
           "stations"
         ]
