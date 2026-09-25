@@ -16,13 +16,9 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 class Cv(Base, UUIDPrimaryKey, Timestamps):
     """One uploaded CV, and what was read out of it.
 
-    The PDF itself is not kept: its text is pulled on upload and the structured
-    result is what the product shows, so storing the bytes would store nothing
-    anybody reads — and the retiring backend kept neither. `created_at` (from
-    `Timestamps`) is the upload time the list sorts by.
-
-    `status` moves one way, `processing` → `completed` or `failed`. The row is
-    written before the model is called and updated when it answers, so a person
+    The PDF itself is not kept: its text is pulled on upload and the structured result is what the
+    product shows, so storing the bytes would store nothing anybody reads. `status` moves one way,
+    `processing` → `completed` or `failed`; the row is written before the model is called so a person
     who closes the tab still comes back to a result rather than to nothing.
     """
 

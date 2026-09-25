@@ -10,7 +10,7 @@ from app.core.db import get_session
 from app.core.errors import NotFound, Unauthenticated, error_responses
 from app.core.ports import ClockDep, VectorIndex
 from app.core.settings import SettingsDep
-from app.features.assistant import schemas_help as schemas
+from app.features.assistant import schemas as schemas
 from app.features.assistant import service_help, service_knowledge
 
 router = APIRouter(tags=["assistant"])

@@ -4,16 +4,13 @@ Two adapters behind one port:
 
 - **Redis pub/sub**, when Redis is configured. A deployment runs more than one
   API replica and a supervisor's stream is almost never on the replica that
-  handled the write, so the fan-out has to leave the process. b2c's SSE manager
-  is an in-process dictionary of queues and says so in its own log line — with
-  a second worker, half the events are delivered to nobody.
-- **In-process**, when Redis is off (tests, and local development). Correct for
-  one replica, and honest about being no more than that.
+  handled the write, so the fan-out has to leave the process.
+- **In-process**, when Redis is off (tests, and local development). Correct
+  for one replica, and honest about being no more than that.
 
 Events carry a name and nothing else. Subscribers rebuild the read model from
-the database, so a stream cannot show a shape assembled by a writer who knew
-less than the reader, a missed event costs a reconnect rather than a wrong
-screen, and no user data crosses the bus.
+the database, so a missed event costs a reconnect rather than a wrong screen,
+and no user data crosses the bus.
 """
 
 from __future__ import annotations
@@ -41,9 +38,8 @@ def user_topic(user_id: object) -> str:
 def org_topic(org_id: object) -> str:
     """One subscription for everything happening inside an organisation.
 
-    The exam-day board watches this instead of subscribing per circuit: an
-    admin with twelve candidates running would otherwise hold twelve streams,
-    and would miss a thirteenth circuit starting.
+    The exam-day board watches this instead of subscribing per circuit, so it
+    does not miss a new circuit starting.
     """
     return f"org:{org_id}"
 
@@ -54,12 +50,10 @@ PENDING_KEY = "pending_events"
 def publish_after_commit(session: AsyncSession, topic: str, name: str) -> None:
     """Queue an event to go out once this request's transaction commits.
 
-    Publishing inline is the bug this exists to prevent: a subscriber woken
-    before the commit re-reads the database, sees the old rows, and renders a
-    screen that is one event behind for as long as nothing else happens. Held
-    on the session rather than in a context variable because every service
-    already has the session, and because a buffer keyed on nothing is a buffer
-    that leaks across requests.
+    Publishing inline would wake a subscriber before the commit, which
+    re-reads the database, sees the old rows, and renders a stale screen.
+    Held on the session, not a context variable, so the buffer cannot leak
+    across requests.
     """
     session.info.setdefault(PENDING_KEY, []).append((topic, name))
 
@@ -67,10 +61,9 @@ def publish_after_commit(session: AsyncSession, topic: str, name: str) -> None:
 async def flush_pending(session: AsyncSession, bus: EventBus | None = None) -> None:
     """Send what the committed transaction queued. Called by `core.db` only.
 
-    A failure to publish is logged and swallowed: the write is already
-    committed, and a screen that updates a few seconds late when it next polls
-    or reconnects is better than a request that reports failure for work that
-    succeeded.
+    A failure to publish is swallowed: the write is already committed, and a
+    screen updating late on reconnect is better than reporting failure for
+    work that succeeded.
     """
     pending: list[tuple[str, str]] = session.info.pop(PENDING_KEY, [])
     if not pending:
@@ -89,9 +82,9 @@ async def _drain(queue: asyncio.Queue[str]) -> AsyncIterator[str]:
 async def _listen(pubsub: object) -> AsyncIterator[str]:
     """Redis messages, one at a time.
 
-    The one-second timeout is not a poll of the database — it is how the client
-    hands control back so the connection can be closed when the subscriber goes
-    away. Nothing is missed in between: Redis buffers into the subscription.
+    The one-second timeout is how the client hands control back so the
+    connection can be closed when the subscriber goes away — not a poll;
+    Redis buffers into the subscription so nothing is missed in between.
     """
     while True:
         message = await pubsub.get_message(  # type: ignore[attr-defined]

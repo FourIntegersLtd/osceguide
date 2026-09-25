@@ -12,7 +12,7 @@ from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import PlatformAdmin
-from app.features.tutor_memory import errors, schemas, service, service_history, service_material
+from app.features.tutor_memory import errors, schemas, service, service_material
 
 router = APIRouter(tags=["tutor-memory"])
 
@@ -29,7 +29,7 @@ async def list_debriefs(
     session: Session,
     params: Annotated[CursorParams, Depends()],
 ) -> Page[schemas.DebriefSummaryRead]:
-    return await service_history.list_debriefs(session, principal.user_id, params)
+    return await service.list_debriefs(session, principal.user_id, params)
 
 
 @router.post(
@@ -41,12 +41,8 @@ async def list_debriefs(
 async def record_activity(
     body: schemas.ActivityBatch, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.ActivityAccepted:
-    """What this person has been reading and practising.
-
-    A batch, and accepted rather than created: the browser sends these as it
-    goes, often as a tab is closing, and a repeat inside the dedup window is a
-    success that records nothing.
-    """
+    """What this person has been reading and practising. Accepted as a batch; a repeat is a
+    success that records nothing."""
     return await service.record_activity(
         session, user_id=principal.user_id, events=body.events, now=clock.now()
     )
@@ -102,12 +98,7 @@ async def forget_tutor_memory(
     responses=error_responses(Unauthenticated),
 )
 async def reindex_material(admin: PlatformAdmin, session: Session) -> schemas.ReindexReport:
-    """Rebuild the material index now, rather than waiting for tonight's run.
-
-    Synchronous on purpose, unlike most admin actions here. An author who has
-    just published a correction wants to know it is searchable, and a job id to
-    go and poll answers a different question. The whole library is thousands of
-    passages, which is a request that takes a while, not one that times out.
-    """
+    """Rebuild the material index now, rather than waiting for tonight's run. Synchronous:
+    the response confirms the material is searchable."""
     run = await service_material.reindex(session)
     return schemas.ReindexReport(sources=run.sources, passages=run.passages, retired=run.retired)

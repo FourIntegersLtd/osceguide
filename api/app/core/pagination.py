@@ -73,9 +73,8 @@ async def keyset_page(
     The id breaks ties. Rows written in one transaction share a `now()`, so a
     cursor on the timestamp alone skips or repeats every row that shares the
     boundary row's timestamp — a batch import, a seeded roster, a bulk
-    station-set create. Ten repositories carried their own copy of this and
-    nine of them encoded the id into the cursor and never read it back; this
-    is the one that did, lifted into core.
+    station-set create. Most hand-written copies of this got the tie-break
+    wrong; this is the one lifted into core.
 
     `tuple_()`, not a Python tuple: `(col_a, col_b) > (x, y)` compares the
     Column objects in Python and silently produces the wrong filter.

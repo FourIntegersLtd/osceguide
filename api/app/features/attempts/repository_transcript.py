@@ -1,8 +1,4 @@
-"""Storage for an attempt's turns, its transcript record and its results.
-
-Split from `repository.py` at the file cap; the attempt row and the things it
-accumulates during and after a session change for different reasons.
-"""
+"""Storage for an attempt's turns, its transcript record and its results."""
 
 from __future__ import annotations
 

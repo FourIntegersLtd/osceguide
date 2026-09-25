@@ -6,10 +6,8 @@ from app.core.errors import AppError, Conflict, InvalidInput, NotFound, Unavaila
 class UnknownPlanError(NotFound):
     """A charged payment with nothing to grant.
 
-    `persist_effects`: the ledger row and the reason it failed survive the
-    refusal, so the payment is recoverable by hand or by Stripe's retry once a
-    plan row exists. Raised before anything is granted, so nothing partial can
-    be kept.
+    `persist_effects`: the ledger row and the reason it failed survive the refusal, so the
+    payment is recoverable by hand or by Stripe's retry once a plan row exists.
     """
 
     code = "unknown_plan"
@@ -31,9 +29,8 @@ class PaymentAlreadyRecorded(Conflict):
 class InvalidWebhook(InvalidInput):
     """The delivery could not be applied.
 
-    `persist_effects` for the same reason as `UnknownPlanError`: a payment for
-    an address with no account must leave its ledger row behind. Every raise
-    of this precedes any grant.
+    `persist_effects` for the same reason as `UnknownPlanError`: a payment for an address with
+    no account must leave its ledger row behind.
     """
 
     code = "invalid_webhook"
@@ -44,11 +41,8 @@ class InvalidWebhook(InvalidInput):
 class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError`, and shares its code.
 
-    A plan names an exam by code, and the code is a plain string rather than a
-    foreign key — deliberately, so a plan can be created before the exam is.
-    An exam that is retired, or never written, therefore surfaces here when the
-    purchase is granted. It became reachable once exams stopped being four
-    seeded rows.
+    A plan names an exam by code, a plain string rather than a foreign key, so a plan can be
+    created before the exam is. A retired or never-written exam surfaces here when granted.
     """
 
     code = "unknown_exam"
@@ -56,34 +50,24 @@ class UnknownExamError(NotFound):
 
 
 class ReceiptNotFound(NotFound):
-    """No such receipt of yours.
-
-    Indistinguishable from one that does not exist: receipt ids are short and
-    travel on forwarded documents, so probing must tell somebody nothing.
-    """
+    """No such receipt of yours — indistinguishable from one that does not exist, since receipt
+    ids are short and travel on forwarded documents, so probing must tell somebody nothing."""
 
     code = "receipt_not_found"
     default_message = "No such receipt"
 
 
 class PlanNotAvailable(NotFound):
-    """No such plan, or one that is no longer sold.
-
-    Not `unknown_plan`, which means a *charged* payment with nothing to grant
-    and is a different emergency. This one is a customer asking for something
-    that is not on the menu.
-    """
+    """No such plan, or one that is no longer sold. Not `unknown_plan`, which means a *charged*
+    payment with nothing to grant — a different emergency."""
 
     code = "plan_not_available"
     default_message = "That plan is not available"
 
 
 class CheckoutFailed(Unavailable):
-    """The card processor could not start a checkout.
-
-    503 rather than 500: it is very often transient, and the client should
-    say "try again" rather than "something is broken".
-    """
+    """The card processor could not start a checkout. 503 rather than 500: it is often
+    transient, and the client should say "try again" rather than "something is broken"."""
 
     code = "checkout_failed"
     default_message = "We could not start the checkout. Try again in a moment."

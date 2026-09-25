@@ -55,12 +55,8 @@ async def list_org_entitlements(
 async def grant_org_entitlement(
     body: schemas.GrantEntitlement, workspace: OrgAdmin, session: Session
 ) -> schemas.EntitlementRead:
-    """Grant one of this institution's people access to an exam it runs.
-
-    A trainee's exam-day slot never needs this: a dispatched slot skips the
-    gate. This is for practising between sittings, which otherwise runs out
-    with the consumer free trial.
-    """
+    """Grant one of this institution's people access to an exam it runs, for practising between
+    sittings. A trainee's exam-day slot never needs this: a dispatched slot skips the gate."""
     return await service_org.grant_for_org(
         session,
         workspace.org_id,

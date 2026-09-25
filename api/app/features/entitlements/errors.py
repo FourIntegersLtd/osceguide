@@ -4,23 +4,16 @@ from app.core.errors import Forbidden, NotFound
 
 
 class NotEntitled(Forbidden):
-    """No live grant and no trial left.
-
-    One code whatever the reason, with the detail in `details`: the client shows
-    an upgrade prompt either way, and the distinction between "expired" and
-    "never had one" is for us, not for them.
-    """
+    """No live grant and no trial left. One code whatever the reason, with the detail in
+    `details`: the client shows an upgrade prompt either way."""
 
     code = "not_entitled"
     default_message = "You do not have access to this exam"
 
 
 class GranteeNotFound(NotFound):
-    """No account for the address an institution named.
-
-    The same code `tenancy` and `identity` answer with, because it is the
-    same situation and the frontend switches on the code.
-    """
+    """No account for the address an institution named. Shares its code with `tenancy` and
+    `identity`, since the frontend switches on the code."""
 
     code = "user_not_found"
     default_message = "No account for that email address"

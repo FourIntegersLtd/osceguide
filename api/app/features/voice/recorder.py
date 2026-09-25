@@ -1,11 +1,8 @@
-"""The LiveKit implementation of the recording port.
+"""The LiveKit implementation of the recording port. The SDK is imported inside
+the functions, so the API starts and tests run without it installed.
 
-Built the same way as `adapter.py`: the SDK is imported inside the functions,
-so the API starts and the tests run without it installed.
-
-Audio only. A peer session's recording exists to be transcribed and marked,
-and a video composite costs more to encode and more to store for nothing that
-is ever read back.
+Audio only: a recording exists to be transcribed and marked, and a video
+composite costs more to encode and store for nothing that is ever read back.
 """
 
 from __future__ import annotations

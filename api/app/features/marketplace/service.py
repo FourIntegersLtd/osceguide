@@ -148,7 +148,7 @@ async def list_open_slots(
     audience: Audience | None = None,
     exam_code: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
-    """Available and claimed posts, like the retiring `GET /api/marketplace/posts`."""
+    """Available and claimed posts, in this viewer's audience."""
     viewer = await audiences_for(session, viewer_id)
     exam_id: uuid.UUID | None = None
     if exam_code:

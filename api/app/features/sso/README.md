@@ -65,19 +65,10 @@ reads the `organizations` table.
 `identity`, through `service_sso.sign_in_external`: the callback hands it the
 verified identity and it provisions the person and mints the platform session.
 Who verifies the identity is this slice's business (the `SsoBroker` port, with
-Clerk behind it); who the person then is, is `identity`'s. `sso` sits above
-both, so both calls go downward.
+Clerk or Entra behind it); who the person then is, is `identity`'s.
 
 ## What is deliberately not here
 
-**A second provider.** `Provider` names `clerk` and `entra` so a stored row says
-what it expects, and only Clerk has a login behind it — the one the retiring
-backend brokered through. An organisation configured for `entra` is refused
-with `sso_provider_unsupported` rather than silently sent to a Clerk page;
-direct OIDC to Entra is the open half, tracked as S-1 in `docs/OPEN-QUESTIONS.md`.
-
-**Enforcement of `sso_only`.** A provisioned SSO user has no password hash, so
-`verify_password` rejects every attempt against it and SSO is the only way in —
-the flag describes a truth. But nothing here yet *refuses* a password login for
-an account that happens to have one, so `sso_only` remains a display rule for
-the page rather than a gate on `identity`'s login. Closing that is part of S-1.
+**Nothing from S-1.** Both providers have a login: Clerk (`clerk.py`) and direct OIDC to
+Entra (`entra.py`). `sso_only` is a real gate: `identity.service_sso.sign_in_external` sets
+`password_login_disabled`, and `identity` refuses password login for such an account.

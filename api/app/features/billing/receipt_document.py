@@ -1,23 +1,11 @@
 """The receipt as a document somebody can keep.
 
-`receipts.py` works out *what* a receipt says; this renders it. The fields
-were minted with the payment and read back through `/me/receipts` from the
-day billing landed, and nothing ever produced a document — so a customer
-could be told a receipt existed and never be given one.
+`receipts.py` works out *what* a receipt says; this renders it. Not byte-identical to the
+legacy Jinja receipt — every *field* the legacy builder produced is here and pinned by a test,
+but the layout is ours.
 
-**This is not byte-identical to the legacy receipt, and the oracle in
-`WIP-ORACLES.md` asked for that.** The legacy document is a Jinja template
-over six shared partials in `b2c-api/b2c/shared/templates/`, and matching it
-exactly would mean either adding Jinja and vendoring that tree — which is
-then a second copy to keep in step until b2c-api is deleted — or pulling the
-templates in at build time from a repository that is being retired. Neither
-is worth it for a document whose content, not whose markup, is the contract.
-Every *field* the legacy builder produced is here and pinned by a test; the
-layout is ours.
-
-Deliberately plain HTML with inline styles and no external assets: this gets
-printed to PDF, forwarded to an accountant and opened in mail clients that
-strip stylesheets.
+Deliberately plain HTML with inline styles and no external assets: this gets printed to PDF,
+forwarded to an accountant and opened in mail clients that strip stylesheets.
 """
 
 from __future__ import annotations

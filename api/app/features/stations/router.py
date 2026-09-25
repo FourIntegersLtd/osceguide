@@ -42,18 +42,9 @@ async def browse_library(
 ) -> Page[schemas.LibraryStationRead]:
     """The published platform library, scoped to what the caller may open.
 
-    Every signed-in user, because the library is the product: a consumer builds
-    a practice set from it and an institution draws on it to build a circuit.
-    The rows carry no station content — see `LibraryStationRead`.
-
-    `search` is a fragment of a title, matched in SQL. Typing one used to mean
-    paging the catalogue in the browser and filtering what had arrived, so a
-    term could only ever match what the screen had already fetched.
-
-    A platform admin browses the whole catalogue, because curating it is their
-    job. Everybody else gets their own exam, and asking for another is refused
-    rather than answered — the retiring client had one exam per deployment and
-    no picker at all.
+    Rows carry no station content — see `LibraryStationRead`. `search` matches a title fragment in
+    SQL. A platform admin browses the whole catalogue; everybody else gets their own exam, and asking
+    for another is refused.
     """
     items, next_cursor = await service_library_reads.browse_library(
         session,
@@ -81,12 +72,9 @@ async def list_stations(
 ) -> Page[schemas.StationRead]:
     """The stations this organisation has authored.
 
-    `OrgReader` admits every rostered trainee, and the document is the patient's
-    material and the examiner's notes as much as it is the brief — so a reader
-    whose only relationship to the org is trainee gets the candidate-facing
-    projection of each `content` (S1), the same material their own attempt's
-    brief read discloses. Staff — an org admin or an assigned supervisor, the
-    predicate `OrgStaff` runs on — and a platform admin read the whole thing.
+    `OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each
+    `content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform
+    admin read the whole thing.
     """
     items, next_cursor = await service.list_stations(
         session,

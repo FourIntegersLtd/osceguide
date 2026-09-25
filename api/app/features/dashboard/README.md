@@ -96,13 +96,11 @@ not a cookie and not the access token.
 ## Cross-slice dependencies
 Reads `entitlements`, `attempts`, `station_sets`, `sittings`, `stations`,
 `roster`, `reviews`, `catalog`, `rubrics`, `billing`, `tenancy` and `identity`
-through their services. Sits at the top of the layer order and nothing depends
-on it.
+through their services. Nothing depends on it.
 
 The account directory (`service_platform_users.py`) is here for the same
 reason as the rest: the retiring B2C admin's user list had seven columns and
-each is a different slice's fact. `tenancy` owns `GET /platform/users` and
-sits below four of those slices, so it cannot answer "has this person paid?".
+each is a different slice's fact. No single slice can answer "has this person paid?" for a page of users.
 The page comes from `identity`, is enriched with one bulk read per slice, and
 the facets another slice owns (paid, on trial, on a plan, entitled to an exam)
 are handed to `identity` as sets of ids rather than joined across tables.

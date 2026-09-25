@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog import service as catalog
-from app.features.stations import repository_platform
+from app.features.stations import repository
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class StationVersions:
 
 
 async def station_versions(session: AsyncSession, station_id: uuid.UUID) -> StationVersions | None:
-    found = await repository_platform.station_with_versions(session, station_id)
+    found = await repository.station_with_versions(session, station_id)
     if found is None:
         return None
     station, versions = found
@@ -49,7 +49,7 @@ class VersionOwner:
 async def owners_by_version_id(
     session: AsyncSession, version_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, VersionOwner]:
-    rows = await repository_platform.versions_with_stations_any_owner(session, version_ids)
+    rows = await repository.versions_with_stations_any_owner(session, version_ids)
     codes = await catalog.exam_codes_by_id(session, list({station.exam_id for _, station in rows}))
     return {
         version.id: VersionOwner(

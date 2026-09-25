@@ -72,4 +72,4 @@ The console routes (`service_platform.py`) also read `stations` for a
 station's title and versions, ask `attempts` to delete a person's attempts at
 those versions, and write the audit row through `tenancy.service_audit`. They
 live here rather than in `attempts` because the counter the old console reset
-is this slice's entry, and this slice sits above both.
+is this slice's entry.

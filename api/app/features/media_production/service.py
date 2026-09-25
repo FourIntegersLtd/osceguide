@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import get_settings
 from app.features.catalog import service as catalog
 from app.features.media import service as media_service
-from app.features.media.service_production import production_item, replace_content
+from app.features.media.service import production_item, replace_content
 from app.features.media_production import domain
 from app.features.media_production.errors import AvAlreadyRunning, WrongMediaKind
 from app.features.media_production.repository import defer_job, lock_for_media

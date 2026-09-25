@@ -1,12 +1,10 @@
 """The account directory, assembled once per page rather than once per row.
 
-The retiring console's user list had seven columns and four filters and made
-one Firestore query per exam collection. Here an account is one row whatever
-it holds, and the columns are other slices' facts: `billing` says who paid
-and what they last bought, `attempts` how much they have done, `entitlements`
-what is live, `identity` whether they are signed in now. The page is fetched
-from `identity`, then enriched with four bulk reads; the filters that turn on
-another slice's fact are handed to `identity` as sets of ids.
+An account is one row whatever it holds, and the columns are other slices' facts:
+`billing` says who paid, `attempts` how much they have done, `entitlements` what is live,
+`identity` whether they are signed in now. The page is fetched from `identity`, then
+enriched with four bulk reads; filters that turn on another slice's fact are handed to
+`identity` as sets of ids.
 """
 
 from __future__ import annotations
@@ -18,12 +16,12 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import service_platform_progress as attempts
-from app.features.billing import service_platform_facts as billing
+from app.features.attempts import service_platform as attempts
+from app.features.billing import service_platform as billing
 from app.features.catalog import service as catalog
 from app.features.dashboard import errors
-from app.features.dashboard.schemas_platform import DirectorySummary, DirectoryUser, ExamDirectorySummary
-from app.features.entitlements import service_platform_facts as entitlements
+from app.features.dashboard.schemas import DirectorySummary, DirectoryUser, ExamDirectorySummary
+from app.features.entitlements import service_platform as entitlements
 from app.features.identity import service_platform as accounts
 from app.features.identity.service_platform import SupportUser
 

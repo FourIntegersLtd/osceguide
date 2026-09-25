@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.core.errors import Forbidden, error_responses
 from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
-from app.features.voice import schemas, service_platform
+from app.features.voice import schemas, service
 
 router = APIRouter(tags=["voice"])
 
@@ -18,11 +18,6 @@ router = APIRouter(tags=["voice"])
     responses=error_responses(Forbidden),
 )
 async def read_cloud_capacity(admin: PlatformAdmin, settings: SettingsDep) -> schemas.CloudCapacityRead:
-    """How many LiveKit Cloud sessions are held against the metered cap.
-
-    A count, not a reservation: `LiveKit Cloud "Updating"` on the dashboard is
-    usually a worker recycle, and this is what says whether sessions are
-    actually running through it.
-    """
+    """How many LiveKit Cloud sessions are currently held against the metered cap."""
     _ = admin
-    return await service_platform.cloud_capacity(settings)
+    return await service.cloud_capacity(settings)

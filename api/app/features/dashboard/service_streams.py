@@ -1,13 +1,11 @@
 """The read models, delivered when they change instead of when asked.
 
-Each stream is the streaming form of a `GET` that already exists, and sends
-exactly what that route returns. That is the point: a client keeps one decoder,
-one set of types and one mental model, and a stream can be swapped back for the
-poll it replaced without changing a line of rendering code.
+Each stream is the streaming form of a `GET` that already exists and sends exactly what
+that route returns, so a client keeps one decoder and one set of types either way.
 
-Every snapshot opens its own short transaction (`core.db.stream_session`) — a
-connection held for the life of a supervisor's tab is an idle transaction that
-pins a pooled connection and blocks vacuum for the whole examination.
+Every snapshot opens its own short transaction — a connection held for the life of a
+supervisor's tab is an idle transaction that pins a pooled connection and blocks vacuum for
+the whole examination.
 """
 
 from __future__ import annotations
@@ -32,11 +30,9 @@ def console_stream(
     open_session: SessionOpener,
     clock: Clock,
 ) -> AsyncIterator[str]:
-    """The supervisor's console, pushed. Replaces an eight-second poll.
+    """The supervisor's console, pushed.
 
-    A circuit that has been ended is sent once more and then the stream closes:
-    there is nothing further to say about it, and a browser left on the page
-    should not hold a connection open all night waiting.
+    A circuit that has ended is sent once more and then the stream closes.
     """
 
     async def snapshot() -> Snapshot:
@@ -56,12 +52,10 @@ def console_stream(
 def my_sittings_stream(
     principal: Principal, *, bus: EventBus, open_session: SessionOpener, clock: Clock
 ) -> AsyncIterator[str]:
-    """The trainee portal, pushed. Replaces a five-second poll of two lists.
+    """The trainee portal, pushed.
 
-    Subscribed by user rather than by circuit: a trainee may be rostered onto
-    several at once, and is not allowed to read a circuit directly. Every
-    circuit change tells the people on it as well as the console, which is what
-    makes one subscription enough.
+    Subscribed by user rather than by circuit: a trainee may be rostered onto several at
+    once, and every circuit change tells the people on it as well as the console.
     """
     org_slugs: Mapping[uuid.UUID, str] = {m.org_id: m.org_slug for m in principal.memberships}
 
@@ -81,12 +75,8 @@ def live_board_stream(
 ) -> AsyncIterator[str]:
     """The exam-day board, pushed.
 
-    Subscribed to the organisation rather than to each circuit: an admin
-    watching twelve candidates would otherwise hold twelve streams, and would
-    miss a thirteenth circuit starting.
-
-    Never final. A board outlives any one examination, and the morning is not
-    over because the circuit that was running has ended.
+    Subscribed to the organisation rather than to each circuit, so an admin watching several
+    candidates holds one stream and does not miss a new circuit starting. Never final.
     """
 
     async def snapshot() -> Snapshot:

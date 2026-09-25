@@ -1,17 +1,18 @@
 """Entitlements as the people who answer support see them, and what they may do.
 
-"I paid and I cannot practise" is answered from here: every grant a person
-has ever held, live or not, with its source and who made it. And when the
-answer is "nothing granted it", the grant itself — source `admin`, which the
-table has always allowed and no route ever wrote.
+"I paid and I cannot practise" is answered from here: every grant a person has ever held, live
+or not, with its source and who made it — plus the grant itself, source `admin`, for when the
+answer is "nothing granted it".
 
-Every write leaves an audit row with no organisation: a platform act, kept in
-the same log as the org's own so one read tells the whole story.
+Every write leaves an audit row with no organisation: a platform act, kept in the same log as
+the org's own so one read tells the whole story.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
+from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,9 +59,8 @@ async def grant(
 ) -> PlatformEntitlementRead:
     """Grant access on the platform's own account.
 
-    Idempotent on what was asked: a live `admin` grant for the same exam with
-    the same end already answers the request, so a double-click cannot leave
-    two rows saying the same thing.
+    Idempotent on what was asked: a live `admin` grant for the same exam with the same end
+    already answers the request, so a double-click cannot leave two rows saying the same thing.
     """
     await _require_user(session, user_id)
     try:
@@ -149,3 +149,34 @@ async def _read(session: AsyncSession, row: Entitlement, *, now: datetime) -> Pl
 
 
 _ = domain  # the live rule is `Grant.live_at`, reached through `service._to_grant`
+
+
+# --- What the account directory knows about access, for many people at once.
+
+
+@dataclass(frozen=True)
+class LiveGrant:
+    exam_code: str
+    source: str
+    ends_at: datetime | None
+
+
+async def live_user_ids_for_exam(session: AsyncSession, exam_code: str, *, now: datetime) -> set[uuid.UUID]:
+    """Everyone entitled to this exam right now. An unknown code is nobody."""
+    exam = next((e for e in await catalog.exam_refs(session) if e.code == exam_code), None)
+    if exam is None:
+        return set()
+    return await repository.live_user_ids_for_exam(session, exam.id, now=now)
+
+
+async def live_grants_by_user(
+    session: AsyncSession, user_ids: Collection[uuid.UUID], *, now: datetime
+) -> dict[uuid.UUID, list[LiveGrant]]:
+    rows = await repository.live_for_users(session, user_ids, now=now)
+    codes = await catalog.exam_codes_by_id(session, list({row.exam_id for row in rows}))
+    out: dict[uuid.UUID, list[LiveGrant]] = {}
+    for row in rows:
+        out.setdefault(row.user_id, []).append(
+            LiveGrant(exam_code=codes.get(row.exam_id, ""), source=row.source, ends_at=row.ends_at)
+        )
+    return out

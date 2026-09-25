@@ -1,9 +1,6 @@
 """Reading an attempt, and the checks every read shares.
 
-Split from `service.py` along the boundary that matters here: those functions
-change what an attempt *is* — creating one, failing one, restarting a slot's —
-while these only answer questions about one that exists. The ownership check
-and the row-to-schema mapping live here because every read applies them and
+The ownership check and the row-to-schema mapping live here because every read applies them, and
 `service.py` applies them to what it has just written.
 """
 
@@ -17,7 +14,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
-from app.features.attempts import errors, repository, repository_slots, service_access
+from app.features.attempts import errors, repository, service_access
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
@@ -53,10 +50,9 @@ async def read_transcript(
 ) -> TranscriptRead:
     """The turns of one consultation.
 
-    Readable by the candidate who spoke them and by the examiner named on the
-    circuit they happened in — the widening lives in `service_access`, because
-    this read is also what the tutor's summaries go through, and those ask as
-    the candidate.
+    Readable by the candidate who spoke them and by the examiner named on the circuit they happened
+    in — the widening lives in `service_access`, since the tutor's summaries go through this read too,
+    asking as the candidate.
     """
     attempt = await _require(session, attempt_id)
     await service_access.ensure_readable(
@@ -119,13 +115,11 @@ def _attempt_read(attempt: Attempt) -> AttemptRead:
 
 @dataclass(frozen=True)
 class AttemptRef:
-    """An attempt, as another slice may see one.
+    """An attempt, as another feature may see one — not the mapped row, which stays internal.
 
-    Not the mapped row: those stay inside this slice. `voice` needs to know
-    whose attempt it is and whether it is still joinable; a dashboard needs the
-    same plus whether it has been marked; a tutor recalling a consultation needs
-    which station it was and when it finished, because "the hip pain one, two
-    days ago" is how it will talk about it.
+    `voice` needs to know whose attempt it is and whether it is still joinable; a dashboard needs the
+    same plus whether it has been marked; a tutor recalling a consultation needs which station it was
+    and when it finished.
     """
 
     id: uuid.UUID
@@ -146,11 +140,7 @@ async def attempt_ref(session: AsyncSession, attempt_id: uuid.UUID) -> AttemptRe
 
 
 async def recent_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: int) -> list[AttemptRef]:
-    """This person's latest attempts, each already saying whether it was marked.
-
-    The `has_result` flag is answered here rather than by the caller, which
-    used to read this slice's results table directly to find out.
-    """
+    """This person's latest attempts, each already saying whether it was marked."""
     rows, _ = await repository.list_for_user(session, user_id, limit=limit)
     marked = await transcripts.attempt_ids_with_results(session, [row.id for row in rows])
     return [_ref(row, has_result=row.id in marked) for row in rows]
@@ -161,13 +151,8 @@ async def evaluated_for_user(
 ) -> list[AttemptRef]:
     """This person's marked attempts, newest first, optionally for one exam.
 
-    On the service face because the consumer dashboard draws a performance
-    chart from exactly this set, and the alternative — paging `recent_for_user`
-    and discarding whatever is unmarked — reads rows it will throw away and
-    silently truncates a trend to whatever fell inside the page.
-
-    `has_result` is not asked per row here: an evaluated attempt has a result
-    by definition, and the caller reads the payload itself.
+    The consumer dashboard draws a performance chart from exactly this set; paging `recent_for_user`
+    and discarding whatever is unmarked would silently truncate a trend to whatever fell in the page.
     """
     rows = await repository.evaluated_for_user(session, user_id, exam_id=exam_id, limit=limit)
     return [_ref(row, has_result=True) for row in rows]
@@ -193,11 +178,10 @@ async def live_attempts_for_slots(
 ) -> dict[uuid.UUID, AttemptRef]:
     """The live attempt on each slot, keyed by slot.
 
-    What a candidate needs to join their own station: the voice token is
-    issued per attempt, the attempt is created by the supervisor's dispatch,
-    and until this the portal never told the candidate which one was theirs.
+    What a candidate needs to join their own station: the voice token is issued per attempt, and the
+    attempt is created by the supervisor's dispatch.
     """
-    rows = await repository_slots.live_attempts_for_slots(session, list(slot_ids))
+    rows = await repository.live_attempts_for_slots(session, list(slot_ids))
     return {row.slot_id: _ref(row) for row in rows if row.slot_id is not None}
 
 
@@ -208,7 +192,7 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
     recording and a marking, and deleting the slot under one would either take
     it with it or fail on the foreign key at the end of the request.
     """
-    return await repository_slots.slots_with_attempts(session, list(slot_ids))
+    return await repository.slots_with_attempts(session, list(slot_ids))
 
 
 async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
@@ -223,11 +207,7 @@ async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[u
 
 
 async def count_consultations(session: AsyncSession) -> int:
-    """Every consultation this platform has run, debriefs excluded.
-
-    On this slice's service face because the public statistics band draws it
-    and `public_site` may not read this slice's tables.
-    """
+    """Every consultation this platform has run, debriefs excluded."""
     return await repository.count_completed(session)
 
 
@@ -237,9 +217,5 @@ async def count_debriefs(session: AsyncSession) -> int:
 
 
 async def count_feedback(session: AsyncSession) -> int:
-    """Every attempt that has been marked — the feedback counter.
-
-    On this slice's service face because the public statistics band draws it
-    and `public_site` may not read this slice's tables.
-    """
+    """Every attempt that has been marked — the feedback counter."""
     return await repository.count_evaluated(session)

@@ -58,11 +58,6 @@ def test_an_attempt_cannot_be_completed_twice() -> None:
         domain.transition(Status.INTERACTION_COMPLETE, Status.INTERACTION_COMPLETE)
 
 
-@pytest.mark.parametrize("status", [Status.EVALUATED, Status.FAILED])
-def test_terminal_states_are_terminal(status: Status) -> None:
-    assert domain.is_terminal(status)
-
-
 # --------------------------------------------------------------------------
 # A1/A2: freezing the definition
 # --------------------------------------------------------------------------
@@ -142,23 +137,6 @@ def test_scoring_is_idempotent_per_policy_version() -> None:
 # --------------------------------------------------------------------------
 # Attempt kinds
 # --------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("kind", "field"),
-    [
-        (domain.Kind.EXAM_SLOT, "slot_id"),
-        (domain.Kind.SET_STATION, "set_entry_id"),
-        (domain.Kind.DEBRIEF, "source_attempt_id"),
-        (domain.Kind.PEER, "peer_session_id"),
-    ],
-)
-def test_each_kind_names_the_reference_it_requires(kind: domain.Kind, field: str) -> None:
-    assert domain.required_reference(kind) == field
-
-
-def test_a_free_practice_attempt_references_nothing_else() -> None:
-    assert domain.required_reference(domain.Kind.PRACTICE) is None
 
 
 # --------------------------------------------------------------------------

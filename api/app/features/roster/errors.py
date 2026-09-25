@@ -48,16 +48,25 @@ class TraineeRevokedError(Conflict):
     default_message = "That trainee's access has been revoked"
 
 
+class TraineeNotOnRosterError(Conflict):
+    """SEC-014: a circuit may only examine people this organisation has
+    rostered. A `users.id` with no linked trainee row here is refused rather
+    than silently enrolled."""
+
+    code = "trainee_not_on_roster"
+    default_message = "That person is not on this organisation's roster, so they cannot be examined here."
+
+
 class InvitationNotPending(Conflict):
     code = "invitation_not_pending"
     default_message = "That person has already chosen a password, so there is no invitation to re-send"
 
 
 class TraineeInUse(Conflict):
-    """Refused by `candidate_result_revisions.trainee_id RESTRICT`, not a
-    pre-check `roster` ran itself — the same reasoning as `catalog.ExamInUse`.
-    Revoking access is the reversible mechanism everywhere else in roster;
-    this is only for a row nobody ever examined."""
+    """Raised on the `candidate_result_revisions.trainee_id RESTRICT` violation.
+    Revoking access is the mechanism everywhere else; this is only for a row
+    nobody ever examined.
+    """
 
     code = "trainee_in_use"
     default_message = "This trainee has a decision recorded and cannot be deleted. Revoke access instead."

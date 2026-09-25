@@ -1,9 +1,10 @@
 """Counting how often one caller may try something.
 
-The two properties that matter are opposites, and both are deliberate: it
-refuses a caller who is over the limit, and it *allows* every caller when
-Redis cannot answer. Failing closed here would turn a cache outage into
-nobody being able to sign in.
+Three properties, all deliberate: it refuses a caller who is over the limit;
+an ordinary limit *allows* the call when Redis cannot answer, so a cache
+outage does not lock the product; and a `fail_closed` limit (the credential
+routes) refuses the call when Redis errors mid-check, since that is when a
+spray would run. A switched-off Redis allows every call regardless.
 """
 
 from __future__ import annotations
@@ -83,7 +84,8 @@ async def test_the_window_is_set_once_per_window(redis: FakeRedis) -> None:
     assert len(redis.expiries) == 1
 
 
-async def test_an_unreachable_redis_allows_the_call(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_an_unreachable_redis_allows_an_ordinary_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    # An ordinary (fail-open) limit lets the call through when Redis errors.
     monkeypatch.setattr(rate_limit, "get_redis", lambda: FakeRedis(broken=True))
     for _ in range(50):
         await check(LIMIT, "caller")
@@ -97,15 +99,45 @@ async def test_no_redis_at_all_allows_the_call(monkeypatch: pytest.MonkeyPatch) 
         await check(LIMIT, "caller")
 
 
+async def test_a_fail_closed_limit_refuses_when_redis_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SEC-003: a credential route does not silently stop being limited the
+    moment Redis breaks under load — that is when a spray would be running."""
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: FakeRedis(broken=True))
+    strict = Limit(name="sign-in", allowance=2, window_seconds=60, fail_closed=True)
+    with pytest.raises(TooManyRequests) as raised:
+        await check(strict, "caller")
+    assert raised.value.details == {"retry_after": 60, "limit": "sign-in"}
+
+
+async def test_a_fail_closed_limit_still_allows_when_redis_is_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A switched-off Redis is a deployment choice, not a failure to guard
+    against, so even a fail-closed limit lets the call through."""
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: None)
+    strict = Limit(name="sign-in", allowance=2, window_seconds=60, fail_closed=True)
+    for _ in range(50):
+        await check(strict, "caller")
+
+
 def test_the_caller_is_the_client_address() -> None:
     assert caller_key(Request(host="203.0.113.7")) == "203.0.113.7"  # type: ignore[arg-type]
 
 
-def test_a_proxied_caller_is_the_first_forwarded_address() -> None:
-    """Behind a load balancer every caller shares its address, so without
-    this one bucket is shared by everybody and the limit is useless."""
-    request = Request(host="10.0.0.1", forwarded="203.0.113.9, 10.0.0.1")
-    assert caller_key(request) == "203.0.113.9"  # type: ignore[arg-type]
+def test_a_proxied_caller_is_the_address_our_proxy_saw() -> None:
+    """SEC-003: with one trusted hop the caller is the rightmost entry — the
+    address our own load balancer appended — not the leftmost, which the
+    caller writes and could set to anything."""
+    request = Request(host="10.0.0.1", forwarded="203.0.113.9, 198.51.100.5")
+    assert caller_key(request) == "198.51.100.5"  # type: ignore[arg-type]
+
+
+def test_a_spoofed_leading_address_does_not_mint_a_fresh_bucket() -> None:
+    """An attacker prepending a made-up address still counts under the one our
+    proxy saw, so a spray cannot rotate its way around the limit."""
+    real_peer = "198.51.100.5"
+    a = Request(host="10.0.0.1", forwarded=f"1.1.1.1, {real_peer}")
+    b = Request(host="10.0.0.1", forwarded=f"2.2.2.2, {real_peer}")
+    assert caller_key(a) == real_peer  # type: ignore[arg-type]
+    assert caller_key(b) == real_peer  # type: ignore[arg-type]
 
 
 def test_a_caller_with_no_address_still_gets_a_bucket() -> None:

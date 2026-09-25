@@ -20,11 +20,8 @@ ACCESS_GRANTING_EVENTS = frozenset({"checkout.session.completed"})
 
 
 class UnknownPlan(LookupError):
-    """A price id with no plan.
-
-    Reached only after the customer has been charged, so it must fail loudly and
-    leave the payment recoverable rather than granting a guessed duration.
-    """
+    """A price id with no plan. Reached only after the customer has been charged, so it must
+    fail loudly and leave the payment recoverable rather than granting a guessed duration."""
 
 
 class InvalidEvent(ValueError):
@@ -55,12 +52,8 @@ def access_window(plan: Plan, *, paid_at: datetime) -> tuple[datetime, datetime]
 
 
 def should_process_event(*, seen: Iterable[str], event_id: str) -> bool:
-    """Whether this webhook delivery is new.
-
-    Stripe retries until it receives a 2xx, and b2c returns 500 on failure to
-    force exactly that — while keeping no record of what it has already applied,
-    so a retry re-runs the grant.
-    """
+    """Whether this webhook delivery is new. Stripe retries until it receives a 2xx; returning
+    500 on failure forces exactly that, so a retry can re-run the grant."""
     key = (event_id or "").strip()
     if not key:
         raise InvalidEvent("A webhook event must carry an id to be idempotent.")
@@ -68,9 +61,6 @@ def should_process_event(*, seen: Iterable[str], event_id: str) -> bool:
 
 
 def grants_access(event_type: str) -> bool:
-    """Everything else is acknowledged and ignored.
-
-    Answering non-2xx to an event we will never act on just asks Stripe to keep
-    delivering it.
-    """
+    """Everything else is acknowledged and ignored: a non-2xx to an event we will never act on
+    just asks Stripe to keep delivering it."""
     return (event_type or "").strip() in ACCESS_GRANTING_EVENTS

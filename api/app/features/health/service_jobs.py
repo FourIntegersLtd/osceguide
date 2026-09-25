@@ -1,7 +1,6 @@
-"""The queue, as the slices above may ask about it.
+"""The queue, as other features may ask about it.
 
-`JobRef` is re-exported so a caller names one type; the SQL stays in
-`repository_jobs`.
+`JobRef` is re-exported so a caller names one type; the SQL stays in `repository_jobs`.
 """
 
 from __future__ import annotations

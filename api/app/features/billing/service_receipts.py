@@ -1,9 +1,7 @@
 """Reading back the receipt for a payment.
 
-Split from `service.py` along the actor: that module is Stripe telling us a
-payment happened, this one is a customer asking for the document. They change
-for entirely different reasons — a webhook shape, and what a receipt has to
-show.
+Kept apart from `service.py` along the actor: that module is Stripe telling us a payment
+happened, this one is a customer asking for the document.
 """
 
 from __future__ import annotations
@@ -18,12 +16,8 @@ from app.features.billing.schemas import ReceiptRead
 
 
 async def read_receipt(session: AsyncSession, user_id: uuid.UUID, receipt_id: str) -> ReceiptRead:
-    """One of this person's receipts.
-
-    Scoped to the caller: a receipt id is short and printed on a document that
-    gets forwarded to accountants and employers, so it must not be a key
-    anybody holding it can read.
-    """
+    """One of this person's receipts. Scoped to the caller: a receipt id is short and printed on
+    a document that gets forwarded, so it must not be a key anybody holding it can read."""
     row = await repository.payment_by_receipt_id(session, user_id, receipt_id)
     if row is None or row.receipt_id is None:
         raise errors.ReceiptNotFound()
@@ -49,11 +43,8 @@ async def read_receipt(session: AsyncSession, user_id: uuid.UUID, receipt_id: st
 
 
 async def read_receipt_document(session: AsyncSession, user_id: uuid.UUID, receipt_id: str) -> str:
-    """The same receipt, as a document somebody can print or keep.
-
-    Rendered from the same fields the JSON carries, so the two can never
-    disagree about what was charged.
-    """
+    """The same receipt, as a document somebody can print or keep. Rendered from the same
+    fields the JSON carries, so the two can never disagree about what was charged."""
     receipt = await read_receipt(session, user_id, receipt_id)
     return render_receipt_html(receipt.model_dump())
 

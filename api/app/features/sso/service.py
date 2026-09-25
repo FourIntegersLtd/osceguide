@@ -1,10 +1,7 @@
 """Reading and writing an organisation's sign-in arrangement.
 
-The read is public and the write is platform-admin, which is not an oversight.
-Whoever controls the issuer controls who may sign in as that institution's
-members, so it is not a checkbox to hand to a customer's own administrator on
-the same screen as their logo. When there is an onboarding flow with a domain
-verification step in it, that is where this moves.
+The read is public and the write is platform-admin, deliberately: whoever
+controls the issuer controls who may sign in as that institution's members.
 """
 
 from __future__ import annotations

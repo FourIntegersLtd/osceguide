@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import domain, errors, repository, repository_debrief, repository_transcript
+from app.features.attempts import domain, errors, repository, repository_transcript
 from app.features.attempts.schemas import AttemptRead
 from app.features.attempts.service_reads import _attempt_read, _ensure_visible, _require
 
@@ -52,4 +52,4 @@ async def debrief_sources(
     user_id: uuid.UUID,
     attempt_ids: list[uuid.UUID],
 ) -> dict[uuid.UUID, uuid.UUID]:
-    return await repository_debrief.sources_for(session, user_id, attempt_ids)
+    return await repository.sources_for(session, user_id, attempt_ids)

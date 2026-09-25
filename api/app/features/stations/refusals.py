@@ -1,9 +1,8 @@
 """One map from a lifecycle refusal to the API error that carries its status.
 
-Shared by every module in this slice that drives the state machine — stations,
-their versions, station templates and rubrics all publish, edit and archive the
-same way. A copy per module is a chance for one of them to map a refusal to a
-plausible wrong code, which is what `_raise`'s fallback used to do.
+Shared by every module that drives the state machine — stations, their versions, station templates
+and rubrics all publish, edit and archive the same way. A copy per module risks mapping a refusal to
+a plausible but wrong status code.
 """
 
 from __future__ import annotations

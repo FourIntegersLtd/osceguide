@@ -86,17 +86,10 @@ async def list_stations(
 ) -> tuple[list[StationRead], str | None]:
     """The stations this owner has authored.
 
-    `full_content` is the reader-scoped projection (S1): a caller whose only
-    relationship to the org is trainee gets each document reduced to what a
-    candidate may read — the briefs, the scenario, the doctor's information —
-    and never the patient's persona or the examiner's material. Required
-    rather than defaulted, so a new call site decides who it is serving
-    instead of inheriting the whole document.
-
-    `search` is a title fragment, answered in SQL rather than by walking every
-    page: the org and platform authoring lists had a client-side filter over
-    whatever had already been fetched, which silently stopped matching past
-    the walk's own page cap.
+    `full_content` is the reader-scoped projection (S1): a caller whose only relationship to the org
+    is trainee gets each document reduced to what a candidate may read, never the patient's persona
+    or the examiner's material. Required rather than defaulted, so a new call site must decide who
+    it is serving. `search` is a title fragment, answered in SQL rather than by walking every page.
     """
     rows, next_cursor = await repository.list_for_org(
         session, org_id, limit=limit, cursor=cursor, search=search
@@ -159,9 +152,8 @@ async def runnable_station(
 ) -> RunnableStation | None:
     """Resolve the station an attempt will be rendered from.
 
-    Lives here because this slice owns what a station looks like. `attempts`
-    asks for a scenario and never learns the shape of one, which is the same
-    boundary the worker sits behind.
+    `attempts` asks for a scenario and never learns the shape of one — the same boundary the worker
+    sits behind.
     """
     found = await repository.version_for_attempt(session, org_id, version_id)
     if found is None:

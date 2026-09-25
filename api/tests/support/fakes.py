@@ -234,7 +234,7 @@ class FakeTranscriber:
     async def transcribe(self, *, audio_url: str) -> str:
         self.asked.append(audio_url)
         if self.fail:
-            from app.core.ports_models import TranscriptionFailed
+            from app.core.ports import TranscriptionFailed
 
             raise TranscriptionFailed("the recording could not be transcribed")
         return self.text
@@ -424,6 +424,11 @@ class FakeSsoBroker:
     unavailable: bool = False
     sign_in_urls: list[str] = field(default_factory=list)
     verified: list[str] = field(default_factory=list)
+    # SEC-015: the state/nonce the flow put on the sign-in request, and the
+    # nonce it expected back, so a test can assert the pair was threaded.
+    issued_states: list[str | None] = field(default_factory=list)
+    issued_nonces: list[str | None] = field(default_factory=list)
+    expected_nonces: list[str | None] = field(default_factory=list)
 
     def for_provider(self, provider: object) -> FakeSsoBroker:
         """Overriding `get_sso_broker` with a bare fake stands in for
@@ -433,19 +438,26 @@ class FakeSsoBroker:
         del provider
         return self
 
-    def sign_in_url(self, *, redirect_url: str, issuer: str | None) -> str:
+    def sign_in_url(
+        self, *, redirect_url: str, issuer: str | None, state: str | None = None, nonce: str | None = None
+    ) -> str:
         if self.unavailable:
             raise SsoBrokerUnavailable("fake broker is down")
         domain = (issuer or "").strip()
         if not domain:
             raise SsoBrokerUnavailable("no issuer configured")
+        self.issued_states.append(state)
+        self.issued_nonces.append(nonce)
         url = f"https://{domain}/sign-in?redirect_url={redirect_url}"
         self.sign_in_urls.append(url)
         return url
 
-    async def verify(self, *, token: str, issuer: str | None = None) -> SsoIdentity | None:
+    async def verify(
+        self, *, token: str, issuer: str | None = None, expected_nonce: str | None = None
+    ) -> SsoIdentity | None:
         del issuer
         if self.unavailable:
             raise SsoBrokerUnavailable("fake broker is down")
+        self.expected_nonces.append(expected_nonce)
         self.verified.append(token)
         return self.identity

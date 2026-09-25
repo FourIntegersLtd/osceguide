@@ -1,14 +1,7 @@
 """Storage for the material index: the passages, and the nearest-neighbour read.
 
-Apart from `repository.py` because this table is a different kind of thing.
-The others hold what one learner did and said, are written a row at a time as
-it happens, and are read by user id. This one holds a rebuildable copy of the
-catalogue, is written in bulk by a job, and is read by distance.
-
-The distance operator is written out rather than reached through a helper, so
-the one query that decides what the tutor quotes is readable here in full.
-`<=>` is cosine distance: smaller is nearer, and a score is `1 - distance` so
-that larger is better everywhere above this line.
+`<=>` is cosine distance: smaller is nearer, and a score is `1 - distance` so that larger is
+better everywhere above this line.
 """
 
 from __future__ import annotations
@@ -36,11 +29,9 @@ async def replace_source(
 ) -> int:
     """Make the stored passages of one source exactly `chunks`.
 
-    Upsert on `(corpus, source_id, chunk_index)` and then delete anything past
-    the new end, rather than delete-then-insert. A source is re-indexed while
-    the tutor may be searching, and a window in which a document has no
-    passages at all is a window in which it cannot be found — so a row is
-    overwritten in place and only a document that genuinely shrank loses rows.
+    Upsert on `(corpus, source_id, chunk_index)` and then delete anything past the new end,
+    rather than delete-then-insert, so a source being re-indexed while the tutor may be
+    searching is never briefly unfindable.
     """
     for chunk in chunks:
         stmt = insert(MaterialChunk).values(
@@ -101,24 +92,16 @@ async def nearest(
 ) -> list[tuple[MaterialChunk, float]]:
     """The nearest passages, best first, within the exams given.
 
-    The exam filter is a `WHERE`, applied before the ordering, so a doctor can
-    never be ranked against material they do not hold — a post-filter would
-    have thrown away the best passages and returned worse ones from the right
-    exam, or nothing at all.
+    The exam filter is a `WHERE`, applied before the ordering, so a doctor can never be
+    ranked against material they do not hold.
 
-    Three states, and the difference between the last two is load-bearing:
+    Three states for `exam_ids`, and the difference between the last two is load-bearing:
 
     - a non-empty sequence filters to those exams;
-    - **an empty sequence returns nothing**, because a caller who computed an
-      empty entitled set has just decided this person may read nothing;
-    - **`None` applies no filter at all**, which only the media search box
-      passes. It searches titles of material `GET /media` already lists to
-      every signed-in reader, so filtering it and not the list would hide in
-      search what is visible in the index.
-
-    `None` rather than a second unfiltered query, so skipping the filter is
-    something a caller has to ask for by name and cannot reach by passing an
-    empty list it did not notice was empty.
+    - **an empty sequence returns nothing** — an empty entitled set means this person may
+      read nothing;
+    - **`None` applies no filter at all**, which only the media search box passes, since it
+      searches titles `GET /media` already lists to every signed-in reader.
     """
     if exam_ids is not None and not exam_ids:
         return []

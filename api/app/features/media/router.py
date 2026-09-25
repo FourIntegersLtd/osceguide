@@ -44,14 +44,11 @@ async def list_published(
     """Published material: the titles to anybody, the bodies to subscribers.
 
     No token required, because a signed-out visitor still needs the landing
-    page's article rail and a shared link still needs to say what it points at.
-    What a token changes is `content`: the slide decks and the A to Z are the
-    paid half of the product and used to come back in full to anyone who asked,
-    signed in or not.
+    page's article rail and a shared link still needs to say what it points
+    at. What a token changes is `content`: the slide decks and the A to Z are
+    the paid half of the product.
 
-    `exam_code` and `q` narrow the query rather than the answer. A client that
-    filtered in the browser had to pull the whole library down to do it, six
-    pages at a time, and could only ever match what those pages contained.
+    `exam_code` and `q` narrow the query server-side.
     """
     is_admin = bool(principal and principal.is_platform_admin)
     unlocked = await service_search.unlocked_exam_ids(

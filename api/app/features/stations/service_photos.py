@@ -1,20 +1,15 @@
 """Station images: uploading them to S3, and taking them off again.
 
-The retiring b2c had this and the port did not, which is why an orthopaedic
-station — a discipline whose whole assessment is reading an image — could not
-be authored here at all.
+Two guards worth keeping in mind:
 
-Two departures from the retiring implementation, both deliberate:
+- **A fresh key per file.** Keying on `{username}/{original filename}` let two authors uploading
+  `xray.png` overwrite one another silently.
+- **Delete checks the station first.** Deleting whatever URL was handed would let any authorised
+  caller destroy any object in the bucket.
 
-- **A fresh key per file.** It keyed on `{username}/{original filename}`, so
-  two authors uploading `xray.png` overwrote one another silently.
-- **Delete checks the station first.** It deleted whatever URL it was handed,
-  so any authorised caller could destroy any object in the bucket.
-
-Uploading is allowed on a published version for the same reason correcting the
-reading brief is (T5): an image is what a candidate is shown, not what they
-are marked against, and an attempt freezes its own copy of the scenario when
-it starts. An archived version still refuses everything.
+Uploading is allowed on a published version for the same reason correcting the reading brief is (T5):
+an image is what a candidate is shown, not what they are marked against. An archived version still
+refuses everything.
 """
 
 from __future__ import annotations
@@ -62,11 +57,8 @@ async def add_photos(
 ) -> tuple[StationVersionRead, list[dict[str, str]]]:
     """Put images on a station's version. Returns the version and what failed.
 
-    One bad file does not lose the others: each is validated and uploaded on
-    its own, and the caller is told which ones did not make it. That is the
-    retiring behaviour, which answered 207 for a partial; this answers 200 and
-    names the failures, because a partial success is not an error condition —
-    it is a result with detail.
+    One bad file does not lose the others: each is validated and uploaded on its own, and the caller
+    is told which ones did not make it. A partial success answers 200, with the failures named.
     """
     _ensure_storage(settings)
     station = await read_station(session, org_id, station_id)
@@ -78,6 +70,11 @@ async def add_photos(
     for filename, size, handle in files:
         try:
             domain_photos.validate_upload(filename=filename, size=size)
+            # SEC-013: read the leading bytes and rewind, so the extension check
+            # above is backed by what the file actually is before it is stored.
+            header = handle.read(domain_photos.SNIFF_BYTES)
+            handle.seek(0)
+            domain_photos.ensure_real_image(header)
         except domain_photos.InvalidPhoto as exc:
             failed.append({"filename": filename, "error": str(exc)})
             continue

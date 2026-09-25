@@ -4,13 +4,9 @@ The backend renders every prompt. The worker is handed finished instructions
 and holds no templates, so anyone inventing a new station shape changes nothing
 downstream.
 
-One formatter renders every station, whoever authored it. It used to be three,
-chosen by a branch on `exam_code == "ortho"` and on whether an org or the
-platform owned the station — so a new exam with its own document shape meant a
-new formatter in the engine and a new arm in that branch. What distinguishes
-one station's prompt from another's is now its template's **layout**: an
-ordered list of blocks, each with the role it plays, which travels with the
-station.
+One formatter renders every station, whoever authored it. What distinguishes one station's prompt
+from another's is its template's **layout**: an ordered list of blocks, each with the role it plays,
+which travels with the station.
 
 The templates themselves belong to `osce_assessment`; this only hands the
 station over and passes the text back. Imported lazily like `evaluator.py`, so

@@ -2,20 +2,17 @@
 
 Three slices — `community`, `marketplace` and `peer_practice` — each hold
 things one person offers to others: a question, a practice slot, a place in a
-matching queue. Until now every one of them was addressed to an entire exam,
-so an institution's trainees had no way to talk among themselves and a study
-group had no way to practise together.
+matching queue. Shared here because none of them owns the concept and all
+three need the same answer.
 
-The concept is here, in the shared kernel, rather than in any one of those
-slices, because none of them owns it and all three need the same answer. It is
-deliberately **opaque**: an audience is a visibility plus, at most, an
-organisation and one group id. Nothing here knows what a group *is*. That is
-what lets a teaching cohort, a circuit's candidates and a study group somebody
-forms themselves all be the same mechanism, and it is why none of the three
-slices has to reach upward into `roster` or `sittings` to use it.
+Deliberately **opaque**: an audience is a visibility plus, at most, an
+organisation and one group id. Nothing here knows what a group *is*, which
+lets a teaching cohort, a circuit's candidates and a self-formed study group
+all be the same mechanism without any slice reaching upward into `roster` or
+`sittings`.
 
 Who a given viewer belongs to is answered by a lookup bound in `main.py`, the
-same seam `bind_membership_lookup` and `bind_purchase_counter` already use.
+same seam `bind_membership_lookup` uses.
 """
 
 from __future__ import annotations
@@ -132,9 +129,9 @@ def can_see(audience: Audience, viewer: ViewerAudiences) -> bool:
 def visible_to(model: Any, viewer: ViewerAudiences) -> ColumnElement[bool]:
     """The filter every audience-aware list applies.
 
-    A query builder outside a repository, for the same reason keyset paging is:
-    it is one rule, and three hand-written copies of it would be three chances
-    to leave a clause out and publish an institution's conversation.
+    Shared rather than hand-written per repository: three copies would be
+    three chances to leave a clause out and publish an institution's
+    conversation.
     """
     clauses: list[ColumnElement[bool]] = [model.visibility == Visibility.PUBLIC]
     if viewer.org_ids:
@@ -171,8 +168,8 @@ def audience_of(row: Any) -> Audience:
 class AudienceIn(BaseModel):
     """How a client says who something is for.
 
-    Lives in core beside the rule, like `Page` and `CursorParams`: three slices
-    take the same three fields, and three copies would drift.
+    Lives in core beside the rule, like `Page` and `CursorParams`, since all
+    three slices take the same three fields.
     """
 
     visibility: Visibility = Visibility.PUBLIC

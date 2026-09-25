@@ -1,12 +1,8 @@
-"""One organisation offering one exam.
+"""One organisation offering one exam. See ADR 0011.
 
-Split from `service.py` along the two concepts ADR 0011 keeps apart: that
-module publishes exams, this one records who runs them. A programme may only
-name an exam that is actually being offered, which `resolve_exam` enforces.
-
-The exam it names is the institution's own or one the platform published — both
-resolve through the same call, scoped to the org, so a school never has to pick
-from a list we happen to have written.
+A programme may only name an exam that is actually being offered, which
+`resolve_exam` enforces. The exam it names may be the institution's own or one
+the platform published; both resolve through the same call, scoped to the org.
 """
 
 from __future__ import annotations

@@ -62,8 +62,8 @@ class AddReporter(BaseModel):
 class CreditSignup(BaseModel):
     """Ties the signed-in account to the visit that brought them.
 
-    Sent after registering, with the key the arrival was logged under. The
-    browser holds it; the backend never sees a partner cookie.
+    Sent after registering, with the key the arrival was logged under; the
+    browser holds it and the backend never sees a partner cookie.
     """
 
     visitor_key: str = Field(min_length=1, max_length=64)
@@ -72,8 +72,7 @@ class CreditSignup(BaseModel):
 class ReferralAdminRead(BaseModel):
     """One referral, as the person settling it needs to see it.
 
-    Emails rather than ids: whoever is reconciling bank transfers is matching
-    names on a statement, and a uuid is not on the statement.
+    Emails rather than ids: a uuid is not on a bank statement.
     """
 
     id: uuid.UUID

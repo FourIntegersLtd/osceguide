@@ -5,14 +5,9 @@ button: the station starts, the patient is already in the room, the bell goes,
 everyone moves. This module is that bell as plain Python — given where a
 circuit is, what comes next and how long it lasts.
 
-It is deliberately separate from `domain.py`, which says how a circuit is
-*built*. Composition changes when an examination is structured differently;
-this changes when it is *run* differently, and the two have never moved
-together.
-
-Both modes use one machine. A training circuit's slots are its pairings, and
-`normalise_timing` gives training no breaks, so "rotate the group" and "walk one
-candidate through twelve stations" are the same walk over different slots.
+Both modes use one machine: training has no breaks, so "rotate the group" and
+"walk one candidate through twelve stations" are the same walk over different
+slots.
 """
 
 from __future__ import annotations
@@ -28,9 +23,8 @@ from app.features.sittings.domain import InvalidCircuit, Timing
 class RunPhase(StrEnum):
     """What a circuit is counting down.
 
-    `BREAK` has no slot: it is the circuit resting between stations, which is
-    why the clock lives on the circuit and not on a slot. That was the one
-    thing the old per-slot clock could not express.
+    `BREAK` has no slot: it is the circuit resting between stations, so the
+    clock lives on the circuit rather than on a slot.
     """
 
     READING = "reading"
@@ -125,9 +119,9 @@ def _reading_or_finished(index: int, slot_count: int) -> Step:
 def step_window(step: Step, *, timing: Timing, now: datetime) -> tuple[datetime, datetime]:
     """When a step that starts now ends.
 
-    The clock is the server's (D-6): the deadline is written on the circuit and
-    every screen reads that one value. It used to be the supervisor's browser,
-    lost on refresh and never shown to the candidate.
+    The deadline is server-side (D-6), written on the circuit so every screen
+    reads the same value; it used to live in the supervisor's browser, lost on
+    refresh.
     """
     minutes = _minutes_for(step, timing)
     if minutes <= 0:
@@ -214,17 +208,12 @@ def ensure_jump_target(slot_index: int, *, slot_count: int) -> None:
 def sitting_is_over(circuit_ended: Iterable[bool]) -> bool:
     """Whether a sitting has nothing left to run (D-7).
 
-    A sitting was set `in_progress` by the first circuit to start and then never
-    moved again, so an exam day that finished last March still read as running.
-
-    The rule is that a sitting is over when **every** circuit on it has ended —
-    not when the last *running* one does, because a day with a morning and an
-    afternoon circuit is not over at lunchtime. A circuit that was never started
-    therefore holds its sitting open, which is right: nothing here can tell "not
-    run yet" from "never will be". Staff end such a circuit outright, and that
-    is what closes the sitting.
-
-    A sitting with no circuits at all is not over. It never began.
+    True only when every circuit has ended, not just the last running one — a
+    sitting was previously left `in_progress` forever once set by the first
+    circuit, so a finished exam day kept reading as running. An unstarted
+    circuit keeps its sitting open, since "not yet" and "never will be" look
+    the same; staff end it outright to close the sitting. No circuits at all
+    means the sitting is not over — it never began.
     """
     ended = list(circuit_ended)
     return bool(ended) and all(ended)

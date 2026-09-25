@@ -1,10 +1,8 @@
 """What support may do about a payment, once `service_platform` has said what happened.
 
-Three actions. Replay a delivery that was refused, once the reason is fixed —
-the person has registered, the plan row exists. Record a payment that never
-went through Stripe, so it grants what a card payment would. Mark a refund,
-which withdraws the access and keeps the sale (ADR 0012). The money itself
-moves in the Stripe dashboard; nothing here calls Stripe.
+Three actions: replay a delivery that was refused once the cause is fixed, record a payment
+that never went through Stripe, and mark a refund (See ADR 0012). Nothing here calls Stripe;
+the money itself moves in the Stripe dashboard.
 """
 
 from __future__ import annotations
@@ -26,13 +24,8 @@ from app.features.tenancy import service_audit
 async def replay_event(
     session: AsyncSession, event_id: str, *, actor: Principal, now: datetime
 ) -> dict[str, str]:
-    """Apply a recorded delivery again.
-
-    `handle_event` is already idempotent — an applied event answers
-    `already_applied` — so this cannot grant twice. A delivery that fails
-    again keeps its ledger row and its new reason, as the webhook would, and
-    the audit row says it was tried.
-    """
+    """Apply a recorded delivery again. `handle_event` is already idempotent — an applied event
+    answers `already_applied` — so this cannot grant twice."""
     row = await repository.event_by_id(session, event_id)
     if row is None:
         raise errors.BillingEventNotFound()
@@ -71,9 +64,8 @@ async def record_manual_payment(
 ) -> PlatformPaymentRead:
     """Record a payment that did not come through Stripe, and grant what it bought.
 
-    The same steps a checkout takes — entitlement, payment row, receipt — so
-    a sponsor's seat is a real purchase and not an admin grant with a story.
-    Idempotent on the reference: a second record of the same intent is a
+    The same steps a checkout takes, so a sponsor's seat is a real purchase and not an admin
+    grant with a story. Idempotent on the reference: recording the same intent twice is a
     conflict, never a second grant.
     """
     user = await identity.user_ref_by_id(session, user_id)
@@ -114,12 +106,8 @@ async def record_manual_payment(
 async def refund(
     session: AsyncSession, payment_id: uuid.UUID, *, reason: str, actor: Principal, now: datetime
 ) -> PlatformPaymentRead:
-    """Record that a payment was refunded: the access it bought is withdrawn.
-
-    The payment row stays, its `entitlement_id` still pointing at the revoked
-    grant, so "what did they pay for and why can they not use it?" is
-    answerable later. Twice is once.
-    """
+    """Record that a payment was refunded: the access it bought is withdrawn. The payment row
+    stays, its `entitlement_id` still pointing at the revoked grant. Twice is once."""
     payment = await repository.payment_by_id(session, payment_id)
     if payment is None:
         raise errors.PaymentNotFound()

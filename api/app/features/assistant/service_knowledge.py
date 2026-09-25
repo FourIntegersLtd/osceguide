@@ -12,7 +12,7 @@ from app.core.db import get_session
 from app.core.errors import AppError, InvalidInput
 from app.core.ports import VectorIndex
 from app.core.settings import Settings
-from app.features.assistant.schemas_help import KnowledgeChat, KnowledgeReply
+from app.features.assistant.schemas import KnowledgeChat, KnowledgeReply
 from app.features.catalog import service as catalog
 from app.features.media import service as media
 from app.features.media import service_search

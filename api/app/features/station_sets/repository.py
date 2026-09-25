@@ -52,10 +52,8 @@ async def rename_set(session: AsyncSession, row: StationSet, *, name: str) -> No
 async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> None:
     """Throw a set away, its entries with it.
 
-    The entries go on the foreign key's `ON DELETE CASCADE`, which is what the
-    retiring client's delete did to a session's progress rows. Attempts are the
-    ones that do not cascade — they `RESTRICT` — so whoever calls this has
-    already asked whether the set holds any.
+    The entries go on the foreign key's `ON DELETE CASCADE`. Attempts are the ones that do not
+    cascade — they `RESTRICT` — so whoever calls this has already asked whether the set holds any.
     """
     await session.execute(
         delete(StationSet).where(StationSet.owner_user_id == owner_user_id, StationSet.id == set_id)

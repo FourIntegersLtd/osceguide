@@ -22,7 +22,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, Timestamps, UUIDPrimaryKey
-from app.features.attempts.models_coverage import AttemptLiveCoverage as AttemptLiveCoverage
 
 # Exactly one optional reference must match the kind. Written as a CHECK rather
 # than left to the service, because six code paths create attempts and only one
@@ -190,3 +189,16 @@ class AssessmentResult(Base, UUIDPrimaryKey, Timestamps):
     # The engine's own output, already validated against its JSON Schema.
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     scored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+# --- Coverage is provisional evidence, never an assessment result.
+
+
+class AttemptLiveCoverage(Base):
+    __tablename__ = "attempt_live_coverage"
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("attempts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)

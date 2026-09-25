@@ -1,10 +1,6 @@
 """What the tutor may remember, and the rules about remembering it.
 
-Plain Python: no SQL, no FastAPI, no I/O. Everything here answers a question
-about memory that has one right answer regardless of where the rows live —
-whether an activity is the same one twice, how long ago something was, which
-kinds of conversation are worth keeping, and what a tool call is allowed to
-ask for.
+Plain Python: no SQL, no FastAPI, no I/O.
 """
 
 from __future__ import annotations
@@ -17,9 +13,7 @@ from typing import Any
 # Two sightings of the same thing inside this window are one visit. A doctor
 # who opens a summary, follows a link and comes back has not read it twice, and
 # a memory that says they did will be spoken back to them as a pattern.
-# The action plan's two rules live together in their own module: ticking a
-# step off and deciding what is still open have to agree, and `domain.py`
-# was over the file cap. Re-exported so callers import one domain.
+# Re-exported so callers import one domain.
 from app.features.tutor_memory.action_plan import mark_action_item_done, open_action_items
 
 __all__ = ["mark_action_item_done", "open_action_items"]
@@ -62,10 +56,7 @@ _POLICIES = {
 def transcript_policy(session_type: str) -> TranscriptPolicy:
     """What to do with this kind of session's turns when it ends.
 
-    Replaces the plain "help sessions only" rule: once a dashboard session is
-    the tutor's memory of a conversation, discarding it unread would lose the
-    one thing worth keeping, and retaining it would keep a recording nobody
-    asked for. An unknown type discards, which is the safe side to err on.
+    An unknown type discards, which is the safe side to err on.
     """
     return _POLICIES.get((session_type or "").strip().lower(), TranscriptPolicy.DISCARD)
 
@@ -80,9 +71,7 @@ def should_record_event(*, last_seen_at: datetime | None, now: datetime) -> bool
 def days_ago(then: datetime, now: datetime) -> int:
     """Whole days between two moments, never negative.
 
-    The tutor says "about a week ago", never a date, so this is all the
-    precision the brief carries. A clock that has drifted backwards reads as
-    today rather than as the future.
+    A clock that has drifted backwards reads as today rather than as the future.
     """
     return max(0, (now - then).days)
 
@@ -98,9 +87,7 @@ def clip_fact(text: str) -> str:
 def should_summarise_attempt(*, kind: str, complete: bool) -> bool:
     """Whether a finished attempt is worth writing a debrief summary of.
 
-    Only a debrief: it is the conversation where the doctor and the tutor
-    agreed something, and the agreement is what the tutor needs next time. A
-    consultation's own marking is already a result.
+    Only a debrief: a consultation's own marking is already a result.
     """
     return kind == "debrief" and complete
 
@@ -108,23 +95,11 @@ def should_summarise_attempt(*, kind: str, complete: bool) -> bool:
 def entitled_exam_ids(grants: Sequence[Any]) -> frozenset[Any]:
     """The exams this person may be shown material from, right now.
 
-    Suggestions are filtered through this before anything is named, so a
-    refusal never mentions the title of something they cannot open — which is
-    how a locked item becomes an advertisement. Since the material index
-    landed it is also the `WHERE exam_id IN (...)` that the tutor's search is
-    filtered by, so it is the gate on paid reading as well as on a card.
-
-    **`live` is the whole rule.** `entitlements.service.list_for_user` returns
-    every row a person has ever held — revoking sets `revoked_at` and leaves
-    the row, and an expired grant is a row with `ends_at` in the past — and
-    computes `live` per row rather than filtering. Reading `exam_id` off every
-    grant therefore hands a lapsed subscriber exactly what a paying one gets,
-    which is how this was written until it was caught.
-
-    A grant that cannot say whether it is live is refused. That is the safe
-    direction: a caller passing raw `Entitlement` rows instead of the service's
-    read model gets nothing rather than everything, and a silent full unlock is
-    the one failure nobody would notice.
+    `entitlements.service.list_for_user` returns every row ever held, revoked or
+    expired included, and computes `live` per row rather than filtering. Reading
+    `exam_id` off every grant without checking `live` previously handed a lapsed
+    subscriber the same access as a paying one. A grant that cannot say whether
+    it is live is excluded, so an unrecognised row loses access rather than gains it.
     """
     return frozenset(
         getattr(g, "exam_id", None)
@@ -136,11 +111,8 @@ def entitled_exam_ids(grants: Sequence[Any]) -> frozenset[Any]:
 def observations_from_result(payload: Mapping[str, Any]) -> dict[str, Any]:
     """What a marking says about a consultation, in the brief's own vocabulary.
 
-    The engine's result payload is a marking document: domains with ratings,
-    strengths, improvements, and phrases the doctor actually used. The brief
-    wants exactly those four, named the way the tutor prompt reads them, and
-    nothing else — no scores, no percentages, no identifiers, because the
-    prompt forbids the tutor from saying any of them out loud.
+    Extracts domains, strengths, improvements and phrases only — no scores,
+    percentages or identifiers, since the tutor prompt forbids saying those aloud.
     """
     domains: dict[str, str] = {}
     for entry in _sequence(payload.get("domains")):
@@ -162,13 +134,9 @@ def observations_from_result(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def validate_tool_arguments(schema: Mapping[str, Any], arguments: Mapping[str, Any]) -> dict[str, Any]:
-    """Check one tool call against its own advertised schema.
+    """Check one tool call's arguments against its own advertised schema.
 
-    Deliberately small: the schemas are ours, they are flat objects of strings,
-    enums and small integers, and a validator library would be a dependency
-    carrying rules nothing here uses. What it must catch is a model inventing
-    an argument or a value — the tutor calling `recall_history` with a kind
-    that means nothing produces an answer about the wrong thing.
+    Catches a model inventing an argument or a value the schema doesn't allow.
     """
     properties = schema.get("properties") or {}
     required = schema.get("required") or []

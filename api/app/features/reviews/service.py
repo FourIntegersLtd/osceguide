@@ -30,21 +30,16 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
 
 
 def _scored_domains(field_values: dict[str, Any]) -> set[str]:
-    """Which domains a submission has rated.
-
-    Field paths are `domain.score` or `domain.skill.score`, as b2b writes them.
-    """
+    """Which domains a submission has rated. Field paths are `domain.score` or
+    `domain.skill.score`."""
     return {key.split(".", 1)[0] for key in field_values if key.endswith(".score")}
 
 
 async def _require_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:
     """Every slot-addressed use case resolves the slot against the caller's org.
 
-    The org comes from the path and the slot from the URL, and until this
-    existed nothing compared them (P4). Reads happened to be safe because they
-    filter on `org_id`; writes stored the caller's org beside another tenant's
-    slot id, which kept it invisible to the slot's real owner and so looked
-    contained.
+    Until this existed (P4), a write could store the caller's org beside
+    another tenant's slot id — invisible to the slot's real owner.
     """
     if not await sittings.slot_is_in_org(session, org_id, slot_id):
         raise errors.SlotNotFound()

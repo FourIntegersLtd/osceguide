@@ -27,8 +27,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(InvalidInput),
 )
 async def list_plans(session: Session) -> Page[schemas.PlanRead]:
-    """Public: the pricing page reads this rather than hardcoding amounts, which
-    is how b2c's client and server came to disagree about what a plan costs."""
+    """List the plans currently on sale."""
     items = [schemas.PlanRead(**p) for p in await service.list_plans(session)]
     return Page(items=items, next_cursor=None)
 
@@ -49,12 +48,9 @@ async def stripe_webhook(
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.WebhookResult:
-    """Apply one delivery, at most once, and only if Stripe sent it.
-
-    The **raw body** is what the signature covers, so it is read and verified
-    before being parsed. Declaring a parsed body parameter instead would hand
-    FastAPI the bytes first and leave the signature checking something else.
-    """
+    """Apply one Stripe webhook delivery, at most once, and only if Stripe sent it."""
+    # The raw body is what the signature covers, so it is read and verified before being
+    # parsed — a parsed body parameter would hand FastAPI the bytes first.
     raw = await request.body()
     event = service.verified_event(
         raw,
@@ -82,12 +78,7 @@ async def list_my_receipts(principal: CurrentPrincipal, session: Session) -> Pag
     responses=error_responses(Unauthenticated, errors.ReceiptNotFound),
 )
 async def read_receipt(receipt_id: str, principal: CurrentPrincipal, session: Session) -> schemas.ReceiptRead:
-    """One receipt, rendered.
-
-    Scoped to the caller. A receipt id is short and printed on a document that
-    gets forwarded to an accountant or an employer, so it must not be a key
-    anybody holding it can read.
-    """
+    """One receipt, rendered. Scoped to the caller."""
     return await service_receipts.read_receipt(session, principal.user_id, receipt_id)
 
 
@@ -104,12 +95,9 @@ async def read_receipt(receipt_id: str, principal: CurrentPrincipal, session: Se
 async def read_receipt_document(
     receipt_id: str, principal: CurrentPrincipal, session: Session
 ) -> HTMLResponse:
-    """The receipt as something to print, keep or send to an accountant.
-
-    Served inline rather than as a download: a browser can print it to PDF,
-    and a `Content-Disposition: attachment` would stop somebody simply
-    looking at it.
-    """
+    """The receipt as something to print, keep or send to an accountant."""
+    # Served inline rather than as a download: a browser can print it to PDF, and a
+    # Content-Disposition: attachment would stop somebody simply looking at it.
     html = await service_receipts.read_receipt_document(session, principal.user_id, receipt_id)
     return HTMLResponse(content=html)
 
@@ -127,12 +115,7 @@ async def start_checkout(
     settings: SettingsDep,
     checkout: Annotated[CheckoutSessions, Depends(service_checkout.get_checkout)],
 ) -> schemas.CheckoutStarted:
-    """Begin paying for a plan.
-
-    The client names a plan code and never a price or an amount: b2c matched
-    the pence paid against a hardcoded table, so a price change broke
-    purchases after the card was charged.
-    """
+    """Begin paying for a plan. The client names a plan code, never a price or an amount."""
     url = await service_checkout.start_checkout(
         session,
         user_id=principal.user_id,

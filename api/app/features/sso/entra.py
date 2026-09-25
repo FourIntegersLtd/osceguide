@@ -3,12 +3,10 @@ in between.
 
 One multi-tenant app registration (`ENTRA_CLIENT_ID`/`ENTRA_CLIENT_SECRET`)
 serves every institution; `organization_sso.issuer` carries each
-institution's own Entra tenant id, which is what tells a multi-tenant
-registration which directory to authenticate against. Unlike Clerk, the
-token this broker is handed back is not itself proof of anything — it is an
-authorization code from the standard OIDC code flow, exchanged here for an
-id token that is then verified against Entra's own signing keys before
-anybody is trusted.
+institution's own Entra tenant id, telling the registration which directory
+to authenticate against. The token handed back is not itself proof of
+anything — it is an authorization code, exchanged here for an id token that
+is then verified against Entra's own signing keys before anybody is trusted.
 
 No refresh token is kept: the platform issues its own session (ADR 0004),
 and Entra's token is spent the moment it has answered who signed in.
@@ -44,21 +42,26 @@ class EntraBroker:
     """Runs the authorization-code flow against one institution's Entra tenant.
 
     Stateless between the two calls: `sign_in_url` and `verify` are both
-    handed the tenant id fresh (`organization_sso.issuer`), because nothing
-    here is per-request state — the client id and secret are the whole app
-    registration and are the same for every institution.
+    handed the tenant id fresh (`organization_sso.issuer`); the client id
+    and secret are the same for every institution.
     """
 
     def __init__(self, client_id: str, client_secret: str) -> None:
         self._client_id = client_id
         self._client_secret = client_secret
 
-    def sign_in_url(self, *, redirect_url: str, issuer: str | None) -> str:
+    def sign_in_url(
+        self, *, redirect_url: str, issuer: str | None, state: str | None = None, nonce: str | None = None
+    ) -> str:
         """Entra's own consent/sign-in page for this institution's tenant.
 
         `issuer` here is the tenant id (a GUID), not a full issuer URL — the
         same field Clerk stores its frontend domain in, read as whichever
         shape the configured provider expects.
+
+        SEC-015: `state` is echoed back on the redirect (the callback checks
+        it) and `nonce` is bound into the id token Entra mints (`verify`
+        checks it), so a stolen code or a replayed id token is refused.
         """
         tenant_id = (issuer or "").strip()
         if not tenant_id:
@@ -70,19 +73,23 @@ class EntraBroker:
             "response_mode": "query",
             "scope": SCOPE,
         }
+        if state:
+            params["state"] = state
+        if nonce:
+            params["nonce"] = nonce
         return f"{_authority(tenant_id)}{AUTHORIZE_PATH}?{urlencode(params, quote_via=quote)}"
 
-    async def verify(self, *, token: str, issuer: str | None = None) -> SsoIdentity | None:
+    async def verify(
+        self, *, token: str, issuer: str | None = None, expected_nonce: str | None = None
+    ) -> SsoIdentity | None:
         """Exchange an authorization code for an id token, then verify it.
 
-        `token` is the `code` Entra's redirect appended, not a bearer token —
-        the one real difference from Clerk's flow, which already had a
-        session to check. Two things must hold before anybody is trusted:
-        the id token's signature checks out against Entra's own published
-        keys for this tenant, and its `aud`/`iss` name this app registration
-        and this tenant — otherwise a token minted for a different
-        application, or a different institution's tenant, would verify here
-        too.
+        `token` is the `code` Entra's redirect appended, not a bearer token.
+        Two things must hold before anybody is trusted: the id token's
+        signature checks out against Entra's own published keys for this
+        tenant, and its `aud`/`iss` name this app registration and this
+        tenant — otherwise a token minted for a different application, or a
+        different institution's tenant, would verify here too.
         """
         tenant_id = (issuer or "").strip()
         if not tenant_id:
@@ -124,6 +131,14 @@ class EntraBroker:
             )
         except jwt.InvalidTokenError as exc:
             log.warning("entra id token failed verification", error=str(exc))
+            return None
+
+        # SEC-015: the id token must echo the nonce this sign-in put on the
+        # authorization request. A token minted for a different sign-in — one
+        # the attacker captured or triggered — carries a different nonce (or
+        # none), so it is refused here even though its signature is Entra's.
+        if expected_nonce is not None and str(claims.get("nonce") or "") != expected_nonce:
+            log.warning("entra id token nonce did not match the sign-in request")
             return None
 
         email = str(claims.get("email") or claims.get("preferred_username") or "")

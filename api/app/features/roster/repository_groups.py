@@ -1,9 +1,5 @@
-"""Storage for the ways an institution divides its trainees up.
-
-Split from `repository.py` along the same aggregate `service_groups.py` uses:
-that module is about a person on the roster, this one about the cohort they
-belong to and the group a circuit is built from. Org-scoped methods take
-`org_id` first.
+"""Storage for the ways an institution divides its trainees up: cohorts and
+groups. Org-scoped methods take `org_id` first.
 """
 
 from __future__ import annotations

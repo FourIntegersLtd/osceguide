@@ -146,13 +146,9 @@ def register() -> None:
         """Pair whoever is waiting, in every room of every exam.
 
         Periodic rather than only on join: two people arriving at the same
-        moment would otherwise both try to match, and one of them would find an
-        empty queue. Join still enqueues a nudge so pairing is immediate when
-        the worker is up.
-
-        Rooms are walked separately. Matching an exam as one pool would pair a
-        trainee waiting inside their institution with a stranger, which is the
-        thing an audience exists to prevent.
+        moment would otherwise both try to match and find an empty queue.
+        Rooms are walked separately, so a trainee waiting inside their
+        institution is never paired with a stranger.
         """
         from app.core.db import job_session
         from app.features.catalog import service as catalog

@@ -33,8 +33,8 @@ class ActivityBatch(BaseModel):
 
 
 class ActivityAccepted(BaseModel):
-    """How many were new. A repeat within the dedup window is accepted and not
-    recorded, which is a success rather than an error."""
+    """How many were new. A repeat is accepted and not recorded, which is a success
+    rather than an error."""
 
     accepted: int
     recorded: int

@@ -1,7 +1,6 @@
-"""The queries `dashboard` asks of this slice, filling the shapes next door.
+"""The queries `dashboard` asks of this slice, filling the shapes in `reads_types.py`.
 
-Split from `reads_types.py` at the file cap, at the seam that was already
-there: the dataclasses are the contract another slice reads, and these are the
+The dataclasses there are the contract another slice reads; these are the
 queries that fill them.
 """
 
@@ -164,8 +163,7 @@ async def supervisor_for_slot(
 ) -> uuid.UUID | None:
     """Whoever is named to supervise the circuit this slot is being run in.
 
-    Bound into `attempts` by `composition.py`, because that slice sits below this
-    one and cannot ask the question of the tables itself — and the question is
+    Asked by `attempts.service_access`, and the question is
     the whole of an examiner's authority to read a candidate's transcript: not
     the role, and not the organisation, but being the named person on this
     circuit. The same thing `observer_token` hands out a room for.
@@ -202,9 +200,8 @@ async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[Circui
     return details
 
 
-# The clock arithmetic and the alerts, re-exported so `dashboard` can compute a
-# board without importing this slice's domain: a slice reaches another through
-# its service, and these are part of what this one knows.
+# The clock arithmetic and the alerts, re-exported so `dashboard` can compute
+# a board without importing this slice's domain.
 alerts_for = domain_alerts.alerts_for
 elapsed_seconds = domain_run.elapsed_seconds
 remaining_seconds = domain_run.remaining_seconds

@@ -1,20 +1,9 @@
 """What a candidate may read about a station they are sitting, or have sat.
 
-Split from `service_reads.py` because it answers a different question. That
-file reads the *attempt* — its status, its transcript, its marking. This one
-reads the *station* through the attempt, and so is where the rule about which
-blocks of a station document a candidate may see lives.
-
-The rule, in one sentence: the brief is theirs as soon as they have started,
-and the model answer is theirs once the consultation is over. Everything else
-in the document — the patient's persona and hidden history, the examiner's
-expected answers, the marking guidance — never leaves the server, which is why
-this reads named blocks out of `content` rather than passing it through.
-
-`stations.LibraryStationRead` carries no content for the same reason and is not
-the place for this: browsing the library is open to every signed-in user, while
-these reads are owner-only and gated by the attempt already existing, which
-means the entitlement check has already been made.
+The rule, in one sentence: the brief is theirs as soon as they have started, and the model answer is
+theirs once the consultation is over. Everything else in the document — the patient's persona and
+hidden history, the examiner's expected answers, the marking guidance — never leaves the server,
+which is why this reads named blocks out of `content` rather than passing it through.
 """
 
 from __future__ import annotations
@@ -29,6 +18,7 @@ from app.core.pagination import Page
 from app.features.attempts import domain, domain_material, errors, repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
+from app.features.attempts.schemas import PatientRoleplayRead
 from app.features.attempts.schemas_material import (
     AttemptBriefRead,
     AttemptHistoryItem,
@@ -130,13 +120,7 @@ async def list_history(
     station_version_id: uuid.UUID | None = None,
     set_entry_id: uuid.UUID | None = None,
 ) -> Page[AttemptHistoryItem]:
-    """What this person has sat, newest first, each row naming its station.
-
-    The listing three screens had to do without: the transcript picker, the
-    feedback history and the practice set's station table all counted or listed
-    attempts and none of them could, because the only list of a person's
-    attempts was the ten most recent inlined on the dashboard.
-    """
+    """What this person has sat, newest first, each row naming its station."""
     rows, next_cursor = await repository.list_for_user(
         session,
         user_id,
@@ -197,3 +181,28 @@ async def _material_for(
 def _scenario_read(content: Mapping[str, Any]) -> CandidateScenarioRead | None:
     present = domain_material.scenario(content)
     return CandidateScenarioRead(**present) if present else None
+
+
+# --- Read only the actor's script, after the owning learner has finished.
+
+
+async def read_roleplay(
+    session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID
+) -> PatientRoleplayRead:
+    attempt, material, _ = await _material_for(session, attempt_id, requester_id=requester_id, is_admin=False)
+    if not domain.is_reviewable(domain.Status(attempt.status)):
+        raise errors.AttemptNotFinished()
+    patient = domain_material.block(material.content, domain_material.PATIENT_BLOCKS)
+    return PatientRoleplayRead(
+        idea=domain_material.lines(patient.get("idea")),
+        concerns=domain_material.lines(patient.get("concerns")),
+        expectation=domain_material.lines(patient.get("expectation")),
+        family_social_history=domain_material.lines(patient.get("family_social_history")),
+        past_med_history_allergies=domain_material.lines(patient.get("past_med_history_allergies")),
+        questions=domain_material.lines(patient.get("questions")),
+        patient_biodata=domain_material.text(patient.get("patient_biodata")),
+        gender=domain_material.text(patient.get("gender")),
+        opening_sentence=domain_material.text(patient.get("opening_sentence")),
+        expanded_history=domain_material.text(patient.get("expanded_history")),
+        persona=domain_material.text(patient.get("persona")),
+    )

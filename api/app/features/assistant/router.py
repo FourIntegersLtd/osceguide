@@ -27,11 +27,16 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def start_session(
     body: schemas.StartSession, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.SessionRead:
+    membership = principal.active_membership
     return await service.start_session(
         session,
         user_id=principal.user_id,
+        # Scopes the station lookup (SEC-007) to what the caller may see: their
+        # org's stations, or the platform library for a consumer with no org.
+        org_id=membership.org_id if membership else None,
         session_type=body.session_type,
         extras=body.extras,
+        station_version_id=body.station_version_id,
         now=clock.now(),
     )
 

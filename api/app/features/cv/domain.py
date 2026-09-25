@@ -1,17 +1,15 @@
 """Rules for an uploaded CV: what may be processed, and what it becomes.
 
-Pure, and deliberately the *cheap* checks: they run before any PDF is parsed or
-any model is called, so a file that was never going to be a CV costs nothing to
-refuse. The retiring backend scattered these through its route; they are rules,
-so they live here and the route stays thin.
+Pure, and deliberately the *cheap* checks: they run before any PDF is parsed or any model is called,
+so a file that was never going to be a CV costs nothing to refuse.
 """
 
 from __future__ import annotations
 
 from enum import StrEnum
 
-# The retiring backend's bounds. Ten megabytes is far more than a CV with text
-# weighs and stops a large upload from being parsed in the request that took it.
+# Ten megabytes is far more than a CV with text weighs and stops a large
+# upload from being parsed in the request that took it.
 MAX_BYTES = 10 * 1024 * 1024
 MIN_BYTES = 1024
 ALLOWED_SUFFIX = ".pdf"

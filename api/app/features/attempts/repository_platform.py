@@ -1,10 +1,8 @@
-"""Storage reads and the one write the platform console asks about a person's
-attempts as a whole.
+"""Storage reads and the one write the platform console asks about a person's attempts as a whole.
 
-Split from `repository.py` at the file cap. `list_for_user` there pages one
-person's attempts; these answer across people (the directory's facets) and
-across a person's stations (the progress screen), and carry the only delete
-this table has ever had — the old console's "delete station progress".
+`repository.list_for_user` pages one person's attempts; these answer across people (the directory's
+facets) and across a person's stations (the progress screen), and carry the only delete this table
+has — the console's "delete station progress".
 """
 
 from __future__ import annotations

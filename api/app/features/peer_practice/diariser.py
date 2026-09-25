@@ -1,13 +1,10 @@
 """Recovering who said what from a single mixed recording.
 
 A room-composite egress is one track: both voices, already mixed. Speaker
-identity is simply not in the audio, so it is recovered afterwards from what
-was said — a doctor asks the questions, a patient answers them — which is
-exactly what b2c does and for the same reason.
-
-This is lossy, and knowingly so. Per-participant egress would remove the
-guesswork, at the cost of two uploads to stitch and a different recording
-shape; the port stays faithful, and the port boundary is here if that changes.
+identity is not in the audio, so it is recovered afterwards from what was
+said — a doctor asks the questions, a patient answers them. This is lossy,
+knowingly so: per-participant egress would remove the guesswork at the cost
+of two uploads to stitch.
 """
 
 from __future__ import annotations
@@ -16,7 +13,7 @@ import asyncio
 import json
 from typing import Any
 
-from app.core.ports_models import TranscriptionFailed
+from app.core.ports import TranscriptionFailed
 from app.core.settings import get_settings
 from app.features.peer_practice.transcript_prompt import (
     HUMAN_TRANSCRIPT_CONVERSION_PROMPT,

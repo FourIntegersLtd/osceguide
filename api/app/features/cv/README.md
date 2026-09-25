@@ -61,4 +61,4 @@ left alone: the job finds nothing and returns, which is what makes deleting a
 ## Cross-slice dependencies
 
 None. The owner is the token's user; this slice never reads `identity`'s table
-and resolves no exam, so it sits above nothing and calls nothing back.
+and resolves no exam, so it calls no other slice.

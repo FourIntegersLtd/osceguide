@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from app.features.attempts import llm_clients, repository, repository_coverage, repository_transcript
+from app.features.attempts import llm_clients, repository, repository_transcript
 from app.features.attempts.jobs import SCORING_TASK
 from app.features.attempts.jobs_coverage import TASK as COVERAGE_TASK
 from app.features.attempts.models import Attempt
@@ -69,7 +69,7 @@ async def test_live_evidence_is_grounded_and_owner_only(client, db_session, make
         ),
     )
     await update_coverage(db_session, sat.attempt_id)
-    snapshot = await repository_coverage.read(db_session, sat.attempt_id)
+    snapshot = await repository.read(db_session, sat.attempt_id)
     assert snapshot and len(snapshot["items"]) == 1
     await update_coverage(db_session, sat.attempt_id)
     assert call.call_count == 1
@@ -137,3 +137,28 @@ async def test_the_nudges_a_session_leaves_behind_coalesce_into_one(client, db_s
         (COVERAGE_TASK, "todo"),
         (SCORING_TASK, "todo"),
     ]
+
+
+async def test_a_finished_debrief_queues_the_tutors_summary(client, db_session, make_actor):
+    """`attempts` calls `tutor_memory` directly once a debrief ends.
+
+    This used to be a hook bound at startup, and unbound it did nothing at all.
+    """
+    from app.features.tutor_memory.jobs import DEBRIEF_SUMMARY_TASK
+
+    email = "coverage-debrief@example.com"
+    await make_actor(email)
+    sat = await _entitled_attempt(db_session, email)
+    await repository.freeze_definition(
+        db_session, sat.attempt_id, definition=frozen_definition(str(sat.attempt_id)), at=NOW
+    )
+    attempt = await db_session.get(Attempt, sat.attempt_id)
+    assert attempt is not None
+    # A debrief must name the consultation it follows; any attempt satisfies the check.
+    attempt.kind = "debrief"
+    attempt.source_attempt_id = attempt.id
+    await db_session.flush()
+
+    await complete_interaction(db_session, attempt, now=NOW)
+
+    assert (DEBRIEF_SUMMARY_TASK, "todo") in await _jobs(db_session, sat.attempt_id)

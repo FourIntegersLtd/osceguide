@@ -80,14 +80,9 @@ class LiveKitRoomAgents:
     async def remove_agents(self, room: str) -> int:
         """Clear stale patients out of a room. A room that does not exist has none.
 
-        LiveKit answers `not_found` for a room nobody has joined yet, and that
-        used to fail the whole call. On exam day the consequence was a stalled
-        circuit: the reading phase ends, the transition tries to dispatch the
-        patient, the candidate's browser has not opened the room yet, and the
-        scheduled job errors instead of advancing. The circuit then sits
-        overdue for ever, because every retry hits the same empty room.
-
-        Nothing to remove is success.
+        LiveKit answers `not_found` for a room nobody has joined yet; treating that
+        as a failure once stalled a circuit whose candidate had not opened the room
+        yet, since every retry hit the same empty room. Nothing to remove is success.
         """
         api = _livekit_api()
         settings = get_settings()

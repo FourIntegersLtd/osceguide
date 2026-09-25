@@ -1,9 +1,7 @@
 """A station's revisions: adding, editing, publishing, archiving, deleting.
 
-Split from `service.py` along the aggregate rather than the line count. That
-module is about the station — what it is called, which exam it belongs to,
-which revision is current — and this one about the immutable revisions
-underneath it, which is where the whole publishing lifecycle lives.
+`service.py` is about the station itself — its title, exam, current revision; this is about the
+immutable revisions underneath it, where the publishing lifecycle lives.
 """
 
 from __future__ import annotations
@@ -17,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Principal
 from app.core.errors import Forbidden, raise_mapped
 from app.core.tenancy import admin_org_ids
-from app.features.stations import domain, errors, repository, repository_platform
+from app.features.stations import domain, errors, repository
 from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
@@ -122,21 +120,13 @@ async def version_history(
 ) -> list[StationVersionRead]:
     """Every revision this station has had, newest first. An author's read.
 
-    The authoring routes reach a station through an organisation's slug, which
-    is how they know who is asking. A history asked for by station id has no
-    slug to carry, so the owner is read off the station and matched against the
-    caller's own memberships: a platform admin sees any station's — curating
-    the library and supporting an institution are both that — and an
-    organisation's admin sees the stations that belong to it. A trainee of the
-    same organisation is refused, because what is listed here is every
-    version's whole document, including the revisions that were withdrawn: the
-    patient's persona and the examiner's material for the case they may be
-    examined on, and for the ones nobody settled.
-
-    Newest first rather than the ascending order the seed walk reads, because a
-    history is read from the present backwards.
+    A history asked for by station id has no org slug to carry, so the owner is read off the station
+    and matched against the caller's own memberships: a platform admin sees any station's, an
+    organisation's admin sees its own. A trainee of the same organisation is refused, because this
+    lists every version's whole document — the patient's persona and the examiner's material included,
+    even for withdrawn revisions.
     """
-    found = await repository_platform.station_with_versions(session, station_id)
+    found = await repository.station_with_versions(session, station_id)
     if found is None:
         raise errors.StationNotFound()
     station, versions = found
@@ -164,10 +154,8 @@ async def delete_version(
 ) -> None:
     """Throw away a draft (T6).
 
-    Only a draft: a published revision is what somebody's attempt was assessed
-    against, and an archived one is how that attempt is still readable. The
-    rule was written and had no route to refuse anything at, so the only way to
-    get rid of an unwanted draft was to leave it there.
+    Only a draft: a published revision is what somebody's attempt was assessed against, and an
+    archived one is how that attempt is still readable.
     """
     row = await _version(session, org_id, station_id, version)
     try:
@@ -187,11 +175,8 @@ async def edit_brief(
 ) -> StationVersionRead:
     """Correct the reading brief without cutting a new version (T5).
 
-    The documented exception to "published content is immutable": the brief is
-    what a candidate is handed before the station starts, so a typo in one
-    should not require a new revision, a fresh publish, and every circuit
-    pointing at the old one. An archived version is still refused — nothing
-    about it may change.
+    The documented exception to "published content is immutable": a typo in the brief should not
+    require a new revision and a fresh publish. An archived version is still refused.
     """
     row = await _version(session, org_id, station_id, version)
     try:

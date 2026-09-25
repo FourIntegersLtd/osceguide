@@ -1,15 +1,15 @@
 """Payments and the webhook ledger, as the people who answer support see them.
 
-The refund path, the manual grant and the replay live in
-`service_platform_actions`; these are the reads that tell support which of
-them a case needs. "I paid and nothing happened" is one of three rows: a
-payment that exists and granted something, a delivery that was recorded and
-refused, or no delivery at all.
+The refund path, the manual grant and the replay live in `service_platform_actions`; these are
+the reads that tell support which of them a case needs.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,3 +88,34 @@ def _event_read(row: StripeEvent) -> StripeEventRead:
         price_id=_price_id(payload) or None,
         payment_intent_id=str(payload.get("payment_intent") or "").strip() or None,
     )
+
+
+# --- What the account directory knows about paying, for many people at once.
+
+
+@dataclass(frozen=True)
+class PaymentFact:
+    """The last thing somebody bought."""
+
+    plan_code: str | None
+    paid_at: datetime
+    plan_ends_at: datetime | None
+
+
+async def payer_ids(session: AsyncSession) -> set[uuid.UUID]:
+    """Everyone who has ever paid — the directory's "paid" facet."""
+    return await repository.payer_user_ids(session)
+
+
+async def payer_ids_on_plan(session: AsyncSession, plan_code: str) -> set[uuid.UUID]:
+    return await repository.payer_user_ids_on_plan(session, plan_code)
+
+
+async def latest_payment_by_user(
+    session: AsyncSession, user_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, PaymentFact]:
+    rows = await repository.latest_payments(session, user_ids)
+    return {
+        user_id: PaymentFact(plan_code=code, paid_at=paid_at, plan_ends_at=ends_at)
+        for user_id, (code, paid_at, ends_at) in rows.items()
+    }

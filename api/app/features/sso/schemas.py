@@ -36,12 +36,10 @@ class SaveSsoConfig(BaseModel):
 
 
 class SsoSignIn(BaseModel):
-    """What a sign-in page may know before anybody has proved anything.
+    """What a sign-in page may show before anybody has proved anything.
 
-    Deliberately thin. This is served without a token, to anyone who asks, so
-    it carries what a button needs and nothing about the organisation beyond
-    the name it already puts on its own front page. No issuer, no bindings, no
-    counts: those are configuration, and configuration is for administrators.
+    Deliberately thin: served without a token, to anyone who asks. No
+    issuer, no bindings, no counts — those are configuration.
     """
 
     org_slug: str
@@ -66,20 +64,25 @@ class SsoLoginRequest(BaseModel):
 class SsoLoginResult(BaseModel):
     """Where to send the browser to sign in.
 
-    A URL rather than a server-side redirect: the frontend owns navigation and
-    the platform issues no cookies (ADR 0004). The broker sends the browser
-    back to `{frontend_url}/auth/sso/callback`, which posts the token it was
-    handed to `POST /auth/sso/callback`.
+    A URL rather than a server-side redirect: the frontend owns navigation
+    and the platform issues no cookies (ADR 0004).
     """
 
     sign_in_url: str
 
 
 class SsoCallbackRequest(BaseModel):
-    """The token the broker handed back, and the organisation it was for."""
+    """The token the broker handed back, and the organisation it was for.
+
+    `state` (SEC-015) is the signed anti-forgery value the sign-in URL carried
+    and the OIDC provider echoed back on the redirect. It is optional on the
+    contract — Clerk's flow does not carry one — but required for a provider
+    that runs the code flow (Entra), which the callback enforces.
+    """
 
     org_slug: str = Field(min_length=1, max_length=100)
     token: str = Field(min_length=1, max_length=4096)
+    state: str | None = Field(default=None, max_length=4096)
 
 
 class SsoSession(BaseModel):

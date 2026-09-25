@@ -48,17 +48,10 @@ async def join_queue(
 ) -> QueueStatus:
     """Take a place in the queue, or keep the one you have.
 
-    Practising with another person is paid access like any other: it is a live
-    room with a real partner in it. The gate is the same one `POST /attempts`
-    uses, free trial included, so somebody inside their fourteen days may still
-    do this and a lapsed subscriber may not.
-
-
-    Joining twice is not an error worth refusing outright — it is somebody
-    tapping a button again — so it returns the place they already hold. One
-    place per person per exam, whichever room they asked for: asking again for
-    a different room returns the place they are already in rather than putting
-    them in two queues at once.
+    Practising with another person is paid access, gated the same as
+    `POST /attempts` (free trial included). Joining twice is not refused as
+    an error — it returns the place already held, whichever room was asked
+    for, rather than a second place in a different queue.
     """
     exam = await resolve_exam(session, exam_code)
     await attempts.require_entitlement(session, user_id=user_id, exam_id=exam.id, now=now)

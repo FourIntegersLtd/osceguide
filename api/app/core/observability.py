@@ -1,12 +1,7 @@
 """Error reporting.
 
-`SENTRY_DSN` has been a setting since the first commit and nothing read it,
-so a deployed process reported nothing anywhere and looked configured.
-
-Off unless a DSN is set, which keeps local and test runs silent and means a
-deployment opts in by configuration rather than by code. Both legacy backends
-already report to Sentry, so this is the third of three rather than a new
-dependency on a new service.
+Off unless `SENTRY_DSN` is set, which keeps local and test runs silent and
+means a deployment opts in by configuration rather than by code.
 """
 
 from __future__ import annotations

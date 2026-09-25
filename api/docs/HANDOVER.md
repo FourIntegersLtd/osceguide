@@ -102,11 +102,11 @@ scripts/                openapi export, status report, legacy import CLI
 tests/ guards/ unit/ repository/ http/ contract/ e2e/ migration/ support/
 ```
 
-Slices depend downward only, enforced by `import-linter` (`make arch`). The
-layer order is in `pyproject.toml`. A slice calls another **service to
-service**, never into its repository or models. Where the order forbids it —
-`reviews` sits above `sittings`, but the edit lock needs review data — the seam
-is bound once in `main.py`, the way `bind_role_policy` already is.
+`import-linter` (`make arch`) enforces one rule: `app/core` never imports a
+feature. Slices have no order between them; a slice calls another **service to
+service**, never into its repository or models
+(`tests/guards/test_slices_call_services_only.py`). The only seams left are
+the core → feature ones, bound in `app/composition.py`.
 
 ## What works, end to end
 
@@ -133,9 +133,9 @@ switch turns, end a consultation, append latecomers and end the circuit.
    the `osce_guide` library import, practice admin, the platform console (org
    list/patch/delete, users, admins, analytics, reprovision/reset), trainee
    session views, the feedback-context read, and org history.
-3. **The receipt document.** All twelve oracles are ported, but the fifth one
-   describes a document nothing renders: the fields are minted and readable,
-   the email is not written. See `docs/WIP-ORACLES.md`.
+3. **Receipt backfill.** The receipt document is rendered and emailed, but a
+   payment taken before the receipt columns existed has no `receipt_id` and is
+   not listed. See B-4 in `docs/OPEN-QUESTIONS.md`.
 4. **The migration's org half.** Station sets, sittings and org data are not
    transformed. The consumer path is done and proven idempotent.
 5. **Run the e2e test.** See below.

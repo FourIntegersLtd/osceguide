@@ -1,9 +1,4 @@
-"""Mapping sitting rows to their API shapes.
-
-Split from `service.py` at the file cap. The use cases and the projections
-change for different reasons: a rule moves because an examination works
-differently, a projection moves because a screen needs another field.
-"""
+"""Mapping sitting rows to their API shapes."""
 
 from __future__ import annotations
 

@@ -111,11 +111,9 @@ async def add_memberships(
 ) -> schemas.BulkMembershipsResult:
     """A team at once: the browser parses the spreadsheet, this takes the rows.
 
-    Each row is the single act below it, so an unknown address is invited and
-    an existing one is not re-invited. A person already holding the role is
-    reported in `skipped` rather than failing the other rows — the retiring
-    backend's staff upload wrote a team row by row and an administrator reads
-    the result as a list of names, not as an error page.
+    Each row is the single act below it, so an unknown address is invited and an existing
+    one is not re-invited. A person already holding the role is reported in `skipped`
+    rather than failing the other rows.
     """
     return await service_bulk.add_memberships(
         session, workspace.org_id, entries=body.memberships, actor=workspace.principal, now=clock.now()

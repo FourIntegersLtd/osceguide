@@ -13,6 +13,7 @@ from app.core.ports import ClockDep
 from app.core.rate_limit import (
     LEGACY_EXCHANGE,
     PASSWORD_RESET,
+    REGISTER,
     SIGN_IN,
     TooManyRequests,
     caller_key,
@@ -37,14 +38,18 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     "/auth/register",
     response_model=schemas.AuthResult,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(errors.EmailTaken, errors.WeakPasswordError),
+    responses=error_responses(errors.EmailTaken, errors.WeakPasswordError, TooManyRequests),
 )
 async def register(
+    request: Request,
     body: schemas.RegisterRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.AuthResult:
+    # SEC-004: unauthenticated and it writes a user + sends mail, so it is
+    # rate limited like the other public identity routes.
+    await check(REGISTER, caller_key(request))
     return await service.register(
         session,
         email=body.email,
@@ -197,13 +202,17 @@ async def begin_password_reset(
 @router.post(
     "/auth/password-reset/confirm",
     response_model=schemas.Accepted,
-    responses=error_responses(errors.InvalidResetToken, errors.WeakPasswordError),
+    responses=error_responses(errors.InvalidResetToken, errors.WeakPasswordError, TooManyRequests),
 )
 async def confirm_password_reset(
+    request: Request,
     body: schemas.PasswordResetConfirm,
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
 ) -> schemas.Accepted:
+    # SEC-004: the token is high-entropy, but this caps a brute-force attempt at
+    # guessing one rather than leaving the only limit its length.
+    await check(PASSWORD_RESET, caller_key(request))
     await service_passwords.confirm_password_reset(
         session, token=body.token, password=body.password, now=clock.now()
     )

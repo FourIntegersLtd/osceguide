@@ -16,7 +16,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.redis import get_redis
 from app.core.tenancy import PlatformAdmin
-from app.features.health import schemas, service_platform
+from app.features.health import schemas, service
 
 router = APIRouter(tags=["health"])
 
@@ -33,7 +33,7 @@ STATUS_PATTERN = "^(todo|doing|succeeded|failed|cancelled|aborting|aborted)$"
 async def read_platform_health(admin: PlatformAdmin, session: Session) -> schemas.PlatformHealth:
     """The liveness report, the queue by status, and when a worker last checked in."""
     _ = admin
-    return await service_platform.platform_health(session, get_redis())
+    return await service.platform_health(session, get_redis())
 
 
 @router.get(
@@ -56,6 +56,4 @@ async def list_jobs(
     checked against the current state rather than replayed blind.
     """
     _ = admin
-    return await service_platform.list_jobs(
-        session, status=status, task_name=task, before_id=before_id, limit=limit
-    )
+    return await service.list_jobs(session, status=status, task_name=task, before_id=before_id, limit=limit)

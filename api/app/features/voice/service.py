@@ -8,13 +8,13 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.core.ports import RoomAgents, VoiceTokens
+from app.core.ports import RoomAgents, RoomRecorder, VoiceTokens
 from app.core.settings import Settings
 from app.features.attempts import service_reads as attempts
 from app.features.attempts.errors import AttemptNotFound, AttemptNotYours
 from app.features.voice import capacity, domain, errors
+from app.features.voice.schemas import CloudCapacityRead, VoiceGrant
 from app.features.voice.schemas import RoomGrant as RoomGrant
-from app.features.voice.schemas import VoiceGrant
 
 log = get_logger(__name__)
 
@@ -112,10 +112,9 @@ def grant_for_room(
 ) -> RoomGrant:
     """A token for a room that already exists, with no agent attached.
 
-    Two callers, both of whom join a room somebody else is running: a candidate
-    taking their place before the station starts, and an examiner watching one.
-    Neither brings a patient with them — the orchestrator does that — which is
-    the difference from `grant_for_attempt`.
+    For a caller joining a room somebody else is running — a candidate taking
+    their place before the station starts, or an examiner watching one — rather
+    than bringing a patient with them, which `grant_for_attempt` does.
     """
     if not settings.livekit_url:
         raise errors.VoiceUnavailable()
@@ -141,13 +140,10 @@ async def grant_for_agent_room(
 ) -> RoomGrant:
     """A token for a room the browser opens, with an agent dispatched into it.
 
-    The third shape, beside an attempt's and a circuit's: no recording behind
-    it and no supervisor to dispatch, so the agent rides in on the token the
-    way an attempt's does. `session_type` chooses the family, which is what
-    keeps an assistant session off the assessment workers.
-
-    The caller owns the metadata because it is the caller's session that the
-    worker will bootstrap; this only decides where the agent runs.
+    No recording and no supervisor to dispatch, so the agent rides in on the
+    token. `session_type` chooses the family, keeping an assistant session off
+    the assessment workers. The caller owns the metadata; this only decides
+    where the agent runs.
     """
     if not settings.livekit_url:
         raise errors.VoiceUnavailable()
@@ -198,15 +194,8 @@ async def dispatch_agent_into_room(
 
     Stale agents are removed first and exactly one is dispatched, because two
     agents in a room both answer as the patient and the candidate hears a
-    duplicated, contradictory consultation.
-
-    Returns the agent's name and how many stale ones it displaced. The removal
-    belongs here rather than at the call site: doing both meant removing twice,
-    and the second sweep found nothing while looking like it had worked.
-
-    The metadata is the same three strings the candidate path sends. Everything
-    else the worker needs it fetches from the bootstrap route, so this does not
-    become a second, drifting copy of the attempt.
+    duplicated, contradictory consultation. Returns the agent's name and how
+    many stale ones it displaced.
     """
     family = domain.family_for(session_type)
     mode = domain.resolve_mode(domain.normalize_mode(settings.livekit_routing_mode), cloud_slots_free=False)
@@ -242,3 +231,27 @@ def get_room_agents() -> RoomAgents:
     from app.features.voice.adapter import build_room_agents
 
     return build_room_agents()
+
+
+# --- The voice layer as the platform console reads it.
+
+
+async def cloud_capacity(settings: Settings) -> CloudCapacityRead:
+    """The Cloud slot count as the console reads it. Looks; never reserves."""
+    active = await capacity.active_slots()
+    return CloudCapacityRead(
+        overflow_enabled=settings.livekit_cloud_overflow_enabled,
+        max_concurrent=settings.livekit_cloud_max_concurrent,
+        active=active,
+        free=None if active is None else max(0, settings.livekit_cloud_max_concurrent - active),
+    )
+
+
+# --- Recording a room, for the slices that run one.
+
+
+def get_room_recorder() -> RoomRecorder:
+    """The recorder the caller uses. Overridden in tests with a fake."""
+    from app.features.voice.recorder import build_room_recorder
+
+    return build_room_recorder()

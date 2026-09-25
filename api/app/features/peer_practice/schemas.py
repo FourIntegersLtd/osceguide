@@ -104,9 +104,8 @@ class JoinQueue(BaseModel):
 class QueueStatus(BaseModel):
     """Where someone stands, and what to do next.
 
-    `position` is why this is one call: b2c polls a status endpoint every three
-    seconds, and it should be able to answer "am I matched yet?" in one round
-    trip.
+    `position` is why this is one call: a polling client should be able to
+    answer "am I matched yet?" in one round trip.
     """
 
     entry_id: uuid.UUID

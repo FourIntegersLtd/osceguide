@@ -36,11 +36,7 @@ def _str(value: Any) -> str:
 def resolve_client_profile(record: Mapping[str, Any]) -> ClientProfile:
     """The profile for a stored voice session record (``client``, ``exam_code``, ``role``).
 
-    b2c read the exam from ``app_type``; here it is ``exam_code``, the name the
-    catalogue uses everywhere else. That translation happens once, here at the
-    edge, rather than being carried through the packs.
-
-    ``employer`` is still refused. There is no separate employer product on this
+    ``employer`` is refused: there is no separate employer product on this
     platform — the employer arm is B2B exam mode — so a session claiming that
     surface is a caller bug, not a pack that has not been written yet.
     """

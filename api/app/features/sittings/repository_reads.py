@@ -1,9 +1,7 @@
 """Read queries that span a sitting, its circuits and its slots.
 
-Split from `repository.py` by what the queries are for, not by length: these
-join across all three tables to answer one screen's question, while the
-functions next door load or change a single aggregate. Every org-scoped one
-still takes `org_id` first.
+These join across all three tables to answer one screen's question. Every
+org-scoped query takes `org_id` first.
 """
 
 from __future__ import annotations
@@ -25,11 +23,7 @@ async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
 async def circuits_for_supervisor(
     session: AsyncSession, org_id: uuid.UUID, supervisor_user_id: uuid.UUID
 ) -> list[tuple[Circuit, Sitting]]:
-    """The circuits this person is named on, with the sitting each belongs to.
-
-    One query: the supervisor's own screen listed every sitting and then read
-    each one to find out which circuits named them.
-    """
+    """The circuits this person is named on, with the sitting each belongs to."""
     stmt = (
         select(Circuit, Sitting)
         .join(Sitting, Sitting.id == Circuit.sitting_id)
@@ -57,9 +51,8 @@ async def slots_with_context_for_trainee(
 ) -> list[tuple[Slot, Circuit, Sitting]]:
     """Everything a trainee is rostered onto, across every organisation.
 
-    Not org-scoped, deliberately, and for the same reason `slots_for_trainee`
-    is not: a person may be taught by more than one institution, and the portal
-    that shows them "what is happening to me" is not inside one of them.
+    Not org-scoped, deliberately: a person may be taught by more than one
+    institution, and "what is happening to me" is not inside just one of them.
     """
     stmt = (
         select(Slot, Circuit, Sitting)
@@ -95,9 +88,8 @@ async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id
 async def sitting_has_begun(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> bool:
     """Whether any circuit on this sitting has been started.
 
-    One limited read rather than a load of the circuits: the edit route asks it
-    to decide what it may write, and a sitting with twelve circuits is exactly
-    the case where asking is expensive.
+    One limited read rather than loading every circuit, since the edit route
+    asks this on every write and a sitting can have a dozen circuits.
     """
     stmt = (
         select(Circuit.id)
@@ -114,9 +106,9 @@ async def sitting_has_begun(session: AsyncSession, org_id: uuid.UUID, sitting_id
 async def count_sitting_circuits(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> int:
     """How many circuits this sitting is composed of.
 
-    The edit route asks it about `mode` alone: the mode is what a circuit is
-    composed *from*, so once there is anything composed, changing it would leave
-    the composition describing something the sitting no longer says it is.
+    The edit route asks this for `mode` alone: once anything is composed,
+    changing the mode would leave that composition describing something the
+    sitting no longer says it is.
     """
     stmt = (
         select(func.count())
@@ -131,10 +123,9 @@ async def circuit_supervisor_for_slot(
 ) -> uuid.UUID | None:
     """The user named as supervisor of the circuit a slot belongs to.
 
-    Asked by `attempts`, which sits below this slice and cannot read the tables
-    itself — it reaches this through the seam in `composition.py`. It answers
-    nothing on its own: a caller must already hold a role that may run a circuit
-    in `org_id`, and being named here is what makes *this* attempt readable.
+    Answers nothing on its own: the caller must already hold a role that may
+    run a circuit in `org_id`, and being named here is what makes *this*
+    attempt readable to them.
     """
     stmt = (
         select(Circuit.supervisor_user_id)
@@ -150,9 +141,8 @@ async def circuit_station_ids(
 ) -> list[uuid.UUID]:
     """The stations this circuit runs, in position order.
 
-    What an append is allowed to aim at: b2b's dialog could name any station in
-    the organisation, and this one is the circuit's own list, so a latecomer
-    cannot be pointed at a station nobody here is sitting.
+    What an append may aim at: a latecomer cannot be pointed at a station this
+    circuit does not run.
     """
     stmt = (
         select(CircuitStation.station_version_id)
@@ -168,10 +158,9 @@ async def circuit_trainee_ids(
 ) -> list[uuid.UUID]:
     """Everyone already on this circuit, whether or not they have a slot yet.
 
-    The roster list and the slots are two rows apiece by design — a trainee is
-    attached to a circuit before the circuit is started and their first slot
-    exists — so "is this person already here" has to ask the roster list, which
-    is what b2b's duplicate refusal asked.
+    The roster and the slots are separate by design — a trainee is attached to
+    a circuit before their first slot exists — so "is this person already
+    here" has to ask the roster, not the slots.
     """
     stmt = (
         select(CircuitTrainee.trainee_id)

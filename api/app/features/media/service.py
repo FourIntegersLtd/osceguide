@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -145,16 +146,11 @@ async def list_catalog(
 ) -> tuple[list[MediaRead], str | None, int]:
     """A page of the catalogue, what comes after it, and how many items match.
 
-    `exam_code` and `search` are answered here rather than in the browser that
-    asked. Both used to be applied to pages a client had already pulled down —
-    the whole library, six pages of a hundred at a time, filtered in memory —
-    so "no matches" meant "not in the first six hundred" and a scoped list cost
-    the transfer of every exam's material. A code that names no published exam
-    is refused, the way `POST /media` refuses it, rather than quietly answering
-    with the free material alone.
+    `exam_code` and `search` are applied here, not by the browser. An exam
+    code that names no published exam is refused, the way `POST /media`
+    refuses it, rather than quietly answering with the free material alone.
 
-    The count is of everything the filters match, cursor aside, so a screen can
-    say how much there is rather than how much it was sent.
+    The count is of everything the filters match, cursor aside.
     """
     if kind:
         try:
@@ -219,3 +215,32 @@ async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
     if row is None:
         raise errors.ItemNotFound()
     return row
+
+
+# --- The body of a media item, as the AV production jobs need it.
+
+
+@dataclass(frozen=True)
+class ProductionItem:
+    id: uuid.UUID
+    kind: str
+    title: str
+    content: dict[str, Any]
+    exam_id: uuid.UUID | None
+
+
+async def production_item(session: AsyncSession, item_id: uuid.UUID) -> ProductionItem:
+    row = await repository.by_id(session, item_id)
+    if row is None:
+        raise errors.ItemNotFound()
+    return ProductionItem(
+        id=row.id,
+        kind=row.kind,
+        title=row.title,
+        content=dict(row.content or {}),
+        exam_id=row.exam_id,
+    )
+
+
+async def replace_content(session: AsyncSession, item_id: uuid.UUID, content: dict[str, Any]) -> None:
+    await repository.update_item(session, item_id, content=content)

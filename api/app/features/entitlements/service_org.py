@@ -1,10 +1,7 @@
 """An institution granting and withdrawing access.
 
-Split from `service.py`, which is the gate every attempt passes through; this
-is the other side of it, the grant an organisation makes. The README promised
-`POST /orgs/{slug}/entitlements` from the start and only `billing` ever
-called `grant`, so an institution's students had the consumer free trial and
-then a paywall.
+`service.py` is the gate every attempt passes through; this is the other side of it, the grant
+an organisation makes.
 """
 
 from __future__ import annotations

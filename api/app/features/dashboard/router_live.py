@@ -1,10 +1,5 @@
 """The exam-day board: what an organisation has running, right now.
 
-Its own module rather than another two routes on `router.py`, which is at the
-file cap. The split is not arbitrary: every other read model here answers "what
-does this person have", and this one answers "what is happening in this
-building this morning".
-
 `OrgStaff`, not `OrgReader`: the board names every candidate and how they are
 doing, which is not a thing a candidate may read about the people beside them.
 """

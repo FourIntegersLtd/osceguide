@@ -1,11 +1,8 @@
 """The shapes another slice may ask about sittings in, as plain dataclasses.
 
-The projections themselves live in `dashboard`; this is the part of them that
-only this slice can answer. A read model that reached into `sittings`' tables
-for a supervisor's circuits would become a second owner of them, and the tenant
-scoping would have two homes.
-
-The queries that fill these are in `service_reads.py`.
+The projections themselves live in `dashboard`; this is the part only this
+slice can answer, so the tenant scoping keeps one home rather than two. Filled
+by `service_reads.py`.
 """
 
 from __future__ import annotations

@@ -33,9 +33,8 @@ class StructuredCv(BaseModel):
 class CvUploadResult(BaseModel):
     """What an upload answers with, before the model has read it.
 
-    The row exists and is `processing`; the structured sections arrive later,
-    read back from the list. The message is the one the retiring backend
-    showed, because it sets the expectation that this is not instant.
+    The row exists and is `processing`; the structured sections arrive later, read back from the
+    list. The message sets the expectation that this is not instant.
     """
 
     id: uuid.UUID

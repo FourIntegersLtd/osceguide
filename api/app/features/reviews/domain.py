@@ -1,7 +1,6 @@
 """Human judgement about a slot, beside the machine's.
 
-Three kinds, which b2b keeps in one wide table discriminated by a column and
-with no foreign keys at all:
+Three kinds:
 
 - a **slot review**: a rubric filled in by staff, or by a peer observing;
 - a **GP-lead review**: a revisioned second opinion on a slot;
@@ -54,11 +53,10 @@ def normalize_status(value: str) -> str:
 
 
 def combine_rag(values: Sequence[str]) -> str | None:
-    """One rating from several.
+    """One rating from several: the worst wins.
 
-    The worst wins. Ported from b2b's tie-break, and worth keeping deliberately:
-    when two reviewers disagree about a candidate, the lower rating is the one
-    that should prompt a conversation.
+    When two reviewers disagree, the lower rating is the one that should
+    prompt a conversation.
     """
     if not values:
         return None
@@ -66,11 +64,7 @@ def combine_rag(values: Sequence[str]) -> str | None:
 
 
 def ensure_completable(*, scored: Collection[str], required: Collection[str], status: str) -> None:
-    """A completed review has every reviewable domain scored.
-
-    A half-marked review shown to a candidate is worse than one still openly in
-    progress, so this is refused rather than warned about.
-    """
+    """A completed review has every reviewable domain scored, or it is refused."""
     if normalize_status(status) != "completed":
         return
     if not required:
@@ -89,12 +83,7 @@ def next_revision(stored: int | None) -> int:
 
 
 def ensure_current(*, stored: int | None, presented: int) -> None:
-    """Optimistic concurrency for a GP-lead review.
-
-    Two reviewers can have the same screen open. Without this the second save
-    silently overwrites the first, and nobody finds out. A stored `None` is a
-    row predating the field, which b2b treats as revision zero and which must
-    stay writable.
-    """
+    """Optimistic concurrency for a GP-lead review: rejects a save based on a
+    stale revision. A stored `None` is treated as revision zero."""
     if (stored or 0) != presented:
         raise ReviewConflict("Someone else has changed this review since you opened it. Reload and reapply.")

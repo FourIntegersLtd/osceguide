@@ -1,8 +1,7 @@
 """Storage for what the platform console reads and writes about accounts.
 
-Split from `repository.py` at the file cap. Nothing here is scoped to a
-person or an organisation: these are the reads that cross every tenant at
-once, and the only callers are behind `PlatformAdmin`.
+Nothing here is scoped to a person or an organisation: these are the reads that cross
+every tenant at once, and the only callers are behind `PlatformAdmin`.
 """
 
 from __future__ import annotations

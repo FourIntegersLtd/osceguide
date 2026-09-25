@@ -1,10 +1,7 @@
 """Who may do what, and in which organisation.
 
-Pure rules: no database, no HTTP, no session. Every predicate here is ported
-from the legacy b2b policy, which is the current production behaviour and is
-correct — `tests/unit/test_tenancy_domain.py` carries its assertions as the
-oracle. The rules live here rather than in route handlers so they can be read
-in one place and tested without a container.
+Pure rules: no database, no HTTP, no session. `tests/unit/test_tenancy_domain.py` carries
+the assertions as the oracle.
 """
 
 from __future__ import annotations
@@ -29,6 +26,28 @@ END_USER_ROLES = frozenset({"trainee", "practice_user"})
 
 ASSIGNED_STAFF_ROLE = "supervisor"
 
+# Every role that may legitimately be written to a membership row. A role
+# outside this set is not a permission the product has — it is a typo or an
+# attempt to invent one — and is refused rather than stored. `platform_admin`
+# is deliberately absent: it is a property of the user, never an org role.
+GRANTABLE_ROLES = ORG_ADMIN_ROLES | END_USER_ROLES | {ASSIGNED_STAFF_ROLE}
+
+# How far a role reaches, so a grant can be checked against the granter's own
+# standing. An org admin may seat people at or below their own tier and no
+# higher: without this a `partner_admin` (which must never run an examination)
+# could hand itself `institution_admin` and sign off results. `owner` sits
+# above the examination tier so that granting `owner`/`institution_admin` is
+# reserved to those who already hold it.
+_ROLE_RANK: dict[str, int] = {
+    "owner": 4,
+    "admin": 3,
+    "institution_admin": 3,
+    "partner_admin": 2,
+    ASSIGNED_STAFF_ROLE: 1,
+    "trainee": 0,
+    "practice_user": 0,
+}
+
 # Organisation statuses that permit signing in. A suspended or churned tenant
 # keeps its data and loses its access.
 ACTIVE_ORG_STATUSES = frozenset({"trial", "active"})
@@ -36,6 +55,28 @@ ACTIVE_ORG_STATUSES = frozenset({"trial", "active"})
 
 def normalize_role(role: str | None) -> str:
     return str(role or "").strip().lower()
+
+
+def is_known_role(role: str | None) -> bool:
+    """Whether a role string is one the product actually defines."""
+    return normalize_role(role) in GRANTABLE_ROLES
+
+
+def role_rank(role: str | None) -> int:
+    """How far a role reaches. An unknown role reaches nothing."""
+    return _ROLE_RANK.get(normalize_role(role), -1)
+
+
+def may_grant_role(actor_role: str | None, target_role: str | None) -> bool:
+    """Whether an org admin at `actor_role` may seat someone at `target_role`.
+
+    Allowed only when the target is a known role at or below the granter's own tier — this
+    stops a `partner_admin` from minting `institution_admin` or `owner`. Platform admins do
+    not pass through here; they are checked by the caller.
+    """
+    if not is_known_role(target_role):
+        return False
+    return role_rank(actor_role) >= role_rank(target_role)
 
 
 def is_org_admin(role: str | None) -> bool:
@@ -62,11 +103,9 @@ def may_read_org(role: str | None) -> bool:
 def may_run_circuit(role: str | None) -> bool:
     """Who may start, advance and override a live examination.
 
-    Deliberately not `may_read_org`, which is what every run route used to
-    take: that predicate includes trainees, so a candidate could start, switch
-    and end the circuit they were sitting. Running one is a staff act — an org
-    admin, or the supervisor assigned to it — and "examiner" is a label for the
-    same `supervisor` role rather than a role of its own.
+    Deliberately not `may_read_org`, which includes trainees — a candidate must not be able
+    to start, switch or end the circuit they are sitting. "examiner" is a label for the same
+    `supervisor` role rather than a role of its own.
     """
     return is_org_admin(role) or is_assigned_staff(role)
 

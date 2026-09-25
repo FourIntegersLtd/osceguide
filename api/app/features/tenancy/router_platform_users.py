@@ -1,10 +1,4 @@
-"""The platform console's account routes. Every one of them is `PlatformAdmin`.
-
-Split from `router_platform.py` at the file cap: that file is the
-organisations, this is the people. The access rule is the same and so is the
-reason for a file of its own — "who can call this?" is answered by where the
-route lives.
-"""
+"""The platform console's account routes. Every one of them is `PlatformAdmin`."""
 
 from __future__ import annotations
 

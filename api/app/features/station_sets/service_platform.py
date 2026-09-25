@@ -1,10 +1,8 @@
-"""One person's station progress as the console sees it, and the two things
-the old console could do to it: reset the attempt counter, and delete the
+"""One person's station progress as the console sees it: reset the attempt counter, or delete the
 station's progress outright.
 
-This slice is the home because the counter is its entry's, and it sits above
-`attempts` (the records) and `stations` (the titles). Every write leaves an
-audit row with no organisation, like every other platform act.
+The counter belongs to the set entry, which is why this lives here rather than in `attempts` or
+`stations`. Every write leaves an audit row with no organisation, like every other platform act.
 """
 
 from __future__ import annotations
@@ -15,10 +13,10 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
-from app.features.attempts import service_platform_progress as attempts
+from app.features.attempts import service_platform as attempts
 from app.features.identity import service as identity
 from app.features.station_sets import errors, repository
-from app.features.station_sets.schemas_platform import StationProgressChange, StationProgressRead
+from app.features.station_sets.schemas import StationProgressChange, StationProgressRead
 from app.features.stations import service_platform_reads as stations
 from app.features.stations.service_platform_reads import StationVersions
 from app.features.tenancy import service_audit

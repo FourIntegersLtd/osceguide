@@ -37,15 +37,10 @@ async def save_draft(
     expected_revision: int,
     actor_id: uuid.UUID,
 ) -> DecisionRead:
-    """Record a decision without committing to it.
+    """Record a decision without committing to it: a new revision, not an edit.
 
-    A new revision rather than an edit: the table is append-only, so the history
-    of what was considered survives.
-
-    `expected_revision` is what makes a *draft* safe to write from two screens at
-    once. Being append-only meant a stale save looked harmless — nothing was
-    deleted — while the author kept editing a rationale that had already been
-    superseded, and the revision that went to sign-off was whoever typed last.
+    `expected_revision` guards a draft against two screens saving from the same
+    read; a stale save is refused rather than silently superseding a newer one.
     """
     # Before anything is written: the foreign key would catch a bad id, but as
     # an unhandled integrity error rather than a refusal the caller can read.
@@ -149,10 +144,9 @@ async def release(
     The evidence is re-checked: a station re-marked between sign-off and release
     would otherwise send someone an outcome nobody approved.
 
-    The recipient is looked up here rather than passed in. The router used to
-    supply `principal.email`, so every release notified the administrator who
-    pressed the button and never the candidate — a bug invisible from the
-    response, because the release itself succeeded.
+    The recipient is looked up here rather than passed in — the router previously
+    supplied `principal.email`, so every release notified the administrator who
+    pressed the button and never the candidate.
     """
     latest = await _require(session, org_id, sitting_id, trainee_id)
     try:

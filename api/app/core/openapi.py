@@ -100,14 +100,13 @@ def document_shared_auth_errors(app: FastAPI) -> None:
     """Declare the codes that shared auth dependencies raise, on the routes that use them.
 
     `organization_suspended` comes from `require_org`, not from any slice's
-    service, so no route lists it in its own `error_responses(...)`. Adding it
-    by hand to fifty org-scoped routes would drift the first time somebody
-    wrote a new one; deriving it from the dependency each route actually uses
-    means a new org route is covered the day it is written.
+    service, so no route lists it in its own `error_responses(...)`. Derived
+    from the dependency each route actually uses, so a new org route is
+    covered the day it is written rather than needing fifty routes updated
+    by hand.
 
-    Written onto `route.responses` rather than into the finished document, so
-    the OpenAPI schema and `tests/support/declared_codes.py` — which reads the
-    route — agree. They disagreed when this lived in the document alone.
+    Written onto `route.responses`, not the finished document, so it and
+    `tests/support/declared_codes.py` — which reads the route — agree.
     """
     from app.core.errors import ErrorResponse  # noqa: PLC0415 - avoids an import cycle
 
@@ -124,10 +123,10 @@ def document_shared_auth_errors(app: FastAPI) -> None:
 def install_error_catalogue(app: FastAPI) -> None:
     """Publish the error-code enum into `ErrorResponse` as the document is built.
 
-    Done by wrapping `app.openapi` rather than annotating the model, because
-    the codes live on `AppError` subclasses across every slice and those are
-    not imported when `core.errors` defines the model. By the time a document
-    is asked for, every router — and so every slice's `errors.py` — is loaded.
+    Wraps `app.openapi` rather than annotating the model, because the codes
+    live on `AppError` subclasses across every slice, not yet imported when
+    `core.errors` defines the model — but loaded by the time a document is
+    asked for.
     """
     build = app.openapi
 
@@ -155,11 +154,11 @@ def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[
     sequence of frames, not one object — so without this the generated client
     types it as nothing at all. Naming the frame's schema here keeps the
     contract: a `snapshot` frame's `data` is exactly the model the equivalent
-    `GET` returns, and the client can decode it with the same type.
+    `GET` returns.
 
-    The `$ref` resolves because every streamed model is also the response model
-    of that `GET`; a stream with no polling equivalent would need its schema
-    registered another way, and should probably not exist.
+    The `$ref` resolves because every streamed model is also that `GET`'s
+    response model; a stream with no polling equivalent should probably not
+    exist.
     """
     from app.core.errors import error_responses  # noqa: PLC0415 - avoids an import cycle
 

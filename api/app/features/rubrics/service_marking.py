@@ -5,9 +5,6 @@ engine wants it — a framework, its prompt, its clock — so the caller can fre
 that onto an attempt and mark it later without reading a row that may since
 have changed. Re-marking an attempt a year from now then uses the wording it
 was assessed against rather than whatever the rubric says today.
-
-Split from `service.py` along the same line the slice is split on: that module
-is about writing a rubric, this one is about using one.
 """
 
 from __future__ import annotations

@@ -17,7 +17,7 @@ Include the LiveKit worker as an actor where it calls the API. Nouns that recur 
 
 ## 2. Guard tests (`tests/guards/`)
 
-Write down what this slice must never do, as a scan that fails with the file name and the offending token, plus a meta-test that plants a violation and proves the scan catches it. The platform-wide guards already cover: core never imports features, SQL only in repositories, only `core/db.py` controls transactions, routers import only their own `schemas`/`service`/`errors`, a slice reaches another only through its `service*`/`schemas`/`errors`/`jobs`, every `bind_*` seam is tied by `main.py` and filled in a built app, org-scoped repository methods take `org_id` first, no legacy vocabulary, worker routes guarded, every route has a response model (or, for a `text/event-stream` route, a declared frame schema) and documented errors, README headings and a 250-line file cap. Add a slice-specific guard only when the slice has a rule of its own (for example: the assistant content resolver never branches on exam outside the overlay registry).
+Write down what this slice must never do, as a scan that fails with the file name and the offending token, plus a meta-test that plants a violation and proves the scan catches it. The platform-wide guards already cover: core never imports features, SQL only in repositories, only `core/db.py` controls transactions, routers import only their own `schemas`/`service`/`errors`, a slice reaches another only through its `service*`/`schemas`/`errors`/`jobs`, every core `bind_*` seam is tied by `composition.py` and filled in a built app, org-scoped repository methods take `org_id` first, no legacy vocabulary, worker routes guarded, every route has a response model (or, for a `text/event-stream` route, a declared frame schema) and documented errors, and README headings. There is no file-length cap: split a file by responsibility, and merge micro-files when you touch them. Add a slice-specific guard only when the slice has a rule of its own (for example: the assistant content resolver never branches on exam outside the overlay registry).
 
 ## 3. Contract tests (`tests/http/`, `tests/contract/`)
 
@@ -59,7 +59,7 @@ Write repository tests first: constraints that must hold, the lock that prevents
 ## Cross-slice rules
 
 - Slice A may call slice B's **service**, never its repository, domain or models. Guarded by `tests/guards/test_slices_call_services_only.py`; if B's service has no function for what you need, that missing function is the point.
-- Dependencies point downward only, in the order listed in `pyproject.toml`. If you need to go upward, you have found a missing concept; discuss it before adding an import.
+- There is no slice order: any slice may call any other slice's service. If two services would import each other at module load, import one inside the function that needs it.
 - `app/core` never imports `app/features`.
 - New external dependency: add a Protocol to `app/core/ports.py` and a fake to `tests/support/fakes.py` in the same commit. Never `patch("module.attribute")`.
 

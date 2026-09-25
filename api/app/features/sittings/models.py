@@ -93,11 +93,8 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps):
 
 
 class CircuitStation(Base, UUIDPrimaryKey):
-    """Replaces b2b's `station_refs jsonb`.
-
-    A real row per station, so a station cannot be deleted out from under a
-    circuit and "which circuits use this station?" is a query.
-    """
+    """A real row per station, so a station cannot be deleted out from under a
+    circuit and "which circuits use this station?" is a query."""
 
     __tablename__ = "circuit_stations"
     __table_args__ = (
@@ -114,7 +111,7 @@ class CircuitStation(Base, UUIDPrimaryKey):
 
 
 class CircuitTrainee(Base, UUIDPrimaryKey):
-    """Replaces b2b's `trainee_ids text[]`."""
+    """One trainee's membership of a circuit, before or after they have a slot."""
 
     __tablename__ = "circuit_trainees"
     __table_args__ = (
@@ -159,8 +156,7 @@ class Slot(Base, UUIDPrimaryKey, Timestamps):
         ForeignKey("station_versions.id", ondelete="RESTRICT"), nullable=False
     )
     # scheduled → reading → in_consultation → completed, or skipped if the
-    # circuit moved past it. Written by nothing until the orchestrator existed,
-    # while four read models displayed it.
+    # circuit moved past it.
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'scheduled'"))
     room_name: Mapped[str | None] = mapped_column(String(200))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -172,9 +168,7 @@ class CircuitIntervention(Base, UUIDPrimaryKey):
     """What a human did to a running examination, and why.
 
     Append-only, and no `updated_at`: an intervention is a fact about a moment,
-    not a row anybody edits. When a candidate says their station went wrong,
-    the question is what was done to it and by whom — and before this the
-    answer was nowhere.
+    not a row anybody edits.
     """
 
     __tablename__ = "circuit_interventions"

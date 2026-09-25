@@ -1,13 +1,10 @@
-"""Using an exam: resolving one, and handing another slice a reference to it.
+"""Resolving an exam, and handing other slices a reference to it.
 
 Writing one lives in `service_authoring`; offering one as a programme lives in
-`service_programmes`. Nine slices import `resolve_exam` from here, which is why
-the reading half kept the module name.
+`service_programmes`.
 
-An exam has an owner. The platform's exams are the consumer catalogue, visible
-to everyone. An institution's are its own, visible to it alone, which is why
-every read here takes the caller's scope: `org_id=None` means the consumer
-catalogue, and a school's private exam can never be named from outside it.
+`org_id` scopes every read here: `None` means the consumer catalogue; an
+institution's exams are visible only to itself.
 """
 
 from __future__ import annotations
@@ -40,16 +37,12 @@ async def exam_row(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
 async def resolve_exam(session: AsyncSession, code: str, *, org_id: uuid.UUID | None = None) -> Exam:
     """Look a published exam up by code, refusing anything else.
 
-    Never defaulted. b2c fell back to `sca` for an unrecognised `app_type`,
-    which is how CASC transcripts came to be marked with a GP rubric prompt.
+    Never defaulted: b2c once fell back to `sca` for an unrecognised `app_type`,
+    which marked CASC transcripts against a GP rubric prompt.
 
-    A draft or retired exam is refused here as firmly as one that does not
-    exist: this is what programmes, entitlements, stations and plans are built
-    on, and none of them should be able to name an exam nobody can sit.
-
-    `org_id` is the caller's scope. An institution resolves its own exams and
-    the platform catalogue; a consumer caller (`None`) resolves the catalogue
-    only, so one school's private exam code can never be named from outside it.
+    A draft or retired exam is refused as firmly as one that does not exist.
+    `org_id` is the caller's scope: an institution resolves its own exams plus
+    the platform catalogue; `None` resolves the catalogue only.
     """
     try:
         normalised = domain.normalise_code(code)
@@ -83,27 +76,17 @@ def exam_read(exam: Exam) -> ExamRead:
 
 
 def _framework_id(exam: Exam) -> str:
-    """The id everything downstream records a result under.
-
-    It is the rubric version's own id, so a stored result traces back to the
-    exact wording it was marked against. It used to be a string column on the
-    exam (`sca-rcgp-v1`), which named a framework the engine shipped and could
-    not be changed without a release.
-    """
+    """The id a stored result records against: the rubric version's own id, so
+    it traces back to the exact wording it was marked against."""
     return str(exam.rubric_version_id) if exam.rubric_version_id else ""
 
 
 async def exam_for_attempt(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
-    """The exam row an attempt was created against.
+    """The exam row an attempt was created against, by id with no status check.
 
-    By id and with no status check, deliberately: an attempt sat last year
-    against an exam that has since been retired must still render and still
-    mark. `resolve_exam` is the one that refuses anything unpublished, because
-    that is the path new things are built on.
-
-    Returns the row rather than a field, because rendering needs its code, its
-    rubric and its timings together and there is no reason to read it three
-    times.
+    An attempt against a since-retired exam must still render and mark;
+    `resolve_exam` is the one that refuses anything unpublished. Returns the
+    full row because rendering needs its code, rubric and timings together.
     """
     exam = await repository.exam_by_id(session, exam_id)
     if exam is None:
@@ -112,23 +95,15 @@ async def exam_for_attempt(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
 
 
 async def exam_codes_by_id(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, str]:
-    """Codes for a set of exam ids, in one query.
-
-    Every list of stations, attempts or entitlements shows an exam code beside
-    each row, and each of them resolved it one row at a time.
-    """
+    """Codes for a set of exam ids, in one query rather than one per row."""
     rows = await repository.exams_by_ids(session, list(exam_ids))
     return {row.id: row.code for row in rows}
 
 
 @dataclass(frozen=True)
 class ExamRef:
-    """An exam, as another slice may see one.
-
-    Not the mapped row: those stay inside this slice, and a caller that holds
-    one can lazily load whatever it is attached to. Carries the fields other
-    slices actually use — the code they display and the limits they enforce.
-    """
+    """An exam as another slice sees it: plain fields, not the mapped row, so a
+    caller cannot lazily load attributes that stay inside this slice."""
 
     id: uuid.UUID
     code: str
@@ -159,12 +134,7 @@ def _exam_ref(exam: Exam) -> ExamRef:
 
 
 async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | None:
-    """The code of one exam, for a row that stores an exam id.
-
-    Nine slices needed this and each reached into this slice's repository for
-    it, which put nine callers behind a table only this slice owns. None of
-    them wanted an `Exam`; they all wanted the four letters on the screen.
-    """
+    """The code of one exam, for a row that stores only its id."""
     exam = await repository.exam_by_id(session, exam_id)
     return None if exam is None else exam.code
 

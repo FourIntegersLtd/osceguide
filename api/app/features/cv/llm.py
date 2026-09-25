@@ -15,8 +15,8 @@ from app.features.cv.schemas import StructuredCv
 
 log = get_logger(__name__)
 
-# The retiring backend's model for this. A CV is a short, well-structured
-# document; the small model reads it as well as a large one and costs less.
+# A CV is a short, well-structured document; the small model reads it as well
+# as a large one and costs less.
 CV_MODEL = "gpt-4o-mini"
 PARSE_TIMEOUT_SEC = 240
 

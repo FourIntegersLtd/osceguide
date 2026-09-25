@@ -1,10 +1,6 @@
-"""What an administrator changes about somebody already on the roster.
+"""What an administrator changes about somebody already on the roster:
 
-Split from `service.py` by the row's own story: that module brings a person
-onto the roster, this one deals with the entry afterwards — correcting the
-name or the intake it was written with, and re-sending the invitation that
-never reached them. Both are per-row actions on the same screen, and neither
-is the act of rostering somebody.
+correcting the name or intake, and re-sending an invitation that never reached them.
 """
 
 from __future__ import annotations
@@ -40,10 +36,8 @@ async def update_trainee(
 ) -> TraineeRead:
     """Correct a roster entry: only the fields the caller actually sent.
 
-    The address is not one of them. It is what identifies the entry inside the
-    organisation and what the account link was made against, so changing it is
-    re-pointing a person's results rather than fixing a typo — which is also
-    what the legacy edit screen refused to offer.
+    The address is not one of them — it identifies the entry and is what the
+    account link was made against, so changing it would re-point a person's results.
     """
     await _require_trainee(session, org_id, trainee_id)
     named = set(_FIELDS) & fields_sent
@@ -70,20 +64,12 @@ async def update_trainee(
 async def delete_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> None:
     """Remove a roster row nobody ever examined.
 
-    Revoking access is what this product uses everywhere else — it is
-    reversible, and a candidate's decision history is meant to outlive their
-    standing on a roster. This exists for the row that never got that far: a
-    trainee added by mistake, or one who left before a circuit ever ran, where
-    there is no decision for `trainee_in_use` to be protecting.
+    Revoking access, not deletion, is used everywhere else since a candidate's
+    decision history must outlive their roster standing. This is for a row that
+    never reached a decision, e.g. added by mistake. The database's `RESTRICT` on
+    `candidate_result_revisions.trainee_id` is the check; see `errors.TraineeInUse`.
 
-    `roster` sits below `results` in the layer contract (`pyproject.toml`'s
-    `import-linter` config) and cannot ask "does this trainee have a
-    decision" itself, the same limit `catalog.delete_exam` hit — see
-    `errors.TraineeInUse`. The database's `RESTRICT` on
-    `candidate_result_revisions.trainee_id` is the check, caught here.
-
-    Group and cohort membership cascade away with the row (`ondelete=CASCADE`
-    on both) — that is bookkeeping the trainee owned, not a record about them.
+    Group and cohort membership cascade away with the row (`ondelete=CASCADE`).
     """
     await _require_trainee(session, org_id, trainee_id)
     try:
@@ -95,15 +81,12 @@ async def delete_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: u
 async def anonymise_trainee(
     session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, actor: Principal, now: datetime
 ) -> TraineeRead:
-    """GDPR erasure for a row `delete_trainee` refuses: scrub the person, keep
-    the record of what was decided about them.
+    """GDPR erasure for a row `delete_trainee` refuses: scrub the person, keep the
+    record of what was decided about them.
 
-    Unlike `delete_trainee`, this is offered regardless of whether a decision
-    exists — it never destroys anything, only the address and name that name
-    the person, so there is nothing for a `RESTRICT` to protect it from.
-    Idempotent: anonymising an already-anonymised row is a no-op that still
-    answers 200, the same shape the station-flags idempotency uses, so a
-    retried request is not a second audit row for the same act.
+    Offered regardless of whether a decision exists, since it only scrubs the
+    address and name, not the decision. Idempotent: re-anonymising an already
+    scrubbed row is a no-op that still answers 200, not a second audit row.
     """
     row = await _require_trainee(session, org_id, trainee_id)
     if row.anonymised_at is None:
@@ -128,17 +111,9 @@ async def resend_invitation(
 ) -> InvitationRead:
     """Send the choose-a-password link to this person again.
 
-    An institution rosters by address long before the person signs in, and the
-    one email it sends can be lost — with nothing to press and say "send it
-    again", so the candidate sits unexamined while the organisation believes it
-    told them.
-
-    The link in that first email cannot be repeated, only replaced: the token
-    is stored hashed, which is what makes it worthless to anyone who intercepts
-    the message, including us. `identity` mints a fresh one on the same path.
-
-    A row whose account link is empty — as the migration leaves them — is
-    invited rather than refused, because for that person this is the first
+    The original token is stored hashed and so cannot be re-sent, only replaced;
+    `identity` mints a fresh one on the same path. A row with no linked account is
+    invited rather than refused, since for that person this is the first
     invitation as much as the second.
     """
     row = await _require_trainee(session, org_id, trainee_id)

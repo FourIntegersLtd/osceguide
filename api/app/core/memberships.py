@@ -1,10 +1,9 @@
 """Wiring for the membership port.
 
-`identity` needs a user's memberships to stamp a token, and sits below
-`tenancy`, which owns them. This module holds the seam: a dependency that
-raises until `main.py` binds the real implementation, so a missing wire fails
-loudly at the first request rather than silently issuing tokens with no
-memberships — which would look like a permissions bug, not a wiring bug.
+`identity` needs a user's memberships to stamp a token; `tenancy` owns them.
+This module holds the seam: a dependency that raises until `main.py` binds
+the real implementation, so a missing wire fails loudly at the first request
+rather than silently issuing tokens with no memberships.
 """
 
 from __future__ import annotations

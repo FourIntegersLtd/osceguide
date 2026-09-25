@@ -1,15 +1,12 @@
 """Putting the patient into the room, and taking it out again.
 
-The two moments that make a station a recording. They are separated from the
-phase mechanics next door because they are the only part of running a circuit
-that reaches outside this database: everything else here is a row, and these
-two are a conversation with LiveKit and with the worker that answers as the
-patient.
+The two moments that make a station a recording — a conversation with LiveKit
+and the worker that answers as the patient.
 
 Removing the agent is how a consultation ends. The worker has no timer of its
 own — it ends on the candidate leaving, the room closing, or being removed —
-and on its way out it posts the full transcript, which is what queues the
-marking. So "the bell goes" and "the recording is delivered" are the same act.
+and on its way out it posts the full transcript, which queues the marking. So
+"the bell goes" and "the recording is delivered" are the same act.
 """
 
 from __future__ import annotations
@@ -39,13 +36,11 @@ async def dispatch_patient(
 ) -> tuple[uuid.UUID, str, int]:
     """Create the recording and put the patient into the room.
 
-    Each dispatch creates a new attempt. b2b reused the slot's single
-    transcript column, so re-dispatching a station overwrote the first
-    recording; here the previous attempt is failed and the new one sits beside
-    it, and both survive.
+    Each dispatch creates a new attempt: the previous one is failed rather
+    than overwritten, so a re-dispatch keeps the first recording rather than
+    losing it.
 
-    Returns `(attempt_id, agent_name, stale_agents_removed)`, which the
-    "send the patient in again" override reports back.
+    Returns `(attempt_id, agent_name, stale_agents_removed)`.
     """
     room = circuit.room_name
     if not room:

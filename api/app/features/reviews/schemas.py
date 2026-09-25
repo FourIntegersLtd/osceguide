@@ -21,11 +21,8 @@ class SlotReviewRead(BaseModel):
 class SlotRagSummary(BaseModel):
     """What several reviewers of one slot agreed, or did not.
 
-    The worst rating wins per domain, which is b2b's tie-break and worth
-    keeping: when two reviewers disagree about a candidate, the lower rating is
-    the one that should prompt a conversation. Computed here rather than in the
-    browser so a supervisor's screen, a released result and an export cannot
-    each arrive at a different answer.
+    The worst rating wins per domain: when reviewers disagree, the lower
+    rating is the one that should prompt a conversation.
     """
 
     slot_id: uuid.UUID

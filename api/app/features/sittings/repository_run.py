@@ -1,9 +1,8 @@
 """Storage for a circuit while it is running, and for what was done to it.
 
-Split from `repository.py` by what the queries are for: these serve the
-orchestrator and the exam-day board, which ask questions no other caller asks —
-"which circuits are overdue a transition", "which have been live all night".
-Two of them are deliberately not org-scoped, and say so.
+Serves the orchestrator and the exam-day board — "which circuits are overdue
+a transition", "which have been live all night". Two queries are deliberately
+not org-scoped, and say so.
 """
 
 from __future__ import annotations
@@ -91,9 +90,8 @@ async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_second
 async def stale_circuits(session: AsyncSession, *, started_before: datetime) -> list[DueCircuit]:
     """Circuits left running long after anybody went home.
 
-    The reaper the slice README has promised since it was written: b2b ends
-    circuits live for twelve hours, and without it a morning nobody closed
-    keeps a room open and a candidate's portal offering a join button forever.
+    Without this, a morning nobody closed keeps a room open and a candidate's
+    portal offering a join button forever.
     """
     stmt = select(Circuit.org_id, Circuit.id, Circuit.phase_seq).where(
         _live(), Circuit.started_at < started_before

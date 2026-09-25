@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.features.attempts.schemas_coverage import CoverageRead as CoverageRead
-from app.features.attempts.schemas_roleplay import PatientRoleplayRead as PatientRoleplayRead
+from app.features.attempts.schemas_material import PatientReviewRead
 
 
 class TranscriptMessageIn(BaseModel):
@@ -96,21 +95,44 @@ class AttemptRead(BaseModel):
 class CreateAttempt(BaseModel):
     """What a client may ask for directly.
 
-    Deliberately narrower than `attempts.create_attempt`. The other kinds are
-    *about* something a different slice owns — a slot, a set entry, a peer
-    pairing, an earlier attempt — and `attempts` sits below all of them in the
-    layer order, so it cannot check that the caller owns the thing they named.
-
-    This route used to take every one of those ids straight from the body and
-    store them unverified, which let anyone attach their attempt to another
-    organisation's exam slot or another person's set entry. Each of those
-    kinds has its own route, on the slice that can do the checking:
-    `POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set
-    station and its debrief, and the circuit itself for an exam slot (ADR
-    0018). `room_name` is likewise not the client's to choose — `voice`
-    derives it from the attempt.
+    Deliberately narrower than `attempts.create_attempt`. The other kinds are *about* something a
+    different feature owns — a slot, a set entry, a peer pairing, an earlier attempt. Taking those ids
+    straight from the body unverified once let a caller attach their attempt to another organisation's
+    exam slot or another person's set entry, so each of those kinds instead has its own route that
+    checks ownership: `POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set station
+    and its debrief, and the circuit itself for an exam slot (ADR 0018). `room_name` is likewise not
+    the client's to choose — `voice` derives it from the attempt.
     """
 
     kind: str = Field(pattern="^(practice|self_practice)$")
     exam_code: str = Field(min_length=1, max_length=32)
     station_version_id: uuid.UUID | None = None
+
+
+# --- Actor material available to the owner after a consultation finishes.
+
+
+class PatientRoleplayRead(PatientReviewRead):
+    opening_sentence: str | None = None
+    expanded_history: str | None = None
+    persona: str | None = None
+    family_social_history: list[str] = Field(default_factory=list)
+    past_med_history_allergies: list[str] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+
+
+# --- Live coverage of an attempt.
+
+
+class CoverageItemRead(BaseModel):
+    competency_id: str
+    label: str
+    state: Literal["partial", "covered"]
+    quote: str
+    seq: int
+
+
+class CoverageRead(BaseModel):
+    supported: bool
+    items: list[CoverageItemRead] = Field(default_factory=list)
+    last_seq: int = -1

@@ -7,7 +7,7 @@ import openai
 import pytest
 
 from app.features.assistant import service_knowledge as service
-from app.features.assistant.schemas_help import KnowledgeChat
+from app.features.assistant.schemas import KnowledgeChat
 
 
 @pytest.mark.asyncio

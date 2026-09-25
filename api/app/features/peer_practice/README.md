@@ -102,7 +102,7 @@ The procrastinate worker must be running for matching, expiry and
 transcription.
 
 ## Cross-slice dependencies
-Calls `catalog` to resolve an exam, `voice.service_recording` for the room
+Calls `catalog` to resolve an exam, `voice.service` for the room
 recorder, `media_production.service_storage` for the object store, and
 `attempts.service_offline` to turn a finished transcript into a marked attempt.
 Each of those is a named function on a service, which is the only door a slice

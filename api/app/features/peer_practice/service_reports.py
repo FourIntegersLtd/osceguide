@@ -17,9 +17,9 @@ async def report_abuse(
 ) -> None:
     """A safety report, emailed to support rather than only logged.
 
-    The retiring backend sent exactly this to a support inbox; a report that
-    only reaches the server log is one nobody reads until somebody goes
-    looking, which is not what "report" means to the person who filed it.
+    A report that only reaches the server log is one nobody reads until
+    somebody goes looking, which is not what "report" means to the person
+    who filed it.
     """
     row = await repository_sessions.session_by_id(session, session_id)
     if row is None or reporter_id not in {row.doctor_user_id, row.patient_user_id}:

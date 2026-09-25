@@ -1,13 +1,10 @@
-"""How a sitting's candidates compare.
+"""How a sitting's candidates compare — what a GP lead opens after an examination to
+decide who to review first.
 
-Ported from b2b's `cohort-summary`, which is what a GP lead opens after an
-examination to decide who to review first. The arithmetic belongs to `reviews`
-(ported from `cohort_scoring.py`) and is asked for through its service; this
-module assembles the ranking and nothing more.
-
-Ranking is **completion before score**, which is the legacy rule and the right
-one: a candidate who sat three of five stations has a problem nobody has looked
-at, and a candidate who scored badly has at least been assessed.
+The arithmetic belongs to `reviews` and is asked for through its service; this module
+assembles the ranking and nothing more. Ranking is **completion before score**: a
+candidate who sat three of five stations has a problem nobody has looked at, and a
+candidate who scored badly has at least been assessed.
 """
 
 from __future__ import annotations

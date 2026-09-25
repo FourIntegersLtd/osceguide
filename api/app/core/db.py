@@ -53,10 +53,9 @@ class Timestamps:
 def include_name(name: str | None, _type: str, _parent: object) -> bool:
     """Hide the job queue from autogenerate.
 
-    procrastinate ships its own schema and migration 0001 applies it verbatim,
-    so its tables are never in `Base.metadata`. Without this filter autogenerate
-    reads them as orphans and writes `drop_table` for every one, which would
-    take the queue with it the first time anyone adds a slice.
+    procrastinate ships its own schema, applied verbatim by migration 0001, so
+    its tables are never in `Base.metadata`. Without this filter autogenerate
+    reads them as orphans and writes `drop_table` for every one.
     """
     return not (name and name.startswith("procrastinate"))
 
@@ -75,8 +74,8 @@ AUTOGENERATE_FILTERS: dict[str, object] = {
 def sqlalchemy_url(url: str) -> str:
     """Normalise any Postgres URL to the async psycopg driver.
 
-    Railway and Supabase hand out `postgres://` or `postgresql://`; SQLAlchemy
-    needs the driver spelled out.
+    Railway and Supabase hand out `postgres://` or `postgresql://`;
+    SQLAlchemy needs the driver spelled out.
     """
     for prefix in ("postgresql+psycopg://", "postgresql+asyncpg://", "postgresql://", "postgres://"):
         if url.startswith(prefix):
@@ -125,8 +124,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     """Request-scoped unit of work: commit on success, roll back on error.
 
     The exception is an `AppError` marked `persist_effects`, which commits and
-    then still fails the request. That exists for security effects which must
-    outlive the rejection that triggered them — see `AppError.persist_effects`.
+    still fails the request — see `AppError.persist_effects`.
     """
     from app.core.errors import AppError  # noqa: PLC0415 - avoids an import cycle
     from app.core.events import flush_pending  # noqa: PLC0415 - avoids an import cycle
@@ -159,9 +157,8 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 async def job_session() -> AsyncIterator[AsyncSession]:
     """A unit of work for background tasks.
 
-    The request dependency cannot serve here: a task has no request. Same rule
-    though — commit on success, roll back on error — and it lives in this module
-    so transaction control stays in one place.
+    The request dependency cannot serve here: a task has no request. Same
+    rule though — commit on success, roll back on error.
     """
     from app.core.events import flush_pending  # noqa: PLC0415 - avoids an import cycle
 
@@ -177,9 +174,8 @@ async def stream_session() -> AsyncIterator[AsyncSession]:
 
     A server-sent event stream cannot take the request session: that
     transaction would stay open for the life of the connection, holding a
-    connection out of the pool and a snapshot of the database open against
-    vacuum for as long as a supervisor leaves the tab open. So each snapshot
-    opens its own short transaction and closes it.
+    connection out of the pool and a snapshot open against vacuum for as long
+    as a tab stays open. So each snapshot opens its own short transaction.
     """
     factory = get_session_factory()
     async with factory() as session, session.begin():
@@ -192,10 +188,9 @@ SessionOpener = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 def get_session_opener() -> SessionOpener:
     """How a stream opens each of its short transactions.
 
-    A dependency rather than a direct call so a test can hand a stream its own
-    transaction, the same way it overrides a clock or a port. Everything a
-    stream reads must be visible to it, and a test's rows live in an
-    uncommitted transaction that a separately-opened connection cannot see.
+    A dependency, not a direct call, so a test can hand a stream its own
+    transaction — a test's rows live in an uncommitted transaction that a
+    separately-opened connection cannot see.
     """
     return stream_session
 
@@ -222,9 +217,8 @@ def import_all_models() -> None:
 class Addressed:
     """Columns saying who a row is addressed to. See `app.core.audience`.
 
-    A mixin rather than three copies: the check constraint is the thing that
-    stops a row claiming to be private while naming nobody, and one of the
-    three getting it wrong is how a private conversation becomes public.
+    A mixin rather than three copies: the check constraint stops a row
+    claiming to be private while naming nobody.
     """
 
     # A plain DDL string rather than `text()`: this module declares tables and

@@ -90,13 +90,9 @@ class Referral(Base, UUIDPrimaryKey, Timestamps):
     referred_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     earned_pence: Mapped[int] = mapped_column(nullable=False, server_default=text("0"))
-    # Nothing here moves money: settlement happens outside the product and this
-    # is the record of whether it has. `unpaid` until somebody says otherwise,
-    # which is the legacy vocabulary (`payout_status`) kept on purpose.
-    #
-    # `paid_at` and `paid_by_user_id` are what the retiring app lacked: it
-    # recorded the flag and nothing else, so "when was this settled, and who
-    # says so" had no answer on the row a year later.
+    # Nothing here moves money; this is the record of whether it has happened.
+    # `paid_at` and `paid_by_user_id` record who settled it and when, so that
+    # question always has an answer on the row.
     payout_status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'unpaid'"))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paid_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

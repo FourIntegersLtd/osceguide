@@ -95,22 +95,10 @@ async def read(session: AsyncSession, cv_id: uuid.UUID, *, user_id: uuid.UUID) -
 async def delete(session: AsyncSession, cv_id: uuid.UUID, *, user_id: uuid.UUID) -> None:
     """Throw your own CV away, whatever state it is in.
 
-    Somebody else's is `not found`, not `forbidden` — the answer `read` gives,
-    so an id still cannot be probed to learn whose it is.
-
-    A hard delete, not a withdrawal. Nothing points at the row — no other slice
-    reads `Cv` and no foreign key references `cvs` — so there is no history to
-    orphan and no thread to hold the shape of, the two reasons `community`
-    soft-removes a post instead. And this row is the text of somebody's own
-    document with their career history read out of it, so keeping it after they
-    asked for it to go would keep exactly what they asked to have removed.
-
-    `processing` is not refused either. The reason to delete a CV still being
-    read is that the wrong file went up, and making somebody wait for a model to
-    finish reading a document they have just disowned serves nobody. The job
-    tolerates the row being gone: `run_extraction_job` returns when it cannot
-    find one, and its closing UPDATE then matches nothing, so a read caught in
-    flight is wasted rather than orphaned.
+    Somebody else's is `not found`, not `forbidden` — the answer `read` gives, so an id still cannot
+    be probed to learn whose it is. A hard delete: nothing else references `cvs`, and the row holds
+    somebody's career history, so there is no reason to keep it once they asked for it to go.
+    `processing` is not refused either — `run_extraction_job` tolerates the row being gone.
     """
     if not await repository.delete_cv(session, cv_id, user_id):
         raise errors.CvNotFound()

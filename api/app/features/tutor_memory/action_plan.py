@@ -1,8 +1,6 @@
 """What was agreed after a debrief, and whether it has been done.
 
-Its own module because an action plan is a small idea with two rules that
-have to agree — a step ticked off here must stop appearing in the brief — and
-because `domain.py` had grown past the file cap. Pure: the plan is a list the
+A step ticked off here must stop appearing in the brief. Pure: the plan is a list the
 caller read and will write back.
 """
 

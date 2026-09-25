@@ -1,14 +1,11 @@
 """The platform console: accounts, as the people who answer support see them.
 
-Split from `service_platform.py` at the file cap. That module is about
-organisations; this one is about a person — finding them, reading what the
-list row omits, correcting a field, sending a reset, granting the console.
-Every mutation writes an audit row with no organisation, because none of these
-is an organisation's act: it is the platform's, and "who did what to whose
-account" has to be answerable from the audit log alone.
+Every mutation writes an audit row with no organisation, since none of these is an
+organisation's act — "who did what to whose account" has to be answerable from the audit
+log alone.
 
-Accounts belong to `identity`, which sits below this slice; every read and
-write here goes through `identity.service_platform`, never its table.
+Accounts belong to `identity`; every read and write here goes through
+`identity.service_platform`, never its table.
 """
 
 from __future__ import annotations
@@ -34,7 +31,7 @@ from app.features.tenancy.schemas import (
     UpdatePlatformUser,
     UserSummary,
 )
-from app.features.tenancy.service_platform_audit import platform_audit_read
+from app.features.tenancy.service_platform import platform_audit_read
 
 _STAFF_CONSOLE_LABEL = "the OSCE Guide staff console"
 
@@ -74,9 +71,8 @@ async def invite_platform_admin(
 ) -> PlatformAdminInviteRead:
     """Grant the staff console by email.
 
-    An unknown address is invited the same way as the first member of a new
-    organisation: an account without a password and an email carrying a link
-    to choose one. They must finish that before they can sign in.
+    An unknown address is invited: an account without a password and an email carrying a
+    link to choose one.
     """
     address = email.strip()
     ref = await identity.user_ref_by_email(session, address)
@@ -97,11 +93,8 @@ async def invite_platform_admin(
 async def set_platform_admin(
     session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool, actor: Principal
 ) -> UserSummary:
-    """Grant or revoke the console itself.
-
-    Audited without an organisation: this is a platform act, and the audit log
-    is where "who made whom an administrator" has to be answerable from.
-    """
+    """Grant or revoke the console itself. Audited without an organisation, since this is a
+    platform act."""
     user = await identity.set_platform_admin(session, user_id, is_admin=is_admin)
     await repository.write_audit(
         session,
@@ -166,11 +159,8 @@ async def update_user(
 ) -> PlatformUserDetail:
     """Correct a field, or deactivate the account.
 
-    Deactivating ends the person's sessions here and now: every refresh chain
-    is revoked, and `core.auth` refuses their access token on its next
-    request. Before this the status was written and nothing read it until the
-    next refresh, so a deactivated account kept working for up to fifteen
-    minutes — and longer if it never refreshed.
+    Deactivating ends the person's sessions here and now: every refresh chain is revoked,
+    and `core.auth` refuses their access token on its next request.
     """
     before = await _require(session, user_id)
     values = changes.model_dump(exclude_unset=True)

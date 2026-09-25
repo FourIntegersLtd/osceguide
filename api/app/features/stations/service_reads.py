@@ -1,13 +1,9 @@
 """Bulk answers about stations, for the screens that show many at once.
 
-Split from `service.py` by concept rather than by line count: everything here
-answers "tell me about these stations" for a caller that already holds a set of
-ids — a console listing a circuit's slots, a dashboard counting a library. The
-use cases in `service.py` act on one station at a time and enforce its
-lifecycle; nothing here changes anything.
-
+Everything here answers "tell me about these stations" for a caller that already holds a set of ids —
+a console listing a circuit's slots, a dashboard counting a library. Nothing here changes anything.
 The library's own reader — the browse page and a single station from it — is in
-`service_library_reads.py`, which is also where `browse_library` now lives.
+`service_library_reads.py`.
 """
 
 from __future__ import annotations
@@ -112,21 +108,14 @@ async def version_material(
     )
 
 
-# What a doctor is shown *after* a consultation, and nothing else. The rest of
-# a station — the patient's persona, their hidden history, the examiner's
-# expected answers — is what the station assesses, and putting it anywhere a
-# doctor can ask for it is handing over the answers before they sit it.
-#
-# The management plan is already doctor-facing: it is the screen they read in
-# the debrief, and `learning_events.ref_kind` counts `management_plan` as a
-# thing they view. That is why this read exists here rather than in the tutor's
-# slice — which blocks of a station a doctor may read is this slice's rule, and
-# a reader that helped itself to `content` would be deciding it for itself.
+# What a doctor is shown *after* a consultation, and nothing else. The rest of a station — the
+# patient's persona, hidden history, the examiner's expected answers — is what the station assesses,
+# and putting it anywhere a doctor can ask for it is handing over the answers before they sit it.
 DOCTOR_FACING_KEYS = ("management_plan", "doctor_information")
 
-# A block the template marks `examiner` holds the expected answers. Templated
-# stations therefore contribute nothing here until a template can mark a block
-# as reading material; `docs/OPEN-QUESTIONS.md` T-2 is that question.
+# A block the template marks `examiner` holds the expected answers. Templated stations therefore
+# contribute nothing here until a template can mark a block as reading material (see
+# `docs/OPEN-QUESTIONS.md` T-2).
 
 
 @dataclass(frozen=True)

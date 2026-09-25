@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
+from app.features.billing import service as billing
 from app.features.catalog import service as catalog
 from app.features.growth import domain, errors, repository
 from app.features.growth.schemas import (
@@ -24,9 +24,9 @@ log = get_logger(__name__)
 
 REFERRAL_CODE_BYTES = 4
 
-# What a referrer earns when somebody redeems their code. b2c credits a flat
-# amount; the number is here rather than in the database because it is the
-# same for everyone and changing it is a deploy, not a data change (B-3).
+# What a referrer earns when somebody redeems their code. A constant rather
+# than a database value: it is the same for everyone, so changing it is a
+# deploy, not a data change.
 REFERRAL_REWARD_PENCE = 500
 
 
@@ -72,8 +72,7 @@ async def attribute_signup(
     """Credit a signup to the partner who sent them, once.
 
     Returns None when there is nothing to credit — no arrival, an arrival
-    outside the window, or a user already attributed. Silence is the right
-    answer: signing up without a partner is the normal case.
+    outside the window, or a user already attributed.
     """
     if not visitor_key:
         return None
@@ -99,34 +98,18 @@ async def attribute_signup(
 async def ensure_reporter(
     session: AsyncSession, *, partner: str, email: str, is_platform_admin: bool
 ) -> None:
-    """Reporting access is per partner.
-
-    Checked against the partner in the path rather than "is a reporter at all",
-    so one partner's reporter cannot read another's numbers.
-    """
+    """Reporting access is per partner, checked against the partner in the path
+    rather than "is a reporter at all"."""
     if is_platform_admin:
         return
     if not await repository.is_reporter(session, partner=partner, email=email):
         raise errors.NotAReporter()
 
 
-# How many of a partner's people have paid. `billing` sits above this slice and
-# cannot be imported from it, so the count arrives through a seam `main.py`
-# binds — the same shape as the other cross-layer reads. The funnel reported a
-# hardcoded zero purchases until this existed (G-2).
-_purchase_counter: list[Callable[[AsyncSession, list[uuid.UUID]], Awaitable[int]]] = []
-
-
-def bind_purchase_counter(counter: Callable[[AsyncSession, list[uuid.UUID]], Awaitable[int]]) -> None:
-    _purchase_counter.clear()
-    _purchase_counter.append(counter)
-
-
 async def _purchases_for(session: AsyncSession, partner: str) -> int:
-    if not _purchase_counter:
-        raise RuntimeError("No purchase counter bound. app.main.create_app must call bind_purchase_counter.")
+    """How many of a partner's people have paid."""
     user_ids = await repository.acquired_user_ids(session, partner)
-    return await _purchase_counter[0](session, user_ids) if user_ids else 0
+    return await billing.count_payments_for_users(session, user_ids) if user_ids else 0
 
 
 async def read_funnel(session: AsyncSession, *, partner: str) -> FunnelRead:
@@ -200,12 +183,7 @@ def _referral_read(code: str, rows: list) -> ReferralRead:  # type: ignore[type-
 
 
 async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> None:
-    """Give somebody reporting access to one partner's numbers.
-
-    There was no way to create a reporter at all, so the funnel was readable
-    by platform admins and nobody else — which is not what a partner report is
-    for.
-    """
+    """Give somebody reporting access to one partner's numbers."""
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
@@ -217,11 +195,8 @@ async def tracking_references(
 ) -> list[TrackingReference]:
     """The references a partner puts in its links, one per exam in the pilot.
 
-    The other half of `parse_ref_id`, which the arrivals route has always used
-    to read one. Formatting one was written, unit-tested and never exposed, so
-    a partner had to be told the spelling in an email and type `bmj-sca` by
-    hand — and a typo attributes their traffic to nobody, silently, which is
-    exactly what this slice exists to prevent.
+    The other half of `parse_ref_id`. Saves a partner from typing a reference
+    by hand, where a typo would silently attribute their traffic to nobody.
     """
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:

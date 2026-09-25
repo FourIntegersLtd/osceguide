@@ -22,8 +22,7 @@ class NotAnExamSitting(InvalidInput):
 
     The one error here this slice owns rather than borrows. Training is people
     practising, and ranking them against each other would turn practice into an
-    assessment nobody agreed to sit. b2b answered 400; this is a 422, the
-    platform's one code for a request that cannot mean anything.
+    assessment nobody agreed to sit.
     """
 
     code = "not_an_exam_sitting"

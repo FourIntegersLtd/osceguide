@@ -1,12 +1,8 @@
 """Which exams a person may open, resolved against the catalogue.
 
-`service.py` answers "may this one attempt start" — the gate every attempt goes
-through. This answers the broader question the screens ask before that: which
-exams to show at all. Split because they change for different reasons, and
-because the gate is on a hot path while this is a page load.
-
-The rule itself is `domain_access.exam_access`, kept pure so the disclosure it
-decides can be read on its own.
+`service.py` answers "may this one attempt start" — the gate every attempt goes through. This
+answers the broader question the screens ask before that: which exams to show at all. The rule
+itself is `domain_access.exam_access`.
 """
 
 from __future__ import annotations
@@ -26,10 +22,9 @@ from app.features.identity import service as identity
 async def exam_access_for(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> ExamAccess:
     """The exams this person may open, most-entitled first.
 
-    Live grants only: `list_for_user` answers with every row somebody has ever
-    held, revoked and lapsed included, and reading exam codes off it without
-    checking `live` is what would give a lapsed subscriber a paying one's
-    catalogue.
+    Live grants only: `list_for_user` answers with every row somebody has ever held, revoked
+    and lapsed included, and reading exam codes off it without checking `live` would give a
+    lapsed subscriber a paying one's catalogue.
     """
     grants = await service.list_for_user(session, user_id, now=now)
     user = await identity.user_ref_by_id(session, user_id)
@@ -45,13 +40,10 @@ async def require_exam_access(
 ) -> None:
     """Refuse a browse of an exam this person has no business in.
 
-    Weaker than `service.require`, and deliberately: this admits the exam an
-    account was opened for as well as the ones it holds, because a trial user
-    has to be able to see the library before they can sit anything in it. What
-    it stops is the whole catalogue being offered to everybody, which is what
-    put an exam picker on four screens of a product where one exam is the norm.
-
-    Anything carrying paid content asks `service.require` instead.
+    Weaker than `service.require`, and deliberately: this admits the exam an account was opened
+    for as well as the ones it holds, because a trial user has to be able to see the library
+    before they can sit anything in it. Anything carrying paid content asks `service.require`
+    instead.
     """
     access = await exam_access_for(session, user_id, now=now)
     if exam_code not in access.codes:

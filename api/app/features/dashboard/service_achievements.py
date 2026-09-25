@@ -1,10 +1,7 @@
 """A person's practice record: stations touched, and the days run they add up to.
 
-Ported byte-for-byte from `achievementsFromAttempts.ts`, which computed this in
-the browser from a capped page of 100 attempts and forgot it on every refresh
-past that. Same definition — a badge every three consecutive practice days,
-counted from marked attempts — now read once over the whole marked history and
-answered by the server that already holds it.
+A badge every three consecutive practice days, counted from marked attempts over the
+whole marked history.
 """
 
 from __future__ import annotations
@@ -15,7 +12,7 @@ from datetime import date, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_reads as attempts_reads
-from app.features.dashboard.schemas_achievements import AchievementsRead, StreakRead
+from app.features.dashboard.schemas import AchievementsRead, StreakRead
 
 # A person practising daily for a decade is under 4,000 attempts; this is a
 # deliberate bound, not a page — the point is "the whole history", read once

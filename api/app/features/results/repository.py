@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.results.models import (
     CandidateResultEvent,
-    CandidateResultNotification,
     CandidateResultRevision,
 )
 
@@ -113,36 +112,14 @@ async def append_event(
     return row
 
 
-async def queue_notification(
-    session: AsyncSession,
-    *,
-    event_id: uuid.UUID,
-    recipient: str,
-    template_key: str,
-    payload: dict[str, Any] | None,
-    idempotency_key: str,
-) -> CandidateResultNotification:
-    row = CandidateResultNotification(
-        event_id=event_id,
-        recipient=recipient,
-        template_key=template_key,
-        payload=payload,
-        idempotency_key=idempotency_key,
-    )
-    session.add(row)
-    await session.flush()
-    return row
-
-
 async def released_revision(
     session: AsyncSession, sitting_id: uuid.UUID, trainee_ids: list[uuid.UUID]
 ) -> CandidateResultRevision | None:
-    """What a candidate may see: only a released revision, never a draft.
+    """Only a released revision, never a draft — what a candidate may see.
 
-    Keyed by `trainees.id`, which is not the caller's `users.id`: a trainee is
-    a roster entry with its own identity and a nullable link to an account.
-    The route passed the user id straight in, so this matched nothing and
-    every candidate was told their result was not released.
+    Keyed by `trainees.id`, not the caller's `users.id`: passing the user id
+    straight in previously matched nothing, so every candidate was told their
+    result was not released.
     """
     if not trainee_ids:
         return None
@@ -164,8 +141,7 @@ async def event_by_idempotency_key(
 ) -> CandidateResultEvent | None:
     """The event this key already wrote, if any.
 
-    The unique index makes a repeat write an error; this makes a repeat request
-    an answer. A candidate tapping "I have read this" twice is not a conflict.
+    The unique index makes a repeat write an error; this makes a repeat request an answer.
     """
     stmt = select(CandidateResultEvent).where(CandidateResultEvent.idempotency_key == idempotency_key)
     return (await session.execute(stmt)).scalar_one_or_none()

@@ -32,9 +32,8 @@ async def list_open_slots(
     room: Annotated[AudienceFilter, Depends()],
     exam_code: Annotated[str | None, Query(max_length=32)] = None,
 ) -> Page[schemas.PostRead]:
-    """Availability and claimed slots this caller can see — the public pool plus
-    every institution and group they belong to. Matches the retiring marketplace
-    feed (open posts plus historic claimed sessions)."""
+    """Availability and claimed slots this caller can see — the public pool plus every institution and
+    group they belong to."""
     items, next_cursor = await service.list_open_slots(
         session,
         viewer_id=principal.user_id,

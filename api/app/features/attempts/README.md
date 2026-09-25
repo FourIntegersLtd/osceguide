@@ -42,9 +42,8 @@ and the job that scores a delivered transcript.
   circuit, an administrator who was not named, and a platform job that brings no
   memberships are all refused, as they were before. Nothing else this slice serves
   was widened: the brief, the model answer, the attempt row and the stream still
-  answer to their owner alone. `attempts` sits below `sittings`, so it cannot read
-  who a circuit names — the question is asked through a seam tied in
-  `composition.py`, and unbound every examiner read would answer 403.
+  answer to their owner alone. Who a circuit names comes from
+  `sittings.service_reads.supervisor_for_slot`.
 - Chunks are idempotent on `(attempt_id, message_id)`; the completed transcript
   is accepted once; scoring is idempotent per `policy_version`.
 - The bootstrap payload **never** contains `evaluation_policy`. Marking is the
@@ -69,7 +68,7 @@ and the job that scores a delivered transcript.
 | GET | `/api/v1/platform/attempts/{id}` | platform admin | The support detail: frozen definition present, turns received, every scoring job ever queued |
 
 The console's per-station view of a person's attempts, and the one delete this
-table has (`service_platform_progress.py`), are routed from `station_sets`,
+table has (`service_platform.py`), are routed from `station_sets`,
 which owns the counter beside them.
 | GET | `/api/worker/attempts/{id}` | worker secret | `{attempt, scenario}`, no evaluation policy |
 | POST | `/api/worker/attempts/{id}/transcript-chunks` | worker secret | idempotent |

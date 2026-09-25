@@ -60,12 +60,9 @@ async def rename_set(
 ) -> SetRead:
     """Change what a set is called.
 
-    The retiring client's edit screen asked for two things — a name and the
-    list of stations — and this is the first. Replacing the second is not a
-    rename: an entry carries the counters for what was sat in it and is what an
-    attempt points at, so swapping the list would be deleting somebody's
-    history and numbering a new one from zero. That is its own use case, and it
-    is not this route pretending to be it.
+    Not the station list too: an entry carries the counters for what was sat in it and is what an
+    attempt points at, so swapping the list would be deleting somebody's history and numbering a new
+    one from zero.
     """
     row = await _require(session, owner_user_id, set_id)
     await repository.rename_set(session, row, name=name)
@@ -75,14 +72,10 @@ async def rename_set(
 async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> None:
     """Throw a set away — as long as nothing was actually sat in it.
 
-    The delete is the learner's, so it goes to a set that has become a bookmark
-    list they no longer want. A set with attempts in it is a different object:
-    its entries are what those recordings point at, and the schema refuses to
-    take an entry out from under one. Deleting the recordings to get the answer
-    the learner asked for would take a transcript and its marking with it, so
-    this refuses and says what is in the way. The console, which may destroy a
-    person's progress on a stated reason and an audit row, is the route that
-    does the destroying.
+    A set with attempts in it is a different object: its entries are what those recordings point at,
+    and the schema refuses to take an entry out from under one. This refuses and says what is in the
+    way, rather than deleting the recordings to comply; the support console is the route that destroys
+    a person's progress, on a stated reason and an audit row.
     """
     await _require(session, owner_user_id, set_id)
     entries = await repository.entries_for(session, set_id)
@@ -115,9 +108,8 @@ async def start_entry_attempt(
 ) -> StartedAttempt:
     """Start an attempt at one station in a set.
 
-    The counter moves in the same transaction as the attempt is created, so a
-    limit cannot be exceeded by two requests arriving together — which is what
-    b2c's read-modify-write on an array allows.
+    The counter moves in the same transaction as the attempt is created, so a limit cannot be
+    exceeded by two requests arriving together.
     """
     row = await _require(session, owner_user_id, set_id)
     entry = await repository.entry_by_id(session, set_id, entry_id)

@@ -7,11 +7,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
-from app.features.attempts import domain_definition, repository, repository_coverage
+from app.features.attempts import domain_definition, repository
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.evaluator import FrozenFrameworkProvider
 from app.features.attempts.models import Attempt
-from app.features.attempts.schemas_coverage import CoverageItemRead, CoverageRead
+from app.features.attempts.schemas import CoverageItemRead, CoverageRead
 from app.features.attempts.service_reads import _ensure_visible, _require
 
 PRACTICE_KINDS = frozenset({"practice", "set_station", "self_practice"})
@@ -39,7 +39,7 @@ async def read_coverage(
     provider = FrozenFrameworkProvider(framework)
     definition = provider.get(str(framework["id"]))
     labels = {item.id: item.label for item in definition.competencies}
-    snapshot = await repository_coverage.read(session, attempt_id) or {}
+    snapshot = await repository.read(session, attempt_id) or {}
     return CoverageRead(
         supported=bool(definition.live_domain_ids),
         last_seq=snapshot.get("last_seq", -1),
@@ -67,7 +67,7 @@ async def update_coverage(session: AsyncSession, attempt_id: uuid.UUID) -> None:
     framework_id = str(framework["id"])
     if not provider.get(framework_id).live_domain_ids:
         return
-    previous = await repository_coverage.read(session, attempt_id)
+    previous = await repository.read(session, attempt_id)
     snapshot = (
         CoverageSnapshot.model_validate(previous) if previous else CoverageSnapshot(framework_id=framework_id)
     )
@@ -98,4 +98,4 @@ async def update_coverage(session: AsyncSession, attempt_id: uuid.UUID) -> None:
         fallback_client=fallback_client,
     )
     updated = await asyncio.to_thread(detector.detect, snapshot=snapshot, messages=messages, policy=policy)
-    await repository_coverage.save(session, attempt_id, updated.model_dump(mode="json"))
+    await repository.save(session, attempt_id, updated.model_dump(mode="json"))

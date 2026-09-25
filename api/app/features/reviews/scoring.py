@@ -1,20 +1,8 @@
-"""Turning R/A/G ratings into the numbers a cohort is ranked on.
+"""Turns R/A/G ratings into the 0-100 scores a cohort is ranked on.
 
-Ported from `b2b-api/app/features/sessions/cohort_scoring.py`, which is current
-production behaviour: an institution ranks its candidates on these numbers and
-decides who to review first, so the arithmetic is the product, not a detail.
-
-Two things are deliberately left behind. The legacy module walks arbitrary
-feedback blobs looking for anything that smells like a score, because b2c
-stored untyped documents in Firestore; here a review's `field_values` is a flat
-map of `domain.skill.score` paths and the shape is known, so the walking is
-gone. And its `_parse_score_value` accepted 0–1, 0–10 and 0–100 numbers,
-guessing the scale from the magnitude — a 1.0 meant 100 and a 10 meant 100 too.
-Nothing in this platform writes a numeric score, so the guessing is not ported;
-a rating is one of R, A or G.
-
-A module of its own rather than more of `domain.py`: this is arithmetic over
-many reviews, while that file is the rules a single review must satisfy.
+A review's `field_values` is a flat map of `domain.skill.score` paths; a
+rating is one of R, A or G, and nothing in this platform writes a numeric
+score.
 """
 
 from __future__ import annotations
@@ -40,11 +28,10 @@ def score_for(rag: str) -> float:
 
 
 def majority_rag(letters: Sequence[str]) -> str | None:
-    """The plurality rating, resolving a tie downward.
+    """The plurality rating, resolving a tie downward (worst wins).
 
-    Oracle: `_majority_rag`. Plurality rather than mean, so three greens and a
-    red is a green domain with a red skill in it, not an amber domain that
-    describes neither.
+    Plurality rather than mean: three greens and a red is a green domain with
+    a red skill in it, not an amber that describes neither.
     """
     counts = dict.fromkeys(RAG_VALUES, 0)
     for letter in letters:
@@ -72,9 +59,9 @@ def _score_path_parts(path: str) -> list[str] | None:
 def domain_scores(field_values: Mapping[str, object]) -> dict[str, float]:
     """One 0–100 score per domain, from the skill ratings inside it.
 
-    Oracle: `extract_domain_scores`. Skills within a domain are equally
-    weighted through the majority, and a domain-level rating (`domain.score`,
-    one segment) counts as a rating of that domain like any other.
+    Skills within a domain are equally weighted through the majority; a
+    domain-level rating (`domain.score`, one segment) counts as a rating of
+    that domain like any other.
     """
     letters: dict[str, list[str]] = {}
     for path, value in field_values.items():
@@ -94,9 +81,7 @@ def domain_scores(field_values: Mapping[str, object]) -> dict[str, float]:
 def station_score(scores: Mapping[str, float]) -> float | None:
     """The station's score: the mean of its domains, equally weighted.
 
-    Oracle: `effective_domain_score`'s `effectiveStationScore`. Equal weighting
-    is a decision the legacy code makes silently and this sentence makes
-    visible — a domain with twelve skills counts the same as one with two.
+    A domain with twelve skills counts the same as one with two.
     """
     if not scores:
         return None
@@ -106,12 +91,10 @@ def station_score(scores: Mapping[str, float]) -> float | None:
 def apply_review_overrides(marked: Mapping[str, object], reviewed: Mapping[str, object]) -> dict[str, float]:
     """The scores after a GP lead has had their say.
 
-    Oracle: `effective_domain_score`. Two kinds of override, and the difference
-    matters: a **skill** rating (`domain.skill.score`) is laid over the
-    marking and the domain's majority is recomputed, so one changed skill may
-    not move the domain at all; a **domain** rating (`domain.score`) replaces
-    the domain outright, because a reviewer who rates the domain has judged the
-    whole of it.
+    Two kinds of override: a **skill** rating (`domain.skill.score`) is laid
+    over the marking and the domain's majority is recomputed, so one changed
+    skill may not move the domain at all; a **domain** rating (`domain.score`)
+    replaces the domain outright.
     """
     overlaid: dict[str, object] = dict(marked)
     domain_level: dict[str, str] = {}
@@ -136,10 +119,8 @@ def apply_review_overrides(marked: Mapping[str, object], reviewed: Mapping[str, 
 def review_priority(*, completion_rate: float, assessment_score: float | None) -> str:
     """Which candidates a GP lead should look at first.
 
-    Oracle: `review_priority`. The bands are ordered by what they are for: an
-    unfinished examination outranks a poor score, because a candidate who sat
-    half the stations has a problem nobody has looked at yet, while a candidate
-    who scored badly has at least been assessed.
+    An unfinished examination outranks a poor score: a candidate who sat half
+    the stations has a problem nobody has looked at yet.
     """
     if completion_rate < 0.5:
         return "urgent"

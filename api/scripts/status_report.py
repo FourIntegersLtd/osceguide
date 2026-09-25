@@ -91,7 +91,7 @@ def _lines(path: Path) -> int:
 
 
 def report() -> str:
-    from tests.guards.test_domain_rules_are_reachable import KNOWN_UNWIRED, unreachable_rules
+    from tests.guards.test_domain_rules_are_reachable import unreachable_rules
 
     spec = _spec()
     present = _operations(spec)
@@ -139,15 +139,6 @@ def report() -> str:
         out.append("None.")
     out.append("")
 
-    out.append("## Domain rules with no production caller")
-    out.append("")
-    out.append("Each is listed in `tests/guards/test_domain_rules_are_reachable.py` with a reason.")
-    out.append("The guard fails if this list grows, and fails if an entry becomes reachable and is")
-    out.append("left here.")
-    out.append("")
-    for slice_name, rule in sorted(dead):
-        out.append(f"- `{slice_name}.{rule}` — {KNOWN_UNWIRED.get((slice_name, rule), 'undocumented')}")
-    out.append("")
     return "\n".join(out)
 
 

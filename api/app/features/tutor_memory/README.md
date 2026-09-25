@@ -10,8 +10,8 @@ slice that makes it a tutor who remembers — which consultations this doctor
 ran and how each went, what a debrief agreed, what they said last time, what
 they have been reading.
 
-Sits above `assistant` and `attempts` and is reached from neither: both
-announce their moments through `bind_*` seams tied in `app/main.py`.
+`assistant` and `attempts` call its services directly when a session renders or an
+interaction completes.
 
 ## Use cases
 - As a **doctor**, I talk to a tutor that remembers my recent consultations,
@@ -105,11 +105,11 @@ embedding the whole library costs minutes and money — see OPEN-QUESTIONS T-3.
 - `stations.service_reads` — station titles, and the library a suggestion must
   be in.
 - `entitlements.service` + `catalog.service` — whether a suggestion may be made.
-- `assistant.service` / `assistant.service_seams` — whose session a tool call
+- `assistant.service` / `assistant.service_reads` — whose session a tool call
   is on, this session's turns, and discarding them once summarised.
 
-Seams filled in `app/main.py`: `assistant.service_seams.bind_assistant_hooks`
-and `attempts.service_worker.bind_interaction_complete_hook`.
+Called by: `assistant` (session render, tool calls, `on_transcript`) and
+`attempts.service_worker` (`on_interaction_complete`).
 
 - `media.service` — the published summaries, slides, podcasts and posts the
   index is built from.

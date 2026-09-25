@@ -36,14 +36,9 @@ READ_STATISTICS = Limit(name="site-statistics", allowance=60, window_seconds=60)
 async def read_statistics(request: Request, session: Session, clock: ClockDep) -> schemas.SiteStatistics:
     """The counters on the landing page's numbers band.
 
-    Unauthenticated, because the landing page is what a visitor sees before
-    anything else. The retiring backend served these from `/landing`; the
-    replacement had no equivalent, so the band hid itself rather than showing
-    zeroes.
-
-    Cached for ten minutes: the busiest page on the site should not cost four
-    aggregate queries per view, and no figure here changes meaningfully in
-    that time.
+    Unauthenticated, because the landing page is what a visitor sees before anything else. Cached for
+    ten minutes: the busiest page on the site should not cost four aggregate queries per view, and no
+    figure here changes meaningfully in that time.
     """
     await check(READ_STATISTICS, caller_key(request))
     return await service.statistics(session, now=clock.now())

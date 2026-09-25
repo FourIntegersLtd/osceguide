@@ -1,11 +1,9 @@
 """Who an organisation teaches, and who is on a circuit.
 
-The important change from b2b: group membership is a table. b2b has no
-membership record and instead matches a trainee's `cohort` string against a
-group's `label`, both lowercased, every time a circuit is built. Renaming a
-group silently empties it, two groups sharing a label collide, and a trainee
-can only ever be in one group. The label match survives here only as a
-one-time importer that writes real rows.
+Group membership is a real table, not a string match against a `cohort` label:
+label matching lets a rename silently empty a group, two groups collide on the
+same label, and a trainee sit in only one group. A label match survives only as
+a one-time importer that writes real membership rows.
 """
 
 from __future__ import annotations

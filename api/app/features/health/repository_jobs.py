@@ -3,8 +3,8 @@
 The queue's rows were written by our transactions (ADR 0006) and read by
 nothing in `app/` — only the tests looked, to prove a job had been queued.
 "Why has this attempt no feedback?" is answered by exactly that row, so the
-platform console needs the read. One reader, in the lowest slice, so every
-slice above can ask without each growing its own copy of the SQL.
+platform console needs the read. One reader here, so no other feature needs
+its own copy of the SQL.
 
 Plain `text()` rather than mapped models: the tables are procrastinate's, its
 migrations own their shape, and a mapping of ours would drift from them.

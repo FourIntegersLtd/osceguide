@@ -75,14 +75,10 @@ class CreateSitting(BaseModel):
 
 
 class UpdateSitting(BaseModel):
-    """The sitting edit screen's fields. Absent means "leave it alone", which is
-    what the legacy PUT meant too: it sent only what the screen had changed.
+    """Fields to change on a sitting. An omitted field is left alone.
 
-    The b2b screen offered a name, a type and a feedback template. This backend
-    resolves the template through the programme, so the third of those is
-    `programme_id` here and the bound rubric moves with it. `status` is not
-    offered: that is the run machine's to move, and a route that could set it
-    would let a screen end an examination by editing a name.
+    `status` is not offered here: that belongs to the run machine, not this
+    route.
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -108,11 +104,11 @@ class CreateCircuit(BaseModel):
 
 
 class RebuildCircuit(BaseModel):
-    """A circuit's new shape. Everything omitted is left as it is.
+    """A circuit's full new roster and stations.
 
-    The trainees and the stations are sent whole rather than as a patch: the
-    slots are rebuilt from them, and a partial edit would leave the API
-    guessing which pairing the supervisor meant.
+    Both lists are sent whole, not as a patch: the slots are rebuilt from
+    them. `name`, `supervisor_user_id` and `timing` are left as they are when
+    omitted.
     """
 
     trainee_ids: list[uuid.UUID]
@@ -123,13 +119,8 @@ class RebuildCircuit(BaseModel):
 
 
 class Override(BaseModel):
-    """What every override may carry: why it was done.
-
-    Optional, and free text, because the reasons are the ones nobody predicted
-    — that is what an override is for. It is written to the record beside the
-    action, so "the clock was extended" is answerable with "because the fire
-    alarm went".
-    """
+    """Why the override was done. Optional free text, recorded beside the
+    action for later review."""
 
     reason: str | None = Field(default=None, max_length=500)
 
@@ -184,12 +175,9 @@ class EditLock(BaseModel):
 class AppendTrainees(BaseModel):
     """Who has just arrived, and where they go.
 
-    `station_version_ids` is the pairing `CreateCircuit` already uses — the nth
-    arrival takes the nth station — because b2b's live "add trainee" dialog
-    named a station with each person rather than assuming it. Omit the list and
-    everyone joins the station the circuit is already running, which is what a
-    single latecomer to a group practice wants and what this route used to do
-    whatever the caller meant.
+    `station_version_ids` pairs positionally with `trainee_ids` — the nth
+    arrival takes the nth station. Omit it and everyone joins the station the
+    circuit is currently running.
     """
 
     trainee_ids: list[uuid.UUID] = Field(min_length=1)
@@ -200,13 +188,8 @@ class RoomGrant(BaseModel):
     """What a browser needs to join a circuit's room, and nothing more.
 
     A candidate taking their place before their station starts, or an examiner
-    stepping in to watch. Neither names a recording: the candidate has none yet
-    and the examiner never will, which is what separates this from the token
-    issued against an attempt.
-
-    This slice's own shape rather than `voice`'s, even though the two agree
-    today: a wire contract belongs to the routes that serve it, and sharing one
-    is how two slices come to be unable to change it separately.
+    stepping in to watch. Neither names a recording: the candidate has none
+    yet and the examiner never will.
     """
 
     token: str

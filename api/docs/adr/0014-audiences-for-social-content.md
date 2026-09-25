@@ -22,7 +22,7 @@ An **audience** is its own concept, in the shared kernel: a visibility (`public`
 `organisation`, `group`), an organisation, and one group id. The three slices store it, filter
 on it, and never learn what a group *is*.
 
-Who a given viewer belongs to is a single lookup bound in `main.py`, the seam
+Who a given viewer belongs to is a single lookup bound in `composition.py`, the seam
 `bind_membership_lookup` and `bind_purchase_counter` already use. `roster` implements it,
 composing organisation memberships with teaching groups.
 

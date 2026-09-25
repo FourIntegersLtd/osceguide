@@ -44,12 +44,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Unauthenticated),
 )
 async def read_dashboard(principal: CurrentPrincipal, session: Session, clock: ClockDep) -> schemas.Dashboard:
-    """One call for a screen that currently makes seven.
-
-    A read model over several aggregates. "Dashboard" is not a domain concept —
-    nothing owns one and no rule is enforced about it — which is why this slice
-    has no tables and no domain module.
-    """
+    """The trainee's home screen: access, recent attempts and progress at a glance."""
     return await service.build(session, principal.user_id, now=clock.now())
 
 
@@ -68,13 +63,7 @@ async def read_performance(
 ) -> schemas.Performance:
     """How this person is doing at one exam: per domain, overall, over time.
 
-    Separate from `/me/dashboard` because it is a different question over a
-    different set of rows — the marked attempts at one exam — and a screen that
-    only lists access and recent attempts should not pay for reading every
-    result document.
-
-    An exam with nothing marked yet is an empty answer, not a refusal: that is
-    the dashboard's empty state, and a 404 would make it read as an error.
+    An exam with nothing marked yet returns an empty answer, not a 404.
     """
     return await service_performance.build(session, principal.user_id, exam_code=exam_code)
 
@@ -87,12 +76,7 @@ async def read_performance(
 async def read_my_sittings(
     principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.MySittings:
-    """What a trainee is rostered onto, and whether it is their turn.
-
-    The portal asks two endpoints every five seconds and joins them in the
-    browser to answer that. The organisation slugs come from the caller's own
-    token, which already carries them.
-    """
+    """What a trainee is rostered onto, and whether it is their turn."""
     return await service_trainee.my_sittings(
         session,
         principal.user_id,
@@ -117,11 +101,7 @@ async def read_org_dashboard(workspace: OrgReader, session: Session) -> schemas_
     responses=error_responses(Forbidden),
 )
 async def read_supervisor_circuits(workspace: OrgReader, session: Session) -> schemas_org.SupervisorCircuits:
-    """The circuits assigned to the caller, whatever else they can see.
-
-    Assigned, not visible: an administrator who supervises nothing gets an
-    empty list here and reads the sittings routes for the rest.
-    """
+    """The circuits assigned to the caller. Assigned, not all visible circuits."""
     return await service_org.supervisor_circuits(session, workspace.org_id, workspace.principal.user_id)
 
 
@@ -133,11 +113,7 @@ async def read_supervisor_circuits(workspace: OrgReader, session: Session) -> sc
 async def read_circuit_console(
     circuit_id: uuid.UUID, workspace: OrgReader, session: Session, clock: ClockDep
 ) -> schemas_org.CircuitConsole:
-    """One request for the screen an examination is run from.
-
-    Replaces a session read, a station list, a trainee list, a staff list and a
-    feedback probe per slot — repeated every eight seconds while a circuit runs.
-    """
+    """The screen an examination is run from: session, stations, trainees, staff and feedback state."""
     return await service_console.build_console(session, workspace.org_id, circuit_id, now=clock.now())
 
 
@@ -149,9 +125,8 @@ async def read_circuit_console(
 async def read_sitting_report(
     sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session
 ) -> schemas_report.SittingReport:
-    """The whole sitting, per candidate: stations sat, marking, reviewers'
-    ratings and where the decision stands. Org admin only, because it carries
-    decisions that are not yet released."""
+    """The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision
+    status. Org admin only — carries decisions not yet released."""
     return await service_report.build_sitting_report(session, workspace.org_id, sitting_id)
 
 
@@ -163,12 +138,7 @@ async def read_sitting_report(
 async def read_cohort_summary(
     sitting_id: uuid.UUID, workspace: OrgReader, session: Session
 ) -> schemas_org.CohortSummary:
-    """How this sitting's candidates compare, ranked.
-
-    What a GP lead opens after an examination to decide who to review first.
-    Completion ranks before score: a candidate who sat three of five stations
-    has a problem nobody has looked at, while one who scored badly has at least
-    been assessed.
+    """How this sitting's candidates compare, ranked. Completion ranks before score.
 
     Exam sittings only — `not_an_exam_sitting` (422) for a training one.
     """
@@ -183,10 +153,8 @@ async def read_cohort_summary(
 async def read_sitting_readout(
     sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas_readout.SittingReadout:
-    """The document a course lead downloads after an examination: the cohort
-    ranked, what it adds up to, and what the ranking recommends. Org admin, as the
-    legacy export was — it names every candidate and their score in one payload,
-    and is written to be printed. Exam sittings only, on the cohort's own rule."""
+    """The document a course lead downloads after an examination: the cohort ranked, what it
+    adds up to, and what it recommends. Org admin only. Exam sittings only."""
     return await service_readout.build_readout(
         session, workspace.org_id, workspace.org_slug, sitting_id, now=clock.now()
     )
@@ -205,15 +173,11 @@ async def stream_circuit_console(
     open_session: SessionOpenerDep,
     clock: ClockDep,
 ) -> StreamingResponse:
-    """The console, pushed. The streaming form of the route above it.
+    """The console, pushed. Every frame is a whole `CircuitConsole`, so a client renders a
+    stream and a poll with the same code.
 
-    Every frame is a whole `CircuitConsole`, so a client renders a stream and a
-    poll with the same code — and a missed event costs a reconnect rather than
-    a wrong screen.
-
-    Access is resolved once, before the stream opens, against a short session
-    of its own: this route cannot take the request session, because that
-    transaction would stay open for as long as the supervisor's tab does.
+    Access is resolved against a short session of its own, not the request session, so the
+    transaction does not stay open for as long as the client's connection does.
     """
     async with open_session() as session:
         workspace = await resolve_workspace(session, principal, org_slug, predicate=may_read_org_policy())

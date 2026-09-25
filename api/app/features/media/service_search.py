@@ -18,6 +18,7 @@ from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
 from app.features.media import domain, errors, repository
 from app.features.media.schemas import SearchHit
+from app.features.tutor_memory import service_search as tutor_search
 
 # How long a new account's exam-code preference grants study access.
 # Mirrors the entitlements slice's own trial window.
@@ -46,18 +47,15 @@ async def search(
 ) -> list[SearchHit]:
     """Search the index, then read the rows it named.
 
-    The index holds ids and nothing else, so what a reader sees always comes
-    from the database — an item unpublished since it was indexed cannot leak
-    through a stale entry.
+    The index holds ids only, so what a reader sees always comes from the
+    database — an item unpublished since it was indexed cannot leak through a
+    stale entry.
 
-    Scoped to what the reader holds, the way the tutor's own search already is
-    (`tutor_memory.service_search`): a hit names a title, and a search over
-    every exam's material is a table of contents for the ones you have not
-    bought. Free material — no exam — is searchable by everybody.
+    Scoped to what the reader holds, like the tutor's own search
+    (`tutor_memory.service_search`). Free material — no exam — is searchable
+    by everybody.
 
-    Ranked best first, ties broken by id: `search_page` cursors through this
-    list, and a cursor over an order two calls could disagree about skips or
-    repeats whatever sits on the boundary.
+    Ranked best first, ties broken by id, since `search_page` cursors this list.
     """
     try:
         cleaned = domain.clean_query(query)
@@ -103,8 +101,7 @@ async def search_page(
     Keyset on `(score, id)` rather than an offset into the ranked list, so a
     result that outranks something while the reader is paging cannot push a
     row they have already seen back onto the next page. The count is of the
-    whole match, cursor aside: a search box says "18 found", and the page it
-    is showing is not the answer to that question.
+    whole match, cursor aside.
     """
     hits = await search(
         session, query=query, index=index, limit=_RETRIEVAL_LIMIT, kind=kind, unlocked=unlocked
@@ -159,9 +156,14 @@ async def unlocked_exam_ids(
 def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
     """The dependency the router wires. Overridden in tests with a fake.
 
-    Takes the request's session because the index is in the same database:
-    indexing on publish belongs in the transaction that published.
-    """
-    from app.features.media.index import build_vector_index  # noqa: PLC0415
+    The pgvector store the tutor reads (ADR 0019), owned by `tutor_memory`.
+    Takes the request's session because indexing on publish belongs in the
+    same transaction that published.
 
-    return build_vector_index(session)
+    **Entitlement is deliberately not applied.** This searches *titles*, and
+    `GET /api/v1/media` already lists every published item to any signed-in
+    reader, so filtering search and not the list would mean an item you can
+    see in one place and not find in the other. Opening an item still goes
+    through `read_by_slug`, which decides access to the content.
+    """
+    return tutor_search.media_title_index(session)

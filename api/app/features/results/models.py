@@ -1,9 +1,8 @@
 """Tables owned by `results`.
 
-Ported from b2b's `sql/017`, including the part that matters most: revisions and
-events are **append-only, enforced by a trigger** rather than by convention. A
-candidate's outcome is the kind of record that has to be defensible months
-later, so the database refuses to let it be edited at all.
+Revisions and events are **append-only, enforced by a trigger** rather than by
+convention: a candidate's outcome has to be defensible months later, so the
+database refuses to let it be edited at all.
 """
 
 from __future__ import annotations
@@ -59,14 +58,10 @@ class CandidateResultRevision(Base, UUIDPrimaryKey):
     sitting_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("sittings.id", ondelete="CASCADE"), nullable=False
     )
-    # `RESTRICT`, not `CASCADE`: a decision revision is the defensible record
-    # a candidate's result actually is, the same reason `attempts.slot_id` is
-    # `RESTRICT` rather than `SET NULL`. It was `CASCADE` until 2026-09-24 —
-    # nothing had exercised the path, but a trainee delete would have taken
-    # their whole decision history with them silently. Roster's own
-    # `delete_trainee` (added the same day) depends on this: it refuses with
-    # `trainee_in_use` for exactly this table, rather than cascading through
-    # it.
+    # `RESTRICT`, not `CASCADE`: a decision revision is the defensible record a
+    # candidate's result actually is. Roster's `delete_trainee` depends on this,
+    # refusing with `trainee_in_use` for this table rather than cascading
+    # through a candidate's decision history.
     trainee_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("trainees.id", ondelete="RESTRICT"), nullable=False
     )

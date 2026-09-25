@@ -1,9 +1,8 @@
 """Referral payouts: what is owed, and whether it has been settled.
 
-Split from `service.py` at the file cap. Nothing here moves money — referrals
-are paid by a bank transfer somebody makes outside the product — so this slice
-is only ever the record of whether that happened, who says so, and against
-which transfer reference.
+Nothing here moves money — referrals are paid by a bank transfer made outside
+the product. This is only the record of whether that happened, who says so,
+and against which transfer reference.
 """
 
 from __future__ import annotations
@@ -28,9 +27,8 @@ async def list_redeemed_referrals(
 ) -> tuple[list[ReferralAdminRead], str | None]:
     """The settlement queue, newest referral first.
 
-    Emails are resolved in one lookup rather than per row: the queue is read
-    far more often than it is written, and a join per row is how a list screen
-    becomes the slowest page in a console.
+    Emails are resolved in one lookup rather than per row, to avoid a join per
+    row on a screen read far more often than it is written.
     """
     status = domain.normalise_payout_status(payout_status) if payout_status else None
     rows, next_cursor = await repository.redeemed_referrals_page(
@@ -71,10 +69,8 @@ async def set_referral_payout(
 ) -> ReferralAdminRead:
     """Record that a referral has been settled, or that it has not after all.
 
-    Reversible on purpose: the flag is somebody's word about a bank transfer,
-    and a person who ticks the wrong row needs to be able to say so. Marking
-    it unpaid clears the stamp rather than leaving a paid date on an unpaid
-    row.
+    Reversible: marking it unpaid clears the stamp rather than leaving a paid
+    date on an unpaid row.
     """
     status = domain.normalise_payout_status(payout_status)
     row = await repository.referral_by_id(session, referral_id)

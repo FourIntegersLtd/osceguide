@@ -1,20 +1,12 @@
 """What a customer is shown for a payment they made.
 
-Ported from `b2c-api/b2c/shared/services/receipt_service.py` and
-`shared/utils/payment_receipt_email.py`. Financial output, so every format here
-is an oracle rather than a preference: `tests/unit/test_receipt_oracle.py`
-pins each one against the legacy helper it came from.
+Financial output, so every format here is an oracle rather than a preference:
+`tests/unit/test_receipt_oracle.py` pins each one against the legacy helper it came from.
 
-Two rules from the legacy code are carried over deliberately and are worth
-stating out loud:
-
-- **A receipt is built from the payment record and nothing else.** The legacy
-  builder takes the stored record and refuses to reach for a live user row, so
-  a customer who later changes their name still gets the receipt as it was
-  issued. That is why `customer_name` is stored on the payment rather than
-  looked up.
-- **It is a receipt, not a VAT invoice**, and it says so. The footer is not
-  decoration.
+- A receipt is built from the payment record and nothing else — no live user lookup — so a
+  customer who later changes their name still gets the receipt as it was issued. That is why
+  `customer_name` is stored on the payment rather than looked up.
+- It is a receipt, not a VAT invoice, and it says so; the footer is not decoration.
 """
 
 from __future__ import annotations
@@ -48,9 +40,8 @@ _REFERENCE_TAIL = 12
 def new_receipt_id(exam_code: str, *, token: str | None = None) -> str:
     """Oracle: `generate_receipt_id` — `RCP-<exam>-<8 hex>`.
 
-    The exam is in the id on purpose: support reads these aloud, and knowing
-    which product a receipt belongs to without opening it is the difference
-    between one question and three.
+    The exam is in the id on purpose: support reads these aloud, and knowing which product a
+    receipt belongs to without opening it saves a round trip.
     """
     suffix = token if token is not None else uuid.uuid4().hex[:8]
     return f"RCP-{exam_code.strip().lower()}-{suffix}"
@@ -64,11 +55,8 @@ def format_amount_gbp(amount_pence: int | None) -> str:
 
 
 def format_receipt_date(value: datetime | None) -> str:
-    """Oracle: `format_receipt_date` — `01 January 2025`.
-
-    Spelled out rather than numeric, because a receipt is read by people on
-    both sides of the Atlantic and `01/02/2025` is two different days.
-    """
+    """Oracle: `format_receipt_date` — `01 January 2025`. Spelled out rather than numeric,
+    because `01/02/2025` is two different days on either side of the Atlantic."""
     if value is None:
         return "-"
     return value.strftime("%d %B %Y")
@@ -110,9 +98,8 @@ class PaymentRecord:
 def receipt_fields(record: PaymentRecord) -> dict[str, object]:
     """Oracle: `build_receipt_template_data_from_record`.
 
-    The subtotal is derived rather than stored — total minus tax, floored at
-    zero — so a receipt can never show a subtotal and a tax that do not add up
-    to the amount actually taken.
+    The subtotal is derived rather than stored — total minus tax, floored at zero — so it can
+    never disagree with the amount actually taken.
     """
     subtotal = max(record.amount_total_pence - record.amount_tax_pence, 0)
     return {

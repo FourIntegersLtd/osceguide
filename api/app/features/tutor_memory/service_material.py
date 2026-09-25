@@ -1,12 +1,7 @@
 """Building the material index: what goes into it, and what is retired from it.
 
-What goes in decides what a citation can say, so the corpus names and the
-titles are settled here and read out by `service_search` unchanged.
-
-Answering a question out of the index is next door. The two are separate
-because they fail differently and are read at different times: this one is a
-nightly job that walks the whole catalogue, and that one sits inside a voice
-loop with a budget measured in milliseconds.
+What goes in decides what a citation can say, so the corpus names and titles are settled
+here and read out by `service_search` unchanged.
 """
 
 from __future__ import annotations
@@ -130,12 +125,8 @@ async def _retire(index: MaterialIndex, seen: dict[str, set[str]]) -> int:
 
     An unpublished summary that stayed in the index is the failure worth
     preventing: the tutor would go on quoting it, with a citation to a page
-    that now returns a 404.
-
-    Through the port, not the repository. Both are this slice's own, so either
-    would satisfy the layering guard -- but a walk that read the table directly
-    could not be exercised against a fake, and this is the path that deletes
-    things.
+    that now returns a 404. Goes through the port rather than the repository
+    directly, so this walk can be exercised against a fake.
     """
     retired = 0
     for corpus, live in seen.items():

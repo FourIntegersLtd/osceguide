@@ -1,15 +1,9 @@
 """Cutting a piece of study material into passages that can be embedded.
 
-A straight port of b2c's `management_text_utils.py`, kept behaviour-identical
-on purpose: the legacy index was built with these boundaries, and a chunker
-that cut differently would retrieve differently for the same question. The
-oracle in `tests/unit/test_tutor_memory_chunking.py` holds it to the original.
-
-What changed is only what had to. The legacy version took an `app_type` and
-knew five SCA field names, so a new exam meant editing it; this one is handed
-the text and the section headings are the only thing it recognises. Turning a
-document into text is `sources.py`'s job, because which fields of a summary are
-worth reading is a product decision and where to cut a paragraph is not.
+Behaviour-identical to the legacy chunker on purpose: a different cut would retrieve
+differently for the same question. `tests/unit/test_tutor_memory_chunking.py` holds it to
+the original. Turning a document into text is `sources.py`'s job; this only recognises
+section headings.
 """
 
 from __future__ import annotations
@@ -107,11 +101,9 @@ def _by_size(text: str, *, first_index: int) -> list[Chunk]:
 def _break_before(text: str, start: int, end: int) -> int:
     """The last sentence end before `end`, or the last space, or `end` itself.
 
-    A space is looked for only when the window holds no full stop at all --
-    not when it holds one in an unusable place. That is the legacy rule, and
-    the difference is real: a window opening on a full stop would otherwise be
-    cut at its last space instead of being left at full width, which moves
-    every boundary after it.
+    A space is looked for only when the window holds no full stop at all, not when it holds
+    one in an unusable place — otherwise a window opening on a full stop would be cut short
+    instead of left at full width, moving every boundary after it.
     """
     found = text.rfind(".", start, end + 1)
     if found == -1:

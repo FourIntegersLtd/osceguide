@@ -70,21 +70,13 @@ them breaks the worker. Worth making configurable there — see
 None of its own. A dashboard transcript causes `tutor_memory` to defer
 `summarise_assistant_session`, which comes back through `discard_transcript`.
 
-## Seams
-This slice sits **below** `tutor_memory` and cannot import it, so
-`service_seams.bind_assistant_hooks({render, run_tool, on_transcript})` is
-handed three functions by `main.create_app` and calls them without knowing
-whose they are.
-
-Unbound, every one falls back to what this slice did before: placeholder
-instructions, no tools, and the old "help sessions only" rule. That is what
-made the seam safe to deploy ahead of the slice that fills it — and it is why
-`tests/guards/test_every_seam_is_bound.py` exists, because a fallback that
-silently stays in place is indistinguishable from a feature that works.
-
-Reads in the other direction — `session_ref`, `transcript_messages`,
-`discard_transcript` — are what a slice above needs to know about a session,
-as plain data rather than mapped rows.
+## Reads for other slices
+`service_reads` — `session_ref`, `transcript_messages`, `discard_transcript` —
+is what `tutor_memory` needs to know about a session, as plain data rather than
+mapped rows. In the other direction this slice calls `tutor_memory` directly:
+`service_session.render_dashboard_session` for a dashboard session's
+instructions, `service_tools.tool_hook` for tool calls, and `jobs.on_transcript`
+to decide whether a transcript is kept.
 
 ## Cross-slice dependencies
 - `voice.service.grant_for_agent_room` mints the browser's join token and

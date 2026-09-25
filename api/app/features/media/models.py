@@ -16,8 +16,7 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 class MediaItem(Base, UUIDPrimaryKey, Timestamps):
     """A slide deck, summary, blog post or podcast episode.
 
-    One table with a kind rather than four per product. b2c has sixteen
-    collections for these and the same publish-and-read logic in each.
+    One table with a kind rather than one per product.
     """
 
     __tablename__ = "media_items"

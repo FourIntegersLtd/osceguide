@@ -1,15 +1,10 @@
 """Rendering a session's instructions from the content pack.
 
-Three of the four assistant kinds used to be one sentence of placeholder text,
-so a help session answered from nothing and an onboarding session introduced
-nothing. The pack under `content/` is b2c's, ported whole; this is the piece
-that reaches it.
-
-Where it sits matters. `service.start_session` asks the seam first — a slice
-above owns the `dashboard` kind and renders it from somebody's own history —
-then here, and only then the placeholder, which survives as the last resort
-because `domain.ensure_dispatchable` refuses a session with no instructions at
-all and a session that cannot be dispatched is worse than a generic one.
+`service.start_session` asks `tutor_memory` first — it owns the `dashboard`
+kind and renders it from somebody's own history — then here, and only then
+the placeholder: `domain.ensure_dispatchable` refuses a session with no
+instructions at all, and an undispatchable session is worse than a generic
+one.
 """
 
 from __future__ import annotations
@@ -120,5 +115,5 @@ async def render(
 
 
 def scene_payload(scene: Any) -> dict[str, str]:
-    """The worker's and the browser's spelling of a scene, which is b2c's."""
+    """The worker's and the browser's spelling of a scene."""
     return {"patientLine": scene.patient_line, "question": scene.question}

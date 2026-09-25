@@ -1,13 +1,9 @@
 """Who is driving: the clock, or the person holding the tablet.
 
-Two routes, and they are the pair that decides it. `advance_now` is a human
-saying "this phase is done" without waiting for the bell. `set_auto_advance`
-hands the circuit over in one direction or the other for good.
-
-Separate from the clock overrides next door because those change *when* things
-happen and these change *who decides*. Training sessions run on the same
-machinery as examinations, and this is the switch that makes one feel like the
-other when a tutor wants to talk between stations.
+`advance_now` is a human saying "this phase is done" without waiting for the
+bell. `set_auto_advance` hands the circuit over in one direction or the other
+for good — the switch a tutor uses to pause automation and talk between
+stations.
 """
 
 from __future__ import annotations

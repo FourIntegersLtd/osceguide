@@ -1,26 +1,17 @@
 """What an exam is, and what an organisation offering one means.
 
-Two concepts that b2c and b2b both called an exam:
+- An **Exam** is an assessment framework, written by the platform or an
+  institution, naming the rubric version it is marked against.
+- A **Programme** is one organisation saying it runs one of them.
 
-- An **Exam** is an assessment framework, written either by the platform or by
-  an institution. It names the rubric version it is marked against. This
-  replaces b2c's `app_type` string and the 4x20 `COLLECTION_MAPPING` it indexed.
-- A **Programme** is one organisation saying it runs one of them. This is what
-  b2b's `b2b_exams` rows actually were.
+See ADR 0011 and ADR 0016 for why these stay separate and exams are authored.
 
-Merging them would make the frameworks org-scoped or make programmes global;
-ADR 0011 keeps them apart, and ADR 0016 makes the exams themselves authored.
+An exam has an **owner**, the same split stations and rubrics carry: a
+platform exam is the consumer catalogue everyone can see; an org exam is an
+institution's own, written without asking us and invisible outside it. Neither
+arm gates the other.
 
-An exam has an **owner**, the same split stations and rubrics carry. A platform
-exam is the consumer catalogue we publish and everyone can see. An org exam is
-an institution's own, written without asking us and invisible outside it. The
-two arms do not gate each other: Ashford does not wait on us to write "Ashford
-Finals OSCE", and a school's private exam never appears in the B2C catalogue.
-
-Nothing here is a list of exams. There used to be a frozen tuple of four,
-mirrored by a seed in a migration and pinned to it by a unit test, and adding a
-fifth exam meant editing all three and shipping. An exam is now a row somebody
-writes, so this module holds only the rules that govern one.
+This module holds only the rules that govern an exam.
 """
 
 from __future__ import annotations
@@ -127,10 +118,8 @@ def ensure_owned_by(exam_org_id: uuid.UUID | None, actor_org_id: uuid.UUID | Non
     """Only an exam's own owner may edit, publish or retire it.
 
     Reading is wider than writing: an institution reads the platform catalogue
-    as well as its own. Writing is not — a platform admin cannot edit Ashford's
-    exam, and Ashford cannot edit ours. The two lifecycles are separate, which
-    is the whole point of the split: retiring a platform exam leaves every
-    institution's own exams and past results untouched, and vice versa.
+    as well as its own, but a platform admin cannot edit Ashford's exam, and
+    Ashford cannot edit ours.
     """
     if exam_org_id != actor_org_id:
         raise NotOwned("That exam belongs to a different owner.")

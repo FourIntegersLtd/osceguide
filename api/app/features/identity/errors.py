@@ -49,12 +49,9 @@ class AccountSuspended(Unauthenticated):
 
 
 class PasswordLoginDisabled(Unauthenticated):
-    """Distinct from `InvalidCredentials` on purpose: the account's own
-    organisation already published that it signs in through SSO
-    (`GET /auth/sso/sign-in`), so naming this here leaks nothing a visitor
-    could not already learn — and telling a genuine SSO user "wrong
-    password" instead of "sign in through your organisation" would send
-    them to a reset flow that can only ever refuse them too."""
+    """Distinct from `InvalidCredentials` on purpose: the account's organisation already
+    publishes that it signs in through SSO (`GET /auth/sso/sign-in`), so naming this leaks
+    nothing a visitor could not already learn."""
 
     code = "password_login_disabled"
     default_message = (
@@ -65,14 +62,11 @@ class PasswordLoginDisabled(Unauthenticated):
 class UserNotFound(NotFound):
     """No such account.
 
-    Answered only to a platform administrator: everywhere else, a person who
-    is not yours is `forbidden` rather than `not found`, so membership cannot
-    be probed by response code.
+    Answered only to a platform administrator: everywhere else, a person who is not yours is
+    `forbidden` rather than `not found`, so membership cannot be probed by response code.
 
-    Mirrors `tenancy.errors.UserNotFound` rather than importing it, for the
-    same reason `UnknownExamError` is mirrored: a slice owns its exception
-    types and `tenancy` sits above this one. The *code* is deliberately shared
-    — it is the API contract — and a unit test pins the two together.
+    Mirrors `tenancy.errors.UserNotFound` rather than importing it — each slice owns its
+    exception types. The *code* is the shared API contract, pinned together by a unit test.
     """
 
     code = "user_not_found"
@@ -82,10 +76,8 @@ class UserNotFound(NotFound):
 class InvalidLegacyToken(Unauthenticated):
     """A legacy token that does not verify, has expired, or names no address.
 
-    One code for every one of those, for the reason `InvalidCredentials` has
-    one: the client's next move is identical — send the person back to the
-    legacy login — and distinguishing them tells an attacker which half of a
-    forged token to fix.
+    One code for all of those: the client's next move is identical, and distinguishing them
+    would tell an attacker which half of a forged token to fix.
     """
 
     code = "invalid_legacy_token"  # noqa: S105 — an error code, not a secret
@@ -95,11 +87,8 @@ class InvalidLegacyToken(Unauthenticated):
 class LegacyAccountNotImported(Unauthenticated):
     """The token verified, but no platform account holds that address.
 
-    Deliberately its own code rather than `invalid_legacy_token`. The caller
-    proved they hold that address by presenting a signed token for it, so
-    naming the condition reveals nothing they did not already know, and the
-    frontend needs to tell those two apart: this one means "stay on the legacy
-    backend", not "sign in again".
+    Its own code rather than `invalid_legacy_token`: the frontend needs to tell them apart —
+    this one means "stay on the legacy backend", not "sign in again".
     """
 
     code = "legacy_account_not_imported"

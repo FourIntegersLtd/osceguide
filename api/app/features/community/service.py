@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audience import (
     PUBLIC,
     Audience,
+    AudienceOut,
     audience_of,
     audiences_for,
     can_see,
@@ -18,8 +19,10 @@ from app.core.audience import (
 )
 from app.core.errors import AppError, raise_mapped
 from app.features.catalog.service import resolve_exam
-from app.features.community import domain, errors, repository, service_reads
+from app.features.community import domain, errors, repository
+from app.features.community.models import Post
 from app.features.community.schemas import PostRead
+from app.features.identity import service as identity
 from app.features.stations import service as stations
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -65,7 +68,7 @@ async def ask(
         audience=audience,
         tags=cleaned_tags,
     )
-    return await service_reads.read_one(session, row, viewer_id=author_id)
+    return await read_one(session, row, viewer_id=author_id)
 
 
 async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.UUID, body: str) -> PostRead:
@@ -93,7 +96,7 @@ async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.
         exam_id=parent.exam_id,
         audience=audience,
     )
-    return await service_reads.read_one(session, row, viewer_id=author_id)
+    return await read_one(session, row, viewer_id=author_id)
 
 
 async def comment_on_station(
@@ -123,7 +126,7 @@ async def comment_on_station(
         station_id=station_id,
         audience=audience,
     )
-    return await service_reads.read_one(session, row, viewer_id=author_id)
+    return await read_one(session, row, viewer_id=author_id)
 
 
 async def remove(
@@ -156,8 +159,13 @@ async def set_like(session: AsyncSession, post_id: uuid.UUID, *, user_id: uuid.U
     row = await repository.post_by_id(session, post_id)
     if row is None:
         raise errors.PostNotFound()
+    # SEC-020: mirror the audience gate that question_detail / list_replies use,
+    # so a post outside the viewer's audience cannot be liked (or probed by id
+    # via a like succeeding). Indistinguishable from a post that does not exist.
+    if not can_see(audience_of(row), await audiences_for(session, user_id)):
+        raise errors.PostNotFound()
     await repository.set_like(session, post_id, user_id, liked=liked)
-    return await service_reads.read_one(session, row, viewer_id=user_id)
+    return await read_one(session, row, viewer_id=user_id)
 
 
 async def list_questions(
@@ -182,7 +190,7 @@ async def list_questions(
         # "cardiology". A blank filter is no filter.
         tag=domain.normalize_tag(tag) if tag else None,
     )
-    return await service_reads.read_many(session, rows, viewer_id=viewer_id), next_cursor
+    return await read_many(session, rows, viewer_id=viewer_id), next_cursor
 
 
 async def question_detail(session: AsyncSession, question_id: uuid.UUID, *, viewer_id: uuid.UUID) -> PostRead:
@@ -199,7 +207,7 @@ async def question_detail(session: AsyncSession, question_id: uuid.UUID, *, view
         raise errors.PostNotFound()
     if not can_see(audience_of(row), await audiences_for(session, viewer_id)):
         raise errors.PostNotFound()
-    return await service_reads.read_one(session, row, viewer_id=viewer_id)
+    return await read_one(session, row, viewer_id=viewer_id)
 
 
 async def list_my_answers(
@@ -213,7 +221,7 @@ async def list_my_answers(
     rows, next_cursor = await repository.list_answers(
         session, viewer=viewer, author_id=viewer_id, limit=limit, cursor=cursor
     )
-    return await service_reads.read_many(session, rows, viewer_id=viewer_id), next_cursor
+    return await read_many(session, rows, viewer_id=viewer_id), next_cursor
 
 
 async def list_replies(
@@ -227,7 +235,7 @@ async def list_replies(
         # thread cannot be probed by id.
         raise errors.PostNotFound()
     rows = await repository.list_children(session, parent_id)
-    return await service_reads.read_many(session, rows, viewer_id=viewer_id)
+    return await read_many(session, rows, viewer_id=viewer_id)
 
 
 async def list_station_comments(
@@ -235,7 +243,7 @@ async def list_station_comments(
 ) -> list[PostRead]:
     viewer = await audiences_for(session, viewer_id)
     rows = await repository.list_station_comments(session, station_id, viewer=viewer)
-    return await service_reads.read_many(session, rows, viewer_id=viewer_id)
+    return await read_many(session, rows, viewer_id=viewer_id)
 
 
 async def list_moderation_queue(
@@ -243,4 +251,43 @@ async def list_moderation_queue(
 ) -> list[PostRead]:
     since = datetime.now(tz=UTC) - timedelta(days=days)
     rows = await repository.list_recent_for_moderation(session, since=since, limit=limit)
-    return await service_reads.read_many(session, rows, viewer_id=viewer_id)
+    return await read_many(session, rows, viewer_id=viewer_id)
+
+
+# --- Turning `Post` rows into `PostRead`, for one row or a whole page.
+
+
+async def read_one(session: AsyncSession, row: Post, *, viewer_id: uuid.UUID) -> PostRead:
+    return (await read_many(session, [row], viewer_id=viewer_id))[0]
+
+
+async def read_many(session: AsyncSession, rows: list[Post], *, viewer_id: uuid.UUID) -> list[PostRead]:
+    """Counts and names fetched for the whole page at once rather than per row."""
+    ids = [r.id for r in rows]
+    counts, mine = await repository.like_counts(session, ids, viewer_id)
+    replies = await repository.reply_counts(session, ids)
+    people = await identity.user_refs_by_ids(session, list({r.author_id for r in rows}))
+    return [
+        PostRead(
+            id=r.id,
+            kind=r.kind,
+            parent_id=r.parent_id,
+            author_id=r.author_id,
+            # Null when the account is gone. Falling back to the id prints a
+            # uuid where a name belongs.
+            author_name=people[r.author_id].name if r.author_id in people else None,
+            title=r.title,
+            body=r.body,
+            # `or []` for a row written before tags existed and read back
+            # NULL by a driver, though the column default says that cannot
+            # happen: a None here would fail the schema instead of reading
+            # as the empty list it means.
+            tags=list(r.tags or []),
+            audience=AudienceOut.of(r),
+            like_count=counts.get(r.id, 0),
+            liked_by_me=r.id in mine,
+            reply_count=replies.get(r.id, 0),
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]

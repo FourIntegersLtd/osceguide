@@ -1,20 +1,13 @@
 """The platform's own station library, and the templates behind it.
 
-The same services the org routes use, with `org_id=None`. Until now the
-platform half of `stations` had no write path at all: the library was inserted
-by a legacy import or by hand, and the four exams' station shapes lived in the
-engine as formatters chosen by a branch on the exam's code.
+The same services the org routes use, with `org_id=None`. An org may read and build on what is
+published here; only a platform admin may write it. `OrgAdmin` sets `allow_platform_admin=False`,
+so the reverse holds too — neither can author the other's content.
 
-An org may read and build on what is published here; only a platform admin may
-write it. `OrgAdmin` sets `allow_platform_admin=False`, so the reverse holds
-too — neither can author the other's content.
-
-The two reads that answer for one station named by id — `GET /stations/{id}`
-and `GET /stations/{id}/versions` — are here as well, at the tail of the file.
-They belong to the library rather than to an organisation's slug, and
-`router.py`, which holds the browse page they share the library's rule with, is
-at the slice's line cap. Their authorisation is per route, not per file: one is
-for any reader entitled to the station's exam, and the other for staff.
+The two reads that answer for one station named by id — `GET /stations/{id}` and
+`GET /stations/{id}/versions` — live here too, since they belong to the library rather than to an
+organisation's slug. Their authorisation is per route: one is for any reader entitled to the
+station's exam, the other for staff.
 """
 
 from __future__ import annotations
@@ -193,16 +186,10 @@ async def archive_platform_station_version(
 async def read_library_station(
     station_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.LibraryStationRead:
-    """One station from the platform library, for whoever a link found them to be.
+    """One station from the platform library: a title and the ids needed to bind it, not the document.
 
-    The row the browse page already gives — a title and the ids needed to bind
-    it — and none of the document inside it. A shared link used to be answered
-    by walking that page a hundred stations at a time in the browser, because
-    there was no read that took an id and no organisation's slug.
-
-    One refusal covers every station that is not the library's: another
-    institution's private case and a draft nobody has published answer
-    identically, because which of them it was is somebody else's tenant.
+    One refusal covers every station that is not the library's — another institution's private case
+    and a draft nobody has published answer identically.
     """
     return await service_library_reads.read_library_station(
         session,
@@ -221,12 +208,8 @@ async def read_library_station(
 async def station_version_history(
     station_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> list[schemas.StationVersionRead]:
-    """Every revision this station has had, newest first. The author's own view.
+    """Every revision this station has had, newest first — whole documents, so staff-only.
 
-    The lifecycle had no reader: a station could be drafted, published,
-    superseded and archived, and nothing listed the revisions those acts
-    produced — so the authoring screen could not offer a previous one. Whole
-    documents, which is why the audience is staff and not the station's org
-    members at large (the rule, and why, are in `service_versions`).
+    See `service_versions` for the audience rule.
     """
     return await service_versions.version_history(session, station_id, caller=principal)

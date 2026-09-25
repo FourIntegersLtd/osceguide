@@ -1,12 +1,10 @@
 """The registry where a slice's role rules meet core's dependencies.
 
 The predicates themselves belong to `features/tenancy/domain.py` — who counts
-as an admin is a tenancy rule. The place that *applies* them is core, which may
-not import a feature. They meet here, bound once by `main.py`, so every slice
-can write `workspace: OrgAdmin` without importing another slice's service.
-
-Split out of `core/tenancy.py` at the file cap: resolving a workspace and
-registering the rules used to resolve it change for different reasons.
+as an admin is a tenancy rule. The place that *applies* them is core, which
+may not import a feature. They meet here, bound once by `main.py`, so every
+slice can write `workspace: OrgAdmin` without importing another slice's
+service.
 """
 
 from __future__ import annotations
@@ -25,9 +23,9 @@ def bind_role_policy(**predicates: RolePredicate) -> None:
 def policy(name: str) -> RolePredicate:
     """A late-bound predicate, so an annotation can name a rule before `main.py` ties it.
 
-    The lookup happens per call rather than at import, which is what lets
-    `OrgAdmin` be declared at module level and still fail loudly — naming the
-    missing binding — if the composition root forgot it.
+    Looked up per call, not at import, so `OrgAdmin` can be declared at module
+    level and still fail loudly, naming the missing binding, if the
+    composition root forgot it.
     """
 
     def predicate(role: str | None) -> bool:

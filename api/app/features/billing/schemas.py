@@ -19,12 +19,8 @@ class WebhookResult(BaseModel):
 
 
 class ReceiptRead(BaseModel):
-    """A payment receipt, rendered.
-
-    Every field is a string already formatted for display: a receipt is read by
-    people rather than parsed by clients, and rendering money and dates in the
-    browser is how two surfaces come to show the same payment differently.
-    """
+    """A payment receipt, rendered. Every field is a string already formatted for display, so
+    two clients cannot render the same payment differently."""
 
     receipt_id: str
     customer_email: str

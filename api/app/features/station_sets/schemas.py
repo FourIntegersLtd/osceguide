@@ -37,8 +37,7 @@ class UpdateSet(BaseModel):
 
     The name, and only the name. A set carries no description and no timings —
     the length of a session is the sum of its stations' exam timings, which the
-    exam owns — so there is nothing else to write, and the retiring client's
-    edit screen asked for a name and a list of stations and nothing more.
+    exam owns — so there is nothing else to write.
 
     Whitespace strips to nothing, which is then too short: a set called `"   "`
     is an unlabelled row in the list the learner has to keep.
@@ -62,3 +61,40 @@ class StartedAttempt(BaseModel):
     status: str
     entry_id: uuid.UUID
     attempts_used: int
+
+
+# --- What the platform console reads and sends about one person's station progress.
+
+
+class StationProgressRead(BaseModel):
+    """One station this person has sat, or holds in a practice set.
+
+    `attempts` counts the attempts that exist; `entry_attempts` is the sum of
+    the counters on their set entries, which is what the per-station limit is
+    enforced on and what "reset attempts" zeroes. The two agree until somebody
+    resets, and showing both is how the console explains the difference.
+    """
+
+    station_id: uuid.UUID
+    title: str
+    exam_code: str
+    attempts: int
+    evaluated: int
+    last_attempt_at: datetime | None
+    last_attempt_id: uuid.UUID | None
+    last_status: str | None
+    entry_attempts: int
+    set_entry_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class DeleteStationProgress(BaseModel):
+    reason: str = Field(min_length=1, max_length=180)
+
+
+class StationProgressChange(BaseModel):
+    """What one of the two actions did, in numbers the toast can print."""
+
+    station_id: uuid.UUID
+    attempts_deleted: int = 0
+    entries_reset: int = 0
+    entries_removed: int = 0

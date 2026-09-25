@@ -4,8 +4,8 @@ Its fields were minted with the payment and read back through `/me/receipts`
 from the day billing landed, and nothing rendered one — so a customer could
 be told a receipt existed and never be handed it.
 
-**Not byte-identical to the legacy document**, and `WIP-ORACLES.md` asked for
-that: the legacy one is Jinja over six shared partials in a repository being
+**Not byte-identical to the legacy document**, though the porting oracle asked
+for that: the legacy one is Jinja over six shared partials in a repository being
 retired. Every *field* it produced is here, which is the part that is a
 contract; the layout is ours. These tests pin the fields and the two
 judgements that are not cosmetic.

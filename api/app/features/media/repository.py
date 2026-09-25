@@ -104,13 +104,7 @@ async def list_catalog(
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
 ) -> tuple[list[MediaItem], str | None]:
-    """A page of the catalogue, narrowed by kind, status, exam and a title or summary fragment.
-
-    `search` belongs in SQL rather than in whoever asked. The catalogue is
-    paginated, so a filter applied to a page can only match the rows that page
-    already contained — which is what the consumer's browser did, six hundred
-    items at a time, before it could say whether a term matched anything.
-    """
+    """A page of the catalogue, narrowed by kind, status, exam and a title or summary fragment."""
     stmt = select(MediaItem).where(
         *_catalog_filters(kind=kind, statuses=statuses, exam_id=exam_id, search=search)
     )
@@ -132,12 +126,7 @@ async def count_catalog(
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
 ) -> int:
-    """How many items the same filters match, ignoring the cursor.
-
-    The count a page cannot give about itself: `items` says what this page
-    holds, and a screen that printed its length announced "25 found" for a
-    library of six hundred.
-    """
+    """How many items the same filters match, ignoring the cursor."""
     stmt = (
         select(func.count())
         .select_from(MediaItem)

@@ -22,19 +22,13 @@ from app.core.settings import get_settings
 def build_worker_app() -> procrastinate.App:
     """The job app, with every model imported first.
 
-    Importing the tasks is not enough. A slice's `jobs.py` pulls in its own
-    models and no others, so a mapper whose foreign key names a table nothing
-    imported cannot be configured — `attempts.peer_session_id` points at
-    `practice_sessions`, and `attempts.set_entry_id` at `station_set_entries`.
-    The API never hit this because `main.py` imports every router on the way
-    up; the worker imports nothing but tasks.
+    Importing the tasks is not enough: a slice's `jobs.py` pulls in its own models and
+    no others, so a mapper whose foreign key names a table nothing imported cannot be
+    configured. Order-dependent otherwise, which is worse than reliably broken —
+    `import_all_models` closes it for the worker the way it already does for Alembic.
 
-    The failure was order-dependent, which is worse than being reliable: a
-    query might happen to configure after enough had loaded, or might not.
-    Alembic already called `import_all_models` for exactly this reason.
-
-    Separate from `main()` so a test can assert the mappers configure without
-    starting a worker.
+    Separate from `main()` so a test can assert the mappers configure without starting
+    a worker.
     """
     import_all_models()
     return get_jobs_app()

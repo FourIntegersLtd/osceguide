@@ -1,11 +1,9 @@
 """Queries against the platform's own half of the station table.
 
-Split from `repository.py` at the file cap. The library is the one body of
-stations that is nobody's — `owner_kind = 'platform'`, `org_id IS NULL` — and
-every question asked of it is spelled the same way: narrow by exam or title,
-page by the shared keyset cursor, and never by an organisation that does not
-exist here. The rest are the joins a bulk reader needs when it holds version
-ids rather than stations.
+The library is the one body of stations that is nobody's — `owner_kind = 'platform'`,
+`org_id IS NULL`. Every question asked of it is spelled the same way: narrow by exam or title, page
+by the shared keyset cursor. The rest are the joins a bulk reader needs when it holds version ids
+rather than stations.
 """
 
 from __future__ import annotations
@@ -32,10 +30,8 @@ async def library_page(
 ) -> tuple[list[Station], str | None]:
     """A page of the published library, narrowed by exam and by title.
 
-    `search` belongs in SQL rather than in whoever asked. The catalogue is
-    paginated, so a filter applied to a page can only ever match the rows that
-    page already contained — which is what a screen did a hundred rows at a
-    time, and why it kept offering "load more" while a term was being typed.
+    `search` belongs in SQL rather than in whoever asked: applying a filter to an already-fetched
+    page can only ever match the rows that page contained.
     """
     stmt = select(Station).where(Station.owner_kind == "platform", Station.status == "published")
     if exam_id is not None:

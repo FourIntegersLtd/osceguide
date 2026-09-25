@@ -9,11 +9,8 @@ in the same transaction that writes the phase — so the state and the fact that
 a transition is owed land together or not at all (ADR 0006). Each scheduled job
 carries the `phase_seq` it was scheduled against and does nothing if that no
 longer matches, which is how a human's override beats the clock without a
-lease, a claim table or a second lock.
-
-Split from `service.py` because scheduling a sitting and running one change for
-different reasons, and the running half is the one a supervisor is holding a
-tablet in front of. The mechanics of one step live in `service_steps.py`.
+lease, a claim table or a second lock. The mechanics of one step live in
+`service_steps.py`.
 """
 
 from __future__ import annotations
@@ -40,8 +37,7 @@ log = get_logger(__name__)
 # slice: the service is this slice's public face.
 get_room_agents = voice.get_room_agents
 
-# How long a circuit may sit live before the reaper closes it. Ported from b2b,
-# which ends circuits left running for twelve hours.
+# How long a circuit may sit live before the reaper closes it.
 STALE_AFTER = timedelta(hours=12)
 
 
@@ -138,9 +134,8 @@ async def end_circuit(
 ) -> CircuitRead:
     """Stop the whole examination, wherever it had got to.
 
-    The patient is removed here, which ending a circuit never used to do: it
-    nulled the room name and left the agent sitting in a LiveKit room nobody
-    was coming back to.
+    The patient is removed here — previously ending a circuit only nulled the
+    room name, leaving the agent stuck in a LiveKit room nobody returned to.
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     if circuit.ended_at is None:

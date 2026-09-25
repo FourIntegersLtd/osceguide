@@ -4,9 +4,6 @@ Structured output, because a summary that has to be parsed out of prose is a
 summary that will one day be parsed wrongly and written into somebody's memory
 as fact. The schema and the instructions come from the caller: what a debrief
 summary should contain is a tutoring decision, not an adapter's.
-
-Which model summarises is configuration in one place, as `attempts/llm_clients`
-is for marking. Same client, low effort: these are short, structured jobs.
 """
 
 from __future__ import annotations

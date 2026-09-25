@@ -2,16 +2,11 @@
 
 A **sitting** is a scheduled event an organisation holds. It contains
 **circuits**, and a circuit contains **slots** — one trainee at one station.
-Two modes behave differently enough to be worth naming:
 
 - `training`: several trainees rotate through several stations together, one
   active at a time, driven by a supervisor.
 - `exam`: one candidate works through every station of their own circuit,
   starting each themselves.
-
-Ported from b2b, which is what currently runs examinations. These rules decide
-what a supervisor can do in the middle of one, so they are carried over rather
-than reinvented.
 """
 
 from __future__ import annotations
@@ -40,11 +35,9 @@ class Mode(StrEnum):
 class SlotStatus(StrEnum):
     """Where one trainee's station has got to.
 
-    Written by nothing until the circuit learnt to run itself, while four read
-    models displayed it — so a finished station kept offering a join button.
     `SKIPPED` is a station the circuit moved past: jumped over, or left unsat
-    when the examination was ended early. It is not `COMPLETED`, because
-    nothing was recorded, and it is not `SCHEDULED`, because it is not coming.
+    when the examination was ended early. Not `COMPLETED` (nothing was
+    recorded) and not `SCHEDULED` (it is not coming).
     """
 
     SCHEDULED = "scheduled"
@@ -104,12 +97,8 @@ class Timing:
 
 
 def build_slots(mode: Mode, *, trainees: Sequence[str], stations: Sequence[str]) -> list[PlannedSlot]:
-    """The slots a circuit starts with.
-
-    Exam and training compose differently because they mean different things: a
-    candidate sits every station, whereas a training group rotates so that each
-    person is at a different station at the same time.
-    """
+    """The slots a circuit starts with: an exam candidate sits every station,
+    a training group rotates so each trainee starts at a different one."""
     if not stations:
         raise InvalidCircuit("A circuit needs at least one station.")
 
@@ -133,8 +122,8 @@ def build_slots(mode: Mode, *, trainees: Sequence[str], stations: Sequence[str])
 def ensure_editable(state: CircuitState, *, force: bool = False) -> None:
     """Structural edits rebuild the slots, so they are refused once it matters.
 
-    `force` is kept from b2b: supervisors use it when a session has gone wrong
-    mid-circuit and the alternative is abandoning it.
+    `force` overrides this when a session has gone wrong mid-circuit and the
+    alternative is abandoning it.
     """
     if force:
         return
@@ -147,10 +136,9 @@ def ensure_editable(state: CircuitState, *, force: bool = False) -> None:
 def edit_block(state: CircuitState) -> str | None:
     """Why this circuit cannot be structurally edited, or None if it can.
 
-    The same rule as `ensure_editable`, asked rather than asserted: the console
-    needs to know before it offers an edit, instead of discovering the refusal
-    after somebody has typed one. A stable code, not a sentence — b2b's client
-    decides this by matching English.
+    Same rule as `ensure_editable`, checked ahead of time so the console can
+    decide whether to offer an edit before a supervisor tries one. Returns a
+    stable code, not a sentence.
     """
     if state.ended:
         return "circuit_ended"
@@ -169,11 +157,9 @@ def ensure_startable(state: CircuitState) -> None:
 def ensure_live(state: CircuitState) -> None:
     """Nothing may act on a circuit that is over.
 
-    Separate from `ensure_startable` because it guards a different moment: not
-    "may this begin" but "is this still running". A switch that lands on an
-    ended circuit leaves it showing a candidate consulting in a room that has
-    already been torn down, and the trainee portal then offers a slot nobody
-    can join.
+    Separate from `ensure_startable`: guards "is this still running", not "may
+    this begin". Without it, an ended circuit can keep showing a candidate
+    consulting in a room that no longer exists.
     """
     if state.ended:
         raise CircuitAlreadyEnded("That circuit has already finished.")
@@ -182,17 +168,11 @@ def ensure_live(state: CircuitState) -> None:
 def ensure_can_append_trainees(mode: Mode) -> None:
     """Latecomers belong to a training circuit, and to nobody else.
 
-    The rule is b2b's, which answered an exam-mode append with "only supported
-    for training circuits — use Edit circuit for exam sessions". It is not a
-    missing feature, it is the shape of the aggregate: an exam circuit is one
-    candidate through every station (C1), so a second person on it is not a late
-    arrival but a second candidate sharing one room, one clock and one recording
-    — and one transcript that would then be marked as though a single doctor had
-    produced it.
-
-    What an examination has instead is another circuit on the same sitting, which
-    `POST /sittings/{id}/circuits` allows while the sitting is running. Being let
-    into one already under way is a disclosure and grading question, not a route.
+    An exam circuit is one candidate through every station, so a second person
+    on it is not a late arrival but a second candidate sharing one room, clock
+    and recording — and a transcript that would be marked as though one doctor
+    produced it. A new exam candidate gets their own circuit on the sitting
+    instead (`POST /sittings/{id}/circuits`).
     """
     if mode is not Mode.TRAINING:
         raise NotPermittedInMode(
@@ -209,8 +189,7 @@ def normalise_timing(raw: Mapping[str, Any], *, mode: Mode = Mode.TRAINING, stat
     """Read a timing blob, clamping it into what a station can actually run.
 
     The legacy `station_minutes` spelling is still accepted because existing
-    circuits carry it. Clamping happens here rather than in the browser, which
-    is where b2b does it today — so the API currently accepts any number at all.
+    circuits carry it.
     """
     # `is None` rather than `or`: a supplied zero means "clamp me to the
     # minimum", and treating it as missing would quietly hand back the default

@@ -1,19 +1,11 @@
 """Signing somebody in through an external identity provider.
 
-The broker verified them; this mints the platform session everybody else uses
-(ADR 0004). Unlike the legacy bridge — which refuses an address it did not
-import — a partner's SSO user is provisioned on first sign-in: the institution
-vouches for them, so there is no password they could have lost. The account is
-passwordless, which is the point — `verify_password` rejects every attempt
-against an absent hash, so SSO is the only way in and `sso_only` advertises a
-truth rather than a preference.
-
-It grants no more than `login` does. Whatever the broker's token claims about
-roles or access is ignored: memberships are read from this database, so a claim
-from the provider cannot widen anybody's access here.
-
-Split from `service_sessions.py` for the same reason `service_legacy.py` is —
-one file per way in, so retiring a broker is retiring a module.
+The broker verified them; this mints the platform session everybody else uses (ADR 0004).
+A partner's SSO user is provisioned on first sign-in and is passwordless, so SSO is the
+only way in and `sso_only` advertises a truth rather than a preference. It grants no more
+than `login` does: whatever the broker's token claims about roles or access is ignored,
+since memberships are read from this database and a claim from the provider cannot widen
+anybody's access here.
 """
 
 from __future__ import annotations

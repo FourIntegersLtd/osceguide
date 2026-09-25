@@ -1,9 +1,8 @@
 """Rescuing a station that has gone wrong.
 
-Separate from the clock overrides next door because these are about one
-station rather than the circuit's timing: the patient did not arrive, the
-recording is unusable, the wrong station is showing. Each leaves the circuit
-running afterwards — an override that stopped it would be a trap.
+The patient did not arrive, the recording is unusable, the wrong station is
+showing. Each leaves the circuit running afterwards — an override that
+stopped it would be a trap.
 """
 
 from __future__ import annotations
@@ -167,11 +166,9 @@ async def jump_to(
 ) -> CircuitRead:
     """Move the circuit to a station out of order, from its reading period.
 
-    This is the general form of what used to be `switch-turn`, which only a
-    training circuit could do. An exam circuit needs it just as much: a
-    candidate arrives late, a station's equipment fails, the order has to
-    change. Stations passed over are marked skipped rather than left looking
-    scheduled — they are not coming.
+    Either mode may need this: a candidate arrives late, a station's equipment
+    fails, the order has to change. Stations passed over are marked skipped
+    rather than left looking scheduled — they are not coming.
     """
     circuit = await live_for_update(session, org_id, circuit_id)
     slot = await repository.slot_by_id(session, org_id, slot_id)

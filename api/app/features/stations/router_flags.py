@@ -1,13 +1,9 @@
 """Reporting a station, and working the queue of reports.
 
-`/me/station-flags` is the reader's half and `/platform/station-flags` the
-content team's. They live together because they are one feature with two
-audiences, and apart from `router.py` because that file is the authoring surface
-— versions, publishing, lifecycle — and this is feedback about the result.
-
-The report route used to be served by `identity` with the body discarded and a
-docstring saying persistence is TODO. The button stayed on the screen either
-way, which is the worst version of an unimplemented feature: it answers.
+`/me/station-flags` is the reader's half and `/platform/station-flags` the content team's — one
+feature, two audiences. A past version served the report route with the body discarded and
+persistence unimplemented; the button stayed on the screen and answered 200 regardless, so this
+route actually persists what it accepts.
 """
 
 from __future__ import annotations

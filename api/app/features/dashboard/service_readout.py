@@ -2,10 +2,8 @@
 
 The ranking is not recomputed here — `service_cohort` owns it, and a second
 implementation of "completion before score" is how two screens come to disagree
-about who is failing. What this module adds is the summary the legacy read-out
-led with and the sentences under it, ported from b2b's `_build_recommendations`
-with its thresholds intact: they are what an institution's course lead has been
-reading, and changing the bands is a change to the product, not to this file.
+about who is failing. What this module adds is the summary and the recommendation
+sentences under it; changing the bands is a change to the product, not to this file.
 """
 
 from __future__ import annotations

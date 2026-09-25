@@ -125,9 +125,7 @@ class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
 class PracticeHistory(Base, UUIDPrimaryKey, Timestamps):
     """What part someone last played, and how often they have practised.
 
-    A row rather than fields on the user: it is peer-practice's business, and
-    b2c putting it on the user document is why the matcher reaches into four
-    different collections to find it.
+    A row rather than fields on the user: it is peer-practice's own business.
     """
 
     __tablename__ = "practice_history"

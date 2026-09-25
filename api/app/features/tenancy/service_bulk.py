@@ -1,14 +1,9 @@
 """Seating a whole team in one request.
 
-Split from `service_memberships.py` for the same reason `roster` splits its
-bulk add: the rule here is not about a membership, it is about an upload. One
-duplicate in a list of forty must not refuse the other thirty-nine, and the
-administrator has to be told which rows were skipped and why rather than left
-to diff the team against their spreadsheet.
-
-Each row still goes through `add_membership`, so a bulk invite is exactly the
-same act as a single one — the same invitation for an address with no account,
-the same audit row — and cannot drift from it.
+One duplicate in a list of forty must not refuse the other thirty-nine, and the
+administrator has to be told which rows were skipped and why. Each row still goes through
+`add_membership`, so a bulk invite is exactly the same act as a single one and cannot
+drift from it.
 """
 
 from __future__ import annotations

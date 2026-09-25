@@ -18,14 +18,12 @@ class DecisionRead(BaseModel):
 
 
 class SaveDecision(BaseModel):
-    """Drafting a decision.
+    """A decision to save as a draft.
 
     `expected_revision` is the revision this screen last read, or 0 when it has
     read nothing. A save that does not name the current one is refused with
     `decision_revised` (409), so two administrators cannot overwrite each
-    other's draft. The release route reuses this body and does not consult it,
-    because a release is already guarded by the workflow state and by the
-    evidence fingerprint.
+    other's draft.
     """
 
     assessment_outcome: str | None = Field(default=None, pattern="^(pass|fail|inconclusive|withheld)$")
@@ -39,11 +37,10 @@ class SaveDecision(BaseModel):
 
 
 class TraineeResultRead(BaseModel):
-    """What a candidate sees.
+    """A candidate's own view of their result.
 
     Deliberately narrower than the internal record: moderation notes and the
-    evidence snapshot are ours, not theirs. b2b's own schema doc says not to
-    reproduce disclosure policy in frontend transforms — so it is applied here.
+    evidence snapshot stay internal.
     """
 
     sitting_id: uuid.UUID

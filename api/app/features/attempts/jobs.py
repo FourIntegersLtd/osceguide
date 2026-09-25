@@ -1,15 +1,8 @@
 """Marking a delivered transcript: deciding how, queueing it, and running it.
 
-Which policy applies is a backend decision made after the interaction is over;
-the worker is never told any of it. The job is enqueued inside the transaction
-that marks the transcript complete, so the work and the fact that it is owed
-are recorded together: either both land or neither. b2c ran this on a thread
-pool and b2b on a raw daemon thread, so a deploy mid-generation stranded
-`feedback_status='generating'` forever.
-
-One module for the enqueue and the task: they were two files sharing a
-duplicated constant, and the split is how the task's registration went
-uncalled for the whole build.
+Which policy applies is a backend decision made after the interaction is over; the worker is never
+told any of it. The job is enqueued inside the transaction that marks the transcript complete, so the
+work and the fact that it is owed are recorded together: either both land or neither.
 """
 
 from __future__ import annotations
@@ -60,15 +53,9 @@ async def enqueue_scoring(
 ) -> None:
     """Queue the marking in the caller's transaction.
 
-    Deliberately not `app.defer_async`: procrastinate's own connector holds its
-    own pool, so deferring through it commits the job on a different connection
-    and the "enqueue with the data" guarantee in ADR 0006 quietly does not hold
-    — the job could land while the transcript that justified it rolls back.
-
-    Calling procrastinate's own SQL function on our session keeps one
-    transaction, at the cost of naming the queue and task here rather than
-    through the task object. The queueing lock makes it idempotent: a redelivered
-    transcript cannot queue a second marking of the same attempt.
+    Deliberately not `app.defer_async`: procrastinate's own connector holds its own pool, so deferring
+    through it would commit the job on a different connection than the transcript write. See ADR 0006.
+    The queueing lock makes it idempotent — a redelivered transcript cannot queue a second marking.
     """
     framework_id, frozen_version = policy_for(attempt)
     policy_version = policy_version or frozen_version
@@ -76,9 +63,7 @@ async def enqueue_scoring(
         # No frozen definition, so the worker never bootstrapped this attempt —
         # yet a transcript arrived for it. There is nothing to mark it against:
         # the rubric is the wording somebody was assessed under, and it cannot
-        # be reconstructed after the fact from an id. This used to fall back to
-        # the exam's framework, which was only possible while a framework was
-        # a name the engine shipped.
+        # be reconstructed after the fact from an id.
         log.warning(
             "not queueing a marking for an attempt with no frozen rubric",
             attempt_id=str(attempt.id),

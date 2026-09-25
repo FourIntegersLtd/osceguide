@@ -150,11 +150,80 @@ async def test_an_entra_organisation_signs_in_through_its_own_flow(client: Async
 
     found = await client.post(LOGIN, json={"org_slug": "kings"})
     assert found.status_code == 200, found.text
+    # SEC-015: the sign-in request carried a signed state and a nonce.
+    state = fake.issued_states[0]
+    assert state and fake.issued_nonces[0]
 
-    result = await client.post(CALLBACK, json={"org_slug": "kings", "token": "auth-code"})
+    result = await client.post(
+        CALLBACK, json={"org_slug": "kings", "token": "auth-code", "state": state}
+    )
     assert result.status_code == 200, result.text
+    # ...and the nonce inside that state is what the broker was told to expect.
+    assert fake.expected_nonces == [fake.issued_nonces[0]]
     me = await client.get("/api/v1/me", headers=bearer(result.json()["access_token"]))
     assert me.json()["email"] == "doctor@kings.nhs.uk"
+
+
+async def test_an_entra_callback_without_a_state_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """SEC-015: the OIDC code flow must carry the signed state its sign-in
+    minted. A callback with no state — a forged or replayed one — is refused
+    before the broker is ever asked to verify the code."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _enable(client, root, "kings", provider="entra", issuer="a1b2c3d4-tenant-id", sso_only=False)
+    fake = FakeSsoBroker(
+        identity=SsoIdentity(email="doctor@kings.nhs.uk", name="Dr Who", subject="entra_oid_1")
+    )
+    _use(client, fake)
+
+    refused = await client.post(CALLBACK, json={"org_slug": "kings", "token": "auth-code"})
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "sso_verification_failed"
+    # The code was never presented to the broker: the state failed first.
+    assert fake.verified == []
+
+
+async def test_an_entra_callback_with_a_foreign_state_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """SEC-015: a state minted for one organisation cannot be replayed against
+    another. The signed state names its org, and the callback refuses one that
+    does not match the org it claims to be for."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _enable(
+        client,
+        root,
+        "kings",
+        provider="entra",
+        issuer="a1b2c3d4-tenant-id",
+        sso_only=False,
+        hosts=["kings.osceguide.com"],
+        email_domains=["kings.nhs.uk"],
+    )
+    await _enable(
+        client,
+        root,
+        "guys",
+        provider="entra",
+        issuer="e5f6-guys-tenant",
+        sso_only=False,
+        hosts=["guys.osceguide.com"],
+        email_domains=["guys.nhs.uk"],
+    )
+    fake = FakeSsoBroker(
+        identity=SsoIdentity(email="doctor@kings.nhs.uk", name="Dr Who", subject="entra_oid_1")
+    )
+    _use(client, fake)
+
+    # A state legitimately issued for guys...
+    await client.post(LOGIN, json={"org_slug": "guys"})
+    guys_state = fake.issued_states[-1]
+    assert guys_state
+
+    # ...replayed against kings is refused.
+    refused = await client.post(
+        CALLBACK, json={"org_slug": "kings", "token": "auth-code", "state": guys_state}
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "sso_verification_failed"
+    assert fake.verified == []
 
 
 async def test_an_unrecognised_provider_stored_on_a_row_is_refused(

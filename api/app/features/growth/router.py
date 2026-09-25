@@ -26,11 +26,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(InvalidInput, errors.UnknownPartnerError),
 )
 async def record_arrival(body: schemas.RecordArrival, session: Session) -> schemas.ArrivalRecorded:
-    """Public: a visitor arriving from a partner link, before any account exists.
-
-    Unauthenticated by necessity — there is nobody to authenticate yet — which
-    is why the partner must be a known one and the visitor key is opaque.
-    """
+    """Public: a visitor arriving from a partner link, before any account exists."""
     return await service.record_arrival(
         session,
         partner=body.partner,
@@ -47,8 +43,7 @@ async def record_arrival(body: schemas.RecordArrival, session: Session) -> schem
     responses=error_responses(Unauthenticated, errors.NotAReporter, errors.UnknownPartnerError),
 )
 async def read_funnel(partner: str, principal: CurrentPrincipal, session: Session) -> schemas.FunnelRead:
-    """Checked against the partner in the path, so one partner's reporter
-    cannot read another's numbers."""
+    """A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner."""
     await service.ensure_reporter(
         session,
         partner=partner.strip().lower(),
@@ -68,10 +63,7 @@ async def credit_signup(
 ) -> schemas.AcquisitionRead | None:
     """Credit this new account to whoever sent them, once.
 
-    Its own route rather than a step inside registering: `growth` sits above
-    `identity`, so registration cannot call it, and a partner who sent somebody
-    was credited with nothing at all until this existed. Null when there is
-    nothing to credit, which is the ordinary case.
+    Returns null when there is nothing to credit, which is the ordinary case.
     """
     return await service.attribute_signup(
         session, user_id=principal.user_id, visitor_key=body.visitor_key, now=clock.now()
@@ -88,8 +80,7 @@ async def read_tracking_references(
 ) -> Page[schemas.TrackingReference]:
     """The references this partner puts in its links, one per exam in the pilot.
 
-    Reporter-gated like the funnel: a reference is commercially meaningful, and
-    one partner has no business reading another's.
+    Reporter-gated like the funnel.
     """
     items = await service.tracking_references(
         session,
@@ -122,7 +113,7 @@ async def add_reporter(
 async def redeem_referral(
     body: schemas.RedeemReferral, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.ReferralRead:
-    """Codes could be issued and never redeemed, so a referrer earned nothing."""
+    """Redeem a referral code, crediting the referrer."""
     return await service.redeem_code(
         session, code=body.code, referred_user_id=principal.user_id, now=clock.now()
     )
@@ -160,8 +151,7 @@ async def list_referrals(
 ) -> Page[schemas.ReferralAdminRead]:
     """The settlement queue: redeemed referrals, and whether each has been paid.
 
-    Platform admin only, and deliberately not a partner's or a referrer's
-    view — it names both sides of every referral and what is owed on it.
+    Platform admin only — it names both sides of every referral and what is owed.
     """
     _ = admin
     items, next_cursor = await service_payouts.list_redeemed_referrals(
@@ -184,9 +174,7 @@ async def set_referral_payout(
 ) -> schemas.ReferralAdminRead:
     """Record a settlement made outside the product.
 
-    Nothing here moves money. It writes down that somebody did, who said so
-    and when, which is the whole of what the retiring app's `payout_status`
-    flag meant and rather more than it recorded.
+    Nothing here moves money — it records who said it happened, and when.
     """
     return await service_payouts.set_referral_payout(
         session,

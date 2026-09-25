@@ -1,9 +1,7 @@
 """Starting a payment.
 
-Split from `service.py`, which finishes one. The two halves never call each
-other and have opposite risks: this one must grant nothing, and that one must
-grant exactly once. Keeping them apart is also what kept `service.py` under
-the file cap.
+The counterpart to `service.py`, which finishes one. The two halves never call each other and
+have opposite risks: this one must grant nothing, and that one must grant exactly once.
 """
 
 from __future__ import annotations
@@ -23,10 +21,8 @@ log = get_logger(__name__)
 def get_checkout(settings: SettingsDep) -> CheckoutSessions:
     """The adapter, as the router's dependency. Overridden in tests with a fake.
 
-    `SettingsDep` rather than a bare `Settings`: FastAPI reads a dependency's
-    own signature, and an un-annotated pydantic model there is taken for a
-    second request body — which made every call to this route answer 422
-    asking for a field called `body`.
+    `SettingsDep` rather than a bare `Settings`: FastAPI reads a dependency's own signature, and
+    an un-annotated pydantic model there is taken for a second request body.
     """
     from app.features.billing.checkout import build_checkout  # noqa: PLC0415
 
@@ -47,16 +43,11 @@ async def start_checkout(
 ) -> str:
     """Send this person to pay for a plan, and return where to send them.
 
-    The client names a **plan code**, never a price or an amount. b2c matched
-    the pence paid against a hardcoded table and raised `Invalid amount paid`
-    on a miss, so a price change, a coupon or another currency broke the
-    purchase *after* the card was charged. Here the plan row owns the price
-    and Stripe is told which one to use.
+    The client names a plan code, never a price or an amount: the plan row owns the price and
+    Stripe is told which one to use.
 
-    Nothing is granted here and no payment is recorded. Access arrives when
-    the webhook says the money did: a customer who abandons the Stripe page,
-    or who never completes 3-D Secure, has started a checkout and bought
-    nothing, and this route must not be able to say otherwise.
+    Nothing is granted here and no payment is recorded. Access arrives when the webhook says the
+    money did: a customer who abandons the Stripe page has started a checkout and bought nothing.
     """
     plan = await repository.plan_by_code(session, plan_code)
     if plan is None:

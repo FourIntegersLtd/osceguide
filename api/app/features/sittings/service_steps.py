@@ -1,13 +1,8 @@
 """What one step of a circuit does to the database.
 
-Split from `service_run.py`, which holds the use cases a route calls. This is
-the layer under them: given a step the run machine chose, put the circuit into
-it — move the patient, close off the station that ended, write the clock, and
-owe the next transition.
-
-It exists as its own module because the use cases and the mechanics change for
-different reasons. "A supervisor may end a station early" is a new use case;
-"the patient leaves before the slot is marked complete" is this.
+Given a step the run machine chose, put the circuit into it: move the
+patient, close off the station that ended, write the clock, and owe the next
+transition.
 """
 
 from __future__ import annotations
@@ -170,10 +165,10 @@ async def finish(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, 
         paused_at=None,
     )
     # Clearing the room on every slot is what tells a rejoining browser that
-    # the circuit is over; b2b does the same on end.
+    # the circuit is over.
     await repository.update_slots_for_circuit(session, org_id, circuit.id, room_name=None)
     # A station nobody sat is `skipped`, not left looking scheduled: it is not
-    # coming, and four read models decide what to offer from this.
+    # coming.
     await repository_run.mark_slots_skipped(
         session, org_id, circuit.id, before_index=_ALL_SLOTS, statuses=_UNSAT
     )
@@ -186,10 +181,9 @@ async def finish(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, 
 async def _close_sitting_if_over(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit) -> None:
     """The last circuit to end closes its sitting (D-7).
 
-    `start_circuit` set the sitting `in_progress` and nothing ever set anything
-    else, so a finished exam day read as running for ever. The check is here
-    rather than in the use case because every way a circuit can end — the last
-    station, a manual end, the twelve-hour reaper — goes through `finish`.
+    Without this, `start_circuit` sets the sitting `in_progress` and nothing
+    ever moves it again, so a finished exam day reads as running forever.
+    Checked here because every way a circuit can end goes through `finish`.
     """
     siblings = await repository.circuits_for_sitting(session, org_id, circuit.sitting_id)
     ended = [(c.ended_at is not None or c.id == circuit.id) for c in siblings]

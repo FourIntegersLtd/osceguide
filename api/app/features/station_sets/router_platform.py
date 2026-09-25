@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.tenancy import PlatformAdmin
-from app.features.station_sets import errors, schemas_platform, service_platform
+from app.features.station_sets import errors, schemas, service_platform
 
 router = APIRouter(tags=["station-sets"])
 
@@ -25,12 +25,12 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/platform/users/{user_id}/stations",
-    response_model=list[schemas_platform.StationProgressRead],
+    response_model=list[schemas.StationProgressRead],
     responses=error_responses(Forbidden, errors.UserNotFound),
 )
 async def list_station_progress_for_support(
     user_id: uuid.UUID, admin: PlatformAdmin, session: Session
-) -> list[schemas_platform.StationProgressRead]:
+) -> list[schemas.StationProgressRead]:
     """One row per station this person has sat: attempts, how many were
     marked, the newest one, and the counters their practice sets hold."""
     _ = admin
@@ -39,12 +39,12 @@ async def list_station_progress_for_support(
 
 @router.post(
     "/platform/users/{user_id}/stations/{station_id}/reset-attempts",
-    response_model=schemas_platform.StationProgressChange,
+    response_model=schemas.StationProgressChange,
     responses=error_responses(Forbidden, errors.UserNotFound, errors.StationNotFound),
 )
 async def reset_station_attempts_for_support(
     user_id: uuid.UUID, station_id: uuid.UUID, admin: PlatformAdmin, session: Session
-) -> schemas_platform.StationProgressChange:
+) -> schemas.StationProgressChange:
     """Set the person's attempt counters for this station back to zero. The
     attempts and their marking are kept."""
     return await service_platform.reset_attempts(session, user_id, station_id, actor=admin)
@@ -52,7 +52,7 @@ async def reset_station_attempts_for_support(
 
 @router.post(
     "/platform/users/{user_id}/stations/{station_id}/delete-progress",
-    response_model=schemas_platform.StationProgressChange,
+    response_model=schemas.StationProgressChange,
     responses=error_responses(
         Forbidden, errors.UserNotFound, errors.StationNotFound, errors.AttemptInProgress
     ),
@@ -60,10 +60,10 @@ async def reset_station_attempts_for_support(
 async def delete_station_progress_for_support(
     user_id: uuid.UUID,
     station_id: uuid.UUID,
-    body: schemas_platform.DeleteStationProgress,
+    body: schemas.DeleteStationProgress,
     admin: PlatformAdmin,
     session: Session,
-) -> schemas_platform.StationProgressChange:
+) -> schemas.StationProgressChange:
     """Erase every attempt this person made at the station — transcript and
     marking with it — and take it out of their practice sets. Not undoable."""
     return await service_platform.delete_progress(

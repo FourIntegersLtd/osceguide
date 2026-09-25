@@ -1,8 +1,8 @@
 """Rules for a station's images: what may be uploaded, and where it lands.
 
-Pure. The retiring backend checked the filename extension and nothing else —
-no size at all, so the ten-megabyte limit existed only in the browser and any
-caller that skipped it could post whatever it liked. The size check is here.
+Pure. Checking only the filename extension once left size unchecked server-side — a ten-megabyte
+limit that existed only in the browser, so any caller that skipped it could post whatever it liked.
+The size check is here.
 
 Where a photo goes on the document is not a preference: every reader in the
 product — the candidate's brief, the ortho doctor screen, the management
@@ -19,9 +19,19 @@ from typing import Any
 MAX_BYTES = 10 * 1024 * 1024
 ALLOWED_SUFFIXES = frozenset({".png", ".jpg", ".jpeg"})
 
+# SEC-013: the leading bytes that make a file a PNG or a JPEG. The extension is
+# only a claim the uploader makes; an .png that is really HTML or SVG would be
+# served back inline from the images bucket and run in the viewer's origin.
+# These are the signatures the browser itself trusts, so a file that does not
+# begin with one is not the image it says it is.
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+JPEG_MAGIC = b"\xff\xd8\xff"
+# Enough of the file to recognise either signature (PNG's is the longer, at 8).
+SNIFF_BYTES = len(PNG_MAGIC)
+
 # The key a station's images live under. One folder per station, and a fresh
-# name per file: the retiring backend keyed on `{username}/{original name}`,
-# so two authors uploading `xray.png` silently overwrote one another.
+# name per file: keying on `{username}/{original name}` let two authors
+# uploading `xray.png` silently overwrite one another.
 KEY_PREFIX = "stations"
 
 
@@ -37,6 +47,27 @@ def validate_upload(*, filename: str, size: int) -> None:
         raise InvalidPhoto(f"Image too large. Maximum size is {MAX_BYTES // (1024 * 1024)}MB.")
     if size <= 0:
         raise InvalidPhoto("That file is empty.")
+
+
+def sniff_image(header: bytes) -> str | None:
+    """The real type of an upload from its leading bytes, or None when it is
+    neither a PNG nor a JPEG."""
+    if header.startswith(PNG_MAGIC):
+        return ".png"
+    if header.startswith(JPEG_MAGIC):
+        return ".jpeg"
+    return None
+
+
+def ensure_real_image(header: bytes) -> None:
+    """Refuse a file whose bytes are not a PNG or a JPEG, whatever it is named.
+
+    Paired with `validate_upload`, which trusts the extension: this is the half
+    that checks the content, so a script renamed `x.png` cannot reach the bucket
+    and be served back inline.
+    """
+    if sniff_image(header) is None:
+        raise InvalidPhoto("That file is not a PNG or JPEG image.")
 
 
 def object_key(*, station_id: uuid.UUID, filename: str) -> str:

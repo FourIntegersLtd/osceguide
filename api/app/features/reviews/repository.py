@@ -36,11 +36,7 @@ async def slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.U
 async def slot_reviews_for_slots(
     session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, list[SlotReview]]:
-    """Every review of each slot, in one query, oldest first within a slot.
-
-    The per-slot read is what the console and the sitting report used to call
-    in a loop: a 20-station, 30-candidate sitting was 600 round trips per GET.
-    """
+    """Every review of each slot, in one query, oldest first within a slot."""
     if not slot_ids:
         return {}
     stmt = (
@@ -211,11 +207,7 @@ async def slot_has_any_review(session: AsyncSession, slot_id: uuid.UUID) -> bool
 
 
 async def slots_with_any_review(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
-    """Which of these slots have been marked, in one query.
-
-    The console asks about every slot on a circuit at once; asking per slot is
-    the probe-per-row the read models exist to delete.
-    """
+    """Which of these slots have been marked, in one query."""
     if not slot_ids:
         return set()
     stmt = select(SlotReview.slot_id).where(SlotReview.slot_id.in_(list(slot_ids))).distinct()

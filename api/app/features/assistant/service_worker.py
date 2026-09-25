@@ -1,8 +1,6 @@
 """The worker side of the assistant contract.
 
-Split from `service.py` so the browser-facing use cases and the machine-facing
-ones can be read on their own; they change for different reasons, and together
-they were past the file cap.
+Browser-facing use cases live in `service.py`; this is the machine-facing side.
 """
 
 from __future__ import annotations
@@ -14,11 +12,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.assistant import domain, errors, repository
-from app.features.assistant import service_seams as seams
 from app.features.assistant.content.prompts.onboarding import OnboardingInstructions
 from app.features.assistant.schemas import WorkerSessionPayload
 from app.features.assistant.service import TOOLS_KEY, require_session
 from app.features.assistant.service_content import SCENES_KEY
+from app.features.tutor_memory import jobs as tutor_jobs
 
 
 async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessionPayload:
@@ -46,9 +44,7 @@ async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessi
             "instructions": row.instructions,
             "greeting": row.greeting,
             "extras": stored,
-            # `livekit_assistant_worker.bootstrap.AssistantSession.tools`. An
-            # empty list is the whole of the old behaviour, which is why the
-            # worker change could ship before any backend defined a tool.
+            # `livekit_assistant_worker.bootstrap.AssistantSession.tools`.
             "tools": tools,
         }
     )
@@ -64,10 +60,9 @@ async def scene_instructions(
 ) -> str:
     """Instructions for the next scene of an onboarding demo.
 
-    The scene comes from what was frozen onto the session when it started, for
-    the same reason the tools are frozen there: the walkthrough the worker
-    performs minutes later has to be the one its opening script promised. What
-    the worker sends is preferred only when it names a scene this session was
+    The scene comes from what was frozen onto the session when it started, so
+    the walkthrough the worker performs matches its opening script. What the
+    worker sends is preferred only when it names a scene this session was
     actually given — otherwise a request could hand the model any script it
     liked.
     """
@@ -114,22 +109,12 @@ async def accept_transcript(
 ) -> None:
     """Store the turns, or not, according to what this kind of session is for.
 
-    Three fates rather than two, once `tutor_memory` is bound: a help session
-    is retained, a dashboard session is retained *and* queued for summarising
-    so the job can replace it, and the rest are discarded unread. Unbound, this
-    is the old "help sessions only" rule exactly.
+    Three fates rather than two: a help session is retained, a dashboard
+    session is retained *and* queued for summarising so the job can replace
+    it, and the rest are discarded unread. `tutor_memory` owns the rule.
     """
     row = await require_session(session, session_id)
-    # Whether to keep this kind of conversation is decided above this slice
-    # once `tutor_memory` is bound: a dashboard session is summarised and then
-    # deleted, which is neither "keep" nor "discard". Unbound, this is the old
-    # rule exactly.
-    keep = (
-        await seams._on_transcript(session, session_id, row.session_type)
-        if seams._on_transcript
-        else domain.keeps_transcript(row.session_type)
-    )
-    if not keep:
+    if not await tutor_jobs.on_transcript(session, session_id, row.session_type):
         return
 
     seen = await repository.seen_message_ids(session, session_id)

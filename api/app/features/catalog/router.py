@@ -26,12 +26,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def list_exams(principal: CurrentPrincipal, session: Session) -> Page[schemas.ExamRead]:
     """The exams the platform offers. Small set, so no cursor is ever returned.
 
-    The consumer catalogue: platform exams only. An institution's own exams are
-    not here and never are — they are that institution's, not ours to publish.
-    See `/orgs/{org_slug}/exams` for those.
-
-    A platform admin sees the platform's drafts, because they are the person
-    writing them, and nobody else's.
+    The consumer catalogue: platform exams only. See `/orgs/{org_slug}/exams`
+    for an institution's own. A platform admin also sees the platform's drafts.
     """
     items = await service_authoring.list_exams(session, include_unpublished=principal.is_platform_admin)
     return Page(items=items, next_cursor=None)
@@ -50,12 +46,7 @@ async def list_exams(principal: CurrentPrincipal, session: Session) -> Page[sche
     ),
 )
 async def create_exam(body: schemas.CreateExam, admin: PlatformAdmin, session: Session) -> schemas.ExamRead:
-    """A new platform exam, as a draft — the consumer catalogue.
-
-    The table starts empty and stays that way until somebody writes one. There
-    is no seed: four exams used to be inserted by a migration and mirrored by a
-    tuple in this slice, and a fifth needed both changed and shipped.
-    """
+    """A new platform exam, as a draft — the consumer catalogue."""
     return await service_authoring.create_exam(
         session,
         code=body.code,
@@ -111,9 +102,8 @@ async def list_org_exams(
 ) -> Page[schemas.ExamRead]:
     """This institution's own exams, plus the platform catalogue.
 
-    `drafts=true` narrows to the institution's own rows, published or not: its
-    drafts are its own business. It never widens the listing to the platform's
-    drafts, which it cannot see at all.
+    `drafts=true` narrows to the institution's own rows, published or not. The
+    platform's own drafts are never included.
     """
     items = await service_authoring.list_exams(session, org_id=workspace.org_id, include_unpublished=drafts)
     return Page(items=items, next_cursor=None)
@@ -135,9 +125,8 @@ async def create_org_exam(
 ) -> schemas.ExamRead:
     """An institution's own exam, as a draft.
 
-    Written without asking the platform and without picking from a list: an
-    institution defines the exams it assesses against. The code is unique
-    within this organisation only, so two schools may both have a `finals`.
+    The code is unique within this organisation only, so two schools may both
+    have a `finals`.
     """
     return await service_authoring.create_exam(
         session,
@@ -193,9 +182,8 @@ async def retire_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Sess
 async def delete_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> None:
     """Remove an exam nothing was ever built on. Retire the rest.
 
-    `exam_in_use` (409) is the answer for anything real: a station, a
-    sitting, an attempt, a rubric binding. This is only for a draft an
-    institution changed its mind about before it went anywhere.
+    Returns `exam_in_use` (409) if a station, sitting, attempt or rubric
+    binding already references it.
     """
     await service_authoring.delete_exam(session, exam_id, workspace.org_id)
 

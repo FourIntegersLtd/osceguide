@@ -23,8 +23,8 @@ groups a circuit can be built from.
   the account is created and linked in the same call, and they are emailed a
   link to choose a password. A slot names a `users.id`, so a rostered trainee
   with no account could never be scheduled. Registering still claims any row
-  left unlinked (as the migration leaves them), bound into `identity.register`
-  by `main.py` since `identity` sits below this slice.
+  left unlinked (as the migration leaves them), called from `identity`'s
+  registration.
   It was filled by nothing at all for the whole build, which left a slot (a
   `users.id`) and a released result (a `trainees.id`) as two unconnected
   records for one person.
@@ -54,8 +54,8 @@ groups a circuit can be built from.
   the delete would not fail, it would quietly leave a year group of people
   belonging to nothing, which a screen would then show as a mistake rather than
   report as one. Moving them is `PATCH /trainees/{id}`.
-  `sittings.cohort_id` is also `SET NULL`, and `sittings` sits above this slice,
-  so nothing here can see it — see *Cross-slice dependencies*.
+  `sittings.cohort_id` is also `SET NULL`; that column is `sittings`' own, so
+  nothing here reads it — see *Cross-slice dependencies*.
 - An edit writes only what was sent. `PATCH /trainees/{id}` and
   `PATCH /cohorts/{id}` take `model_fields_set`, the way `PATCH /me` does, so a
   form that posts one corrected field does not clear the others. An explicit

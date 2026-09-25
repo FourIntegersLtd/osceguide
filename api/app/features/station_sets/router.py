@@ -87,12 +87,9 @@ async def rename_set(
 async def delete_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> None:
     """Throw a practice set away.
 
-    The retiring client's delete took the session and its progress counters and
-    left the transcripts of what had been sat inside it orphaned. Here the
-    recordings cannot be left pointing at a row that has gone — the schema
-    refuses — so a set somebody has started a station in is refused rather than
-    emptied of its history. The console route that deletes a person's progress
-    on a stated reason is the one that takes a set's attempts with it.
+    Refused if the set holds any attempts, so a station somebody has already sat is never left
+    pointing at a deleted set. Use the platform console's progress-deletion route to remove a set's
+    attempts first.
     """
     await service.delete_set(session, principal.user_id, set_id)
 

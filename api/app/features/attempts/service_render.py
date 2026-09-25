@@ -9,6 +9,7 @@ what they were told they would be marked on, not against today's version.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
@@ -18,11 +19,10 @@ from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.core.ports import RenderFailed
 from app.core.settings import get_settings
-from app.features.attempts import domain, domain_definition, errors, repository
+from app.features.attempts import domain, domain_definition, errors, repository, repository_transcript
 from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY
 from app.features.attempts.models import Attempt
 from app.features.attempts.renderer import build_renderer
-from app.features.attempts.service_debrief_render import render_debrief
 from app.features.catalog import service as catalog
 from app.features.rubrics import service_marking as rubrics
 from app.features.sittings import service as sittings_service
@@ -141,3 +141,45 @@ async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) 
     except AppError as exc:
         log.warning("rubric unavailable for attempt", attempt_id=str(attempt.id), reason=str(exc))
         return None
+
+
+# --- Render the tutor from the source consultation, never the patient's prompt.
+
+
+async def render_debrief(
+    session: AsyncSession, attempt: Attempt, *, examiner_context: str | None
+) -> dict[str, Any]:
+    source = (
+        await repository.attempt_by_id(session, attempt.source_attempt_id)
+        if attempt.source_attempt_id
+        else None
+    )
+    if source is None or source.user_id != attempt.user_id:
+        raise errors.AttemptNotReady("The source consultation is unavailable.")
+    messages = await repository_transcript.chunks_for(session, source.id)
+    if not messages:
+        raise errors.AttemptNotReady("A debrief needs a recorded consultation.")
+    results = await repository_transcript.results_for(session, source.id)
+    frozen_context = ((source.definition or {}).get("scenario") or {}).get("examiner_context")
+    try:
+        from osce_assessment.prompts.debrief_prompt import DebriefPromptFormatter
+        from osce_assessment.prompts.debrief_transcript import TranscriptFormatter
+        from osce_assessment.prompts.greetings import DEBRIEF_GREETING
+    except ImportError as exc:
+        raise RenderFailed("The assessment engine's debrief renderer is unavailable.") from exc
+    transcript = TranscriptFormatter.format(
+        {
+            "transcript_message": [{"role": row.role, "message": row.message} for row in messages],
+        }
+    )
+    return {
+        "instructions": DebriefPromptFormatter.create_prompt(
+            transcript=transcript,
+            management_plan=frozen_context or examiner_context,
+            sca_feedback=json.dumps([row.payload for row in results], ensure_ascii=False)
+            if results
+            else None,
+        ),
+        "greeting": DEBRIEF_GREETING,
+        "examiner_context": frozen_context or examiner_context,
+    }

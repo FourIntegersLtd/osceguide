@@ -103,10 +103,6 @@ async def notes_of_kind(
     return list((await session.execute(stmt)).scalars())
 
 
-async def note_by_id(session: AsyncSession, note_id: uuid.UUID) -> TutorNote | None:
-    return (await session.execute(select(TutorNote).where(TutorNote.id == note_id))).scalar_one_or_none()
-
-
 async def summary_for_session(session: AsyncSession, session_id: uuid.UUID) -> TutorNote | None:
     stmt = select(TutorNote).where(TutorNote.session_id == session_id, TutorNote.kind == "session_summary")
     return (await session.execute(stmt)).scalars().first()

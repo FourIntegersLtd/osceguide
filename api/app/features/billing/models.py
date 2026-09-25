@@ -14,13 +14,9 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class Plan(Base, UUIDPrimaryKey, Timestamps):
-    """What a Stripe price buys.
-
-    A row rather than a hardcoded table keyed by pence: b2c matches the amount
-    paid against `PRICE_CONFIG` and raises on a miss, so changing a price — or
-    taking a payment in another currency, or honouring a Stripe coupon — breaks
-    the purchase after the card has been charged.
-    """
+    """What a Stripe price buys. A row rather than a table keyed by pence, so changing a price,
+    taking payment in another currency, or honouring a Stripe coupon does not break the
+    purchase after the card has been charged."""
 
     __tablename__ = "plans"
 
@@ -34,11 +30,8 @@ class Plan(Base, UUIDPrimaryKey, Timestamps):
 
 
 class StripeEvent(Base, UUIDPrimaryKey):
-    """Every webhook delivery we have acted on.
-
-    The thing b2c has no equivalent of: Stripe retries until it gets a 2xx, and
-    without this a retry re-runs the grant.
-    """
+    """Every webhook delivery we have acted on. Stripe retries until it gets a 2xx, and without
+    this a retry re-runs the grant."""
 
     __tablename__ = "stripe_events"
 

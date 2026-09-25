@@ -1,8 +1,7 @@
 """The reusable pieces of the help prompt: writing rules, phrasing, navigation.
 
-Split out of `help.py` only because the two together are past this repo's file
-size cap. The wording is b2c's, verbatim: it is what the FAQ voice has been
-tuned against, and rewriting it would quietly change every answer.
+The wording is verbatim what the FAQ voice has been tuned against; rewriting
+it would quietly change every answer.
 """
 
 from __future__ import annotations

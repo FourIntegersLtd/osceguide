@@ -51,9 +51,8 @@ async def start_circuit(
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/end",
     response_model=schemas.CircuitRead,
-    # Ending takes the patient out of the room, so LiveKit being unreachable is
-    # a refusal this route can answer with. It could not before, when ending
-    # nulled a column and left the agent sitting there.
+    # Ending takes the patient out of the room, so LiveKit being unreachable
+    # is a refusal this route can answer with.
     responses=error_responses(Forbidden, errors.CircuitNotFound, errors.VoiceUnavailable),
 )
 async def end_circuit(

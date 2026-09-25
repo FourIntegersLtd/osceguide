@@ -1,17 +1,12 @@
 """Recovering speaker turns from a recording of two people.
 
 A room-composite egress is one mixed track: the audio says what was said and
-not who said it. b2c solves this with a model and this prompt, and the prompt
-is ported verbatim from
-`backend/b2c-api/b2c/shared/ai_prompts/shared_prompts.py` — where a turn is cut
-and which side it is attributed to decides what the rubric is then marked
-against, so changing the wording inside a port would change marks without
-anybody deciding to.
-
-The one adaptation is the role vocabulary. b2c emits the OpenAI chat roles
-`user` and `assistant` because its transcripts came from a chat completion;
-here the roles are said plainly, and `attempts.service_worker` already accepts
-`doctor` as the candidate's side.
+not who said it. This prompt is ported verbatim from
+`backend/b2c-api/b2c/shared/ai_prompts/shared_prompts.py` — where a turn is
+cut and which side it is attributed to decides what the rubric is then marked
+against, so changing the wording here would change marks without anybody
+deciding to. The role vocabulary is adapted: roles are said plainly as
+`doctor`/`patient`, which `attempts.service_worker` already accepts.
 """
 
 from __future__ import annotations

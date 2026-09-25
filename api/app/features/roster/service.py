@@ -15,6 +15,9 @@ from app.features.identity import service_invitations as invitations
 from app.features.roster import domain, errors, repository, repository_groups
 from app.features.roster.models import Trainee
 from app.features.roster.schemas import (
+    BulkTraineesResult,
+    CreateTrainee,
+    SkippedTrainee,
     TraineeRead,
 )
 from app.features.tenancy import service as tenancy
@@ -40,15 +43,8 @@ async def add_trainee(
         last_name=last_name,
         cohort_id=cohort_id,
     )
-    # An institution usually rosters people who already have an account. The
-    # link was modelled and nothing ever made it: `user_id` stayed null for
-    # every trainee ever added, so a slot (which names a `users.id`) could not
-    # be traced back to the roster entry that carries the person's name.
-    #
-    # Somebody with no account is invited, and linked now. A slot names a
-    # `users.id`, so a trainee without one could be rostered and never
-    # scheduled; the invitation is what turns a spreadsheet row into a
-    # candidate who can sit.
+    # A slot names a `users.id`, so a trainee without a linked account could be
+    # rostered and never scheduled. Invite and link now, so every trainee has one.
     existing = await identity.user_ref_by_email(session, email)
     if existing is None:
         org = await tenancy.org_ref_by_id(session, org_id)
@@ -110,38 +106,28 @@ def _trainee_read(row: Trainee) -> TraineeRead:
 
 
 async def ensure_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> None:
-    """That this id names a roster entry of this organisation.
+    """Confirm this id names a roster entry of this organisation.
 
-    `results` asks before writing a decision. A slot's `trainee_id` is a
-    `users.id` and a decision's is a `trainees.id`, so an id taken from the
-    circuit console and used on the decision route reaches the database and
-    fails a foreign key, which surfaces as a 500. That is a caller mistake and
-    should read as one.
+    A slot's `trainee_id` is a `users.id` and a decision's is a `trainees.id`; used
+    here so a caller mistake reads as a caller error, not a foreign-key 500.
     """
     await _require_trainee(session, org_id, trainee_id)
 
 
 async def trainee_email(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> str:
-    """Where to write to this candidate.
+    """The roster address, not the signed-in account's.
 
-    The roster address, not the signed-in account's: an institution rosters
-    people before they have ever signed in, so `user_id` is often null and the
-    address on the roster entry is the only one there is. When both exist they
-    are the same value — registering claims the entry by email.
-
-    `results` asks for this so that releasing an outcome writes to the
-    candidate. It used to send to the administrator who pressed the button,
-    who is the one person already looking at the result.
+    `user_id` is often null before the person has signed in, so the roster entry's
+    address is the only one there is. When both exist they are the same value.
     """
     return (await _require_trainee(session, org_id, trainee_id)).email
 
 
 async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
-    """Which roster entries this signed-in person is.
+    """Translate a `users.id` into the `trainees.id` rows for this person.
 
-    `results` addresses a candidate by `trainees.id` while a slot addresses
-    them by `users.id`; one column name, two meanings. This is the translation,
-    and it lives here because `roster` owns the trainee.
+    A slot addresses a candidate by `users.id`, a decision by `trainees.id`; one
+    column name, two meanings.
     """
     return await repository.trainee_ids_for_user(session, user_id)
 
@@ -149,9 +135,8 @@ async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
 async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> ViewerAudiences:
     """Which rooms this person may see into.
 
-    Bound into `core.audience` by `main.py`: `community`, `marketplace` and
-    `peer_practice` all need this and all sit below the two slices that know
-    the answer. Organisations come from membership, groups from the roster.
+    Bound into `core.audience` (see `bind_viewer_audiences`). Organisations come
+    from membership, groups from the roster.
     """
     memberships = await tenancy.memberships_for_token(session, user_id)
     groups = await repository_groups.group_ids_for_user(session, user_id)
@@ -162,57 +147,81 @@ async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> Vie
 
 
 async def count_trainees(session: AsyncSession, org_id: uuid.UUID) -> int:
-    """How many people this organisation teaches.
-
-    A count, not a list: the org dashboard reads four of these and the legacy
-    screen fetched four whole collections to call `.length` on them.
-    """
+    """How many people this organisation teaches."""
     return await repository.count_trainees(session, org_id)
 
 
 async def trainees_by_user_id(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, TraineeRead]:
-    """Roster entries keyed by the user id a slot names them with.
-
-    A slot's `trainee_id` is a `users.id`; the name to show beside it lives on
-    `trainees`. Keyed by user id so a caller holding slots can look straight up.
-    """
+    """Roster entries keyed by user id, for a caller holding slots (which name a `users.id`)."""
     rows = await repository.trainees_for_users(session, org_id, list(user_ids))
     return {row.user_id: _trainee_read(row) for row in rows if row.user_id is not None}
 
 
 async def claim_roster_entries(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
-    """Connect a new account to the roster entries already waiting for it.
-
-    Bound into `identity.register` by `main.py`: an institution adds somebody by
-    email long before they sign up, and until this ran the two records never
-    met — the person appeared on a slot with no name, and their released
-    results, which are keyed on `trainees.id`, were unreachable.
-    """
+    """Connect a new account to the roster entries already waiting for it, by email."""
     for row in await repository.trainees_by_email_everywhere(session, email):
         if row.user_id is None:
             await repository.link_trainee_to_user(session, row.org_id, row.id, user_id=user_id)
 
 
 async def ensure_rosterable(session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]) -> None:
-    """Refuse to put a revoked trainee on a circuit (R3).
+    """Refuse to put a revoked trainee — or a stranger — on a circuit (R3, SEC-014).
 
-    Called by `sittings` when a circuit is built or somebody is appended to a
-    live one. The rule was written and unit-tested and had no caller, so
-    revoking a trainee's access stopped them signing in and did not stop them
-    being scheduled into an examination — and a slot they cannot reach is a
-    candidate marked absent.
+    Called by `sittings` when a circuit is built or somebody is appended to a live
+    one; this rule once had no caller, so revoking access did not stop scheduling.
 
-    People not on the roster at all are not refused here: a slot names a user,
-    and an organisation may examine somebody it has not rostered.
+    SEC-014: a `users.id` with no linked trainee row in this organisation is now
+    refused. It used to pass — the reasoning was that an org might examine
+    somebody it had not rostered — but that let an admin enrol any account id in
+    the system into their own circuit, including one that had never been invited
+    here. Invited people are rostered (`add_trainee` links a trainee row before
+    the invite), so requiring a roster row is the same as requiring membership or
+    an explicit invitation. Roster somebody first, then schedule them.
     """
     known = await trainees_by_user_id(session, org_id, list(user_ids))
     for user_id in user_ids:
         trainee = known.get(user_id)
         if trainee is None:
-            continue
+            raise errors.TraineeNotOnRosterError()
         try:
             domain.ensure_rosterable(domain.TraineeState(access_revoked=trainee.access_revoked))
         except domain.TraineeRevoked as exc:
             raise errors.TraineeRevokedError(str(exc)) from exc
+
+
+# --- Rostering a cohort at once.
+
+
+async def add_trainees(
+    session: AsyncSession, org_id: uuid.UUID, *, entries: list[CreateTrainee], now: datetime
+) -> BulkTraineesResult:
+    """Add every row that can be added; report every row that cannot.
+
+    Duplicates within the upload are skipped after the first, by normalised
+    address, so a spreadsheet with the same person twice does not fail on the second.
+    """
+    result = BulkTraineesResult()
+    seen: set[str] = set()
+    for entry in entries:
+        key = entry.email.strip().lower()
+        if key in seen:
+            result.skipped.append(SkippedTrainee(email=entry.email, code=errors.TraineeExists.code))
+            continue
+        seen.add(key)
+        try:
+            created = await add_trainee(
+                session,
+                org_id,
+                email=entry.email,
+                first_name=entry.first_name,
+                last_name=entry.last_name,
+                cohort_id=entry.cohort_id,
+                now=now,
+            )
+        except errors.TraineeExists as exc:
+            result.skipped.append(SkippedTrainee(email=entry.email, code=exc.code))
+            continue
+        result.created.append(created)
+    return result

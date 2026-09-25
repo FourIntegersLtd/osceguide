@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import CursorParams, Page
 from app.features.assistant import service as assistant
 from app.features.attempts.service_debrief import debrief_sources
 from app.features.catalog import service as catalog
@@ -42,13 +43,9 @@ async def record_activity(
 ) -> ActivityAccepted:
     """Write down what this person read, practised or listened to.
 
-    A repeat inside the dedup window is accepted and not recorded: somebody who
-    opens a summary, follows a link and comes back has read it once, and a
-    memory that says twice will be spoken back to them as a pattern.
-
-    A malformed event is dropped rather than failing the batch. These arrive
-    from a browser as it goes, often as a tab is closing, and refusing the
-    whole batch over one bad row would lose the good ones with it.
+    A repeat inside the dedup window is accepted but not recorded. A malformed event is
+    dropped rather than failing the whole batch, since these arrive from a browser as it
+    goes, often as a tab is closing.
     """
     recorded = 0
     for event in events:
@@ -83,9 +80,8 @@ async def run_tool(
 ) -> ToolResult:
     """One tool call, checked by `assistant` and answered here.
 
-    Routed through `assistant` rather than straight to `service_tools` so the
-    two questions stay where they belong: whose session this is and whether it
-    is still running is `assistant`'s, and what the tool means is ours.
+    Routed through `assistant`, which owns whose session this is and whether it is still
+    running; what the tool means is ours.
     """
     return ToolResult(
         **await assistant.run_tool(session, session_id, tool=tool, arguments=arguments, now=now)
@@ -93,11 +89,7 @@ async def run_tool(
 
 
 async def read_memory(session: AsyncSession, user_id: uuid.UUID) -> TutorMemoryRead:
-    """Everything on file about this person, as they may read it.
-
-    The tutor speaks from this; a memory nobody can inspect is one nobody can
-    correct, which is why the route exists at all.
-    """
+    """Everything on file about this person, as they may read it. The tutor speaks from this."""
     notes = await repository.notes_of_kind(session, user_id, kind="session_summary", limit=MAX_NOTES)
     notes += await repository.notes_of_kind(session, user_id, kind="stated_fact", limit=MAX_NOTES)
     notes.sort(key=lambda n: n.created_at, reverse=True)
@@ -148,24 +140,43 @@ async def forget_everything(
 ) -> ForgottenCounts:
     """Forget the lot, and say how much was forgotten.
 
-    Debrief summaries are opt-in rather than swept up with the rest: they are
-    also the doctor's record of what a debrief concluded, shown on their own
-    results, and somebody clearing the tutor's memory is usually not asking to
-    delete those as well.
+    Debrief summaries are opt-in: they are also the doctor's own record of what a debrief
+    concluded, shown on their results.
     """
     counts = await repository.delete_all_for_user(session, user_id, include_debriefs=include_debriefs)
     return ForgottenCounts(**counts)
 
 
 async def _exam_id(session: AsyncSession, exam_code: str | None) -> uuid.UUID | None:
-    """Resolve an exam code, or record the event without one.
-
-    A code the catalogue does not have is not worth failing over: the event is
-    still a true thing the person did, and the exam only narrows the brief.
-    """
+    """Resolve an exam code, or record the event without one if it names nothing."""
     if not exam_code:
         return None
     for ref in await catalog.exam_refs(session):
         if ref.code == exam_code:
             return ref.id
     return None
+
+
+# --- The learner's complete debrief history, not the tutor's recent-memory window.
+
+
+async def list_debriefs(
+    session: AsyncSession, user_id: uuid.UUID, params: CursorParams
+) -> Page[DebriefSummaryRead]:
+    rows, cursor = await repository.page_debrief_summaries(session, user_id, params)
+    sources = await debrief_sources(session, user_id, [row.attempt_id for row in rows])
+    return Page(
+        items=[
+            DebriefSummaryRead(
+                id=row.id,
+                attempt_id=row.attempt_id,
+                source_attempt_id=sources.get(row.attempt_id),
+                key_insights=list(row.key_insights or []),
+                action_plan=list(row.action_plan or []),
+                narrative=row.narrative,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ],
+        next_cursor=cursor,
+    )

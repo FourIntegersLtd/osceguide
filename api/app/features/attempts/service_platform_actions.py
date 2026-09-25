@@ -41,12 +41,10 @@ async def rescore(
 ) -> RescoreResult:
     """Queue the marking again.
 
-    For the transcript that arrived and was never marked: the job failed, or
-    was never queued. The queueing lock makes a marking already waiting a
-    no-op, and `score_attempt_now` makes a result already written one, so
-    pressing this twice costs nothing and marks nothing twice. Naming a
-    different policy version marks the same transcript again beside the old
-    result, which is how a rubric change is compared, never how one is hidden.
+    For a transcript that arrived and was never marked because the job failed or was never queued.
+    The queueing lock makes a marking already waiting a no-op, and `score_attempt_now` makes a
+    result already written one, so pressing this twice costs nothing. Naming a different policy
+    version marks the same transcript again beside the old result, for comparison, not to hide it.
     """
     attempt = await _require(session, attempt_id)
     if domain.Status(attempt.status) not in jobs.MARKABLE:

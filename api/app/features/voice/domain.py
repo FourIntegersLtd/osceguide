@@ -4,9 +4,6 @@ Two families of LiveKit worker exist — the assessment worker that plays a
 patient or a tutor, and the assistant worker that helps someone use the product.
 A session type belongs to exactly one, and one setting per family decides
 whether it runs on LiveKit Cloud or our own deployment.
-
-Ported from `b2c/shared/services/livekit_agent_routing.py`, which both backends
-carry near-identical copies of.
 """
 
 from __future__ import annotations
@@ -96,10 +93,5 @@ def agent_name(family: Family, mode: Mode, *, namespace: str = "") -> str:
 
 
 def room_name_for(attempt_id: str) -> str:
-    """One room per attempt.
-
-    b2c used `unified_{uuid4}` and made it the attempt id as well; here the
-    attempt already has an identity, so the room is derived from it and the
-    name says which attempt a stray room belongs to.
-    """
+    """One room per attempt, named so a stray room says which attempt it belongs to."""
     return f"attempt_{attempt_id}"

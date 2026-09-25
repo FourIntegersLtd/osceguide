@@ -1,12 +1,9 @@
 """The platform console's membership routes. Every one of them is `PlatformAdmin`.
 
-A platform admin holds no org role and does not inherit one — `OrgAdmin` is
-built with `allow_platform_admin=False`, and that is deliberate. These are the
-membership writes support needs all the same: seating the first owner of a
-fresh organisation, restoring the administrator who locked themselves out,
-moving the role from the person who left to the person who replaced them.
-Each goes through the same service the organisation's own administrators
-use, so the audit row and the rules are the same; only the door is different.
+A platform admin holds no org role and does not inherit one — `OrgAdmin` is built with
+`allow_platform_admin=False`, deliberately. Each write here goes through the same service
+the organisation's own administrators use, so the audit row and the rules are the same;
+only the door is different.
 """
 
 from __future__ import annotations

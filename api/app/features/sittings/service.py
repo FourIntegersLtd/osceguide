@@ -1,8 +1,7 @@
 """Scheduling a sitting: creating one, and building the circuits inside it.
 
-Running a circuit is `service_run.py`. The two were one module, and they change
-for different reasons: this one moves when an examination is *composed*
-differently, that one when it is *run* differently.
+Running a circuit is `service_run.py`: this one moves when an examination is
+*composed* differently, that one when it is *run* differently.
 """
 
 from __future__ import annotations
@@ -14,8 +13,10 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
+from app.features.catalog import service as catalog
 from app.features.roster import service as roster
-from app.features.sittings import domain, domain_edit, domain_run, errors, repository, service_binding
+from app.features.rubrics import service_marking
+from app.features.sittings import domain, domain_edit, domain_run, errors, repository
 from app.features.sittings.models import Circuit, Sitting
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
@@ -46,7 +47,7 @@ async def create_sitting(
     scheduled_for: datetime | None,
     programme_id: uuid.UUID,
 ) -> SittingRead:
-    rubric_version_id = await service_binding.rubric_version_for_programme(session, org_id, programme_id)
+    rubric_version_id = await rubric_version_for_programme(session, org_id, programme_id)
 
     row = await repository.create_sitting(
         session,
@@ -178,3 +179,18 @@ async def rubric_version_for_slot(
 ) -> uuid.UUID | None:
     """Which rubric version a slot is marked against (R-1), for `reviews`."""
     return await repository.rubric_version_for_slot(session, org_id, slot_id)
+
+
+# --- Which rubric version a sitting is marked against.
+
+
+async def rubric_version_for_programme(
+    session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID
+) -> uuid.UUID:
+    """The published rubric version this programme's exam is marked with."""
+    exam_id = await catalog.programme_exam_id(session, org_id, programme_id)
+    exam = await catalog.exam_row(session, exam_id)
+    if exam.rubric_version_id is None:
+        raise errors.ExamRubricNotReady("That programme's exam has no published rubric to mark against yet.")
+    await service_marking.published_version(session, org_id, exam.rubric_version_id)
+    return exam.rubric_version_id

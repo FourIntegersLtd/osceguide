@@ -1,15 +1,8 @@
 """What a reader reports about a station, and what staff do about it.
 
-Three use cases: report one, read your own reports, work the staff queue. Split
-from `service.py` and `service_reads.py` because a flag is neither a station's
-lifecycle nor a projection of one — it is a second thing attached to it, with
-its own rules about who may see and change it.
-
-The retiring client wrote none of this down: `POST /api/flag_station` appended
-`{station_id, mock_id, flagged: true}` to the *user's* Firestore document, so a
-report was visible only to the person who made it, the content team never saw
-one, and the "Flagged stations" tab was a bookmark list wearing a report's
-clothes.
+Three use cases: report one, read your own reports, work the staff queue. A flag is a second thing
+attached to a station, with its own rules about who may see and change it — not the station's
+lifecycle nor a projection of one.
 """
 
 from __future__ import annotations
@@ -30,14 +23,9 @@ from app.features.stations.schemas import StationFlagRead, UpdateStationFlag
 async def report(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID) -> StationFlagRead:
     """Say this station is wrong.
 
-    Idempotent, and deliberately so: the button is one tap in a station header,
-    a double tap is one report, and the legacy answer to a repeat was 400
-    "Station is already flagged" — which the client surfaced as "we couldn't
-    flag this station" over a report that had in fact been recorded.
-
-    The station must exist, but *whose* it is does not matter: a reader inside
-    somebody else's institution may find a case wrong just as easily, and
-    refusing them loses the report.
+    Idempotent, and deliberately so: a double tap of the report button is one report, not a 400.
+    The station must exist, but *whose* it is does not matter — a reader in another institution may
+    find a case wrong just as easily.
     """
     if not await repository.exists_by_id(session, station_id):
         raise errors.StationNotFound()

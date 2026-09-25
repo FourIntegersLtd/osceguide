@@ -1,14 +1,9 @@
 """Turning a finished conversation into something worth keeping.
 
-Two conversations end with something the tutor needs next time: a dashboard
-session, where a next step was agreed, and a debrief, where the doctor and the
-tutor concluded something about a consultation. Both are summarised and the
-turns behind the first are then deleted — what the tutor needs is what was
-agreed, not a recording.
-
-The prompts are ported from b2c's `DEBRIEF_SUMMARY_SYSTEM_PROMPT` with the
-persona renamed: this backend has one tutor and does not name it in a prompt,
-because the name is a product's and the engine is not.
+Two conversations end with something the tutor needs next time: a dashboard session, where
+a next step was agreed, and a debrief, where the doctor and the tutor concluded something
+about a consultation. Both are summarised and the turns behind the first are then deleted
+— what the tutor needs is what was agreed, not a recording.
 """
 
 from __future__ import annotations
@@ -20,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.core.ports import SummaryFailed, TranscriptSummariser
-from app.features.assistant import service_seams as assistant
+from app.features.assistant import service_reads as assistant
 from app.features.attempts import service_reads as attempts
 from app.features.tutor_memory import domain, repository
 

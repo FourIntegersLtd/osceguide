@@ -1,9 +1,6 @@
 """Setting, resetting and changing a password.
 
-Split from `service.py` along the story rather than the file size: registering
-and signing in are about who you are, and these are about the secret that
-proves it. Every one of them ends every existing session, which is the thread
-they share.
+Every one of them ends every existing session.
 """
 
 from __future__ import annotations

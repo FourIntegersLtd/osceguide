@@ -68,13 +68,7 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
 
 
 def default_workspace_for(memberships: list[TokenMembership]) -> str | None:
-    """Which workspace a fresh token lands in.
-
-    `identity` builds the principal and sits below this slice, so the rule is
-    bound in `main.py` rather than imported. Three separate copies of
-    `memberships[0]` used to decide this while `pick_default_workspace`, the
-    rule written and tested for it, had no caller at all.
-    """
+    """Which workspace a fresh token lands in."""
     picked = domain.pick_default_workspace(
         [domain.MembershipRef(org_slug=m.org_slug, role=m.role, surface=m.surface) for m in memberships],
         preferred_order=(),

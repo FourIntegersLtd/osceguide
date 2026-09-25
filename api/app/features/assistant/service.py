@@ -11,12 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
 from app.features.assistant import domain, errors, repository, service_content
-from app.features.assistant import service_seams as seams
 from app.features.assistant.doctor_prompt import consulting_doctor_instructions
 from app.features.assistant.models import AssistantSession
 from app.features.assistant.schemas import RoomGrant, SessionRead
+from app.features.tutor_memory import service_session, service_tools
 
-# The last resort, after the seam and the content pack have both declined.
+# The last resort, after `tutor_memory` and the content pack have both declined.
 # `domain.ensure_dispatchable` refuses a session with no instructions at all,
 # and a generic assistant is better than a session that cannot start.
 _INSTRUCTIONS = {
@@ -45,9 +45,7 @@ async def run_tool(
     row = await require_session(session, session_id)
     if not domain.can_join(status=row.status):
         raise errors.SessionNotJoinable()
-    if seams._run_tool is None:
-        raise errors.ToolsNotAvailable()
-    return await seams._run_tool(
+    return await service_tools.tool_hook(
         session,
         tool=tool,
         arguments=arguments,
@@ -57,12 +55,36 @@ async def run_tool(
     )
 
 
+async def _station_context_from_db(
+    session: AsyncSession, *, org_id: uuid.UUID | None, station_version_id: uuid.UUID
+) -> dict[str, Any] | None:
+    """The consulting-doctor station's material, rebuilt from the database.
+
+    SEC-007: the prompt is built from the authored station, scoped to who may
+    see it, not from anything the caller sent. A version id the caller cannot
+    see (or that does not exist) yields no station, so the session falls back
+    to the generic doctor instructions rather than to caller-supplied text.
+    """
+    from app.features.catalog import service as catalog
+    from app.features.stations import service_reads as stations
+
+    material = await stations.version_material(session, org_id, station_version_id)
+    if material is None:
+        return None
+    exam_code = await catalog.exam_code_by_id(session, material.exam_id)
+    # The authored document, plus the two fields the prompt names that live on
+    # the station row rather than inside its content.
+    return {**material.content, "station_name": material.title, "exam_code": exam_code or ""}
+
+
 async def start_session(
     session: AsyncSession,
     *,
     user_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     session_type: str,
     extras: dict[str, Any],
+    station_version_id: uuid.UUID | None,
     now: datetime,
 ) -> SessionRead:
     try:
@@ -72,10 +94,12 @@ async def start_session(
 
     # Asked before the placeholder is used, not instead of it: a slice above
     # this one renders the kinds it knows about and answers `None` for the rest.
-    rendered = await seams._render(session, worker_type, user_id, now) if seams._render else None
+    rendered = await service_session.render_dashboard_session(
+        session, session_type=worker_type, user_id=user_id, now=now
+    )
     instructions = str(rendered["instructions"]) if rendered else ""
     greeting = str(rendered["greeting"]) if rendered and rendered.get("greeting") else None
-    # The pack speaks for `help` and `onboarding`; the seam owns `dashboard`
+    # The pack speaks for `help` and `onboarding`; `tutor_memory` owns `dashboard`
     # and answers `None` for everything else, by design.
     from_pack = (
         None
@@ -87,8 +111,13 @@ async def start_session(
         greeting = from_pack.greeting
         extras = {**extras, **from_pack.extras}
     instructions = instructions or _INSTRUCTIONS[worker_type]
-    if worker_type == "consulting-doctor":
-        station_instructions = consulting_doctor_instructions(extras)
+    if worker_type == "consulting-doctor" and station_version_id is not None:
+        # SEC-007: rebuilt from the database, never from `extras`. Without a
+        # readable station the demo runs on the generic instructions above.
+        station = await _station_context_from_db(
+            session, org_id=org_id, station_version_id=station_version_id
+        )
+        station_instructions = consulting_doctor_instructions({"station": station}) if station else None
         if station_instructions:
             instructions = station_instructions
             greeting = (
@@ -140,10 +169,6 @@ async def voice_grant(
     settings: Settings,
 ) -> RoomGrant:
     """Let this session's owner into its room, with the worker dispatched.
-
-    Without this the assistant existed only on paper: a session could be
-    started and a worker could bootstrap it, but no browser could join the
-    room, so nothing the assistant does was reachable end to end.
 
     The metadata is the three strings `livekit_assistant_worker/metadata.py`
     reads. Everything else the worker needs it fetches from the bootstrap

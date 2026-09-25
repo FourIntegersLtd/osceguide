@@ -1,8 +1,8 @@
-"""`/me/achievements`, split out because `router.py` is at the file cap.
+"""`/me/achievements`.
 
-Consumer-facing only: this is the practice record the retiring client showed
-a person about themselves, not a report about anybody else, which is why the
-only auth here is "signed in" rather than an org role.
+Consumer-facing only: this is the practice record a person sees about themselves, not a
+report about anybody else, which is why the only auth here is "signed in" rather than an
+org role.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.features.dashboard import schemas_achievements, service_achievements
+from app.features.dashboard import schemas, service_achievements
 
 router = APIRouter(tags=["dashboard"])
 
@@ -25,12 +25,12 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/me/achievements",
-    response_model=schemas_achievements.AchievementsRead,
+    response_model=schemas.AchievementsRead,
     responses=error_responses(Unauthenticated),
 )
 async def read_achievements(
     principal: CurrentPrincipal, session: Session, clock: ClockDep
-) -> schemas_achievements.AchievementsRead:
+) -> schemas.AchievementsRead:
     """This person's practice record: stations touched, and the streak it adds up to.
 
     Nobody with zero marked attempts is refused — an empty answer is what a

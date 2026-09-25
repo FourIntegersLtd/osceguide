@@ -48,11 +48,10 @@ class ExamNotPublishable(Conflict):
 class ExamInUse(Conflict):
     """Refused by the database, not by a pre-check this slice ran itself.
 
-    `catalog` sits near the bottom of the layer contract — nearly every other
-    slice imports it, not the reverse — so it cannot ask "does anything
-    reference this exam" the way `station_sets` asks about its own attempts.
-    A `RESTRICT` foreign key somewhere above answers instead: retire an exam
-    with real history, this is what the delete becomes.
+    Other slices hold the stations, sittings and attempts that reference an
+    exam, so `catalog` cannot ask "does anything reference this exam" itself.
+    A `RESTRICT` foreign key answers instead: this is what deleting an exam
+    with real history becomes.
     """
 
     code = "exam_in_use"

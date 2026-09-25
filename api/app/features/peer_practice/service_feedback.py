@@ -1,14 +1,12 @@
 """Turning a recorded peer consultation into a marked attempt.
 
-The whole of P-1 is this one idea: **a peer session becomes an attempt.**
-Everything past a transcript already exists and is tested — the rubric freeze,
-the marking queue, the result read, the live stream — so this does not build a
-second pipeline for people who practised with a partner. It delivers their
-consultation into the one that already marks every AI mock.
+A peer session becomes an attempt: its transcript is delivered into the same
+pipeline that marks every AI mock — rubric freeze, marking queue, result
+read, live stream — rather than a second pipeline for people who practised
+with a partner.
 
-Only the doctor is scored. The rubric is written for the doctor's performance,
-and b2c never marked the patient either; the patient's half of the session is
-the peer rating they give each other.
+Only the doctor is scored; the rubric is written for the doctor's performance.
+The patient's half of the session is the peer rating they give each other.
 """
 
 from __future__ import annotations
@@ -21,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
 from app.core.logging import get_logger
-from app.core.ports_models import Transcriber, TranscriptionFailed
+from app.core.ports import Transcriber, TranscriptionFailed
 from app.core.settings import get_settings
 from app.features.attempts import service as attempts
 from app.features.attempts import service_offline

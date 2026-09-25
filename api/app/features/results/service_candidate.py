@@ -1,10 +1,7 @@
-"""The candidate's own side of a result: reading it, and saying so.
+"""The candidate's own side of a result: reading it, and acknowledging it.
 
-Split from `service.py` along the actor. That module is the organisation's
-workflow — draft, sign off, release — and every function in it takes an
-`org_id`. Nothing here does: a candidate is not inside an organisation when
-they open the email, and what they may see is decided by the revision being
-released, not by a role.
+A candidate is not inside an organisation, so nothing here takes an `org_id`;
+what they may see is decided by the revision being released, not by a role.
 """
 
 from __future__ import annotations
@@ -27,9 +24,8 @@ ACKNOWLEDGED = "acknowledged"
 def _acknowledgement_key(revision_id: uuid.UUID, user_id: uuid.UUID) -> str:
     """One acknowledgement per person per revision.
 
-    Keyed on the revision rather than the sitting: a result that is superseded
-    and released again is a different decision, and a candidate has not seen it
-    because they saw the last one.
+    Keyed on the revision rather than the sitting: a result superseded and
+    released again is a different decision, unseen even if the last one was.
     """
     return f"ack:{revision_id}:{user_id}"
 
@@ -39,9 +35,7 @@ async def read_my_result(
 ) -> TraineeResultRead:
     """What the candidate sees: released revisions only, and less of it.
 
-    Moderation notes and the evidence snapshot stay internal. b2b's own schema
-    doc says not to reproduce disclosure policy in frontend transforms, so the
-    narrowing happens here.
+    Moderation notes and the evidence snapshot stay internal.
     """
     row = await _released_for(session, sitting_id, user_id)
     return TraineeResultRead(
@@ -59,11 +53,9 @@ async def acknowledge_my_result(
 ) -> ResultAcknowledgement:
     """Record that the candidate has read their released result.
 
-    Written as an event on the append-only chain rather than a flag on the
-    revision, because the revision is immutable by trigger and because "when
-    did they see it" is exactly the kind of question this record exists to
-    answer months later. Repeating the request returns the first answer instead
-    of failing on the unique index.
+    Written as an event rather than a flag on the revision, which is immutable
+    by trigger. Repeating the request returns the first answer rather than
+    failing on the unique index.
     """
     revision = await _released_for(session, sitting_id, user_id)
     key = _acknowledgement_key(revision.id, user_id)
@@ -89,8 +81,7 @@ async def _assessment_score(
 
     Asked of the reviews slice rather than recomputed here, so a candidate and
     a course lead cannot be shown two different numbers for the same marking.
-    Slots are keyed by the user, which is what the token carries; a sitting
-    with no marked station of theirs answers null, not zero.
+    Returns None, not zero, when nothing of theirs has been marked.
     """
     slots = await sittings.slots_for_sitting(session, row.org_id, row.sitting_id)
     mine = [slot.id for slot in slots if slot.trainee_id == user_id]
@@ -108,8 +99,7 @@ async def _released_for(
 ) -> CandidateResultRevision:
     """The released revision this signed-in person may see, or a refusal.
 
-    The person is translated into the roster entries they are: a result is
-    keyed by `trainees.id` and a token carries a `users.id`.
+    A result is keyed by `trainees.id`, but the token carries a `users.id`.
     """
     trainee_ids = await roster.trainee_ids_for_user(session, user_id)
     row = await repository.released_revision(session, sitting_id, trainee_ids)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
@@ -44,12 +45,8 @@ async def create_plan(
 
 
 async def processed_event_ids(session: AsyncSession, event_id: str) -> set[str]:
-    """Only the one id matters, so this does not scan the table.
-
-    Processed only: a delivery that was recorded but failed to apply is not
-    "seen" for idempotency purposes, so Stripe's retry gets another go once
-    whatever refused it (a missing account, a missing plan) has been fixed.
-    """
+    """Processed only: a delivery recorded but failed to apply is not "seen" for idempotency,
+    so Stripe's retry gets another go once whatever refused it has been fixed."""
     stmt = select(StripeEvent.event_id).where(
         StripeEvent.event_id == event_id, StripeEvent.processed_at.is_not(None)
     )
@@ -66,9 +63,8 @@ async def record_event(
 ) -> bool:
     """Write the ledger row. False if it already existed.
 
-    `ON CONFLICT DO NOTHING` rather than check-then-insert: two deliveries of
-    the same event in flight together used to race to the unique index and
-    the loser answered Stripe with a 500.
+    `ON CONFLICT DO NOTHING` rather than check-then-insert: two deliveries of the same event in
+    flight together used to race the unique index and the loser answered Stripe with a 500.
     """
     stmt = (
         pg_insert(StripeEvent)
@@ -145,22 +141,15 @@ async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UU
 
 
 async def payment_by_receipt_id(session: AsyncSession, user_id: uuid.UUID, receipt_id: str) -> Payment | None:
-    """One of this person's receipts, scoped to them.
-
-    Scoped deliberately: a receipt id is short and printed on a document that
-    gets forwarded, so it must not be a key anybody holding it can read.
-    """
+    """One of this person's receipts, scoped to them: a receipt id is short and printed on a
+    document that gets forwarded, so it must not be a key anybody holding it can read."""
     stmt = select(Payment).where(Payment.user_id == user_id, Payment.receipt_id == receipt_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def plan_by_code(session: AsyncSession, code: str) -> Plan | None:
-    """The plan a customer names when they start a checkout.
-
-    By code rather than by price id: the price id is Stripe's and changes
-    when a price does, and a client naming one would be choosing what it
-    pays.
-    """
+    """The plan a customer names when they start a checkout. By code rather than by price id:
+    the price id is Stripe's and changes when a price does."""
     stmt = select(Plan).where(Plan.code == code, Plan.active.is_(True))
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -188,11 +177,8 @@ def _payload_email(field: str) -> Any:
 
 
 async def events_for_email(session: AsyncSession, email: str) -> list[StripeEvent]:
-    """Every delivery naming this address, newest first.
-
-    Read from the payload, which is why it is kept: a payment for an address
-    that had no account at the time is exactly the one support is asked about.
-    """
+    """Every delivery naming this address, newest first — read from the payload, which is why
+    it is kept: a payment for an address with no account at the time is what support asks about."""
     wanted = email.strip().lower()
     details = func.lower(StripeEvent.payload["data"]["object"]["customer_details"]["email"].astext)
     stmt = (
@@ -210,3 +196,52 @@ async def payment_by_id(session: AsyncSession, payment_id: uuid.UUID) -> Payment
 async def payment_by_intent(session: AsyncSession, intent_id: str) -> Payment | None:
     stmt = select(Payment).where(Payment.stripe_payment_intent_id == intent_id)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+# --- Storage reads the platform console asks about many payers at once.
+
+
+async def payer_user_ids(session: AsyncSession) -> set[uuid.UUID]:
+    """Everyone with at least one payment. Unbounded on purpose: it is the
+    directory's "paid" facet and has to be complete to be a facet at all."""
+    stmt = select(Payment.user_id).distinct()
+    return set((await session.execute(stmt)).scalars())
+
+
+async def latest_payments(
+    session: AsyncSession, user_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, tuple[str | None, datetime, datetime | None]]:
+    """Each person's most recent payment: `(plan code, paid at, plan ends at)`."""
+    if not user_ids:
+        return {}
+    newest = (
+        select(Payment.user_id, func.max(Payment.paid_at).label("paid_at"))
+        .where(Payment.user_id.in_(list(user_ids)))
+        .group_by(Payment.user_id)
+        .subquery()
+    )
+    stmt = (
+        select(Payment.user_id, Plan.code, Payment.paid_at, Payment.plan_ends_at)
+        .join(newest, (newest.c.user_id == Payment.user_id) & (newest.c.paid_at == Payment.paid_at))
+        .outerjoin(Plan, Plan.id == Payment.plan_id)
+    )
+    return {
+        user_id: (code, paid_at, ends_at)
+        for user_id, code, paid_at, ends_at in (await session.execute(stmt)).all()
+    }
+
+
+async def payer_user_ids_on_plan(session: AsyncSession, plan_code: str) -> set[uuid.UUID]:
+    """Everyone whose most recent payment bought this plan."""
+    newest = (
+        select(Payment.user_id, func.max(Payment.paid_at).label("paid_at"))
+        .group_by(Payment.user_id)
+        .subquery()
+    )
+    stmt = (
+        select(Payment.user_id)
+        .join(newest, (newest.c.user_id == Payment.user_id) & (newest.c.paid_at == Payment.paid_at))
+        .join(Plan, Plan.id == Payment.plan_id)
+        .where(Plan.code == plan_code)
+    )
+    return set((await session.execute(stmt)).scalars())

@@ -1,13 +1,10 @@
 """Verifying that a webhook really came from Stripe.
 
-Implemented rather than delegated to the SDK for two reasons: it can then be
-tested without an account, and the two things that actually matter — a constant
-time comparison and a replay tolerance — are visible in the code rather than
-assumed.
+Implemented by hand rather than via the SDK: testable without an account, and the constant-time
+comparison and replay tolerance are visible rather than assumed.
 
-The scheme: the `Stripe-Signature` header carries `t=<unix seconds>` and one or
-more `v1=<hex>` HMAC-SHA256 digests over `"{timestamp}.{raw body}"`, keyed by
-the endpoint's signing secret.
+The scheme: the `Stripe-Signature` header carries `t=<unix seconds>` and one or more
+`v1=<hex>` HMAC-SHA256 digests over `"{timestamp}.{raw body}"`, keyed by the signing secret.
 """
 
 from __future__ import annotations
@@ -27,11 +24,8 @@ class InvalidSignature(Exception):
 
 
 class SigningSecretMissing(Exception):
-    """No secret configured.
-
-    Raised rather than passing, so an unset variable cannot quietly mean
-    "accept anything" — which is exactly how both legacy worker guards behave.
-    """
+    """No secret configured. Raised rather than passing, so an unset variable cannot quietly
+    mean "accept anything"."""
 
 
 def _parse(header: str) -> tuple[int, list[str]]:

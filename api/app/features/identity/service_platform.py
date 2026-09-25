@@ -1,12 +1,8 @@
 """Accounts as the platform console sees them.
 
-Split from `service.py`, which is what a person does with their own account;
-these are what the people who answer support do with anybody's. Every caller
-is behind `PlatformAdmin`, and `tenancy` — which owns the console — sits above
-this slice and reaches these through the service rather than the table.
-
-Rows never leave the slice: `SupportUser` carries the account flags the
-console shows, and `UserRef` stays the small shape everything else gets.
+Every caller is behind `PlatformAdmin`. Rows never leave the slice: `SupportUser` carries
+the account flags the console shows, and `UserRef` stays the small shape everything else
+gets.
 """
 
 from __future__ import annotations

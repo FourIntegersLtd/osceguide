@@ -25,16 +25,9 @@ class CreateTrainee(BaseModel):
 
 
 class UpdateTrainee(BaseModel):
-    """The roster edit screen's fields. Absent means "leave it alone", sent means
-    "write this", including a null that clears it.
-
-    Not the address: `email` is what identifies the entry inside the
-    organisation (unique per org, and the account link is made against it), so
-    editing it is not correcting a typo but re-pointing a person's results. The
-    b2b edit screen offered first name, last name and the group; the group is
-    `cohort_id` here, and the other half of the legacy's `cohort` string — the
-    list a circuit is built from — is a membership row rather than a field, so
-    it is set by `PUT /trainee-groups/{id}/members`.
+    """Correct a trainee's name or intake. Fields left out are unchanged; a field sent
+    as null clears it. The email address cannot be changed here. Group membership is
+    set separately via `PUT /trainee-groups/{id}/members`.
     """
 
     first_name: str | None = Field(default=None, max_length=100)
@@ -43,10 +36,8 @@ class UpdateTrainee(BaseModel):
 
 
 class InvitationRead(BaseModel):
-    """A re-sent invitation, answered with what the email actually says.
-
-    The token itself is not here: it is a credential, and it goes only to the
-    address it was minted for.
+    """A re-sent invitation. The token itself is never returned; it goes only to
+    the address it was minted for.
     """
 
     email: str
@@ -93,11 +84,8 @@ class CreateCohort(BaseModel):
 
 
 class UpdateCohort(BaseModel):
-    """Rename an intake, or say which academic year it belongs to.
-
-    Absent means "leave it alone". b2b's `examIds` is not here: which exams a
-    cohort is bound to is `catalog`'s answer, and this slice's row carries no
-    such column, so exposing the field would promise a write that goes nowhere.
+    """Rename an intake, or say which academic year it belongs to. Fields left out
+    are unchanged.
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -115,8 +103,7 @@ class CreateGroup(BaseModel):
 
 
 class UpdateGroup(BaseModel):
-    """Rename a group. Who is in it does not move with the name — that is the
-    whole of why membership is a table here and a matched string in b2b."""
+    """Rename a group. Membership does not change."""
 
     label: str = Field(min_length=1, max_length=200)
 

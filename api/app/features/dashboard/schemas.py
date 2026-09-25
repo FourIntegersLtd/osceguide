@@ -1,13 +1,9 @@
-"""The shape one screen needs, assembled server-side.
-
-A read model, not a domain entity. "Dashboard" names a projection over several
-aggregates; nothing owns a dashboard and no rule is enforced about one.
-"""
+"""The shape one screen needs, assembled server-side."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -45,11 +41,7 @@ class EntitlementSummary(BaseModel):
 
 
 class Dashboard(BaseModel):
-    """Replaces seven calls on the SCA dashboard alone.
-
-    The legacy screen fans out to four RAG endpoints, a weekly trend and two
-    marketplace lists, then joins them in the browser.
-    """
+    """A trainee's home screen: entitlements, progress, recent attempts and question sets."""
 
     user_id: uuid.UUID
     entitlements: list[EntitlementSummary] = Field(default_factory=list)
@@ -57,22 +49,14 @@ class Dashboard(BaseModel):
     recent_attempts: list[RecentAttempt] = Field(default_factory=list)
     sets: list[SetSummary] = Field(default_factory=list)
     # Which exams this person may open, and which one their screens start on.
-    # Answered here so no screen has to guess: the retiring client took it from
-    # the subdomain, and without it four screens each derived a different
-    # answer from a different source and offered a picker over the whole
-    # catalogue. `exam_codes` holds only live access plus the exam the account
-    # was opened for; see
+    # `exam_codes` holds only live access plus the exam the account was opened for; see
     # `entitlements.domain_access`.
     exam_codes: list[str] = Field(default_factory=list)
     current_exam_code: str | None = None
 
 
 class PerformanceSummary(BaseModel):
-    """How the marked attempts divide, as rates rather than counts.
-
-    Rates because the chart draws bands, and because a candidate with four
-    attempts and one with forty should read the same way.
-    """
+    """How the marked attempts divide, as rates rather than counts."""
 
     pass_rate: float
     fail_rate: float
@@ -97,9 +81,7 @@ class TrendPoint(BaseModel):
 class DomainComposition(BaseModel):
     """How many marked attempts landed red, amber or green on one domain.
 
-    Classed from the same 0–100 domain score the bars already use: 83 and
-    above is green (a clear G), 50 to 83 is amber, below that is red. Counts,
-    not a new mark.
+    83 and above is green, 50 to 83 is amber, below that is red.
     """
 
     id: str
@@ -110,13 +92,8 @@ class DomainComposition(BaseModel):
 
 
 class Performance(BaseModel):
-    """The charts on the consumer exam dashboard, in one call.
-
-    The legacy screen asks four RAG endpoints and a weekly trend for this and
-    joins them in the browser. `exam_code` is null only when the caller named
-    no exam and has never attempted one — there is no exam to report on, and
-    an empty string would be a code.
-    """
+    """The performance charts for one exam. `exam_code` is null only when the caller named
+    no exam and has never attempted one."""
 
     exam_code: str | None = None
     summary: PerformanceSummary
@@ -185,10 +162,69 @@ class MySitting(BaseModel):
 
 
 class MySittings(BaseModel):
-    """The trainee portal's whole screen, in one request.
-
-    It polls two lists every five seconds and joins them in the browser to
-    answer one question: is it my turn yet?
-    """
+    """The trainee portal's whole screen, in one request: what they are rostered onto."""
 
     items: list[MySitting] = Field(default_factory=list)
+
+
+# --- What `/me/achievements` answers.
+
+
+class StreakRead(BaseModel):
+    length: int
+    start_date: date
+    end_date: date
+
+
+class AchievementsRead(BaseModel):
+    """A person's practice record, computed from their whole marked history."""
+
+    station_count: int
+    current_streak: int
+    streak_badge_count: int
+    longest_streak: StreakRead | None = None
+
+
+# --- The account directory: what the platform console lists about everybody.
+
+
+class DirectoryUser(BaseModel):
+    """One row of the account directory."""
+
+    id: uuid.UUID
+    email: str
+    name: str
+    created_at: datetime
+    status: str
+    is_platform_admin: bool
+    exam_code: str | None
+    last_login_at: datetime | None
+    # A refresh chain neither expired nor revoked — the old "Online" column.
+    signed_in: bool
+    # Any payment at all. The old `has_paid`.
+    has_paid: bool
+    # What the most recent payment bought, and when it was made.
+    plan_code: str | None
+    last_paid_at: datetime | None
+    # The furthest end of any live grant, or None for open-ended or nothing.
+    access_ends_at: datetime | None
+    live_exam_codes: list[str] = Field(default_factory=list)
+    attempt_count: int
+
+
+class ExamDirectorySummary(BaseModel):
+    """How many accounts an exam has, split by paid/trial/not-started."""
+
+    code: str
+    name: str
+    users: int
+    paid: int
+    trial: int
+    not_started: int
+
+
+class DirectorySummary(BaseModel):
+    exams: list[ExamDirectorySummary]
+    # Accounts naming no exam and holding no live grant.
+    unassigned: int
+    total: int

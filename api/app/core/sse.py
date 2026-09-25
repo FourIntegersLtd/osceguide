@@ -41,9 +41,8 @@ MEDIA_TYPE = "text/event-stream"
 class StreamFinished(Exception):
     """Raised by a snapshot to say this stream has nothing further to send.
 
-    The circuit ended; the result was acknowledged. The last snapshot is sent
-    first, then the stream closes, so a client is not left holding a connection
-    to something that is over.
+    The last snapshot is sent first, then the stream closes, so a client is
+    not left holding a connection to something that is over.
     """
 
 
@@ -52,9 +51,8 @@ class Snapshot:
     """What to send, and whether there will ever be anything after it.
 
     `final` exists so a stream can say goodbye properly: an ended circuit is
-    sent one last time — the console needs that last state to render — and then
-    the connection closes, rather than being held open all night by a browser
-    left on the page.
+    sent one last time, then the connection closes, rather than being held
+    open all night by a browser left on the page.
     """
 
     data: str

@@ -3,10 +3,8 @@
 One `Settings` object, read once from the environment (and `.env` in local
 development). Secrets and deployment-specific values have no defaults outside
 local/test: the validator at the bottom refuses to start a staging or
-production process with any of them missing, which is how the "worker guard
-fails open" class of bug is prevented. Local and test get working defaults
-filled in by the same validator, so nothing here is a value that could be
-mistaken for a production one.
+production process with any of them missing. Local and test get working
+defaults filled in by the same validator.
 """
 
 from __future__ import annotations
@@ -77,6 +75,13 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
     redis_disabled: bool = False
+
+    # How many proxies of ours sit in front of the app. The rate limiter counts
+    # by the address this many hops from the right of `X-Forwarded-For` — the
+    # one our own proxy observed — rather than the leftmost, which the caller
+    # writes and can forge. 1 matches a single load balancer; raise it only if
+    # you actually run more trusted hops. See `core.rate_limit.caller_key`.
+    trusted_proxy_hops: int = 1
 
     # --- Identity ---
     jwt_secret: str = ""

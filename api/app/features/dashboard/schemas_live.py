@@ -1,12 +1,8 @@
 """The exam-day board: every examination this organisation has running, at once.
 
-The screen that did not exist. A course lead on the morning of an OSCE could
-open one circuit's console, or a list of sittings that did not say which were
-live — so "how is the morning going" was answered by walking between rooms.
-
-Every number here is computed server-side, against the server's clock, because
-this is the screen somebody makes decisions from and a browser with a wrong
-system time should not be one of the inputs.
+Every number here is computed server-side, against the server's clock, because this is
+the screen somebody makes decisions from and a browser with a wrong system time should
+not be one of the inputs.
 """
 
 from __future__ import annotations

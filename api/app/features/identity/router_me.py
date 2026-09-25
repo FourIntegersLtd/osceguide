@@ -1,9 +1,4 @@
-"""The profile routes: who am I, and what may I change about myself.
-
-Split from `router.py`, which is the authentication surface — registering,
-signing in, refreshing, resetting a password. These two are about the person
-rather than the session, and the file was over its cap.
-"""
+"""The profile routes: who am I, and what may I change about myself."""
 
 from __future__ import annotations
 

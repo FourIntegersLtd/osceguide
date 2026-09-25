@@ -9,8 +9,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
-from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
-from tests.http.test_sittings_routes import org_with_admin, published_station
+from tests.http.test_org_read_models import a_circuit, a_sitting
+from tests.http.test_sittings_routes import a_trainee, org_with_admin, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -80,21 +80,34 @@ async def test_the_report_lists_every_candidate_with_marking_ratings_and_decisio
     assert row["decision"]["assessment_outcome"] == "pass"
 
 
-async def test_a_candidate_off_the_roster_and_undecided_still_appears(
+async def test_a_candidate_no_longer_on_the_roster_and_undecided_still_appears(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
+    """A slot names a `users.id`, so a candidate rostered when the circuit was
+    built but whose roster entry is later removed still has a slot. The report
+    must still show them — with no resolved `trainee_id` and no decision —
+    rather than drop them. (Since SEC-014, a candidate must be on the roster to
+    be enrolled in the first place; this is the entry going away afterwards.)"""
+    from sqlalchemy import delete
+
+    from app.features.roster.models import Trainee
+
     org_id, admin = await org_with_admin(client, make_actor)
     sitting = await a_sitting(client, admin, "kings", mode="exam")
     station = await published_station(client, admin, "kings", "S1")
-    stranger = await a_user(db_session, "unrostered@example.com")
+    candidate = await a_trainee(db_session, "leaver@example.com")
     await a_circuit(
         client,
         admin,
         "kings",
         sitting_id=sitting["id"],
-        trainee_ids=[str(stranger)],
+        trainee_ids=[str(candidate)],
         station_version_ids=[station],
     )
+    # The roster entry is removed after scheduling: the slot survives, the link
+    # to a trainee does not.
+    await db_session.execute(delete(Trainee).where(Trainee.user_id == candidate))
+    await db_session.commit()
 
     body = (
         await client.get(f"/api/v1/orgs/kings/sittings/{sitting['id']}/report", headers=bearer(admin))

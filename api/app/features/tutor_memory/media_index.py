@@ -1,20 +1,13 @@
 """The media search box, over the same pgvector store the tutor reads.
 
-`media` cannot import this slice — it sits below `tutor_memory` in the layer
-order — so `main.create_app` binds this adapter into `media.index`. Two
-readers of one index rather than two indexes: the tutor wants a passage it
-can quote, the search box wants the item, and the passages are already there
-because `reindex_material` puts every published media item in.
+`media` reaches it through `service_search.media_title_index`. One index, two readers: the
+tutor wants a passage it can quote, the search box wants the item. Two differences from
+the tutor's reader, both deliberate:
 
-The four media kinds are the four media corpora, spelled the same, so there
-is no mapping table to keep in step.
-
-Two differences from the tutor's reader, both deliberate:
-
-- **No exam filter.** See `media/index.py`: this returns titles of material
-  that `GET /api/v1/media` already lists to every signed-in reader.
-- **Items, not passages.** A document matches on its best passage, so the
-  same summary cannot fill the results with six of its own paragraphs.
+- **No exam filter.** This returns titles of material that `GET /api/v1/media` already
+  lists to every signed-in reader.
+- **Items, not passages.** A document matches on its best passage, so the same summary
+  cannot fill the results with six of its own paragraphs.
 """
 
 from __future__ import annotations
@@ -42,12 +35,8 @@ class PgVectorMediaIndex:
         self._session = session
 
     async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None:
-        """Make one item findable the moment it is published.
-
-        The nightly re-index would get to it eventually; publishing something
-        and not being able to find it until tomorrow is the kind of gap that
-        reads as a broken search box rather than as a schedule.
-        """
+        """Make one item findable the moment it is published, rather than waiting for the
+        nightly re-index."""
         corpus = metadata.get("kind")
         if not corpus:
             log.warning("media item indexed without a kind", doc_id=doc_id)
@@ -85,7 +74,7 @@ class PgVectorMediaIndex:
             self._session,
             embedding=vectors[0],
             # No filter, deliberately, and spelled `None` rather than reached
-            # by passing an empty list: see `media/index.py`.
+            # by passing an empty list: see `media.service_search.get_vector_index`.
             exam_ids=None,
             corpus=None,
             limit=limit * _PASSAGE_FACTOR,

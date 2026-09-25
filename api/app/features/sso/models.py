@@ -1,14 +1,10 @@
 """Tables owned by `sso`.
 
-Two, and the split is the point. `organization_sso` is what an organisation's
-sign-in looks like; `organization_sso_bindings` is how a visitor is recognised
-as belonging to it before they have typed a password or proved anything.
-
-Bindings are their own rows because they are the thing looked up — by `Host:`
-header, or by the domain of a typed address — and because a hostname must
-belong to exactly one organisation. A JSON array on the parent could not say
-that, and two partners claiming one host is not a conflict anybody wants to
-discover from a support ticket.
+`organization_sso` is what an organisation's sign-in looks like;
+`organization_sso_bindings` is how a visitor is recognised as belonging to
+it before they have typed a password or proved anything. Bindings are their
+own rows because a hostname or email domain must belong to exactly one
+organisation — a JSON array on the parent could not enforce that.
 """
 
 from __future__ import annotations
@@ -50,8 +46,7 @@ class OrganizationSso(Base, UUIDPrimaryKey, Timestamps):
     # rendering a button with no words on it.
     sign_in_label: Mapped[str | None] = mapped_column(String(80))
 
-    # Which exam a white-label site lands on. The retiring tenant record called
-    # this `defaultExam` and the sign-in page read it to pick a dashboard.
+    # Which exam a white-label site lands on.
     default_exam_code: Mapped[str | None] = mapped_column(String(32))
 
 

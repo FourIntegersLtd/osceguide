@@ -1,18 +1,11 @@
 """How many LiveKit Cloud sessions are running, across every product.
 
-Cloud concurrency is metered and billed, and b2c and b2b both count it in the
-same Redis sorted set under the same key. This is a third writer of that key
-during coexistence, so the scripts and the key name are **byte-identical** to
-`b2c/shared/services/livekit_cloud_capacity.py`: if this counted differently,
-the three of them would disagree about how full Cloud is and the overflow would
-either overspend or refuse sessions that could have run.
-
-A sorted set scored by expiry, rather than a counter, because a worker that
-dies without releasing its slot must not hold one forever — the reserve script
-drops expired members before counting.
-
-Redis being unavailable means "no free slots", not "unlimited": the safe
-failure is serving from our own workers, which costs capacity we already own.
+Cloud concurrency is metered and billed. b2c, b2b and this slice all count it in
+the same Redis sorted set under the same key, so the scripts and key name are
+**byte-identical** to `b2c/shared/services/livekit_cloud_capacity.py` — otherwise
+they would disagree about how full Cloud is. Scored by expiry, not a plain
+counter, so a worker that dies without releasing its slot does not hold it
+forever. Redis being unavailable means "no free slots", not "unlimited".
 """
 
 from __future__ import annotations
@@ -83,11 +76,8 @@ return 0
 
 
 async def _run(script: str, *args: object) -> Any:
-    """Run one of the scripts, or raise.
-
-    Arguments go as strings: that is what redis-py puts on the wire anyway, and
-    Lua's `tonumber` reads them back. Spelling it out keeps the typed client
-    happy without a cast at each call site.
+    """Run one of the scripts, or raise. Arguments go as strings, as redis-py puts
+    on the wire anyway; Lua's `tonumber` reads them back.
     """
     client = get_redis()
     if client is None:
@@ -170,13 +160,8 @@ async def slots_free(settings: Settings, room: str) -> bool:
     """Whether this room may run on Cloud.
 
     Overflow **disabled** means Cloud is used as configured and nothing is
-    metered — not that Cloud is off. Reading it the other way would route every
-    Cloud session to our own workers on the next deploy, silently, which is the
-    same class of failure `domain.normalize_mode` refuses to risk.
-
-    When it is enabled, reserving *is* the question: asking how many slots are
-    free and then taking one would be two round trips with a race between them,
-    which is how a metered cap gets overrun.
+    metered, not that Cloud is off. When enabled, reserving *is* the question:
+    asking how many slots are free and then taking one would race.
     """
     if not settings.livekit_cloud_overflow_enabled:
         return True

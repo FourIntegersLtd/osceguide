@@ -64,12 +64,11 @@ async def set_sitting_status(
 async def update_sitting(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, **values: Any
 ) -> None:
-    """Write the fields an edit screen may change. Which ones is the service's rule.
+    """Write the fields an edit screen may change; which ones is the service's rule.
 
     The two questions the edit asks first — has this sitting begun, how many
-    circuits is it composed of — are across the circuit table and live next
-    door in `repository_reads.py`, which is where the queries that span a
-    sitting already are.
+    circuits it has — span the circuit table and live in `repository_reads.py`
+    instead.
     """
     await session.execute(
         update(Sitting).where(Sitting.org_id == org_id, Sitting.id == sitting_id).values(**values)

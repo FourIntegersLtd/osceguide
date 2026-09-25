@@ -4,10 +4,6 @@ The worker holds no idea what any of these mean: it registers the schema, the
 model calls it, and the arguments come back here. So this file is the whole
 contract — the name the model sees, the sentence that tells it when to call,
 and the JSON schema its arguments are checked against.
-
-Kept apart from `service_tools.py`, which answers them, because the catalogue
-is also what `service_session.py` puts on the bootstrap, and a list of tools
-should be readable without reading how each is implemented.
 """
 
 from __future__ import annotations

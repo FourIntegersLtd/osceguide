@@ -18,10 +18,10 @@ from app.features.stations import repository_templates as template_repository
 from app.features.stations import service_templates as templates
 from app.features.stations.generation_profiles.resolve import (
     profile_key_for_structure,
+    resolve_block_generation_hints,
     resolve_system_prompt,
 )
 from app.features.stations.station_ai import generate_station_autogenerate
-from app.features.stations.station_block_hints import hints_for_structure
 from app.features.stations.station_content import (
     collect_required_station_block_ids,
     collect_station_block_ids,
@@ -229,3 +229,14 @@ async def autogenerate_station_draft(
         "suggested_title": suggested_title.strip(),
         "content": content,
     }
+
+
+# --- Per-block AI generation hints for station autogenerate.
+
+
+def hints_for_structure(structure: Any, *, exam_code: str | None = None) -> dict[str, str]:
+    """Return generation hints for block ids present in the template structure."""
+    if not isinstance(structure, dict):
+        return {}
+    profile_key = profile_key_for_structure(structure, exam_code)
+    return resolve_block_generation_hints(structure, profile_key=profile_key)

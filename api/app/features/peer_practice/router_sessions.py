@@ -1,7 +1,7 @@
 """The practice sessions a learner has been matched into.
 
-Split from `router.py`, which keeps the queue half: these routes read and
-drive a session that already exists, and the pair inside it.
+`router.py` keeps the queue half; these routes read and drive a session that
+already exists, and the pair inside it.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from app.features.peer_practice import (
     schemas,
     service,
     service_reports,
-    service_stream_session,
+    service_stream,
     service_voice,
 )
 
@@ -84,9 +84,7 @@ async def stream_session(
     open_session: SessionOpenerDep,
 ) -> StreamingResponse:
     return StreamingResponse(
-        service_stream_session.session_stream(
-            session_id, principal.user_id, bus=bus, open_session=open_session
-        ),
+        service_stream.session_stream(session_id, principal.user_id, bus=bus, open_session=open_session),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )

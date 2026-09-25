@@ -11,12 +11,11 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.roster import errors, router_admin, schemas, service, service_bulk, service_groups
+from app.features.roster import errors, router_admin, schemas, service, service_groups
 
 router = APIRouter(tags=["roster"])
-# The routes that change an existing entry live in `router_admin.py` — this
-# file is the roster's reads and its additions, and it is the only thing
-# `main.py` mounts from the slice. Same tag, same prefix, one flat document.
+# Routes that change an existing entry live in `router_admin.py`; mounted here so
+# `main.py` only needs to import this one router.
 router.include_router(router_admin.router)
 
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -68,7 +67,7 @@ async def add_trainees(
     body: schemas.BulkCreateTrainees, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.BulkTraineesResult:
     """A spreadsheet's worth of trainees. Duplicates are reported, not fatal."""
-    return await service_bulk.add_trainees(session, workspace.org_id, entries=body.trainees, now=clock.now())
+    return await service.add_trainees(session, workspace.org_id, entries=body.trainees, now=clock.now())
 
 
 @router.post(
@@ -143,8 +142,7 @@ async def set_group_members(
     workspace: OrgAdmin,
     session: Session,
 ) -> schemas.GroupRead:
-    """PUT, not POST: the body states who is in the group. b2b has no
-    membership table at all and matches a label instead."""
+    """Replace the group's full membership list."""
     return await service_groups.set_group_members(
         session, workspace.org_id, group_id, trainee_ids=body.trainee_ids
     )

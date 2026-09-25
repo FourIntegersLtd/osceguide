@@ -1,23 +1,18 @@
 """Answering a clinical question out of the material this doctor holds.
 
-Sits inside a voice loop: the model says a holding line and waits on this, so
-the budget is one embedding call plus one pgvector query -- about 350ms -- and
-anything slower is heard as a pause in a conversation.
+Sits inside a voice loop: the model says a holding line and waits on this, so the budget is
+one embedding call plus one pgvector query -- about 350ms.
 
-Nothing here decides whether a learner may read something. It works out the
-entitled exams and hands them to the index, which filters in SQL. The decision
-itself is `domain.entitled_exam_ids` over what `entitlements` returned, so it
-can be tested without an index at all and cannot be quietly skipped.
+Nothing here decides whether a learner may read something: `domain.entitled_exam_ids` does,
+over what `entitlements` returned, and the entitled exams are handed to the index as a SQL
+filter.
 
-Three answers, and the difference between them matters because the tutor says
-each one aloud with the same confidence:
+Three answers, and the tutor says each one aloud with the same confidence, so they must not
+be confused:
 
 - `NOT_CONFIGURED` -- there is no index, or it failed. "I could not look that up."
 - `NOTHING_IN_MATERIAL` -- it was searched and had nothing. "The reading does not say."
 - passages -- answer from these and cite them.
-
-Returning the second where the first is true would have the tutor assert, in a
-clinical conversation, that the reading does not cover something it never read.
 """
 
 from __future__ import annotations
@@ -30,10 +25,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.core.ports import MaterialIndex, Passage
+from app.core.ports import MaterialIndex, Passage, VectorIndex
 from app.features.entitlements import service as entitlements
 from app.features.tutor_memory import domain
 from app.features.tutor_memory.embedder import EmbeddingFailed
+from app.features.tutor_memory.media_index import build_media_index
 from app.features.tutor_memory.schemas import ToolResult
 
 log = get_logger(__name__)
@@ -69,10 +65,8 @@ async def answer_question(
 ) -> ToolResult:
     """Answer a clinical question out of the material this doctor holds.
 
-    The entitlement is worked out here and handed to the index as a filter, so
-    a doctor is never ranked against material they have not bought. Today the
-    A to Z and the slides are gated in the browser only — a tutor that read out
-    of them would be a way round that, and the gate is a `WHERE` clause now.
+    The entitlement is worked out here and handed to the index as a filter, so a doctor is
+    never ranked against material they have not bought.
     """
     if index is None:
         return ToolResult(result=NOT_CONFIGURED)
@@ -102,10 +96,8 @@ async def answer_question(
 def _readable(passages: Sequence[Passage]) -> str:
     """The passages, numbered, with the instruction to cite them as it speaks.
 
-    Numbered markers rather than titles inline: the tutor is speaking, and a
-    title read aloud mid-sentence is a mouthful. The card carries the titles
-    for the screen, and the model is told to say "I have put the sources on
-    your screen" rather than to read them out.
+    Numbered markers rather than titles inline, since a title read aloud mid-sentence is a
+    mouthful; the card carries the titles for the screen instead.
     """
     body = "\n\n".join(f"[{n}] {p.text}" for n, p in enumerate(passages, start=1))
     return (
@@ -118,10 +110,8 @@ def _readable(passages: Sequence[Passage]) -> str:
 def _citations(passages: Sequence[Passage]) -> dict[str, Any]:
     """What goes on the screen beside the spoken answer.
 
-    A ref per passage in the same spelling `suggest_material` uses, because the
-    frontend resolves both through one route resolver — the tutor cites and
-    suggests the same things, and two spellings for one identifier is one too
-    many.
+    A ref per passage in the same spelling `suggest_material` uses, since the frontend
+    resolves both through one route resolver.
     """
     return {
         "type": "assistant_card",
@@ -137,3 +127,8 @@ def _citations(passages: Sequence[Passage]) -> dict[str, Any]:
             for n, p in enumerate(passages, start=1)
         ],
     }
+
+
+def media_title_index(session: AsyncSession) -> VectorIndex:
+    """The index behind `media`'s search box: the same store, searched for items."""
+    return build_media_index(session)

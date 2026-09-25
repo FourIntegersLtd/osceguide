@@ -64,8 +64,7 @@ async def create_sitting(
     responses=error_responses(Forbidden, errors.SittingNotFound),
 )
 async def read_sitting(sitting_id: uuid.UUID, workspace: OrgReader, session: Session) -> schemas.SittingRead:
-    """Circuits and slots embedded, because every screen that opens a sitting
-    needs all three and would otherwise fetch them one by one."""
+    """Circuits and slots are embedded, since a sitting screen needs all three."""
     return await service.read_sitting(session, workspace.org_id, sitting_id)
 
 
@@ -88,11 +87,9 @@ async def update_sitting(
 ) -> schemas.SittingRead:
     """Correct a sitting that has already been scheduled.
 
-    Only what was sent is written, so the edit screen restates nothing. The name
-    and the date stay open for the life of the record; what the sitting examines
-    — its mode, its type, the programme its rubric is resolved from — freezes the
-    moment any circuit on it has started, because the marks already given were
-    given against the other answer.
+    Only fields sent are written. The name and date stay editable indefinitely.
+    The mode, type and programme freeze once any circuit has started, since
+    marks already given were given against the other answer.
     """
     return await service_edit.update_sitting(session, workspace.org_id, sitting_id, body=body)
 
@@ -106,6 +103,7 @@ async def update_sitting(
         errors.SittingNotFound,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
+        errors.TraineeNotOnRosterError,
     ),
 )
 async def add_circuit(
@@ -134,16 +132,16 @@ async def add_circuit(
         errors.CircuitLockedError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
+        errors.TraineeNotOnRosterError,
     ),
 )
 async def rebuild_circuit(
     circuit_id: uuid.UUID, body: schemas.RebuildCircuit, workspace: OrgAdmin, session: Session
 ) -> schemas.CircuitRead:
-    """Change who is on a circuit and which stations they sit (C3).
+    """Change who is on a circuit and which stations they sit.
 
-    A structural edit rebuilds the slots, so it is refused once one of them
-    means something: `circuit_locked` (409) if a consultation is in progress,
-    if feedback has been recorded, or if any station has already been run.
+    Refused with `circuit_locked` (409) if a consultation is in progress, if
+    feedback has been recorded, or if any station has already been run.
     """
     return await service_structure.rebuild_circuit(
         session,
@@ -169,6 +167,7 @@ async def rebuild_circuit(
         errors.TraineeAlreadyOnCircuitError,
         errors.StationNotOnCircuitError,
         errors.TraineeRevokedError,
+        errors.TraineeNotOnRosterError,
     ),
 )
 async def append_trainees(
@@ -180,9 +179,9 @@ async def append_trainees(
     """Add people to a training circuit, into the room it is already using.
 
     Each arrival may name the station it takes, positionally with
-    `trainee_ids`; name none and they all join the station the circuit is on.
-    Either way the station has to be one this circuit already runs — bringing a
-    new one in is a change to what the circuit is, which is the structural edit.
+    `trainee_ids`; name none and they all join the station the circuit is
+    currently on. Either way, the station must already be one this circuit
+    runs.
     """
     return await service_structure.append_trainees(
         session,

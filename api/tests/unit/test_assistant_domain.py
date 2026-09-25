@@ -28,14 +28,6 @@ def test_an_unknown_type_is_refused() -> None:
         domain.worker_type_for("chatbot")
 
 
-def test_only_help_sessions_keep_a_transcript() -> None:
-    """Oracle: `modes.py` — the other three keep nothing, and b2c's backend
-    confirms it at the receiving end."""
-    assert domain.keeps_transcript("help")
-    for other in ("onboarding", "dashboard", "consulting-doctor"):
-        assert not domain.keeps_transcript(other)
-
-
 def test_instructions_must_be_rendered_before_dispatch() -> None:
     """The worker refuses a session with blank instructions, so an empty render
     must not reach it."""

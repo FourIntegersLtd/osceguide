@@ -1,8 +1,6 @@
 """Assembling the institutional screens.
 
-Reads through other slices' services, never their tables, so this stays a
-projection. Split from `service.py` because the learner's dashboard and an
-organisation's change for different reasons and share nothing but the idea.
+Reads through other slices' services, never their tables, so this stays a projection.
 """
 
 from __future__ import annotations

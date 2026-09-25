@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
-from app.features.roster.errors import TraineeRevokedError
+from app.features.roster.errors import TraineeNotOnRosterError, TraineeRevokedError
 
 
 class SittingNotFound(NotFound):
@@ -64,9 +64,8 @@ class StationNotOnCircuitError(Conflict):
 
 # Binding a rubric is `rubrics`' rule and binding a station is `stations`',
 # so both slices' errors are this slice's vocabulary too. Re-exported rather
-# than redefined: the previous local classes were never raised, so the
-# routes advertised codes that could not happen while the invariants they
-# named went unenforced.
+# than redefined: local classes here were previously never raised, so routes
+# advertised codes that could not happen.
 from app.features.catalog.errors import ProgrammeNotFound  # noqa: E402
 from app.features.rubrics.errors import (  # noqa: E402
     RubricVersionNotFound,
@@ -86,6 +85,7 @@ __all__ = [
     "RubricVersionNotFound",
     "RubricVersionNotPublished",
     "TemplateNotPublishedError",
+    "TraineeNotOnRosterError",
     "TraineeRevokedError",
     "VoiceUnavailable",
 ]

@@ -19,9 +19,8 @@ MIN_PASSWORD_LENGTH = 12
 # yourself is allowed so the client can show who is signed in and why it is
 # being asked to change the password, and capabilities so the shell can render.
 #
-# Named by OpenAPI operation id (`<tag>_<function>`), which is what
-# `core.auth` matches a request against. They were invented names for a while,
-# which no request could ever match — and nothing called the rule anyway.
+# Named by OpenAPI operation id (`<tag>_<function>`), which is what `core.auth` matches a
+# request against.
 ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED = frozenset(
     {
         "identity_change_password",
@@ -40,11 +39,9 @@ class WeakPassword(Exception):
         self.reason = reason
 
 
-# The two arms whose existing tokens this platform will accept in trade for
-# one of its own, until the backends behind them are decommissioned. Named for
-# the audience rather than for the retiring service, because that vocabulary
-# is the one that survives. A closed set, because the name selects the signing
-# secret the token is verified against: an open one would let a caller choose
+# The two arms whose existing tokens this platform will accept in trade for one of its own,
+# until the backends behind them are decommissioned. A closed set, because the name selects
+# the signing secret the token is verified against — an open one would let a caller choose
 # the key it is checked with.
 LEGACY_PROVIDERS: Final[tuple[str, ...]] = ("consumer", "institution")
 
@@ -60,16 +57,9 @@ class LegacyTokenUnusable(Exception):
 def legacy_email(claims: Mapping[str, Any]) -> str:
     """The address a verified legacy token speaks for.
 
-    Both legacy backends put `email` at the top level of the payload — the
-    consumer one through flask-jwt-extended's `additional_claims`, the
-    institution one by spreading its claims dict into the payload — so one
-    rule reads both.
-
-    The address is the join, not `sub`: one subject is a Firestore document id
-    and the other a Supabase row id, and one person holds several of those.
-    The migration merges them on the lowercased email, so this has to
-    normalise the same way or an exchange would miss the row the import
-    created.
+    The address is the join, not `sub`: one subject is a Firestore document id and the
+    other a Supabase row id. The migration merges them on lowercased email, so this must
+    normalise the same way or an exchange would miss the row the import created.
     """
     raw = claims.get("email")
     if not isinstance(raw, str) or not raw.strip():
@@ -78,11 +68,8 @@ def legacy_email(claims: Mapping[str, Any]) -> str:
 
 
 def normalize_email(raw: str) -> str:
-    """One person is one row.
-
-    The migration merges b2c's four per-product user collections and b2b_users
-    on this value, so it has to be the same function everywhere, forever.
-    """
+    """One person is one row. The migration merged legacy user tables on this value, so it
+    must stay the same function everywhere."""
     return raw.strip().lower()
 
 

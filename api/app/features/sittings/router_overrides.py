@@ -1,12 +1,8 @@
 """Taking hold of a circuit that is running itself.
 
-Every route here exists because something goes wrong on exam day. They are
-separated from `router_run.py` — which starts, advances and ends — because
-these are the ones a supervisor reaches for when the plan has failed, and it
-helps to be able to read the whole list of them at once.
-
-All take `OrgStaff`: an override is a staff act, and `OrgReader` admits the
-candidate sitting the circuit.
+Every route here exists because something goes wrong on exam day, and a
+supervisor is intervening. All take `OrgStaff`: an override is a staff act,
+and `OrgReader` admits the candidate sitting the circuit.
 """
 
 from __future__ import annotations

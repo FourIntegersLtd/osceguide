@@ -3,10 +3,8 @@
 Distinct from an attempt: nobody is being assessed, nothing is marked, and only
 one of the four kinds keeps a transcript at all.
 
-The worker knows four types and no product vocabulary. b2c's records call one
-persona `athena-doctor` while the worker calls it `consulting-doctor`; that
-translation happens once, at this boundary, which is the pattern b2c already
-gets right.
+The worker knows four types and no product vocabulary; legacy record spellings
+(like `athena-doctor`) are translated once, at this boundary.
 """
 
 from __future__ import annotations
@@ -32,11 +30,6 @@ class UnrenderableSession(Exception):
 # Legacy spellings that existing records carry.
 _ALIASES = {"athena-doctor": AssistantType.CONSULTING_DOCTOR}
 
-# Oracle: `modes.py`. Only a help session is worth keeping a transcript of —
-# the others are navigation, and storing them would collect recordings of
-# people's screens for nothing.
-_KEEPS_TRANSCRIPT = frozenset({AssistantType.HELP})
-
 JOINABLE_STATUSES = frozenset({"active"})
 
 
@@ -48,10 +41,6 @@ def worker_type_for(session_type: str) -> str:
         return str(AssistantType(key))
     except ValueError as exc:
         raise UnknownAssistantType(f"No assistant worker handles {session_type!r}.") from exc
-
-
-def keeps_transcript(session_type: str) -> bool:
-    return AssistantType(worker_type_for(session_type)) in _KEEPS_TRANSCRIPT
 
 
 def ensure_dispatchable(*, instructions: str) -> None:

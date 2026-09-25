@@ -1,20 +1,13 @@
 """What a rubric is, and the JSON Schema a marker is asked to fill.
 
-A rubric is the thing a candidate is marked against: a scale, some domains,
-the competencies in each, and — the part that used to be impossible to author —
-what earns each point of the scale on each competency. Plus the free-shape
-sections a result carries that nobody scores, like the narrative feedback.
+A rubric is the thing a candidate is marked against: a scale, some domains, the competencies in each,
+and what earns each point of the scale on each competency, plus the free-shape sections a result
+carries that nobody scores, like narrative feedback. It is one row an admin writes, and the schema
+is *derived* from it, so the descriptors the author typed are the descriptors the model reads.
 
-This was three files in the engine package: a Python constant naming the
-domains and competencies, a hand-written JSON Schema whose `description`
-strings were the only place the marking descriptors existed, and a `.txt`
-system prompt chosen by a dict keyed on framework id. Adding an exam meant a
-release. Here it is one row an admin writes, and the schema is *derived* from
-it, so the descriptors the author typed are the descriptors the model reads.
-
-`result_schema_override` remains for a shape this derivation cannot express.
-It is an escape hatch, not the normal path: a rubric that uses it can still be
-marked but its competencies no longer describe its own result.
+`result_schema_override` remains for a shape this derivation cannot express. It is an escape hatch,
+not the normal path: a rubric that uses it can still be marked but its competencies no longer
+describe its own result.
 
 Pure: no session, no models, no I/O.
 """

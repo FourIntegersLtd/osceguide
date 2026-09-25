@@ -83,12 +83,10 @@ async def observer_token(
 ) -> RoomGrant:
     """An examiner's token: they hear the station and, in training, may be seen.
 
-    Subscribe-only is still the default and the only mode an **exam** circuit
-    ever grants, enforced in the token rather than a UI state: a candidate
-    must not be able to be prompted, and the transcript must stay a record of
-    what they said to the patient alone. A **training** circuit relaxes this
-    one guarantee on purpose — the retiring client let a supervisor
-    demonstrate on camera while a trainee practised, and a training circuit
+    Subscribe-only is the default and the only mode an **exam** circuit ever
+    grants, enforced in the token rather than a UI state: a candidate must not
+    be promptable, and the transcript must stay a record of what they said to
+    the patient alone. A **training** circuit relaxes this on purpose — it
     carries no result a prompted answer could corrupt. `sitting_mode_for_circuit`
     returning `None` (circuit vanished mid-request) is treated as exam-strict,
     the safer default.

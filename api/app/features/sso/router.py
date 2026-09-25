@@ -38,15 +38,10 @@ async def read_sign_in(
 ) -> schemas.SsoSignIn:
     """Whether this visitor's organisation signs in somewhere else.
 
-    **Unauthenticated, and it has to be**: this is what a sign-in page asks
-    before anybody has signed in. The retiring client answered it from a
-    hostname allow-list compiled into the bundle, so adding a partner meant a
-    frontend deploy and the tenant slug, the button's wording and the
-    "no password form" rule were three things that could disagree with the
-    backend.
-
-    A 404 means "sign in here, with a password", which is the ordinary case and
-    what every host that is not a partner's gets.
+    Unauthenticated, and it has to be: this is what a sign-in page asks
+    before anybody has signed in. A 404 means "sign in here, with a
+    password", which is the ordinary case and what every host that is not a
+    partner's gets.
     """
     if host:
         return await service.sign_in_for_host(session, host)
@@ -70,16 +65,17 @@ async def sso_login(
     session: Session,
     brokers: Brokers,
     settings: SettingsDep,
+    clock: ClockDep,
 ) -> schemas.SsoLoginResult:
     """Where to send the browser to sign in to this organisation.
 
-    **Unauthenticated**, like the discovery read above it: this is the first
-    step of signing in, before anybody has. The URL is returned rather than
-    followed — the frontend owns navigation and the platform sets no cookies
-    (ADR 0004) — and points the broker back at a frontend page that posts the
-    token to `POST /auth/sso/callback`.
+    Unauthenticated: this is the first step of signing in, before anybody
+    has. The URL is returned rather than followed — the frontend owns
+    navigation and the platform sets no cookies (ADR 0004).
     """
-    return await service_login.build_login(session, body.org_slug, brokers=brokers, settings=settings)
+    return await service_login.build_login(
+        session, body.org_slug, brokers=brokers, settings=settings, now=clock.now()
+    )
 
 
 @router.post(
@@ -118,6 +114,7 @@ async def sso_callback(
         session,
         body.org_slug,
         token=body.token,
+        state=body.state,
         brokers=brokers,
         settings=settings,
         now=clock.now(),
@@ -154,11 +151,10 @@ async def save_config(
     _admin: PlatformAdmin,
     session: Session,
 ) -> schemas.SsoConfigRead:
-    """Write it. Platform admin only, deliberately.
+    """Write the SSO arrangement. Platform admin only, deliberately.
 
-    Whoever controls the issuer controls who may sign in as that institution's
-    members, so this is not a field to put on a customer's own settings screen
-    beside their logo. When there is an onboarding flow with a domain
-    verification step in it, that is where this moves.
+    Whoever controls the issuer controls who may sign in as that
+    institution's members, so this is not exposed to a customer's own
+    settings screen.
     """
     return await service.save_config(session, org_slug, body)

@@ -1,8 +1,8 @@
 """Storage for one matched practice session, and the history it leaves behind.
 
-Split from `repository.py`, which keeps the queue half: joining, waiting and
-matching are a different shape of query from reading, ending and remembering a
-session that already exists.
+`repository.py` keeps the queue half: joining, waiting and matching are a
+different shape of query from reading, ending and remembering a session that
+already exists.
 """
 
 from __future__ import annotations

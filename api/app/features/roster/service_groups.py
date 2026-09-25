@@ -1,9 +1,7 @@
 """Cohorts, groups, and who a circuit would contain.
 
-Split from `service.py` along the aggregate: that module is about a person on
-the roster, this one about the ways an institution divides them up. A cohort
-is an academic-year grouping; a trainee group is what a circuit is built from,
-and its membership is a table rather than b2b's lowercased label match.
+A cohort is an academic-year grouping; a trainee group is what a circuit is built
+from.
 """
 
 from __future__ import annotations
@@ -49,11 +47,8 @@ async def update_cohort(
     body: UpdateCohort,
     fields_sent: set[str],
 ) -> CohortRead:
-    """Rename an intake, or say which academic year it is. Only what was sent.
-
-    The name is what an upload is matched against and what a list is read by,
-    so a rename is a real edit rather than a label change — and it is a rename
-    of the *row*, which is why a trainee who was in it is still in it after.
+    """Rename an intake, or say which academic year it is. Only what was sent is
+    written. Renaming the row keeps its trainees; nothing has to be moved.
     """
     row = await _require_cohort(session, org_id, cohort_id)
     named = set(_COHORT_FIELDS) & fields_sent
@@ -78,11 +73,9 @@ async def update_cohort(
 async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
     """Remove an intake that nothing is attached to any more.
 
-    Refuses while trainees still belong to it. Their `cohort_id` is `SET NULL`,
-    so a delete that went ahead would not fail — it would quietly leave a year
-    group of people with no intake at all, and the screen that listed them
-    would show the result of the mistake rather than the mistake. Moving them
-    is a decision somebody has to make on purpose: `PATCH /trainees/{id}`.
+    Refuses while trainees still belong to it. Their `cohort_id` is `SET NULL`, so
+    an unrefused delete would silently leave people with no intake instead of
+    failing; moving them out is `PATCH /trainees/{id}`, done on purpose.
     """
     await _require_cohort(session, org_id, cohort_id)
     if await repository_groups.count_trainees_in_cohort(session, org_id, cohort_id):
@@ -107,13 +100,7 @@ async def list_groups(session: AsyncSession, org_id: uuid.UUID) -> list[GroupRea
 async def rename_group(
     session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID, *, label: str
 ) -> GroupRead:
-    """Rename a group, keeping its members.
-
-    b2b could not offer this safely: it matched a trainee's `cohort` string
-    against the group's label, so the only way to rename a group was to rewrite
-    every one of those strings too, and getting it wrong emptied the group in
-    silence. Membership here is a table, so the name can change on its own.
-    """
+    """Rename a group, keeping its members."""
     group = await _require_group(session, org_id, group_id)
     if label != group.label:
         clash = await repository_groups.group_by_label(session, org_id, label)
@@ -126,10 +113,8 @@ async def rename_group(
 async def delete_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> None:
     """Remove a group that nobody is in.
 
-    Refuses while it still has members. The membership rows go with the group,
-    and so does anything addressed to it — a circuit built from this list would
-    lose its people without a word — so the caller states the emptied list
-    first, on purpose, through `PUT /trainee-groups/{id}/members`.
+    Refuses while it still has members, so the caller must empty it on purpose
+    through `PUT /trainee-groups/{id}/members` before deleting it.
     """
     await _require_group(session, org_id, group_id)
     if await repository_groups.group_member_ids(session, group_id):

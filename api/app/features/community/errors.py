@@ -62,10 +62,8 @@ class UnknownExamError(NotFound):
 class StationNotFound(NotFound):
     """Mirrors `stations.errors.StationNotFound`, and shares its code (S3).
 
-    A comment names a station. Naming one that does not exist used to reach
-    the insert and answer `internal_error` — the foreign key doing the
-    refusal, unmapped. Declared here for the reason `UnknownExamError` is:
-    this slice's routes document their own errors.
+    A comment names a station. Naming one that does not exist once reached the insert and answered
+    `internal_error` — the foreign key doing the refusal, unmapped — so this is mapped explicitly.
     """
 
     code = "station_not_found"

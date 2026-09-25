@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from app.features.attempts import errors
-from app.features.attempts import service_debrief_render as rendering
+from app.features.attempts import service_render as rendering
 
 
 @pytest.mark.asyncio

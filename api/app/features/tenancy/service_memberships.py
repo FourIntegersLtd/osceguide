@@ -1,11 +1,4 @@
-"""Who is in an organisation, and with what role.
-
-Split from `service.py` along the aggregate: that module is about the
-organisation itself, this one about the people in it. Nothing could create a
-membership through the API for the whole build — an organisation could be
-provisioned and then never given a single member — so these routes are the
-half that makes the institutional product usable.
-"""
+"""Who is in an organisation, and with what role."""
 
 from __future__ import annotations
 
@@ -16,11 +9,30 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.core.errors import Forbidden, InvalidInput
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.tenancy import domain, repository
 from app.features.tenancy.errors import MembershipExists, MembershipNotFound, OrgNotFound
 from app.features.tenancy.schemas import MembershipRead
+
+
+def _guard_role_grant(actor: Principal, org_id: uuid.UUID, role: str) -> None:
+    """Refuse a role the granter is not entitled to write.
+
+    `OrgAdmin` admits `partner_admin`, which must never examine, and `role` is a free string:
+    without this a partner admin could seat itself or anyone as `institution_admin` or
+    `owner`. An unknown role is a bad request; a known role above the granter's tier is
+    forbidden. A platform admin may write any known role.
+    """
+    if not domain.is_known_role(role):
+        raise InvalidInput(f"Unknown role: {role!r}")
+    if actor.is_platform_admin:
+        return
+    membership = next((m for m in actor.memberships if m.org_id == org_id), None)
+    actor_role = membership.role if membership else None
+    if not domain.may_grant_role(actor_role, role):
+        raise Forbidden("You cannot grant a role above your own.")
 
 
 async def list_memberships(
@@ -47,17 +59,12 @@ async def add_membership(
     actor: Principal,
     now: datetime,
 ) -> MembershipRead:
-    """Put somebody in an organisation.
+    """Put somebody in an organisation, by email.
 
-    By email, because that is what an administrator knows. Nothing could create
-    a membership through the API for a while: an organisation could be
-    provisioned and then never given a single member.
-
-    An address with no account is invited rather than refused: the account is
-    created without a password and the person is emailed a link to choose one.
-    Refusing meant every tutor had to register unprompted before an
-    administrator could name them, and nobody tells a tutor to do that.
+    An address with no account is invited rather than refused: the account is created
+    without a password and the person is emailed a link to choose one.
     """
+    _guard_role_grant(actor, org_id, role)
     user = await identity.user_ref_by_email(session, email)
     invited = user is None
     if user is None:
@@ -87,6 +94,7 @@ async def add_membership(
 async def change_membership_role(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID, *, role: str, actor: Principal
 ) -> MembershipRead:
+    _guard_role_grant(actor, org_id, role)
     membership = await _require_membership(session, org_id, membership_id)
     await repository.set_membership_role(session, org_id, membership_id, role=role)
     await repository.write_audit(
@@ -103,12 +111,9 @@ async def change_membership_role(
 
 
 async def _read_with_email(session: AsyncSession, row: Any) -> MembershipRead:
-    """A membership answered the way the list answers it.
+    """A membership answered the way the list answers it, with the email attached.
 
-    The write routes used to return the row with no address on it, so a screen
-    that had just changed a role or revoked one lost the email it was already
-    showing. `add_membership` does not need this — it looked the person up by
-    address to do the job at all.
+    `add_membership` does not need this — it looked the person up by address already.
     """
     people = await identity.user_refs_by_ids(session, [row.user_id])
     return _membership_read(row, email=people[row.user_id].email if row.user_id in people else None)

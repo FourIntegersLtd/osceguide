@@ -1,10 +1,5 @@
-"""The routes that change what an organisation has already said about its people.
-
-Split from `router.py` by what the caller is doing — correcting a name, moving
-an intake, renaming or removing a group — rather than by which table it
-touches; `router.py` holds the routes that read the roster and add to it. The
-two are mounted together by `router.py`, which is the only thing `main.py`
-imports from this slice.
+"""Routes that change what an organisation has already said about its people:
+correcting a trainee, and renaming or removing groups and cohorts.
 """
 
 from __future__ import annotations
@@ -51,10 +46,8 @@ async def edit_trainee(
     responses=error_responses(Forbidden, errors.TraineeNotFound, errors.TraineeInUse),
 )
 async def delete_trainee(trainee_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> None:
-    """Remove a roster row nothing was ever decided about.
-
-    `trainee_in_use` (409) is the answer for a real decision. Revoking access
-    is the mechanism for everyone else — see `service_edit.delete_trainee`.
+    """Remove a roster row nothing was ever decided about. Returns 409
+    `trainee_in_use` if a decision exists; revoke access instead in that case.
     """
     await service_edit.delete_trainee(session, workspace.org_id, trainee_id)
 
@@ -67,8 +60,8 @@ async def delete_trainee(trainee_id: uuid.UUID, workspace: OrgAdmin, session: Se
 async def anonymise_trainee(
     trainee_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.TraineeRead:
-    """GDPR erasure for a trainee `delete` refuses — real history stays,
-    the person's name and address do not. See `service_edit.anonymise_trainee`.
+    """GDPR erasure for a trainee `delete` refuses: history stays, the person's
+    name and address do not.
     """
     return await service_edit.anonymise_trainee(
         session, workspace.org_id, trainee_id, actor=workspace.principal, now=clock.now()
@@ -83,13 +76,8 @@ async def anonymise_trainee(
 async def resend_invitation(
     trainee_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.InvitationRead:
-    """Send the choose-a-password link again.
-
-    A new token, not the one in the first email: that one is stored hashed, so
-    nobody here can read it back out. `invitation_not_pending` is the answer
-    when the person has already chosen a password, because mailing a
-    set-password link to somebody who can sign in is an invitation to take over
-    their account.
+    """Send the choose-a-password link again, as a new token. Returns 409
+    `invitation_not_pending` if the person has already chosen a password.
     """
     return await service_edit.resend_invitation(session, workspace.org_id, trainee_id, now=clock.now())
 
@@ -102,8 +90,7 @@ async def resend_invitation(
 async def rename_group(
     group_id: uuid.UUID, body: schemas.UpdateGroup, workspace: OrgAdmin, session: Session
 ) -> schemas.GroupRead:
-    """Rename a group. Its members stay — that is the rule the whole roster
-    slice exists to hold, where b2b matched a label and a rename emptied it."""
+    """Rename a group. Its members are unaffected."""
     return await service_groups.rename_group(session, workspace.org_id, group_id, label=body.label)
 
 

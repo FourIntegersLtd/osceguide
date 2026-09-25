@@ -50,8 +50,7 @@ async def save_decision(
     workspace: OrgInstitutionAdmin,
     session: Session,
 ) -> schemas.DecisionRead:
-    """Each save is a new revision. The table is append-only, so what was
-    previously considered survives.
+    """Save a decision as a draft. Each save is a new revision.
 
     `expected_revision` names the revision this screen read; a save against a
     stale one is refused with `decision_revised` rather than superseding it.
@@ -110,11 +109,8 @@ async def release(
     session: Session,
     clock: ClockDep,
 ) -> schemas.DecisionRead:
-    """Release re-checks the evidence.
-
-    A station re-marked between sign-off and release would otherwise send a
-    candidate an outcome nobody approved.
-    """
+    """Release re-checks the evidence: a station re-marked between sign-off and
+    release would otherwise send a candidate an outcome nobody approved."""
     return await service.release(
         session,
         workspace.org_id,
@@ -146,5 +142,5 @@ async def read_my_result(
 async def acknowledge_my_result(
     sitting_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> schemas.ResultAcknowledgement:
-    """ "I have read this." Appended to the decision's event chain, once per revision."""
+    """Record that the candidate has read their result. Idempotent per revision."""
     return await service_candidate.acknowledge_my_result(session, sitting_id, principal.user_id)

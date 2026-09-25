@@ -19,11 +19,8 @@ log = get_logger(__name__)
 
 
 def verified_event(raw: bytes, header: str, *, secret: str, now: int) -> dict[str, Any]:
-    """Check the signature, then parse.
-
-    In that order: the signature covers the exact bytes Stripe sent, so parsing
-    first and re-serialising would compare a different payload and never match.
-    """
+    """Check the signature, then parse: the signature covers the exact bytes Stripe sent, so
+    parsing first and re-serialising would compare a different payload and never match."""
     try:
         signature.verify(raw, header, secret=secret, now=now)
     except signature.SigningSecretMissing as exc:
@@ -44,14 +41,10 @@ def verified_event(raw: bytes, header: str, *, secret: str, now: int) -> dict[st
 async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> dict[str, str]:
     """Apply one webhook delivery, at most once.
 
-    The whole operation is one transaction: the ledger row, the payment and the
-    entitlement commit together, so a crash between them cannot leave a customer
-    charged without access, or granted access twice on Stripe's retry.
-
-    A delivery that cannot be applied — no account for the address, no plan for
-    the price — keeps its ledger row and the reason (the error types are marked
-    `persist_effects`). It answers non-2xx so Stripe retries, and the retry is
-    applied normally once the cause is fixed.
+    One transaction: the ledger row, the payment and the entitlement commit together, so a
+    crash between them cannot leave a customer charged without access, or granted access twice
+    on Stripe's retry. A delivery that cannot be applied keeps its ledger row and the reason
+    (`persist_effects`) and answers non-2xx, so Stripe's retry applies it once the cause is fixed.
     """
     event_id = str(event.get("id") or "")
     event_type = str(event.get("type") or "")
@@ -88,10 +81,9 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
 def _price_id(payload: dict[str, Any]) -> str:
     """Which price the customer paid for.
 
-    A `checkout.session` object carries no top-level price. It is in
-    `metadata.price_id` when checkout was created with it (our checkout is),
-    or in the expanded `line_items`. The old read of `payload["price_id"]`
-    matched nothing Stripe sends, so every real delivery was refused.
+    A `checkout.session` object carries no top-level price: it is in `metadata.price_id` when
+    checkout was created with it (ours is), or in the expanded `line_items`. A prior read of
+    `payload["price_id"]` matched nothing Stripe sends, so every real delivery was refused.
     """
     metadata = payload.get("metadata") or {}
     if metadata.get("price_id"):
@@ -159,5 +151,5 @@ async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
 
 
 async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UUID]) -> int:
-    """For the partner funnel, which sits below this slice and cannot ask directly."""
+    """For the partner funnel's purchase count."""
     return await repository.count_payments_for_users(session, user_ids)

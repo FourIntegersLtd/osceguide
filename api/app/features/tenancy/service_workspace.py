@@ -1,7 +1,6 @@
 """Choosing a workspace, and what the chooser may then do.
 
-Split from `service.py` only for reading size; it is the same slice and the
-same public face, which is why `service` re-exports both of these.
+`service` re-exports both of these as its public face.
 """
 
 from __future__ import annotations

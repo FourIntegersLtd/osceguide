@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AchievementsRead": {
-        "description": "A person's practice record, computed from their whole marked history.\n\nPorted from the client-side calculator the consumer screen used to run\nover its last 100 attempts (`achievementsFromAttempts.ts`) \u2014 same\ndefinition, same numbers, now a durable read over everything rather than\na snapshot that forgot itself on refresh past the hundredth attempt.",
+        "description": "A person's practice record, computed from their whole marked history.",
         "properties": {
           "current_streak": {
             "title": "Current Streak",
@@ -67,7 +67,7 @@
         "type": "object"
       },
       "ActivityAccepted": {
-        "description": "How many were new. A repeat within the dedup window is accepted and not\nrecorded, which is a success rather than an error.",
+        "description": "How many were new. A repeat is accepted and not recorded, which is a success\nrather than an error.",
         "properties": {
           "accepted": {
             "title": "Accepted",
@@ -193,7 +193,7 @@
         "type": "object"
       },
       "AppendTrainees": {
-        "description": "Who has just arrived, and where they go.\n\n`station_version_ids` is the pairing `CreateCircuit` already uses \u2014 the nth\narrival takes the nth station \u2014 because b2b's live \"add trainee\" dialog\nnamed a station with each person rather than assuming it. Omit the list and\neveryone joins the station the circuit is already running, which is what a\nsingle latecomer to a group practice wants and what this route used to do\nwhatever the caller meant.",
+        "description": "Who has just arrived, and where they go.\n\n`station_version_ids` pairs positionally with `trainee_ids` \u2014 the nth\narrival takes the nth station. Omit it and everyone joins the station the\ncircuit is currently running.",
         "properties": {
           "station_version_ids": {
             "items": {
@@ -335,7 +335,7 @@
         "type": "object"
       },
       "AttemptBriefRead": {
-        "description": "The reading-time screen, keyed on the attempt rather than the station.\n\nOn the attempt because that is what the entitlement check has already been\nmade against: `LibraryStationRead` deliberately carries no content, since\nthe library is browsable by everyone and the brief is part of the exam.\nOnce somebody has started a station, the brief is theirs to read.",
+        "description": "The reading-time screen, keyed on the attempt rather than the station.\n\nKeyed on the attempt because that is what the entitlement check has already been made against;\nthe library itself is browsable by everyone but carries no content.",
         "properties": {
           "attempt_id": {
             "format": "uuid",
@@ -704,7 +704,7 @@
         "type": "object"
       },
       "AudienceIn": {
-        "description": "How a client says who something is for.\n\nLives in core beside the rule, like `Page` and `CursorParams`: three slices\ntake the same three fields, and three copies would drift.",
+        "description": "How a client says who something is for.\n\nLives in core beside the rule, like `Page` and `CursorParams`, since all\nthree slices take the same three fields.",
         "properties": {
           "group_id": {
             "anyOf": [
@@ -969,7 +969,7 @@
         "type": "object"
       },
       "BulkCreateMemberships": {
-        "description": "A team at once, in one request.\n\nThe retiring backend's \"invite the whole team\" path was a CSV upload it\nparsed and wrote row by row, with a temporary password in the file or\ngenerated in the browser. Here the browser parses the sheet and posts rows,\nand no password is involved: an address with no account is invited and\nchooses one. Capped so one request cannot invite a whole hospital by\naccident.",
+        "description": "A team at once, in one request. Capped so one request cannot invite a whole\nhospital by accident.",
         "properties": {
           "memberships": {
             "items": {
@@ -1223,7 +1223,7 @@
         "type": "object"
       },
       "Capabilities": {
-        "description": "What the caller may do, decided here rather than in the browser.\n\nThe B2B frontend keeps a table mirroring the backend policy and uses it to\ndecide whether to issue a request at all. Two copies of an authorisation\nrule is one too many; this is the served answer.",
+        "description": "What the caller may do, decided here rather than duplicated in the frontend.",
         "properties": {
           "active_org_slug": {
             "anyOf": [
@@ -2396,7 +2396,7 @@
         "type": "object"
       },
       "CreateAttempt": {
-        "description": "What a client may ask for directly.\n\nDeliberately narrower than `attempts.create_attempt`. The other kinds are\n*about* something a different slice owns \u2014 a slot, a set entry, a peer\npairing, an earlier attempt \u2014 and `attempts` sits below all of them in the\nlayer order, so it cannot check that the caller owns the thing they named.\n\nThis route used to take every one of those ids straight from the body and\nstore them unverified, which let anyone attach their attempt to another\norganisation's exam slot or another person's set entry. Each of those\nkinds has its own route, on the slice that can do the checking:\n`POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set\nstation and its debrief, and the circuit itself for an exam slot (ADR\n0018). `room_name` is likewise not the client's to choose \u2014 `voice`\nderives it from the attempt.",
+        "description": "What a client may ask for directly.\n\nDeliberately narrower than `attempts.create_attempt`. The other kinds are *about* something a\ndifferent feature owns \u2014 a slot, a set entry, a peer pairing, an earlier attempt. Taking those ids\nstraight from the body unverified once let a caller attach their attempt to another organisation's\nexam slot or another person's set entry, so each of those kinds instead has its own route that\nchecks ownership: `POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set station\nand its debrief, and the circuit itself for an exam slot (ADR 0018). `room_name` is likewise not\nthe client's to choose \u2014 `voice` derives it from the attempt.",
         "properties": {
           "exam_code": {
             "maxLength": 32,
@@ -3077,7 +3077,7 @@
         "type": "object"
       },
       "CreditSignup": {
-        "description": "Ties the signed-in account to the visit that brought them.\n\nSent after registering, with the key the arrival was logged under. The\nbrowser holds it; the backend never sees a partner cookie.",
+        "description": "Ties the signed-in account to the visit that brought them.\n\nSent after registering, with the key the arrival was logged under; the\nbrowser holds it and the backend never sees a partner cookie.",
         "properties": {
           "visitor_key": {
             "maxLength": 64,
@@ -3176,7 +3176,7 @@
         "type": "object"
       },
       "CvUploadResult": {
-        "description": "What an upload answers with, before the model has read it.\n\nThe row exists and is `processing`; the structured sections arrive later,\nread back from the list. The message is the one the retiring backend\nshowed, because it sets the expectation that this is not instant.",
+        "description": "What an upload answers with, before the model has read it.\n\nThe row exists and is `processing`; the structured sections arrive later, read back from the\nlist. The message sets the expectation that this is not instant.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3201,7 +3201,7 @@
         "type": "object"
       },
       "Dashboard": {
-        "description": "Replaces seven calls on the SCA dashboard alone.\n\nThe legacy screen fans out to four RAG endpoints, a weekly trend and two\nmarketplace lists, then joins them in the browser.",
+        "description": "A trainee's home screen: entitlements, progress, recent attempts and question sets.",
         "properties": {
           "current_exam_code": {
             "anyOf": [
@@ -3508,7 +3508,7 @@
         "type": "object"
       },
       "DirectoryUser": {
-        "description": "One row of the directory: the seven columns the retiring console had,\neach answered by the slice that owns the fact.",
+        "description": "One row of the account directory.",
         "properties": {
           "access_ends_at": {
             "anyOf": [
@@ -3770,7 +3770,7 @@
         "type": "object"
       },
       "DomainComposition": {
-        "description": "How many marked attempts landed red, amber or green on one domain.\n\nClassed from the same 0\u2013100 domain score the bars already use: 83 and\nabove is green (a clear G), 50 to 83 is amber, below that is red. Counts,\nnot a new mark.",
+        "description": "How many marked attempts landed red, amber or green on one domain.\n\n83 and above is green, 50 to 83 is amber, below that is red.",
         "properties": {
           "amber": {
             "title": "Amber",
@@ -4093,7 +4093,6 @@
               "assistant_session_not_joinable",
               "assistant_session_not_ready",
               "assistant_session_not_yours",
-              "assistant_tools_not_available",
               "attempt_in_progress",
               "attempt_limit_reached",
               "attempt_mismatch",
@@ -4348,7 +4347,7 @@
         "type": "object"
       },
       "ExamDirectorySummary": {
-        "description": "How many accounts an exam has, split the way the old filter did.",
+        "description": "How many accounts an exam has, split by paid/trial/not-started.",
         "properties": {
           "code": {
             "title": "Code",
@@ -5203,7 +5202,7 @@
         "type": "object"
       },
       "InvitationRead": {
-        "description": "A re-sent invitation, answered with what the email actually says.\n\nThe token itself is not here: it is a credential, and it goes only to the\naddress it was minted for.",
+        "description": "A re-sent invitation. The token itself is never returned; it goes only to\nthe address it was minted for.",
         "properties": {
           "email": {
             "title": "Email",
@@ -5894,7 +5893,7 @@
         "type": "object"
       },
       "MediaPage": {
-        "description": "A page of the catalogue, and how many items the filters matched.\n\n`core.pagination.Page` carries `items` and `next_cursor` and is shared by\nevery slice, so it cannot grow a count for one screen's sake. A page that\nreports only what it returned made the media library print \"24 found\" for\na library of six hundred, because that is all a cursor page knows. Media\ngets its own wrapper instead; the two field names `Page` had are unchanged,\nso a client reading `items` and `next_cursor` keeps working.\n\n`total_count` counts everything matching the filters, not the entitlement\nof the reader: a locked item is still an item the search found, and it is\nlisted with `locked: true` rather than dropped.",
+        "description": "A page of the catalogue, and how many items matched the filters.\n\n`total_count` counts everything matching the filters, not the reader's\nentitlement: a locked item is still listed, with `locked: true`.",
         "properties": {
           "items": {
             "items": {
@@ -5927,7 +5926,7 @@
         "type": "object"
       },
       "MediaSearchPage": {
-        "description": "A page of search hits, and how many the query matched.\n\nSeparate from `MediaPage` for the same reason: `core.pagination.Page` is\nshared and cannot be widened from here.",
+        "description": "A page of search hits, and how many the query matched.",
         "properties": {
           "items": {
             "items": {
@@ -6235,7 +6234,7 @@
         "type": "object"
       },
       "MySittings": {
-        "description": "The trainee portal's whole screen, in one request.\n\nIt polls two lists every five seconds and joins them in the browser to\nanswer one question: is it my turn yet?",
+        "description": "The trainee portal's whole screen, in one request: what they are rostered onto.",
         "properties": {
           "items": {
             "items": {
@@ -6449,7 +6448,7 @@
         "type": "object"
       },
       "OnboardingScene": {
-        "description": "One demo scenario. The spelling is the worker's and the browser's, which is b2c's.",
+        "description": "One demo scenario. The spelling is the worker's and the browser's.",
         "properties": {
           "patientLine": {
             "title": "Patientline",
@@ -6530,7 +6529,7 @@
         "type": "object"
       },
       "OrgCounts": {
-        "description": "What the setup checklist counts. Four legacy calls existed to produce these.",
+        "description": "What the setup checklist counts.",
         "properties": {
           "library_stations": {
             "title": "Library Stations",
@@ -6748,7 +6747,7 @@
         "type": "object"
       },
       "Override": {
-        "description": "What every override may carry: why it was done.\n\nOptional, and free text, because the reasons are the ones nobody predicted\n\u2014 that is what an override is for. It is written to the record beside the\naction, so \"the clock was extended\" is answerable with \"because the fire\nalarm went\".",
+        "description": "Why the override was done. Optional free text, recorded beside the\naction for later review.",
         "properties": {
           "reason": {
             "anyOf": [
@@ -7694,7 +7693,7 @@
         "type": "object"
       },
       "PatientReviewRead": {
-        "description": "The patient's side, as a candidate may read it afterwards.\n\nNot a passthrough: `persona`, `opening_sentence`, `expanded_history` and\nthe hidden question list are how the patient is played, and they stay on\nthe server. What is here is what the old management screen showed \u2014 the\nbiodata line and the ideas, concerns and expectations the candidate was\nsupposed to draw out.",
+        "description": "The patient's side, as a candidate may read it afterwards.\n\nNot a passthrough: `persona`, `opening_sentence`, `expanded_history` and the hidden question list\nare how the patient is played, and stay on the server. What is here is the biodata line and the\nideas, concerns and expectations the candidate was supposed to draw out.",
         "properties": {
           "concerns": {
             "items": {
@@ -7928,7 +7927,7 @@
         "type": "object"
       },
       "Performance": {
-        "description": "The charts on the consumer exam dashboard, in one call.\n\nThe legacy screen asks four RAG endpoints and a weekly trend for this and\njoins them in the browser. `exam_code` is null only when the caller named\nno exam and has never attempted one \u2014 there is no exam to report on, and\nan empty string would be a code.",
+        "description": "The performance charts for one exam. `exam_code` is null only when the caller named\nno exam and has never attempted one.",
         "properties": {
           "composition": {
             "items": {
@@ -7973,7 +7972,7 @@
         "type": "object"
       },
       "PerformanceSummary": {
-        "description": "How the marked attempts divide, as rates rather than counts.\n\nRates because the chart draws bands, and because a candidate with four\nattempts and one with forty should read the same way.",
+        "description": "How the marked attempts divide, as rates rather than counts.",
         "properties": {
           "critical_rate": {
             "title": "Critical Rate",
@@ -8414,7 +8413,7 @@
         "type": "object"
       },
       "PlatformAuditRead": {
-        "description": "An audit row as the console reads it across every organisation.\n\n`org_id` is None for the platform's own acts; `meta` is whatever the\naction recorded beyond its summary, such as the old and new value.",
+        "description": "An audit row as the console reads it across every organisation. `org_id` is None for\nthe platform's own acts.",
         "properties": {
           "action": {
             "title": "Action",
@@ -9923,7 +9922,7 @@
         "type": "object"
       },
       "QueueStatus": {
-        "description": "Where someone stands, and what to do next.\n\n`position` is why this is one call: b2c polls a status endpoint every three\nseconds, and it should be able to answer \"am I matched yet?\" in one round\ntrip.",
+        "description": "Where someone stands, and what to do next.\n\n`position` is why this is one call: a polling client should be able to\nanswer \"am I matched yet?\" in one round trip.",
         "properties": {
           "audience": {
             "$ref": "#/components/schemas/AudienceOut"
@@ -10055,7 +10054,7 @@
         "type": "object"
       },
       "RebuildCircuit": {
-        "description": "A circuit's new shape. Everything omitted is left as it is.\n\nThe trainees and the stations are sent whole rather than as a patch: the\nslots are rebuilt from them, and a partial edit would leave the API\nguessing which pairing the supervisor meant.",
+        "description": "A circuit's full new roster and stations.\n\nBoth lists are sent whole, not as a patch: the slots are rebuilt from\nthem. `name`, `supervisor_user_id` and `timing` are left as they are when\nomitted.",
         "properties": {
           "name": {
             "anyOf": [
@@ -10117,7 +10116,7 @@
         "type": "object"
       },
       "ReceiptRead": {
-        "description": "A payment receipt, rendered.\n\nEvery field is a string already formatted for display: a receipt is read by\npeople rather than parsed by clients, and rendering money and dates in the\nbrowser is how two surfaces come to show the same payment differently.",
+        "description": "A payment receipt, rendered. Every field is a string already formatted for display, so\ntwo clients cannot render the same payment differently.",
         "properties": {
           "amount_subtotal": {
             "title": "Amount Subtotal",
@@ -10385,7 +10384,7 @@
         "type": "object"
       },
       "ReferralAdminRead": {
-        "description": "One referral, as the person settling it needs to see it.\n\nEmails rather than ids: whoever is reconciling bank transfers is matching\nnames on a statement, and a uuid is not on the statement.",
+        "description": "One referral, as the person settling it needs to see it.\n\nEmails rather than ids: a uuid is not on a bank statement.",
         "properties": {
           "code": {
             "title": "Code",
@@ -10602,7 +10601,7 @@
         "type": "object"
       },
       "RenewContract": {
-        "description": "New dates, and whether a suspension should lift with them.\n\nOne call rather than a `PATCH` and a `restore`: a renewal that sets the\ndate and forgets to restore leaves a paying customer locked out.",
+        "description": "New contract dates, and whether a suspension should lift with them.",
         "properties": {
           "contract_ends_at": {
             "format": "date-time",
@@ -10979,7 +10978,7 @@
         "type": "object"
       },
       "SaveDecision": {
-        "description": "Drafting a decision.\n\n`expected_revision` is the revision this screen last read, or 0 when it has\nread nothing. A save that does not name the current one is refused with\n`decision_revised` (409), so two administrators cannot overwrite each\nother's draft. The release route reuses this body and does not consult it,\nbecause a release is already guarded by the workflow state and by the\nevidence fingerprint.",
+        "description": "A decision to save as a draft.\n\n`expected_revision` is the revision this screen last read, or 0 when it has\nread nothing. A save that does not name the current one is refused with\n`decision_revised` (409), so two administrators cannot overwrite each\nother's draft.",
         "properties": {
           "assessment_outcome": {
             "anyOf": [
@@ -11265,7 +11264,7 @@
         "type": "object"
       },
       "SearchHit": {
-        "description": "One match.\n\n`excerpt` defaults to empty rather than being required so a client that\nbuilds hits of its own stays valid \u2014 the retiring A-to-Z's substring\nfallback did, and `platform-web` still carries a copy of it. This backend\nalways fills it in.",
+        "description": "One search match. `excerpt` defaults to empty; this backend always fills it in.",
         "properties": {
           "excerpt": {
             "default": "",
@@ -11871,7 +11870,7 @@
         "type": "object"
       },
       "SlotRagSummary": {
-        "description": "What several reviewers of one slot agreed, or did not.\n\nThe worst rating wins per domain, which is b2b's tie-break and worth\nkeeping: when two reviewers disagree about a candidate, the lower rating is\nthe one that should prompt a conversation. Computed here rather than in the\nbrowser so a supervisor's screen, a released result and an export cannot\neach arrive at a different answer.",
+        "description": "What several reviewers of one slot agreed, or did not.\n\nThe worst rating wins per domain: when reviewers disagree, the lower\nrating is the one that should prompt a conversation.",
         "properties": {
           "by_domain": {
             "additionalProperties": {
@@ -12237,7 +12236,7 @@
         "type": "object"
       },
       "SsoLoginResult": {
-        "description": "Where to send the browser to sign in.\n\nA URL rather than a server-side redirect: the frontend owns navigation and\nthe platform issues no cookies (ADR 0004). The broker sends the browser\nback to `{frontend_url}/auth/sso/callback`, which posts the token it was\nhanded to `POST /auth/sso/callback`.",
+        "description": "Where to send the browser to sign in.\n\nA URL rather than a server-side redirect: the frontend owns navigation\nand the platform issues no cookies (ADR 0004).",
         "properties": {
           "sign_in_url": {
             "title": "Sign In Url",
@@ -12280,7 +12279,7 @@
         "type": "object"
       },
       "SsoSignIn": {
-        "description": "What a sign-in page may know before anybody has proved anything.\n\nDeliberately thin. This is served without a token, to anyone who asks, so\nit carries what a button needs and nothing about the organisation beyond\nthe name it already puts on its own front page. No issuer, no bindings, no\ncounts: those are configuration, and configuration is for administrators.",
+        "description": "What a sign-in page may show before anybody has proved anything.\n\nDeliberately thin: served without a token, to anyone who asks. No\nissuer, no bindings, no counts \u2014 those are configuration.",
         "properties": {
           "default_exam_code": {
             "anyOf": [
@@ -13513,7 +13512,7 @@
         "type": "object"
       },
       "SwitchWorkspace": {
-        "description": "Which workspace to re-issue the token against.\n\n`None` means the person's own practice. That is a real destination, not an\nabsence: somebody who belongs to an institution still has their own\nentitlements and their own attempts, and without this there is no way back\nto them once an organisation is active.",
+        "description": "Which workspace to re-issue the token against. `None` means the person's own practice\n\u2014 a real destination, not an absence.",
         "properties": {
           "org_slug": {
             "anyOf": [
@@ -13822,7 +13821,7 @@
         "type": "object"
       },
       "TraineeResultRead": {
-        "description": "What a candidate sees.\n\nDeliberately narrower than the internal record: moderation notes and the\nevidence snapshot are ours, not theirs. b2b's own schema doc says not to\nreproduce disclosure policy in frontend transforms \u2014 so it is applied here.",
+        "description": "A candidate's own view of their result.\n\nDeliberately narrower than the internal record: moderation notes and the\nevidence snapshot stay internal.",
         "properties": {
           "acknowledged_at": {
             "anyOf": [
@@ -14111,7 +14110,7 @@
         "type": "object"
       },
       "UpdateCohort": {
-        "description": "Rename an intake, or say which academic year it belongs to.\n\nAbsent means \"leave it alone\". b2b's `examIds` is not here: which exams a\ncohort is bound to is `catalog`'s answer, and this slice's row carries no\nsuch column, so exposing the field would promise a write that goes nowhere.",
+        "description": "Rename an intake, or say which academic year it belongs to. Fields left out\nare unchanged.",
         "properties": {
           "academic_year": {
             "anyOf": [
@@ -14225,7 +14224,7 @@
         "type": "object"
       },
       "UpdateGroup": {
-        "description": "Rename a group. Who is in it does not move with the name \u2014 that is the\nwhole of why membership is a table here and a matched string in b2b.",
+        "description": "Rename a group. Membership does not change.",
         "properties": {
           "label": {
             "maxLength": 200,
@@ -14388,7 +14387,7 @@
         "type": "object"
       },
       "UpdateOrganization": {
-        "description": "What a platform administrator may change about an organisation.\n\nNot the slug: every foreign key points at `id` and the slug is the URL, so\nrenaming one is a redirect problem rather than a field edit.",
+        "description": "What a platform administrator may change about an organisation. Not the slug.",
         "properties": {
           "contract_ends_at": {
             "anyOf": [
@@ -14527,7 +14526,7 @@
         "type": "object"
       },
       "UpdateSet": {
-        "description": "What a learner may still change about a set they have built.\n\nThe name, and only the name. A set carries no description and no timings \u2014\nthe length of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write, and the retiring client's\nedit screen asked for a name and a list of stations and nothing more.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.",
+        "description": "What a learner may still change about a set they have built.\n\nThe name, and only the name. A set carries no description and no timings \u2014\nthe length of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.",
         "properties": {
           "name": {
             "maxLength": 200,
@@ -14543,7 +14542,7 @@
         "type": "object"
       },
       "UpdateSitting": {
-        "description": "The sitting edit screen's fields. Absent means \"leave it alone\", which is\nwhat the legacy PUT meant too: it sent only what the screen had changed.\n\nThe b2b screen offered a name, a type and a feedback template. This backend\nresolves the template through the programme, so the third of those is\n`programme_id` here and the bound rubric moves with it. `status` is not\noffered: that is the run machine's to move, and a route that could set it\nwould let a screen end an examination by editing a name.",
+        "description": "Fields to change on a sitting. An omitted field is left alone.\n\n`status` is not offered here: that belongs to the run machine, not this\nroute.",
         "properties": {
           "mode": {
             "anyOf": [
@@ -14668,7 +14667,7 @@
         "type": "object"
       },
       "UpdateTrainee": {
-        "description": "The roster edit screen's fields. Absent means \"leave it alone\", sent means\n\"write this\", including a null that clears it.\n\nNot the address: `email` is what identifies the entry inside the\norganisation (unique per org, and the account link is made against it), so\nediting it is not correcting a typo but re-pointing a person's results. The\nb2b edit screen offered first name, last name and the group; the group is\n`cohort_id` here, and the other half of the legacy's `cohort` string \u2014 the\nlist a circuit is built from \u2014 is a membership row rather than a field, so\nit is set by `PUT /trainee-groups/{id}/members`.",
+        "description": "Correct a trainee's name or intake. Fields left out are unchanged; a field sent\nas null clears it. The email address cannot be changed here. Group membership is\nset separately via `PUT /trainee-groups/{id}/members`.",
         "properties": {
           "cohort_id": {
             "anyOf": [
@@ -14922,7 +14921,7 @@
         "type": "string"
       },
       "VoiceGrant": {
-        "description": "What the browser needs to join, and nothing more.\n\nNo agent name and no backend label: those are dispatch details the client\nhas no use for, and b2c currently hands the browser a metadata blob it\nsimply passes back.",
+        "description": "What the browser needs to join a room with its patient or tutor. No agent\nname or backend label: those are dispatch details the client has no use for.",
         "properties": {
           "attempt_id": {
             "format": "uuid",
@@ -15407,7 +15406,7 @@
         "type": "object"
       },
       "app__features__media__schemas__MediaRead": {
-        "description": "One piece of study material.\n\n`content` is the body \u2014 the slide deck, the summary, the article \u2014 and it\nis the paid half. It is `None` for a reader who does not hold the exam it\nbelongs to, and `locked` says which of the two happened, so the client can\nshow the upgrade prompt the retiring app showed rather than an empty page.\n\nEverything else is deliberately public: the landing page's article rail and\na shared link both need a title and a summary without a token.\n\n`specialty` and `updated_at` are read out of `content` by the projection\n(`service_reads`) rather than stored in columns of their own. Both are\nfields the authoring payload has always carried and only some kinds use, so\na column for either would be null for most rows \u2014 and a screen that wants\none should not have to know the document's shape to get it.",
+        "description": "One piece of study material.\n\n`content` is the paid body \u2014 the slide deck, the summary, the article. It\nis `None` for a reader who does not hold the exam it belongs to, and\n`locked` says which happened, so the client can show an upgrade prompt\nrather than an empty page. Everything else \u2014 title, summary \u2014 is public.",
         "properties": {
           "content": {
             "anyOf": [
@@ -15638,7 +15637,7 @@
         "type": "object"
       },
       "app__features__sittings__schemas__RoomGrant": {
-        "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none yet\nand the examiner never will, which is what separates this from the token\nissued against an attempt.\n\nThis slice's own shape rather than `voice`'s, even though the two agree\ntoday: a wire contract belongs to the routes that serve it, and sharing one\nis how two slices come to be unable to change it separately.",
+        "description": "What a browser needs to join a circuit's room, and nothing more.\n\nA candidate taking their place before their station starts, or an examiner\nstepping in to watch. Neither names a recording: the candidate has none\nyet and the examiner never will.",
         "properties": {
           "can_publish": {
             "default": true,
@@ -15751,7 +15750,7 @@
   "paths": {
     "/api/v1/admin/tutor-memory/reindex": {
       "post": {
-        "description": "Rebuild the material index now, rather than waiting for tonight's run.\n\nSynchronous on purpose, unlike most admin actions here. An author who has\njust published a correction wants to know it is searchable, and a job id to\ngo and poll answers a different question. The whole library is thousands of\npassages, which is a request that takes a while, not one that times out.",
+        "description": "Rebuild the material index now, rather than waiting for tonight's run. Synchronous:\nthe response confirms the material is searchable.",
         "operationId": "tutor_memory_reindex_material",
         "responses": {
           "200": {
@@ -17787,7 +17786,7 @@
     },
     "/api/v1/auth/sso/login": {
       "post": {
-        "description": "Where to send the browser to sign in to this organisation.\n\n**Unauthenticated**, like the discovery read above it: this is the first\nstep of signing in, before anybody has. The URL is returned rather than\nfollowed \u2014 the frontend owns navigation and the platform sets no cookies\n(ADR 0004) \u2014 and points the broker back at a frontend page that posts the\ntoken to `POST /auth/sso/callback`.",
+        "description": "Where to send the browser to sign in to this organisation.\n\nUnauthenticated: this is the first step of signing in, before anybody\nhas. The URL is returned rather than followed \u2014 the frontend owns\nnavigation and the platform sets no cookies (ADR 0004).",
         "operationId": "sso_sso_login",
         "requestBody": {
           "content": {
@@ -17859,7 +17858,7 @@
     },
     "/api/v1/auth/sso/sign-in": {
       "get": {
-        "description": "Whether this visitor's organisation signs in somewhere else.\n\n**Unauthenticated, and it has to be**: this is what a sign-in page asks\nbefore anybody has signed in. The retiring client answered it from a\nhostname allow-list compiled into the bundle, so adding a partner meant a\nfrontend deploy and the tenant slug, the button's wording and the\n\"no password form\" rule were three things that could disagree with the\nbackend.\n\nA 404 means \"sign in here, with a password\", which is the ordinary case and\nwhat every host that is not a partner's gets.",
+        "description": "Whether this visitor's organisation signs in somewhere else.\n\nUnauthenticated, and it has to be: this is what a sign-in page asks\nbefore anybody has signed in. A 404 means \"sign in here, with a\npassword\", which is the ordinary case and what every host that is not a\npartner's gets.",
         "operationId": "sso_read_sign_in",
         "parameters": [
           {
@@ -18059,7 +18058,7 @@
     },
     "/api/v1/billing/checkout": {
       "post": {
-        "description": "Begin paying for a plan.\n\nThe client names a plan code and never a price or an amount: b2c matched\nthe pence paid against a hardcoded table, so a price change broke\npurchases after the card was charged.",
+        "description": "Begin paying for a plan. The client names a plan code, never a price or an amount.",
         "operationId": "billing_start_checkout",
         "requestBody": {
           "content": {
@@ -18146,7 +18145,7 @@
     },
     "/api/v1/billing/plans": {
       "get": {
-        "description": "Public: the pricing page reads this rather than hardcoding amounts, which\nis how b2c's client and server came to disagree about what a plan costs.",
+        "description": "List the plans currently on sale.",
         "operationId": "billing_list_plans",
         "responses": {
           "200": {
@@ -18181,7 +18180,7 @@
     },
     "/api/v1/billing/webhooks/stripe": {
       "post": {
-        "description": "Apply one delivery, at most once, and only if Stripe sent it.\n\nThe **raw body** is what the signature covers, so it is read and verified\nbefore being parsed. Declaring a parsed body parameter instead would hand\nFastAPI the bytes first and leave the signature checking something else.",
+        "description": "Apply one Stripe webhook delivery, at most once, and only if Stripe sent it.",
         "operationId": "billing_stripe_webhook",
         "responses": {
           "200": {
@@ -19336,7 +19335,7 @@
     },
     "/api/v1/exams": {
       "get": {
-        "description": "The exams the platform offers. Small set, so no cursor is ever returned.\n\nThe consumer catalogue: platform exams only. An institution's own exams are\nnot here and never are \u2014 they are that institution's, not ours to publish.\nSee `/orgs/{org_slug}/exams` for those.\n\nA platform admin sees the platform's drafts, because they are the person\nwriting them, and nobody else's.",
+        "description": "The exams the platform offers. Small set, so no cursor is ever returned.\n\nThe consumer catalogue: platform exams only. See `/orgs/{org_slug}/exams`\nfor an institution's own. A platform admin also sees the platform's drafts.",
         "operationId": "catalog_list_exams",
         "responses": {
           "200": {
@@ -19377,7 +19376,7 @@
     },
     "/api/v1/growth/acquisitions": {
       "post": {
-        "description": "Credit this new account to whoever sent them, once.\n\nIts own route rather than a step inside registering: `growth` sits above\n`identity`, so registration cannot call it, and a partner who sent somebody\nwas credited with nothing at all until this existed. Null when there is\nnothing to credit, which is the ordinary case.",
+        "description": "Credit this new account to whoever sent them, once.\n\nReturns null when there is nothing to credit, which is the ordinary case.",
         "operationId": "growth_credit_signup",
         "requestBody": {
           "content": {
@@ -19446,7 +19445,7 @@
     },
     "/api/v1/growth/arrivals": {
       "post": {
-        "description": "Public: a visitor arriving from a partner link, before any account exists.\n\nUnauthenticated by necessity \u2014 there is nobody to authenticate yet \u2014 which\nis why the partner must be a known one and the visitor key is opaque.",
+        "description": "Public: a visitor arriving from a partner link, before any account exists.",
         "operationId": "growth_record_arrival",
         "requestBody": {
           "content": {
@@ -19504,7 +19503,7 @@
     },
     "/api/v1/growth/partners/{partner}/funnel": {
       "get": {
-        "description": "Checked against the partner in the path, so one partner's reporter\ncannot read another's numbers.",
+        "description": "A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner.",
         "operationId": "growth_read_funnel",
         "parameters": [
           {
@@ -19592,7 +19591,7 @@
     },
     "/api/v1/growth/partners/{partner}/ref-ids": {
       "get": {
-        "description": "The references this partner puts in its links, one per exam in the pilot.\n\nReporter-gated like the funnel: a reference is commercially meaningful, and\none partner has no business reading another's.",
+        "description": "The references this partner puts in its links, one per exam in the pilot.\n\nReporter-gated like the funnel.",
         "operationId": "growth_read_tracking_references",
         "parameters": [
           {
@@ -19757,7 +19756,7 @@
     },
     "/api/v1/growth/referrals": {
       "get": {
-        "description": "The settlement queue: redeemed referrals, and whether each has been paid.\n\nPlatform admin only, and deliberately not a partner's or a referrer's\nview \u2014 it names both sides of every referral and what is owed on it.",
+        "description": "The settlement queue: redeemed referrals, and whether each has been paid.\n\nPlatform admin only \u2014 it names both sides of every referral and what is owed.",
         "operationId": "growth_list_referrals",
         "parameters": [
           {
@@ -19855,7 +19854,7 @@
     },
     "/api/v1/growth/referrals/{referral_id}/payout": {
       "post": {
-        "description": "Record a settlement made outside the product.\n\nNothing here moves money. It writes down that somebody did, who said so\nand when, which is the whole of what the retiring app's `payout_status`\nflag meant and rather more than it recorded.",
+        "description": "Record a settlement made outside the product.\n\nNothing here moves money \u2014 it records who said it happened, and when.",
         "operationId": "growth_set_referral_payout",
         "parameters": [
           {
@@ -20268,7 +20267,7 @@
     },
     "/api/v1/marketplace/slots": {
       "get": {
-        "description": "Availability and claimed slots this caller can see \u2014 the public pool plus\nevery institution and group they belong to. Matches the retiring marketplace\nfeed (open posts plus historic claimed sessions).",
+        "description": "Availability and claimed slots this caller can see \u2014 the public pool plus every institution and\ngroup they belong to.",
         "operationId": "marketplace_list_open_slots",
         "parameters": [
           {
@@ -20858,7 +20857,7 @@
     },
     "/api/v1/me/activity": {
       "post": {
-        "description": "What this person has been reading and practising.\n\nA batch, and accepted rather than created: the browser sends these as it\ngoes, often as a tab is closing, and a repeat inside the dedup window is a\nsuccess that records nothing.",
+        "description": "What this person has been reading and practising. Accepted as a batch; a repeat is a\nsuccess that records nothing.",
         "operationId": "tutor_memory_record_activity",
         "requestBody": {
           "content": {
@@ -21233,7 +21232,7 @@
     },
     "/api/v1/me/dashboard": {
       "get": {
-        "description": "One call for a screen that currently makes seven.\n\nA read model over several aggregates. \"Dashboard\" is not a domain concept \u2014\nnothing owns one and no rule is enforced about it \u2014 which is why this slice\nhas no tables and no domain module.",
+        "description": "The trainee's home screen: access, recent attempts and progress at a glance.",
         "operationId": "dashboard_read_dashboard",
         "responses": {
           "200": {
@@ -21691,7 +21690,7 @@
     },
     "/api/v1/me/performance": {
       "get": {
-        "description": "How this person is doing at one exam: per domain, overall, over time.\n\nSeparate from `/me/dashboard` because it is a different question over a\ndifferent set of rows \u2014 the marked attempts at one exam \u2014 and a screen that\nonly lists access and recent attempts should not pay for reading every\nresult document.\n\nAn exam with nothing marked yet is an empty answer, not a refusal: that is\nthe dashboard's empty state, and a 404 would make it read as an error.",
+        "description": "How this person is doing at one exam: per domain, overall, over time.\n\nAn exam with nothing marked yet returns an empty answer, not a 404.",
         "operationId": "dashboard_read_performance",
         "parameters": [
           {
@@ -22564,7 +22563,7 @@
     },
     "/api/v1/me/receipts/{receipt_id}": {
       "get": {
-        "description": "One receipt, rendered.\n\nScoped to the caller. A receipt id is short and printed on a document that\ngets forwarded to an accountant or an employer, so it must not be a key\nanybody holding it can read.",
+        "description": "One receipt, rendered. Scoped to the caller.",
         "operationId": "billing_read_receipt",
         "parameters": [
           {
@@ -22639,7 +22638,7 @@
     },
     "/api/v1/me/receipts/{receipt_id}/document": {
       "get": {
-        "description": "The receipt as something to print, keep or send to an accountant.\n\nServed inline rather than as a download: a browser can print it to PDF,\nand a `Content-Disposition: attachment` would stop somebody simply\nlooking at it.",
+        "description": "The receipt as something to print, keep or send to an accountant.",
         "operationId": "billing_read_receipt_document",
         "parameters": [
           {
@@ -22795,7 +22794,7 @@
     },
     "/api/v1/me/referrals/redeem": {
       "post": {
-        "description": "Codes could be issued and never redeemed, so a referrer earned nothing.",
+        "description": "Redeem a referral code, crediting the referrer.",
         "operationId": "growth_redeem_referral",
         "requestBody": {
           "content": {
@@ -22958,7 +22957,7 @@
     },
     "/api/v1/me/results/{sitting_id}/acknowledge": {
       "post": {
-        "description": "\"I have read this.\" Appended to the decision's event chain, once per revision.",
+        "description": "Record that the candidate has read their result. Idempotent per revision.",
         "operationId": "results_acknowledge_my_result",
         "parameters": [
           {
@@ -23034,7 +23033,7 @@
     },
     "/api/v1/me/sittings": {
       "get": {
-        "description": "What a trainee is rostered onto, and whether it is their turn.\n\nThe portal asks two endpoints every five seconds and joins them in the\nbrowser to answer that. The organisation slugs come from the caller's own\ntoken, which already carries them.",
+        "description": "What a trainee is rostered onto, and whether it is their turn.",
         "operationId": "dashboard_read_my_sittings",
         "responses": {
           "200": {
@@ -23460,7 +23459,7 @@
     },
     "/api/v1/me/station-sets/{set_id}": {
       "delete": {
-        "description": "Throw a practice set away.\n\nThe retiring client's delete took the session and its progress counters and\nleft the transcripts of what had been sat inside it orphaned. Here the\nrecordings cannot be left pointing at a row that has gone \u2014 the schema\nrefuses \u2014 so a set somebody has started a station in is refused rather than\nemptied of its history. The console route that deletes a person's progress\non a stated reason is the one that takes a set's attempts with it.",
+        "description": "Throw a practice set away.\n\nRefused if the set holds any attempts, so a station somebody has already sat is never left\npointing at a deleted set. Use the platform console's progress-deletion route to remove a set's\nattempts first.",
         "operationId": "station_sets_delete_set",
         "parameters": [
           {
@@ -24097,7 +24096,7 @@
     },
     "/api/v1/media": {
       "get": {
-        "description": "Published material: the titles to anybody, the bodies to subscribers.\n\nNo token required, because a signed-out visitor still needs the landing\npage's article rail and a shared link still needs to say what it points at.\nWhat a token changes is `content`: the slide decks and the A to Z are the\npaid half of the product and used to come back in full to anyone who asked,\nsigned in or not.\n\n`exam_code` and `q` narrow the query rather than the answer. A client that\nfiltered in the browser had to pull the whole library down to do it, six\npages at a time, and could only ever match what those pages contained.",
+        "description": "Published material: the titles to anybody, the bodies to subscribers.\n\nNo token required, because a signed-out visitor still needs the landing\npage's article rail and a shared link still needs to say what it points\nat. What a token changes is `content`: the slide decks and the A to Z are\nthe paid half of the product.\n\n`exam_code` and `q` narrow the query server-side.",
         "operationId": "media_list_published",
         "parameters": [
           {
@@ -25411,7 +25410,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}": {
       "put": {
-        "description": "Change who is on a circuit and which stations they sit (C3).\n\nA structural edit rebuilds the slots, so it is refused once one of them\nmeans something: `circuit_locked` (409) if a consultation is in progress,\nif feedback has been recorded, or if any station has already been run.",
+        "description": "Change who is on a circuit and which stations they sit.\n\nRefused with `circuit_locked` (409) if a consultation is in progress, if\nfeedback has been recorded, or if any station has already been run.",
         "operationId": "sittings_rebuild_circuit",
         "parameters": [
           {
@@ -25649,7 +25648,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/append-trainees": {
       "post": {
-        "description": "Add people to a training circuit, into the room it is already using.\n\nEach arrival may name the station it takes, positionally with\n`trainee_ids`; name none and they all join the station the circuit is on.\nEither way the station has to be one this circuit already runs \u2014 bringing a\nnew one in is a change to what the circuit is, which is the structural edit.",
+        "description": "Add people to a training circuit, into the room it is already using.\n\nEach arrival may name the station it takes, positionally with\n`trainee_ids`; name none and they all join the station the circuit is\ncurrently on. Either way, the station must already be one this circuit\nruns.",
         "operationId": "sittings_append_trainees",
         "parameters": [
           {
@@ -25874,7 +25873,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console": {
       "get": {
-        "description": "One request for the screen an examination is run from.\n\nReplaces a session read, a station list, a trainee list, a staff list and a\nfeedback probe per slot \u2014 repeated every eight seconds while a circuit runs.",
+        "description": "The screen an examination is run from: session, stations, trainees, staff and feedback state.",
         "operationId": "dashboard_read_circuit_console",
         "parameters": [
           {
@@ -25961,7 +25960,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream": {
       "get": {
-        "description": "The console, pushed. The streaming form of the route above it.\n\nEvery frame is a whole `CircuitConsole`, so a client renders a stream and a\npoll with the same code \u2014 and a missed event costs a reconnect rather than\na wrong screen.\n\nAccess is resolved once, before the stream opens, against a short session\nof its own: this route cannot take the request session, because that\ntransaction would stay open for as long as the supervisor's tab does.",
+        "description": "The console, pushed. Every frame is a whole `CircuitConsole`, so a client renders a\nstream and a poll with the same code.\n\nAccess is resolved against a short session of its own, not the request session, so the\ntransaction does not stay open for as long as the client's connection does.",
         "operationId": "dashboard_stream_circuit_console",
         "parameters": [
           {
@@ -27923,7 +27922,7 @@
         ]
       },
       "post": {
-        "description": "Grant one of this institution's people access to an exam it runs.\n\nA trainee's exam-day slot never needs this: a dispatched slot skips the\ngate. This is for practising between sittings, which otherwise runs out\nwith the consumer free trial.",
+        "description": "Grant one of this institution's people access to an exam it runs, for practising between\nsittings. A trainee's exam-day slot never needs this: a dispatched slot skips the gate.",
         "operationId": "entitlements_grant_org_entitlement",
         "parameters": [
           {
@@ -28097,7 +28096,7 @@
     },
     "/api/v1/orgs/{org_slug}/exams": {
       "get": {
-        "description": "This institution's own exams, plus the platform catalogue.\n\n`drafts=true` narrows to the institution's own rows, published or not: its\ndrafts are its own business. It never widens the listing to the platform's\ndrafts, which it cannot see at all.",
+        "description": "This institution's own exams, plus the platform catalogue.\n\n`drafts=true` narrows to the institution's own rows, published or not. The\nplatform's own drafts are never included.",
         "operationId": "catalog_list_org_exams",
         "parameters": [
           {
@@ -28169,7 +28168,7 @@
         ]
       },
       "post": {
-        "description": "An institution's own exam, as a draft.\n\nWritten without asking the platform and without picking from a list: an\ninstitution defines the exams it assesses against. The code is unique\nwithin this organisation only, so two schools may both have a `finals`.",
+        "description": "An institution's own exam, as a draft.\n\nThe code is unique within this organisation only, so two schools may both\nhave a `finals`.",
         "operationId": "catalog_create_org_exam",
         "parameters": [
           {
@@ -28272,7 +28271,7 @@
     },
     "/api/v1/orgs/{org_slug}/exams/{exam_id}": {
       "delete": {
-        "description": "Remove an exam nothing was ever built on. Retire the rest.\n\n`exam_in_use` (409) is the answer for anything real: a station, a\nsitting, an attempt, a rubric binding. This is only for a draft an\ninstitution changed its mind about before it went anywhere.",
+        "description": "Remove an exam nothing was ever built on. Retire the rest.\n\nReturns `exam_in_use` (409) if a station, sitting, attempt or rubric\nbinding already references it.",
         "operationId": "catalog_delete_org_exam",
         "parameters": [
           {
@@ -28993,7 +28992,7 @@
     },
     "/api/v1/orgs/{org_slug}/memberships/bulk": {
       "post": {
-        "description": "A team at once: the browser parses the spreadsheet, this takes the rows.\n\nEach row is the single act below it, so an unknown address is invited and\nan existing one is not re-invited. A person already holding the role is\nreported in `skipped` rather than failing the other rows \u2014 the retiring\nbackend's staff upload wrote a team row by row and an administrator reads\nthe result as a list of names, not as an error page.",
+        "description": "A team at once: the browser parses the spreadsheet, this takes the rows.\n\nEach row is the single act below it, so an unknown address is invited and an existing\none is not re-invited. A person already holding the role is reported in `skipped`\nrather than failing the other rows.",
         "operationId": "tenancy_add_memberships",
         "parameters": [
           {
@@ -30594,7 +30593,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}": {
       "get": {
-        "description": "Circuits and slots embedded, because every screen that opens a sitting\nneeds all three and would otherwise fetch them one by one.",
+        "description": "Circuits and slots are embedded, since a sitting screen needs all three.",
         "operationId": "sittings_read_sitting",
         "parameters": [
           {
@@ -30679,7 +30678,7 @@
         ]
       },
       "put": {
-        "description": "Correct a sitting that has already been scheduled.\n\nOnly what was sent is written, so the edit screen restates nothing. The name\nand the date stay open for the life of the record; what the sitting examines\n\u2014 its mode, its type, the programme its rubric is resolved from \u2014 freezes the\nmoment any circuit on it has started, because the marks already given were\ngiven against the other answer.",
+        "description": "Correct a sitting that has already been scheduled.\n\nOnly fields sent are written. The name and date stay editable indefinitely.\nThe mode, type and programme freeze once any circuit has started, since\nmarks already given were given against the other answer.",
         "operationId": "sittings_update_sitting",
         "parameters": [
           {
@@ -30888,7 +30887,7 @@
         ]
       },
       "put": {
-        "description": "Each save is a new revision. The table is append-only, so what was\npreviously considered survives.\n\n`expected_revision` names the revision this screen read; a save against a\nstale one is refused with `decision_revised` rather than superseding it.",
+        "description": "Save a decision as a draft. Each save is a new revision.\n\n`expected_revision` names the revision this screen read; a save against a\nstale one is refused with `decision_revised` rather than superseding it.",
         "operationId": "results_save_decision",
         "parameters": [
           {
@@ -31012,7 +31011,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/release": {
       "post": {
-        "description": "Release re-checks the evidence.\n\nA station re-marked between sign-off and release would otherwise send a\ncandidate an outcome nobody approved.",
+        "description": "Release re-checks the evidence: a station re-marked between sign-off and\nrelease would otherwise send a candidate an outcome nobody approved.",
         "operationId": "results_release",
         "parameters": [
           {
@@ -31355,7 +31354,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cohort": {
       "get": {
-        "description": "How this sitting's candidates compare, ranked.\n\nWhat a GP lead opens after an examination to decide who to review first.\nCompletion ranks before score: a candidate who sat three of five stations\nhas a problem nobody has looked at, while one who scored badly has at least\nbeen assessed.\n\nExam sittings only \u2014 `not_an_exam_sitting` (422) for a training one.",
+        "description": "How this sitting's candidates compare, ranked. Completion ranks before score.\n\nExam sittings only \u2014 `not_an_exam_sitting` (422) for a training one.",
         "operationId": "dashboard_read_cohort_summary",
         "parameters": [
           {
@@ -31445,7 +31444,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout": {
       "get": {
-        "description": "The document a course lead downloads after an examination: the cohort\nranked, what it adds up to, and what the ranking recommends. Org admin, as the\nlegacy export was \u2014 it names every candidate and their score in one payload,\nand is written to be printed. Exam sittings only, on the cohort's own rule.",
+        "description": "The document a course lead downloads after an examination: the cohort ranked, what it\nadds up to, and what it recommends. Org admin only. Exam sittings only.",
         "operationId": "dashboard_read_sitting_readout",
         "parameters": [
           {
@@ -31535,7 +31534,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report": {
       "get": {
-        "description": "The whole sitting, per candidate: stations sat, marking, reviewers'\nratings and where the decision stands. Org admin only, because it carries\ndecisions that are not yet released.",
+        "description": "The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision\nstatus. Org admin only \u2014 carries decisions not yet released.",
         "operationId": "dashboard_read_sitting_report",
         "parameters": [
           {
@@ -31706,7 +31705,7 @@
         ]
       },
       "put": {
-        "description": "Institution admin only, and revisioned.\n\nThe revision the client last read is required, so two people with the same\nscreen open cannot silently overwrite one another.",
+        "description": "Save the GP-lead review for this slot. Requires the last-read `revision`\nto prevent two reviewers overwriting one another.",
         "operationId": "reviews_save_gp_lead_review",
         "parameters": [
           {
@@ -31821,7 +31820,7 @@
     },
     "/api/v1/orgs/{org_slug}/slots/{slot_id}/reviews": {
       "get": {
-        "description": "Every review of this slot, with what they add up to.\n\nNot a `Page`: a slot has as many reviews as it has observers, and the\nsummary is about the set, so paging it would be paging half an answer.",
+        "description": "Every review of this slot, with what they add up to.\n\nNot paginated: a slot has as many reviews as it has observers.",
         "operationId": "reviews_list_slot_reviews",
         "parameters": [
           {
@@ -31895,7 +31894,7 @@
     },
     "/api/v1/orgs/{org_slug}/slots/{slot_id}/reviews/mine": {
       "put": {
-        "description": "One review per person per slot, edited in place.\n\n`mine` rather than an id: a reviewer has exactly one, and addressing it by\nid would invite editing somebody else's.",
+        "description": "Submit or update your own review of this slot. One per reviewer per slot.",
         "operationId": "reviews_submit_my_review",
         "parameters": [
           {
@@ -32674,7 +32673,7 @@
     },
     "/api/v1/orgs/{org_slug}/stations": {
       "get": {
-        "description": "The stations this organisation has authored.\n\n`OrgReader` admits every rostered trainee, and the document is the patient's\nmaterial and the examiner's notes as much as it is the brief \u2014 so a reader\nwhose only relationship to the org is trainee gets the candidate-facing\nprojection of each `content` (S1), the same material their own attempt's\nbrief read discloses. Staff \u2014 an org admin or an assigned supervisor, the\npredicate `OrgStaff` runs on \u2014 and a platform admin read the whole thing.",
+        "description": "The stations this organisation has authored.\n\n`OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each\n`content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform\nadmin read the whole thing.",
         "operationId": "stations_list_stations",
         "parameters": [
           {
@@ -33908,7 +33907,7 @@
     },
     "/api/v1/orgs/{org_slug}/supervisor/circuits": {
       "get": {
-        "description": "The circuits assigned to the caller, whatever else they can see.\n\nAssigned, not visible: an administrator who supervises nothing gets an\nempty list here and reads the sittings routes for the rest.",
+        "description": "The circuits assigned to the caller. Assigned, not all visible circuits.",
         "operationId": "dashboard_read_supervisor_circuits",
         "parameters": [
           {
@@ -34211,7 +34210,7 @@
         ]
       },
       "patch": {
-        "description": "Rename a group. Its members stay \u2014 that is the rule the whole roster\nslice exists to hold, where b2b matched a label and a rename emptied it.",
+        "description": "Rename a group. Its members are unaffected.",
         "operationId": "roster_rename_group",
         "parameters": [
           {
@@ -34322,7 +34321,7 @@
     },
     "/api/v1/orgs/{org_slug}/trainee-groups/{group_id}/members": {
       "put": {
-        "description": "PUT, not POST: the body states who is in the group. b2b has no\nmembership table at all and matches a label instead.",
+        "description": "Replace the group's full membership list.",
         "operationId": "roster_set_group_members",
         "parameters": [
           {
@@ -34673,7 +34672,7 @@
     },
     "/api/v1/orgs/{org_slug}/trainees/{trainee_id}": {
       "delete": {
-        "description": "Remove a roster row nothing was ever decided about.\n\n`trainee_in_use` (409) is the answer for a real decision. Revoking access\nis the mechanism for everyone else \u2014 see `service_edit.delete_trainee`.",
+        "description": "Remove a roster row nothing was ever decided about. Returns 409\n`trainee_in_use` if a decision exists; revoke access instead in that case.",
         "operationId": "roster_delete_trainee",
         "parameters": [
           {
@@ -34961,7 +34960,7 @@
     },
     "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/anonymise": {
       "post": {
-        "description": "GDPR erasure for a trainee `delete` refuses \u2014 real history stays,\nthe person's name and address do not. See `service_edit.anonymise_trainee`.",
+        "description": "GDPR erasure for a trainee `delete` refuses: history stays, the person's\nname and address do not.",
         "operationId": "roster_anonymise_trainee",
         "parameters": [
           {
@@ -35049,7 +35048,7 @@
     },
     "/api/v1/orgs/{org_slug}/trainees/{trainee_id}/resend-invitation": {
       "post": {
-        "description": "Send the choose-a-password link again.\n\nA new token, not the one in the first email: that one is stored hashed, so\nnobody here can read it back out. `invitation_not_pending` is the answer\nwhen the person has already chosen a password, because mailing a\nset-password link to somebody who can sign in is an invitation to take over\ntheir account.",
+        "description": "Send the choose-a-password link again, as a new token. Returns 409\n`invitation_not_pending` if the person has already chosen a password.",
         "operationId": "roster_resend_invitation",
         "parameters": [
           {
@@ -36282,7 +36281,7 @@
     },
     "/api/v1/platform/directory": {
       "get": {
-        "description": "Every account, newest first, with the facts beside each that the old\nconsole showed as columns.",
+        "description": "Every account, newest first, with the facts beside each: payment, activity,\nentitlements and sign-in status.",
         "operationId": "dashboard_list_directory",
         "parameters": [
           {
@@ -36753,7 +36752,7 @@
     },
     "/api/v1/platform/exams": {
       "post": {
-        "description": "A new platform exam, as a draft \u2014 the consumer catalogue.\n\nThe table starts empty and stays that way until somebody writes one. There\nis no seed: four exams used to be inserted by a migration and mirrored by a\ntuple in this slice, and a fifth needed both changed and shipped.",
+        "description": "A new platform exam, as a draft \u2014 the consumer catalogue.",
         "operationId": "catalog_create_exam",
         "requestBody": {
           "content": {
@@ -38921,7 +38920,7 @@
         ]
       },
       "put": {
-        "description": "Write it. Platform admin only, deliberately.\n\nWhoever controls the issuer controls who may sign in as that institution's\nmembers, so this is not a field to put on a customer's own settings screen\nbeside their logo. When there is an onboarding flow with a domain\nverification step in it, that is where this moves.",
+        "description": "Write the SSO arrangement. Platform admin only, deliberately.\n\nWhoever controls the issuer controls who may sign in as that\ninstitution's members, so this is not exposed to a customer's own\nsettings screen.",
         "operationId": "sso_save_config",
         "parameters": [
           {
@@ -42558,7 +42557,7 @@
     },
     "/api/v1/platform/users/{user_id}/entitlements": {
       "get": {
-        "description": "Every grant this person has held \u2014 purchase, institution, trial, admin \u2014\nwith `live` computed now and revoked ones kept, because \"your access ended\non the 3rd\" is the answer support is usually looking for.",
+        "description": "Every grant this person has held \u2014 purchase, institution, trial, admin \u2014 with `live`\ncomputed now and revoked ones kept.",
         "operationId": "entitlements_list_user_entitlements_for_support",
         "parameters": [
           {
@@ -42631,7 +42630,7 @@
         ]
       },
       "post": {
-        "description": "Grant access outright, source `admin`, with the reason in the audit log.\n\nFor the payment that was taken under another address, the sponsor's seat,\nthe goodwill month. Not for a purchase that failed to apply: replay that.",
+        "description": "Grant access outright, source `admin`, with the reason in the audit log. Not for a\npurchase that failed to apply: replay that instead.",
         "operationId": "entitlements_grant_entitlement_for_support",
         "parameters": [
           {
@@ -43318,7 +43317,7 @@
     },
     "/api/v1/platform/voice/capacity": {
       "get": {
-        "description": "How many LiveKit Cloud sessions are held against the metered cap.\n\nA count, not a reservation: `LiveKit Cloud \"Updating\"` on the dashboard is\nusually a worker recycle, and this is what says whether sessions are\nactually running through it.",
+        "description": "How many LiveKit Cloud sessions are currently held against the metered cap.",
         "operationId": "voice_read_cloud_capacity",
         "responses": {
           "200": {
@@ -43421,7 +43420,7 @@
     },
     "/api/v1/site/statistics": {
       "get": {
-        "description": "The counters on the landing page's numbers band.\n\nUnauthenticated, because the landing page is what a visitor sees before\nanything else. The retiring backend served these from `/landing`; the\nreplacement had no equivalent, so the band hid itself rather than showing\nzeroes.\n\nCached for ten minutes: the busiest page on the site should not cost four\naggregate queries per view, and no figure here changes meaningfully in\nthat time.",
+        "description": "The counters on the landing page's numbers band.\n\nUnauthenticated, because the landing page is what a visitor sees before anything else. Cached for\nten minutes: the busiest page on the site should not cost four aggregate queries per view, and no\nfigure here changes meaningfully in that time.",
         "operationId": "public_site_read_statistics",
         "responses": {
           "200": {
@@ -43574,7 +43573,7 @@
     },
     "/api/v1/stations": {
       "get": {
-        "description": "The published platform library, scoped to what the caller may open.\n\nEvery signed-in user, because the library is the product: a consumer builds\na practice set from it and an institution draws on it to build a circuit.\nThe rows carry no station content \u2014 see `LibraryStationRead`.\n\n`search` is a fragment of a title, matched in SQL. Typing one used to mean\npaging the catalogue in the browser and filtering what had arrived, so a\nterm could only ever match what the screen had already fetched.\n\nA platform admin browses the whole catalogue, because curating it is their\njob. Everybody else gets their own exam, and asking for another is refused\nrather than answered \u2014 the retiring client had one exam per deployment and\nno picker at all.",
+        "description": "The published platform library, scoped to what the caller may open.\n\nRows carry no station content \u2014 see `LibraryStationRead`. `search` matches a title fragment in\nSQL. A platform admin browses the whole catalogue; everybody else gets their own exam, and asking\nfor another is refused.",
         "operationId": "stations_browse_library",
         "parameters": [
           {
@@ -43715,7 +43714,7 @@
     },
     "/api/v1/stations/{station_id}": {
       "get": {
-        "description": "One station from the platform library, for whoever a link found them to be.\n\nThe row the browse page already gives \u2014 a title and the ids needed to bind\nit \u2014 and none of the document inside it. A shared link used to be answered\nby walking that page a hundred stations at a time in the browser, because\nthere was no read that took an id and no organisation's slug.\n\nOne refusal covers every station that is not the library's: another\ninstitution's private case and a draft nobody has published answer\nidentically, because which of them it was is somebody else's tenant.",
+        "description": "One station from the platform library: a title and the ids needed to bind it, not the document.\n\nOne refusal covers every station that is not the library's \u2014 another institution's private case\nand a draft nobody has published answer identically.",
         "operationId": "stations_read_library_station",
         "parameters": [
           {
@@ -43966,7 +43965,7 @@
     },
     "/api/v1/stations/{station_id}/versions": {
       "get": {
-        "description": "Every revision this station has had, newest first. The author's own view.\n\nThe lifecycle had no reader: a station could be drafted, published,\nsuperseded and archived, and nothing listed the revisions those acts\nproduced \u2014 so the authoring screen could not offer a previous one. Whole\ndocuments, which is why the audience is staff and not the station's org\nmembers at large (the rule, and why, are in `service_versions`).",
+        "description": "Every revision this station has had, newest first \u2014 whole documents, so staff-only.\n\nSee `service_versions` for the audience rule.",
         "operationId": "stations_station_version_history",
         "parameters": [
           {
@@ -44222,7 +44221,7 @@
     },
     "/api/worker/assistant-sessions/{session_id}/tools/{tool_name}": {
       "post": {
-        "description": "One tool call. `result` is spoken; `display` goes to the browser unchanged.\n\nTimed, because this sits inside a voice loop. The model says a holding line\nand then waits on this round trip, so a slow tool is heard as a pause in\nthe conversation rather than seen as a slow request \u2014 and nothing else in\nthe system would show it. `search_material` is the one to watch: one\nembedding call plus one pgvector query, budgeted at about 350ms.",
+        "description": "One tool call. `result` is spoken; `display` goes to the browser unchanged.\n\nTimed, because this sits inside a voice loop: a slow tool is heard as a pause in the\nconversation. `search_material` is the one to watch, budgeted at about 350ms.",
         "operationId": "worker_run_assistant_tool",
         "parameters": [
           {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,11 @@ from pydantic import BaseModel, Field
 class StartSession(BaseModel):
     session_type: str = Field(min_length=1, max_length=32)
     extras: dict[str, Any] = Field(default_factory=dict)
+    # SEC-007: the consulting-doctor demo names the station it plays by id, and
+    # the server loads its material from the database. The station content in
+    # `extras` is no longer trusted to build the prompt — it was authored by
+    # whoever called this route, so it was a way to steer the system prompt.
+    station_version_id: uuid.UUID | None = None
 
 
 class SessionRead(BaseModel):
@@ -54,7 +59,7 @@ class SceneInstructions(BaseModel):
 
 
 class OnboardingScene(BaseModel):
-    """One demo scenario. The spelling is the worker's and the browser's, which is b2c's."""
+    """One demo scenario. The spelling is the worker's and the browser's."""
 
     patientLine: str  # noqa: N815 - the contract's own spelling
     question: str
@@ -83,3 +88,58 @@ class SessionComplete(BaseModel):
 
 class Accepted(BaseModel):
     status: str = "accepted"
+
+
+# --- Help catalogue and knowledge chat contracts.
+
+ExamCode = Literal["sca", "plab", "casc", "ortho"]
+
+
+class HelpCategory(BaseModel):
+    id: str = ""
+    slug: str
+    title: str
+    description: str = ""
+    icon_key: str = "book"
+    sort_order: int = 0
+    exam_codes: list[str]
+    article_count: int = 0
+
+
+class HelpArticle(BaseModel):
+    id: str = ""
+    slug: str
+    title: str
+    summary: str = ""
+    exam_codes: list[str]
+    category_slug: str
+    category_title: str = ""
+    sort_order: int = 0
+    body_md: str
+    related_slugs: list[str] = Field(default_factory=list)
+
+
+class HelpCategories(BaseModel):
+    categories: list[HelpCategory]
+
+
+class HelpArticles(BaseModel):
+    articles: list[HelpArticle]
+
+
+class HelpArticleDetail(BaseModel):
+    article: HelpArticle
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=6000)
+
+
+class KnowledgeChat(BaseModel):
+    exam_code: ExamCode = "sca"
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+
+
+class KnowledgeReply(BaseModel):
+    reply: str

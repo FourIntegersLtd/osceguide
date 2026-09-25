@@ -29,11 +29,7 @@ class NothingToReviewError(Conflict):
 
 
 class ReviewConflictError(Conflict):
-    """Someone else saved first.
-
-    409 rather than a silent overwrite: b2b's client detects this by matching
-    the words "another user" in an error string.
-    """
+    """Someone else saved first. 409 rather than a silent overwrite."""
 
     code = "review_conflict"
     default_message = "Someone else has changed this review since you opened it"

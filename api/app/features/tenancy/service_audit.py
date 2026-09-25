@@ -1,11 +1,8 @@
-"""Recording what the platform did, for the slices above this one.
+"""Recording what the platform did.
 
-The audit log is `tenancy`'s table, and every slice that lets a platform
-admin change something — an entitlement, an attempt, a payment — has to leave
-a row in it. Those slices sit above `tenancy` in the layers and may call its
-service, never its repository; this is the one call they make.
-
-A platform act has no organisation: `org_id` is left empty, which is what
+The audit log is `tenancy`'s table, and every slice that lets a platform admin change
+something — an entitlement, an attempt, a payment — calls this rather than writing the
+table directly. A platform act has no organisation: `org_id` is left empty, which is what
 `GET /platform/audit` reads back and the per-organisation log does not.
 """
 

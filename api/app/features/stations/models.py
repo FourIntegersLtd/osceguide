@@ -28,12 +28,9 @@ _OWNER_MATCHES_ORG = (
 
 
 class StationTemplate(Base, UUIDPrimaryKey, Timestamps):
-    """A station shape: what a station of this kind contains, and what each
-    block of it is for.
+    """A station shape: what a station of this kind contains, and what each block of it is for.
 
-    Owned by the platform or by an org. It was org-only, so the platform's own
-    library stations had no template and were rendered by a formatter that
-    branched on the exam's code — which is why a new exam needed engine code.
+    Owned by the platform or by an org.
     """
 
     __tablename__ = "station_templates"
@@ -70,10 +67,8 @@ class StationTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
 class Station(Base, UUIDPrimaryKey, Timestamps):
     """A scenario a candidate can be given.
 
-    `owner_kind` is what unifies b2c's four Firestore collections with b2b's
-    org-authored instances: the platform library and an institution's own
-    stations are the same thing with a different owner, so an attempt points at
-    one column rather than at a union of sources.
+    `owner_kind` unifies the platform library and an institution's own stations as the same thing
+    with a different owner, so an attempt points at one column rather than a union of sources.
     """
 
     __tablename__ = "stations"
@@ -129,16 +124,9 @@ class StationVersion(Base, UUIDPrimaryKey, Timestamps):
 class StationFlag(Base, UUIDPrimaryKey, Timestamps):
     """A report that a library station is wrong, and what staff did about it.
 
-    The retiring client appended `{station_id, mock_id, flagged: true}` to the
-    *user's own document*, so a report was visible only to the person who made
-    it and the content team never saw one at all. That is why this is a row
-    about a station: a flag is a queue of things to look at, not a bookmark.
-
-    One row per (station, person), because a second tap on the button is the
-    same report and the button's state has to survive a reload. A resolved flag
-    stays rather than being deleted: "we looked, and it is deliberate" is the
-    answer the next reporter's investigation needs, and the count of reports on
-    a station is the signal that decides whether it gets re-reviewed.
+    One row per (station, person): a second tap on the button is the same report, and the button's
+    state has to survive a reload. A resolved flag stays rather than being deleted — "we looked, and
+    it is deliberate" is the answer the next reporter's investigation needs.
     """
 
     __tablename__ = "station_flags"

@@ -18,7 +18,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgReader, PlatformAdmin
-from app.features.tenancy import errors, schemas, service, service_platform, service_platform_audit
+from app.features.tenancy import errors, schemas, service, service_platform
 
 router = APIRouter(tags=["tenancy"])
 
@@ -137,7 +137,7 @@ async def list_platform_audit(
 ) -> Page[schemas.PlatformAuditRead]:
     """Who changed what, across every organisation and the platform itself."""
     _ = admin
-    items, next_cursor = await service_platform_audit.list_audit(
+    items, next_cursor = await service_platform.list_audit(
         session,
         org_slug=org_slug,
         actor_email=actor_email,

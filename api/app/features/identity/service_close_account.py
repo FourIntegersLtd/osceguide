@@ -1,8 +1,4 @@
-"""Ending an account's sessions, and closing it for good.
-
-Split from `service.py`: a distinct, self-contained use case rather than
-another branch of the identity read/write surface it shares a file with.
-"""
+"""Ending an account's sessions, and closing it for good."""
 
 from __future__ import annotations
 

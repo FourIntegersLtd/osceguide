@@ -27,8 +27,7 @@ async def list_slot_reviews(
 ) -> schemas.SlotReviewsRead:
     """Every review of this slot, with what they add up to.
 
-    Not a `Page`: a slot has as many reviews as it has observers, and the
-    summary is about the set, so paging it would be paging half an answer.
+    Not paginated: a slot has as many reviews as it has observers.
     """
     return await service_summary.read_slot_reviews(session, workspace.org_id, slot_id)
 
@@ -51,11 +50,7 @@ async def submit_my_review(
     session: Session,
     clock: ClockDep,
 ) -> schemas.SlotReviewRead:
-    """One review per person per slot, edited in place.
-
-    `mine` rather than an id: a reviewer has exactly one, and addressing it by
-    id would invite editing somebody else's.
-    """
+    """Submit or update your own review of this slot. One per reviewer per slot."""
     return await service.submit_slot_review(
         session,
         workspace.org_id,
@@ -99,11 +94,8 @@ async def save_gp_lead_review(
     session: Session,
     clock: ClockDep,
 ) -> schemas.GpLeadReviewRead:
-    """Institution admin only, and revisioned.
-
-    The revision the client last read is required, so two people with the same
-    screen open cannot silently overwrite one another.
-    """
+    """Save the GP-lead review for this slot. Requires the last-read `revision`
+    to prevent two reviewers overwriting one another."""
     return await service.save_gp_lead_review(
         session,
         workspace.org_id,

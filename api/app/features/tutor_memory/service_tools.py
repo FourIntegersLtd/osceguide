@@ -1,13 +1,10 @@
 """Answering the tutor's tool calls.
 
-Every answer is prose, because the model reads it out. Where there is also
-something to put on screen, `display` travels beside it and the worker
-publishes it on the data channel unchanged — the backend never composes a
-route, because which screen a thing lives on is the frontend's business.
+Every answer is prose, because the model reads it out. Where there is also something to
+put on screen, `display` travels beside it and the worker publishes it unchanged.
 
-Nothing here tells the tutor about material this person cannot open. A refusal
-that names a locked title is an advertisement, and the tutor would then be
-talking about something the doctor cannot reach.
+Nothing here tells the tutor about material this person cannot open — a refusal that names
+a locked title is an advertisement.
 """
 
 from __future__ import annotations
@@ -24,12 +21,12 @@ from app.features.entitlements import service as entitlements
 from app.features.stations import service_library_reads as library_reads
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import (
+    action_plan,
     domain,
     errors,
     repository,
     service_recall,
     service_search,
-    service_writes,
     tools_catalog,
 )
 from app.features.tutor_memory.index import build_material_index
@@ -47,10 +44,9 @@ async def tool_hook(
     session_id: uuid.UUID,
     now: datetime,
 ) -> dict[str, Any]:
-    """The seam `assistant` calls, once it has established whose session this is.
+    """What `assistant` calls, once it has established whose session this is.
 
-    Returns a plain dict because the seam is typed in `assistant`, which sits
-    below this slice and cannot name this slice's schemas.
+    Returns a plain dict: it goes straight back to the worker as JSON.
     """
     result = await run(
         session,
@@ -98,7 +94,7 @@ async def run(
         return await _suggest(session, user_id=user_id, now=now, **_suggest_args(cleaned))
     if tool == tools_catalog.REMEMBER:
         return await _remember(session, user_id=user_id, session_id=session_id, fact=str(cleaned["fact"]))
-    marked: ToolResult = await service_writes.mark_done(session, user_id=user_id, step=str(cleaned["step"]))
+    marked: ToolResult = await mark_done(session, user_id=user_id, step=str(cleaned["step"]))
     return marked
 
 
@@ -127,9 +123,7 @@ async def _suggest(
 ) -> ToolResult:
     """Put one station on the doctor's screen, if they may open it.
 
-    Only stations for now: they are the one kind whose entitlement this backend
-    can decide, and suggesting something a doctor cannot open is worse than
-    suggesting nothing.
+    Only stations for now, the one kind whose entitlement this backend can decide.
     """
     try:
         version_id = uuid.UUID(ref)
@@ -162,12 +156,8 @@ async def _suggest(
 
 
 def _cannot_suggest() -> str:
-    """Deliberately says nothing about what was refused or why.
-
-    Naming the title would tell the doctor about something they cannot open,
-    and naming the reason ("you have not paid for that exam") would have the
-    tutor delivering a billing message mid-conversation.
-    """
+    """Deliberately says nothing about what was refused or why — naming the reason would have
+    the tutor delivering a billing message mid-conversation."""
     return (
         "You could not put that on their screen. Say you will follow it up rather than "
         "explaining why, and carry on."
@@ -180,12 +170,7 @@ LIBRARY_PAGE = 200
 async def _may_open(
     session: AsyncSession, *, user_id: uuid.UUID, version_id: uuid.UUID, now: datetime
 ) -> bool:
-    """Whether this station is in the library of an exam they hold.
-
-    Asked per entitled exam rather than over the whole library, because the
-    question is "may they open this?" and an exam they do not hold is not a
-    smaller answer — it is a different one.
-    """
+    """Whether this station is in the library of an exam they hold."""
     grants = await entitlements.list_for_user(session, user_id, now=now)
     entitled = domain.entitled_exam_ids(grants)
     codes = {ref.id: ref.code for ref in await catalog.exam_refs(session)}
@@ -216,3 +201,37 @@ async def _remember(
         body={"fact": clipped},
     )
     return ToolResult(result="Noted. Do not read it back to them; just carry on.")
+
+
+# --- Answering the two tools that write something down.
+
+# How far back to look for a step still open. A plan is agreed at a debrief
+# and reported on days later, often after other debriefs; ten covers months of
+# practice without scanning a whole history on every call.
+MARK_DONE_LOOKBACK = 10
+
+
+async def mark_done(session: AsyncSession, *, user_id: uuid.UUID, step: str) -> ToolResult:
+    """Tick off a step agreed in an earlier debrief.
+
+    Searches back through recent debriefs rather than only the latest, since a doctor may
+    report doing something well after other debriefs have happened. The most recent debrief
+    that still has this step open wins.
+    """
+    summaries = await repository.recent_debrief_summaries(session, user_id, limit=MARK_DONE_LOOKBACK)
+    for summary in summaries:
+        plan = list(summary.action_plan or [])
+        updated, matched = action_plan.mark_action_item_done(plan, step)
+        if matched is None:
+            continue
+        await repository.set_action_plan(session, summary.id, updated)
+        return ToolResult(result=f"Ticked off: {matched}. Acknowledge it briefly and move on.")
+    # Deliberately not guessed at. Ticking off the wrong step is worse than
+    # ticking off none: the doctor then gets asked about the thing they did
+    # and never about the thing they did not.
+    return ToolResult(
+        result=(
+            "Nothing matching that is still open on their action plans. Do not invent one — "
+            "ask which step they mean, or carry on."
+        )
+    )

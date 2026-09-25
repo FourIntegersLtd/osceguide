@@ -1,16 +1,10 @@
 """What a candidate may read about a station they are sitting, or have sat.
 
-Split from `schemas.py` because these describe the *station* seen through an
-attempt, while those describe the attempt itself. `service_material` is their
-only producer.
-
-The station document is one JSON blob whose shape differs per exam — SCA and
-PLAB carry nested `doctor_information` / `management_plan` blocks, Ortho carries
-flat candidate keys beside them. These shapes name the fields the screens
-actually render and allow the rest through, so a station carrying more than any
-of the four exams known today still reaches the browser intact. The alternative
-— passing `content` straight out — would hand the candidate the patient's
-persona and the examiner's expected answers.
+The station document is one JSON blob whose shape differs per exam — SCA and PLAB carry nested
+`doctor_information` / `management_plan` blocks, Ortho carries flat candidate keys beside them. These
+schemas name the fields the screens actually render and let the rest through unnamed, rather than
+passing `content` straight out, which would hand the candidate the patient's persona and the
+examiner's expected answers.
 """
 
 from __future__ import annotations
@@ -79,10 +73,8 @@ class PatientIdentityRead(BaseModel):
 class AttemptBriefRead(BaseModel):
     """The reading-time screen, keyed on the attempt rather than the station.
 
-    On the attempt because that is what the entitlement check has already been
-    made against: `LibraryStationRead` deliberately carries no content, since
-    the library is browsable by everyone and the brief is part of the exam.
-    Once somebody has started a station, the brief is theirs to read.
+    Keyed on the attempt because that is what the entitlement check has already been made against;
+    the library itself is browsable by everyone but carries no content.
     """
 
     attempt_id: uuid.UUID
@@ -101,11 +93,9 @@ class AttemptBriefRead(BaseModel):
 class PatientReviewRead(BaseModel):
     """The patient's side, as a candidate may read it afterwards.
 
-    Not a passthrough: `persona`, `opening_sentence`, `expanded_history` and
-    the hidden question list are how the patient is played, and they stay on
-    the server. What is here is what the old management screen showed — the
-    biodata line and the ideas, concerns and expectations the candidate was
-    supposed to draw out.
+    Not a passthrough: `persona`, `opening_sentence`, `expanded_history` and the hidden question list
+    are how the patient is played, and stay on the server. What is here is the biodata line and the
+    ideas, concerns and expectations the candidate was supposed to draw out.
     """
 
     patient_biodata: str | None = None

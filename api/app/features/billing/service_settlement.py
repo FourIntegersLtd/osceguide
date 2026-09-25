@@ -1,10 +1,8 @@
 """Turning one paid-for plan into access, a payment row and a receipt.
 
-The second half of applying a checkout, in a module of its own because two
-callers take exactly these steps: the webhook, for a card payment Stripe
-reports, and the platform console, for a payment that did not come through
-Stripe at all — a bank transfer, a sponsor, a comped seat. The console must
-not take fewer steps than the webhook, and one function is how that stays so.
+Shared by two callers that must take exactly the same steps: the webhook, for a card payment
+Stripe reports, and the platform console, for a payment that did not come through Stripe at all
+(a bank transfer, a sponsor, a comped seat). One function is how the console stays in step.
 """
 
 from __future__ import annotations
@@ -49,9 +47,8 @@ async def settle_payment(
 ) -> Payment:
     """Turn one paid-for plan into access, a payment row and a receipt.
 
-    The second half of applying a checkout, on its own because the console
-    takes the same steps for a payment that did not come through Stripe — a
-    bank transfer, a sponsor — and must not take fewer.
+    Also used by the platform console for a payment that did not come through Stripe, so it
+    takes exactly the same steps as the webhook.
     """
     if not plan_row.exam_code:
         # Defaulting to one exam here silently sold the wrong thing (B-2).

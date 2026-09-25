@@ -49,11 +49,8 @@ async def run_assistant_tool(
 ) -> schemas.ToolResult:
     """One tool call. `result` is spoken; `display` goes to the browser unchanged.
 
-    Timed, because this sits inside a voice loop. The model says a holding line
-    and then waits on this round trip, so a slow tool is heard as a pause in
-    the conversation rather than seen as a slow request — and nothing else in
-    the system would show it. `search_material` is the one to watch: one
-    embedding call plus one pgvector query, budgeted at about 350ms.
+    Timed, because this sits inside a voice loop: a slow tool is heard as a pause in the
+    conversation. `search_material` is the one to watch, budgeted at about 350ms.
     """
     started = perf_counter()
     try:

@@ -1,13 +1,8 @@
-"""How somebody is doing: per domain, overall, and over time.
+"""How somebody is doing at one exam: per domain, overall, and over time.
 
-The charts on the consumer exam dashboard. `service.py` answers "what do I have
-access to and where did I leave off"; this answers "am I getting better", which
-is a different question over a different set of rows — only the marked attempts
-at one exam, read back as far as a trend line is worth drawing.
-
-Reading the marking engine's document is `performance.py` and the arithmetic is
-`reviews`': an institution ranks its cohort on those numbers and a person's own
-dashboard must not quietly use different ones.
+Only the marked attempts at that exam. Reading the marking engine's document is
+`performance.py`; the pass/fail arithmetic matches `reviews` so an institution's
+cohort ranking and a person's own dashboard agree on the same numbers.
 """
 
 from __future__ import annotations
@@ -48,12 +43,7 @@ PASS_SCORE = 66.0
 
 @dataclass(frozen=True)
 class _Exam:
-    """The exam being reported on, however it was named.
-
-    Flattened here because the two ways in hand back different things — a code
-    resolves to a catalogue row, an attempt hands back a reference — and the
-    rest of this module needs the same four fields either way.
-    """
+    """The exam being reported on, however it was named."""
 
     id: uuid.UUID
     code: str
@@ -62,12 +52,7 @@ class _Exam:
 
 
 async def build(session: AsyncSession, user_id: uuid.UUID, *, exam_code: str | None) -> Performance:
-    """The performance charts for one exam, or the empty state.
-
-    An exam nobody has been marked at is answered with empty lists rather than
-    a 404: the dashboard has an empty state for "no results yet" and should not
-    have to read a refusal to find it.
-    """
+    """The performance charts for one exam, or the empty state if nothing is marked yet."""
     exam = await _exam(session, user_id, exam_code)
     if exam is None:
         return _empty(exam_code)
@@ -102,14 +87,9 @@ class _Scored:
 async def _exam(session: AsyncSession, user_id: uuid.UUID, exam_code: str | None) -> _Exam | None:
     """Which exam to report on: the one asked for, or the last one attempted.
 
-    The default is the most recent attempt of any kind, not the most recent
-    marked one, so this screen opens on the same exam as the rest of the
-    dashboard — if that attempt is still being marked the answer is the empty
-    state, which is the truth about it.
-
-    A code that names no exam is refused by `catalog` as `unknown_exam`; that
-    is a client naming something that does not exist, which is not the same as
-    an exam with nothing marked yet.
+    The default is the most recent attempt of any kind, not the most recent marked one, so
+    this screen opens on the same exam as the rest of the dashboard. A code naming no exam
+    is refused by `catalog` as `unknown_exam`.
     """
     if exam_code is not None:
         row = await catalog.resolve_exam(session, exam_code)
@@ -134,9 +114,8 @@ async def _exam(session: AsyncSession, user_id: uuid.UUID, exam_code: str | None
 async def _structure(session: AsyncSession, exam: _Exam) -> Mapping[str, Any] | None:
     """The rubric's own account of which domains it marks, and their labels.
 
-    The marking snapshot rather than a read of the rubric: it is the shape the
-    engine was given, so the domain ids in it are the keys the result document
-    actually uses.
+    The marking snapshot, not a fresh read of the rubric: its domain ids are the keys the
+    result document actually uses.
     """
     if exam.rubric_version_id is None:
         return None
@@ -153,8 +132,7 @@ async def _score(
 ) -> _Scored | None:
     """One attempt's marking, or None if there is nothing scorable in it.
 
-    The latest result, not the first: an attempt re-marked under a new policy
-    version keeps both, and the chart should show what it says now.
+    Uses the latest result: a re-marked attempt keeps both, and the chart shows what it says now.
     """
     results = await attempts_reads.read_results(session, attempt.id, requester_id=user_id, is_admin=False)
     if not results:
@@ -186,10 +164,9 @@ def _summary(marked: Sequence[_Scored]) -> PerformanceSummary:
 
 
 def _domains(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> list[DomainScore]:
-    """Each domain averaged across the attempts that were marked on it.
+    """Each domain averaged across the attempts marked on it.
 
-    In the rubric's own order, and a domain no attempt scored is left out
-    rather than shown as a zero — unmarked is not the same as bad.
+    A domain no attempt scored is left out rather than shown as a zero — unmarked is not bad.
     """
     labels = performance.domain_labels(structure)
     out: list[DomainScore] = []

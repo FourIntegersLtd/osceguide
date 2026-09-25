@@ -1,16 +1,10 @@
 """The cohort read-out: the document an institution downloads after an examination.
 
-A projection, like `schemas_report.py`, and deliberately a thin one: the ranked
-candidates are the same `CohortCandidate` rows `/sittings/{id}/cohort` already
-serves, because the legacy read-out was a rendering of its cohort summary and
-this one is a rendering of ours. What is added here is the part a screen cannot
-be trusted to derive — the totals, the priorities counted, the recommendation
-sentences and the statement of how the numbers were arrived at — so that two
-institutions printing the same sitting get the same page.
-
-Ported from b2b's `build_readout`. b2b could also render it as a markdown
-attachment; that renderer is not ported, so the read-out travels as data and the
-screen writes the file.
+A thin projection: the ranked candidates are the same `CohortCandidate` rows
+`/sittings/{id}/cohort` already serves. What is added here is the part a screen cannot be
+trusted to derive — the totals, the priorities counted, the recommendation sentences and
+the statement of how the numbers were arrived at — so that two institutions printing the
+same sitting get the same page.
 """
 
 from __future__ import annotations

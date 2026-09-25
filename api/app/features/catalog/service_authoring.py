@@ -1,13 +1,11 @@
 """Writing an exam: who owns it, and when it is offered.
 
-Split from `service.py` along the line the slice already divides on. That
-module is about *using* an exam — resolving one, handing another slice a ref.
-This one is about writing one, and every function here is owner-aware.
+Reading an exam lives in `service.py`; every function here is owner-aware.
 
-An exam has an owner. The platform writes the consumer catalogue; an
-institution writes its own, on its own schedule, without either arm waiting on
-the other. Every function that changes an exam takes the actor's `org_id` —
-`None` for a platform admin — and refuses to touch somebody else's.
+An exam has an owner: the platform writes the consumer catalogue, an
+institution writes its own. Every function that changes an exam takes the
+actor's `org_id` (`None` for a platform admin) and refuses to touch anyone
+else's.
 """
 
 from __future__ import annotations
@@ -41,9 +39,7 @@ async def list_exams(
     """What this caller may see: their own exams, plus the platform catalogue.
 
     Drafts are shown only to the owner that wrote them, so `include_unpublished`
-    narrows the listing to this caller's own rows rather than widening it. A
-    platform admin must not see what Ashford is drafting, and Ashford must not
-    see what we are drafting — the same rule, from both sides.
+    narrows the listing to this caller's own rows rather than widening it.
     """
     if include_unpublished:
         return [exam_read(e) for e in await repository.list_exams(session, org_id, owned_only=True)]
@@ -65,10 +61,8 @@ async def create_exam(
 ) -> ExamRead:
     """A new exam, as a draft. Nothing may be built on it until it is published.
 
-    `org_id` is the author: `None` writes a platform exam, an org id writes that
-    institution's own. An institution does not ask us first and is not offered
-    a list to pick from — that restriction is what made every school's
-    programme a label on one of four rows we happened to have written.
+    `org_id` is the author: `None` writes a platform exam, an org id writes
+    that institution's own, with no list of platform exams to pick from.
     """
     try:
         normalised = domain.normalise_code(code)
@@ -128,9 +122,8 @@ async def publish_exam(
 async def retire_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID | None = None) -> ExamRead:
     """Stop offering an exam without touching what was already attempted.
 
-    An owner's own decision, and only theirs. Retiring the platform's PLAB
-    leaves Ashford's programmes and their past results exactly where they were,
-    and Ashford retiring its own exam changes nothing for anybody else.
+    An owner's own decision: retiring one institution's exam changes nothing
+    for anyone else's programmes or past results.
     """
     exam = await _owned_exam(session, exam_id, org_id)
     try:
@@ -144,16 +137,13 @@ async def retire_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UU
 async def delete_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID) -> None:
     """Remove an org's own exam outright, if nothing was ever built on it.
 
-    Org-scoped by construction — `org_id` is required, not `None` — the
+    Org-scoped by construction — `org_id` is required, not `None` — so the
     platform catalogue keeps `retire` as its only lifecycle exit, the same as
-    every institution's exam that has actually been used. An exam nobody has
-    touched yet (no station, no sitting, no attempt) is different: it is a
-    draft somebody changed their mind about, not a record anything depends
-    on, and there is no reason to make them retire something that never ran.
+    any exam that has actually been used.
 
-    `catalog` cannot ask "does anything reference this exam" itself — see
-    `ExamInUse` — so the database's own `RESTRICT` constraints are the check,
-    caught here rather than left to answer an unmapped `internal_error`.
+    `catalog` cannot check "does anything reference this exam" itself, so the
+    database's `RESTRICT` constraints are the check, caught here as
+    `ExamInUse` rather than surfacing an unmapped `internal_error`.
     """
     exam = await _owned_exam(session, exam_id, org_id)
     try:

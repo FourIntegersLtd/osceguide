@@ -68,12 +68,7 @@ class TraineeGroup(Base, UUIDPrimaryKey, Timestamps):
 
 
 class TraineeGroupMember(Base, UUIDPrimaryKey, Timestamps):
-    """The table b2b does not have.
-
-    Without it, membership is a string match between a trainee's cohort and a
-    group's label, recomputed on every circuit build: renaming a group empties
-    it, two groups sharing a label collide, and nobody can be in two groups.
-    """
+    """A trainee's membership in a group. See `domain` for why this is a real table."""
 
     __tablename__ = "trainee_group_members"
     __table_args__ = (

@@ -19,11 +19,7 @@ class OrganizationRead(BaseModel):
 
 
 class UpdateOrganization(BaseModel):
-    """What a platform administrator may change about an organisation.
-
-    Not the slug: every foreign key points at `id` and the slug is the URL, so
-    renaming one is a redirect problem rather than a field edit.
-    """
+    """What a platform administrator may change about an organisation. Not the slug."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     org_type: str | None = Field(default=None, max_length=32)
@@ -102,11 +98,7 @@ class PlatformOverview(BaseModel):
 
 
 class RenewContract(BaseModel):
-    """New dates, and whether a suspension should lift with them.
-
-    One call rather than a `PATCH` and a `restore`: a renewal that sets the
-    date and forgets to restore leaves a paying customer locked out.
-    """
+    """New contract dates, and whether a suspension should lift with them."""
 
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime
@@ -146,15 +138,8 @@ MAX_BULK_MEMBERSHIPS = 500
 
 
 class BulkCreateMemberships(BaseModel):
-    """A team at once, in one request.
-
-    The retiring backend's "invite the whole team" path was a CSV upload it
-    parsed and wrote row by row, with a temporary password in the file or
-    generated in the browser. Here the browser parses the sheet and posts rows,
-    and no password is involved: an address with no account is invited and
-    chooses one. Capped so one request cannot invite a whole hospital by
-    accident.
-    """
+    """A team at once, in one request. Capped so one request cannot invite a whole
+    hospital by accident."""
 
     memberships: list[CreateMembership] = Field(min_length=1, max_length=MAX_BULK_MEMBERSHIPS)
 
@@ -175,13 +160,8 @@ class BulkMembershipsResult(BaseModel):
 
 
 class SwitchWorkspace(BaseModel):
-    """Which workspace to re-issue the token against.
-
-    `None` means the person's own practice. That is a real destination, not an
-    absence: somebody who belongs to an institution still has their own
-    entitlements and their own attempts, and without this there is no way back
-    to them once an organisation is active.
-    """
+    """Which workspace to re-issue the token against. `None` means the person's own practice
+    — a real destination, not an absence."""
 
     org_slug: str | None = None
 
@@ -205,11 +185,8 @@ class AuditRead(BaseModel):
 
 
 class PlatformAuditRead(AuditRead):
-    """An audit row as the console reads it across every organisation.
-
-    `org_id` is None for the platform's own acts; `meta` is whatever the
-    action recorded beyond its summary, such as the old and new value.
-    """
+    """An audit row as the console reads it across every organisation. `org_id` is None for
+    the platform's own acts."""
 
     org_id: uuid.UUID | None
     actor_user_id: uuid.UUID | None
@@ -217,12 +194,7 @@ class PlatformAuditRead(AuditRead):
 
 
 class Capabilities(BaseModel):
-    """What the caller may do, decided here rather than in the browser.
-
-    The B2B frontend keeps a table mirroring the backend policy and uses it to
-    decide whether to issue a request at all. Two copies of an authorisation
-    rule is one too many; this is the served answer.
-    """
+    """What the caller may do, decided here rather than duplicated in the frontend."""
 
     user_id: uuid.UUID
     is_platform_admin: bool

@@ -1,13 +1,8 @@
-"""The worker side of the attempt contract.
-
-Split from `service.py` so the candidate-facing use cases and the machine-facing
-ones can each be read on their own; they change for different reasons.
-"""
+"""The worker side of the attempt contract."""
 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,27 +15,9 @@ from app.features.attempts.jobs_coverage import enqueue_coverage
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
 from app.features.attempts.service_render import render_definition
+from app.features.tutor_memory import jobs as tutor_jobs
 
 log = get_logger(__name__)
-
-# --------------------------------------------------------------------------
-# The seam a slice above this one fills in.
-#
-# A finished interaction is the moment other things become owed — marking,
-# which is ours, and a debrief summary, which is not. `tutor_memory` sits above
-# this slice and cannot be imported from here, so `main.create_app` hands the
-# hook over and this slice announces the moment without knowing who is
-# listening. Unbound, nothing happens, which is exactly the old behaviour.
-# --------------------------------------------------------------------------
-InteractionCompleteHook = Callable[[AsyncSession, Attempt], Awaitable[None]]
-
-_on_interaction_complete: InteractionCompleteHook | None = None
-
-
-def bind_interaction_complete_hook(hook: InteractionCompleteHook) -> None:
-    global _on_interaction_complete
-    _on_interaction_complete = hook
-
 
 # Which side of the conversation the AI plays. A debrief is the tutor talking
 # the candidate through what happened; everything else is the patient.
@@ -202,7 +179,6 @@ async def complete_interaction(session: AsyncSession, attempt: Attempt, *, now: 
     # deploy mid-generation stranded the attempt forever.
     await enqueue_scoring(session, attempt, now=now)
     await enqueue_coverage(session, attempt)
-    # Announced after the marking is queued, in the same transaction, so
-    # whatever else this attempt is owed lands with it or not at all.
-    if _on_interaction_complete is not None:
-        await _on_interaction_complete(session, attempt)
+    # After the marking is queued, in the same transaction, so a debrief
+    # summary lands with it or not at all.
+    await tutor_jobs.on_interaction_complete(session, attempt)

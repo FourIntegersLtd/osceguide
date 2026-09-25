@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -32,8 +32,7 @@ from app.features.identity.tokens import (
 class UserRef:
     """A person, as another slice may see them.
 
-    `created_at` is here because the free-trial rule is decided by how old an
-    account is, and `attempts` was reading this slice's table to find out.
+    `created_at` is here because the free-trial rule is decided by how old an account is.
     """
 
     id: uuid.UUID
@@ -46,32 +45,16 @@ class UserRef:
     exam_code: str | None = None
 
 
-# Bound by `main.py` to `roster`, above this slice. `trainees.user_id` is how
-# a person rostered by email before they signed in gets linked once they do —
-# unfilled before, so an invited person who registered stayed unconnected.
-_on_registered: list[Callable[[AsyncSession, uuid.UUID, str], Awaitable[None]]] = []
-
-
-def bind_registration_hook(hook: Callable[[AsyncSession, uuid.UUID, str], Awaitable[None]]) -> None:
-    _on_registered.clear()
-    _on_registered.append(hook)
-
-
 async def _announce_registration(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
-    if not _on_registered:
-        raise RuntimeError(
-            "No registration hook bound. app.main.create_app must call bind_registration_hook."
-        )
-    await _on_registered[0](session, user_id, email)
+    """Link a person rostered by email before they had an account."""
+    # Imported here: `roster` imports this slice's invitations, which import this module.
+    from app.features.roster import service as roster
+
+    await roster.claim_roster_entries(session, user_id, email)
 
 
 def user_read(user: User, memberships: list[Membership]) -> UserRead:
-    """The profile, with the memberships the caller actually holds.
-
-    `memberships` was hardcoded to `[]` here while the argument was used only
-    for the active workspace, so `GET /me` contradicted its own schema, its
-    README and the generated client for every user in the product.
-    """
+    """The profile, with the memberships the caller actually holds."""
     return UserRead(
         id=user.id,
         email=user.email,
@@ -112,10 +95,8 @@ async def register(
 ) -> AuthResult:
     """Open an account, optionally saying which exam it is for.
 
-    The exam is stored as given rather than checked against the catalogue:
-    this slice sits below `catalog` and may not call it. Nothing is granted by
-    it either — it says which exam the screens should open on, and a code that
-    resolves to nothing simply leaves them with no current exam.
+    The exam code is stored as given, not checked against the catalogue, and grants nothing
+    — it only says which exam the screens should open on.
     """
     try:
         validate_password(password)
@@ -151,12 +132,9 @@ async def update_me(
 ) -> UserRead:
     """Change what is a person's own to change.
 
-    `extra_reading_percent` is an access arrangement and a person sets their
-    own, because what it affects is their own practice. It is **not** applied
-    to an institution's examination: a circuit's clock is one clock for
-    everybody on it, and extending it for one candidate would extend it for
-    the rest. Whoever grants an accommodation in an examination hall does it
-    to the circuit's timing. See `docs/port-gaps.md`.
+    `extra_reading_percent` is **not** applied to an institution's examination: a circuit's
+    clock is one clock for everybody on it. An accommodation there is granted on the
+    circuit's timing instead. See `docs/port-gaps.md`.
     """
     user = await repository.update_profile(
         session,
@@ -183,20 +161,14 @@ async def update_me(
 def may_call_with_temporary_password(route: str) -> bool:
     """Whether somebody holding a temporary password may call this operation.
 
-    Bound by `main.py` into `core.auth.get_principal`, which is where it is
-    enforced: "every route except these" is not a rule fifty routers can be
-    trusted to remember. It had no caller at all for the whole build, so a
-    provisioned user could roam the entire API.
+    Bound into `core.auth.get_principal`, which enforces it on every request. It once had no
+    caller at all, letting a provisioned user roam the entire API.
     """
     return may_call(must_change_password=True, route=route)
 
 
 async def user_ref_by_email(session: AsyncSession, email: str) -> UserRef | None:
-    """The little another slice needs to know about a person.
-
-    `tenancy` adds a membership by email and must not reach into this slice's
-    tables to resolve one; this is the service call that answers it.
-    """
+    """The little another slice needs to know about a person, by email."""
     user = await repository.user_by_email(session, email)
     return None if user is None else _ref(user)
 
@@ -218,11 +190,8 @@ def _ref(user: User) -> UserRef:
 
 
 async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, UserRef]:
-    """The people behind a set of ids, keyed by id.
-
-    For read models that show a name beside a row. They ask once for everybody
-    on the screen rather than once per row.
-    """
+    """The people behind a set of ids, keyed by id. One query for a whole screen rather than
+    one per row."""
     rows = await repository.users_by_ids(session, list(user_ids))
     return {row.id: _ref(row) for row in rows}
 

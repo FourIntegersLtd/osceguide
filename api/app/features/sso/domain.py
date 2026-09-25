@@ -1,19 +1,11 @@
 """How a browser finds out that an organisation signs in somewhere else.
 
-The retiring client answered this in the bundle:
-
-    const PARTNER_SSO_HOSTS = ["bmj.osceguide.com"];
-
-— a hostname allow-list shipped to every visitor, with the tenant slug, the
-button's wording and the "no password form here" rule beside it. Adding a
-partner meant a frontend deploy, and any of the three could disagree with what
-the backend actually did.
-
-So the rules live here and the facts live in two tables. Nothing in this module
-verifies anybody: it decides which organisation a visitor belongs to and what
-their sign-in page should say. Who checks the identity is a separate question —
-Clerk has a login behind it (`service_login`, `clerk.py`); direct OIDC to Entra
-is still open. See S-1 in `docs/OPEN-QUESTIONS.md`.
+The rules live here and the facts live in two tables, rather than a
+client-side hostname allow-list that a frontend deploy could drift out of
+sync with. Nothing in this module verifies anybody: it decides which
+organisation a visitor belongs to and what their sign-in page should say.
+Who checks the identity is separate — see `service_login`, `clerk.py` and
+`entra.py`.
 """
 
 from __future__ import annotations
@@ -24,9 +16,8 @@ from enum import StrEnum
 class Provider(StrEnum):
     """Who will vouch for the identity.
 
-    Named before one is built so a stored row says what it expects rather than
-    implying whatever the code happens to do. `clerk` is what the retiring
-    backend brokered through; `entra` is Microsoft directly.
+    Named before one is built so a stored row says what it expects rather
+    than implying whatever the code happens to do.
     """
 
     CLERK = "clerk"
@@ -36,12 +27,10 @@ class Provider(StrEnum):
 class BindingKind(StrEnum):
     """The two ways a visitor is recognised before they have signed in.
 
-    A **host** is a white-label site: everybody who arrives at it belongs to
-    that organisation, so the page can be theirs before anybody types anything.
-
-    An **email domain** is home-realm discovery on the ordinary sign-in page:
-    somebody types their address and is sent to their own institution instead
-    of being asked for a password we will refuse.
+    A **host** is a white-label site: everybody who arrives belongs to that
+    organisation. An **email domain** is home-realm discovery on the
+    ordinary sign-in page: somebody types their address and is sent to
+    their own institution instead of a password form we will refuse.
     """
 
     HOST = "host"

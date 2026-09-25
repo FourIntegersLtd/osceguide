@@ -1,10 +1,8 @@
 """Turning a recorded peer consultation into text.
 
-Behind `core.ports_models.Transcriber`, so which service listens is one
-decision in one place. b2c uses Deepgram `nova-3`; this uses the OpenAI client
-that is already declared and locked, which keeps the port closed without a new
-dependency or a second API key. Swapping in Deepgram later is a new class here
-and a different `build_transcriber`, and nothing in the slice changes.
+Behind `core.ports.Transcriber`, so which service listens is one decision in
+one place. Uses the OpenAI client that is already declared and locked, which
+keeps the port closed without a new dependency or a second API key.
 """
 
 from __future__ import annotations
@@ -14,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from app.core.ports_models import TranscriptionFailed
+from app.core.ports import TranscriptionFailed
 from app.core.settings import get_settings
 
 # A consultation is minutes of speech, and the recording is fetched whole

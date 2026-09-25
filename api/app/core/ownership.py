@@ -2,9 +2,8 @@
 
 Content the platform authors and content an institution authors live in the
 same tables, distinguished by `owner_kind` with `org_id NULL` for the platform
-half — the shape `stations` already had and every other authored table now
-shares. That makes two different questions, and confusing them is how a tenancy
-bug gets written:
+half. Two different questions, and confusing them is how a tenancy bug gets
+written:
 
 - **Who may change this?** Exactly one owner. Use :func:`owned_by`.
 - **Who may see this?** The owner, plus everyone, because the platform library
@@ -13,10 +12,6 @@ bug gets written:
 Both are needed because SQL `NULL = NULL` is null, not true: a plain
 `Model.org_id == org_id` silently matches no platform row at all, which reads
 as "the library is empty" rather than as an error.
-
-The repository guard (`tests/guards/test_org_scoped_repositories.py`) still
-requires `org_id` to be the first non-session parameter of any function that
-narrows by it, and these helpers do not change that.
 """
 
 from __future__ import annotations

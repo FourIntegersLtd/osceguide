@@ -1,9 +1,7 @@
 """The sitting report: what a course lead reads back after an examination.
 
-One request for the whole sitting, per candidate: which stations they sat,
-whether each was marked, what the reviewers agreed, and where the formal
-decision stands. The legacy backend had a cohort summary and candidate packs;
-this platform had the per-slot review list and nothing over a sitting.
+One request for the whole sitting, per candidate: which stations they sat, whether each
+was marked, what the reviewers agreed, and where the formal decision stands.
 """
 
 from __future__ import annotations

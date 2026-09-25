@@ -40,8 +40,6 @@ class UnrenderableDefinition(Exception):
     them here turns a job that dies on connect into an error at creation."""
 
 
-TERMINAL = frozenset({Status.EVALUATED, Status.FAILED})
-
 _ALLOWED: Mapping[Status, frozenset[Status]] = {
     Status.CREATED: frozenset({Status.RUNNING, Status.FAILED}),
     Status.RUNNING: frozenset({Status.INTERACTION_COMPLETE, Status.FAILED}),
@@ -50,22 +48,9 @@ _ALLOWED: Mapping[Status, frozenset[Status]] = {
     Status.FAILED: frozenset(),
 }
 
+
 # Which optional foreign key each kind requires. The table enforces the same
 # thing with a CHECK; this is what the service consults before writing.
-_REFERENCE: Mapping[Kind, str | None] = {
-    Kind.PRACTICE: None,
-    Kind.SELF_PRACTICE: None,
-    Kind.SET_STATION: "set_entry_id",
-    Kind.DEBRIEF: "source_attempt_id",
-    Kind.EXAM_SLOT: "slot_id",
-    Kind.PEER: "peer_session_id",
-}
-
-
-def is_terminal(status: Status) -> bool:
-    return status in TERMINAL
-
-
 def transition(current: Status, target: Status) -> Status:
     if target not in _ALLOWED[current]:
         raise InvalidTransition(f"An attempt cannot go from {current} to {target}.")
@@ -96,10 +81,6 @@ ABANDONABLE = frozenset({Status.CREATED, Status.RUNNING})
 def ensure_abandonable(current: Status) -> None:
     if current not in ABANDONABLE:
         raise InvalidTransition(f"An attempt that is {current} cannot be abandoned.")
-
-
-def required_reference(kind: Kind) -> str | None:
-    return _REFERENCE[kind]
 
 
 def should_freeze(*, render_degraded: bool, already_frozen: bool) -> bool:

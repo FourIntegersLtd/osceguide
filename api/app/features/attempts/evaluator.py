@@ -150,11 +150,8 @@ class EngineEvaluator:
 class FrozenFrameworkProvider:
     """Serves exactly one framework: the one frozen onto the attempt.
 
-    The engine used to be handed `CatalogFrameworkProvider`, which resolved a
-    framework id against the four the package shipped — so an authored rubric
-    could not be marked at all. This resolves nothing: the rubric arrived with
-    the attempt, and an id that is not it is a bug worth hearing about rather
-    than a lookup worth attempting.
+    This resolves nothing: the rubric arrived with the attempt, and an id that is not it is a bug
+    worth hearing about rather than a lookup worth attempting.
     """
 
     def __init__(self, framework: dict[str, Any]) -> None:

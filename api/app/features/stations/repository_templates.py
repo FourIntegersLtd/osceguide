@@ -1,10 +1,9 @@
 """Storage for station templates: the shapes a station may be written to.
 
-Split from `repository.py` along the aggregate. Every function takes `org_id`
-first, and `None` means the platform's own. Which ownership predicate each uses
-is the tenancy decision: `owned_by` for a write, `visible_to` for a read that
-should also see the platform's templates — an institution may write a station
-against a platform template, and often should.
+Every function takes `org_id` first, and `None` means the platform's own. Which ownership predicate
+each uses is the tenancy decision: `owned_by` for a write, `visible_to` for a read that should also
+see the platform's templates — an institution may write a station against a platform template, and
+often should.
 """
 
 from __future__ import annotations

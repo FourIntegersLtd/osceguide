@@ -45,11 +45,7 @@ async def require(
     now: datetime,
     trial: domain.TrialState | None = None,
 ) -> domain.Decision:
-    """Assert access, or refuse the request.
-
-    Every attempt-creating path calls this. Nothing else reads a `has_paid`
-    flag, which is how b2c ended up with four of them per person.
-    """
+    """Assert access, or refuse the request. Every attempt-creating path calls this."""
     decision = await decide(session, user_id=user_id, exam_id=exam_id, now=now, trial=trial)
     if not decision.allowed:
         raise NotEntitled(details={"reason": decision.reason})

@@ -18,11 +18,8 @@ MAX_BODY = 5_000
 class MessageKind(StrEnum):
     """Why somebody wrote.
 
-    Separate kinds rather than one "message" because they are read by different
-    people: a contact message wants answering, and product feedback wants
-    collating. The retiring client had a `/messages` route for the first and a
-    landing section for the second, and neither reached a backend that kept
-    them apart.
+    Separate kinds rather than one "message" because they are read by different people: a contact
+    message wants answering, and product feedback wants collating.
     """
 
     CONTACT = "contact"

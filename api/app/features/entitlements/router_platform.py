@@ -33,9 +33,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def list_user_entitlements_for_support(
     user_id: uuid.UUID, admin: PlatformAdmin, session: Session, clock: ClockDep
 ) -> Page[schemas.PlatformEntitlementRead]:
-    """Every grant this person has held — purchase, institution, trial, admin —
-    with `live` computed now and revoked ones kept, because "your access ended
-    on the 3rd" is the answer support is usually looking for."""
+    """Every grant this person has held — purchase, institution, trial, admin — with `live`
+    computed now and revoked ones kept."""
     _ = admin
     items = await service_platform.list_for_user(session, user_id, now=clock.now())
     return Page(items=items, next_cursor=None)
@@ -54,11 +53,8 @@ async def grant_entitlement_for_support(
     session: Session,
     clock: ClockDep,
 ) -> schemas.PlatformEntitlementRead:
-    """Grant access outright, source `admin`, with the reason in the audit log.
-
-    For the payment that was taken under another address, the sponsor's seat,
-    the goodwill month. Not for a purchase that failed to apply: replay that.
-    """
+    """Grant access outright, source `admin`, with the reason in the audit log. Not for a
+    purchase that failed to apply: replay that instead."""
     return await service_platform.grant(
         session,
         user_id,

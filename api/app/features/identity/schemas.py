@@ -38,9 +38,8 @@ class UserRead(BaseModel):
     exam_date: date | None = None
     extra_reading_percent: int = 0
     # Which exam this account is for, chosen at sign-up. A preference, not a
-    # grant: what somebody may open is decided by their entitlements, and this
-    # is not resolved against the catalogue here because `identity` sits below
-    # it. `GET /me/dashboard` is what turns it into an exam somebody can use.
+    # grant: what somebody may open is decided by their entitlements, not this
+    # field. `GET /me/dashboard` is what turns it into an exam somebody can use.
     exam_code: str | None = None
     ai_training_consent: bool = False
     colleague_waiting_email: bool = False

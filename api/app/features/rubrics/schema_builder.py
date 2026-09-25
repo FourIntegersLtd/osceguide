@@ -1,9 +1,7 @@
 """Turning an authored rubric into the JSON Schema a marker is asked to fill.
 
-The derivation is the point of the whole slice: the descriptors an author typed
-become the property descriptions the model reads, so the rubric and the thing
-the model is constrained by cannot drift apart. They used to be two files —
-a Python constant and a hand-written schema — kept in step by hand.
+The derivation is the point: the descriptors an author typed become the property descriptions the
+model reads, so the rubric and the thing the model is constrained by cannot drift apart.
 """
 
 from __future__ import annotations

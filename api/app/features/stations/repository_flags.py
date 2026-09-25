@@ -1,9 +1,7 @@
-"""Storage for station reports.
+"""Storage for the queue of reports readers have filed against stations.
 
-Split from `repository.py` by concern: that file answers about stations and
-their versions, and this one about the queue of things readers have said is
-wrong with them. The queue has its own filters (open or resolved) and its own
-sort (oldest first, because the oldest report is the one that has waited).
+The queue has its own filters (open or resolved) and its own sort (oldest first, because the oldest
+report is the one that has waited).
 """
 
 from __future__ import annotations
@@ -42,9 +40,8 @@ async def by_id(session: AsyncSession, flag_id: uuid.UUID) -> StationFlag | None
 async def for_reporter(session: AsyncSession, user_id: uuid.UUID) -> list[tuple[StationFlag, str | None]]:
     """Everything this person has reported, with the station's title.
 
-    The retiring client resolved those titles in the browser by downloading
-    every station it could list and matching on id, so a report on a station
-    that was not on the current page read "Unknown Station".
+    Joined here rather than resolved client-side, so a report on a station that is not on the
+    caller's current page still shows a real title instead of "Unknown Station".
     """
     stmt = (
         select(StationFlag, Station.title)

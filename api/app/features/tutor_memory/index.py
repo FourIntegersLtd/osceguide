@@ -1,15 +1,10 @@
 """The adapter behind `core.ports.MaterialIndex`: pgvector, or nothing at all.
 
-pgvector rather than Pinecone (ADR 0019). The material is already in Postgres,
-the corpus is thousands of passages, and an index in the same transaction as
-the rows it describes cannot drift from them — which a second datastore, with
-its own outage and its own bill, can and in b2c did.
+pgvector rather than a separate vector store. See ADR 0019.
 
-`NoMaterialIndex` is the other half of the decision and not a stub. A
-deployment with no embedding key has no index, and the tutor must then say it
-cannot look something up rather than answer from memory and sound just as
-certain. Returning nothing is what makes that happen, and it is why the port's
-`search` promises an ordering rather than an answer.
+`NoMaterialIndex` is the other half of the decision, not a stub: a deployment with no
+embedding key has no index, and the tutor must say it cannot look something up rather than
+answer from memory and sound just as certain.
 """
 
 from __future__ import annotations
@@ -31,10 +26,8 @@ log = get_logger(__name__)
 class PgVectorMaterialIndex:
     """Passages in Postgres, retrieved by cosine distance.
 
-    Holds the session it was built with. The index is written inside the job's
-    transaction and read inside the request's, so that a re-index that fails
-    half way leaves no half-indexed document behind — which is the whole
-    argument for keeping it in the same database.
+    Holds the session it was built with, so a re-index that fails half way leaves no
+    half-indexed document behind.
     """
 
     def __init__(self, session: AsyncSession, embedder: Embedder) -> None:
@@ -136,15 +129,10 @@ class NoMaterialIndex:
 def build_material_index(session: AsyncSession) -> MaterialIndex | None:
     """The real index, or `None` where there is no key to embed with.
 
-    `None` rather than `NoMaterialIndex` because the caller has to be able to
-    tell the two apart, and an empty result cannot. "I could not look that up"
-    and "I looked and the material does not say" are different claims, and the
-    tutor speaks them aloud with equal confidence — so an unconfigured
-    deployment answering the second would have it stating, in a clinical
-    conversation, that the reading does not cover something it never read.
-
-    `NoMaterialIndex` is still the right answer for a re-index, where doing
-    nothing quietly is exactly what an unconfigured deployment should do.
+    `None` rather than `NoMaterialIndex`: the caller must tell "I could not look that up"
+    apart from "I looked and the material does not say", which an empty result cannot do.
+    `NoMaterialIndex` is still the right answer for a re-index, where doing nothing quietly
+    is correct.
     """
     if not get_settings().openai_api_key:
         return None

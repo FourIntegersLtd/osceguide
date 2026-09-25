@@ -36,12 +36,8 @@ async def voice_grant(
 
     The pairing is the permission: both the doctor and the patient join the
     same room and both may speak, so there is no observer shape here. A
-    stranger gets `practice_session_not_found` rather than a refusal, because
-    whether a session exists is not something to confirm to somebody who is
-    not in it.
-
-    The room was named when the pair was matched and nothing could mint a
-    token for it, so the session existed and could never be held.
+    stranger gets `practice_session_not_found` rather than a refusal, since
+    whether a session exists is not something to confirm to somebody not in it.
     """
     row = await repository_sessions.session_by_id(session, session_id)
     if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:

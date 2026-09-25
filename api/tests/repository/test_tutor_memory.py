@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository as identity_repo
 from app.features.tutor_memory import repository
+from app.features.tutor_memory.models import TutorNote
 from tests.support.catalog import ensure_exam
 
 pytestmark = pytest.mark.db
@@ -35,7 +36,7 @@ async def test_a_delete_cannot_reach_somebody_elses_note(db_session: AsyncSessio
     )
 
     assert await repository.delete_note(db_session, theirs, note.id) == 0
-    assert await repository.note_by_id(db_session, note.id) is not None
+    assert await db_session.get(TutorNote, note.id) is not None
 
 
 async def test_forgetting_everything_leaves_other_people_alone(db_session: AsyncSession) -> None:

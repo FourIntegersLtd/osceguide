@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.core.errors import NotFound
-from app.features.assistant.schemas_help import HelpArticle, HelpCategory
+from app.features.assistant.schemas import HelpArticle, HelpCategory
 
 
 @lru_cache(maxsize=1)

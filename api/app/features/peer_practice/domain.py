@@ -3,8 +3,6 @@
 Somebody plays the doctor and somebody plays the patient. The rules are about
 fairness: nobody should take the same part twice running, and the person with
 less experience gets the doctor's part, which is the one worth practising.
-
-Ported from `b2c human_practice_service.assign_roles`.
 """
 
 from __future__ import annotations
@@ -40,11 +38,7 @@ class Pair:
 
 
 def assign_roles(first: Waiting, second: Waiting) -> Pair:
-    """Who plays which part.
-
-    The order of these rules is the order b2c applies them, and each exists for
-    a reason worth keeping.
-    """
+    """Who plays which part, applying the fairness rules in order."""
     if first.user_id == second.user_id:
         raise CannotPair("Somebody cannot practise with themselves.")
 

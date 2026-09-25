@@ -1,15 +1,12 @@
 """Signing in, staying signed in, and signing out.
 
-Split from `service.py` along the story: that module is about the account,
-this one about the session proving you hold it. Every rule that makes a
-session safe — reuse detection, rotation, the suspended account, which
-workspace a token lands in — lives here.
+Every rule that makes a session safe — reuse detection, rotation, the suspended account,
+which workspace a token lands in — lives here.
 """
 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,14 +34,13 @@ from app.features.identity.tokens import (
     verify_absent_password,
     verify_password,
 )
+from app.features.tenancy import service as tenancy
 
 
 def _principal_for(user: User, *, memberships: list[Membership]) -> Principal:
     """The token's view of a person.
 
-    The landing workspace comes from `tenancy.domain.pick_default_workspace`,
-    the rule written for it — three copies of `memberships[0]` used to decide
-    this, and the rule itself had no caller.
+    The landing workspace comes from `tenancy.domain.pick_default_workspace`.
     """
     return Principal(
         user_id=user.id,
@@ -56,22 +52,8 @@ def _principal_for(user: User, *, memberships: list[Membership]) -> Principal:
     )
 
 
-# Bound by `main.py` to `tenancy.domain`, which owns the rule. `identity` sits
-# below `tenancy`, so the two meet at a seam rather than through an import.
-_default_workspace: list[Callable[[list[Membership]], str | None]] = []
-
-
-def bind_default_workspace(pick: Callable[[list[Membership]], str | None]) -> None:
-    _default_workspace.clear()
-    _default_workspace.append(pick)
-
-
 def default_workspace_slug(memberships: list[Membership]) -> str | None:
-    if not _default_workspace:
-        raise RuntimeError(
-            "No default-workspace rule bound. app.main.create_app must call bind_default_workspace."
-        )
-    return _default_workspace[0](memberships)
+    return tenancy.default_workspace_for(memberships)
 
 
 async def issue(
@@ -214,9 +196,7 @@ async def logout(
 async def mint_stream_ticket(principal: Principal, *, settings: Settings, now: datetime) -> StreamTicket:
     """One `EventSource` connection's worth of credential.
 
-    Issued here because this module already owns what a token says about a
-    person; `core.streams` owns the shape, and the two meet at the same seam
-    every other token does.
+    Issued here because this module already owns what a token says about a person.
     """
     return StreamTicket(
         ticket=issue_stream_ticket(principal, settings=settings, now=now),

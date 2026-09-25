@@ -1,13 +1,12 @@
 """What a watching human should be told, as stable codes.
 
-Separate from `domain_run`, which decides what a circuit does next. This
-decides what somebody standing at the front of an examination hall needs to
-notice, and the two change for different reasons: a new step is a change to how
-an examination runs, a new alert is a change to how it is supervised.
+Distinct from `domain_run`, which decides what a circuit does next: this
+decides what somebody supervising an exam needs to notice, and the two change
+for different reasons — a new step changes how the exam runs, a new alert
+changes how it is supervised.
 
-Codes rather than sentences: the board decides how to say it, and a client that
-matched on English is how the legacy runner decided whether a consultation had
-ended.
+Codes rather than sentences, so a client never has to match on English to
+decide whether a consultation has ended.
 """
 
 from __future__ import annotations
@@ -39,12 +38,7 @@ def alerts_for(
     now: datetime,
     grace_seconds: int = ALERT_GRACE_SECONDS,
 ) -> list[str]:
-    """What is wrong with this circuit right now, as stable codes.
-
-    Codes rather than sentences: the board decides how to say it, and a client
-    that matched on English is how the legacy runner decided whether a
-    consultation had ended.
-    """
+    """What is wrong with this circuit right now, as stable codes."""
     if paused_at is not None:
         # Nothing is overdue and no patient is expected while the clock is
         # deliberately stopped.

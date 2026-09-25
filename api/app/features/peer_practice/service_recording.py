@@ -1,18 +1,13 @@
 """Recording a peer consultation, and queueing what becomes of it.
 
-Two people practising have no agent in the room, so nothing is keeping a
-transcript the way an attempt's patient worker does. The recording is the only
-record there will ever be, and the marking is built from it afterwards — which
-is why the whole of P-1 hangs off these two moments.
-
-Both are driven by the phase machine rather than by a route. b2c's client
-called `start-egress` and `consultation-ended` itself; here the server already
-owns the clock, so a client that never called them, or called them twice,
-cannot decide whether somebody's practice is marked.
+Two people practising have no agent in the room keeping a transcript, so the
+recording is the only record there will ever be. Start and stop are driven by
+the phase machine rather than by a route: the server owns the clock, so no
+client can decide — by never calling, or calling twice — whether somebody's
+practice gets marked.
 
 **A failed recording never fails a session.** Every path here swallows what it
-cannot do, records why on the row, and lets the consultation carry on. The
-practice is worth more than the recording of it.
+cannot do, records why on the row, and lets the consultation carry on.
 """
 
 from __future__ import annotations
@@ -109,6 +104,6 @@ def _recorder() -> RoomRecorder:
     from a job as well as from a route, so there is no one place a dependency
     could be wired. A test passes its own `recorder` instead.
     """
-    from app.features.voice import service_recording as voice  # noqa: PLC0415
+    from app.features.voice import service as voice
 
     return voice.get_room_recorder()

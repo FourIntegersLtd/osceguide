@@ -6,11 +6,10 @@ transcript complete. Either both happen or neither does. Jobs survive deploys
 and Redis restarts, and the queue is visible with plain SQL.
 
 Each slice with background work declares its tasks inside a `register()`
-function in its own `jobs.py`, so importing the module for its logic (which the
-tests do) needs no configured queue. `get_jobs_app` builds the app and then
-calls every slice's `register()`. That call is the whole mechanism: for a while
-nothing made it, the worker started with an empty task set, and every job test
-stayed green because each called the task's body directly.
+function in its own `jobs.py`, so importing the module for its logic (which
+the tests do) needs no configured queue. `get_jobs_app` calls every slice's
+`register()` — a slice once left out of that call ran with an empty task set
+while its tests, calling the task body directly, stayed green.
 """
 
 from __future__ import annotations
@@ -97,29 +96,22 @@ async def defer_in_transaction(
 ) -> None:
     """Write a queue row in the caller's transaction.
 
-    Deliberately not procrastinate's `defer_async`: its connector holds its own
-    pool, so deferring through it commits the job on a different connection, and
-    the guarantee in ADR 0006 — that a job and the data justifying it land
-    together — quietly would not hold. A transcript could roll back while the
-    marking it justified was already queued.
+    Deliberately not procrastinate's `defer_async`: its connector holds its
+    own pool, so deferring through it would commit the job on a different
+    connection than the data justifying it, breaking the ADR 0006 guarantee
+    that the two land together. Calling procrastinate's own SQL function on
+    our session keeps it to one transaction, at the cost of naming the queue
+    and task here rather than through the task object.
 
-    Calling procrastinate's own SQL function on our session keeps it to one
-    transaction, at the cost of naming the queue and the task here rather than
-    through the task object.
-
-    - `queueing_lock` makes a redelivered message idempotent: a second row with
-      the same lock is refused while the first is still waiting.
-    - `lock` serialises *execution* instead: jobs sharing one are run one at a
+    - `queueing_lock` makes a redelivered message idempotent: a second row
+      with the same lock is refused while the first is still waiting.
+    - `lock` serialises *execution* instead: jobs sharing one run one at a
       time, which is how a circuit's transitions cannot overlap.
     - `scheduled_at` is how the circuit runs itself — a transition written now
       and owed at the moment the phase is due to end.
 
-    This lives in core rather than in a slice because every slice defers the
-    same way, and the one that had it first had the SQL in its repository where
-    nobody else could reach it.
-
     When `ignore_lock_conflict` is true, a duplicate queueing-lock is caught
-    inside a savepoint so the surrounding transaction survives. This is for
+    inside a savepoint so the surrounding transaction survives — for
     fire-and-forget nudges where a second caller arriving while the first job
     is still queued should silently no-op rather than 500.
     """

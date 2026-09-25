@@ -10,7 +10,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.features.attempts import errors, schemas, service_debrief, service_roleplay
+from app.features.attempts import errors, schemas, service_debrief, service_material
 from app.features.attempts.schemas import PatientRoleplayRead
 
 router = APIRouter()
@@ -31,7 +31,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def read_roleplay(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> PatientRoleplayRead:
-    return await service_roleplay.read_roleplay(session, attempt_id, requester_id=principal.user_id)
+    return await service_material.read_roleplay(session, attempt_id, requester_id=principal.user_id)
 
 
 @router.post(

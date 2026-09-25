@@ -26,15 +26,11 @@ from app.features.tutor_memory.vector_column import Vector
 
 
 class LearningEvent(Base, UUIDPrimaryKey):
-    """One thing this person read, practised or listened to.
+    """One thing this person read, practised or listened to. Written by the browser as it
+    happens, since a summary opened in the app leaves no other trace.
 
-    Written by the browser as it happens rather than derived from anything: a
-    summary opened in the app leaves no other trace, and the tutor asking "how
-    did the anxiety summary go?" is the whole point of collecting them.
-
-    `ref_id` is a string rather than a foreign key because the six kinds live
-    in three slices and one of them is not a row at all; the resolver that
-    turns a ref into something on screen is the frontend's.
+    `ref_id` is a string rather than a foreign key: the six kinds live in three slices and
+    one of them is not a row at all.
     """
 
     __tablename__ = "learning_events"
@@ -69,9 +65,7 @@ class LearningEvent(Base, UUIDPrimaryKey):
 class TutorNote(Base, UUIDPrimaryKey):
     """Something the tutor wrote down: how a conversation ended, or a fact told to it.
 
-    Two kinds in one table because they are read together and forgotten
-    together — "what do you know about me" is one list, and deleting it is one
-    delete.
+    Two kinds in one table because they are read together and forgotten together.
     """
 
     __tablename__ = "tutor_notes"
@@ -98,9 +92,8 @@ class TutorNote(Base, UUIDPrimaryKey):
 class DebriefSummary(Base, UUIDPrimaryKey):
     """What a debrief concluded, and what was agreed to do about it.
 
-    One per attempt, enforced by the unique constraint rather than by the job
-    checking first: the queue may deliver a job twice, and two summaries of one
-    debrief would have the tutor agreeing two different plans.
+    One per attempt, enforced by the unique constraint rather than by the job checking
+    first, since the queue may deliver a job twice.
     """
 
     __tablename__ = "debrief_summaries"
@@ -128,16 +121,12 @@ class DebriefSummary(Base, UUIDPrimaryKey):
 class MaterialChunk(Base, UUIDPrimaryKey):
     """One passage of study material, and the vector it is retrieved by.
 
-    Not owned by `stations` or `media`, though the text comes from both. This
-    is a derived index rebuilt by a job, and a table that can be dropped and
-    regenerated does not belong to the slice that owns the source of truth —
-    it belongs to the reader that needs it, which is the tutor.
+    A derived index rebuilt by a job, not owned by `stations` or `media` even though the
+    text comes from both.
 
-    `source_id` is a string for the same reason `learning_events.ref_id` is:
-    the corpora live in different slices, and a foreign key per corpus would
-    make adding a third one a schema change. The re-index deletes stale rows,
-    so a deleted source's passages go on its next run rather than by cascade —
-    which is the honest cost of not having the key.
+    `source_id` is a string, not a foreign key: the corpora live in different slices, and a
+    foreign key per corpus would make adding a third one a schema change. A deleted source's
+    passages are cleared on the re-index's next run rather than by cascade.
     """
 
     __tablename__ = "material_chunks"

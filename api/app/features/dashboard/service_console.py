@@ -1,12 +1,8 @@
 """The supervisor's console: one request for the screen an examination is run from.
 
-Split from `service_org.py` at the file cap, along the line that was already
-there: the organisation's own screens change when an admin needs a different
-number, and this changes when running an examination works differently.
-
-It is assembled from six slices here so it is assembled once, rather than by a
-browser making a request per slot for the station title, a request per slot for
-whether it has been marked, and the whole thing again every eight seconds.
+Assembled from six slices here so it is assembled once, rather than by a browser making a
+request per slot for the station title, a request per slot for whether it has been marked,
+and the whole thing again every eight seconds.
 """
 
 from __future__ import annotations

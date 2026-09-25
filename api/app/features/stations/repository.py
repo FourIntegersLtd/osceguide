@@ -9,6 +9,7 @@ library. See `app.core.ownership`.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
@@ -157,16 +158,6 @@ async def list_for_org(
     return await _station_page(session, stmt, limit=limit, cursor=cursor)
 
 
-async def versions_by_ids(
-    session: AsyncSession, version_ids: list[uuid.UUID]
-) -> dict[uuid.UUID, StationVersion]:
-    if not version_ids:
-        return {}
-    stmt = select(StationVersion).where(StationVersion.id.in_(version_ids))
-    rows = (await session.execute(stmt)).scalars().all()
-    return {row.id: row for row in rows}
-
-
 async def _station_page(
     session: AsyncSession, stmt: Select[Any], *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[Station], str | None]:
@@ -232,3 +223,36 @@ async def delete_version(session: AsyncSession, org_id: uuid.UUID | None, versio
     await session.execute(
         delete(StationVersion).where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
     )
+
+
+# --- Reads across every owner, for the staff who work on one station by id.
+
+
+async def station_with_versions(
+    session: AsyncSession, station_id: uuid.UUID
+) -> tuple[Station, list[StationVersion]] | None:
+    station = (await session.execute(select(Station).where(Station.id == station_id))).scalar_one_or_none()
+    if station is None:
+        return None
+    versions = (
+        await session.execute(
+            select(StationVersion)
+            .where(StationVersion.station_id == station_id)
+            .order_by(StationVersion.version)
+        )
+    ).scalars()
+    return station, list(versions)
+
+
+async def versions_with_stations_any_owner(
+    session: AsyncSession, version_ids: Collection[uuid.UUID]
+) -> list[tuple[StationVersion, Station]]:
+    """Several versions and their stations, whoever owns them."""
+    if not version_ids:
+        return []
+    stmt = (
+        select(StationVersion, Station)
+        .join(Station, Station.id == StationVersion.station_id)
+        .where(StationVersion.id.in_(list(version_ids)))
+    )
+    return [(v, s) for v, s in (await session.execute(stmt)).all()]

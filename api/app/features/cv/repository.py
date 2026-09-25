@@ -35,11 +35,7 @@ async def get(session: AsyncSession, cv_id: uuid.UUID) -> Cv | None:
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: int) -> Sequence[Cv]:
-    """A person's own CVs, most recent first.
-
-    `created_at` is the upload time; ordering by it and cutting at `limit` is
-    what the retiring backend did in Python after fetching all of them.
-    """
+    """A person's own CVs, most recent first, by upload time (`created_at`)."""
     stmt = select(Cv).where(Cv.user_id == user_id).order_by(Cv.created_at.desc()).limit(limit)
     return (await session.execute(stmt)).scalars().all()
 

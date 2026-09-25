@@ -1,9 +1,8 @@
 """The bell, as background work.
 
 Two tasks. `advance_circuit` is the bell itself: one job per phase, scheduled
-for the moment that phase ends, carrying the sequence it was scheduled against.
-`sweep_circuits` is the safety net — and the reaper the slice README has
-promised since it was written.
+for the moment that phase ends, carrying the sequence it was scheduled
+against. `sweep_circuits` is the safety net.
 
 The sweeper is not the mechanism. If it were, every transition would be up to a
 minute late. It exists for the cases the scheduled job cannot cover: the job

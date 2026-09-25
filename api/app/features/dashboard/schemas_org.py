@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 
 class OrgCounts(BaseModel):
-    """What the setup checklist counts. Four legacy calls existed to produce these."""
+    """What the setup checklist counts."""
 
     trainees: int
     stations: int

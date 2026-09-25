@@ -1,7 +1,6 @@
 """Minting and hashing the secrets identity hands out.
 
-Separated from `service.py` so the use cases read as use cases. Nothing here
-touches the database; it is the cryptographic plumbing the service composes.
+Nothing here touches the database; it is the cryptographic plumbing the service composes.
 """
 
 from __future__ import annotations

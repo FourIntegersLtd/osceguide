@@ -10,7 +10,6 @@ __all__ = [
     "SessionNotJoinable",
     "SessionNotReady",
     "SessionNotYours",
-    "ToolsNotAvailable",
     "UnknownAssistantTypeError",
     "VoiceUnavailable",
 ]
@@ -39,8 +38,3 @@ class SessionNotReady(Conflict):
 class SessionNotYours(Forbidden):
     code = "assistant_session_not_yours"
     default_message = "That assistant session belongs to somebody else"
-
-
-class ToolsNotAvailable(Conflict):
-    code = "assistant_tools_not_available"
-    default_message = "This deployment defines no tools for an assistant session"

@@ -1,8 +1,7 @@
 """Rules for community posts.
 
-Worth stating plainly because the legacy routes have none: in b2c,
-`add_comment`, `delete_comment` and every `community/*` route carries no auth
-decorator at all, so anyone who can reach the API can delete anyone's post.
+Worth stating plainly: the legacy `community/*` routes carried no auth decorator at all, so anyone
+who could reach the API could delete anyone's post.
 """
 
 from __future__ import annotations
@@ -11,10 +10,8 @@ from collections.abc import Iterable
 
 MAX_CONTENT = 10_000
 
-# The legacy client picked tags off a fixed chip list of medical specialties,
-# so a handful of short lowercase keys is the shape this is designed for. The
-# limits are here rather than in the client because the legacy route stored
-# whatever arrived, unvalidated.
+# A handful of short lowercase keys, matching a fixed chip list of medical
+# specialties. Validated here rather than trusted from the client.
 MAX_TAGS = 5
 MAX_TAG_LENGTH = 32
 
@@ -51,9 +48,7 @@ def clean(raw: str) -> str:
 def normalize_tag(raw: str) -> str:
     """One tag, the way it is stored and matched.
 
-    Trimmed and lowercased: the legacy client's tags were lowercase specialty
-    keys, and a filter that matched "Cardiology" but not "cardiology" would
-    read as a bug to everybody using it.
+    Trimmed and lowercased, so a filter that matches "cardiology" also matches "Cardiology".
     """
     return (raw or "").strip().lower()
 
@@ -91,13 +86,10 @@ def ensure_postable(raw: str) -> None:
 def ensure_removable(
     *, author_id: str, actor_id: str, actor_is_admin: bool, actor_moderates_audience: bool = False
 ) -> None:
-    """Your own, anyone's if you moderate the platform, or anyone's inside an
-    institution you administer.
+    """Your own, anyone's if you moderate the platform, or anyone's inside an institution you administer.
 
-    Three separate permissions rather than one: an author deleting their own
-    post, a platform moderator removing someone else's, and an institution
-    keeping order in its own room are different acts, and conflating them is
-    how the legacy routes ended up with none of them.
+    Three separate permissions rather than one: an author deleting their own post, a platform
+    moderator removing someone else's, and an institution keeping order in its own room.
     """
     if actor_is_admin or actor_moderates_audience or author_id == actor_id:
         return

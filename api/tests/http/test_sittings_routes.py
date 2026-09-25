@@ -76,11 +76,27 @@ async def a_template_version(client: AsyncClient, admin: str, slug: str = "kings
     return await a_programme(client, admin, slug=slug)
 
 
-async def a_trainee(db_session: AsyncSession, email: str) -> uuid.UUID:
+async def a_trainee(db_session: AsyncSession, email: str, *, org_slug: str = "kings") -> uuid.UUID:
+    """A signed-in person the organisation has rostered, and their `users.id`.
+
+    SEC-014: a circuit may only examine people on the org's roster, which is
+    what the real flow does — an admin adds a trainee (linking a `users.id`)
+    before scheduling them. This mirrors that: it creates the account *and* the
+    linked roster row, so the returned id is one `ensure_rosterable` accepts.
+    """
     from app.features.identity import repository as identity_repo
+    from app.features.roster import repository as roster_repo
+    from app.features.tenancy import repository as tenancy_repo
 
     user = await identity_repo.create_user(session=db_session, email=email, name=email, password_hash=None)
     await db_session.flush()
+    org = await tenancy_repo.organization_by_slug(db_session, org_slug)
+    if org is not None:
+        trainee = await roster_repo.create_trainee(
+            db_session, org.id, email=email, first_name=None, last_name=None, cohort_id=None
+        )
+        await roster_repo.link_trainee_to_user(db_session, org.id, trainee.id, user_id=user.id)
+        await db_session.flush()
     return user.id
 
 
@@ -587,13 +603,15 @@ async def test_a_revoked_trainee_cannot_be_put_on_a_circuit(
     ).json()
     station = await published_station(client, admin, "kings", "S1")
 
+    # `a_trainee` rosters and links the account (SEC-014); look the roster row
+    # up to revoke its access, rather than re-adding it.
+    from app.features.roster import repository as roster_repo
+
     user_id = await a_trainee(db_session, "revoked@example.com")
-    rostered = await client.post(
-        "/api/v1/orgs/kings/trainees", json={"email": "revoked@example.com"}, headers=bearer(admin)
-    )
-    assert rostered.json()["user_id"] == str(user_id)
+    trainee_row = await roster_repo.trainee_by_email(db_session, org_id, "revoked@example.com")
+    assert trainee_row is not None and trainee_row.user_id == user_id
     revoked = await client.post(
-        f"/api/v1/orgs/kings/trainees/{rostered.json()['id']}/access",
+        f"/api/v1/orgs/kings/trainees/{trainee_row.id}/access",
         json={"revoked": True},
         headers=bearer(admin),
     )
@@ -608,10 +626,16 @@ async def test_a_revoked_trainee_cannot_be_put_on_a_circuit(
     assert response.json()["code"] == "trainee_revoked"
 
 
-async def test_somebody_not_on_the_roster_at_all_is_still_examinable(
+async def test_somebody_not_on_the_roster_at_all_cannot_be_examined(
     client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
 ) -> None:  # type: ignore[no-untyped-def]
-    """A slot names a user; an organisation may examine somebody it has not rostered."""
+    """SEC-014: a circuit slot names a `users.id`, and it used to accept any id
+    in the system — an admin could enrol an account that had never been invited
+    to their organisation. Now the id must belong to somebody on this org's
+    roster; an unrostered account is refused. To examine an external candidate,
+    roster them first."""
+    from app.features.identity import repository as identity_repo
+
     org_id, admin = await org_with_admin(client, make_actor)
     template_version = await a_template_version(client, admin)
     sitting = (
@@ -623,16 +647,24 @@ async def test_somebody_not_on_the_roster_at_all_is_still_examinable(
     ).json()
     station = await published_station(client, admin, "kings", "S1")
 
+    # A real account, but one nobody rostered here — the arbitrary id the
+    # finding is about.
+    stranger = await identity_repo.create_user(
+        session=db_session, email="stranger@example.com", name="Stranger", password_hash=None
+    )
+    await db_session.flush()
+
     response = await client.post(
         f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
         json={
             "name": "C",
-            "trainee_ids": [str(await a_trainee(db_session, "unrostered@example.com"))],
+            "trainee_ids": [str(stranger.id)],
             "station_version_ids": [station],
         },
         headers=bearer(admin),
     )
-    assert response.status_code == 201, response.text
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "trainee_not_on_roster"
 
 
 async def a_circuit_to_edit(client: AsyncClient, make_actor, db_session: AsyncSession):  # type: ignore[no-untyped-def]

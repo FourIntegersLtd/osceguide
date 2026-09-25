@@ -37,7 +37,7 @@ REINDEX_CRON = "17 3 * * *"
 
 
 async def on_transcript(session: AsyncSession, session_id: uuid.UUID, session_type: str) -> bool:
-    """The seam `assistant` calls when a transcript arrives. Returns whether to keep it.
+    """What `assistant` calls when a transcript arrives. Returns whether to keep it.
 
     A dashboard session is kept *and* queued for summarising: the turns are the
     only record until the note exists, so they are stored first and deleted by
@@ -58,7 +58,7 @@ async def on_transcript(session: AsyncSession, session_id: uuid.UUID, session_ty
 
 
 async def on_interaction_complete(session: AsyncSession, attempt: Any) -> None:
-    """The seam `attempts` calls once a transcript is complete and marking is queued."""
+    """What `attempts` calls once a transcript is complete and marking is queued."""
     if not domain.should_summarise_attempt(kind=str(attempt.kind), complete=True):
         return
     await defer_in_transaction(

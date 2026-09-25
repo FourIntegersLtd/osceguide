@@ -1,14 +1,10 @@
 """Starting a payment: the Stripe adapter behind `core.ports.CheckoutSessions`.
 
-Over `httpx` against Stripe's form-encoded REST API rather than through the
-`stripe` package. One call, five parameters, a dependency this backend
-already has — against a library whose surface is mostly the parts of Stripe
-we do not use, and which the webhook side deliberately does without too
-(`billing/signature.py` verifies by hand so it is testable with no account).
+Over `httpx` against Stripe's form-encoded REST API rather than the `stripe` package — one
+call, five parameters, no new dependency.
 
-`mode=payment`, never a subscription. These are fixed-term purchases and the
-entitlement model says so: a grant has an end date, and Stripe managing
-renewals would make it the authority on access instead.
+`mode=payment`, never a subscription: these are fixed-term purchases and a grant has an end
+date, so Stripe managing renewals would make it the authority on access instead.
 """
 
 from __future__ import annotations
@@ -48,6 +44,12 @@ class StripeCheckout:
             # Ties the completed webhook back to the person who started it,
             # without trusting anything the browser sends back.
             "client_reference_id": client_reference,
+            # SEC-017: the completed-checkout webhook resolves the plan from
+            # `metadata.price_id` (see billing/service.py::_price_id). Without
+            # this, a real webhook arrives with no price and every genuine
+            # payment is refused as InvalidWebhook. Stripe echoes metadata back
+            # on the session object verbatim.
+            "metadata[price_id]": price_id,
         }
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
@@ -69,13 +71,8 @@ class StripeCheckout:
 
 
 def build_checkout(settings: Settings) -> StripeCheckout:
-    """The adapter, or a refusal. Never a silent no-op.
-
-    A deployment with no secret key cannot sell, and `STRIPE_SECRET_KEY` is
-    deliberately not one of the ten required values — so this is a real state
-    a running process can be in, and it has to say so rather than produce a
-    checkout that goes nowhere.
-    """
+    """The adapter, or a refusal — never a silent no-op. `STRIPE_SECRET_KEY` is not one of the
+    required settings, so a deployment with none must say so rather than produce a dead checkout."""
     if not settings.stripe_secret_key.strip():
         raise CheckoutUnavailable("STRIPE_SECRET_KEY is not set, so this deployment cannot sell")
     return StripeCheckout(settings.stripe_secret_key)

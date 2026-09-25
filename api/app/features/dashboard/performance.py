@@ -1,20 +1,9 @@
 """Reading the marking engine's output into ratings, per domain.
 
-The engine writes one document per attempt, shaped by the exam's framework:
-`payload[domain_id][competency_id].score`, where a score is R, A or G. The
-rubric says which top-level keys are scored domains — a payload also carries
-blocks like `actionable_feedback` and `clinical_analysis` that are prose, not
-marks, and counting those would drag every domain towards the same number.
-
-Competency ids are deliberately not matched. Ortho prefixes its with the
-domain (`clinical_skills_situational_awareness`) because the same competency
-appears in four domains, while PLAB does not; reading whatever is inside the
-domain block works for both and needs no table mapping one spelling to the
-other.
-
-Pure functions over documents. The arithmetic itself is
-`reviews/scoring.py` — an institution ranks its cohort on those numbers, and a
-person's own dashboard must not quietly use different ones.
+The engine writes one document per attempt: `payload[domain_id][competency_id].score`,
+where a score is R, A or G. The rubric says which top-level keys are scored domains — other
+blocks like `actionable_feedback` are prose, not marks. Pure functions over documents; the
+arithmetic itself is `reviews/scoring.py`.
 """
 
 from __future__ import annotations
@@ -75,9 +64,8 @@ def ratings_by_domain(
 def domain_scores(payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None) -> dict[str, float]:
     """One 0–100 score per domain, from the competency ratings inside it.
 
-    The majority rating rather than the mean, which is `reviews/scoring.py`'s
-    rule and its reasoning: three greens and a red is a green domain with a red
-    competency in it, not an amber domain that describes neither.
+    The majority rating rather than the mean, per `reviews/scoring.py`: three greens and a
+    red is a green domain with a red competency in it, not an amber domain.
     """
     out: dict[str, float] = {}
     for domain_id, ratings in ratings_by_domain(payload, structure).items():

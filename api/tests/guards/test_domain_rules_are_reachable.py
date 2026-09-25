@@ -1,4 +1,4 @@
-"""Every domain rule has a caller, or is listed here as debt.
+"""Every domain rule has a caller.
 
 This is the guard whose absence cost the most. 20 of 101 domain rules were
 written, unit-tested, documented in a slice README, and never called from any
@@ -11,10 +11,6 @@ working software.
 A rule with no caller is worse than no rule. It passes its tests, it appears
 in the README, its error is advertised in the OpenAPI document — and the
 behaviour it describes does not happen.
-
-`KNOWN_UNWIRED` is a debt list, not an exemption list. It may only shrink:
-`test_the_debt_list_has_no_stale_entries` fails when something on it becomes
-reachable, which forces the entry to be deleted rather than left to rot.
 """
 
 from __future__ import annotations
@@ -23,14 +19,6 @@ import ast
 from pathlib import Path
 
 from tests.guards._scan import APP_ROOT, FEATURES_ROOT, python_files
-
-# Rules with no production caller, and why. Each is a real gap with a phase
-# that closes it — see docs/STATUS.md. Removing the last entry deletes this
-# list, not the guard.
-KNOWN_UNWIRED: dict[tuple[str, str], str] = {
-    ("attempts", "is_terminal"): "helper; status checks compare the enum directly",
-    ("attempts", "required_reference"): "the CHECK constraint enforces this; the rule mirrors it",
-}
 
 
 def _public_functions(tree: ast.Module) -> list[str]:
@@ -114,20 +102,11 @@ def unreachable_rules(features_root: Path | None = None) -> dict[tuple[str, str]
 
 
 def test_every_domain_rule_is_reachable_from_production() -> None:
-    orphans = sorted(set(unreachable_rules()) - set(KNOWN_UNWIRED))
+    orphans = sorted(unreachable_rules())
     assert not orphans, (
         f"These domain rules have no production caller: {orphans}. A rule that never "
         "runs still passes its tests and still appears in the README, which is how "
         "an attempt came to be unrunnable. Wire it, or delete it."
-    )
-
-
-def test_the_debt_list_has_no_stale_entries() -> None:
-    """The ratchet: fixing a rule forces its entry off the list."""
-    fixed = sorted(set(KNOWN_UNWIRED) - set(unreachable_rules()))
-    assert not fixed, (
-        f"These are wired now: {fixed}. Remove them from KNOWN_UNWIRED so the list "
-        "keeps meaning what it says."
     )
 
 

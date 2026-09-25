@@ -1,9 +1,7 @@
 """A candidate's outcome, and the workflow that gets it to them.
 
-Ported from b2b's `sql/017` and `results/service.py`, which is the best-modelled
-thing in either legacy backend: revisions are append-only, the workflow is
-explicit, and the two outcomes are checked against each other so a failed
-candidate cannot be recorded as appointed.
+Revisions are append-only, the workflow is explicit, and the two outcomes are
+checked against each other so a failed candidate cannot be recorded as hired.
 """
 
 from __future__ import annotations
@@ -84,8 +82,7 @@ def ensure_compatible(assessment: Assessment, recruitment: Recruitment | None) -
 def ensure_signable(*, assessment: Assessment | None, rationale: str | None) -> None:
     """What a decision needs before anyone puts their name to it.
 
-    The rationale is required because somebody has to be able to say why, months
-    later, to a candidate or an appeal.
+    A rationale is required so somebody can say why, months later, to a candidate or an appeal.
     """
     if assessment is None:
         raise NotSignable("An assessment outcome is required before sign-off.")
@@ -107,15 +104,10 @@ def next_revision(stored: int | None) -> int:
 
 
 def ensure_current(*, stored: int | None, presented: int) -> None:
-    """Optimistic concurrency for a decision being drafted in two browsers.
+    """Optimistic concurrency for a decision drafted in two browsers.
 
-    The table is append-only, so a stale save did not lose rows — it lost the
-    *author's* belief about what was saved. Both administrators saw "Revision 2"
-    on a screen whose words were no longer theirs, and the outcome that went to
-    sign-off was whichever request landed last.
-
-    `0` is the caller's assertion that nothing has been recorded yet, so a
-    second save off the same read is refused rather than silently superseded.
+    A save against a stale revision is refused rather than silently superseding
+    a newer one. `0` asserts nothing has been recorded yet.
     """
     if (stored or 0) != presented:
         raise StaleDecision("Someone else has saved this decision since you opened it. Reload it first.")
@@ -124,8 +116,7 @@ def ensure_current(*, stored: int | None, presented: int) -> None:
 def fingerprint(evidence: Mapping[str, Any]) -> str:
     """A stable hash of what a decision was made against.
 
-    Sorted keys, so the same evidence hashes the same whatever order it was
-    assembled in.
+    Sorted keys, so the same evidence hashes the same regardless of assembly order.
     """
     encoded = json.dumps(evidence, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(encoded.encode()).hexdigest()
@@ -134,9 +125,8 @@ def fingerprint(evidence: Mapping[str, Any]) -> str:
 def ensure_evidence_unchanged(*, signed: str, current: str) -> None:
     """A result signed off against one set of scores is not released after they move.
 
-    Oracle: `b2b_release_candidate_result`. Without it a station re-marked
-    between sign-off and release would send a candidate an outcome nobody
-    approved.
+    Without this a station re-marked between sign-off and release would send a
+    candidate an outcome nobody approved.
     """
     if signed != current:
         raise EvidenceChanged(

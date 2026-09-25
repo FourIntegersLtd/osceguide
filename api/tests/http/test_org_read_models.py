@@ -26,8 +26,17 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 
-async def a_user(db_session: AsyncSession, email: str) -> uuid.UUID:
+async def a_user(db_session: AsyncSession, email: str, *, org_slug: str = "kings") -> uuid.UUID:
+    """A signed-in person, rostered into the org so a circuit may examine them.
+
+    SEC-014 requires a circuit's candidates to be on the org's roster. These
+    read-model tests build circuits directly from these ids, so this links a
+    roster entry the way the real add-trainee flow does. Idempotent: called
+    twice with one address it reuses the account and its roster row.
+    """
     from app.features.identity import repository as identity_repo
+    from app.features.roster import repository as roster_repo
+    from app.features.tenancy import repository as tenancy_repo
 
     user = await identity_repo.user_by_email(db_session, email)
     if user is None:
@@ -35,6 +44,15 @@ async def a_user(db_session: AsyncSession, email: str) -> uuid.UUID:
             session=db_session, email=email, name=email, password_hash=None
         )
         await db_session.flush()
+    org = await tenancy_repo.organization_by_slug(db_session, org_slug)
+    if org is not None:
+        already = await roster_repo.trainee_by_email(db_session, org.id, email)
+        if already is None:
+            trainee = await roster_repo.create_trainee(
+                db_session, org.id, email=email, first_name=None, last_name=None, cohort_id=None
+            )
+            await roster_repo.link_trainee_to_user(db_session, org.id, trainee.id, user_id=user.id)
+            await db_session.flush()
     return user.id
 
 
@@ -301,12 +319,9 @@ async def test_the_console_names_every_candidate_and_station_once(
         await published_station(client, admin, "kings", "Chest pain"),
         await published_station(client, admin, "kings", "Headache"),
     ]
+    # `a_user` rosters and links the candidate (SEC-014), which is what the
+    # circuit's roster check needs; no separate add-trainee call is required.
     candidate = await a_user(db_session, "cand@example.com")
-    await client.post(
-        "/api/v1/orgs/kings/trainees",
-        json={"email": "cand@example.com", "first_name": "Ada", "last_name": "Lovelace"},
-        headers=bearer(admin),
-    )
     supervisor_id = await a_user(db_session, "sup@example.com")
     circuit = await a_circuit(
         client,

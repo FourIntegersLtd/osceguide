@@ -1,13 +1,9 @@
 """Whether someone may attempt an exam, and why.
 
-One predicate, several sources. A consumer who bought access, a trainee whose
-institution granted it, an SSO tenant's member and someone still inside the
-free trial all reach the same answer by the same route — what differs is the
-reason, which is recorded so "why could they do that?" stays answerable.
-
-Replaces `has_paid` plus `plan_end_date` on a Firestore user document,
-`b2b_practice_entitlements`, the SSO tenant's plan end date, and a trial rule
-that was recomputed on every request and stored nowhere.
+One predicate, several sources. A consumer who bought access, a trainee whose institution
+granted it, an SSO tenant's member and someone still inside the free trial all reach the same
+answer by the same route — what differs is the reason, recorded so "why could they do that?"
+stays answerable.
 """
 
 from __future__ import annotations
@@ -53,13 +49,9 @@ class Decision:
 
 
 def trial_available(trial: TrialState, *, now: datetime) -> bool:
-    """The legacy free trial, unchanged.
-
-    Three counted the same way as before: set stations and completed attempts
-    are compared separately rather than summed, and the account age comparison
-    is strict, so an account exactly fourteen days old still has its trial.
-    Somebody's access depends on each of those, so none of it is tidied up.
-    """
+    """The legacy free trial rule. Set stations and completed attempts are compared separately
+    rather than summed, and the account age comparison is strict, so an account exactly
+    fourteen days old still has its trial."""
     if trial.set_station_count >= ALLOWED_TRIAL_STATIONS:
         return False
     if trial.completed_attempt_count >= ALLOWED_TRIAL_STATIONS:

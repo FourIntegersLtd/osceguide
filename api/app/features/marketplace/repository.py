@@ -87,37 +87,6 @@ async def list_by_owner(
     return list((await session.execute(stmt)).scalars())
 
 
-async def list_open(
-    session: AsyncSession,
-    *,
-    viewer: ViewerAudiences,
-    now: datetime,
-    limit: int,
-    cursor: dict[str, Any] | None = None,
-    exam_id: uuid.UUID | None = None,
-    audience: Audience | None = None,
-) -> tuple[list[AvailabilityPost], str | None]:
-    """Open slots this viewer may claim: unclaimed and still in the future."""
-    stmt = select(AvailabilityPost).where(
-        AvailabilityPost.status == "available",
-        AvailabilityPost.starts_at > now,
-        visible_to(AvailabilityPost, viewer),
-    )
-    if exam_id is not None:
-        stmt = stmt.where(AvailabilityPost.exam_id == exam_id)
-    if audience is not None:
-        stmt = stmt.where(addressed_to(AvailabilityPost, audience))
-    return await keyset_page(
-        session,
-        stmt,
-        sort_col=AvailabilityPost.starts_at,
-        id_col=AvailabilityPost.id,
-        limit=limit,
-        cursor=cursor,
-        descending=False,
-    )
-
-
 async def list_feed(
     session: AsyncSession,
     *,
@@ -127,10 +96,10 @@ async def list_feed(
     exam_id: uuid.UUID | None = None,
     audience: Audience | None = None,
 ) -> tuple[list[AvailabilityPost], str | None]:
-    """Every post the retiring marketplace screen showed on **All Sessions**.
+    """Unclaimed and claimed posts, newest first.
 
-    Unclaimed and claimed rows, newest first — claimed history is what becomes
-    the Scheduled and Completed sections once the clock passes.
+    Claimed rows are kept in the feed because claimed history is what becomes the Scheduled and
+    Completed sections once the clock passes.
     """
     stmt = select(AvailabilityPost).where(
         AvailabilityPost.status.in_(("available", "claimed")),

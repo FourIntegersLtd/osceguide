@@ -1,8 +1,6 @@
 """Study material that is not a station: slides, summaries, blogs, podcasts.
 
-One kind field rather than a table each. b2c has four collections per product
-for these — sixteen in total — with the same publish-and-read logic copied
-across them.
+One kind field rather than a table each.
 """
 
 from __future__ import annotations
@@ -128,8 +126,7 @@ def excerpt(summary: str | None, title: str) -> str:
 
     The index answers with ids and scores, so there is no matched passage to
     quote — the summary is the closest thing to one, and the title is what is
-    left when an item has none. Truncated at a word boundary for the reason
-    `slugify` is: half a word reads as a bug rather than as an abbreviation.
+    left when an item has none. Truncated at a word boundary, like `slugify`.
     """
     text = " ".join((summary or "").split()) or title.strip()
     if len(text) <= MAX_EXCERPT:
@@ -141,11 +138,9 @@ def excerpt(summary: str | None, title: str) -> str:
 def specialty_of(content: dict[str, Any]) -> str | None:
     """The specialty an item is filed under, read out of the document.
 
-    The authoring payload carries it twice — a `specialties` list, which is
-    what the staff facets read, and the singular `specialty` string the
-    retiring consumer client wrote beside it. The list wins, because that is
-    the precedence both readers already used; a document with neither has no
-    specialty, which is a normal thing for a blog post or an episode to lack.
+    The payload may carry it as a `specialties` list or a singular
+    `specialty` string; the list wins when both are present. A document with
+    neither simply has no specialty.
     """
     many = content.get("specialties")
     if isinstance(many, list):
@@ -159,11 +154,9 @@ def specialty_of(content: dict[str, Any]) -> str | None:
 def content_updated_at(content: dict[str, Any]) -> datetime | None:
     """The edit date the authoring payload carries, if it carries one.
 
-    b2c stored a blog's `updated_at` on the document rather than in a column,
-    so a migrated item's real edit date is in there and nowhere else — the row
-    would say the day it was imported. A value that is not a date is ignored
-    rather than refused: a document nobody validates is not a place to raise
-    from while reading a list.
+    Stored in the document rather than in a column. A value that is not a
+    date is ignored rather than refused: a document nobody validates is not a
+    place to raise from while reading a list.
     """
     raw = content.get("updated_at")
     if not isinstance(raw, str):

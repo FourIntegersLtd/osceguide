@@ -28,20 +28,15 @@ _OWNER_MATCHES_ORG = (
 class Exam(Base, UUIDPrimaryKey, Timestamps):
     """An assessment framework, written by the platform or by an institution.
 
-    Replaces b2c's `app_type` string and the 4x20 COLLECTION_MAPPING it indexed.
-    The table used to be seeded with four rows mirrored by a Python tuple, so a
-    fifth exam meant a migration, a code change and a release. It is now empty
-    until somebody writes one.
+    `owner_kind` is the same split stations and rubrics carry, and keeps the
+    two arms independent. A **platform** exam is the consumer catalogue,
+    published by us and visible to everyone. An **org** exam is an
+    institution's own, published on its own schedule and never shown in the
+    consumer catalogue.
 
-    `owner_kind` is the same split stations and rubrics already carry, and it is
-    what makes the two arms independent. A **platform** exam is the consumer
-    catalogue — PLAB 2, the GP exam — published by us and visible to everyone.
-    An **org** exam is an institution's own: Ashford writes "Ashford Finals
-    OSCE" without asking us, publishes it on its own schedule, and we never see
-    it in the consumer catalogue. Neither owner's lifecycle touches the other's.
-
-    `framework_id` is gone: what an exam is marked against is a rubric version,
-    and that version's id is the framework id everything downstream records.
+    `framework_id` is gone: what an exam is marked against is a rubric
+    version, and that version's id is the framework id everything downstream
+    records.
     """
 
     __tablename__ = "exams"
@@ -84,18 +79,17 @@ class Exam(Base, UUIDPrimaryKey, Timestamps):
     default_reading_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     default_simulation_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     station_attempt_limit: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("3"))
-    # Whether partner attribution links may name this exam. Was `PILOT_EXAMS`,
-    # a tuple of three codes in the growth slice. Consumer-side, so it is only
-    # ever set on a platform exam.
+    # Whether partner attribution links may name this exam. Consumer-side, so
+    # it is only ever set on a platform exam.
     partner_pilot: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
 
 class Programme(Base, UUIDPrimaryKey, Timestamps):
-    """One organisation offering one exam. This is what `b2b_exams` rows were.
+    """One organisation offering one exam.
 
     The exam it names is either the institution's own or one the platform has
-    published; a programme carries no content, it is the label a year's sittings
-    are grouped under.
+    published; a programme carries no content, it is the label a year's
+    sittings are grouped under.
     """
 
     __tablename__ = "org_programmes"

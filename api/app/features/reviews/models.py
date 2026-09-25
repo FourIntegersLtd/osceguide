@@ -1,9 +1,7 @@
 """Tables owned by `reviews`.
 
-b2b keeps all three of these in one wide table discriminated by a
-`feedback_kind` column, with **no foreign keys at all**. Three tables, each with
-real keys, because they have different owners, different lifecycles and
-different uniqueness.
+Three tables, each with real foreign keys, because a slot review, a GP-lead
+review and a circuit review have different owners, lifecycles and uniqueness.
 """
 
 from __future__ import annotations

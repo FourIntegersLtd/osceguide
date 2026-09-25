@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository
+from app.features.identity.models import User
 
 pytestmark = pytest.mark.db
 
@@ -95,6 +97,6 @@ async def test_deleting_a_user_takes_their_sessions(db_session: AsyncSession) ->
         db_session, user_id=user.id, token_hash="hash-x", expires_at=NOW + timedelta(days=30)
     )
     await db_session.flush()
-    await repository.delete_user(db_session, user.id)
+    await db_session.execute(delete(User).where(User.id == user.id))
     await db_session.flush()
     assert await repository.refresh_token_by_hash(db_session, "hash-x") is None

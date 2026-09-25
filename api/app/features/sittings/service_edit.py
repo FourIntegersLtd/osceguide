@@ -1,17 +1,9 @@
 """Correcting a sitting that has already been scheduled.
 
-One route, and the reason it is its own module: everything else in this slice
-either composes a sitting (`service.py`) or runs one (`service_run.py`), and both
-are acts that happen in order. This is the one that happens *afterwards* — the
-name was typed wrong, the date moved, the programme was the other one — and what
-it may touch is decided by whether anybody has already been examined against the
-answer.
-
-Ported from b2b's `PUT /orgs/{org}/sessions/{id}`, which was also a partial
-document sent by a screen that carried three fields, and which also refused to
-move the type or the feedback template once a circuit was live while letting the
-name through. The feedback template is not a field on a sitting here: it is
-resolved from the programme, so `programme_id` is the field that carries it.
+What may be changed — the name, the date, the programme — is decided by
+whether anybody has already been examined against the current answer. The
+feedback template is not a field here: it is resolved from the programme, so
+`programme_id` is what carries it.
 """
 
 from __future__ import annotations
@@ -23,7 +15,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import raise_mapped
-from app.features.sittings import domain, domain_edit, repository, repository_reads, service, service_binding
+from app.features.sittings import domain, domain_edit, repository, repository_reads, service
 from app.features.sittings.models import Sitting
 from app.features.sittings.schemas import SittingRead, UpdateSitting
 from app.features.sittings.service import _REFUSALS, _require_sitting
@@ -39,9 +31,8 @@ async def update_sitting(
 ) -> SittingRead:
     """Change what the caller sent, and only that.
 
-    An absent field is left alone, so the edit screen does not have to restate a
-    sitting to rename it — the same partial semantics the legacy route had, where
-    the body was dumped with `exclude_unset` before it was written.
+    An absent field is left alone, so the edit screen does not have to restate
+    a sitting to rename it.
     """
     sent = EDITABLE & set(body.model_fields_set)
     if not sent:
@@ -72,7 +63,7 @@ async def update_sitting(
         # binding moves with it, in the same write, rather than being left
         # pointing at the exam the sitting no longer offers.
         values["programme_id"] = body.programme_id
-        values["rubric_version_id"] = await service_binding.rubric_version_for_programme(
+        values["rubric_version_id"] = await service.rubric_version_for_programme(
             session, org_id, body.programme_id
         )
 

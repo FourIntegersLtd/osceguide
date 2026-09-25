@@ -1,13 +1,6 @@
-"""Telling somebody in the queue that they have been matched.
-
-The status route says in its own docstring that the client polls it every few
-seconds, which is the worst place in the product to poll: the person is sitting
-and staring at the screen, and the whole feature is how quickly they get into a
-room with somebody.
-
-The matcher is a periodic job, not a request, so this is also the proof that
-the event path works from `job_session` — it flushes what the job queued once
-the pairing has committed, exactly as a request does.
+"""Telling somebody in the queue that they have been matched, over SSE rather
+than polling: the person is sitting and staring at the screen, and the whole
+feature is how quickly they get into a room with somebody.
 """
 
 from __future__ import annotations
@@ -45,3 +38,29 @@ def queue_stream(
         return Snapshot(status.model_dump_json(), final=status.status != WAITING)
 
     return event_stream(topics=[user_topic(user_id)], snapshot=snapshot, bus=bus)
+
+
+# --- SSE for practice session phase and partner presence.
+
+SESSION_TOPIC = "practice.session_updated"
+
+
+def session_stream(
+    session_id: uuid.UUID, user_id: uuid.UUID, *, bus: EventBus, open_session: SessionOpener
+) -> AsyncIterator[str]:
+    """Push session state until it ends."""
+
+    async def snapshot() -> Snapshot:
+        from datetime import UTC, datetime
+
+        async with open_session() as session:
+            try:
+                view = await service.read_session(session, session_id, user_id=user_id, now=datetime.now(UTC))
+            except errors.SessionNotFound:
+                raise StreamFinished from None
+        payload = view.model_dump_json()
+        final = view.status == "ended" or view.current_phase == "completed"
+        return Snapshot(payload, final=final)
+
+    topics = [user_topic(user_id), f"practice.session.{session_id}"]
+    return event_stream(topics=topics, snapshot=snapshot, bus=bus)

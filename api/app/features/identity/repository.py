@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import date, datetime
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity.domain import normalize_email
@@ -53,10 +53,6 @@ async def user_by_email(session: AsyncSession, email: str) -> User | None:
 
 async def user_by_id(session: AsyncSession, user_id: uuid.UUID) -> User | None:
     return (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-
-
-async def delete_user(session: AsyncSession, user_id: uuid.UUID) -> None:
-    await session.execute(delete(User).where(User.id == user_id))
 
 
 async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:

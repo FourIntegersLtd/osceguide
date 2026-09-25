@@ -13,11 +13,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select, text, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
 from app.features.attempts.domain import Status
-from app.features.attempts.models import Attempt
+from app.features.attempts.models import Attempt, AttemptLiveCoverage
 
 
 async def create_attempt(
@@ -66,9 +67,8 @@ async def set_status(
 ) -> None:
     """Move an attempt's status.
 
-    Typed as the enum, not `str`: this took a bare string, so `"runnning"` was
-    a write the database accepted and nothing would ever match again. The
-    column now carries a CHECK as well, which is the belt to this brace.
+    Typed as the enum, not `str`: a bare string once let `"runnning"` through as a write the database
+    accepted and nothing would ever match again. The column now carries a CHECK too.
     """
     values: dict[str, Any] = {"status": str(status)}
     if status is Status.RUNNING:
@@ -124,12 +124,7 @@ async def list_for_user(
     set_entry_id: uuid.UUID | None = None,
     status: Status | None = None,
 ) -> tuple[list[Attempt], str | None]:
-    """This person's attempts, newest first, optionally narrowed to one station.
-
-    The filters are what the screens listing attempts ask: every attempt at one
-    station, every attempt at one entry of a practice set, and — for the
-    support console — every attempt stuck in one status.
-    """
+    """This person's attempts, newest first, optionally narrowed to one station, set entry or status."""
     stmt = select(Attempt).where(Attempt.user_id == user_id)
     if station_version_id is not None:
         stmt = stmt.where(Attempt.station_version_id == station_version_id)
@@ -145,10 +140,8 @@ async def list_for_user(
 async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID) -> tuple[int, int]:
     """`(set stations used, attempts completed)` for the free-trial rule.
 
-    Counted per exam, not per account. b2c held a person as four separate user
-    documents, one per product, each with its own trial — so somebody who used
-    their SCA trial still had a PLAB one. Counting across the unified account
-    would quietly take that away from everybody mid-migration.
+    Counted per exam, not per account: b2c held a person as four separate documents, one per product,
+    each with its own trial, so somebody who used their SCA trial still had a PLAB one.
     """
     set_stations = await session.scalar(
         select(func.count())
@@ -172,11 +165,7 @@ async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.
 
 
 async def exam_for_station_version(session: AsyncSession, station_version_id: uuid.UUID) -> uuid.UUID | None:
-    """The exam a station belongs to, read through its version.
-
-    A join rather than a cross-slice call: `attempts` sits above `stations` and
-    needs one column of it on a hot path.
-    """
+    """The exam a station belongs to, read through its version — a raw join for a hot path."""
     stmt = text(
         "SELECT s.exam_id FROM station_versions v "
         "JOIN stations s ON s.id = v.station_id WHERE v.id = :version_id"
@@ -189,9 +178,8 @@ async def evaluated_for_user(
 ) -> list[Attempt]:
     """This person's marked attempts, newest first, optionally for one exam.
 
-    Filtered in SQL rather than by reading a page of everything and discarding
-    the unmarked rows: somebody who practises daily has hundreds of attempts
-    and the marked ones are what a performance chart is drawn from.
+    Filtered in SQL rather than by reading a page of everything and discarding the unmarked rows:
+    somebody who practises daily has hundreds of attempts.
     """
     stmt = select(Attempt).where(Attempt.user_id == user_id, Attempt.status == Status.EVALUATED)
     if exam_id is not None:
@@ -217,12 +205,94 @@ async def count_completed(session: AsyncSession, *, kind: str | None = None) -> 
 
 
 async def count_evaluated(session: AsyncSession) -> int:
-    """How many attempts have been marked — the feedback counter.
-
-    An evaluated attempt has a result the candidate can read. The landing-page
-    statistics band shows this as the feedback number; legacy logs had it
-    within 0.5%% of consultations, so it is the same population once marking
-    has caught up.
-    """
+    """How many attempts have been marked — the feedback counter shown on the landing page."""
     stmt = select(func.count()).select_from(Attempt).where(Attempt.status == str(Status.EVALUATED))
     return int((await session.execute(stmt)).scalar_one())
+
+
+# --- Live coverage snapshots.
+
+
+async def read(session: AsyncSession, attempt_id: uuid.UUID) -> dict[str, Any] | None:
+    row = await session.get(AttemptLiveCoverage, attempt_id)
+    return row.snapshot if row else None
+
+
+async def save(session: AsyncSession, attempt_id: uuid.UUID, snapshot: dict[str, Any]) -> None:
+    stmt = insert(AttemptLiveCoverage).values(attempt_id=attempt_id, snapshot=snapshot)
+    await session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[AttemptLiveCoverage.attempt_id],
+            set_={"snapshot": stmt.excluded.snapshot},
+        )
+    )
+
+
+# --- Source consultations for a learner's debrief summaries.
+
+
+async def sources_for(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    attempt_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, uuid.UUID]:
+    rows = await session.execute(
+        select(Attempt.id, Attempt.source_attempt_id).where(
+            Attempt.user_id == user_id,
+            Attempt.id.in_(attempt_ids),
+            Attempt.kind == "debrief",
+            Attempt.source_attempt_id.is_not(None),
+        )
+    )
+    return {attempt_id: source_id for attempt_id, source_id in rows.all() if source_id is not None}
+
+
+# --- The attempt rows that belong to an exam slot.
+
+
+async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> list[Attempt]:
+    """The one unfailed attempt on each of these slots, for a screen that lists them."""
+    if not slot_ids:
+        return []
+    stmt = select(Attempt).where(Attempt.slot_id.in_(list(slot_ids)), Attempt.status != "failed")
+    return list((await session.execute(stmt)).scalars())
+
+
+async def live_attempt_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> Attempt | None:
+    stmt = select(Attempt).where(Attempt.slot_id == slot_id, Attempt.status != "failed")
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def fail_live_attempt_for_slot(
+    session: AsyncSession, slot_id: uuid.UUID, *, at: datetime, reason: str
+) -> None:
+    """Fail whatever is still live on this slot, and make it visible.
+
+    Flushed here because the insert that follows has to see it: the partial
+    unique index on `(slot_id) where status <> 'failed'` would otherwise refuse
+    the new attempt.
+    """
+    live = await live_attempt_for_slot(session, slot_id)
+    if live is None:
+        return
+    await set_status(session, live.id, status=Status.FAILED, at=at, reason=reason)
+    await session.flush()
+
+
+async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:
+    """The exam a previous attempt on this slot ran under.
+
+    Reused on re-dispatch so a retry is marked against the same framework as
+    the recording it replaces.
+    """
+    stmt = (
+        select(Attempt.exam_id).where(Attempt.slot_id == slot_id).order_by(Attempt.created_at.desc()).limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    if not slot_ids:
+        return set()
+    stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()
+    return {row for row in (await session.execute(stmt)).scalars() if row is not None}

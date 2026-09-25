@@ -6,12 +6,9 @@ decision. A draft is yours to change, a published version is what attempts were
 built against and is therefore immutable, and an archived one is retired but
 still referenced by the attempts that used it.
 
-It lives in `core` rather than in one slice because four slices now need it and
-the alternative is four copies that drift. It is pure: no session, no model, no
-knowledge of what is being versioned.
-
-Ported from the legacy content service, which is current production behaviour;
-`tests/unit/test_lifecycle.py` carries its assertions.
+It lives in `core` rather than in one slice because four slices now need it
+and the alternative is four copies that drift. It is pure: no session, no
+model, no knowledge of what is being versioned.
 """
 
 from __future__ import annotations

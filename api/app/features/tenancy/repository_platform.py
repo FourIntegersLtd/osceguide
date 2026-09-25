@@ -1,9 +1,6 @@
 """The console's storage: the reads that deliberately cross every tenant.
 
-Separated from `repository.py` because these are the only queries in the
-slice that are *not* org-scoped, and a file named for that is a better answer
-to "why has this no `org_id`?" than a comment on each one. Mapped classes
-still never leave the repository; this is part of it.
+Mapped classes never leave the repository; this is part of it.
 """
 
 from __future__ import annotations

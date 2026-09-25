@@ -24,12 +24,9 @@ async def list_exams(
 ) -> list[Exam]:
     """Exams this caller may see. Unpaged: the set is small.
 
-    `statuses=None` is the owner's own view, which includes drafts.
-    `owned_only` narrows to rows this caller wrote, which is what a draft
-    listing means: an institution's drafts are its own business, and so are
-    ours. Otherwise an org sees its own exams plus the platform catalogue,
-    and the platform sees only its own — the library is shared downward,
-    never an institution's content upward.
+    `owned_only` narrows to rows this caller wrote — an institution's drafts
+    are its own business, and so are ours. Otherwise an org sees its own exams
+    plus the platform catalogue, and the platform sees only its own.
     """
     stmt = select(Exam).order_by(Exam.code)
     stmt = stmt.where(Exam.org_id == org_id) if owned_only else stmt.where(visible_to(Exam, org_id))
@@ -108,7 +105,7 @@ async def delete_exam(session: AsyncSession, exam_id: uuid.UUID) -> None:
 
 
 async def pilot_exam_codes(session: AsyncSession) -> list[str]:
-    """Exams a partner attribution link may name. Was a tuple in `growth.domain`.
+    """Exams a partner attribution link may name.
 
     Consumer-side, so platform exams only: a partner link is a B2C funnel and
     can never name an institution's private exam.
@@ -128,7 +125,7 @@ async def exam_by_id(session: AsyncSession, exam_id: uuid.UUID) -> Exam | None:
 
 
 async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | None:
-    """Exam code only — works when older DB rows lack `exams.framework_id`."""
+    """Exam code only, without loading the rest of the row."""
     row = await session.execute(select(Exam.code).where(Exam.id == exam_id))
     return row.scalar_one_or_none()
 
@@ -216,11 +213,6 @@ async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uui
 
 
 async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
-    """Which exams this organisation offers. A programme *is* that statement.
-
-    Asked for by the dashboard, which has to know whether the platform's
-    library holds anything for this org before telling it to go and author a
-    station of its own.
-    """
+    """Which exams this organisation offers. A programme *is* that statement."""
     stmt = select(Programme.exam_id).where(Programme.org_id == org_id).distinct()
     return list((await session.execute(stmt)).scalars())

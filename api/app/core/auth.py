@@ -167,10 +167,9 @@ async def get_principal(
 def _refuse_unless_password_route(request: Request) -> None:
     """Enforce `identity.domain.may_call`.
 
-    The rule was written, unit-tested, documented in the slice README and never
-    called: a user provisioned with a temporary password could reach every
-    route in the API. Enforced here rather than per-router because "every route
-    except these" is not something fifty routers can be trusted to remember.
+    Enforced here rather than per-router, because "every route except these"
+    is not something fifty routers can be trusted to remember — the rule was
+    once written and tested but never actually wired to a route.
     """
     from app.core.openapi import operation_id  # noqa: PLC0415 - avoids an import cycle
 
@@ -194,13 +193,12 @@ async def get_principal_if_present(
     """Whoever is calling, or nobody.
 
     For the handful of reads that are genuinely public but answer differently
-    to somebody signed in — a published article is readable by a visitor, and
-    its unpublished draft is readable by the admin writing it.
+    to somebody signed in — a published article is readable by a visitor, its
+    unpublished draft only by the admin writing it.
 
-    A *bad* token is still a refusal. "No credentials" and "credentials that do
-    not decode" are different: treating the second as anonymous would turn an
-    expired session into a silent downgrade, and the caller would see a public
-    answer where they expected theirs.
+    A *bad* token is still a refusal. "No credentials" and "credentials that
+    do not decode" are different: treating the second as anonymous would turn
+    an expired session into a silent downgrade.
     """
     if credentials is None or not credentials.credentials:
         return None

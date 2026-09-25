@@ -10,7 +10,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.core.auth import Membership
-from app.features.stations.autogenerate_models import (
+from app.features.stations.station_ai import (
     StationContentAutogenerateModel,
     StationContentBlockModel,
 )

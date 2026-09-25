@@ -61,11 +61,7 @@ async def record_acquisition(
     arrival_id: uuid.UUID | None,
     at: datetime,
 ) -> Acquisition | None:
-    """Written once. A user already attributed is left alone.
-
-    Re-attributing somebody because they later clicked another partner's link is
-    how the numbers stop reconciling.
-    """
+    """Written once; a user already attributed is left alone."""
     if await acquisition_for(session, user_id) is not None:
         return None
     row = Acquisition(
@@ -162,9 +158,7 @@ async def redeemed_referrals_page(
 ) -> tuple[list[Referral], str | None]:
     """The referrals somebody may owe money for, newest first.
 
-    Only redeemed rows: an outstanding code is not a referral yet, and a queue
-    of codes nobody has used is not what the person settling transfers is
-    looking at.
+    Only redeemed rows: an outstanding code is not a referral yet.
     """
     stmt = select(Referral).where(Referral.redeemed_at.is_not(None))
     if payout_status:

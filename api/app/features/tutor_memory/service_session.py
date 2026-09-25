@@ -1,10 +1,8 @@
 """What a dashboard assistant session is told before it speaks.
 
-`assistant` sits below this slice and cannot import it, so the two meet at a
-seam: `assistant.service.bind_assistant_hooks` is handed these functions and
-calls them when a session starts, when a tool is called, and when a transcript
-arrives. That is why this module's shape is "given a session, return the four
-things the worker needs" rather than a use case of its own.
+`assistant.service.start_session` calls this when a session starts, so this
+module's shape is "given a session, return the four things the worker needs"
+rather than a use case of its own.
 """
 
 from __future__ import annotations
@@ -41,7 +39,7 @@ async def render_dashboard_session(
 ) -> dict[str, Any] | None:
     """The tutor's instructions, greeting and tools — or `None` for any other kind.
 
-    Returning `None` rather than raising is what lets the seam stay one hook:
+    Returning `None` rather than raising is what lets this stay one call:
     `assistant` asks about every session it starts and keeps its own
     placeholder text for the three kinds this slice has nothing to say about.
     """

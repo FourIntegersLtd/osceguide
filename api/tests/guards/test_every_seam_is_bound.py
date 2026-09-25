@@ -1,11 +1,10 @@
 """Every seam the composition root is supposed to tie is tied.
 
-A slice that sits below another cannot import it, so the two meet at a seam:
-one side declares `bind_x(...)` and `main.create_app` calls it. The failure
-mode is silence — nobody calls `bind_x`, the code that needs it raises at
-runtime, and only on the route that happens to use it. `identity.register`
-grew one of these in the same week `sittings` did; a missing call would have
-been found by whoever registered an account in production.
+`core` cannot import a feature, so where it needs a feature's rule it declares
+`bind_x(...)` and `composition.bind_seams` calls it. The failure mode is
+silence — nobody calls `bind_x`, and the code that needs it raises at runtime,
+only on the route that happens to use it. Feature slices call each other
+directly and have no seams.
 
 Two checks, because each catches what the other cannot: that `main.py` calls
 every `bind_*` that exists, and that a built app actually has each one filled
@@ -21,9 +20,7 @@ from pathlib import Path
 from tests.guards._scan import APP_ROOT, parse, python_files, rel
 
 MAIN = APP_ROOT / "main.py"
-# The wiring moved out of `main.py` when it went past the file cap: the
-# router registry and the seam explanations are two different jobs. Both
-# files count as the composition root, so a seam tied in either is tied.
+# Both files count as the composition root, so a seam tied in either is tied.
 COMPOSITION = APP_ROOT / "composition.py"
 
 
@@ -81,12 +78,6 @@ def test_the_guard_would_catch_a_seam_nobody_tied(tmp_path: Path) -> None:
 def test_a_built_app_has_every_seam_filled_in() -> None:
     """The structural check above passes if the call is written but unreachable."""
     from app.core import audience, auth, memberships, role_policy, tenancy
-    from app.features.assistant import service_seams
-    from app.features.attempts import service_worker
-    from app.features.growth import service as growth
-    from app.features.identity import service as identity
-    from app.features.identity import service_sessions
-    from app.features.sittings import service_circuit
     from app.main import create_app
 
     create_app()
@@ -98,14 +89,6 @@ def test_a_built_app_has_every_seam_filled_in() -> None:
         "role policies": list(role_policy._policies),
         "viewer audiences": audience._lookup,
         "membership lookup": [memberships._lookup] if memberships._lookup else [],
-        "default workspace": service_sessions._default_workspace,
-        "registration hook": identity._on_registered,
-        "purchase counter": growth._purchase_counter,
-        "feedback lookup": service_circuit._slot_has_review,
-        "assistant render": service_seams._render,
-        "assistant tools": service_seams._run_tool,
-        "assistant transcript": service_seams._on_transcript,
-        "interaction complete": service_worker._on_interaction_complete,
     }
     empty = sorted(name for name, bound in filled.items() if not bound)
     assert not empty, f"seams that create_app left empty: {empty}"

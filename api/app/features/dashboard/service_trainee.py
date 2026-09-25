@@ -19,8 +19,7 @@ from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 
 # A slot is finished for the candidate once the station is completed or the
-# circuit moved past it. b2b decided this in the browser by string-matching the
-# status, which is why a completed station kept offering a "join" button.
+# circuit moved past it.
 FINISHED_STATUSES = frozenset({"completed", "abandoned", "expired", "skipped"})
 
 

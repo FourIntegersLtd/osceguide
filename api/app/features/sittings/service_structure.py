@@ -1,10 +1,7 @@
 """Changing who is on a circuit and what they sit.
 
-Split from `service_circuit.py` along what the two do to a circuit: that module
-runs one — starting it, dispatching the agent, ending a consultation — and this
-one changes its shape. They are refused for different reasons and at different
-moments, which is the seam: appending is allowed *because* a circuit is live
-(C8), and rebuilding is refused for the same reason (C3).
+Appending is allowed *because* a circuit is live (C8); rebuilding is refused
+for the same reason (C3) — the two are refused for opposite reasons.
 """
 
 from __future__ import annotations
@@ -45,13 +42,11 @@ async def append_trainees(
     """Add people to a training circuit that may already be running (C8).
 
     Training only: an exam circuit is one candidate by construction (C1), and a
-    second would make its slots mean something different. b2b refused the same
-    thing and pointed the supervisor at the circuit editor, which is what
-    `rebuild_circuit` below is.
+    second would make its slots mean something different.
 
-    New slots inherit the circuit's live room, which is the point — without it
-    a latecomer's slot has no room, and the trainee portal has nothing to
-    offer them while a session they are in runs without them.
+    New slots inherit the circuit's live room — without it a latecomer's slot
+    has no room, and the trainee portal has nothing to offer them while a
+    session they are in runs without them.
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
@@ -146,12 +141,9 @@ async def rebuild_circuit(
 ) -> CircuitRead:
     """Change who is on a circuit and which stations they sit (C3).
 
-    A structural edit rebuilds the slots, which is why it is refused once any of
-    them means something: a consultation in progress would be deleted
-    mid-sentence, and recorded feedback would be left pointing at a slot that no
-    longer exists. `ensure_editable` is that rule; it had no route to refuse
-    anything at, so the only way to correct a circuit was to abandon it and build
-    another.
+    A structural edit rebuilds the slots, so it is refused once any of them
+    means something: a consultation in progress would be deleted mid-sentence,
+    and recorded feedback would point at a slot that no longer exists.
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)

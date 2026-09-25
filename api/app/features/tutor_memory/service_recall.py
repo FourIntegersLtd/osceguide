@@ -1,12 +1,8 @@
 """Looking something up in this doctor's own past.
 
-Apart from `service_material.py`, which searches the catalogue, because the two
-searches are not the same problem wearing different hats. The material is
-shared, large and retrieved by meaning; a person's history is theirs, small and
-retrieved by the words they used. A semantic index over somebody's private
-record would be a great deal of machinery for a list that fits on a screen —
-and every read here takes a `user_id`, which is what keeps one doctor's history
-out of another's conversation.
+Separate from `service_material.py`, which searches the shared catalogue by meaning: a
+person's history is small and retrieved by the words they used instead. Every read here
+takes a `user_id`, which is what keeps one doctor's history out of another's conversation.
 """
 
 from __future__ import annotations
@@ -27,10 +23,8 @@ async def recall(
 ) -> ToolResult:
     """Search this person's own past by the words they used.
 
-    Substring matching over their own small history rather than a search index:
-    a doctor has tens of these, not thousands, and a semantic index over
-    somebody's private record is a great deal of machinery for a list that fits
-    on a screen.
+    Substring matching rather than a search index: a doctor has tens of these, not
+    thousands.
     """
     lines: list[str] = []
     needle = query.lower()

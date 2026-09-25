@@ -1,16 +1,7 @@
 """Reading the platform library: the browse page, and one station from it.
 
-Split from `service_reads.py` by what is being answered for. That module answers
-about stations for a caller that already holds ids; this one is the library's
-own reader — the screen that lists it and the deep link that names one station.
-Both halves keep the slice's rule about the library: a row is a title and the
-ids needed to bind it, never the document inside it. A link is still browsing,
-and browsing is not reading the answers.
-
-`read_library_station` retires a walk. Without a per-station read the new
-client fetched the browse pages in sequence — up to twenty of them — to answer
-"what is this station?", which is a title lookup implemented as a catalogue
-download and stops working the day the library outgrows the walk.
+A library row is a title and the ids needed to bind it, never the document inside it. A link is
+still browsing, and browsing is not reading the answers.
 """
 
 from __future__ import annotations
@@ -41,20 +32,10 @@ async def browse_library(
 ) -> tuple[list[LibraryStationRead], str | None]:
     """The published platform library, scoped to the exams the caller may open.
 
-    The `owner_kind = 'platform'` half of the table had no reader at all: a
-    consumer could build a practice set only out of station version ids they
-    had no way to discover. An unpublished station is not in the library, and
-    neither is any organisation's own — those are behind the org routes.
-
-    It answered with every exam's stations at once, which is what put an "all
-    exams" filter on a screen in a product where somebody holds one exam. A
-    named `exam_code` must be one the caller may open; without one they get
-    theirs. `all_exams` is the staff console, which curates the whole
-    catalogue and passes it explicitly rather than by omission.
-
-    `search` is a fragment of a title, answered in SQL. It used to be typed
-    into a browser that could only match the pages it had already pulled down,
-    which made "no results" mean "not on the first two thousand".
+    An unpublished station is not in the library, and neither is any organisation's own — those are
+    behind the org routes. A named `exam_code` must be one the caller may open; without one they get
+    theirs. `all_exams` is the staff console, which curates the whole catalogue explicitly rather
+    than by omission. `search` matches a title fragment, answered in SQL.
     """
     exam_id = None
     if exam_code is not None:
@@ -107,17 +88,11 @@ async def read_library_station(
 ) -> LibraryStationRead:
     """One library station, answered for whoever a link found them to be.
 
-    Everything the browse row says and nothing more, so the route cannot
-    disclose what a station holds: the candidate's brief and the scenario are
-    disclosed by their own attempt, once it exists, and the patient's persona
-    and the examiner's material never leave the server (`domain_content.py` is
-    that projection, and it is deliberately not applied here — a station read
-    from a link is not a station being sat).
+    Everything the browse row says and nothing more: the candidate's brief and scenario are disclosed
+    by their own attempt once it exists, and the patient's persona and examiner's material never leave
+    the server here — a station read from a link is not a station being sat.
 
-    The library is scoped to the exams a caller may open, and a station whose
-    exam they cannot open is not in *their* library. `all_exams` is the same
-    staff pass the browse route takes: curating the catalogue means reading
-    across every exam in it.
+    Scoped to the exams the caller may open, same as `browse_library`; `all_exams` is the staff pass.
     """
     found = await repository_library.library_station(session, station_id)
     if found is None:

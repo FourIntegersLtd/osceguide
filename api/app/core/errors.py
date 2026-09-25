@@ -35,11 +35,9 @@ class AppError(Exception):
     default_message: str = "Something went wrong"
 
     # Normally a failed request leaves no trace: the transaction rolls back.
-    # A few failures must record something anyway — revoking a refresh chain
-    # that has just been proven to have leaked, while still answering 401. Such
-    # an error sets this, and `core.db.get_session` commits instead of rolling
-    # back. Keep the list short and obvious; it is an exception to the rule
-    # that a rejected request changes nothing.
+    # A few failures must record something anyway — e.g. revoking a refresh
+    # chain proven to have leaked, while still answering 401. Such an error
+    # sets this, and `core.db.get_session` commits instead of rolling back.
     persist_effects: bool = False
 
     def __init__(self, message: str | None = None, *, details: dict[str, Any] | None = None) -> None:
@@ -51,11 +49,10 @@ class AppError(Exception):
 def raise_mapped(exc: Exception, mapping: Mapping[type[Exception], type[AppError]]) -> NoReturn:
     """Translate a domain refusal into the API error that carries its status.
 
-    Matched with `isinstance`, in the mapping's order, so a subclass of a mapped
-    refusal is not silently dropped. An exception the mapping does not name is
-    re-raised as it is: the slices used to fall back to some arbitrary error of
-    their own, so an unexpected failure came out as a plausible 409 with the
-    wrong code.
+    Matched with `isinstance`, in the mapping's order, so a subclass of a
+    mapped refusal is not silently dropped. An exception the mapping does not
+    name is re-raised as-is, rather than falling back to some arbitrary error
+    that would misreport an unexpected failure as a plausible one.
     """
     for refusal, app_error in mapping.items():
         if isinstance(exc, refusal):
@@ -109,14 +106,12 @@ def error_codes() -> list[str]:
     """Every `code` any `AppError` in the app can carry, sorted.
 
     Published as the enum of `ErrorResponse.code` so the generated TypeScript
-    is a closed union rather than `string`. The frontend is meant to switch on
-    this — b2b decides control flow today by substring-matching English prose
-    (`message.includes("another user")`), which reworded messages break
-    silently. A union makes a typo a compile error instead.
+    is a closed union rather than `string`, and a typo becomes a compile error
+    instead of a silently broken `message.includes(...)` check.
 
-    Walked from the class hierarchy rather than kept as a list, because a list
-    is a second place to forget. Every feature module is imported by the time
-    the document is built, so the walk sees all of them.
+    Walked from the class hierarchy rather than kept as a list, which would be
+    a second place to forget. Every feature module is imported by the time the
+    document is built, so the walk sees all of them.
     """
     found: set[str] = set()
 
@@ -140,9 +135,9 @@ ACCOUNT_DEACTIVATED_CODE = "account_suspended"
 def error_responses(*errors: type[AppError]) -> dict[int | str, dict[str, Any]]:
     """Build the `responses=` mapping for a route so OpenAPI documents its errors.
 
-    Declaring `Unauthenticated` also declares the deactivated-account refusal:
-    a route that needs a bearer can meet one, and the frontend's generated
-    types have to know the code to sign the person out cleanly.
+    Declaring `Unauthenticated` also declares the deactivated-account refusal,
+    so the frontend's generated types know the code to sign the person out
+    cleanly.
     """
     out: dict[int | str, dict[str, Any]] = {}
     for err in errors:

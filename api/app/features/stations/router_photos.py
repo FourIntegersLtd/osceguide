@@ -1,9 +1,7 @@
 """Station images, for both scopes.
 
-Split from `router.py` and `router_platform.py` at the slice's file cap. The
-two are together because they are the same four lines of wiring over one
-service, differing only in who is allowed to call them and whether an
-organisation owns the station.
+Both scopes are wiring over one service, differing only in who is allowed to call them and whether
+an organisation owns the station.
 """
 
 from __future__ import annotations
