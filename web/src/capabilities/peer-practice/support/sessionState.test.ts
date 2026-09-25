@@ -6,7 +6,7 @@ import { canJoin, joinWindowClosed } from "./time";
 import { phaseDurations } from "./examTimers";
 const session = (overrides: Partial<PracticeSession> = {}): PracticeSession => ({
   id: "session-1", exam_code: "sca", my_role: "doctor", partner_user_id: "partner",
-  room_name: "room", status: "active", partner_joined: false, ...overrides,
+  room_name: "room", status: "active", partner_joined: false, feedback_state: "none", ...overrides,
 });
 describe("peer session recovery", () => {
   it("recognises normal completion even when the API also marks status ended", () => {

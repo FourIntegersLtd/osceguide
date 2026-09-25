@@ -22,7 +22,7 @@ export function PeerSessionScreen({ sessionId, onLeave, onRequeue }: { sessionId
     secondaryAction={<Button variant="secondary" onClick={onLeave}>Back to practice</Button>} />;
   const session = state.session;
   if (state.runnerPhase === "ended" || state.runnerPhase === "completed") return <SessionFeedback
-    sessionId={sessionId} busy={state.busy} error={state.error} onSubmit={state.submitFeedback} onLeave={onLeave} onRequeue={onRequeue ? () => onRequeue(session.exam_code) : undefined}
+    session={session} busy={state.busy} error={state.error} onSubmit={state.submitFeedback} onLeave={onLeave} onRequeue={onRequeue ? () => onRequeue(session.exam_code) : undefined}
     partnerEnded={!state.endedByMe && Boolean(session.end_reason) && session.end_reason !== "phases_complete"} />;
   const preparing = state.runnerPhase === "preparation" || state.runnerPhase === "waiting_partner";
   return <div className="flex min-h-dvh flex-col bg-canvas text-ink">

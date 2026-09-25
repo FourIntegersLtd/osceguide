@@ -5,11 +5,14 @@ import { HiOutlineStar } from "react-icons/hi2";
 import { Alert, Button, Modal, ModalContent, ModalLead, ModalFooterActions, ModalPrimaryButton, ModalSecondaryButton } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { SafetyActions } from "./SafetyActions";
+import { PeerAiFeedback } from "./PeerAiFeedback";
+import type { PracticeSession } from "../api";
 
-export function SessionFeedback({ sessionId, busy, error, onSubmit, onLeave, onRequeue, partnerEnded }: {
-  sessionId: string; busy: boolean; error: Error | null; onSubmit: (rating: number, comment: string | null, wouldPracticeAgain: boolean | null) => Promise<boolean>;
+export function SessionFeedback({ session, busy, error, onSubmit, onLeave, onRequeue, partnerEnded }: {
+  session: PracticeSession; busy: boolean; error: Error | null; onSubmit: (rating: number, comment: string | null, wouldPracticeAgain: boolean | null) => Promise<boolean>;
   onLeave: () => void; onRequeue?: () => void; partnerEnded: boolean;
 }) {
+  const sessionId = session.id;
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const [again, setAgain] = useState(false);
@@ -28,6 +31,7 @@ export function SessionFeedback({ sessionId, busy, error, onSubmit, onLeave, onR
     <h1 className="text-xl font-semibold">{partnerEnded ? "Session ended" : "Session completed"}</h1>
     {partnerEnded && <Alert tone="info">Your partner ended the session, or the session is no longer active.</Alert>}
     <p>Thank you for practising together.</p>
+    <PeerAiFeedback session={session} />
     {sent ? <Alert tone="success">Thank you! Your feedback has been submitted.</Alert> :
       <form className="space-y-4" onSubmit={async (event) => {
         event.preventDefault();

@@ -21,6 +21,7 @@ import {
   DashboardHeader,
 } from "@/domains/train/dashboard/DashboardLayout";
 import { AboutModal } from "@/domains/train/dashboard/AboutModals";
+import { OnboardingInvite } from "@/domains/train/dashboard/OnboardingInvite";
 import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
 import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
 import { InsightsList } from "@/domains/train/dashboard/InsightsList";
@@ -120,6 +121,8 @@ function DashboardBody({ data }: { data: DashboardData }) {
           </>
         }
       />
+
+      <OnboardingInvite attempts={attempts} />
 
       <AsyncBoundary state={performanceState}>
         {({ performance }) => (

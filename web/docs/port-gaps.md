@@ -382,7 +382,7 @@ arms. Most of it is wired; these are the parts of the retiring screens that
 |---|---|---|
 | Editing your own name | `capabilities/account/settings/ProfilePanel.tsx` | **Wired.** `PATCH /api/v1/me` exists (`identity/router_me.py`) and the panel writes the name through `updateMe`, then refreshes the session, because both nav footers print `session.user.name`. The email stays disabled: changing it is not a self-service act here. |
 | Deleting your own account | The "Danger zone" card, `DELETE /api/soft_delete_user/{email}` | No endpoint. The card is not ported; nothing on the screen implies you can leave. |
-| Preferences | `settings/preferences/SettingsPreferences.tsx` — AI training consent, extra reading time, "email me when a colleague is waiting", replaying the Athena onboarding | **One of the four is served, and the tab is `PreferencesPanel.tsx`.** `PATCH /me` writes `extra_reading_percent` — a percentage rather than the old boolean, because a percentage says what was granted, and 25 is what a bare "yes" used to mean. The other three have nowhere to be stored on `platform-api` and are left out rather than rendered as checkboxes that cannot save. Analytics consent is a separate, client-side decision (`hasAnsweredAnalyticsConsent`, gating the tag) and is not the same field. |
+| Preferences | `settings/preferences/SettingsPreferences.tsx` — AI training consent, extra reading time, "email me when a colleague is waiting", replaying the Athena onboarding | **Two of the four are served, and the tab is `PreferencesPanel.tsx`.** `PATCH /me` writes `extra_reading_percent` — a percentage rather than the old boolean, because a percentage says what was granted, and 25 is what a bare "yes" used to mean. The other three have nowhere to be stored on `platform-api` and are left out rather than rendered as checkboxes that cannot save. Analytics consent is a separate, client-side decision (`hasAnsweredAnalyticsConsent`, gating the tag) and is not the same field. Replaying the walkthrough needs no field at all now: `capabilities/onboarding` is a page, so anything that wants it links to it. |
 | The Exam tab | `settings/exam/SettingsExam.tsx` — exam type and exam date | **Both halves exist now**, in `ExamPanel.tsx`: `users.exam_date` and `users.exam_code` are columns, `PATCH /me` writes the date, and the dashboard countdown reads it. What changed shape is the type: an account is not bound to one exam, so the panel *shows* the chosen code and entitlements decide what may be opened — the switcher is on the Access tab, not a dropdown here. |
 | Bank details for referral payouts | `settings/referrals/user/BankDetails.tsx` (293 lines) | The growth slice tracks a code, a redemption count and pence earned. There is nowhere to store a sort code, and nothing pays anybody out. Not ported. |
 | Referral history per referee | `settings/referrals/user/ReferralHistory.tsx`, `ReferralDetail.tsx` | `GET /me/referrals` answers one `ReferralRead` — `{code, redeemed_count, earned_pence}` — with no per-referee rows, no join dates and no payout status. The screen shows the two totals it can prove. A listing endpoint would bring the table back unchanged. |
@@ -563,7 +563,7 @@ the server phase. Camera/microphone access requires HTTPS or localhost.
 | Two-minute match acceptance and decline/requeue | The global prompt counts down 120 seconds; Accept opens the runner. Not now/timeout calls the existing end-session endpoint, closing the immediately paired room. Acceptance and deadline persist across refresh/tabs. This is **not** backend pending acceptance: add a decline/requeue protocol for exact parity and automatic recovery of the other participant. |
 | Partner-left versus abandoned reason | The stream exposes ended status, without end actor/reason or live disconnect presence. The UI says the session ended and offers feedback or “Join queue again”; it cannot reliably identify who left or automatically abandon a disconnected peer. |
 | Optional rating and “Would practise again?” | Platform requires a 1–5 rating. Although the schema contains `would_practice_again`, the router/service do not save it. The UI submits only the rating/comment the endpoint stores. Feedback currently occupies shared session columns, so per-participant feedback also needs backend work. |
-| Recording, transcript and doctor AI feedback poller | Still P-1. No recording/egress, scoring or feedback-result endpoint is available for peer sessions; no AI feedback readiness is invented. |
+| Recording, transcript and doctor AI feedback poller | **Served (P-1 closed, 2026-09-24).** The phase machine records the consultation and queues a transcription job that turns the session into a `kind='peer'` attempt for the doctor, marked by the ordinary engine. `PracticeSessionRead` now carries `doctor_attempt_id` and `feedback_state` (`none`/`pending`/`ready`/`failed`), and `session/PeerAiFeedback.tsx` shows the existing `AttemptFeedback` once there is an attempt, a wait while there is not, and a plain note when the recording never arrived. The patient is not marked and is never given the id. The poller is on the *session*, not the attempt, because the session stream closes when the session ends. |
 | Automatic requeue | The completed/ended screen provides manual “Join queue again”. It checks for an active session first. |
 | Partner and poster usernames | Current marketplace schemas and cards support supplied usernames. Cards fall back to “A colleague” when absent; the runtime session still exposes only a partner id. |
 | Queue join partner-unavailable error | The queue API has no equivalent code. The match prompt detects an ended room and shows “Partner unavailable”; claim conflicts retain the API error in the confirmation modal. |
@@ -1166,3 +1166,30 @@ intent and screen-guidance flag through the assistant session extras. The same
 UI-guidance feature flag and desktop breakpoint apply. End-to-end voice and
 screen guidance still require a configured LiveKit assistant worker. Published
 legacy Firestore help changes beyond the seed are not automatically synced.
+
+## The Athena walkthrough (onboarding)
+
+Served as of 2026-09-24, closing A-2's browser half. `capabilities/onboarding`
+is a mounted capability rather than a consumer screen: the scenes come from the
+exam's content pack, which an institution's exam has as much as a consumer's.
+It is `hidden`, so it is reached by link — `OnboardingInvite` on an empty Train
+dashboard, or anything else that wants to replay it — and not by a permanent
+nav entry for something a person watches once.
+
+`GET /api/v1/assistant/onboarding-scenes` answers the scenes and the assistant's
+name; the exam is the backend's to decide from the caller, so nothing is passed.
+One voice session spans the whole walkthrough: the intro is rendered when the
+session starts, and each demo scene is *announced* over the LiveKit data channel
+(`scene_change`), which the worker re-renders through
+`POST /api/worker/assistant-sessions/{id}/scene`. The retiring client started a
+new room per scene, which is why it also needed a credentials cache and a
+cancellation path; a session that stays up needs neither.
+
+An announcement made before the room is connected is held and published on
+connect rather than dropped — the first scene is chosen while the connection is
+still being made. A voice session that cannot start leaves the walkthrough
+readable, with a retry, rather than blocking it.
+
+"Seen it" is `localStorage`, not a field on the user: it decides whether a
+dashboard offers the introduction, and being offered it once more on a new
+device is a smaller harm than a migration and a write on every dashboard load.

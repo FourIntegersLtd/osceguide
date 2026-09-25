@@ -8,6 +8,7 @@ import { stationsCapability } from "@/capabilities/stations/capability";
 import { communityCapability } from "@/capabilities/community/capability";
 import { peerPracticeCapability } from "@/capabilities/peer-practice/capability";
 import { debriefCapability } from "@/capabilities/debrief/capability";
+import { onboardingCapability } from "@/capabilities/onboarding/capability";
 import { transcriptsCapability } from "@/capabilities/transcripts/capability";
 import { accountCapability } from "@/capabilities/account/capability";
 import { authoringCapability } from "@/capabilities/authoring/capability";
@@ -33,6 +34,7 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
   messagesCapability,
   communityCapability,
   peerPracticeCapability,
+  onboardingCapability,
   debriefCapability,
   transcriptsCapability,
   accountCapability,

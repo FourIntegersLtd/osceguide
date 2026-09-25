@@ -29,6 +29,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assistant/onboarding-scenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Onboarding Scenes
+         * @description The demo scenarios a first-time user is walked through.
+         *
+         *     Answered from the same pack the onboarding session's instructions are
+         *     rendered from, and for the caller's own exam — a headache for SCA, chest
+         *     pain for PLAB — so the introduction is to the thing they are sitting.
+         */
+        get: operations["assistant_read_onboarding_scenes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assistant/sessions": {
         parameters: {
             query?: never;
@@ -6039,6 +6063,11 @@ export interface components {
              */
             scored_at: string;
         };
+        /** AssistantPersona */
+        AssistantPersona: {
+            /** Assistantname */
+            assistantName: string;
+        };
         /** AssistantTranscriptPost */
         AssistantTranscriptPost: {
             /**
@@ -8345,6 +8374,22 @@ export interface components {
             kind: string;
         };
         /**
+         * OnboardingScene
+         * @description One demo scenario. The spelling is the worker's and the browser's, which is b2c's.
+         */
+        OnboardingScene: {
+            /** Patientline */
+            patientLine: string;
+            /** Question */
+            question: string;
+        };
+        /** OnboardingScenes */
+        OnboardingScenes: {
+            persona: components["schemas"]["AssistantPersona"];
+            /** Scenes */
+            scenes: components["schemas"]["OnboardingScene"][];
+        };
+        /**
          * OrgAtRisk
          * @description An organisation the console should look at before it looks at anything else.
          */
@@ -9303,6 +9348,8 @@ export interface components {
         PracticeSessionRead: {
             /** Current Phase */
             current_phase?: string | null;
+            /** Doctor Attempt Id */
+            doctor_attempt_id?: string | null;
             /** Doctor Joined At */
             doctor_joined_at?: string | null;
             /** End Reason */
@@ -9311,6 +9358,11 @@ export interface components {
             ended_at?: string | null;
             /** Exam Code */
             exam_code: string;
+            /**
+             * Feedback State
+             * @default none
+             */
+            feedback_state: string;
             /**
              * Id
              * Format: uuid
@@ -11904,6 +11956,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReindexReport"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assistant_read_onboarding_scenes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingScenes"];
                 };
             };
             /** @description unauthenticated, account_suspended */
