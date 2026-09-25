@@ -1100,11 +1100,29 @@ class SlideService:
         return segments[:num_bullets]
 
     def _resolve_image_path(self, image_url: str, topic_folder: Path) -> Path:
-        """Resolve image path from URL."""
-        if image_url.startswith("images/"):
-            image_path = self.slides_base_dir / image_url
-        else:
-            image_path = topic_folder / image_url
+        """Resolve an image path from a slide's ``image_url``.
+
+        Security (SEC-018): ``image_urls`` are LLM-generated, so the value is
+        untrusted. Reject absolute paths and any ``..`` traversal, and confirm
+        the resolved path stays inside its base directory, so a crafted url
+        such as ``"../../../../etc/passwd"`` cannot escape the slides tree and
+        be embedded into the rendered (and later S3-uploaded) video. An unsafe
+        url resolves to a path that does not exist, so every caller's existing
+        ``image_path.exists()`` guard simply skips it.
+        """
+        base = self.slides_base_dir if image_url.startswith("images/") else topic_folder
+
+        candidate = Path(image_url)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            log.warning(f"Rejected unsafe image path (traversal/absolute): {image_url!r}")
+            return base / "__rejected_unsafe_image_path__"
+
+        image_path = (base / candidate).resolve()
+        try:
+            image_path.relative_to(base.resolve())
+        except ValueError:
+            log.warning(f"Rejected out-of-tree image path: {image_url!r}")
+            return base / "__rejected_unsafe_image_path__"
 
         if not image_path.exists():
             log.warning(f"Image not found: {image_path}")

@@ -1,15 +1,12 @@
 """The Clerk adapter behind `core.ports.SsoBroker`.
 
 Over `httpx` against Clerk's Backend API rather than through an SDK, the way
-`billing/checkout.py` talks to Stripe: verify the session token the callback is
-handed, then fetch the user it belongs to. The retiring consumer backend did
-the same in its `clerk_service`; this is that flow on the platform's footing —
-no Firestore, no cookie, and the platform issues the session (ADR 0004).
+`billing/checkout.py` talks to Stripe: verify the session token the callback
+is handed, then fetch the user it belongs to. The platform issues its own
+session (ADR 0004).
 
-Only the session-token path is ported. The dev-mode `__clerk_db_jwt` exchange
-— resolving a database JWT through the Frontend API — was a development
-convenience for a browser that had not finished signing in, and is deliberately
-not here; a production callback arrives with a session token.
+Only the session-token path is supported; a production callback always
+arrives with one.
 """
 
 from __future__ import annotations
@@ -75,41 +72,55 @@ class ClerkBroker:
     def __init__(self, secret_key: str) -> None:
         self._secret_key = secret_key
 
-    def sign_in_url(self, *, redirect_url: str, issuer: str | None) -> str:
+    def sign_in_url(
+        self, *, redirect_url: str, issuer: str | None, state: str | None = None, nonce: str | None = None
+    ) -> str:
         """The organisation's Clerk sign-in page, told where to come back to.
 
         `issuer` is the Clerk frontend domain stored on the organisation's
         configuration. Without it there is no sign-in page to send anybody to,
         so this refuses rather than guessing a domain.
+
+        `state`/`nonce` (SEC-015) belong to the OIDC code flow; Clerk's own
+        session verification does not carry them, so they are ignored here.
         """
+        del state, nonce
         domain = (issuer or "").strip()
         if not domain:
             raise SsoBrokerUnavailable("This organisation has no Clerk frontend domain configured")
         return f"https://{domain}/sign-in?redirect_url={quote(redirect_url, safe='')}"
 
-    async def verify(self, *, token: str, issuer: str | None = None) -> SsoIdentity | None:
+    async def verify(
+        self, *, token: str, issuer: str | None = None, expected_nonce: str | None = None
+    ) -> SsoIdentity | None:
         # One secret key verifies every partner's session; `issuer` (a
-        # Clerk frontend domain) is only needed to build the sign-in URL.
-        del issuer
+        # Clerk frontend domain) is only needed to build the sign-in URL, and
+        # `expected_nonce` belongs to the OIDC flow Clerk does not run.
+        del issuer, expected_nonce
         payload = _decode_payload(token)
         if payload is None:
             return None
         session_id = str(payload.get("sid") or "").strip()
         if not session_id:
             return None
+        # SEC-019: `sid` comes from a JWT whose signature is not verified until
+        # the call below, so it is untrusted here. Encode it before splicing it
+        # into the request path so a crafted `sid` (a `/`, `?`, `#` or `..`)
+        # cannot reshape the URL the org's Clerk secret key is sent to.
+        session_segment = quote(session_id, safe="")
+        verify_url = f"{CLERK_API_BASE}/sessions/{session_segment}/verify"
         headers = {"Authorization": f"Bearer {self._secret_key}"}
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-                verified = await client.post(
-                    f"{CLERK_API_BASE}/sessions/{session_id}/verify", headers=headers, json={"token": token}
-                )
+                verified = await client.post(verify_url, headers=headers, json={"token": token})
                 if verified.status_code >= 400:
                     log.warning("clerk refused a session", status=verified.status_code)
                     return None
                 user_id = str(verified.json().get("user_id") or payload.get("sub") or "").strip()
                 if not user_id:
                     return None
-                fetched = await client.get(f"{CLERK_API_BASE}/users/{user_id}", headers=headers)
+                user_url = f"{CLERK_API_BASE}/users/{quote(user_id, safe='')}"
+                fetched = await client.get(user_url, headers=headers)
         except httpx.HTTPError as exc:
             raise SsoBrokerUnavailable(f"could not reach Clerk: {exc}") from exc
 
@@ -126,13 +137,8 @@ class ClerkBroker:
 
 
 def build_clerk_broker(settings: Settings) -> ClerkBroker:
-    """The adapter, or a refusal. Never a silent no-op.
-
-    A deployment with no secret key cannot verify anybody, and `CLERK_SECRET_KEY`
-    is deliberately not one of the required ten — so this is a real state a
-    running process can be in, and it says so rather than accepting an
-    unverified token.
-    """
+    """The adapter, or a refusal — never a silent no-op that accepts an
+    unverified token."""
     if not settings.clerk_secret_key.strip():
         raise SsoBrokerUnavailable("CLERK_SECRET_KEY is not set, so this deployment cannot offer SSO")
     return ClerkBroker(settings.clerk_secret_key)

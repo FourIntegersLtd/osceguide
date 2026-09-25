@@ -27,6 +27,7 @@ from app.core.openapi import (
     operation_id,
 )
 from app.core.redis import close_redis
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.settings import get_settings
 from app.features import health
 from app.features.assistant.router import router as assistant_router
@@ -185,7 +186,13 @@ def create_app() -> FastAPI:
         generate_unique_id_function=operation_id,
         docs_url="/docs" if not settings.is_deployed else None,
         redoc_url=None,
+        # The schema drives local docs and the frontend's type generation, both
+        # of which run against a non-deployed instance. In a deployed
+        # environment it is turned off so the full route inventory is not
+        # published to an unauthenticated caller.
+        openapi_url=None if settings.is_deployed else "/openapi.json",
     )
+    app.add_middleware(SecurityHeadersMiddleware, deployed=settings.is_deployed)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,

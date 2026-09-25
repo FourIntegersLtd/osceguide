@@ -1,13 +1,12 @@
 """Starting and finishing an SSO sign-in.
 
-Split from `service.py`, which reads and writes the arrangement; this module
-runs the login itself. The broker is a port (`core.ports.SsoBroker`), so the
-flow is tested against a fake and Clerk is an adapter behind it.
+`service.py` reads and writes the arrangement; this module runs the login
+itself. The broker is a port (`core.ports.SsoBroker`), so the flow is tested
+against a fake and Clerk or Entra are adapters behind it.
 
 The platform owns the session (ADR 0004): the broker only answers who signed
-in. Provisioning the person and minting the token belong to `identity`, which
-this calls downward — `sso` sits above it — and the organisation's name and
-existence belong to `tenancy`, which it already asks.
+in. Provisioning the person and minting the token are `identity`'s job; the
+organisation's name and existence are `tenancy`'s.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ from app.core.memberships import MembershipLookup
 from app.core.ports import SsoBroker, SsoBrokerUnavailable
 from app.core.settings import Settings, SettingsDep
 from app.features.identity import service_sso
-from app.features.sso import domain, errors, repository, schemas
+from app.features.sso import domain, errors, repository, schemas, state as sso_state
 from app.features.sso.models import OrganizationSso
 from app.features.tenancy import service as tenancy
 
@@ -29,11 +28,9 @@ from app.features.tenancy import service as tenancy
 class SsoBrokers:
     """Both adapters, selected by the organisation's own configured provider.
 
-    Built once per request from settings, the way `get_sso_broker` used to
-    build a single Clerk instance — neither adapter holds per-tenant state
-    (Entra's tenant id and Clerk's frontend domain both travel as `issuer` on
-    each call instead), so one instance of each serves every organisation
-    that names it.
+    Neither adapter holds per-tenant state — Entra's tenant id and Clerk's
+    frontend domain both travel as `issuer` on each call — so one instance
+    of each serves every organisation that names it.
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -92,24 +89,39 @@ def _callback_redirect_url(settings: Settings, org_slug: str) -> str:
     """Where the broker sends the browser back to.
 
     A frontend page, not this API: the platform issues no cookies (ADR 0004),
-    so the page reads the token the broker appended and posts it to
-    `POST /auth/sso/callback`, which answers with the platform pair the SPA
-    stores. The slug rides along so the callback knows which arrangement to
-    verify against without trusting the token to say.
+    so the page posts the appended token to `POST /auth/sso/callback`. The
+    slug rides along so the callback knows which arrangement to verify
+    against without trusting the token to say.
     """
     base = settings.frontend_url.rstrip("/")
     return f"{base}/auth/sso/callback?{urlencode({'org_slug': org_slug})}"
 
 
+def _requires_state(provider: domain.Provider) -> bool:
+    """Whether this provider runs the OIDC code flow the SEC-015 `state` guards.
+
+    Entra does — its redirect echoes `state` and its id token carries the
+    `nonce`. Clerk verifies its own session token and carries neither, so a
+    missing `state` on a Clerk callback is not a failure.
+    """
+    return provider is domain.Provider.ENTRA
+
+
 async def build_login(
-    session: AsyncSession, org_slug: str, *, brokers: SsoBrokers, settings: Settings
+    session: AsyncSession, org_slug: str, *, brokers: SsoBrokers, settings: Settings, now: datetime
 ) -> schemas.SsoLoginResult:
     """Where to send this organisation's people to sign in."""
     config = await _enabled_config(session, org_slug)
     broker = brokers.for_provider(_configured_provider(config))
+    # SEC-015: a signed, short-lived state carries a fresh nonce back to the
+    # callback (the platform stores nothing between the two — ADR 0004).
+    state, nonce = sso_state.issue_state(settings, org_slug=org_slug, now=now)
     try:
         url = broker.sign_in_url(
-            redirect_url=_callback_redirect_url(settings, org_slug), issuer=config.issuer
+            redirect_url=_callback_redirect_url(settings, org_slug),
+            issuer=config.issuer,
+            state=state,
+            nonce=nonce,
         )
     except SsoBrokerUnavailable as exc:
         raise errors.SsoLoginUnavailable() from exc
@@ -121,6 +133,7 @@ async def complete_callback(
     org_slug: str,
     *,
     token: str,
+    state: str | None,
     brokers: SsoBrokers,
     settings: Settings,
     now: datetime,
@@ -130,8 +143,20 @@ async def complete_callback(
     config = await _enabled_config(session, org_slug)
     provider = _configured_provider(config)
     broker = brokers.for_provider(provider)
+    # SEC-015: on the OIDC code flow, the callback must carry the signed state
+    # this org's sign-in minted, and the nonce inside it must match the id
+    # token. A missing, tampered, expired or cross-org state fails here before
+    # the broker is asked, so a forged or replayed callback cannot mint a
+    # session.
+    expected_nonce: str | None = None
+    if _requires_state(provider):
+        if not state:
+            raise errors.SsoVerificationFailed()
+        expected_nonce = sso_state.verify_state(settings, state=state, org_slug=org_slug)
+        if expected_nonce is None:
+            raise errors.SsoVerificationFailed()
     try:
-        identity = await broker.verify(token=token, issuer=config.issuer)
+        identity = await broker.verify(token=token, issuer=config.issuer, expected_nonce=expected_nonce)
     except SsoBrokerUnavailable as exc:
         raise errors.SsoLoginUnavailable() from exc
     if identity is None:
