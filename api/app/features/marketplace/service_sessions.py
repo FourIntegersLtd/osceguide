@@ -1,4 +1,4 @@
-"""Peer session lifecycle: listing, joining, cancelling."""
+"""What happens after a slot is claimed: listing your booked sessions, joining one, cancelling one."""
 
 from __future__ import annotations
 
@@ -49,6 +49,13 @@ async def list_my_sessions(
 async def join_session(
     session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PeerSessionRead:
+    """Let one of the two people into their session, from ten minutes before it starts.
+
+    The first person to join creates the live practice session, which decides who
+    plays the doctor and who plays the patient. The second joins that same one.
+    Anyone else is told the session does not exist, so an id alone cannot confirm
+    that it does.
+    """
     from app.features.peer_practice.service_lifecycle import create_runtime_for_peer_booking
 
     peer_session = await repository.peer_session_by_id(session, peer_session_id)
@@ -96,6 +103,11 @@ async def join_session(
 async def cancel_peer_session(
     session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> None:
+    """Either person can call off a session that is still scheduled or under way.
+
+    Cancelling one that is already cancelled is refused as `peer_session_not_open`.
+    Anyone else is told the session does not exist.
+    """
     peer_session = await repository.peer_session_by_id(session, peer_session_id)
     if peer_session is None:
         raise errors.SessionNotFound()

@@ -96,10 +96,10 @@ async def list_feed(
     exam_id: uuid.UUID | None = None,
     audience: Audience | None = None,
 ) -> tuple[list[AvailabilityPost], str | None]:
-    """Unclaimed and claimed posts, newest first.
+    """Open and claimed slots, latest start time first.
 
-    Claimed rows are kept in the feed because claimed history is what becomes the Scheduled and
-    Completed sections once the clock passes.
+    Claimed slots stay in the feed because the app shows them under Scheduled and,
+    once their time has passed, Completed.
     """
     stmt = select(AvailabilityPost).where(
         AvailabilityPost.status.in_(("available", "claimed")),
@@ -170,6 +170,7 @@ async def link_practice_session(
 
 
 async def mark_peer_cancelled(session: AsyncSession, peer_session_id: uuid.UUID, *, at: datetime) -> bool:
+    """Cancel a session that is still scheduled or under way. False if it was neither."""
     cancelled_ids = await session.execute(
         update(PeerSession)
         .where(PeerSession.id == peer_session_id, PeerSession.status.in_(("scheduled", "active")))

@@ -19,6 +19,8 @@ CLAIMABLE_STATUSES = frozenset({"available"})
 CANCELLABLE_STATUSES = frozenset({"available", "claimed"})
 
 
+# Plain exceptions keep these rules free of HTTP. `service._REFUSALS` turns each
+# one into the error a client sees.
 class PostUnavailable(Exception):
     pass
 
@@ -33,6 +35,8 @@ class NotYours(Exception):
 
 @dataclass(frozen=True)
 class PostState:
+    """The parts of an offered slot that the claim and withdraw rules look at."""
+
     status: str
     owner_id: str
     starts_at: datetime
@@ -40,6 +44,8 @@ class PostState:
 
 @dataclass(frozen=True)
 class SessionState:
+    """The parts of a booked session that the join rules look at."""
+
     owner_id: str
     claimer_id: str
     starts_at: datetime
@@ -51,8 +57,7 @@ def ensure_claimable(post: PostState, *, claimer_id: str, now: datetime) -> None
     if post.owner_id == claimer_id:
         raise CannotClaimOwnPost("You cannot claim your own slot.")
     if post.starts_at <= now:
-        # Not in the legacy check. Claiming a session that has already started
-        # books nobody into anything.
+        # Once the start time has passed there is nothing left to join.
         raise PostUnavailable("That slot has already started.")
 
 

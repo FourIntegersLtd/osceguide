@@ -30,6 +30,7 @@ class AvailabilityPost(Base, UUIDPrimaryKey, Timestamps, Addressed):
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("30"))
     note: Mapped[str | None] = mapped_column(Text)
+    # available -> claimed. Either becomes cancelled if the person who offered it takes it back.
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'available'"))
     claimed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -54,11 +55,14 @@ class PeerSession(Base, UUIDPrimaryKey, Timestamps):
     exam_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("exams.id", ondelete="RESTRICT"), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     room_name: Mapped[str | None] = mapped_column(String(200))
+    # The next three are filled in when the first person joins: the live practice
+    # session both people use, and who plays which part in it.
     practice_session_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("practice_sessions.id", ondelete="SET NULL")
     )
     doctor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     patient_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # scheduled -> active once someone joins; cancelled from either.
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'scheduled'"))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

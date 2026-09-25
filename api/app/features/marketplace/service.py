@@ -25,6 +25,7 @@ from app.features.marketplace import domain, errors, repository, service_reads
 from app.features.marketplace.models import AvailabilityPost
 from app.features.marketplace.schemas import PeerSessionRead, PostRead
 
+# Which client-facing error each rule in `domain` becomes.
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.PostUnavailable: errors.PostUnavailableError,
     domain.CannotClaimOwnPost: errors.CannotClaimOwnPostError,
@@ -128,6 +129,10 @@ async def claim_slot(
 async def withdraw_slot(
     session: AsyncSession, post_id: uuid.UUID, *, actor_id: uuid.UUID, now: datetime
 ) -> None:
+    """Take back a slot you offered, whether or not someone has claimed it yet.
+
+    Only the person who offered it can. Anyone else is refused as `not_your_post`.
+    """
     post = await repository.lock_post(session, post_id)
     if post is None:
         raise errors.PostNotFound()
@@ -148,7 +153,11 @@ async def list_open_slots(
     audience: Audience | None = None,
     exam_code: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
-    """Available and claimed posts, in this viewer's audience."""
+    """The slots this person may see, open or already claimed.
+
+    That is every public slot, plus any offered only to their institution or to
+    a teaching group they belong to.
+    """
     viewer_audiences = await audiences_for(session, viewer_id)
     exam_id: uuid.UUID | None = None
     if exam_code:
@@ -183,6 +192,9 @@ async def list_my_posts(session: AsyncSession, *, viewer_id: uuid.UUID, limit: i
     return await service_reads.posts_read(session, posts, exam_codes, viewer_id=viewer_id)
 
 
+# The booked-session use cases live in `service_sessions`; these forward to it so the
+# router has one module to call. The import sits inside each function because
+# `service_sessions` imports `_exam_codes` from this module.
 async def list_my_sessions(
     session: AsyncSession,
     user_id: uuid.UUID,

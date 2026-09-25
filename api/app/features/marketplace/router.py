@@ -1,3 +1,5 @@
+"""HTTP routes for offering, claiming and joining peer practice slots. Each hands straight to `service`."""
+
 from __future__ import annotations
 
 import uuid

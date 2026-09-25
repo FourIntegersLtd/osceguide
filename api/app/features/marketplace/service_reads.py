@@ -1,4 +1,4 @@
-"""Shapes the marketplace routes return."""
+"""Turns stored slots and sessions into what the marketplace routes return."""
 
 from __future__ import annotations
 
@@ -13,6 +13,11 @@ from app.features.marketplace.schemas import PeerSessionRead, PostRead
 
 
 def peer_username(user: identity.UserRef | None) -> str:
+    """The name the other person sees.
+
+    The first word of their name in lower case, else the part of their email
+    before the @, else "colleague".
+    """
     if user is None:
         return "colleague"
     full_name = (user.name or "").strip()
@@ -53,6 +58,12 @@ def session_read(
     viewer_id: uuid.UUID,
     partner_username: str,
 ) -> PeerSessionRead:
+    """One booked session, as the viewer sees it.
+
+    Two different roles come back. `user_role` says whether the viewer offered
+    the slot ("poster") or claimed it ("claimer"). `my_role` says whether they play
+    the doctor or the patient, and is only known once someone has joined.
+    """
     viewer_is_owner = peer_session.owner_user_id == viewer_id
     partner_user_id = peer_session.claimer_user_id if viewer_is_owner else peer_session.owner_user_id
     user_role = "poster" if viewer_is_owner else "claimer"
@@ -83,6 +94,7 @@ async def posts_read(
     *,
     viewer_id: uuid.UUID,
 ) -> list[PostRead]:
+    """Many slots at once, looking up every owner's and claimer's name in one query."""
     user_ids: set[uuid.UUID] = set()
     for post in posts:
         user_ids.add(post.owner_user_id)
