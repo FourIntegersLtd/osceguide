@@ -11,7 +11,7 @@ HTTPS on a plaintext local dev origin would make it unreachable.
 
 from __future__ import annotations
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
@@ -36,8 +36,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._deployed = deployed
 
-    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
-        response: Response = await call_next(request)
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        response = await call_next(request)
         for name, value in _BASE_HEADERS.items():
             response.headers.setdefault(name, value)
         if self._deployed:

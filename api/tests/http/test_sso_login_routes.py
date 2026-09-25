@@ -154,9 +154,7 @@ async def test_an_entra_organisation_signs_in_through_its_own_flow(client: Async
     state = fake.issued_states[0]
     assert state and fake.issued_nonces[0]
 
-    result = await client.post(
-        CALLBACK, json={"org_slug": "kings", "token": "auth-code", "state": state}
-    )
+    result = await client.post(CALLBACK, json={"org_slug": "kings", "token": "auth-code", "state": state})
     assert result.status_code == 200, result.text
     # ...and the nonce inside that state is what the broker was told to expect.
     assert fake.expected_nonces == [fake.issued_nonces[0]]

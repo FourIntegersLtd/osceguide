@@ -7,7 +7,7 @@ organisation the callback claims.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 
@@ -25,7 +25,7 @@ def _settings() -> Settings:
 def _now() -> datetime:
     # Real wall-clock time: `verify_state` checks `exp`/`iat` against the
     # system clock, so a fixed future `iat` would read as not-yet-valid.
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def test_a_state_this_platform_minted_verifies_and_yields_its_nonce() -> None:

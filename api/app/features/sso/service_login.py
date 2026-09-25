@@ -20,7 +20,8 @@ from app.core.memberships import MembershipLookup
 from app.core.ports import SsoBroker, SsoBrokerUnavailable
 from app.core.settings import Settings, SettingsDep
 from app.features.identity import service_sso
-from app.features.sso import domain, errors, repository, schemas, state as sso_state
+from app.features.sso import domain, errors, repository, schemas
+from app.features.sso import state as sso_state
 from app.features.sso.models import OrganizationSso
 from app.features.tenancy import service as tenancy
 
