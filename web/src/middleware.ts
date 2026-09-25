@@ -7,6 +7,7 @@ import {
   recordArrival,
   resolveVisitorKey,
 } from "@/foundation/attribution/arrivalCapture";
+import { buildCspHeader, cspEnforceFromEnv } from "@/foundation/security/contentSecurityPolicy";
 
 /**
  * Answers for the addresses the retiring client is still serving.
@@ -16,12 +17,36 @@ import {
  * have those old URLs bookmarked, in emails and on the marketing site, so each
  * one needs an answer rather than a 404.
  *
- * Session checking deliberately does **not** happen here. The tokens live in
- * `localStorage`, which middleware cannot read, so a redirect decided here
- * would be guessing. `RequireSession` does it in the browser where the answer
- * is actually known.
+ * Session checking deliberately does **not** happen here. The session is an
+ * `httpOnly` cookie now, so the edge *could* read it — but a cookie says only
+ * that a token exists, not that it is still good or what the person may see,
+ * and a redirect decided on that would be guessing. `RequireSession` does it
+ * in the browser, against a token the server has just validated.
  */
 export function middleware(request: NextRequest, event: NextFetchEvent) {
+  /*
+   * SEC-006: mint this request's Content-Security-Policy before routing.
+   *
+   * The nonce has to be forwarded on the *request* headers, not just set on the
+   * response: Next reads it off the request's `Content-Security-Policy` header
+   * during render and stamps it onto its own bootstrap scripts, which is what
+   * makes `script-src 'nonce-… strict-dynamic'` load the app instead of blocking
+   * it. So every response that renders a page (`next` and the exam rewrite) is
+   * built with these forwarded headers; a redirect renders nothing and skips it.
+   *
+   * It ships Report-Only unless `PLATFORM_WEB_CSP_ENFORCE` is set — a nonce CSP
+   * forces every page into dynamic rendering, so any statically-rendered page
+   * would break silently under enforce until a staging browser pass confirms the
+   * whole journey. See `foundation/security/contentSecurityPolicy.ts`.
+   */
+  const csp = buildCspHeader({
+    isDev: process.env.NODE_ENV === "development",
+    enforce: cspEnforceFromEnv(process.env.PLATFORM_WEB_CSP_ENFORCE),
+  });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", csp.nonce);
+  requestHeaders.set("Content-Security-Policy", csp.value);
+
   /*
    * First-touch partner attribution, before anything else decides the response.
    *
@@ -38,7 +63,11 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     search: request.nextUrl.search,
   });
 
-  const response = route(request);
+  const response = route(request, requestHeaders);
+
+  // The response carries the policy the browser enforces (or reports on); the
+  // request carries only the nonce Next needs to render. Both hold one string.
+  response.headers.set(csp.name, csp.value);
 
   if (referral) {
     if (isFirstTouch) {
@@ -52,7 +81,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 }
 
 /** The answer this URL needs, ignoring attribution: an old address, an exam host, or itself. */
-function route(request: NextRequest): NextResponse {
+function route(request: NextRequest, requestHeaders: Headers): NextResponse {
   const destination = legacyDestination(request.nextUrl.pathname);
   if (destination) {
     const url = request.nextUrl.clone();
@@ -82,10 +111,10 @@ function route(request: NextRequest): NextResponse {
   if (rewritePath) {
     const url = request.nextUrl.clone();
     url.pathname = rewritePath;
-    return NextResponse.rewrite(url);
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

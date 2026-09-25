@@ -1,5 +1,9 @@
 import { platformRequest, setPlatformTokenSource } from "@/foundation/platform-client/client";
 import { hasCode } from "@/foundation/platform-client/errors";
+import {
+  REFRESH_MARGIN_MS,
+  SESSION_MARKER_COOKIE,
+} from "@/foundation/platform-client/sessionCookies";
 import type { components } from "@/foundation/platform-client/schema";
 
 /**
@@ -9,6 +13,14 @@ import type { components } from "@/foundation/platform-client/schema";
  * one pair of tokens whether the person is a consumer, an institution
  * supervisor or an employer reviewer. Which surface they land on is decided by
  * their memberships, not by which login page they used.
+ *
+ * **Where the tokens live.** The refresh token is not here and never is: it
+ * goes straight into an `httpOnly` cookie owned by this app's own route
+ * handlers under `/api/session`, and only the Next server ever spends it. This
+ * module holds one access token in memory, for fifteen minutes at a time. The
+ * reasoning is in `sessionCookies.ts`; the short version is that `localStorage`
+ * is readable by any script on the page, so one XSS used to be worth a
+ * thirty-day renewable session rather than a fifteen-minute one.
  *
  * `exchangeLegacyToken` is kept for the cutover: no password came across from
  * the old backends (one hashed with bcrypt, the other with unsalted SHA-256),
@@ -21,68 +33,71 @@ type AuthResult = components["schemas"]["AuthResult"];
 /** Which retiring backend the caller's current session came from. */
 export type LegacyProvider = "consumer" | "institution";
 
-const ACCESS_KEY = "osce_platform_access_token";
-const REFRESH_KEY = "osce_platform_refresh_token";
-/**
- * When the stored access token expires, in epoch milliseconds.
- *
- * Persisted rather than recomputed because refresh tokens are single-use with
- * reuse detection. Without it, every page load treated its access token as due
- * and refreshed — and any two module instances doing that at once (a code-split
- * chunk, a second tab, a dev-mode double render) spent the same token twice,
- * which reads as theft and revokes the whole chain. The person is then signed
- * out on reload with no explanation.
- */
-const EXPIRES_KEY = "osce_platform_token_expires_at";
-/**
- * Refresh this long before the access token expires.
- *
- * Tokens live fifteen minutes. Refreshing a minute early costs one extra
- * request an hour and avoids the race where a token passes the check here and
- * expires in flight.
- */
-const REFRESH_MARGIN_MS = 60_000;
+/** This app's own session endpoints, not platform-api's. */
+const SESSION_ENDPOINT = "/api/session";
+const TOKEN_ENDPOINT = "/api/session/token";
 
-interface StoredSession {
+interface CachedToken {
   accessToken: string;
-  refreshToken: string;
   /** Epoch milliseconds. */
   expiresAt: number;
 }
 
-let session: StoredSession | null = null;
+let session: CachedToken | null = null;
 let inFlight: Promise<string | null> | null = null;
 
-function read(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    // Safari in private mode throws on access rather than returning null.
-    return null;
-  }
+/* ---------- the session marker ---------- */
+
+/**
+ * Whether a session exists, answered synchronously and without a secret.
+ *
+ * `SessionProvider` decides whether to bother trying before it can await
+ * anything, and it cannot read an `httpOnly` cookie. The server sets a
+ * separate readable cookie carrying this one bit.
+ */
+function hasMarker(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split(";")
+    .some((entry) => entry.trim().startsWith(`${SESSION_MARKER_COOKIE}=`));
 }
 
-function write(key: string, value: string | null): void {
-  try {
-    if (value === null) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, value);
-  } catch {
-    // Storage being unavailable makes the session last one page view, which
-    // is worse than persisting it and better than failing to sign in.
-  }
+function dropMarker(): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${SESSION_MARKER_COOKIE}=; path=/; max-age=0`;
 }
 
-function remember(result: AuthResult): StoredSession {
-  const stored: StoredSession = {
+/* ---------- storing and forgetting ---------- */
+
+/** Drop what this tab holds. The server's cookies are cleared separately. */
+function forgetLocally(): void {
+  session = null;
+  inFlight = null;
+  dropMarker();
+}
+
+async function remember(
+  result: Pick<AuthResult, "access_token" | "refresh_token" | "expires_in">,
+): Promise<void> {
+  const response = await fetch(SESSION_ENDPOINT, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+      expires_in: result.expires_in,
+    }),
+  });
+  if (!response.ok) {
+    // Without the cookie there is no session to come back to on the next page
+    // load, so failing loudly beats appearing to sign in and then not having.
+    throw new Error("Could not store the session");
+  }
+  session = {
     accessToken: result.access_token,
-    refreshToken: result.refresh_token,
     expiresAt: Date.now() + result.expires_in * 1000,
   };
-  session = stored;
-  write(ACCESS_KEY, stored.accessToken);
-  write(REFRESH_KEY, stored.refreshToken);
-  write(EXPIRES_KEY, String(stored.expiresAt));
-  return stored;
 }
 
 /**
@@ -97,20 +112,31 @@ function remember(result: AuthResult): StoredSession {
  * which is a token pair and nothing else — the person is read afterwards from
  * `GET /me`, which is where the profile lives anyway. Widening the parameter is
  * what lets that caller be honest instead of casting a `user` into existence.
+ *
+ * Awaitable now that storing is a request to this app's own server. Callers
+ * that do not await it will navigate before the cookie is set.
  */
-export function rememberPlatformSession(
+export async function rememberPlatformSession(
   result: Pick<AuthResult, "access_token" | "refresh_token" | "expires_in">,
-): void {
-  remember(result as AuthResult);
+): Promise<void> {
+  await remember(result);
 }
 
-/** Forget the platform session. The legacy one is untouched. */
+/**
+ * Forget the platform session. The legacy one is untouched.
+ *
+ * Synchronous for its callers, so the marker goes at once and nothing decides
+ * a person is still signed in while the request is in flight. The cookies
+ * themselves are dropped by the server; `logout` awaits that, this does not.
+ */
 export function clearPlatformSession(): void {
-  session = null;
-  inFlight = null;
-  write(ACCESS_KEY, null);
-  write(REFRESH_KEY, null);
-  write(EXPIRES_KEY, null);
+  forgetLocally();
+  if (typeof fetch === "undefined") return;
+  void fetch(SESSION_ENDPOINT, { method: "DELETE", credentials: "same-origin" }).catch(() => {
+    // The cookies outlive this tab if the request never lands. The tokens in
+    // them are still subject to their own expiry, and the next sign-in
+    // replaces them.
+  });
 }
 
 /**
@@ -130,7 +156,7 @@ export async function exchangeLegacyToken(
       method: "POST",
       body: { provider, token },
     });
-    remember(result);
+    await remember(result);
     return result;
   } catch (error) {
     if (hasCode(error, "legacy_account_not_imported")) return null;
@@ -138,64 +164,69 @@ export async function exchangeLegacyToken(
   }
 }
 
-async function refresh(): Promise<string | null> {
-  const refreshToken = session?.refreshToken ?? read(REFRESH_KEY);
-  if (!refreshToken) return null;
-  try {
-    const pair = await platformRequest<AuthResult>("/api/v1/auth/refresh", {
-      method: "POST",
-      body: { refresh_token: refreshToken },
-    });
-    return remember(pair).accessToken;
-  } catch (cause) {
-    /*
-     * Another instance of this module may have refreshed while we were in
-     * flight — a second tab, or a code-split chunk with its own module scope.
-     * It stored a fresh pair, and ours is spent through no fault of the
-     * person using it. Adopting theirs is right; clearing would sign them out
-     * of a session that is perfectly alive.
-     */
-    const current = read(REFRESH_KEY);
-    if (current && current !== refreshToken) {
-      const accessToken = read(ACCESS_KEY);
-      const expiresAt = Number(read(EXPIRES_KEY));
-      if (accessToken && Number.isFinite(expiresAt) && Date.now() < expiresAt) {
-        session = { accessToken, refreshToken: current, expiresAt };
-        return accessToken;
-      }
+/* ---------- reading the token ---------- */
+
+/**
+ * Hold a named lock across every tab on this origin, if the browser has them.
+ *
+ * Refresh tokens are single-use with reuse detection, and all this browser's
+ * tabs share one cookie — so two tabs refreshing at the same moment would
+ * spend the same token twice and revoke the whole chain. Serialising them here
+ * means the second tab arrives after the first has already stored a new pair,
+ * and the server then answers it from the cookie without refreshing at all.
+ *
+ * Different browsers and devices hold different cookies, so there is no race
+ * to lose between them.
+ */
+async function withSessionLock<T>(run: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks) return run();
+  return locks.request("osce-platform-session", run);
+}
+
+async function fetchToken(): Promise<string | null> {
+  return withSessionLock(async () => {
+    let response: Response;
+    try {
+      response = await fetch(TOKEN_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+    } catch {
+      // Offline, or this app's own server is down. Not a reason to sign
+      // anybody out; the caller can try again.
+      return null;
     }
-    void cause;
-    // A refused refresh means the chain is spent or revoked. Dropping it
-    // sends the next call back through the exchange rather than retrying a
-    // token that will never work again.
-    clearPlatformSession();
-    return null;
-  }
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as { access_token: string | null; expires_at?: number };
+    if (!body.access_token) {
+      // The server has already cleared the cookies: the chain was spent or
+      // revoked, or there was never a session here.
+      forgetLocally();
+      return null;
+    }
+    session = {
+      accessToken: body.access_token,
+      expiresAt: body.expires_at ?? Date.now() + REFRESH_MARGIN_MS,
+    };
+    return session.accessToken;
+  });
 }
 
 /**
  * The access token, refreshed if it is about to expire.
  *
- * Concurrent callers share one refresh: the console fires several requests at
- * once, and refresh tokens are single-use with reuse detection, so two
- * refreshes racing would revoke the whole chain and sign the person out.
+ * Concurrent callers in this tab share one request, and `withSessionLock`
+ * covers the other tabs.
  */
 export async function platformAccessToken(): Promise<string | null> {
-  if (!session) {
-    const accessToken = read(ACCESS_KEY);
-    const refreshToken = read(REFRESH_KEY);
-    if (!accessToken || !refreshToken) return null;
-    // A stored expiry in the past — or a missing one, from a session saved
-    // before this was kept — is treated as due, which costs one refresh.
-    const storedExpiry = Number(read(EXPIRES_KEY));
-    session = {
-      accessToken,
-      refreshToken,
-      expiresAt: Number.isFinite(storedExpiry) ? storedExpiry : 0,
-    };
-  }
-  if (Date.now() < session.expiresAt - REFRESH_MARGIN_MS) return session.accessToken;
-  inFlight ??= refresh().finally(() => {
+  if (session && Date.now() < session.expiresAt - REFRESH_MARGIN_MS) return session.accessToken;
+  // No marker means no session at all, and asking would be a pointless round
+  // trip on every anonymous page.
+  if (!session && !hasMarker()) return null;
+  inFlight ??= fetchToken().finally(() => {
     inFlight = null;
   });
   return inFlight;
@@ -213,25 +244,23 @@ export function installPlatformAuth(): void {
 }
 
 /**
- * The stored access token, without refreshing it.
+ * The cached access token, without refreshing it.
  *
  * For the one caller that cannot await: a `pagehide` handler has no time to
  * refresh, and the alternative — `sendBeacon`, which cannot set headers at
- * all — sends the request unauthenticated. A slightly stale token that the
- * backend refuses loses one batch; no token loses every batch sent on the way
- * out of the page, which is most of them.
+ * all — sends the request unauthenticated.
+ *
+ * It answers from memory only, because the stored token is in an `httpOnly`
+ * cookie this side cannot read. So a page that is closed before anything
+ * asked for a token sends its last batch unauthenticated and loses it. That
+ * is the price of the refresh token being out of reach, and it is one batch
+ * on the way out of a page rather than a session in somebody else's hands.
  */
 export function peekPlatformAccessToken(): string | null {
-  return session?.accessToken ?? read(ACCESS_KEY);
+  return session?.accessToken ?? null;
 }
 
-/** Exported for the tests, which need to start from nothing. */
-export const STORAGE_KEYS = {
-  access: ACCESS_KEY,
-  refresh: REFRESH_KEY,
-  expiresAt: EXPIRES_KEY,
-} as const;
-
+/* ---------- signing in and out ---------- */
 
 /** Sign in. One login for every product. */
 export async function login(email: string, password: string): Promise<AuthResult> {
@@ -239,7 +268,7 @@ export async function login(email: string, password: string): Promise<AuthResult
     method: "POST",
     body: { email, password },
   });
-  remember(result);
+  await remember(result);
   return result;
 }
 
@@ -266,34 +295,27 @@ export async function register(input: {
       exam_code: input.examCode || null,
     },
   });
-  remember(result);
+  await remember(result);
   return result;
 }
 
 /**
  * Sign out.
  *
- * The refresh token is revoked server-side first, because clearing local
- * storage alone leaves a working token in the hands of whoever has the device.
- * A failed revoke still clears locally: the person asked to be signed out.
+ * The revoking moved to `DELETE /api/session`, which is the only side that
+ * still holds the refresh token. It awaits the revoke rather than firing it
+ * off, so a person who signs out and closes the tab is actually signed out.
  */
 export async function logout(): Promise<void> {
-  const refreshToken = session?.refreshToken ?? read(REFRESH_KEY);
   try {
-    if (refreshToken) {
-      await platformRequest<void>("/api/v1/auth/logout", {
-        method: "POST",
-        body: { refresh_token: refreshToken },
-      });
-    }
+    await fetch(SESSION_ENDPOINT, { method: "DELETE", credentials: "same-origin" });
   } catch {
     // Revoking is best effort; the local session goes regardless.
   } finally {
-    clearPlatformSession();
+    forgetLocally();
   }
 }
 
-/** Move to another workspace, re-minting the token with it active. */
 /**
  * Re-mint the token against another workspace.
  *
@@ -308,7 +330,7 @@ export async function switchWorkspace(orgSlug: string | null): Promise<AuthResul
   });
   // The new token *is* the switch; keeping the old one would leave every later
   // request claiming the workspace the person just left.
-  remember(result);
+  await remember(result);
   return result;
 }
 
@@ -341,7 +363,7 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
 }
 
 export function hasStoredSession(): boolean {
-  return Boolean(session?.accessToken ?? read(ACCESS_KEY));
+  return Boolean(session?.accessToken) || hasMarker();
 }
 
 /**

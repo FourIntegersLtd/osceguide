@@ -242,7 +242,7 @@ export async function completeSsoSignIn(
     method: "POST",
     body: { org_slug: orgSlug, token },
   });
-  rememberPlatformSession({
+  await rememberPlatformSession({
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     expires_in: session.expires_in,

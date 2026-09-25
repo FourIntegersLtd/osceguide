@@ -73,6 +73,18 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Deny the powerful browser features this app never uses. Camera and
+          // microphone stay allowed to self because the LiveKit voice station
+          // needs them; everything else is switched off so a compromised or
+          // injected script cannot reach for it. A full Content-Security-Policy
+          // is deliberately not set here — it must be validated in a browser on
+          // staging first (see docs/security), since a wrong CSP breaks the app
+          // silently.
+          {
+            key: "Permissions-Policy",
+            value:
+              "geolocation=(), payment=(), usb=(), camera=(self), microphone=(self), fullscreen=(self)",
+          },
         ],
       },
     ];

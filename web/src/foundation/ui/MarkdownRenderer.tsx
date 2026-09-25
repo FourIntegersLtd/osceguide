@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { remark } from "remark";
-import remarkRehype from "remark-rehype";
-import rehypeRaw from "rehype-raw";
-import rehypeStringify from "rehype-stringify";
+import { renderMarkdownToSafeHtml } from "@/foundation/ui/renderMarkdown";
 import styles from "@/foundation/ui/markdown.module.css";
 
 interface MarkdownRendererProps {
@@ -14,7 +11,11 @@ interface MarkdownRendererProps {
 
 /**
  * MarkdownRenderer - A reusable component for rendering markdown content
- * 
+ *
+ * The markdown-to-HTML conversion, its sanitiser and its safe fallback all live
+ * in `renderMarkdownToSafeHtml` so the security-critical part is unit-tested
+ * without a DOM. This component only owns state and mounting.
+ *
  * Usage:
  * <MarkdownRenderer content={markdownString} />
  * <MarkdownRenderer content={markdownString} className="custom-class" />
@@ -23,25 +24,13 @@ function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
   const [htmlContent, setHtmlContent] = useState("");
 
   useEffect(() => {
-    const processMarkdown = async () => {
-      try {
-        const result = await remark()
-          .use(remarkRehype, { allowDangerousHtml: true })
-          .use(rehypeRaw)
-          .use(rehypeStringify)
-          .process(content);
-        setHtmlContent(String(result));
-      } catch (error) {
-        console.error("Error processing markdown:", error);
-        setHtmlContent(content); // Fallback to raw content
-      }
+    let cancelled = false;
+    renderMarkdownToSafeHtml(content).then((html) => {
+      if (!cancelled) setHtmlContent(html);
+    });
+    return () => {
+      cancelled = true;
     };
-
-    if (content) {
-      processMarkdown();
-    } else {
-      setHtmlContent("");
-    }
   }, [content]);
 
   return (
@@ -53,4 +42,3 @@ function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
 }
 
 export default MarkdownRenderer;
-
