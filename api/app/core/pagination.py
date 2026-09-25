@@ -50,12 +50,12 @@ def encode_cursor(payload: dict[str, Any]) -> str:
 def decode_cursor(cursor: str) -> dict[str, Any]:
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
-        data = json.loads(base64.urlsafe_b64decode(padded))
+        decoded = json.loads(base64.urlsafe_b64decode(padded))
     except (ValueError, json.JSONDecodeError) as exc:
         raise InvalidInput("Invalid cursor") from exc
-    if not isinstance(data, dict):
+    if not isinstance(decoded, dict):
         raise InvalidInput("Invalid cursor")
-    return data
+    return decoded
 
 
 async def keyset_page(

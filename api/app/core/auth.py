@@ -65,7 +65,7 @@ class Principal:
     must_change_password: bool = False
 
     def membership_for(self, org_slug: str) -> Membership | None:
-        return next((m for m in self.memberships if m.org_slug == org_slug), None)
+        return next((membership for membership in self.memberships if membership.org_slug == org_slug), None)
 
     @property
     def active_membership(self) -> Membership | None:
@@ -82,8 +82,13 @@ def issue_access_token(principal: Principal, *, settings: Settings, now: datetim
         "exp": int((issued_at + timedelta(seconds=settings.jwt_access_ttl_seconds)).timestamp()),
         "email": principal.email,
         "memberships": [
-            {"org_id": str(m.org_id), "org_slug": m.org_slug, "role": m.role, "surface": m.surface}
-            for m in principal.memberships
+            {
+                "org_id": str(membership.org_id),
+                "org_slug": membership.org_slug,
+                "role": membership.role,
+                "surface": membership.surface,
+            }
+            for membership in principal.memberships
         ],
         "active_org": principal.active_org_slug,
         "platform_admin": principal.is_platform_admin,
@@ -108,9 +113,12 @@ def decode_access_token(token: str, *, settings: Settings) -> Principal:
     try:
         memberships = tuple(
             Membership(
-                org_id=UUID(m["org_id"]), org_slug=m["org_slug"], role=m["role"], surface=m.get("surface")
+                org_id=UUID(entry["org_id"]),
+                org_slug=entry["org_slug"],
+                role=entry["role"],
+                surface=entry.get("surface"),
             )
-            for m in claims.get("memberships", [])
+            for entry in claims.get("memberships", [])
         )
         return Principal(
             user_id=UUID(claims["sub"]),

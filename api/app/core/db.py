@@ -60,7 +60,9 @@ def include_name(name: str | None, _type: str, _parent: object) -> bool:
     return not (name and name.startswith("procrastinate"))
 
 
-def include_object(_obj: object, name: str | None, type_: str, _reflected: bool, _compare_to: object) -> bool:
+def include_object(
+    _entity: object, name: str | None, type_: str, _reflected: bool, _compare_to: object
+) -> bool:
     return include_name(name, type_, None)
 
 

@@ -59,14 +59,14 @@ class Snapshot:
     final: bool = False
 
 
-def frame(event: str, data: str) -> str:
+def frame(event: str, payload: str) -> str:
     """One SSE frame. `data` is already-encoded JSON.
 
     Newlines inside the payload are re-prefixed rather than escaped: a bare
     newline in `data:` silently ends the frame, and the client sees half an
     object with no error anywhere.
     """
-    body = "\n".join(f"data: {line}" for line in data.split("\n"))
+    body = "\n".join(f"data: {line}" for line in payload.split("\n"))
     return f"event: {event}\n{body}\n\n"
 
 

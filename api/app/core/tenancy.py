@@ -172,7 +172,7 @@ def admin_org_ids(principal: Principal) -> frozenset[uuid.UUID]:
     organisation".
     """
     is_admin = policy("is_org_admin")
-    return frozenset(m.org_id for m in principal.memberships if is_admin(m.role))
+    return frozenset(membership.org_id for membership in principal.memberships if is_admin(membership.role))
 
 
 async def require_platform_admin(principal: CurrentPrincipal) -> Principal:

@@ -115,10 +115,10 @@ def seed_version(existing: Sequence[VersionRef]) -> VersionRef | None:
     """
     if not existing:
         return None
-    published = [v for v in existing if v.status is Status.PUBLISHED]
+    published = [version for version in existing if version.status is Status.PUBLISHED]
     pool = published or list(existing)
-    return max(pool, key=lambda v: v.number)
+    return max(pool, key=lambda version: version.number)
 
 
 def next_version_number(existing: Sequence[VersionRef]) -> int:
-    return max((v.number for v in existing), default=0) + 1
+    return max((version.number for version in existing), default=0) + 1

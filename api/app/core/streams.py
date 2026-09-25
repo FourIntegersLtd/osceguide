@@ -55,8 +55,13 @@ def issue_stream_ticket(principal: Principal, *, settings: Settings, now: dateti
         "exp": int((issued_at + timedelta(seconds=settings.stream_ticket_ttl_seconds)).timestamp()),
         "email": principal.email,
         "memberships": [
-            {"org_id": str(m.org_id), "org_slug": m.org_slug, "role": m.role, "surface": m.surface}
-            for m in principal.memberships
+            {
+                "org_id": str(membership.org_id),
+                "org_slug": membership.org_slug,
+                "role": membership.role,
+                "surface": membership.surface,
+            }
+            for membership in principal.memberships
         ],
         "active_org": principal.active_org_slug,
         "platform_admin": principal.is_platform_admin,
@@ -87,12 +92,12 @@ def _principal_from_claims(claims: dict[str, Any]) -> Principal:
             email=claims.get("email", ""),
             memberships=tuple(
                 Membership(
-                    org_id=UUID(m["org_id"]),
-                    org_slug=m["org_slug"],
-                    role=m["role"],
-                    surface=m.get("surface"),
+                    org_id=UUID(entry["org_id"]),
+                    org_slug=entry["org_slug"],
+                    role=entry["role"],
+                    surface=entry.get("surface"),
                 )
-                for m in claims.get("memberships", [])
+                for entry in claims.get("memberships", [])
             ),
             active_org_slug=claims.get("active_org"),
             is_platform_admin=bool(claims.get("platform_admin", False)),

@@ -94,7 +94,7 @@ def caller_key(request: Request) -> str:
     """
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
-        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        parts = [part.strip() for part in forwarded.split(",") if part.strip()]
         if parts:
             hops = max(get_settings().trusted_proxy_hops, 1)
             # `parts[-hops]` when the chain is long enough; otherwise the

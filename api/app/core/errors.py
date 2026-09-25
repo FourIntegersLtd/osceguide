@@ -139,15 +139,15 @@ def error_responses(*errors: type[AppError]) -> dict[int | str, dict[str, Any]]:
     so the frontend's generated types know the code to sign the person out
     cleanly.
     """
-    out: dict[int | str, dict[str, Any]] = {}
+    responses: dict[int | str, dict[str, Any]] = {}
     for err in errors:
-        entry = out.setdefault(err.status, {"model": ErrorResponse, "description": ""})
+        entry = responses.setdefault(err.status, {"model": ErrorResponse, "description": ""})
         codes = entry.setdefault("x-codes", [])
         codes.append(err.code)
         if err is Unauthenticated and ACCOUNT_DEACTIVATED_CODE not in codes:
             codes.append(ACCOUNT_DEACTIVATED_CODE)
         entry["description"] = ", ".join(codes)
-    return out
+    return responses
 
 
 def _request_id(request: Request) -> str | None:
@@ -168,7 +168,7 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
-        details = {"errors": [dict(e, ctx=None) for e in exc.errors()]}
+        details = {"errors": [dict(error, ctx=None) for error in exc.errors()]}
         return _json(
             request,
             422,

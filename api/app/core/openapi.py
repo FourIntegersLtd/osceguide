@@ -162,12 +162,12 @@ def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[
     """
     from app.core.errors import error_responses  # noqa: PLC0415 - avoids an import cycle
 
-    out = error_responses(*errors)
-    out[200] = {
+    responses = error_responses(*errors)
+    responses[200] = {
         "description": (
             f"An SSE stream: `connected`, then a `snapshot` frame whose `data` is a "
             f"`{frame.__name__}` each time the state changes, and `ping` every 25 seconds."
         ),
         "content": {SSE_MEDIA_TYPE: {"schema": {"$ref": f"#/components/schemas/{frame.__name__}"}}},
     }
-    return out
+    return responses

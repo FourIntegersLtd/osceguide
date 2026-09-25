@@ -215,7 +215,7 @@ class Settings(BaseSettings):
     def _split_origins(cls, value: object) -> object:
         # Allow CORS_ORIGINS="https://a.com,https://b.com" in the environment.
         if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
     @model_validator(mode="after")
