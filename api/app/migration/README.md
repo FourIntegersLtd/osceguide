@@ -178,6 +178,43 @@ before copying Firestore; re-import is idempotent on uuid5 keys.
 Requires `import_b2c_users.py`. Posts load before sessions. Idempotent on
 uuid5 of `{exam}:marketplace:{post|session}:{id}`.
 
+## B2C all collections (copy only)
+
+One command that copies every consumer Firestore collection, in dependency
+order, and refuses to run if Firestore holds a collection nobody has accounted
+for. Firestore is only read (`collections()`, `stream()`).
+
+```bash
+poetry run python scripts/import_b2c_all.py --audit                # every collection, its count and fate
+poetry run python scripts/import_b2c_all.py --skip-bad-records     # dry run (default)
+poetry run python scripts/import_b2c_all.py --no-dry-run --skip-bad-records
+poetry run python scripts/import_b2c_all.py --only attempts,debriefs
+```
+
+`b2c_inventory.py` is the list: each collection is either copied by a step or
+skipped with a reason (runtime LiveKit state, reset tokens, `mocks` which have
+no table, `help_*`, the legacy `b2b_*_v1` arm). Demo rows (`_seed_tag`,
+`seed_` owners) are dropped on read.
+
+The first five steps reuse the single-feature importers above. The rest are
+new: transcripts and feedback into attempts (joined on `attempt_id`, linked to
+the latest station version, with a `legacy-b2c` transcript row), debriefs, live
+coverage, the `*_payments` collections, referral redemptions, partner arrivals
+and reporters, CVs, contact messages and feature requests, and human practice
+sessions.
+
+People who deleted their account (`is_deleted`, email already scrubbed) are
+not brought back: their transcripts are counted and skipped. Legacy transcript
+quirks (double saves of one attempt, re-sent turns, one corrupt message id, NUL
+characters) are straightened out in `b2c_transcript_cleanup.py` before loading.
+
+`peer_practice` needs migration `n5o6p7q8r9s0` (recording columns) applied.
+
+Each step runs in a savepoint. Without `--skip-bad-records` a step with any
+problem rolls back whole, which is how three orphaned station comments kept
+every community post out; with it, good rows land and bad ones are listed.
+Every step is idempotent, so re-running copies only what is new.
+
 ## What is missing
 
 Station sets, sittings and org data. The consumer path — people, entitlements,
