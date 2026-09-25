@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
 from app.features.assistant import repository
+from tests.http.test_sittings_routes import org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -63,25 +64,33 @@ async def test_the_legacy_persona_name_resolves_to_the_workers_own(client: Async
 
 
 async def test_athena_doctor_bootstrap_uses_station_context(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
-    token = await make_actor("doctor-context@example.com")
-    created = await client.post(
-        "/api/v1/assistant/sessions",
+    """The station reaches the worker from the database, named by version id (SEC-007)."""
+    _, admin = await org_with_admin(client, make_actor)
+    station = await client.post(
+        "/api/v1/orgs/kings/stations",
         json={
-            "session_type": "athena-doctor",
-            "extras": {
-                "station": {
-                    "exam_code": "sca",
-                    "station_name": "Chest pain",
-                    "station_patient_name": "Sam Green",
-                    "station_patient_biodata": "Sam Green, 54",
-                    "doctor_task": "Assess chest pain in primary care.",
-                    "patient_information": ["Central chest tightness for 20 minutes"],
-                    "ice": ["Worried this is a heart attack"],
-                    "management_points": ["Explore red flags", "Safety-net clearly"],
-                }
+            "title": "Chest pain",
+            "exam_code": "sca",
+            "content": {
+                "station_patient_name": "Sam Green",
+                "station_patient_biodata": "Sam Green, 54",
+                "doctor_task": "Assess chest pain in primary care.",
+                "patient_information": ["Central chest tightness for 20 minutes"],
+                "ice": ["Worried this is a heart attack"],
+                "management_points": ["Explore red flags", "Safety-net clearly"],
             },
         },
-        headers=bearer(token),
+        headers=bearer(admin),
+    )
+    assert station.status_code == 201, station.text
+    published = await client.post(
+        f"/api/v1/orgs/kings/stations/{station.json()['id']}/versions/1/publish", headers=bearer(admin)
+    )
+    assert published.status_code == 200, published.text
+    created = await client.post(
+        "/api/v1/assistant/sessions",
+        json={"session_type": "athena-doctor", "station_version_id": published.json()["id"]},
+        headers=bearer(admin),
     )
     assert created.status_code == 201, created.text
 

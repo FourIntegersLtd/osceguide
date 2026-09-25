@@ -68,7 +68,7 @@ async def a_station(client: AsyncClient, token: str, exam: str, content: dict, s
 
 
 def png(name: str = "xray.png", size: int = 2048) -> tuple[str, bytes, str]:
-    return (name, b"\x89PNG" + b"0" * size, "image/png")
+    return (name, b"\x89PNG\r\n\x1a\n" + b"0" * size, "image/png")
 
 
 def photos_url(station: dict, slug: str = "kings") -> str:
