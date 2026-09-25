@@ -60,7 +60,7 @@ class Snapshot:
 
 
 def frame(event: str, payload: str) -> str:
-    """One SSE frame. `data` is already-encoded JSON.
+    """One SSE frame. `payload` is already-encoded JSON.
 
     Newlines inside the payload are re-prefixed rather than escaped: a bare
     newline in `data:` silently ends the frame, and the client sees half an
