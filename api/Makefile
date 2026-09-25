@@ -1,4 +1,4 @@
-.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev status status-check data-model
+.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev data-model
 
 help:
 	@echo "OSCE Guide Platform API"
@@ -20,7 +20,6 @@ help:
 	@echo "  make openapi     write openapi.json"
 	@echo "  make engine-dev  install osce_assessment from the local checkout, editable"
 	@echo "  make bootstrap-admin EMAIL=you@example.com   make the first platform admin"
-	@echo "  make status      regenerate the evidence half of docs/STATUS.md"
 	@echo "  make seed-platform  author the four consumer exams and rubrics (dry run)"
 	@echo "  make data-model  check docs/DATA-MODEL.md against the schema"
 
@@ -75,7 +74,7 @@ arch:
 	poetry run python scripts/check_slice_readmes.py
 	poetry run python scripts/check_data_model.py
 
-ci: lint typecheck arch guards test status-check
+ci: lint typecheck arch guards test
 
 openapi:
 	poetry run python scripts/export_openapi.py
@@ -100,9 +99,6 @@ engine-dev:
 	poetry run pip install -e "$(ENGINE)"
 	poetry run python -c "import osce_assessment as e; print('osce_assessment', e.__version__)"
 
-# STATUS.md drifted from the code badly enough that slices were described as
-# complete while their rules had no caller. The generated half is derived, and
-# `status-check` fails when it no longer matches.
 # A migrated database has no exams and no rubrics (ADR 0016), so nothing can
 # be run in it until the platform catalogue is authored. Idempotent: an exam
 # that already exists is left exactly as it is.
@@ -113,13 +109,7 @@ seed-platform:
 generate-seed:
 	poetry run python scripts/generate_platform_seed.py
 
-status:
-	poetry run python scripts/status_report.py --write
-
-status-check:
-	poetry run python scripts/status_report.py --check
-
 # The schema reference is checked like the slice READMEs are: a document
-# nothing verifies is the failure `docs/STATUS.md` exists to remember.
+# nothing verifies drifts from the code it describes.
 data-model:
 	poetry run python scripts/check_data_model.py

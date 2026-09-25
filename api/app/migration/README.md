@@ -220,4 +220,4 @@ Every step is idempotent, so re-running copies only what is new.
 Station sets, sittings and org data. The consumer path — people, entitlements,
 attempts, transcripts and legacy feedback — is end to end. A real export is
 still needed to size the run and to catch shapes the fixtures do not have; see
-`docs/OPEN-QUESTIONS.md` M-1.
+`platform-web/docs/BACKLOG.md` M-1.

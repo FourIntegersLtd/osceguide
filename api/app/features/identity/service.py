@@ -134,7 +134,7 @@ async def update_me(
 
     `extra_reading_percent` is **not** applied to an institution's examination: a circuit's
     clock is one clock for everybody on it. An accommodation there is granted on the
-    circuit's timing instead. See `docs/port-gaps.md`.
+    circuit's timing instead. See `platform-web/docs/BACKLOG.md`, S-2.
     """
     user = await repository.update_profile(
         session,

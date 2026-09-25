@@ -115,7 +115,7 @@ DOCTOR_FACING_KEYS = ("management_plan", "doctor_information")
 
 # A block the template marks `examiner` holds the expected answers. Templated stations therefore
 # contribute nothing here until a template can mark a block as reading material (see
-# `docs/OPEN-QUESTIONS.md` T-2).
+# `platform-web/docs/BACKLOG.md` T-2).
 
 
 @dataclass(frozen=True)

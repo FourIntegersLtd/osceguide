@@ -4,9 +4,8 @@ The document asks for this in its own preamble: a checker that imports
 `Base.metadata`, diffs the tables and columns against the headings and field
 rows, and fails on anything present in one and absent from the other. Until it
 existed, the rule "a migration and this document change in the same commit" was
-a promise, and `docs/STATUS.md` is the standing reminder of what happens to a
-document nothing checks — slices were described as complete while their rules
-had no caller.
+a promise — and a document nothing checks drifts: the port's status page once
+described slices as complete while their rules had no caller.
 
 Deliberately tolerant about *form* and strict about *presence*. The document
 writes a column four ways, and each reads better in its place than a uniform

@@ -2,8 +2,8 @@
 
 pgvector ships a Python package whose only job here would be this type and a
 handful of operator helpers. The extension is what does the work; the package
-is a convenience, and `docs/OPEN-QUESTIONS.md` F-1 is the standing rule that a
-new dependency is asked for rather than assumed. So the type is thirty lines
+is a convenience, and a new dependency is asked for rather than assumed
+(`AGENTS.md`, "Ask first"). So the type is thirty lines
 and the distance operator is written out in the one query that uses it.
 
 Binding is textual on purpose: pgvector accepts `'[1,2,3]'::vector`, which is

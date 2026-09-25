@@ -1,6 +1,6 @@
 """Test wiring.
 
-Principles (ADR 0009):
+Principles (CONTRIBUTING.md):
 - No in-memory store. Repository and HTTP tests run against a real Postgres.
 - One database per test session, migrated once with Alembic.
 - One transaction per test, rolled back at the end, so tests never see each

@@ -68,8 +68,8 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
         # Defense in depth: `begin_password_reset` above never issues a
         # token for one of these accounts, but a token could in principle
         # reach here by another path (`service_invitations.py` also mints
-        # reset tokens, for a roster admin's invite/resend — not yet checked
-        # against this flag; see `docs/decisions-2026-09-24.md` item 2).
+        # reset tokens, for a roster admin's invite/resend, and refuses these
+        # accounts too — SEC-011).
         raise InvalidResetToken()
     await repository.mark_reset_token_used(session, token_id=record.id, at=now)
     await repository.set_password_hash(session, record.user_id, hash_password(password))

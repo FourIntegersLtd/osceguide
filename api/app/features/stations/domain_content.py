@@ -5,7 +5,7 @@ question for a candidate reading through their attempt; this answers it for
 the org station list, whose `OrgReader` permission admits every rostered
 trainee. Before this existed the list handed each of them the whole document
 — the patient's persona and hidden history, the examiner's material, for the
-stations they were about to be examined on (S1 in `docs/port-gaps.md`).
+stations they were about to be examined on.
 
 The key tuples are mirrored from `attempts/domain_material.py` rather than
 imported: a slice reaches another only through its service, and each slice

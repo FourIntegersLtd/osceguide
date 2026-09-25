@@ -44,7 +44,7 @@ def test_a_section_body_is_not_capped_at_the_chunk_size() -> None:
 
     Only the tail after the last heading goes through the size pass, so a long
     section between two headings is emitted whole — 3815 characters here,
-    against a 1800 limit. It is recorded in `docs/OPEN-QUESTIONS.md` as T-1
+    against a 1800 limit. It is recorded in `platform-web/docs/BACKLOG.md` as T-1
     rather than fixed inside a port whose whole point is that it changed
     nothing.
     """

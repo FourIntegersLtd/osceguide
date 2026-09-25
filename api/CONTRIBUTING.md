@@ -50,7 +50,6 @@ Write repository tests first: constraints that must hold, the lock that prevents
 ## 8. Mount and document
 
 - Add the router in `app/main.py` (the only place `include_router` is called).
-- Add the slice to the layers list in `pyproject.toml` (`[tool.importlinter]`) in dependency order.
 - Add a tag in `app/core/openapi.py`.
 - Fill in `README.md` with the required headings (CI checks them).
 - `make openapi` and commit `openapi.json`.
@@ -75,3 +74,12 @@ Write repository tests first: constraints that must hold, the lock that prevents
 | `tests/e2e` | real LiveKit worker against this API; `-m e2e`, env-gated | yes + LiveKit |
 
 `make guards` runs the guards alone. `make test` runs everything but e2e.
+
+## Things that will bite you
+
+- `poetry run pytest -q | tail -2` shows the last two lines, **not** the exit code, so a red suite looks green. Use `make test`, or check `$?`.
+- Postgres is on **5433** and Redis on **6380**, not the defaults. Set `DATABASE_URL` for anything run outside `make`.
+- A migrated database is empty: run `make seed-platform` (then without `--dry-run`) or every attempt is refused as `unknown_exam`.
+- `git checkout <file>` is not an undo for uncommitted work. Commit before planting a violation to prove a guard fires.
+- Scripted edits silently match nothing when `ruff format` has reflowed the line since you read it. Assert your anchor before writing.
+- A green suite is not evidence a feature works. Ask what would fail if the feature were deleted, and check the running app.

@@ -530,8 +530,8 @@ async def test_deleting_a_trainee_with_a_decision_is_refused(
 async def test_anonymising_a_decided_trainee_scrubs_the_person_and_keeps_the_decision(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """The GDPR path for exactly the row `delete` above refuses
-    (`docs/decisions-2026-09-24.md`, item 3)."""
+    """The GDPR path for exactly the row `delete` above refuses: anonymise,
+    never delete, a trainee with a decision on record."""
     from tests.http.test_results_routes import EVIDENCE, a_sitting_and_named_trainee
     from tests.http.test_results_routes import org_with_admin as org_with_institution_admin
 

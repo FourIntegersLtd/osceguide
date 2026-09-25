@@ -91,5 +91,5 @@ class RubricVersion(Base, UUIDPrimaryKey, Timestamps):
 # removed 2026-09-24: authored 2026-09, never mounted in `main.py`, never
 # called by any live route, service or frontend caller — confirmed by a
 # whole-tree grep before deletion. A sitting's rubric comes via its
-# programme (D3, `docs/parity-fix-plan.md`), not a bound feedback template.
+# programme, not a bound feedback template.
 # See migration `d3e4f5a6b7c8` for the table drop.

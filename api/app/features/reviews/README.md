@@ -59,5 +59,6 @@ the slice that owns what a rating means.
 
 ## Cross-slice dependencies
 None outward. `sittings` calls `slot_has_review` to decide whether a circuit is
-still editable. The set of reviewable domains comes from the sitting's bound
-feedback template and is **not yet wired** — see `docs/OPEN-QUESTIONS.md` R-1.
+still editable. A review cannot be completed until every scoring domain on the
+sitting's bound rubric version is scored: `service._required_domains` asks
+`sittings.rubric_version_for_slot`, then `rubrics.reviewable_domains_for_version`.

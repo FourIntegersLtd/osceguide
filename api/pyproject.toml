@@ -140,8 +140,8 @@ ignore_errors = true
 
 # ---------------------------------------------------------------------------
 # Architecture rules, checked in CI. `core` is the shared kernel and may never
-# know about a feature. Slices are layered: a slice may import from layers
-# listed below it, never above. Add each new slice to the layers list.
+# know about a feature. Slices have no order: any slice may call another's
+# service (ADR 0002, amended 2026-09-25).
 # ---------------------------------------------------------------------------
 [tool.importlinter]
 root_package = "app"

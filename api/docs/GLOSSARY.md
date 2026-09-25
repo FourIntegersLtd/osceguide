@@ -134,7 +134,7 @@ Two mechanisms that are easy to confuse.
 
 | Term | Meaning |
 |---|---|
-| slice | A vertical module under `app/features/` owning its tables, domain, repository, service and router. 22 of them. A slice may call another slice's **service** — never its repository, models or domain. |
+| slice | A vertical module under `app/features/` owning its tables, domain, repository, service and router. A slice may call another slice's **service** — never its repository, models or domain. |
 | domain | `domain.py`: plain Python invariants. No SQL, no FastAPI, no I/O — enforced by a guard. |
 | repository | The only place SQL lives. Mapped classes never leave it. Org-scoped methods take `org_id` first. |
 | service | The use cases. Raises typed `AppError`s and **never commits**. |

@@ -260,7 +260,7 @@ async def test_an_sso_only_arrangement_refuses_a_password_login(client: AsyncCli
     """The account this callback provisions cannot then sign in with a
     password anybody guesses, resets or is handed — the whole point of
     `sso_only`, made a stated refusal rather than an accident of a missing
-    hash (`docs/decisions-2026-09-24.md`, item 2)."""
+    hash."""
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await _enable(client, root, "bmj")  # `_config()` defaults `sso_only: True`
     fake = FakeSsoBroker(identity=SsoIdentity(email="locked@bmj.com", name="Locked Out", subject="c1"))

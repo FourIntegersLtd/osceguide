@@ -175,7 +175,7 @@ def build_evaluator() -> Evaluator:
         raise EvaluationFailed(
             "The osce_assessment engine is not installed. Run `make engine-dev` "
             "locally, or pin the `engine-vX.Y.Z` tag in pyproject.toml for a "
-            "deployment; see docs/OPEN-QUESTIONS.md E-1."
+            "deployment."
         ) from exc
 
     from app.features.attempts.llm_clients import (  # noqa: PLC0415

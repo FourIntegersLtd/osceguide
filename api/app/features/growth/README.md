@@ -42,7 +42,7 @@ so the rules are strict and nothing is inferred.
 
 ## Jobs
 None. Mixpanel reconciliation and spend alerts are not ported — see
-`docs/OPEN-QUESTIONS.md` G-1.
+`platform-web/docs/BACKLOG.md` G-1.
 
 ## Cross-slice dependencies
 None outward. `billing` supplies the purchase count for a funnel; wiring that is
