@@ -170,7 +170,7 @@ async def archive_version(
 async def delete_version(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
 ) -> None:
-    """Throw away a draft. When it was the template's only row, remove the template too."""
+    """Throw away a draft. When it was the template's only version, remove the template too."""
     version_row = await _version(session, org_id, template_id, version)
     try:
         domain.ensure_deletable(

@@ -94,7 +94,7 @@ async def decide(
 
 
 def _read(flag: StationFlag, station_title: str | None, reporter_name: str | None) -> StationFlagRead:
-    """One row to the client, with whatever names the caller resolved for it."""
+    """One flag to the client, with whatever names the caller resolved for it."""
     return StationFlagRead(
         id=flag.id,
         station_id=flag.station_id,

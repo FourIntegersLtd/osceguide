@@ -1,3 +1,7 @@
+"""Routes for authoring a station and browsing the platform library: creating a station, adding,
+editing, publishing and archiving its versions, and correcting a published version's reading brief.
+"""
+
 from __future__ import annotations
 
 import uuid

@@ -1,3 +1,7 @@
+"""Request and response bodies for the stations routes: authoring stations and templates, browsing
+the library, reporting a station, and uploading or removing its photos.
+"""
+
 from __future__ import annotations
 
 import uuid

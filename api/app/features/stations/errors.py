@@ -1,3 +1,7 @@
+"""The errors this slice's routes can raise: stations, station templates, photos and generation
+profiles. Each carries the `code` a client branches on.
+"""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, InvalidInput, NotFound, Unavailable
