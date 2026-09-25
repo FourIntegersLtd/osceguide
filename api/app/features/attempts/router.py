@@ -1,3 +1,5 @@
+"""HTTP routes for a candidate's own attempt: start, abandon, read back, and stream while marking."""
+
 from __future__ import annotations
 
 import uuid

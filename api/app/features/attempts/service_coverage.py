@@ -31,6 +31,11 @@ async def read_coverage(
     *,
     requester_id: uuid.UUID,
 ) -> CoverageRead:
+    """The competencies this candidate's consultation has touched so far, for the live panel.
+
+    Only for a practice attempt with a rubric that supports it; anything else answers `supported=False`
+    rather than an error, so the panel can hide itself quietly.
+    """
     attempt = await _require(session, attempt_id)
     _ensure_visible(attempt, requester_id=requester_id, is_admin=False)
     framework = framework_for(attempt)

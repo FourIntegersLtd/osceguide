@@ -1,3 +1,5 @@
+"""HTTP route for the live coverage panel shown while a station is still running."""
+
 import uuid
 from typing import Annotated
 
