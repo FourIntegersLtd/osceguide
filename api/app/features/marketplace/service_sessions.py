@@ -49,7 +49,8 @@ async def list_my_sessions(
 async def join_session(
     session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PeerSessionRead:
-    """Let one of the two people into their session, from ten minutes before it starts.
+    """Let one of the two people into their session, from twenty minutes before it
+    starts until an hour after. A cancelled session cannot be joined.
 
     The first person to join creates the live practice session, which decides who
     plays the doctor and who plays the patient. The second joins that same one.
@@ -66,11 +67,14 @@ async def join_session(
         owner_id=str(peer_session.owner_user_id),
         claimer_id=str(peer_session.claimer_user_id),
         starts_at=peer_session.starts_at,
+        status=peer_session.status,
     )
     if not domain.may_join(state, user_id=str(user_id)):
         raise errors.SessionNotFound()
-    if not domain.is_open(state, now=now):
-        raise errors.SessionNotOpen()
+    try:
+        domain.ensure_joinable(state, now=now)
+    except domain.SessionNotJoinable as refusal:
+        raise errors.SessionNotOpen(str(refusal)) from refusal
 
     if peer_session.practice_session_id is None:
         practice_session = await create_runtime_for_peer_booking(
@@ -114,4 +118,4 @@ async def cancel_peer_session(
     if user_id not in {peer_session.owner_user_id, peer_session.claimer_user_id}:
         raise errors.SessionNotFound()
     if not await repository.mark_peer_cancelled(session, peer_session_id, at=now):
-        raise errors.SessionNotOpen()
+        raise errors.SessionNotOpen("That session is no longer scheduled or under way.")

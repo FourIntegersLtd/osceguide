@@ -36,8 +36,9 @@ someone else claims it, and both join a room at the appointed hour.
 - A slot whose start time has passed cannot be claimed. **Not in the legacy
   check** — claiming a session that already started books nobody into anything.
 - Only the person who offered a slot may withdraw it, and only before it completes.
-- A session opens ten minutes before its start time. Joining an hour early
-  leaves someone alone in a room wondering whether it is broken.
+  Withdrawing a claimed slot cancels the session it booked.
+- A session can be joined from twenty minutes before its start time until an hour
+  after it, as on the live site, and never once cancelled.
 - A stranger asking about a session gets 404, not 403: a session id is not
   something they should be able to confirm exists.
 - `post_unavailable` is 409 rather than 404 — the caller saw a real slot, and

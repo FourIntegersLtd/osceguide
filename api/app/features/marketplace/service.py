@@ -132,6 +132,8 @@ async def withdraw_slot(
     """Take back a slot you offered, whether or not someone has claimed it yet.
 
     Only the person who offered it can. Anyone else is refused as `not_your_post`.
+    If it was claimed, the session it booked is cancelled too, so the other person
+    is not left able to join and wait alone.
     """
     post = await repository.lock_post(session, post_id)
     if post is None:
@@ -141,6 +143,7 @@ async def withdraw_slot(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
     await repository.mark_cancelled(session, post_id, at=now)
+    await repository.cancel_sessions_for_post(session, post_id, at=now)
 
 
 async def list_open_slots(

@@ -11,12 +11,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-# How long before the start time a session opens. Joining an hour early leaves
-# someone sitting alone in a room wondering whether it is broken.
-JOIN_WINDOW = timedelta(minutes=10)
+# A session can be joined from twenty minutes before its start time until an hour
+# after it, as on the live site. Much earlier leaves someone sitting alone in a
+# room wondering whether it is broken.
+OPENS_BEFORE_START = timedelta(minutes=20)
+CLOSES_AFTER_START = timedelta(hours=1)
 
 CLAIMABLE_STATUSES = frozenset({"available"})
 CANCELLABLE_STATUSES = frozenset({"available", "claimed"})
+JOINABLE_STATUSES = frozenset({"scheduled", "active"})
 
 
 # Plain exceptions keep these rules free of HTTP. `service._REFUSALS` turns each
@@ -30,6 +33,10 @@ class CannotClaimOwnPost(Exception):
 
 
 class NotYours(Exception):
+    pass
+
+
+class SessionNotJoinable(Exception):
     pass
 
 
@@ -49,6 +56,7 @@ class SessionState:
     owner_id: str
     claimer_id: str
     starts_at: datetime
+    status: str
 
 
 def ensure_claimable(post: PostState, *, claimer_id: str, now: datetime) -> None:
@@ -72,5 +80,10 @@ def may_join(peer_session: SessionState, *, user_id: str) -> bool:
     return user_id in {peer_session.owner_id, peer_session.claimer_id}
 
 
-def is_open(peer_session: SessionState, *, now: datetime) -> bool:
-    return now >= peer_session.starts_at - JOIN_WINDOW
+def ensure_joinable(peer_session: SessionState, *, now: datetime) -> None:
+    if peer_session.status not in JOINABLE_STATUSES:
+        raise SessionNotJoinable(f"That session is {peer_session.status} and can no longer be joined.")
+    if now < peer_session.starts_at - OPENS_BEFORE_START:
+        raise SessionNotJoinable("That session has not opened yet.")
+    if now > peer_session.starts_at + CLOSES_AFTER_START:
+        raise SessionNotJoinable("That session has expired.")

@@ -74,6 +74,15 @@ async def mark_cancelled(session: AsyncSession, post_id: uuid.UUID, *, at: datet
     )
 
 
+async def cancel_sessions_for_post(session: AsyncSession, post_id: uuid.UUID, *, at: datetime) -> None:
+    """Cancel the session a slot booked, if it is still scheduled or under way."""
+    await session.execute(
+        update(PeerSession)
+        .where(PeerSession.post_id == post_id, PeerSession.status.in_(("scheduled", "active")))
+        .values(status="cancelled", cancelled_at=at)
+    )
+
+
 async def list_by_owner(
     session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int = 100
 ) -> list[AvailabilityPost]:

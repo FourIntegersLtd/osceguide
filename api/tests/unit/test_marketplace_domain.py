@@ -70,18 +70,32 @@ def test_a_completed_post_cannot_be_cancelled() -> None:
 
 
 def test_both_parties_may_join_a_claimed_session() -> None:
-    claimed = domain.SessionState(owner_id=OWNER, claimer_id=CLAIMER, starts_at=NOW)
+    claimed = domain.SessionState(owner_id=OWNER, claimer_id=CLAIMER, starts_at=NOW, status="scheduled")
     assert domain.may_join(claimed, user_id=OWNER)
     assert domain.may_join(claimed, user_id=CLAIMER)
 
 
 def test_nobody_else_may_join() -> None:
-    claimed = domain.SessionState(owner_id=OWNER, claimer_id=CLAIMER, starts_at=NOW)
+    claimed = domain.SessionState(owner_id=OWNER, claimer_id=CLAIMER, starts_at=NOW, status="scheduled")
     assert not domain.may_join(claimed, user_id="stranger")
 
 
-def test_a_session_opens_shortly_before_it_starts() -> None:
-    """Joining an hour early would leave someone sitting in an empty room."""
-    session = domain.SessionState(owner_id=OWNER, claimer_id=CLAIMER, starts_at=NOW)
-    assert domain.is_open(session, now=NOW - domain.JOIN_WINDOW + timedelta(seconds=1))
-    assert not domain.is_open(session, now=NOW - domain.JOIN_WINDOW - timedelta(minutes=1))
+def booked(status: str = "scheduled") -> domain.SessionState:
+    return domain.SessionState(owner_id=OWNER, claimer_id=CLAIMER, starts_at=NOW, status=status)
+
+
+def test_a_session_opens_twenty_minutes_before_it_starts() -> None:
+    domain.ensure_joinable(booked(), now=NOW - timedelta(minutes=20))
+    with pytest.raises(domain.SessionNotJoinable, match="not opened yet"):
+        domain.ensure_joinable(booked(), now=NOW - timedelta(minutes=21))
+
+
+def test_a_session_closes_an_hour_after_it_starts() -> None:
+    domain.ensure_joinable(booked("active"), now=NOW + timedelta(minutes=60))
+    with pytest.raises(domain.SessionNotJoinable, match="expired"):
+        domain.ensure_joinable(booked("active"), now=NOW + timedelta(minutes=61))
+
+
+def test_a_cancelled_session_cannot_be_joined_even_on_time() -> None:
+    with pytest.raises(domain.SessionNotJoinable, match="cancelled"):
+        domain.ensure_joinable(booked("cancelled"), now=NOW)
