@@ -32,9 +32,9 @@ describe("peer session recovery", () => {
   });
 });
 describe("exam and marketplace clocks", () => {
-  it("opens exactly ten minutes before, across timezone offsets", () => {
+  it("opens exactly twenty minutes before, across timezone offsets", () => {
     const start = "2026-09-20T13:00:00+01:00";
-    const now = Date.parse("2026-09-20T11:50:00Z");
+    const now = Date.parse("2026-09-20T11:40:00Z");
     assert.equal(canJoin(start, now - 1), false);
     assert.equal(canJoin(start, now), true);
     assert.equal(joinWindowClosed(start, Date.parse("2026-09-20T13:00:00Z") + 1), true);

@@ -100,7 +100,7 @@ const STEPS = [
   },
   {
     title: "Join on the day",
-    text: "Join the video call up to 10 minutes before. Roles (Doctor/Patient) are assigned automatically.",
+    text: "Join the video call up to 20 minutes before. Roles (Doctor/Patient) are assigned automatically.",
   },
   {
     title: "Practice over video",

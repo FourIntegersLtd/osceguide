@@ -10,7 +10,7 @@
  */
 
 /** The session opens this long before its appointed hour — `marketplace/domain.py`. */
-export const JOIN_OPENS_MINUTES = 10;
+export const JOIN_OPENS_MINUTES = 20;
 
 /** How long a claimed session stays joinable after its start. */
 export const JOIN_WINDOW_HOURS = 1;

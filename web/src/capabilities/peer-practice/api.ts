@@ -143,7 +143,10 @@ export async function listAllMyPeerSessions(signal?: AbortSignal): Promise<PeerS
   return items;
 }
 
-/** Open ten minutes before the appointed hour; `peer_session_not_open` before that. */
+/**
+ * Open from twenty minutes before the appointed hour until an hour after;
+ * `peer_session_not_open` outside that, or once the session is cancelled.
+ */
 export function joinPeerSession(sessionId: string): Promise<PeerSession> {
   return platformRequest<PeerSession>(
     `/api/v1/me/peer-sessions/${encodeURIComponent(sessionId)}/join`,
