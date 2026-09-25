@@ -67,11 +67,11 @@ async def create_template(
 
 
 async def list_templates(session: AsyncSession, org_id: uuid.UUID | None) -> list[StationTemplateRead]:
-    out: list[StationTemplateRead] = []
+    templates_read: list[StationTemplateRead] = []
     for template in await repository.templates_visible_to(session, org_id):
         versions = await repository.template_versions(session, org_id, template.id)
-        out.append(_template_read(template, await _exam_code(session, template), versions))
-    return out
+        templates_read.append(_template_read(template, await _exam_code(session, template), versions))
+    return templates_read
 
 
 async def add_version(
@@ -80,19 +80,22 @@ async def add_version(
     """Open a new draft, seeded from the latest published version."""
     await _require_template(session, org_id, template_id)
     existing = await repository.template_versions(session, org_id, template_id)
-    refs = [domain.VersionRef(number=v.version, status=domain.Status(v.status)) for v in existing]
+    refs = [
+        domain.VersionRef(number=version.version, status=domain.Status(version.status))
+        for version in existing
+    ]
     seed = domain.seed_version(refs)
     structure: dict[str, Any] = {}
     if seed is not None:
-        structure = dict(next(v for v in existing if v.version == seed.number).structure)
-    row = await repository.add_template_version(
+        structure = dict(next(version for version in existing if version.version == seed.number).structure)
+    version_row = await repository.add_template_version(
         session,
         org_id,
         template_id=template_id,
         version=domain.next_version_number(refs),
         structure=structure,
     )
-    return _version_read(row)
+    return _version_read(version_row)
 
 
 async def edit_version(
@@ -104,15 +107,17 @@ async def edit_version(
     structure: dict[str, Any],
     title: str | None = None,
 ) -> StationTemplateVersionRead:
-    row = await _version(session, org_id, template_id, version)
+    version_row = await _version(session, org_id, template_id, version)
     try:
-        domain.ensure_editable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+        domain.ensure_editable(
+            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+        )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     _ensure_valid_structure(structure, org_id=org_id)
     if title is not None:
         await repository.set_template_title(session, org_id, template_id, title=title)
-    await repository.set_template_version_structure(session, org_id, row.id, structure=structure)
+    await repository.set_template_version_structure(session, org_id, version_row.id, structure=structure)
     return _version_read(await _version(session, org_id, template_id, version))
 
 
@@ -129,7 +134,7 @@ async def publish_version(
     versions = await repository.template_versions(session, org_id, template_id)
     if not versions:
         raise errors.VersionNotFound()
-    latest = max(versions, key=lambda v: v.version)
+    latest = max(versions, key=lambda version: version.version)
     try:
         status = domain.publish(domain.VersionRef(number=latest.version, status=domain.Status(latest.status)))
     except domain.LifecycleError as exc:
@@ -149,13 +154,15 @@ async def archive_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationTemplateVersionRead:
-    row = await _version(session, org_id, template_id, version)
+    version_row = await _version(session, org_id, template_id, version)
     try:
-        new_status = domain.archive(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+        new_status = domain.archive(
+            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+        )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.set_template_version_status(
-        session, org_id, row.id, status=str(new_status), at=now, by=actor_id
+        session, org_id, version_row.id, status=str(new_status), at=now, by=actor_id
     )
     return _version_read(await _version(session, org_id, template_id, version))
 
@@ -164,12 +171,14 @@ async def delete_version(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
 ) -> None:
     """Throw away a draft. When it was the template's only row, remove the template too."""
-    row = await _version(session, org_id, template_id, version)
+    version_row = await _version(session, org_id, template_id, version)
     try:
-        domain.ensure_deletable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+        domain.ensure_deletable(
+            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+        )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    await repository.delete_template_version(session, org_id, row.id)
+    await repository.delete_template_version(session, org_id, version_row.id)
     if not await repository.template_versions(session, org_id, template_id):
         await repository.delete_template(session, org_id, template_id)
 
@@ -183,32 +192,34 @@ async def bindable_version(
     draft. The rule was written and unit-tested with nothing to call it, so a
     station could have been built on a shape somebody was still deciding.
     """
-    row = await repository.bindable_template_version(session, org_id, version_id)
-    if row is None:
+    version_row = await repository.bindable_template_version(session, org_id, version_id)
+    if version_row is None:
         raise errors.StationTemplateVersionNotFound()
     try:
-        domain.ensure_bindable(domain.VersionRef(number=row.version, status=domain.Status(row.status)))
+        domain.ensure_bindable(
+            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+        )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    return row
+    return version_row
 
 
 async def _require_template(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID
 ) -> StationTemplate:
-    row = await repository.template_by_id(session, org_id, template_id)
-    if row is None:
+    template = await repository.template_by_id(session, org_id, template_id)
+    if template is None:
         raise errors.StationTemplateNotFound()
-    return row
+    return template
 
 
 async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
 ) -> StationTemplateVersion:
     await _require_template(session, org_id, template_id)
-    for row in await repository.template_versions(session, org_id, template_id):
-        if row.version == version:
-            return row
+    for version_row in await repository.template_versions(session, org_id, template_id):
+        if version_row.version == version:
+            return version_row
     raise errors.VersionNotFound()
 
 
@@ -225,16 +236,16 @@ def _template_read(
         id=template.id,
         title=template.title,
         exam_code=exam_code,
-        versions=[_version_read(v) for v in versions],
+        versions=[_version_read(version) for version in versions],
     )
 
 
-def _version_read(row: StationTemplateVersion) -> StationTemplateVersionRead:
+def _version_read(version_row: StationTemplateVersion) -> StationTemplateVersionRead:
     return StationTemplateVersionRead(
-        id=row.id,
-        template_id=row.template_id,
-        version=row.version,
-        status=row.status,
-        structure=dict(row.structure),
-        published_at=row.published_at,
+        id=version_row.id,
+        template_id=version_row.template_id,
+        version=version_row.version,
+        status=version_row.status,
+        structure=dict(version_row.structure),
+        published_at=version_row.published_at,
     )

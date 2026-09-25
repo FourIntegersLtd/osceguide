@@ -22,11 +22,11 @@ from app.features.stations.models import StationTemplate, StationTemplateVersion
 async def create_template(
     session: AsyncSession, org_id: uuid.UUID | None, *, exam_id: uuid.UUID | None, title: str
 ) -> StationTemplate:
-    row = StationTemplate(owner_kind=owner_kind_for(org_id), org_id=org_id, exam_id=exam_id, title=title)
-    session.add(row)
+    template = StationTemplate(owner_kind=owner_kind_for(org_id), org_id=org_id, exam_id=exam_id, title=title)
+    session.add(template)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(template)
+    return template
 
 
 async def template_by_id(
@@ -64,7 +64,6 @@ async def bindable_template_version(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
 ) -> StationTemplateVersion | None:
     """A version this owner may build a station on, the platform's included."""
-    """One of this org's template versions, scoped to it."""
     stmt = select(StationTemplateVersion).where(
         visible_to(StationTemplateVersion, org_id), StationTemplateVersion.id == version_id
     )
@@ -79,17 +78,17 @@ async def add_template_version(
     version: int,
     structure: dict[str, Any],
 ) -> StationTemplateVersion:
-    row = StationTemplateVersion(
+    template_version = StationTemplateVersion(
         owner_kind=owner_kind_for(org_id),
         org_id=org_id,
         template_id=template_id,
         version=version,
         structure=structure,
     )
-    session.add(row)
+    session.add(template_version)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(template_version)
+    return template_version
 
 
 async def set_template_title(
@@ -158,5 +157,5 @@ async def structure_for_version(session: AsyncSession, version_id: uuid.UUID) ->
     which is a worse failure than the one this would be guarding against.
     """
     stmt = select(StationTemplateVersion.structure).where(StationTemplateVersion.id == version_id)
-    row = (await session.execute(stmt)).scalar_one_or_none()
-    return dict(row) if isinstance(row, dict) else None
+    structure = (await session.execute(stmt)).scalar_one_or_none()
+    return dict(structure) if isinstance(structure, dict) else None

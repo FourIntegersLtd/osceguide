@@ -91,16 +91,16 @@ async def list_stations(
     or the examiner's material. Required rather than defaulted, so a new call site must decide who
     it is serving. `search` is a title fragment, answered in SQL rather than by walking every page.
     """
-    rows, next_cursor = await repository.list_for_org(
+    stations, next_cursor = await repository.list_for_org(
         session, org_id, limit=limit, cursor=cursor, search=search
     )
-    out = []
-    for station in rows:
+    station_reads = []
+    for station in stations:
         versions = await repository.versions_for_station(session, org_id, station.id)
         latest = versions[-1] if versions else None
         exam = await _exam_code(session, station)
-        out.append(_station_read(station, exam, latest, full_content=full_content))
-    return out, next_cursor
+        station_reads.append(_station_read(station, exam, latest, full_content=full_content))
+    return station_reads, next_cursor
 
 
 async def _exam_code(session: AsyncSession, station: Station) -> str:
@@ -205,7 +205,9 @@ async def _presentation(
             if isinstance(block, dict)
         ]
     presentation = structure.get("layout") or {}
-    layout = [dict(b) for b in blocks if isinstance(b, dict)] if isinstance(blocks, list) else None
+    layout = (
+        [dict(block) for block in blocks if isinstance(block, dict)] if isinstance(blocks, list) else None
+    )
     persona = str(presentation.get("persona") or "patient")
     greeting = presentation.get("greeting")
     return layout, persona, (str(greeting) if greeting else None)

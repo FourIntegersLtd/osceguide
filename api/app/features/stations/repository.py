@@ -44,17 +44,17 @@ async def add_version(
     content: dict[str, Any],
     template_version_id: uuid.UUID | None = None,
 ) -> StationVersion:
-    row = StationVersion(
+    station_version = StationVersion(
         station_id=station_id,
         org_id=org_id,
         version=version,
         content=content,
         template_version_id=template_version_id,
     )
-    session.add(row)
+    session.add(station_version)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(station_version)
+    return station_version
 
 
 async def station_by_id(
@@ -188,8 +188,8 @@ async def version_for_attempt(
         .join(Station, Station.id == StationVersion.station_id)
         .where(StationVersion.id == version_id, owner)
     )
-    row = (await session.execute(stmt)).first()
-    return (row[0], row[1]) if row else None
+    pair = (await session.execute(stmt)).first()
+    return (pair[0], pair[1]) if pair else None
 
 
 async def count_for_org(session: AsyncSession, org_id: uuid.UUID | None) -> int:
@@ -255,4 +255,4 @@ async def versions_with_stations_any_owner(
         .join(Station, Station.id == StationVersion.station_id)
         .where(StationVersion.id.in_(list(version_ids)))
     )
-    return [(v, s) for v, s in (await session.execute(stmt)).all()]
+    return [(version, station) for version, station in (await session.execute(stmt)).all()]

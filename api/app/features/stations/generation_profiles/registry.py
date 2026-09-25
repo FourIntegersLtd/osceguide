@@ -81,15 +81,15 @@ def list_profile_meta() -> list[GenerationProfileMeta]:
         if isinstance(index, list):
             return [
                 GenerationProfileMeta(
-                    profile_key=str(row["profileKey"]),
-                    label=str(row.get("label") or row["profileKey"]),
-                    exam_code=row.get("examCode"),
-                    ortho_station_type=row.get("orthoStationType"),
+                    profile_key=str(entry["profileKey"]),
+                    label=str(entry.get("label") or entry["profileKey"]),
+                    exam_code=entry.get("examCode"),
+                    ortho_station_type=entry.get("orthoStationType"),
                 )
-                for row in index
-                if isinstance(row, dict) and row.get("profileKey")
+                for entry in index
+                if isinstance(entry, dict) and entry.get("profileKey")
             ]
-    return [p.meta for p in _load_all_profiles().values()]
+    return [profile.meta for profile in _load_all_profiles().values()]
 
 
 def get_profile(profile_key: str) -> GenerationProfile | None:

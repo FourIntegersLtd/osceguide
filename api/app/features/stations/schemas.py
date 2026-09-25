@@ -103,10 +103,10 @@ class UpdateStationTemplateVersion(BaseModel):
 
     @field_validator("title")
     @classmethod
-    def title_is_visible(cls, value: str | None) -> str | None:
-        if value is None:
+    def title_is_visible(cls, title: str | None) -> str | None:
+        if title is None:
             return None
-        cleaned = value.strip()
+        cleaned = title.strip()
         if not cleaned:
             raise ValueError("A title needs at least one character.")
         return cleaned

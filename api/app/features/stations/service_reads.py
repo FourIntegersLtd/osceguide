@@ -40,7 +40,7 @@ async def summaries_by_version_id(
     The frontend resolves these one id at a time against the catalogue — the
     N+1 the read models exist to delete.
     """
-    rows = await repository_library.versions_with_stations(session, org_id, list(version_ids))
+    pairs = await repository_library.versions_with_stations(session, org_id, list(version_ids))
     return {
         version.id: StationSummary(
             version_id=version.id,
@@ -51,7 +51,7 @@ async def summaries_by_version_id(
             owner_kind=station.owner_kind,
             published_at=version.published_at,
         )
-        for version, station in rows
+        for version, station in pairs
     }
 
 
@@ -71,7 +71,10 @@ async def published_library_version_ids(
     """Version ids of every published platform-library station."""
     from app.features.stations import repository_library
 
-    return [v.id for v, _ in await repository_library.published_library_versions(session, exam_id=exam_id)]
+    return [
+        version.id
+        for version, _ in await repository_library.published_library_versions(session, exam_id=exam_id)
+    ]
 
 
 @dataclass(frozen=True)
@@ -136,15 +139,15 @@ async def published_material(
     A station with no management plan contributes nothing rather than
     contributing its patient brief.
     """
-    out: list[MaterialSource] = []
+    sources: list[MaterialSource] = []
     for version, station in await repository_library.published_library_versions(session, exam_id=exam_id):
         text = _doctor_facing_text(dict(version.content or {}))
         if not text:
             continue
-        out.append(
+        sources.append(
             MaterialSource(version_id=version.id, exam_id=station.exam_id, title=station.title, text=text)
         )
-    return out
+    return sources
 
 
 def _doctor_facing_text(content: Mapping[str, Any]) -> str:
@@ -162,13 +165,13 @@ def _flatten(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value.strip()]
     if isinstance(value, Mapping):
-        out: list[str] = []
+        parts: list[str] = []
         for key, inner in value.items():
             label = str(key).replace("_", " ").strip()
             texts = _flatten(inner)
             if texts:
-                out.append(f"{label.capitalize()} {' '.join(texts)}")
-        return out
+                parts.append(f"{label.capitalize()} {' '.join(texts)}")
+        return parts
     if isinstance(value, Sequence):
         return [text for item in value for text in _flatten(item)]
     return [str(value).strip()]

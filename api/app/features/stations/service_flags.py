@@ -31,14 +31,14 @@ async def report(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.
         raise errors.StationNotFound()
 
     existing = await flags.find(session, station_id=station_id, user_id=user_id)
-    row = existing or await flags.add(session, station_id=station_id, user_id=user_id)
-    return _read(row, None, None)
+    flag = existing or await flags.add(session, station_id=station_id, user_id=user_id)
+    return _read(flag, None, None)
 
 
 async def my_reports(session: AsyncSession, user_id: uuid.UUID) -> list[StationFlagRead]:
     """What this person has reported, newest first, with the case's title."""
-    rows = await flags.for_reporter(session, user_id)
-    return [_read(row, title, None) for row, title in rows]
+    reports = await flags.for_reporter(session, user_id)
+    return [_read(flag, title, None) for flag, title in reports]
 
 
 async def queue(
@@ -49,16 +49,16 @@ async def queue(
     Reports a page at a time and then resolves every name on it in one read each
     of `identity` and of its own stations, rather than once per row.
     """
-    rows, next_cursor = await flags.list_page(session, status=status, limit=limit, cursor=cursor)
-    titles = await flags.titles_by_ids(session, [row.station_id for row in rows])
-    people = await identity.user_refs_by_ids(session, list({row.user_id for row in rows}))
+    page, next_cursor = await flags.list_page(session, status=status, limit=limit, cursor=cursor)
+    titles = await flags.titles_by_ids(session, [flag.station_id for flag in page])
+    people = await identity.user_refs_by_ids(session, list({flag.user_id for flag in page}))
     reads = [
         _read(
-            row,
-            titles.get(row.station_id),
-            people[row.user_id].name if row.user_id in people else None,
+            flag,
+            titles.get(flag.station_id),
+            people[flag.user_id].name if flag.user_id in people else None,
         )
-        for row in rows
+        for flag in page
     ]
     return reads, next_cursor
 
@@ -76,32 +76,32 @@ async def decide(
     `resolved_at` is cleared on reopen rather than left to read as history: a
     row that says `open` and carries a resolution timestamp answers to nobody.
     """
-    row = await flags.by_id(session, flag_id)
-    if row is None:
+    flag = await flags.by_id(session, flag_id)
+    if flag is None:
         raise errors.StationFlagNotFound()
     return _read(
         await flags.set_resolved(
             session,
-            row,
+            flag,
             status=body.status,
             note=body.note,
             actor_id=actor_id,
             resolved_at=now if body.status == "resolved" else None,
         ),
-        (await flags.titles_by_ids(session, [row.station_id])).get(row.station_id),
+        (await flags.titles_by_ids(session, [flag.station_id])).get(flag.station_id),
         None,
     )
 
 
-def _read(row: StationFlag, station_title: str | None, reporter_name: str | None) -> StationFlagRead:
+def _read(flag: StationFlag, station_title: str | None, reporter_name: str | None) -> StationFlagRead:
     """One row to the client, with whatever names the caller resolved for it."""
     return StationFlagRead(
-        id=row.id,
-        station_id=row.station_id,
+        id=flag.id,
+        station_id=flag.station_id,
         station_title=station_title,
-        status=row.status,
-        created_at=row.created_at,
+        status=flag.status,
+        created_at=flag.created_at,
         reporter_name=reporter_name,
-        resolution_note=row.resolution_note,
-        resolved_at=row.resolved_at,
+        resolution_note=flag.resolution_note,
+        resolved_at=flag.resolved_at,
     )

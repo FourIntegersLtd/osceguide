@@ -25,14 +25,14 @@ def validate_station_structure(structure: Any) -> tuple[bool, list[str]]:
         if not isinstance(generation, dict):
             errors.append("structure.generation must be an object when present")
         else:
-            pk = generation.get("profileKey")
-            if pk is not None and (not isinstance(pk, str) or not pk.strip()):
+            profile_key = generation.get("profileKey")
+            if profile_key is not None and (not isinstance(profile_key, str) or not profile_key.strip()):
                 errors.append("structure.generation.profileKey must be a non-empty string when set")
             for key in ("systemPromptAppend", "systemPromptOverride"):
-                val = generation.get(key)
-                if val is not None and not isinstance(val, str):
+                prompt_value = generation.get(key)
+                if prompt_value is not None and not isinstance(prompt_value, str):
                     errors.append(f"structure.generation.{key} must be a string when set")
-                elif isinstance(val, str) and len(val) > 20_000:
+                elif isinstance(prompt_value, str) and len(prompt_value) > 20_000:
                     errors.append(f"structure.generation.{key} exceeds maximum length (20000)")
 
     if len(sections) == 0:
@@ -61,41 +61,41 @@ def validate_station_structure(structure: Any) -> tuple[bool, list[str]]:
                 errors.append(f"sections[{s_idx}].blocks[{b_idx}] must be an object")
                 continue
 
-            bid = block.get("id")
-            if not bid:
+            block_id = block.get("id")
+            if not block_id:
                 errors.append(f"sections[{s_idx}].blocks[{b_idx}].id is required")
-            elif bid in block_ids_seen:
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}].id: duplicate block id: {bid}")
+            elif block_id in block_ids_seen:
+                errors.append(f"sections[{s_idx}].blocks[{b_idx}].id: duplicate block id: {block_id}")
             else:
-                block_ids_seen.add(bid)
+                block_ids_seen.add(block_id)
 
             if "readingBrief" in block and not isinstance(block.get("readingBrief"), bool):
                 errors.append(
                     f"sections[{s_idx}].blocks[{b_idx}].readingBrief must be a boolean when present"
                 )
 
-            btype = block.get("type")
-            if btype not in _VALID_BLOCK_TYPES:
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}].type: invalid block type '{btype}'")
+            block_type = block.get("type")
+            if block_type not in _VALID_BLOCK_TYPES:
+                errors.append(f"sections[{s_idx}].blocks[{b_idx}].type: invalid block type '{block_type}'")
                 continue
 
-            if btype in ("singleSelect", "multiSelect"):
-                opts = block.get("options")
-                if not isinstance(opts, list) or len(opts) == 0:
+            if block_type in ("singleSelect", "multiSelect"):
+                options = block.get("options")
+                if not isinstance(options, list) or len(options) == 0:
                     errors.append(f"sections[{s_idx}].blocks[{b_idx}].options is required for select blocks")
 
-            if btype == "checklist":
+            if block_type == "checklist":
                 items = block.get("items")
                 if not isinstance(items, list) or len(items) == 0:
                     errors.append(f"sections[{s_idx}].blocks[{b_idx}].items is required for checklist blocks")
 
-            if btype == "scale" and (
+            if block_type == "scale" and (
                 not isinstance(block.get("min"), (int, float))
                 or not isinstance(block.get("max"), (int, float))
             ):
                 errors.append(f"sections[{s_idx}].blocks[{b_idx}] scale block requires numeric min and max")
 
-            if btype == "ragCriterion":
+            if block_type == "ragCriterion":
                 path_stem = block.get("pathStem")
                 if not isinstance(path_stem, str) or not path_stem.strip():
                     errors.append(

@@ -15,9 +15,9 @@ def collect_station_block_ids(structure: Any) -> set[str]:
             continue
         for block in section.get("blocks") or []:
             if isinstance(block, dict):
-                bid = block.get("id")
-                if isinstance(bid, str) and bid:
-                    ids.add(bid)
+                block_id = block.get("id")
+                if isinstance(block_id, str) and block_id:
+                    ids.add(block_id)
     return ids
 
 
@@ -32,9 +32,9 @@ def collect_required_station_block_ids(structure: Any) -> list[str]:
         for block in section.get("blocks") or []:
             if not isinstance(block, dict):
                 continue
-            bid = block.get("id")
-            if isinstance(bid, str) and bid and bool(block.get("required")):
-                required.append(bid)
+            block_id = block.get("id")
+            if isinstance(block_id, str) and block_id and bool(block.get("required")):
+                required.append(block_id)
     return required
 
 
@@ -50,20 +50,20 @@ def normalize_station_ai_content(structure: Any, payload: Any) -> dict[str, Any]
 
     flat: dict[str, Any] = {}
 
-    def walk(obj: Any) -> None:
-        if not isinstance(obj, dict):
+    def walk(node: Any) -> None:
+        if not isinstance(node, dict):
             return
-        for key, val in obj.items():
+        for key, block_value in node.items():
             if key in block_ids:
-                flat[key] = val
-            elif isinstance(val, dict):
-                walk(val)
+                flat[key] = block_value
+            elif isinstance(block_value, dict):
+                walk(block_value)
 
     walk(content)
 
-    for key, val in payload.items():
+    for key, block_value in payload.items():
         if key in block_ids and key not in flat:
-            flat[key] = val
+            flat[key] = block_value
 
     return flat
 
@@ -72,10 +72,10 @@ def _preview_block_value(value: Any, *, max_str: int = 120) -> Any:
     if value is None:
         return None
     if isinstance(value, str):
-        s = value.replace("\n", " ").strip()
-        if len(s) > max_str:
-            return s[:max_str] + f"...({len(s)} chars)"
-        return s
+        text = value.replace("\n", " ").strip()
+        if len(text) > max_str:
+            return text[:max_str] + f"...({len(text)} chars)"
+        return text
     if isinstance(value, list):
         return {"type": "list", "count": len(value), "sample": value[:3]}
     if isinstance(value, (int, float, bool)):
@@ -113,19 +113,19 @@ def summarize_station_content_coverage(structure: Any, content: Any) -> dict[str
     if not isinstance(content, dict):
         content = {}
 
-    for bid in sorted(all_ids):
-        val = content.get(bid)
-        is_empty = is_station_block_value_empty(val)
+    for block_id in sorted(all_ids):
+        block_value = content.get(block_id)
+        is_empty = is_station_block_value_empty(block_value)
         if is_empty:
-            if bid in content:
-                present_but_empty.append(bid)
-            if bid in required:
-                missing_required.append(bid)
+            if block_id in content:
+                present_but_empty.append(block_id)
+            if block_id in required:
+                missing_required.append(block_id)
             else:
-                missing_optional.append(bid)
+                missing_optional.append(block_id)
         else:
-            populated.append(bid)
-            field_previews[bid] = _preview_block_value(val)
+            populated.append(block_id)
+            field_previews[block_id] = _preview_block_value(block_value)
 
     return {
         "totalBlocks": len(all_ids),
@@ -157,46 +157,46 @@ def validate_station_content(structure: Any, content: Any) -> tuple[bool, list[s
         for block in section.get("blocks") or []:
             if not isinstance(block, dict):
                 continue
-            bid = block.get("id")
-            btype = block.get("type")
+            block_id = block.get("id")
+            block_type = block.get("type")
             required = bool(block.get("required"))
 
-            if not bid:
+            if not block_id:
                 continue
 
-            value = content.get(bid)
+            value = content.get(block_id)
 
             if required and is_station_block_value_empty(value):
-                errors.append(f"Block '{bid}' is required but missing or empty")
+                errors.append(f"Block '{block_id}' is required but missing or empty")
                 continue
 
             if value is None:
                 continue
 
-            if btype in ("shortText", "longText") and not isinstance(value, str):
-                errors.append(f"Block '{bid}' must be a string")
-            elif btype == "list" and not isinstance(value, list):
-                errors.append(f"Block '{bid}' must be an array")
-            elif btype == "singleSelect":
-                opts = [str(o) for o in (block.get("options") or []) if o is not None]
-                if not isinstance(value, str) or (opts and value not in opts):
-                    errors.append(f"Block '{bid}' must be one of: {opts}")
-            elif btype == "multiSelect":
+            if block_type in ("shortText", "longText") and not isinstance(value, str):
+                errors.append(f"Block '{block_id}' must be a string")
+            elif block_type == "list" and not isinstance(value, list):
+                errors.append(f"Block '{block_id}' must be an array")
+            elif block_type == "singleSelect":
+                options = [str(option) for option in (block.get("options") or []) if option is not None]
+                if not isinstance(value, str) or (options and value not in options):
+                    errors.append(f"Block '{block_id}' must be one of: {options}")
+            elif block_type == "multiSelect":
                 if not isinstance(value, list):
-                    errors.append(f"Block '{bid}' must be an array")
-            elif btype == "checklist":
+                    errors.append(f"Block '{block_id}' must be an array")
+            elif block_type == "checklist":
                 if not isinstance(value, list):
-                    errors.append(f"Block '{bid}' must be an array of item ids")
-            elif btype == "scale":
+                    errors.append(f"Block '{block_id}' must be an array of item ids")
+            elif block_type == "scale":
                 if not isinstance(value, (int, float)):
-                    errors.append(f"Block '{bid}' must be a number")
+                    errors.append(f"Block '{block_id}' must be a number")
                 else:
-                    mn = block.get("min")
-                    mx = block.get("max")
-                    if isinstance(mn, (int, float)) and value < mn:
-                        errors.append(f"Block '{bid}' must be >= {mn}")
-                    if isinstance(mx, (int, float)) and value > mx:
-                        errors.append(f"Block '{bid}' must be <= {mx}")
+                    minimum = block.get("min")
+                    maximum = block.get("max")
+                    if isinstance(minimum, (int, float)) and value < minimum:
+                        errors.append(f"Block '{block_id}' must be >= {minimum}")
+                    if isinstance(maximum, (int, float)) and value > maximum:
+                        errors.append(f"Block '{block_id}' must be <= {maximum}")
 
     return len(errors) == 0, errors
 
@@ -205,20 +205,20 @@ def structure_spec(structure: Any) -> dict[str, Any]:
     """Compact template shape sent to the model for autogeneration."""
     if not isinstance(structure, dict):
         return {}
-    secs = structure.get("sections")
-    if not isinstance(secs, list):
+    sections = structure.get("sections")
+    if not isinstance(sections, list):
         return {"schemaVersion": structure.get("schemaVersion", 1), "sections": []}
-    out_secs: list[dict[str, Any]] = []
-    for sec in secs:
-        if not isinstance(sec, dict):
+    compact_sections: list[dict[str, Any]] = []
+    for section in sections:
+        if not isinstance(section, dict):
             continue
-        blocks = sec.get("blocks")
-        out_blocks: list[dict[str, Any]] = []
+        blocks = section.get("blocks")
+        compact_blocks: list[dict[str, Any]] = []
         if isinstance(blocks, list):
             for block in blocks:
                 if not isinstance(block, dict):
                     continue
-                bb: dict[str, Any] = {
+                compact_block: dict[str, Any] = {
                     "id": block.get("id"),
                     "type": block.get("type"),
                     "label": block.get("label"),
@@ -227,17 +227,19 @@ def structure_spec(structure: Any) -> dict[str, Any]:
                 if block.get("type") in ("singleSelect", "multiSelect") and isinstance(
                     block.get("options"), list
                 ):
-                    bb["options"] = block.get("options")
+                    compact_block["options"] = block.get("options")
                 if block.get("type") == "checklist" and isinstance(block.get("items"), list):
                     items = block["items"]
-                    bb["items"] = [
+                    compact_block["items"] = [
                         {"id": item.get("id"), "label": item.get("label")}
                         for item in items
                         if isinstance(item, dict)
                     ]
                 if block.get("type") == "scale":
-                    bb["min"] = block.get("min")
-                    bb["max"] = block.get("max")
-                out_blocks.append(bb)
-        out_secs.append({"id": sec.get("id"), "title": sec.get("title"), "blocks": out_blocks})
-    return {"schemaVersion": structure.get("schemaVersion", 1), "sections": out_secs}
+                    compact_block["min"] = block.get("min")
+                    compact_block["max"] = block.get("max")
+                compact_blocks.append(compact_block)
+        compact_sections.append(
+            {"id": section.get("id"), "title": section.get("title"), "blocks": compact_blocks}
+        )
+    return {"schemaVersion": structure.get("schemaVersion", 1), "sections": compact_sections}

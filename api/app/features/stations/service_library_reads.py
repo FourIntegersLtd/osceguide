@@ -51,31 +51,33 @@ async def browse_library(
             return [], None
         exam_id = (await catalog.resolve_exam(session, access.current)).id
 
-    rows, next_cursor = await repository_library.library_page(
+    stations, next_cursor = await repository_library.library_page(
         session, limit=limit, cursor=cursor, exam_id=exam_id, search=search
     )
-    version_ids = [row.current_version_id for row in rows if row.current_version_id is not None]
+    version_ids = [
+        station.current_version_id for station in stations if station.current_version_id is not None
+    ]
     versions = await summaries_by_version_id(session, None, version_ids)
-    codes = await catalog.exam_codes_by_id(session, [row.exam_id for row in rows])
+    codes = await catalog.exam_codes_by_id(session, [station.exam_id for station in stations])
 
-    out: list[LibraryStationRead] = []
-    for row in rows:
-        version = versions.get(row.current_version_id) if row.current_version_id else None
+    library_reads: list[LibraryStationRead] = []
+    for station in stations:
+        version = versions.get(station.current_version_id) if station.current_version_id else None
         # A published station with no current version is a seeding fault, not
         # something a browser can act on: there is nothing for it to bind.
         if version is None:
             continue
-        out.append(
+        library_reads.append(
             LibraryStationRead(
-                id=row.id,
-                title=row.title,
-                exam_code=codes.get(row.exam_id, ""),
+                id=station.id,
+                title=station.title,
+                exam_code=codes.get(station.exam_id, ""),
                 version_id=version.version_id,
                 version=version.version,
                 published_at=version.published_at,
             )
         )
-    return out, next_cursor
+    return library_reads, next_cursor
 
 
 async def read_library_station(

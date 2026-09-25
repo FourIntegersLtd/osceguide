@@ -50,7 +50,7 @@ async def add_station_photos(
     catalogue that cannot take an image cannot hold one at all. The field name
     is `files`, as the retiring uploader sent it.
     """
-    prepared = [(f.filename or "", f.size or 0, f.file) for f in files]
+    prepared = [(upload.filename or "", upload.size or 0, upload.file) for upload in files]
     read, failed = await service_photos.add_photos(
         session,
         workspace.org_id,
@@ -62,7 +62,7 @@ async def add_station_photos(
     return schemas.StationPhotosResult(
         version=read,
         uploaded=len(prepared) - len(failed),
-        failed=[schemas.PhotoUploadFailure(**item) for item in failed],
+        failed=[schemas.PhotoUploadFailure(**failure) for failure in failed],
     )
 
 
@@ -110,14 +110,14 @@ async def add_platform_station_photos(
 ) -> schemas.StationPhotosResult:
     """The library's own images — an ortho station is a radiograph, chiefly."""
     _ = admin
-    prepared = [(f.filename or "", f.size or 0, f.file) for f in files]
+    prepared = [(upload.filename or "", upload.size or 0, upload.file) for upload in files]
     read, failed = await service_photos.add_photos(
         session, None, station_id, version, files=prepared, settings=settings
     )
     return schemas.StationPhotosResult(
         version=read,
         uploaded=len(prepared) - len(failed),
-        failed=[schemas.PhotoUploadFailure(**item) for item in failed],
+        failed=[schemas.PhotoUploadFailure(**failure) for failure in failed],
     )
 
 

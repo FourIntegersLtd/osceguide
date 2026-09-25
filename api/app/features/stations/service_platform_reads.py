@@ -49,8 +49,8 @@ class VersionOwner:
 async def owners_by_version_id(
     session: AsyncSession, version_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, VersionOwner]:
-    rows = await repository.versions_with_stations_any_owner(session, version_ids)
-    codes = await catalog.exam_codes_by_id(session, list({station.exam_id for _, station in rows}))
+    owner_pairs = await repository.versions_with_stations_any_owner(session, version_ids)
+    codes = await catalog.exam_codes_by_id(session, list({station.exam_id for _, station in owner_pairs}))
     return {
         version.id: VersionOwner(
             version_id=version.id,
@@ -58,5 +58,5 @@ async def owners_by_version_id(
             title=station.title,
             exam_code=codes.get(station.exam_id, ""),
         )
-        for version, station in rows
+        for version, station in owner_pairs
     }

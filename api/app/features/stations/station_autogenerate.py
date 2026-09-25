@@ -92,15 +92,15 @@ async def autogenerate_station_draft(
     if not prompt.strip():
         raise InvalidInput("prompt is required")
 
-    row = await templates.bindable_version(session, org_id, template_version_id)
-    structure = dict(row.structure)
+    template_version_row = await templates.bindable_version(session, org_id, template_version_id)
+    structure = dict(template_version_row.structure)
 
     ok_struct, errs_struct = validate_station_structure(structure)
     if not ok_struct:
         raise InvalidInput(f"Template structure invalid: {errs_struct}")
 
     spec = structure_spec(structure)
-    exam_code = await _exam_code_for_template_version(session, org_id, row)
+    exam_code = await _exam_code_for_template_version(session, org_id, template_version_row)
     profile_key = profile_key_for_structure(structure, exam_code)
     block_hints = hints_for_structure(structure, exam_code=exam_code)
     required_block_ids = collect_required_station_block_ids(structure)

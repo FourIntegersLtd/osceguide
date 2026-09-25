@@ -26,11 +26,11 @@ async def find(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UU
 
 
 async def add(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID) -> StationFlag:
-    row = StationFlag(station_id=station_id, user_id=user_id)
-    session.add(row)
+    flag = StationFlag(station_id=station_id, user_id=user_id)
+    session.add(flag)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(flag)
+    return flag
 
 
 async def by_id(session: AsyncSession, flag_id: uuid.UUID) -> StationFlag | None:
@@ -49,7 +49,7 @@ async def for_reporter(session: AsyncSession, user_id: uuid.UUID) -> list[tuple[
         .where(StationFlag.user_id == user_id)
         .order_by(StationFlag.created_at.desc())
     )
-    return [(row[0], row[1]) for row in (await session.execute(stmt)).all()]
+    return [(flag, title) for flag, title in (await session.execute(stmt)).all()]
 
 
 async def list_page(
@@ -84,22 +84,22 @@ async def titles_by_ids(session: AsyncSession, station_ids: list[uuid.UUID]) -> 
     if not station_ids:
         return {}
     stmt = select(Station.id, Station.title).where(Station.id.in_(station_ids))
-    return {row[0]: row[1] for row in (await session.execute(stmt)).all()}
+    return {station_id: title for station_id, title in (await session.execute(stmt)).all()}
 
 
 async def set_resolved(
     session: AsyncSession,
-    row: StationFlag,
+    flag: StationFlag,
     *,
     status: str,
     note: str | None,
     actor_id: uuid.UUID,
     resolved_at: datetime | None,
 ) -> StationFlag:
-    row.status = status
-    row.resolution_note = note
-    row.resolved_by = actor_id
-    row.resolved_at = resolved_at
+    flag.status = status
+    flag.resolution_note = note
+    flag.resolved_by = actor_id
+    flag.resolved_at = resolved_at
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(flag)
+    return flag

@@ -71,8 +71,8 @@ async def library_station(
             Station.status == "published",
         )
     )
-    row = (await session.execute(stmt)).first()
-    return (row[0], row[1]) if row else None
+    pair = (await session.execute(stmt)).first()
+    return (pair[0], pair[1]) if pair else None
 
 
 async def versions_with_stations(
@@ -93,7 +93,7 @@ async def versions_with_stations(
         .join(Station, Station.id == StationVersion.station_id)
         .where(StationVersion.id.in_(list(version_ids)), owner)
     )
-    return [(v, s) for v, s in (await session.execute(stmt)).all()]
+    return [(version, station) for version, station in (await session.execute(stmt)).all()]
 
 
 async def published_library_versions(
@@ -118,4 +118,4 @@ async def published_library_versions(
     )
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
-    return [(v, s) for v, s in (await session.execute(stmt)).all()]
+    return [(version, station) for version, station in (await session.execute(stmt)).all()]
