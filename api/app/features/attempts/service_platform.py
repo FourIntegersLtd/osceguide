@@ -44,25 +44,25 @@ async def list_for_user(
     """One person's attempts, newest first, each with its marking state."""
     if await identity.user_ref_by_id(session, user_id) is None:
         raise errors.UserNotFound()
-    rows, next_cursor = await repository.list_for_user(
+    attempts, next_cursor = await repository.list_for_user(
         session,
         user_id,
         limit=limit,
         cursor=cursor,
         status=domain.Status(status) if status else None,
     )
-    ids = [row.id for row in rows]
+    ids = [attempt.id for attempt in attempts]
     delivered = await transcripts.transcripts_for(session, ids)
     versions = await transcripts.policy_versions_for(session, ids)
     jobs = await _jobs_by_attempt(session, ids)
     return [
         _read(
-            row,
-            transcript=delivered.get(row.id),
-            versions=versions.get(row.id, []),
-            latest_job=_latest(jobs.get(row.id, [])),
+            attempt,
+            transcript=delivered.get(attempt.id),
+            versions=versions.get(attempt.id, []),
+            latest_job=_latest(jobs.get(attempt.id, [])),
         )
-        for row in rows
+        for attempt in attempts
     ], next_cursor
 
 
@@ -90,11 +90,14 @@ async def _jobs_by_attempt(
     session: AsyncSession, attempt_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, list[ScoringJobRead]]:
     found = await service_jobs.jobs_for_arg(
-        session, task_name=SCORING_TASK, key="attempt_id", values=[str(i) for i in attempt_ids]
+        session,
+        task_name=SCORING_TASK,
+        key="attempt_id",
+        values=[str(attempt_id) for attempt_id in attempt_ids],
     )
-    out: dict[uuid.UUID, list[ScoringJobRead]] = {}
+    jobs_by_attempt: dict[uuid.UUID, list[ScoringJobRead]] = {}
     for job in found:
-        out.setdefault(uuid.UUID(str(job.args.get("attempt_id"))), []).append(
+        jobs_by_attempt.setdefault(uuid.UUID(str(job.args.get("attempt_id"))), []).append(
             ScoringJobRead(
                 id=job.id,
                 status=job.status,
@@ -103,7 +106,7 @@ async def _jobs_by_attempt(
                 scheduled_at=job.scheduled_at,
             )
         )
-    return out
+    return jobs_by_attempt
 
 
 def _latest(jobs: list[ScoringJobRead]) -> ScoringJobRead | None:

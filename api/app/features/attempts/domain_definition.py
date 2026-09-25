@@ -94,10 +94,10 @@ def patient_gender(content: Mapping[str, Any] | None) -> str | None:
     """
     patient = _patient_block(content)
     for key in _GENDER_KEYS:
-        value = str(patient.get(key) or (content or {}).get(key) or "").strip().lower()
-        if value.startswith("m"):
+        gender_text = str(patient.get(key) or (content or {}).get(key) or "").strip().lower()
+        if gender_text.startswith("m"):
             return "male"
-        if value.startswith("f"):
+        if gender_text.startswith("f"):
             return "female"
     return None
 

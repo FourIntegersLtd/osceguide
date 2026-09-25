@@ -23,7 +23,7 @@ async def add_chunk(
     message: str,
     spoken_at: datetime,
 ) -> TranscriptMessage:
-    row = TranscriptMessage(
+    chunk = TranscriptMessage(
         attempt_id=attempt_id,
         message_id=message_id,
         seq=seq,
@@ -31,9 +31,9 @@ async def add_chunk(
         message=message,
         spoken_at=spoken_at,
     )
-    session.add(row)
+    session.add(chunk)
     await session.flush()
-    return row
+    return chunk
 
 
 async def chunks_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[TranscriptMessage]:
@@ -62,7 +62,7 @@ async def transcripts_for(
     if not attempt_ids:
         return {}
     stmt = select(Transcript).where(Transcript.attempt_id.in_(list(attempt_ids)))
-    return {row.attempt_id: row for row in (await session.execute(stmt)).scalars()}
+    return {transcript.attempt_id: transcript for transcript in (await session.execute(stmt)).scalars()}
 
 
 async def chunk_count(session: AsyncSession, attempt_id: uuid.UUID) -> int:
@@ -77,11 +77,13 @@ async def mark_transcript_complete(
 ) -> Transcript:
     existing = await transcript_for(session, attempt_id)
     if existing is None:
-        row = Transcript(attempt_id=attempt_id, complete=True, runtime_label=runtime_label, delivered_at=at)
-        session.add(row)
+        transcript = Transcript(
+            attempt_id=attempt_id, complete=True, runtime_label=runtime_label, delivered_at=at
+        )
+        session.add(transcript)
         await session.flush()
-        await session.refresh(row)
-        return row
+        await session.refresh(transcript)
+        return transcript
     await session.execute(
         update(Transcript)
         .where(Transcript.attempt_id == attempt_id)
@@ -103,7 +105,7 @@ async def save_result(
     model_used: str | None,
     at: datetime,
 ) -> AssessmentResult:
-    row = AssessmentResult(
+    result = AssessmentResult(
         attempt_id=attempt_id,
         framework_id=framework_id,
         policy_version=policy_version,
@@ -111,9 +113,9 @@ async def save_result(
         model_used=model_used,
         scored_at=at,
     )
-    session.add(row)
+    session.add(result)
     await session.flush()
-    return row
+    return result
 
 
 async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[AssessmentResult]:
@@ -154,7 +156,7 @@ async def policy_versions_for(
         .where(AssessmentResult.attempt_id.in_(list(attempt_ids)))
         .order_by(AssessmentResult.scored_at)
     )
-    out: dict[uuid.UUID, list[str]] = {}
+    versions_by_attempt: dict[uuid.UUID, list[str]] = {}
     for attempt_id, version in (await session.execute(stmt)).all():
-        out.setdefault(attempt_id, []).append(version)
-    return out
+        versions_by_attempt.setdefault(attempt_id, []).append(version)
+    return versions_by_attempt

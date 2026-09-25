@@ -65,12 +65,12 @@ async def bootstrap(
     """
     attempt = await _require(session, attempt_id)
 
-    payload = attempt.definition
-    if not payload:
+    frozen_definition = attempt.definition
+    if not frozen_definition:
         # Nothing frozen yet, so this is the first bootstrap: render now.
-        payload = await render_definition(session, attempt, now=now or _snapshot_time(attempt))
+        frozen_definition = await render_definition(session, attempt, now=now or _snapshot_time(attempt))
     try:
-        definition = domain_definition.bootstrap_definition(payload)
+        definition = domain_definition.bootstrap_definition(frozen_definition)
     except domain.UnrenderableDefinition as exc:
         raise errors.AttemptNotReady(str(exc)) from exc
 
@@ -87,7 +87,7 @@ async def bootstrap(
             "ended_at": attempt.completed_at.isoformat() if attempt.completed_at else None,
             "status": attempt.status,
         },
-        scenario=domain_definition.worker_scenario(payload),
+        scenario=domain_definition.worker_scenario(frozen_definition),
     )
 
 

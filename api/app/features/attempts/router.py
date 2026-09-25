@@ -133,14 +133,14 @@ async def read_results(
     """A page rather than one result: re-scoring under a new policy adds beside
     the old, so a candidate's history stays readable — to the same two people as
     the transcript, which is `service_access.ensure_readable`."""
-    items = await service_reads.read_results(
+    results = await service_reads.read_results(
         session,
         attempt_id,
         requester_id=principal.user_id,
         is_admin=principal.is_platform_admin,
         memberships=principal.memberships,
     )
-    return Page(items=items, next_cursor=None)
+    return Page(items=results, next_cursor=None)
 
 
 @router.get(

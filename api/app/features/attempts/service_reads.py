@@ -59,13 +59,15 @@ async def read_transcript(
         session, attempt, requester_id=requester_id, is_admin=is_admin, memberships=memberships
     )
     record = await transcripts.transcript_for(session, attempt_id)
-    rows = await transcripts.chunks_for(session, attempt_id)
+    turns = await transcripts.chunks_for(session, attempt_id)
     return TranscriptRead(
         attempt_id=attempt_id,
         complete=bool(record and record.complete),
         messages=[
-            TranscriptMessageRead(role=r.role, message=r.message, seq=r.seq, spoken_at=r.spoken_at)
-            for r in rows
+            TranscriptMessageRead(
+                role=turn.role, message=turn.message, seq=turn.seq, spoken_at=turn.spoken_at
+            )
+            for turn in turns
         ],
     )
 
@@ -84,13 +86,13 @@ async def read_results(
     )
     return [
         AssessmentResultRead(
-            framework_id=r.framework_id,
-            policy_version=r.policy_version,
-            model_used=r.model_used,
-            payload=dict(r.payload),
-            scored_at=r.scored_at,
+            framework_id=result.framework_id,
+            policy_version=result.policy_version,
+            model_used=result.model_used,
+            payload=dict(result.payload),
+            scored_at=result.scored_at,
         )
-        for r in await transcripts.results_for(session, attempt_id)
+        for result in await transcripts.results_for(session, attempt_id)
     ]
 
 
@@ -135,15 +137,15 @@ class AttemptRef:
 
 
 async def attempt_ref(session: AsyncSession, attempt_id: uuid.UUID) -> AttemptRef | None:
-    row = await repository.attempt_by_id(session, attempt_id)
-    return None if row is None else _ref(row)
+    attempt = await repository.attempt_by_id(session, attempt_id)
+    return None if attempt is None else _ref(attempt)
 
 
 async def recent_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: int) -> list[AttemptRef]:
     """This person's latest attempts, each already saying whether it was marked."""
-    rows, _ = await repository.list_for_user(session, user_id, limit=limit)
-    marked = await transcripts.attempt_ids_with_results(session, [row.id for row in rows])
-    return [_ref(row, has_result=row.id in marked) for row in rows]
+    attempts, _ = await repository.list_for_user(session, user_id, limit=limit)
+    marked = await transcripts.attempt_ids_with_results(session, [attempt.id for attempt in attempts])
+    return [_ref(attempt, has_result=attempt.id in marked) for attempt in attempts]
 
 
 async def evaluated_for_user(
@@ -154,21 +156,21 @@ async def evaluated_for_user(
     The consumer dashboard draws a performance chart from exactly this set; paging `recent_for_user`
     and discarding whatever is unmarked would silently truncate a trend to whatever fell in the page.
     """
-    rows = await repository.evaluated_for_user(session, user_id, exam_id=exam_id, limit=limit)
-    return [_ref(row, has_result=True) for row in rows]
+    attempts = await repository.evaluated_for_user(session, user_id, exam_id=exam_id, limit=limit)
+    return [_ref(attempt, has_result=True) for attempt in attempts]
 
 
-def _ref(row: Attempt, *, has_result: bool = False) -> AttemptRef:
+def _ref(attempt: Attempt, *, has_result: bool = False) -> AttemptRef:
     return AttemptRef(
-        id=row.id,
-        kind=row.kind,
-        status=row.status,
-        user_id=row.user_id,
-        exam_id=row.exam_id,
-        room_name=row.room_name,
-        created_at=row.created_at,
-        station_version_id=row.station_version_id,
-        completed_at=row.completed_at,
+        id=attempt.id,
+        kind=attempt.kind,
+        status=attempt.status,
+        user_id=attempt.user_id,
+        exam_id=attempt.exam_id,
+        room_name=attempt.room_name,
+        created_at=attempt.created_at,
+        station_version_id=attempt.station_version_id,
+        completed_at=attempt.completed_at,
         has_result=has_result,
     )
 
@@ -181,8 +183,8 @@ async def live_attempts_for_slots(
     What a candidate needs to join their own station: the voice token is issued per attempt, and the
     attempt is created by the supervisor's dispatch.
     """
-    rows = await repository.live_attempts_for_slots(session, list(slot_ids))
-    return {row.slot_id: _ref(row) for row in rows if row.slot_id is not None}
+    attempts = await repository.live_attempts_for_slots(session, list(slot_ids))
+    return {attempt.slot_id: _ref(attempt) for attempt in attempts if attempt.slot_id is not None}
 
 
 async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:

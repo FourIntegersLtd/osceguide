@@ -133,7 +133,7 @@ class EngineEvaluator:
         )
 
         try:
-            result = self._build(framework).evaluate(attempt, engine_transcript, policy, scenario)
+            engine_result = self._build(framework).evaluate(attempt, engine_transcript, policy, scenario)
         except Exception as exc:  # noqa: BLE001 - any engine failure is a delivery failure
             log.warning("engine evaluation failed", framework=framework_id, error=str(exc))
             raise EvaluationFailed(str(exc)) from exc
@@ -142,8 +142,8 @@ class EngineEvaluator:
         # which the model does not define and `extra="forbid"` cannot add, so
         # `getattr` returned the default and every stored result was
         # `{"model_used": ...}` with the scores silently discarded.
-        payload: dict[str, Any] = dict(result.result or {})
-        payload.setdefault("model_used", getattr(result, "model", ""))
+        payload: dict[str, Any] = dict(engine_result.result or {})
+        payload.setdefault("model_used", getattr(engine_result, "model", ""))
         return payload
 
 

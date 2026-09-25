@@ -44,10 +44,10 @@ async def list_user_attempts_for_support(
     """One person's attempts, newest first, each saying whether its transcript
     arrived, whether it was marked, and what the queue holds for it."""
     _ = admin
-    items, next_cursor = await service_platform.list_for_user(
+    attempts, next_cursor = await service_platform.list_for_user(
         session, user_id, limit=page.limit, cursor=page.cursor, status=status
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=attempts, next_cursor=next_cursor)
 
 
 @router.get(

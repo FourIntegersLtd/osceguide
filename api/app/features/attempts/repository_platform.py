@@ -33,7 +33,7 @@ async def count_by_user(session: AsyncSession, user_ids: Collection[uuid.UUID]) 
         .where(Attempt.user_id.in_(list(user_ids)))
         .group_by(Attempt.user_id)
     )
-    return {user_id: int(n) for user_id, n in (await session.execute(stmt)).all()}
+    return {user_id: int(count) for user_id, count in (await session.execute(stmt)).all()}
 
 
 @dataclass(frozen=True)
@@ -79,7 +79,7 @@ async def progress_by_version(session: AsyncSession, user_id: uuid.UUID) -> list
         .distinct(Attempt.station_version_id)
         .order_by(Attempt.station_version_id, Attempt.created_at.desc(), Attempt.id.desc())
     )
-    rows = [
+    progress_rows = [
         VersionProgress(
             station_version_id=version_id,
             attempts=totals[version_id][0],
@@ -90,7 +90,9 @@ async def progress_by_version(session: AsyncSession, user_id: uuid.UUID) -> list
         )
         for version_id, attempt_id, status, created_at in (await session.execute(newest)).all()
     ]
-    return sorted(rows, key=lambda row: (row.last_attempt_at, row.last_attempt_id), reverse=True)
+    return sorted(
+        progress_rows, key=lambda entry: (entry.last_attempt_at, entry.last_attempt_id), reverse=True
+    )
 
 
 async def running_for_user_versions(
@@ -117,7 +119,7 @@ async def delete_for_user_versions(
     """
     if not version_ids:
         return 0
-    result = await session.execute(
+    deleted = await session.execute(
         delete(Attempt).where(Attempt.user_id == user_id, Attempt.station_version_id.in_(list(version_ids)))
     )
-    return int(getattr(result, "rowcount", 0) or 0)
+    return int(getattr(deleted, "rowcount", 0) or 0)

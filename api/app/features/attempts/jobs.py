@@ -133,10 +133,10 @@ async def score_attempt_now(
         return False
 
     try:
-        payload = await evaluator.evaluate(
+        marks = await evaluator.evaluate(
             rubric=rubric,
             policy_version=policy_version,
-            transcript=[{"role": t.role, "message": t.message, "seq": t.seq} for t in turns],
+            transcript=[{"role": turn.role, "message": turn.message, "seq": turn.seq} for turn in turns],
         )
     except EvaluationFailed as exc:
         # The attempt is left at interaction_complete so a retry can mark it;
@@ -149,8 +149,8 @@ async def score_attempt_now(
         attempt_id,
         framework_id=str(rubric.get("framework", {}).get("id") or framework_id),
         policy_version=policy_version,
-        payload=payload,
-        model_used=str(payload.get("model_used") or "") or None,
+        payload=marks,
+        model_used=str(marks.get("model_used") or "") or None,
         at=now,
     )
     if status is domain.Status.INTERACTION_COMPLETE:

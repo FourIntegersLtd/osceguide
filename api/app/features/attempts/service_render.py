@@ -86,7 +86,7 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
         content=station.content,
         examiner_context=str(context) if (context := rendered.get("examiner_context")) else None,
     )
-    payload = domain_definition.definition_payload(
+    definition = domain_definition.definition_payload(
         attempt_id=str(attempt.id),
         framework_id=str((rubric or {}).get("framework", {}).get("id") or ""),
         scenario_source=str(scenario["source"]),
@@ -103,14 +103,14 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
     )
 
     if domain.should_freeze(render_degraded=degraded, already_frozen=bool(attempt.definition)):
-        await repository.freeze_definition(session, attempt.id, definition=payload, at=now)
+        await repository.freeze_definition(session, attempt.id, definition=definition, at=now)
     else:
         log.warning(
             "serving a degraded render without freezing it",
             attempt_id=str(attempt.id),
             station_version_id=str(station.version_id),
         )
-    return payload
+    return definition
 
 
 async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) -> dict[str, Any] | None:
@@ -169,14 +169,16 @@ async def render_debrief(
         raise RenderFailed("The assessment engine's debrief renderer is unavailable.") from exc
     transcript = TranscriptFormatter.format(
         {
-            "transcript_message": [{"role": row.role, "message": row.message} for row in messages],
+            "transcript_message": [
+                {"role": message.role, "message": message.message} for message in messages
+            ],
         }
     )
     return {
         "instructions": DebriefPromptFormatter.create_prompt(
             transcript=transcript,
             management_plan=frozen_context or examiner_context,
-            sca_feedback=json.dumps([row.payload for row in results], ensure_ascii=False)
+            sca_feedback=json.dumps([result.payload for result in results], ensure_ascii=False)
             if results
             else None,
         ),

@@ -70,14 +70,14 @@ async def set_status(
     Typed as the enum, not `str`: a bare string once let `"runnning"` through as a write the database
     accepted and nothing would ever match again. The column now carries a CHECK too.
     """
-    values: dict[str, Any] = {"status": str(status)}
+    updates: dict[str, Any] = {"status": str(status)}
     if status is Status.RUNNING:
-        values["started_at"] = at
+        updates["started_at"] = at
     elif status is Status.INTERACTION_COMPLETE:
-        values["completed_at"] = at
+        updates["completed_at"] = at
     elif status is Status.FAILED:
-        values["failed_reason"] = reason
-    await session.execute(update(Attempt).where(Attempt.id == attempt_id).values(**values))
+        updates["failed_reason"] = reason
+    await session.execute(update(Attempt).where(Attempt.id == attempt_id).values(**updates))
 
 
 async def freeze_definition(
@@ -111,7 +111,7 @@ async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[u
     if not entry_ids:
         return set()
     stmt = select(Attempt.set_entry_id).where(Attempt.set_entry_id.in_(list(entry_ids))).distinct()
-    return {row for row in (await session.execute(stmt)).scalars() if row is not None}
+    return {entry_id for entry_id in (await session.execute(stmt)).scalars() if entry_id is not None}
 
 
 async def list_for_user(
@@ -214,8 +214,8 @@ async def count_evaluated(session: AsyncSession) -> int:
 
 
 async def read(session: AsyncSession, attempt_id: uuid.UUID) -> dict[str, Any] | None:
-    row = await session.get(AttemptLiveCoverage, attempt_id)
-    return row.snapshot if row else None
+    coverage = await session.get(AttemptLiveCoverage, attempt_id)
+    return coverage.snapshot if coverage else None
 
 
 async def save(session: AsyncSession, attempt_id: uuid.UUID, snapshot: dict[str, Any]) -> None:
@@ -236,7 +236,7 @@ async def sources_for(
     user_id: uuid.UUID,
     attempt_ids: list[uuid.UUID],
 ) -> dict[uuid.UUID, uuid.UUID]:
-    rows = await session.execute(
+    debrief_sources = await session.execute(
         select(Attempt.id, Attempt.source_attempt_id).where(
             Attempt.user_id == user_id,
             Attempt.id.in_(attempt_ids),
@@ -244,7 +244,7 @@ async def sources_for(
             Attempt.source_attempt_id.is_not(None),
         )
     )
-    return {attempt_id: source_id for attempt_id, source_id in rows.all() if source_id is not None}
+    return {attempt_id: source_id for attempt_id, source_id in debrief_sources.all() if source_id is not None}
 
 
 # --- The attempt rows that belong to an exam slot.
@@ -295,4 +295,4 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
     if not slot_ids:
         return set()
     stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()
-    return {row for row in (await session.execute(stmt)).scalars() if row is not None}
+    return {slot_id for slot_id in (await session.execute(stmt)).scalars() if slot_id is not None}

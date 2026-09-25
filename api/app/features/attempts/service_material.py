@@ -121,7 +121,7 @@ async def list_history(
     set_entry_id: uuid.UUID | None = None,
 ) -> Page[AttemptHistoryItem]:
     """What this person has sat, newest first, each row naming its station."""
-    rows, next_cursor = await repository.list_for_user(
+    attempts, next_cursor = await repository.list_for_user(
         session,
         user_id,
         limit=limit,
@@ -129,35 +129,37 @@ async def list_history(
         station_version_id=station_version_id,
         set_entry_id=set_entry_id,
     )
-    marked = await transcripts.attempt_ids_with_results(session, [row.id for row in rows])
+    marked = await transcripts.attempt_ids_with_results(session, [attempt.id for attempt in attempts])
     # Titles and exam codes in one query each rather than one per row: a page
     # of twenty attempts against the same station asked the same question
     # twenty times in the client the day this replaced.
-    version_ids = [row.station_version_id for row in rows if row.station_version_id is not None]
+    version_ids = [
+        attempt.station_version_id for attempt in attempts if attempt.station_version_id is not None
+    ]
     summaries = await stations.summaries_by_version_id(session, None, version_ids)
-    codes = await catalog.exam_codes_by_id(session, [row.exam_id for row in rows])
+    codes = await catalog.exam_codes_by_id(session, [attempt.exam_id for attempt in attempts])
 
-    items: list[AttemptHistoryItem] = []
-    for row in rows:
+    history: list[AttemptHistoryItem] = []
+    for attempt in attempts:
         # A debrief has no station of its own — it is about another attempt —
         # so a row with no version id is named by its kind rather than skipped.
-        summary = summaries.get(row.station_version_id) if row.station_version_id else None
-        items.append(
+        summary = summaries.get(attempt.station_version_id) if attempt.station_version_id else None
+        history.append(
             AttemptHistoryItem(
-                id=row.id,
-                kind=row.kind,
-                status=row.status,
-                exam_code=codes.get(row.exam_id, ""),
+                id=attempt.id,
+                kind=attempt.kind,
+                status=attempt.status,
+                exam_code=codes.get(attempt.exam_id, ""),
                 station_id=summary.station_id if summary else None,
-                station_version_id=row.station_version_id,
+                station_version_id=attempt.station_version_id,
                 station_title=summary.title if summary else None,
-                set_entry_id=row.set_entry_id,
-                created_at=row.created_at,
-                completed_at=row.completed_at,
-                has_result=row.id in marked,
+                set_entry_id=attempt.set_entry_id,
+                created_at=attempt.created_at,
+                completed_at=attempt.completed_at,
+                has_result=attempt.id in marked,
             )
         )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=history, next_cursor=next_cursor)
 
 
 async def _material_for(
