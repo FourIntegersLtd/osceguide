@@ -29,21 +29,21 @@ async def list_open_slots(
     session: Session,
     clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
-    room: Annotated[AudienceFilter, Depends()],
+    audience_filter: Annotated[AudienceFilter, Depends()],
     exam_code: Annotated[str | None, Query(max_length=32)] = None,
 ) -> Page[schemas.PostRead]:
     """Availability and claimed slots this caller can see — the public pool plus every institution and
     group they belong to."""
-    items, next_cursor = await service.list_open_slots(
+    posts, next_cursor = await service.list_open_slots(
         session,
         viewer_id=principal.user_id,
         now=clock.now(),
         limit=page.limit,
         cursor=page.cursor,
-        audience=room.audience,
+        audience=audience_filter.audience,
         exam_code=exam_code,
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=posts, next_cursor=next_cursor)
 
 
 @router.post(
@@ -113,8 +113,8 @@ async def withdraw_slot(
     responses=error_responses(Unauthenticated),
 )
 async def list_my_posts(principal: CurrentPrincipal, session: Session) -> Page[schemas.PostRead]:
-    items = await service.list_my_posts(session, viewer_id=principal.user_id)
-    return Page(items=items, next_cursor=None)
+    posts = await service.list_my_posts(session, viewer_id=principal.user_id)
+    return Page(items=posts, next_cursor=None)
 
 
 @router.get(
@@ -127,10 +127,10 @@ async def list_my_sessions(
     session: Session,
     page: Annotated[CursorParams, Depends()],
 ) -> Page[schemas.PeerSessionRead]:
-    items, next_cursor = await service.list_my_sessions(
+    peer_sessions, next_cursor = await service.list_my_sessions(
         session, principal.user_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=peer_sessions, next_cursor=next_cursor)
 
 
 @router.post(

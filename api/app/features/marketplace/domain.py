@@ -63,9 +63,9 @@ def ensure_cancellable(post: PostState, *, actor_id: str) -> None:
         raise PostUnavailable(f"A {post.status} slot cannot be withdrawn.")
 
 
-def may_join(session: SessionState, *, user_id: str) -> bool:
-    return user_id in {session.owner_id, session.claimer_id}
+def may_join(peer_session: SessionState, *, user_id: str) -> bool:
+    return user_id in {peer_session.owner_id, peer_session.claimer_id}
 
 
-def is_open(session: SessionState, *, now: datetime) -> bool:
-    return now >= session.starts_at - JOIN_WINDOW
+def is_open(peer_session: SessionState, *, now: datetime) -> bool:
+    return now >= peer_session.starts_at - JOIN_WINDOW

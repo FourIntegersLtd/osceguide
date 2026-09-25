@@ -24,7 +24,7 @@ async def create_post(
     duration_minutes: int,
     note: str | None,
 ) -> AvailabilityPost:
-    row = AvailabilityPost(
+    post = AvailabilityPost(
         visibility=str(audience.visibility),
         audience_org_id=audience.org_id,
         audience_group_id=audience.group_id,
@@ -34,10 +34,10 @@ async def create_post(
         duration_minutes=duration_minutes,
         note=note,
     )
-    session.add(row)
+    session.add(post)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(post)
+    return post
 
 
 async def post_by_id(session: AsyncSession, post_id: uuid.UUID) -> AvailabilityPost | None:
@@ -129,7 +129,7 @@ async def create_peer_session(
     exam_id: uuid.UUID,
     starts_at: datetime,
 ) -> PeerSession:
-    row = PeerSession(
+    peer_session = PeerSession(
         post_id=post_id,
         owner_user_id=owner_user_id,
         claimer_user_id=claimer_user_id,
@@ -137,14 +137,16 @@ async def create_peer_session(
         starts_at=starts_at,
         room_name=None,
     )
-    session.add(row)
+    session.add(peer_session)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(peer_session)
+    return peer_session
 
 
-async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: str) -> None:
-    await session.execute(update(PeerSession).where(PeerSession.id == session_id).values(room_name=room_name))
+async def set_room(session: AsyncSession, peer_session_id: uuid.UUID, *, room_name: str) -> None:
+    await session.execute(
+        update(PeerSession).where(PeerSession.id == peer_session_id).values(room_name=room_name)
+    )
 
 
 async def link_practice_session(
@@ -168,17 +170,17 @@ async def link_practice_session(
 
 
 async def mark_peer_cancelled(session: AsyncSession, peer_session_id: uuid.UUID, *, at: datetime) -> bool:
-    cancelled = await session.execute(
+    cancelled_ids = await session.execute(
         update(PeerSession)
         .where(PeerSession.id == peer_session_id, PeerSession.status.in_(("scheduled", "active")))
         .values(status="cancelled", cancelled_at=at)
         .returning(PeerSession.id)
     )
-    return cancelled.scalar_one_or_none() is not None
+    return cancelled_ids.scalar_one_or_none() is not None
 
 
-async def peer_session_by_id(session: AsyncSession, session_id: uuid.UUID) -> PeerSession | None:
-    stmt = select(PeerSession).where(PeerSession.id == session_id)
+async def peer_session_by_id(session: AsyncSession, peer_session_id: uuid.UUID) -> PeerSession | None:
+    stmt = select(PeerSession).where(PeerSession.id == peer_session_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 

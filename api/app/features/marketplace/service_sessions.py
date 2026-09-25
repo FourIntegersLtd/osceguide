@@ -11,8 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.marketplace import domain, errors, repository, service_reads
+from app.features.marketplace.models import PeerSession
 from app.features.marketplace.schemas import PeerSessionRead
 from app.features.marketplace.service import _exam_codes
+
+
+def _partner_id(peer_session: PeerSession, user_id: uuid.UUID) -> uuid.UUID:
+    if peer_session.owner_user_id == user_id:
+        return peer_session.claimer_user_id
+    return peer_session.owner_user_id
 
 
 async def list_my_sessions(
@@ -22,75 +29,77 @@ async def list_my_sessions(
     limit: int,
     cursor: dict[str, Any] | None = None,
 ) -> tuple[list[PeerSessionRead], str | None]:
-    rows, next_cursor = await repository.sessions_for_user(session, user_id, limit=limit, cursor=cursor)
-    exams = await _exam_codes(session, {r.exam_id for r in rows})
-    partner_ids = {row.claimer_user_id if row.owner_user_id == user_id else row.owner_user_id for row in rows}
-    people = await identity.user_refs_by_ids(session, list(partner_ids))
+    peer_sessions, next_cursor = await repository.sessions_for_user(
+        session, user_id, limit=limit, cursor=cursor
+    )
+    exam_codes = await _exam_codes(session, {peer_session.exam_id for peer_session in peer_sessions})
+    partner_ids = {_partner_id(peer_session, user_id) for peer_session in peer_sessions}
+    users_by_id = await identity.user_refs_by_ids(session, list(partner_ids))
     return [
         service_reads.session_read(
-            row,
-            exams.get(row.exam_id, ""),
+            peer_session,
+            exam_codes.get(peer_session.exam_id, ""),
             viewer_id=user_id,
-            partner_username=service_reads.peer_username(
-                people.get(row.claimer_user_id if row.owner_user_id == user_id else row.owner_user_id)
-            ),
+            partner_username=service_reads.peer_username(users_by_id.get(_partner_id(peer_session, user_id))),
         )
-        for row in rows
+        for peer_session in peer_sessions
     ], next_cursor
 
 
 async def join_session(
-    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
+    session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PeerSessionRead:
     from app.features.peer_practice.service_lifecycle import create_runtime_for_peer_booking
 
-    row = await repository.peer_session_by_id(session, session_id)
-    if row is None:
+    peer_session = await repository.peer_session_by_id(session, peer_session_id)
+    if peer_session is None:
         raise errors.SessionNotFound()
 
     state = domain.SessionState(
-        owner_id=str(row.owner_user_id),
-        claimer_id=str(row.claimer_user_id),
-        starts_at=row.starts_at,
+        owner_id=str(peer_session.owner_user_id),
+        claimer_id=str(peer_session.claimer_user_id),
+        starts_at=peer_session.starts_at,
     )
     if not domain.may_join(state, user_id=str(user_id)):
         raise errors.SessionNotFound()
     if not domain.is_open(state, now=now):
         raise errors.SessionNotOpen()
 
-    if row.practice_session_id is None:
-        practice = await create_runtime_for_peer_booking(
+    if peer_session.practice_session_id is None:
+        practice_session = await create_runtime_for_peer_booking(
             session,
-            peer_session_id=row.id,
-            exam_id=row.exam_id,
-            owner_user_id=row.owner_user_id,
-            claimer_user_id=row.claimer_user_id,
+            peer_session_id=peer_session.id,
+            exam_id=peer_session.exam_id,
+            owner_user_id=peer_session.owner_user_id,
+            claimer_user_id=peer_session.claimer_user_id,
         )
         await repository.link_practice_session(
             session,
-            row.id,
-            practice_session_id=practice.id,
-            doctor_user_id=practice.doctor_user_id,
-            patient_user_id=practice.patient_user_id,
+            peer_session.id,
+            practice_session_id=practice_session.id,
+            doctor_user_id=practice_session.doctor_user_id,
+            patient_user_id=practice_session.patient_user_id,
         )
-        row = await repository.peer_session_by_id(session, session_id)
-        assert row is not None
+        peer_session = await repository.peer_session_by_id(session, peer_session_id)
+        assert peer_session is not None
 
-    code = await catalog.exam_code_by_id(session, row.exam_id)
-    partner_id = row.claimer_user_id if row.owner_user_id == user_id else row.owner_user_id
-    partner = await identity.user_ref_by_id(session, partner_id)
+    exam_code = await catalog.exam_code_by_id(session, peer_session.exam_id)
+    partner = await identity.user_ref_by_id(session, _partner_id(peer_session, user_id))
     return service_reads.session_read(
-        row, code or "", viewer_id=user_id, partner_username=service_reads.peer_username(partner)
+        peer_session,
+        exam_code or "",
+        viewer_id=user_id,
+        partner_username=service_reads.peer_username(partner),
     )
 
 
 async def cancel_peer_session(
-    session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
+    session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> None:
-    row = await repository.peer_session_by_id(session, session_id)
-    if row is None:
+    peer_session = await repository.peer_session_by_id(session, peer_session_id)
+    if peer_session is None:
         raise errors.SessionNotFound()
-    if user_id not in {row.owner_user_id, row.claimer_user_id}:
+    if user_id not in {peer_session.owner_user_id, peer_session.claimer_user_id}:
         raise errors.SessionNotFound()
-    if not await repository.mark_peer_cancelled(session, session_id, at=now):
+    if not await repository.mark_peer_cancelled(session, peer_session_id, at=now):
         raise errors.SessionNotOpen()
