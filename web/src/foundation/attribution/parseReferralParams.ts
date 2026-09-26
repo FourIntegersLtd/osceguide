@@ -53,8 +53,10 @@ export type ParseReferralParamsInput = {
  * Validate partner referral query params and resolve the pilot exam.
  *
  * Partner is read from ``utm_source`` and must be in ``PILOT_PARTNERS``.
- * Canonical contract: ``https://{exam}.osceguide.com/?utm_source={partner}&...``
- * Fallback: ``https://www.osceguide.com/exams/{exam}?utm_source={partner}&...``
+ * Canonical contract: ``https://{exam}.<site-host>/?utm_source={partner}&...``
+ * Fallback: ``https://www.<site-host>/exams/{exam}?utm_source={partner}&...``
+ * where `<site-host>` is this deployment's own host — production's or
+ * staging's — from ``foundation/config/siteUrl.ts``.
  */
 export function parseReferralParams(
   input: ParseReferralParamsInput | URL,

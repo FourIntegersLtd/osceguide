@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/foundation/config/siteUrl";
 
 export const metadata: Metadata = {
   title: "OSCE Guide - Cookie Policy",
   description:
     "Learn about how OSCE Guide uses cookies to enhance user experience and ensure platform functionality. Manage your cookie preferences.",
   alternates: {
-    canonical: "https://osceguide.com/compliances/cookies-policy",
+    canonical: `${SITE_URL}/compliances/cookies-policy`,
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { SITE_HOSTNAME } from "@/foundation/config/siteUrl";
 
 export type ExamKey = "sca" | "plab" | "ortho";
 
@@ -30,11 +31,22 @@ export const LANDING_EXAMS: LandingExam[] = [
   },
 ];
 
+/**
+ * Build the URL an exam's landing card should navigate to.
+ *
+ * `siteHostnameOverride` defaults to `SITE_HOSTNAME` (this deployment's own
+ * host — production's `osceguide.com`, or staging's `staging.osceguide.com`)
+ * rather than a literal "osceguide.com": a click on staging must land on
+ * `{exam}.staging.osceguide.com`, not send the visitor to production. The
+ * parameter exists only so a test can assert every deployment shape with a
+ * literal value, without mutating `process.env`; real callers never pass it.
+ */
 export function buildExamUrl(
   exam: ExamKey,
   hostname: string,
   port?: string,
   protocol?: string,
+  siteHostnameOverride: string = SITE_HOSTNAME,
 ): string {
   const normalizedHost = hostname.toLowerCase();
   const isLocal =
@@ -47,7 +59,7 @@ export function buildExamUrl(
     ? port
       ? `lvh.me:${port}`
       : "lvh.me:3000"
-    : "osceguide.com";
+    : siteHostnameOverride;
 
   const scheme = protocol
     ? protocol.replace(":", "")

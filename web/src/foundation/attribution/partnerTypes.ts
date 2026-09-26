@@ -21,10 +21,12 @@ export type BuildReferralUrlInput = {
   utmCampaign?: string;
   refId?: string;
   /**
-   * When true (default), build ``https://{exam}.osceguide.com/``.
-   * When false, build ``https://www.osceguide.com/exams/{exam}``.
+   * When true (default), build ``https://{exam}.<site-host>/`` — the exam
+   * subdomain of this deployment's own site (see
+   * ``foundation/config/siteUrl.ts``: production's host, or staging's).
+   * When false, build ``https://www.<site-host>/exams/{exam}``.
    */
   useExamSubdomain?: boolean;
-  /** Base origin without trailing slash (defaults to ``https://www.osceguide.com``). */
+  /** Base origin without trailing slash (defaults to this deployment's own ``https://www.<site-host>``). */
   origin?: string;
 };

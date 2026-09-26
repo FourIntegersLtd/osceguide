@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/foundation/config/siteUrl";
 
 export const metadata: Metadata = {
   title: "OSCE Guide - Referral Program Terms & Conditions",
   description:
     "Review the terms and conditions for the OSCE Guide Referral Program, including eligibility, the 10% discount for friends, and the rewards referrers earn.",
   alternates: {
-    canonical: "https://osceguide.com/compliances/referrals",
+    canonical: `${SITE_URL}/compliances/referrals`,
   },
 };
 

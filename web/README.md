@@ -202,6 +202,38 @@ Nothing about the scenario travels through the browser: the attempt is frozen
 server-side when it is created and the worker fetches it by id, so a tampered
 payload cannot change what is assessed.
 
+## Environments
+
+Three builds answer to this codebase — production (`osceguide.com`), staging
+(`staging.osceguide.com`), and a Vercel preview per branch — and all three set
+`NODE_ENV=production`. Nothing here may read `NODE_ENV` to ask "is this
+production?"; the answer comes from `NEXT_PUBLIC_SITE_URL` instead, read in
+exactly one place, `src/foundation/config/siteUrl.ts`, and from there into
+robots, the document head's `robots` meta, the exam-subdomain resolver
+(`{exam}.staging.osceguide.com` must resolve on staging without the bare
+`staging.osceguide.com` being read as an exam called "staging"), the referral
+builder and the marketing landing pages.
+
+| Variable | Production | Staging | Preview |
+|---|---|---|---|
+| `NEXT_PUBLIC_SITE_URL` | unset (defaults to `https://osceguide.com`) | `https://staging.osceguide.com` | unset, or its own preview URL |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | unset (defaults to production's GA id) | `""` (empty — never phone production's analytics) | `""` |
+| `PLATFORM_API_URL` | production's backend | `https://staging-api.osceguide.com` | staging's backend, or as configured |
+
+Two things follow from the site URL alone:
+
+- **Robots.** `/robots.txt` (`src/app/robots.ts`) and every page's `robots`
+  meta (`src/app/metadata.ts`) allow indexing only when the site URL is
+  exactly production's. Staging and every preview disallow everything, so
+  neither ever competes with production in search results or gets indexed
+  while unfinished.
+- **`/version`.** `GET /version` (`src/app/version/route.ts`) answers
+  `{"commit": "<sha>"}` from Vercel's own `VERCEL_GIT_COMMIT_SHA`, uncached and
+  unauthenticated, so "did the deploy I just pushed land here?" has a one-line
+  answer on any of the three.
+
+See `.env.example` for the full list with commentary.
+
 ## Checking it
 
 ```bash

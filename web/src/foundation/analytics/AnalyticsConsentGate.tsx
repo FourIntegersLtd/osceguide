@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import CookiesConsentModal from "@/foundation/ui/CookiesConsentModal";
+import { GA_MEASUREMENT_ID } from "@/foundation/analytics/gaMeasurementId";
 
 /**
  * Google Analytics, behind the consent that was always meant to gate it.
@@ -27,7 +28,6 @@ import CookiesConsentModal from "@/foundation/ui/CookiesConsentModal";
  */
 
 const CONSENT_KEY = "analytics-consent";
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-57RJ52Q20T";
 
 /**
  * Whether this browser has answered the analytics question yet.
@@ -60,7 +60,7 @@ export function AnalyticsConsentGate({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      {consent === "accepted" ? (
+      {consent === "accepted" && GA_MEASUREMENT_ID ? (
         <>
           <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
           <Script id="google-analytics">

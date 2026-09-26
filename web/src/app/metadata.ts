@@ -1,6 +1,30 @@
 import type { Metadata } from "next";
+import { SITE_URL, isProductionSiteUrl } from "@/foundation/config/siteUrl";
 
-export const SITE_URL = "https://osceguide.com";
+// Re-exported so the existing importers (`app/robots.ts`, `app/sitemap.ts`)
+// keep reading it from here; the literal value itself lives in exactly one
+// place, `foundation/config/siteUrl.ts`.
+export { SITE_URL };
+
+/**
+ * The `robots` field for a given site URL: full indexing on production,
+ * noindex/nofollow everywhere else (staging, a Vercel preview). Staging and
+ * every preview build with `NODE_ENV=production` too, so this is decided from
+ * the site URL (see `foundation/config/siteUrl.ts`) rather than the
+ * environment. Exported as a pure function — taking the site URL as an
+ * argument rather than reading the module-level `SITE_URL` — so a test can
+ * assert both branches with literal values, without mutating `process.env`.
+ */
+export function metadataRobotsFor(siteUrl: string): NonNullable<Metadata["robots"]> {
+  if (!isProductionSiteUrl(siteUrl)) {
+    return { index: false, follow: false, googleBot: { index: false, follow: false } };
+  }
+  return {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  };
+}
 
 /**
  * The document head, for every page that does not override it.
@@ -64,11 +88,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   creator: "OSCE Guide",
   publisher: "OSCE Guide",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
+  // Staging and Vercel previews must never advertise themselves to a crawler
+  // or an AI bot as if they were the indexable site — only production may.
+  robots: metadataRobotsFor(SITE_URL),
   alternates: {
     canonical: SITE_URL,
     languages: { "en-GB": SITE_URL },

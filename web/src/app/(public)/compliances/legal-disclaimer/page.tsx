@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/foundation/config/siteUrl";
 
 export const metadata: Metadata = {
   title: "OSCE Guide - Legal Disclaimer",
   description:
     "Read the legal disclaimer for OSCE Guide, covering ownership of content, no guarantee of success, educational use, and limitations of liability.",
   alternates: {
-    canonical: "https://osceguide.com/compliances/legal-disclaimer",
+    canonical: `${SITE_URL}/compliances/legal-disclaimer`,
   },
 };
 

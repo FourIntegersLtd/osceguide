@@ -27,4 +27,13 @@ describe("buildExamUrl", () => {
       "http://sca.lvh.me:3000",
     );
   });
+
+  it("REGRESSION: builds the staging subdomain on staging, never production's", () => {
+    // A click from staging.osceguide.com must land on the exam's staging
+    // subdomain, not silently send the visitor to production.
+    assert.equal(
+      buildExamUrl("sca", "staging.osceguide.com", "", "https:", "staging.osceguide.com"),
+      "https://sca.staging.osceguide.com",
+    );
+  });
 });
