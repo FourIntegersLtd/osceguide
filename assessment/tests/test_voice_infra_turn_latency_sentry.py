@@ -8,20 +8,13 @@ from voice_infra.turn_handling import turn_detector_version
 
 
 def _clear(monkeypatch) -> None:
-    for var in ("OSCE_LIVEKIT_HOSTING", "RAILWAY_ENVIRONMENT", "RAILWAY_PROJECT_ID"):
+    for var in ("OSCE_LIVEKIT_HOSTING",):
         monkeypatch.delenv(var, raising=False)
 
 
 def test_self_hosted_uses_local_mini(monkeypatch) -> None:
     _clear(monkeypatch)
     monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", "self-hosted")
-    assert turn_detector_version() == "v1-mini"
-
-
-def test_railway_uses_local_mini_even_if_cloud_declared(monkeypatch) -> None:
-    _clear(monkeypatch)
-    monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
-    monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", "cloud")
     assert turn_detector_version() == "v1-mini"
 
 

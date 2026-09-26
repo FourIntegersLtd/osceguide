@@ -10,7 +10,7 @@ _configured = False
 
 
 def is_production() -> bool:
-    return bool(os.getenv("RAILWAY_PROJECT_ID")) or os.getenv("PRODUCTION", "false").lower() == "true"
+    return os.getenv("PRODUCTION", "false").lower() == "true"
 
 
 def configure_logging(*, log_file: str | None = None) -> None:

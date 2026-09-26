@@ -1,6 +1,6 @@
-"""Railway / self-hosted entry: gunicorn health endpoint + one worker subprocess.
+"""Self-hosted entry: gunicorn health endpoint + one worker subprocess.
 
-A slimmer port of the legacy ``railway_worker``: one worker per container (chosen
+A slimmer port of the legacy worker supervisor: one worker per container (chosen
 by ``OSCE_LIVEKIT_WORKER``), restarted with back-off when it exits. ``/health``
 answers 200 while the worker is starting or running and 503 once it has crashed,
 so the platform waits through a cold boot and restarts a dead container.

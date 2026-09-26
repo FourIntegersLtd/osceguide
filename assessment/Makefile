@@ -11,11 +11,11 @@ lint-leakage:
 	poetry run pytest -q tests/test_no_consumer_leakage.py
 
 # --- Running the workers -----------------------------------------------------
-# Railway / K8s container: gunicorn on PATH, deps baked in. Local: poetry run.
+# K8s container: gunicorn on PATH, deps baked in. Local: poetry run.
 PORT ?= 8080
 export OSCE_LIVEKIT_WORKER ?= assessment
 IS_CONTAINER_HOST := $(filter $(OSCE_LIVEKIT_HOSTING),self-hosted)
-ifneq ($(RAILWAY_PROJECT_ID)$(RAILWAY_ENVIRONMENT)$(IS_CONTAINER_HOST),)
+ifneq ($(IS_CONTAINER_HOST),)
 RUN :=
 START_PREREQS :=
 else

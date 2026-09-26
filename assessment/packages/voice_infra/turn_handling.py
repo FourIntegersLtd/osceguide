@@ -17,12 +17,10 @@ def turn_detector_version() -> TurnDetectorVersion:
     """Cloud-hosted agents use Inference ``v1``; everything else the on-box ``v1-mini``.
 
     Hosting is declared by ``OSCE_LIVEKIT_HOSTING``: ``cloud`` for LiveKit Cloud,
-    ``self-hosted`` (or a Railway environment) for on-box turn detection.
+    ``self-hosted`` for on-box turn detection.
     """
     hosting = (os.getenv("OSCE_LIVEKIT_HOSTING") or "").strip().lower()
     if hosting == "self-hosted":
-        return "v1-mini"
-    if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID"):
         return "v1-mini"
     if hosting in {"cloud", "livekit-cloud"}:
         return "v1"

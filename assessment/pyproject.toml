@@ -37,7 +37,7 @@ openai = "^2.15.0"
 sentry-sdk = ">=2.20.0,<3.0.0"
 livekit-plugins-noise-cancellation = "~=0.3"
 aiohttp = "^3.11.18"
-# Railway / self-hosted health endpoint + worker supervisor (hosting/supervisor.py).
+# Self-hosted health endpoint + worker supervisor (hosting/supervisor.py).
 gunicorn = ">=23.0.0,<24.0.0"
 
 [tool.poetry.group.dev.dependencies]

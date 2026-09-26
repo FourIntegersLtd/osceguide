@@ -22,17 +22,16 @@ def _dsn() -> str:
 
 
 def _environment() -> str:
-    for variable in ("SENTRY_ENVIRONMENT", "RAILWAY_ENVIRONMENT"):
-        value = os.getenv(variable, "").strip()
-        if value:
-            return value
+    value = os.getenv("SENTRY_ENVIRONMENT", "").strip()
+    if value:
+        return value
     if (os.getenv("OSCE_LIVEKIT_HOSTING") or "").strip().lower() in {"cloud", "livekit-cloud"}:
         return "livekit-cloud"
     return "development"
 
 
 def _release() -> str | None:
-    return os.getenv("SENTRY_RELEASE", "").strip() or os.getenv("RAILWAY_GIT_COMMIT_SHA", "").strip() or None
+    return os.getenv("SENTRY_RELEASE", "").strip() or None
 
 
 def _traces_sampler(sampling_context: dict[str, Any]) -> float:
