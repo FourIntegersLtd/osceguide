@@ -70,6 +70,7 @@ async def create_exam(
     rubric_version_id: uuid.UUID | None,
     partner_pilot: bool,
 ) -> Exam:
+    """Insert a new exam row as a draft, and hand back the row with its id set."""
     exam = Exam(
         owner_kind=owner_kind,
         org_id=org_id,
@@ -88,6 +89,7 @@ async def create_exam(
 
 
 async def update_exam(session: AsyncSession, exam_id: uuid.UUID, **fields: Any) -> None:
+    """Change whichever columns are given. Does nothing if `fields` is empty."""
     if fields:
         await session.execute(update(Exam).where(Exam.id == exam_id).values(**fields))
 
@@ -141,6 +143,7 @@ async def exam_codes_by_id(session: AsyncSession, exam_ids: set[uuid.UUID]) -> d
 async def create_programme(
     session: AsyncSession, org_id: uuid.UUID, *, exam_id: uuid.UUID, source: str = "custom"
 ) -> Programme:
+    """Record that this organisation now runs the named exam."""
     programme = Programme(org_id=org_id, exam_id=exam_id, source=source)
     session.add(programme)
     await session.flush()
@@ -151,6 +154,7 @@ async def create_programme(
 async def programme_for_exam(
     session: AsyncSession, org_id: uuid.UUID, exam_id: uuid.UUID
 ) -> Programme | None:
+    """Whether this organisation already runs the given exam, for the uniqueness check."""
     stmt = select(Programme).where(Programme.org_id == org_id, Programme.exam_id == exam_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -158,6 +162,7 @@ async def programme_for_exam(
 async def programme_by_id(
     session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID
 ) -> Programme | None:
+    """One of this organisation's own programmes, by id."""
     stmt = select(Programme).where(Programme.org_id == org_id, Programme.id == programme_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -165,6 +170,7 @@ async def programme_by_id(
 async def list_programmes(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[tuple[Programme, Exam]], str | None]:
+    """This organisation's programmes, each paired with the exam it names."""
     stmt = select(Programme).where(Programme.org_id == org_id)
     programmes, next_cursor = await keyset_page(
         session,
@@ -185,6 +191,7 @@ async def list_programmes(
 async def set_programme_status(
     session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID, *, status: str
 ) -> None:
+    """Move a programme to a new status, such as pausing or resuming it."""
     await session.execute(
         update(Programme)
         .where(Programme.org_id == org_id, Programme.id == programme_id)
@@ -193,6 +200,7 @@ async def set_programme_status(
 
 
 async def exams_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> list[Exam]:
+    """Every exam row named by these ids, in one query."""
     if not exam_ids:
         return []
     stmt = select(Exam).where(Exam.id.in_(list(exam_ids)))

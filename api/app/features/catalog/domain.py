@@ -53,7 +53,7 @@ class NotPublishable(Exception):
 
 
 class NotRetirable(Exception):
-    pass
+    """An exam that is not published, so there is nothing to stop offering."""
 
 
 class NotOfferable(LookupError):
@@ -65,12 +65,14 @@ class NotOwned(PermissionError):
 
 
 class OwnerKind(StrEnum):
+    """Who wrote an exam: the platform's own catalogue, or one institution."""
 
     PLATFORM = "platform"
     ORG = "org"
 
 
 class ExamStatus(StrEnum):
+    """Where an exam is in its life: being written, offered, or stopped."""
 
     DRAFT = "draft"
     PUBLISHED = "published"
@@ -106,6 +108,7 @@ def ensure_publishable(status: str, rubric_version_id: uuid.UUID | None) -> Exam
 
 
 def ensure_retirable(status: str) -> ExamStatus:
+    """Only a published exam can be retired; a draft was never offered."""
     if ExamStatus(status) is not ExamStatus.PUBLISHED:
         raise NotRetirable("Only a published exam can be retired. A draft is simply not offered.")
     return ExamStatus.RETIRED
@@ -142,10 +145,12 @@ OFFERABLE_PROGRAMME_STATUSES = frozenset({"active"})
 
 @dataclass(frozen=True)
 class ProgrammeRef:
+    """A programme as another slice sees it: just enough to check it is live."""
 
     exam_code: str
     status: str
 
     @property
     def is_offerable(self) -> bool:
+        """Whether a sitting may still be booked against this programme."""
         return self.status.strip().lower() in OFFERABLE_PROGRAMME_STATUSES

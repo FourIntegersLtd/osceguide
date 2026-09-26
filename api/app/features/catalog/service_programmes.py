@@ -20,6 +20,7 @@ from app.features.catalog.service import resolve_exam
 
 
 async def add_programme(session: AsyncSession, org_id: uuid.UUID, *, exam_code: str) -> ProgrammeRead:
+    """Start this organisation running the named exam. Refused if it already does."""
     exam = await resolve_exam(session, exam_code, org_id=org_id)
     if await repository.programme_for_exam(session, org_id, exam.id) is not None:
         raise ProgrammeExists()
@@ -30,6 +31,7 @@ async def add_programme(session: AsyncSession, org_id: uuid.UUID, *, exam_code: 
 async def list_programmes(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[ProgrammeRead], str | None]:
+    """This organisation's own programmes, one page at a time."""
     pairs, next_cursor = await repository.list_programmes(session, org_id, limit=limit, cursor=cursor)
     return [_programme_read(programme, exam) for programme, exam in pairs], next_cursor
 
@@ -37,6 +39,7 @@ async def list_programmes(
 async def set_programme_status(
     session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID, *, status: str
 ) -> ProgrammeRead:
+    """Pause or resume this organisation's own programme."""
     programme = await repository.programme_by_id(session, org_id, programme_id)
     if programme is None:
         raise ProgrammeNotFound()
@@ -47,6 +50,7 @@ async def set_programme_status(
 
 
 def _programme_read(programme: Programme, exam: Exam) -> ProgrammeRead:
+    """Map a stored programme and the exam it names onto what a route returns."""
     return ProgrammeRead(
         id=programme.id,
         exam_id=exam.id,

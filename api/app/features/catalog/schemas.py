@@ -1,3 +1,5 @@
+"""What the catalog routes accept and return: exams and programmes."""
+
 from __future__ import annotations
 
 import uuid

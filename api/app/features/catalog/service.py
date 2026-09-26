@@ -59,6 +59,7 @@ async def resolve_exam(session: AsyncSession, code: str, *, org_id: uuid.UUID | 
 
 
 def exam_read(exam: Exam) -> ExamRead:
+    """Map a stored exam onto what a route returns."""
     return ExamRead(
         id=exam.id,
         owner_kind=exam.owner_kind,
@@ -116,11 +117,13 @@ class ExamRef:
 
 
 async def exam_ref_by_id(session: AsyncSession, exam_id: uuid.UUID) -> ExamRef | None:
+    """The plain-field reference another slice can hold, or `None` if the exam is gone."""
     exam = await repository.exam_by_id(session, exam_id)
     return None if exam is None else _exam_ref(exam)
 
 
 def _exam_ref(exam: Exam) -> ExamRef:
+    """Map a stored exam onto the reference other slices are allowed to see."""
     return ExamRef(
         id=exam.id,
         code=exam.code,

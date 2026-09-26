@@ -1,3 +1,6 @@
+"""HTTP routes for browsing, authoring and publishing exams, and for grouping
+them into an institution's programmes. Each hands straight to a `service*` module."""
+
 from __future__ import annotations
 
 import uuid

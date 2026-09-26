@@ -1,9 +1,12 @@
+"""The refusals a catalog route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, InvalidInput, NotFound
 
 
 class UnknownExamError(NotFound):
+    """No exam matches: missing, unpublished, retired, or the wrong owner."""
 
     code = "unknown_exam"
     default_message = "No such exam"
@@ -22,30 +25,35 @@ class ExamNotOwned(NotFound):
 
 
 class ProgrammeExists(Conflict):
+    """This organisation is already running the exam it just tried to add."""
 
     code = "programme_exists"
     default_message = "That exam is already on this organisation's programme"
 
 
 class ProgrammeNotFound(NotFound):
+    """No programme with that id in this organisation."""
 
     code = "programme_not_found"
     default_message = "No such programme"
 
 
 class ExamCodeTaken(Conflict):
+    """Another exam already has this code in the same owner's namespace."""
 
     code = "exam_code_taken"
     default_message = "An exam with that code already exists"
 
 
 class InvalidExamCodeError(InvalidInput):
+    """The code does not fit the pattern a URL or ref id can carry."""
 
     code = "invalid_exam_code"
     default_message = "That is not a usable exam code"
 
 
 class ExamNotPublishable(Conflict):
+    """The exam is retired, or it names no rubric to be marked against."""
 
     code = "exam_not_publishable"
     default_message = "That exam cannot be published as it stands"
