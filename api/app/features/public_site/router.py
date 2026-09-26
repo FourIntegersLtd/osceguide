@@ -1,3 +1,5 @@
+"""HTTP routes for the landing page's statistics band, the contact form and the platform-admin inbox."""
+
 from __future__ import annotations
 
 import uuid

@@ -32,6 +32,7 @@ _CACHE_SECONDS = 600
 
 
 async def statistics(session: AsyncSession, *, now: datetime) -> schemas.SiteStatistics:
+    """The landing page's counters, from the cache when there is one, else freshly counted."""
     cached = await _cached()
     if cached is not None:
         return cached
@@ -51,6 +52,7 @@ async def statistics(session: AsyncSession, *, now: datetime) -> schemas.SiteSta
 
 
 async def _cached() -> schemas.SiteStatistics | None:
+    """The last remembered statistics, or `None` on a miss, a stale shape or a cache that is down."""
     redis = get_redis()
     if redis is None:
         return None
@@ -67,6 +69,7 @@ async def _cached() -> schemas.SiteStatistics | None:
 
 
 async def _remember(figures: schemas.SiteStatistics) -> None:
+    """Cache freshly counted statistics, tolerating a cache that is down."""
     redis = get_redis()
     if redis is None:
         return
@@ -79,6 +82,7 @@ async def _remember(figures: schemas.SiteStatistics) -> None:
 async def send(
     session: AsyncSession, body: schemas.SendMessage, *, user_id: uuid.UUID | None
 ) -> schemas.MessageAccepted:
+    """Validate and store a contact or feedback message, filing it against the sender when signed in."""
     try:
         kind = domain.normalise_kind(body.kind)
         domain.ensure_sendable(name=body.name or "", email=body.email or "", body=body.body, kind=kind)
@@ -99,6 +103,7 @@ async def send(
 
 
 async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> list[schemas.MessageRead]:
+    """The platform-admin inbox: every message, newest first, optionally narrowed to one kind."""
     messages = await repository.list_messages(session, kind=kind, limit=limit)
     return [_read(message) for message in messages]
 
@@ -106,6 +111,7 @@ async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) 
 async def mark_handled(
     session: AsyncSession, *, message_id: uuid.UUID, by: uuid.UUID, at: datetime
 ) -> schemas.MessageRead:
+    """Mark a message answered, refusing when no message has that id."""
     message = await repository.mark_handled(session, message_id=message_id, by=by, at=at)
     if message is None:
         raise errors.MessageNotFound()

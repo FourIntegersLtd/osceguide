@@ -1,3 +1,5 @@
+"""What the public-site routes accept and return."""
+
 from __future__ import annotations
 
 import uuid

@@ -27,10 +27,11 @@ class MessageKind(StrEnum):
 
 
 class InvalidMessage(Exception):
-    pass
+    """A message that cannot be sent as written. Mapped to `invalid_message`."""
 
 
 def normalise_kind(raw_kind: str) -> MessageKind:
+    """The message kind a raw string names, refusing anything the form does not send."""
     try:
         return MessageKind((raw_kind or "").strip().lower())
     except ValueError as exc:

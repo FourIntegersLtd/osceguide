@@ -1,3 +1,5 @@
+"""Storage for messages sent through the public site's contact form and in-product feedback box."""
+
 from __future__ import annotations
 
 import uuid
@@ -21,6 +23,7 @@ async def add_message(
     source: str | None,
     user_id: uuid.UUID | None,
 ) -> SiteMessage:
+    """Store one message sent through the contact form or the in-product feedback box."""
     message = SiteMessage(
         kind=kind,
         name=name,
@@ -36,6 +39,7 @@ async def add_message(
 
 
 async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> Sequence[SiteMessage]:
+    """Every message, newest first, optionally narrowed to one kind."""
     stmt = select(SiteMessage).order_by(SiteMessage.created_at.desc()).limit(limit)
     if kind:
         stmt = stmt.where(SiteMessage.kind == kind)
@@ -46,6 +50,7 @@ async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) 
 async def mark_handled(
     session: AsyncSession, *, message_id: uuid.UUID, by: uuid.UUID, at: datetime
 ) -> SiteMessage | None:
+    """Mark one message as dealt with, or `None` if no message has that id."""
     message = await session.get(SiteMessage, message_id)
     if message is None:
         return None
