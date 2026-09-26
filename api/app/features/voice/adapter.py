@@ -14,6 +14,7 @@ from app.features.voice.errors import VoiceUnavailable
 
 
 class LiveKitTokens:
+
     def issue(
         self,
         *,

@@ -82,11 +82,14 @@ async def _run(script: str, *args: object) -> Any:
     client = get_redis()
     if client is None:
         raise ConnectionError("redis is not configured")
-    return await cast("Awaitable[Any]", client.eval(script, 1, CLOUD_SLOTS_KEY, *[str(a) for a in args]))
+    return await cast(
+        "Awaitable[Any]", client.eval(script, 1, CLOUD_SLOTS_KEY, *[str(argument) for argument in args])
+    )
 
 
 @dataclass(frozen=True)
 class Reservation:
+
     reserved: bool
     active_count: int | None
 

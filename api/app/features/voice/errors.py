@@ -9,11 +9,13 @@ __all__ = ["AttemptNotFound", "AttemptNotYours", "AttemptNotJoinable", "VoiceUna
 
 
 class VoiceUnavailable(AppError):
+
     status = 503
     code = "voice_unavailable"
     default_message = "The voice service is not available right now"
 
 
 class AttemptNotJoinable(Conflict):
+
     code = "attempt_not_joinable"
     default_message = "That attempt has already finished"

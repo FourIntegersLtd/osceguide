@@ -18,6 +18,7 @@ router = APIRouter(tags=["voice"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Issue a LiveKit token for the room this attempt's live station runs in.
 @router.post(
     "/attempts/{attempt_id}/voice-token",
     response_model=schemas.VoiceGrant,

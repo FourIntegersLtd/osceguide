@@ -12,11 +12,13 @@ from enum import StrEnum
 
 
 class Family(StrEnum):
+
     ASSESSMENT = "assessment"
     ASSISTANT = "assistant"
 
 
 class Mode(StrEnum):
+
     SELF_HOSTED = "self-hosted"
     LIVEKIT_CLOUD = "livekit-cloud"
 
