@@ -87,7 +87,7 @@ def ensure_not_already_rostered(existing: Iterable[object], adding: Iterable[obj
         raise TraineeAlreadyOnCircuit("Already on this circuit: " + ", ".join(clash) + ".")
 
 
-def ensure_appended_pairing(trainees: int, stations: int) -> None:
+def ensure_appended_pairing(trainee_count: int, station_count: int) -> None:
     """Either no station is named and everyone takes the one being run, or one
     is named per arrival — the positional pairing `CreateCircuit` already uses.
 
@@ -95,8 +95,10 @@ def ensure_appended_pairing(trainees: int, stations: int) -> None:
     station", quietly sends three latecomers to the same room when the circuit
     has three stations and they were meant to spread across them.
     """
-    if stations and stations != trainees:
-        raise InvalidCircuit(f"Appending {trainees} trainees needs {trainees} stations, not {stations}.")
+    if station_count and station_count != trainee_count:
+        raise InvalidCircuit(
+            f"Appending {trainee_count} trainees needs {trainee_count} stations, not {station_count}."
+        )
 
 
 def ensure_stations_are_on_circuit(planned: Iterable[object], circuit_stations: Iterable[object]) -> None:

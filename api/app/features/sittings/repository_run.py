@@ -45,7 +45,7 @@ async def live_circuits_for_org(session: AsyncSession, org_id: uuid.UUID) -> lis
         .where(Circuit.org_id == org_id, _live())
         .order_by(Sitting.scheduled_for.desc().nullslast(), Circuit.created_at)
     )
-    return [(c, s) for c, s in (await session.execute(stmt)).all()]
+    return [(circuit, sitting) for circuit, sitting in (await session.execute(stmt)).all()]
 
 
 async def sitting_mode_for_circuit(session: AsyncSession, circuit_id: uuid.UUID) -> str | None:
@@ -103,7 +103,7 @@ async def stale_circuits(session: AsyncSession, *, started_before: datetime) -> 
 
 
 async def circuit_for_rostered_trainee(
-    session: AsyncSession, circuit_id: uuid.UUID, trainee_id: uuid.UUID
+    session: AsyncSession, circuit_id: uuid.UUID, trainee_user_id: uuid.UUID
 ) -> Circuit | None:
     """The circuit, if this person is actually on it.
 
@@ -115,7 +115,7 @@ async def circuit_for_rostered_trainee(
     stmt = (
         select(Circuit)
         .join(Slot, Slot.circuit_id == Circuit.id)
-        .where(Circuit.id == circuit_id, Slot.trainee_id == trainee_id)
+        .where(Circuit.id == circuit_id, Slot.trainee_id == trainee_user_id)
         .limit(1)
     )
     found = (await session.execute(stmt)).scalar_one_or_none()
@@ -125,7 +125,7 @@ async def circuit_for_rostered_trainee(
     stmt = (
         select(Circuit)
         .join(CircuitTrainee, CircuitTrainee.circuit_id == Circuit.id)
-        .where(Circuit.id == circuit_id, CircuitTrainee.trainee_id == trainee_id)
+        .where(Circuit.id == circuit_id, CircuitTrainee.trainee_id == trainee_user_id)
         .limit(1)
     )
     return (await session.execute(stmt)).scalar_one_or_none()
@@ -170,7 +170,7 @@ async def record_intervention(
     phase_seq_after: int,
     at: datetime,
 ) -> CircuitIntervention:
-    row = CircuitIntervention(
+    intervention = CircuitIntervention(
         org_id=org_id,
         circuit_id=circuit_id,
         slot_id=slot_id,
@@ -181,10 +181,10 @@ async def record_intervention(
         phase_seq_after=phase_seq_after,
         at=at,
     )
-    session.add(row)
+    session.add(intervention)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(intervention)
+    return intervention
 
 
 async def interventions_for_circuit(

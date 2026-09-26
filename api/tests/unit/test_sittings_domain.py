@@ -19,41 +19,43 @@ from app.features.sittings.domain import Mode
 
 
 def test_an_exam_circuit_is_one_trainee_through_every_station() -> None:
-    slots = domain.build_slots(Mode.EXAM, trainees=["t1"], stations=["s1", "s2", "s3"])
-    assert [s.station for s in slots] == ["s1", "s2", "s3"]
-    assert {s.trainee for s in slots} == {"t1"}
+    slots = domain.build_slots(Mode.EXAM, trainee_user_ids=["t1"], station_version_ids=["s1", "s2", "s3"])
+    assert [s.station_version_id for s in slots] == ["s1", "s2", "s3"]
+    assert {s.trainee_user_id for s in slots} == {"t1"}
 
 
 def test_an_exam_circuit_refuses_more_than_one_trainee() -> None:
     """Oracle: slot_builder. An exam is one candidate's sitting."""
     with pytest.raises(domain.InvalidCircuit):
-        domain.build_slots(Mode.EXAM, trainees=["t1", "t2"], stations=["s1"])
+        domain.build_slots(Mode.EXAM, trainee_user_ids=["t1", "t2"], station_version_ids=["s1"])
 
 
 def test_an_exam_circuit_is_capped_at_twelve_stations() -> None:
     """Oracle: `EXAM_MAX_STATIONS = 12`."""
     with pytest.raises(domain.InvalidCircuit):
-        domain.build_slots(Mode.EXAM, trainees=["t1"], stations=[f"s{i}" for i in range(13)])
+        domain.build_slots(
+            Mode.EXAM, trainee_user_ids=["t1"], station_version_ids=[f"s{i}" for i in range(13)]
+        )
 
 
 def test_a_training_circuit_pairs_each_trainee_with_one_station() -> None:
     """Oracle: the positional zip. Trainee i takes station i, and they rotate."""
-    slots = domain.build_slots(Mode.TRAINING, trainees=["a", "b"], stations=["s1", "s2"])
-    assert [(s.trainee, s.station) for s in slots] == [("a", "s1"), ("b", "s2")]
+    slots = domain.build_slots(Mode.TRAINING, trainee_user_ids=["a", "b"], station_version_ids=["s1", "s2"])
+    assert [(s.trainee_user_id, s.station_version_id) for s in slots] == [("a", "s1"), ("b", "s2")]
 
 
 def test_a_training_circuit_needs_matching_counts() -> None:
     with pytest.raises(domain.InvalidCircuit):
-        domain.build_slots(Mode.TRAINING, trainees=["a", "b"], stations=["s1"])
+        domain.build_slots(Mode.TRAINING, trainee_user_ids=["a", "b"], station_version_ids=["s1"])
 
 
 def test_a_circuit_with_no_stations_is_refused() -> None:
     with pytest.raises(domain.InvalidCircuit):
-        domain.build_slots(Mode.TRAINING, trainees=[], stations=[])
+        domain.build_slots(Mode.TRAINING, trainee_user_ids=[], station_version_ids=[])
 
 
 def test_slots_are_numbered_from_zero_in_order() -> None:
-    slots = domain.build_slots(Mode.EXAM, trainees=["t1"], stations=["s1", "s2"])
+    slots = domain.build_slots(Mode.EXAM, trainee_user_ids=["t1"], station_version_ids=["s1", "s2"])
     assert [s.index for s in slots] == [0, 1]
 
 

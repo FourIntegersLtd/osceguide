@@ -49,7 +49,7 @@ async def pause(
         session,
         workspace.org_id,
         circuit_id,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 
@@ -72,7 +72,7 @@ async def resume(
         session,
         workspace.org_id,
         circuit_id,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 
@@ -96,7 +96,7 @@ async def extend_clock(
         workspace.org_id,
         circuit_id,
         seconds=body.seconds,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 
@@ -119,7 +119,7 @@ async def reset_clock(
         session,
         workspace.org_id,
         circuit_id,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 
@@ -143,7 +143,7 @@ async def set_auto_advance(
         workspace.org_id,
         circuit_id,
         enabled=body.enabled,
-        actor=overrides.Actor.of(principal.user_id),
+        actor=overrides.Actor.for_user(principal.user_id),
         now=clock.now(),
     )
 
@@ -170,7 +170,7 @@ async def resend_patient(
         circuit_id,
         agents=agents,
         settings=settings,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 
@@ -198,7 +198,7 @@ async def redo_station(
         slot_id=body.slot_id,
         agents=agents,
         settings=settings,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 
@@ -224,7 +224,7 @@ async def jump_to(
         circuit_id,
         slot_id=body.slot_id,
         agents=agents,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 

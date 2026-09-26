@@ -32,54 +32,54 @@ from app.features.sittings.reads_types import SupervisorCircuit as SupervisorCir
 from app.features.sittings.reads_types import TraineeSlot as TraineeSlot
 
 
-def _sitting_ref(row: Sitting) -> SittingRef:
+def _sitting_ref(sitting: Sitting) -> SittingRef:
     return SittingRef(
-        id=row.id,
-        org_id=row.org_id,
-        name=row.name,
-        mode=row.mode,
-        sitting_type=row.sitting_type,
-        status=row.status,
-        scheduled_for=row.scheduled_for,
-        rubric_version_id=row.rubric_version_id,
-        programme_id=row.programme_id,
+        id=sitting.id,
+        org_id=sitting.org_id,
+        name=sitting.name,
+        mode=sitting.mode,
+        sitting_type=sitting.sitting_type,
+        status=sitting.status,
+        scheduled_for=sitting.scheduled_for,
+        rubric_version_id=sitting.rubric_version_id,
+        programme_id=sitting.programme_id,
     )
 
 
-def _circuit_ref(row: Circuit) -> CircuitRef:
+def _circuit_ref(circuit: Circuit) -> CircuitRef:
     return CircuitRef(
-        id=row.id,
-        sitting_id=row.sitting_id,
-        name=row.name,
-        supervisor_user_id=row.supervisor_user_id,
-        timing=timing_read(row.timing),
-        active_slot_id=row.active_slot_id,
-        room_name=row.room_name,
-        agent_dispatched_at=row.agent_dispatched_at,
-        started_at=row.started_at,
-        ended_at=row.ended_at,
-        phase=row.phase,
-        phase_started_at=row.phase_started_at,
-        phase_ends_at=row.phase_ends_at,
-        phase_seq=row.phase_seq,
-        paused_at=row.paused_at,
-        paused_seconds=row.paused_seconds,
-        auto_advance=row.auto_advance,
+        id=circuit.id,
+        sitting_id=circuit.sitting_id,
+        name=circuit.name,
+        supervisor_user_id=circuit.supervisor_user_id,
+        timing=timing_read(circuit.timing),
+        active_slot_id=circuit.active_slot_id,
+        room_name=circuit.room_name,
+        agent_dispatched_at=circuit.agent_dispatched_at,
+        started_at=circuit.started_at,
+        ended_at=circuit.ended_at,
+        phase=circuit.phase,
+        phase_started_at=circuit.phase_started_at,
+        phase_ends_at=circuit.phase_ends_at,
+        phase_seq=circuit.phase_seq,
+        paused_at=circuit.paused_at,
+        paused_seconds=circuit.paused_seconds,
+        auto_advance=circuit.auto_advance,
     )
 
 
-def _slot_ref(row: Slot) -> SlotRef:
+def _slot_ref(slot: Slot) -> SlotRef:
     return SlotRef(
-        id=row.id,
-        circuit_id=row.circuit_id,
-        slot_index=row.slot_index,
-        trainee_id=row.trainee_id,
-        station_version_id=row.station_version_id,
-        status=row.status,
-        room_name=row.room_name,
-        started_at=row.started_at,
-        ended_at=row.ended_at,
-        exam_completed_at=row.exam_completed_at,
+        id=slot.id,
+        circuit_id=slot.circuit_id,
+        slot_index=slot.slot_index,
+        trainee_id=slot.trainee_id,
+        station_version_id=slot.station_version_id,
+        status=slot.status,
+        room_name=slot.room_name,
+        started_at=slot.started_at,
+        ended_at=slot.ended_at,
+        exam_completed_at=slot.exam_completed_at,
     )
 
 
@@ -88,15 +88,17 @@ async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
 
 
 async def recent_sittings(session: AsyncSession, org_id: uuid.UUID, *, limit: int) -> list[SittingRef]:
-    rows, _ = await repository.list_sittings(session, org_id, limit=limit, cursor=None)
-    return [_sitting_ref(row) for row in rows]
+    sittings, _ = await repository.list_sittings(session, org_id, limit=limit, cursor=None)
+    return [_sitting_ref(sitting) for sitting in sittings]
 
 
 async def supervisor_circuits(
     session: AsyncSession, org_id: uuid.UUID, supervisor_user_id: uuid.UUID
 ) -> list[SupervisorCircuit]:
     pairs = await repository_reads.circuits_for_supervisor(session, org_id, supervisor_user_id)
-    counts = await repository_reads.slot_counts_for_circuits(session, org_id, [c.id for c, _ in pairs])
+    counts = await repository_reads.slot_counts_for_circuits(
+        session, org_id, [circuit.id for circuit, _ in pairs]
+    )
     return [
         SupervisorCircuit(
             circuit=_circuit_ref(circuit),
@@ -121,16 +123,16 @@ async def circuit_detail(
     return CircuitDetail(
         circuit=_circuit_ref(circuit),
         sitting=_sitting_ref(sitting),
-        slots=[_slot_ref(row) for row in slots],
+        slots=[_slot_ref(slot) for slot in slots],
     )
 
 
 async def slots_for_trainee(session: AsyncSession, trainee_user_id: uuid.UUID) -> list[TraineeSlot]:
     """Everything this person is rostered onto, in every organisation."""
-    rows = await repository_reads.slots_with_context_for_trainee(session, trainee_user_id)
+    slots_with_context = await repository_reads.slots_with_context_for_trainee(session, trainee_user_id)
     return [
         TraineeSlot(slot=_slot_ref(slot), circuit=_circuit_ref(circuit), sitting=_sitting_ref(sitting))
-        for slot, circuit, sitting in rows
+        for slot, circuit, sitting in slots_with_context
     ]
 
 
@@ -147,15 +149,15 @@ async def sitting_detail(
             CircuitDetail(
                 circuit=_circuit_ref(circuit),
                 sitting=_sitting_ref(sitting),
-                slots=[_slot_ref(s) for s in slots],
+                slots=[_slot_ref(slot) for slot in slots],
             )
         )
     return SittingDetail(sitting=_sitting_ref(sitting), circuits=circuits)
 
 
 async def sitting_ref(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRef | None:
-    row = await repository.sitting_by_id(session, org_id, sitting_id)
-    return None if row is None else _sitting_ref(row)
+    sitting = await repository.sitting_by_id(session, org_id, sitting_id)
+    return None if sitting is None else _sitting_ref(sitting)
 
 
 async def supervisor_for_slot(
@@ -178,7 +180,7 @@ async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id
     than within a circuit — an exam circuit is one candidate, so a per-circuit
     cohort would be a cohort of one.
     """
-    return [_slot_ref(row) for row in await repository_reads.slots_for_sitting(session, org_id, sitting_id)]
+    return [_slot_ref(slot) for slot in await repository_reads.slots_for_sitting(session, org_id, sitting_id)]
 
 
 async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[CircuitDetail]:
@@ -194,7 +196,7 @@ async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[Circui
             CircuitDetail(
                 circuit=_circuit_ref(circuit),
                 sitting=_sitting_ref(sitting),
-                slots=[_slot_ref(s) for s in slots],
+                slots=[_slot_ref(slot) for slot in slots],
             )
         )
     return details
@@ -205,4 +207,4 @@ async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[Circui
 alerts_for = domain_alerts.alerts_for
 elapsed_seconds = domain_run.elapsed_seconds
 remaining_seconds = domain_run.remaining_seconds
-FINISHED_SLOT_STATUSES = frozenset(str(s) for s in domain.FINISHED_SLOT_STATUSES)
+FINISHED_SLOT_STATUSES = frozenset(str(status) for status in domain.FINISHED_SLOT_STATUSES)

@@ -186,13 +186,13 @@ async def _close_sitting_if_over(session: AsyncSession, org_id: uuid.UUID, circu
     Checked here because every way a circuit can end goes through `finish`.
     """
     siblings = await repository.circuits_for_sitting(session, org_id, circuit.sitting_id)
-    ended = [(c.ended_at is not None or c.id == circuit.id) for c in siblings]
+    ended = [(sibling.ended_at is not None or sibling.id == circuit.id) for sibling in siblings]
     if domain_run.sitting_is_over(ended):
         await repository.set_sitting_status(session, org_id, circuit.sitting_id, status="completed")
 
 
 def slot_at(slots: list[Slot], index: int) -> Slot:
-    found = next((s for s in slots if s.slot_index == index), None)
+    found = next((slot for slot in slots if slot.slot_index == index), None)
     if found is None:
         raise errors.SlotNotFound()
     return found

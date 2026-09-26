@@ -82,7 +82,7 @@ async def append_trainees(
         raise_mapped(exc, _REFUSALS)
 
     next_index = max((slot.slot_index for slot in existing), default=-1) + 1
-    await repository.add_circuit_members(session, circuit_id, trainees=trainee_ids, stations=[])
+    await repository.add_circuit_members(session, circuit_id, trainee_ids=trainee_ids, station_version_ids=[])
     await repository.create_slots(
         session,
         org_id,
@@ -168,8 +168,8 @@ async def rebuild_circuit(
     try:
         planned = domain.build_slots(
             mode,
-            trainees=[str(t) for t in trainee_ids],
-            stations=[str(s) for s in station_version_ids],
+            trainee_user_ids=[str(trainee_id) for trainee_id in trainee_ids],
+            station_version_ids=[str(station_version_id) for station_version_id in station_version_ids],
         )
     except domain.InvalidCircuit as exc:
         raise_mapped(exc, _REFUSALS)
@@ -186,7 +186,7 @@ async def rebuild_circuit(
                     "reading_minutes": timing.reading_minutes,
                     "simulation_minutes": timing.simulation_minutes,
                     "break_minutes": timing.break_minutes,
-                    "breaks": [{"after_station": b} for b in timing.breaks],
+                    "breaks": [{"after_station": after_station} for after_station in timing.breaks],
                 },
                 mode=mode,
                 station_count=len(station_version_ids),
@@ -197,13 +197,16 @@ async def rebuild_circuit(
 
     await repository_reads.delete_circuit_structure(session, org_id, circuit_id)
     await repository.add_circuit_members(
-        session, circuit_id, trainees=trainee_ids, stations=station_version_ids
+        session, circuit_id, trainee_ids=trainee_ids, station_version_ids=station_version_ids
     )
     await repository.create_slots(
         session,
         org_id,
         circuit_id,
-        planned=[(p.index, uuid.UUID(p.trainee), uuid.UUID(p.station)) for p in planned],
+        planned=[
+            (slot.index, uuid.UUID(slot.trainee_user_id), uuid.UUID(slot.station_version_id))
+            for slot in planned
+        ],
         room_name=circuit.room_name,
     )
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.REBUILT)

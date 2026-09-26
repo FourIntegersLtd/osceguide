@@ -30,7 +30,7 @@ async def circuits_for_supervisor(
         .where(Circuit.org_id == org_id, Circuit.supervisor_user_id == supervisor_user_id)
         .order_by(Circuit.created_at.desc())
     )
-    return [(c, s) for c, s in (await session.execute(stmt)).all()]
+    return [(circuit, sitting) for circuit, sitting in (await session.execute(stmt)).all()]
 
 
 async def slot_counts_for_circuits(
@@ -47,7 +47,7 @@ async def slot_counts_for_circuits(
 
 
 async def slots_with_context_for_trainee(
-    session: AsyncSession, trainee_id: uuid.UUID
+    session: AsyncSession, trainee_user_id: uuid.UUID
 ) -> list[tuple[Slot, Circuit, Sitting]]:
     """Everything a trainee is rostered onto, across every organisation.
 
@@ -58,7 +58,7 @@ async def slots_with_context_for_trainee(
         select(Slot, Circuit, Sitting)
         .join(Circuit, Circuit.id == Slot.circuit_id)
         .join(Sitting, Sitting.id == Circuit.sitting_id)
-        .where(Slot.trainee_id == trainee_id)
+        .where(Slot.trainee_id == trainee_user_id)
         .order_by(Sitting.scheduled_for.desc().nullslast(), Slot.slot_index)
     )
     return [(slot, circuit, sitting) for slot, circuit, sitting in (await session.execute(stmt)).all()]

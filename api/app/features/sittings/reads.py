@@ -26,11 +26,11 @@ def position_of(circuit: Circuit, slots: list[Slot]) -> domain_run.Position:
     phase = domain_run.RunPhase(circuit.phase) if circuit.phase else None
     index: int | None = None
     if circuit.active_slot_id is not None:
-        index = next((s.slot_index for s in slots if s.id == circuit.active_slot_id), None)
+        index = next((slot.slot_index for slot in slots if slot.id == circuit.active_slot_id), None)
     if phase is domain_run.RunPhase.BREAK and index is None:
         # A break clears the active slot, so the position is carried by the
         # station it follows: the last one whose consultation completed.
-        completed = [s.slot_index for s in slots if s.status == domain.SlotStatus.COMPLETED]
+        completed = [slot.slot_index for slot in slots if slot.status == domain.SlotStatus.COMPLETED]
         index = max(completed) if completed else None
     return domain_run.Position(phase=phase, slot_index=index)
 
@@ -52,17 +52,17 @@ def timing_json(timing: domain.Timing) -> dict[str, Any]:
         "reading_minutes": timing.reading_minutes,
         "simulation_minutes": timing.simulation_minutes,
         "break_minutes": timing.break_minutes,
-        "breaks": [b.after_station for b in timing.breaks],
+        "breaks": [entry.after_station for entry in timing.breaks],
     }
 
 
 def timing_read(raw: dict[str, Any] | None) -> TimingRead:
-    data = raw or {}
+    timing = raw or {}
     return TimingRead(
-        reading_minutes=int(data.get("reading_minutes", domain.DEFAULT_READING_MINUTES)),
-        simulation_minutes=int(data.get("simulation_minutes", domain.DEFAULT_SIMULATION_MINUTES)),
-        break_minutes=int(data.get("break_minutes", domain.DEFAULT_BREAK_MINUTES)),
-        breaks=list(data.get("breaks") or []),
+        reading_minutes=int(timing.get("reading_minutes", domain.DEFAULT_READING_MINUTES)),
+        simulation_minutes=int(timing.get("simulation_minutes", domain.DEFAULT_SIMULATION_MINUTES)),
+        break_minutes=int(timing.get("break_minutes", domain.DEFAULT_BREAK_MINUTES)),
+        breaks=list(timing.get("breaks") or []),
     )
 
 
@@ -77,7 +77,7 @@ def timing_domain(raw: dict[str, Any] | None) -> domain.Timing:
         reading_minutes=read.reading_minutes,
         simulation_minutes=read.simulation_minutes,
         break_minutes=read.break_minutes,
-        breaks=tuple(domain.Break(after_station=n) for n in read.breaks),
+        breaks=tuple(domain.Break(after_station=after_station) for after_station in read.breaks),
     )
 
 
@@ -115,7 +115,7 @@ def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
         paused=circuit.paused_at is not None,
         paused_at=circuit.paused_at,
         auto_advance=circuit.auto_advance,
-        slots=[slot_read(s, circuit) for s in slots],
+        slots=[slot_read(slot, circuit) for slot in slots],
     )
 
 

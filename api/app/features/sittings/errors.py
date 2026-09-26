@@ -5,36 +5,43 @@ from app.features.roster.errors import TraineeNotOnRosterError, TraineeRevokedEr
 
 
 class SittingNotFound(NotFound):
+
     code = "sitting_not_found"
     default_message = "No such sitting"
 
 
 class CircuitNotFound(NotFound):
+
     code = "circuit_not_found"
     default_message = "No such circuit"
 
 
 class SlotNotFound(NotFound):
+
     code = "slot_not_found"
     default_message = "No such slot"
 
 
 class InvalidCircuitError(Conflict):
+
     code = "invalid_circuit"
     default_message = "That circuit cannot be built as described"
 
 
 class CircuitLockedError(Conflict):
+
     code = "circuit_locked"
     default_message = "A station is in progress or feedback exists; the circuit cannot be changed"
 
 
 class CircuitAlreadyEndedError(Conflict):
+
     code = "circuit_already_ended"
     default_message = "That circuit has already finished"
 
 
 class NotPermittedInModeError(Conflict):
+
     code = "not_permitted_in_mode"
     default_message = "That action does not apply to this kind of circuit"
 
@@ -53,11 +60,13 @@ class SittingLockedError(Conflict):
 
 
 class TraineeAlreadyOnCircuitError(Conflict):
+
     code = "trainee_already_on_circuit"
     default_message = "That person is already on this circuit"
 
 
 class StationNotOnCircuitError(Conflict):
+
     code = "station_not_on_circuit"
     default_message = "That station is not on this circuit"
 
@@ -92,11 +101,13 @@ __all__ = [
 
 
 class ProgrammeRequired(Conflict):
+
     code = "programme_required"
     default_message = "A sitting must name the programme it is running"
 
 
 class ExamRubricNotReady(Conflict):
+
     code = "exam_rubric_not_ready"
     default_message = "That programme's exam is not ready to mark against yet"
 
@@ -116,11 +127,13 @@ class CircuitNotLive(Conflict):
 
 
 class CircuitPausedError(Conflict):
+
     code = "circuit_paused"
     default_message = "The clock is stopped; resume it first"
 
 
 class CircuitNotPausedError(Conflict):
+
     code = "circuit_not_paused"
     default_message = "The clock is running; there is nothing to resume"
 

@@ -49,6 +49,7 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
 
 
 class Circuit(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "circuits"
     __table_args__ = (
         # The exam-day board asks this of every organisation whenever anything

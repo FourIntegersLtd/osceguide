@@ -49,7 +49,7 @@ async def create_sitting(
 ) -> SittingRead:
     rubric_version_id = await rubric_version_for_programme(session, org_id, programme_id)
 
-    row = await repository.create_sitting(
+    sitting = await repository.create_sitting(
         session,
         org_id,
         name=name,
@@ -59,7 +59,7 @@ async def create_sitting(
         scheduled_for=scheduled_for,
         programme_id=programme_id,
     )
-    return sitting_read(row, [])
+    return sitting_read(sitting, [])
 
 
 async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRead:
@@ -74,8 +74,8 @@ async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uui
 async def list_sittings(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[SittingRead], str | None]:
-    rows, next_cursor = await repository.list_sittings(session, org_id, limit=limit, cursor=cursor)
-    return [sitting_read(r, []) for r in rows], next_cursor
+    sittings, next_cursor = await repository.list_sittings(session, org_id, limit=limit, cursor=cursor)
+    return [sitting_read(sitting, []) for sitting in sittings], next_cursor
 
 
 async def add_circuit(
@@ -97,8 +97,8 @@ async def add_circuit(
     try:
         planned = domain.build_slots(
             mode,
-            trainees=[str(t) for t in trainee_ids],
-            stations=[str(s) for s in station_version_ids],
+            trainee_user_ids=[str(trainee_id) for trainee_id in trainee_ids],
+            station_version_ids=[str(station_version_id) for station_version_id in station_version_ids],
         )
     except domain.InvalidCircuit as exc:
         raise_mapped(exc, _REFUSALS)
@@ -108,7 +108,7 @@ async def add_circuit(
             "reading_minutes": timing.reading_minutes,
             "simulation_minutes": timing.simulation_minutes,
             "break_minutes": timing.break_minutes,
-            "breaks": [{"after_station": b} for b in timing.breaks],
+            "breaks": [{"after_station": after_station} for after_station in timing.breaks],
         },
         mode=mode,
         station_count=len(station_version_ids),
@@ -123,13 +123,16 @@ async def add_circuit(
         timing=timing_json(resolved_timing),
     )
     await repository.add_circuit_members(
-        session, circuit.id, trainees=trainee_ids, stations=station_version_ids
+        session, circuit.id, trainee_ids=trainee_ids, station_version_ids=station_version_ids
     )
     slots = await repository.create_slots(
         session,
         org_id,
         circuit.id,
-        planned=[(p.index, uuid.UUID(p.trainee), uuid.UUID(p.station)) for p in planned],
+        planned=[
+            (slot.index, uuid.UUID(slot.trainee_user_id), uuid.UUID(slot.station_version_id))
+            for slot in planned
+        ],
     )
     return circuit_read(circuit, slots)
 
@@ -141,10 +144,10 @@ async def read_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uui
 
 
 async def _require_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting:
-    row = await repository.sitting_by_id(session, org_id, sitting_id)
-    if row is None:
+    sitting = await repository.sitting_by_id(session, org_id, sitting_id)
+    if sitting is None:
         raise errors.SittingNotFound()
-    return row
+    return sitting
 
 
 async def _require_circuit(
@@ -157,10 +160,10 @@ async def _require_circuit(
     polling the state does not queue behind a write.
     """
     fetch = repository.circuit_for_update if lock else repository.circuit_by_id
-    row = await fetch(session, org_id, circuit_id)
-    if row is None:
+    circuit = await fetch(session, org_id, circuit_id)
+    if circuit is None:
         raise errors.CircuitNotFound()
-    return row
+    return circuit
 
 
 async def slot_is_in_org(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> bool:

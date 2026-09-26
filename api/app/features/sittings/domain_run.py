@@ -88,7 +88,7 @@ def next_step(position: Position, *, slot_count: int, timing: Timing) -> Step:
     if slot_count <= 0:
         return Finished()
 
-    breaks = {b.after_station for b in timing.breaks}
+    breaks = {entry.after_station for entry in timing.breaks}
 
     if position.phase is None or position.slot_index is None:
         return Reading(slot_index=0)

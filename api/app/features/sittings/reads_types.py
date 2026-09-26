@@ -31,6 +31,7 @@ class SittingRef:
 
 @dataclass(frozen=True)
 class CircuitRef:
+
     id: uuid.UUID
     sitting_id: uuid.UUID
     name: str
@@ -55,6 +56,7 @@ class CircuitRef:
 
 @dataclass(frozen=True)
 class SlotRef:
+
     id: uuid.UUID
     circuit_id: uuid.UUID
     slot_index: int

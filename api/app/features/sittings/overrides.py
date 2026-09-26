@@ -41,8 +41,7 @@ class Actor:
     reason: str | None = None
 
     @classmethod
-    def of(cls, user_id: uuid.UUID | None, reason: str | None = None) -> Actor:
-        """Built here rather than in the router, so a handler stays one call deep."""
+    def for_user(cls, user_id: uuid.UUID | None, reason: str | None = None) -> Actor:
         return cls(user_id=user_id, reason=reason)
 
 
@@ -122,20 +121,20 @@ async def list_interventions(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
 ) -> Interventions:
     await _require_circuit(session, org_id, circuit_id)
-    rows = await repository_run.interventions_for_circuit(session, org_id, circuit_id)
+    interventions = await repository_run.interventions_for_circuit(session, org_id, circuit_id)
     return Interventions(
         items=[
             Intervention(
-                id=row.id,
-                circuit_id=row.circuit_id,
-                slot_id=row.slot_id,
-                actor_user_id=row.actor_user_id,
-                action=row.action,
-                reason=row.reason,
-                phase_seq_before=row.phase_seq_before,
-                phase_seq_after=row.phase_seq_after,
-                at=row.at,
+                id=intervention.id,
+                circuit_id=intervention.circuit_id,
+                slot_id=intervention.slot_id,
+                actor_user_id=intervention.actor_user_id,
+                action=intervention.action,
+                reason=intervention.reason,
+                phase_seq_before=intervention.phase_seq_before,
+                phase_seq_after=intervention.phase_seq_after,
+                at=intervention.at,
             )
-            for row in rows
+            for intervention in interventions
         ]
     )

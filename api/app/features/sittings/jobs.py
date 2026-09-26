@@ -85,28 +85,30 @@ async def sweep_now(
         stale = await repository_run.stale_circuits(session, started_before=now - service_run.STALE_AFTER)
 
     advanced = 0
-    for row in due:
+    for overdue_circuit in due:
         async with opener() as session:  # type: ignore[operator]
             moved = await advance_one(
                 session,
-                org_id=row.org_id,
-                circuit_id=row.circuit_id,
-                expected_seq=row.phase_seq,
+                org_id=overdue_circuit.org_id,
+                circuit_id=overdue_circuit.circuit_id,
+                expected_seq=overdue_circuit.phase_seq,
                 agents=agents,
                 settings=settings,
                 now=now,
             )
         if moved:
             advanced += 1
-            log.info("swept an overdue circuit forward", circuit_id=str(row.circuit_id))
+            log.info("swept an overdue circuit forward", circuit_id=str(overdue_circuit.circuit_id))
 
     reaped = 0
-    stale_ids = {row.circuit_id for row in stale}
-    for row in stale:
+    stale_ids = {stale_circuit.circuit_id for stale_circuit in stale}
+    for stale_circuit in stale:
         async with opener() as session:  # type: ignore[operator]
-            await service_run.end_circuit(session, row.org_id, row.circuit_id, agents=agents, now=now)
+            await service_run.end_circuit(
+                session, stale_circuit.org_id, stale_circuit.circuit_id, agents=agents, now=now
+            )
         reaped += 1
-        log.info("ended a circuit left running overnight", circuit_id=str(row.circuit_id))
+        log.info("ended a circuit left running overnight", circuit_id=str(stale_circuit.circuit_id))
 
     if advanced or stale_ids:
         log.info("circuits swept", advanced=advanced, reaped=reaped)

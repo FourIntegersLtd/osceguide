@@ -17,6 +17,7 @@ router = APIRouter(tags=["sittings"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# A page of this organisation's sittings, newest first.
 @router.get(
     "/orgs/{org_slug}/sittings",
     response_model=Page[schemas.SittingRead],
@@ -25,12 +26,13 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def list_sittings(
     workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.SittingRead]:
-    items, next_cursor = await service.list_sittings(
+    sittings, next_cursor = await service.list_sittings(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=sittings, next_cursor=next_cursor)
 
 
+# Schedule a new sitting against a programme's published rubric.
 @router.post(
     "/orgs/{org_slug}/sittings",
     response_model=schemas.SittingRead,
@@ -94,6 +96,7 @@ async def update_sitting(
     return await service_edit.update_sitting(session, workspace.org_id, sitting_id, body=body)
 
 
+# Build a new circuit inside this sitting, from a roster and a station list.
 @router.post(
     "/orgs/{org_slug}/sittings/{sitting_id}/circuits",
     response_model=schemas.CircuitRead,

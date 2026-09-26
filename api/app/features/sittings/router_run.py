@@ -91,7 +91,7 @@ async def advance(
         circuit_id,
         agents=agents,
         settings=settings,
-        actor=overrides.Actor.of(principal.user_id, body.reason),
+        actor=overrides.Actor.for_user(principal.user_id, body.reason),
         now=clock.now(),
     )
 

@@ -24,7 +24,7 @@ async def create_sitting(
     scheduled_for: datetime | None,
     programme_id: uuid.UUID | None,
 ) -> Sitting:
-    row = Sitting(
+    sitting = Sitting(
         org_id=org_id,
         name=name,
         rubric_version_id=rubric_version_id,
@@ -33,10 +33,10 @@ async def create_sitting(
         scheduled_for=scheduled_for,
         programme_id=programme_id,
     )
-    session.add(row)
+    session.add(sitting)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(sitting)
+    return sitting
 
 
 async def sitting_by_id(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting | None:
@@ -87,17 +87,17 @@ async def create_circuit(
     supervisor_user_id: uuid.UUID | None,
     timing: dict[str, Any],
 ) -> Circuit:
-    row = Circuit(
+    circuit = Circuit(
         org_id=org_id,
         sitting_id=sitting_id,
         name=name,
         supervisor_user_id=supervisor_user_id,
         timing=timing,
     )
-    session.add(row)
+    session.add(circuit)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(circuit)
+    return circuit
 
 
 async def circuit_by_id(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> Circuit | None:
@@ -143,12 +143,12 @@ async def add_circuit_members(
     session: AsyncSession,
     circuit_id: uuid.UUID,
     *,
-    trainees: list[uuid.UUID],
-    stations: list[uuid.UUID],
+    trainee_ids: list[uuid.UUID],
+    station_version_ids: list[uuid.UUID],
 ) -> None:
-    for position, trainee_id in enumerate(trainees):
+    for position, trainee_id in enumerate(trainee_ids):
         session.add(CircuitTrainee(circuit_id=circuit_id, trainee_id=trainee_id, position=position))
-    for position, station_version_id in enumerate(stations):
+    for position, station_version_id in enumerate(station_version_ids):
         session.add(
             CircuitStation(circuit_id=circuit_id, position=position, station_version_id=station_version_id)
         )
@@ -169,7 +169,7 @@ async def create_slots(
     slot with no room is one the trainee portal cannot offer, so a latecomer
     would sit outside a session in progress.
     """
-    rows = [
+    slots = [
         Slot(
             org_id=org_id,
             circuit_id=circuit_id,
@@ -180,11 +180,11 @@ async def create_slots(
         )
         for index, trainee_id, station_version_id in planned
     ]
-    session.add_all(rows)
+    session.add_all(slots)
     await session.flush()
-    for row in rows:
-        await session.refresh(row)
-    return rows
+    for slot in slots:
+        await session.refresh(slot)
+    return slots
 
 
 async def slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> list[Slot]:
@@ -207,13 +207,6 @@ async def update_slots_for_circuit(
 
 async def update_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, **values: Any) -> None:
     await session.execute(update(Slot).where(Slot.org_id == org_id, Slot.id == slot_id).values(**values))
-
-
-async def slots_for_trainee(session: AsyncSession, trainee_id: uuid.UUID) -> list[Slot]:
-    """Not org-scoped: a trainee may belong to more than one organisation, and
-    this answers "what am I rostered onto?" across all of them."""
-    stmt = select(Slot).where(Slot.trainee_id == trainee_id).order_by(Slot.created_at.desc())
-    return list((await session.execute(stmt)).scalars())
 
 
 async def rubric_version_for_slot(

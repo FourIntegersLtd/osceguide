@@ -28,6 +28,7 @@ BREAK_BOUNDS = (1, 60)
 
 
 class Mode(StrEnum):
+
     TRAINING = "training"
     EXAM = "exam"
 
@@ -69,13 +70,16 @@ class NotPermittedInMode(Exception):
 
 @dataclass(frozen=True)
 class PlannedSlot:
+
     index: int
-    trainee: str
-    station: str
+    # A `users.id`, not a `trainees.id` — see the trainee_id trap in AGENTS.md.
+    trainee_user_id: str
+    station_version_id: str
 
 
 @dataclass(frozen=True)
 class CircuitState:
+
     active_slot_id: str | None
     has_feedback: bool
     ended: bool = False
@@ -83,11 +87,13 @@ class CircuitState:
 
 @dataclass(frozen=True)
 class Break:
+
     after_station: int
 
 
 @dataclass(frozen=True)
 class Timing:
+
     reading_minutes: int
     simulation_minutes: int
     # A break used to be a position with no duration, so nothing could count
@@ -96,26 +102,33 @@ class Timing:
     breaks: tuple[Break, ...] = ()
 
 
-def build_slots(mode: Mode, *, trainees: Sequence[str], stations: Sequence[str]) -> list[PlannedSlot]:
+def build_slots(
+    mode: Mode, *, trainee_user_ids: Sequence[str], station_version_ids: Sequence[str]
+) -> list[PlannedSlot]:
     """The slots a circuit starts with: an exam candidate sits every station,
     a training group rotates so each trainee starts at a different one."""
-    if not stations:
+    if not station_version_ids:
         raise InvalidCircuit("A circuit needs at least one station.")
 
     if mode is Mode.EXAM:
-        if len(trainees) != 1:
+        if len(trainee_user_ids) != 1:
             raise InvalidCircuit("An exam circuit is one candidate's sitting.")
-        if len(stations) > EXAM_MAX_STATIONS:
+        if len(station_version_ids) > EXAM_MAX_STATIONS:
             raise InvalidCircuit(f"An exam circuit takes at most {EXAM_MAX_STATIONS} stations.")
-        return [PlannedSlot(i, trainees[0], station) for i, station in enumerate(stations)]
+        return [
+            PlannedSlot(index, trainee_user_ids[0], station_version_id)
+            for index, station_version_id in enumerate(station_version_ids)
+        ]
 
-    if len(trainees) != len(stations):
+    if len(trainee_user_ids) != len(station_version_ids):
         raise InvalidCircuit(
             "A training circuit needs one station per trainee, so everyone starts somewhere."
         )
     return [
-        PlannedSlot(i, trainee, station)
-        for i, (trainee, station) in enumerate(zip(trainees, stations, strict=True))
+        PlannedSlot(index, trainee_user_id, station_version_id)
+        for index, (trainee_user_id, station_version_id) in enumerate(
+            zip(trainee_user_ids, station_version_ids, strict=True)
+        )
     ]
 
 
