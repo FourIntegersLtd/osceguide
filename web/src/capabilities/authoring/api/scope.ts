@@ -39,7 +39,7 @@ export function authoringScope(surface: string, orgSlug: string | null): Authori
 }
 
 /* Five asymmetries in the backend, named rather than discovered at runtime.
- * `docs/port-gaps.md` carries the detail. */
+ * `docs/BACKLOG.md` carries the detail. */
 
 /**
  * Where exams are *listed*.

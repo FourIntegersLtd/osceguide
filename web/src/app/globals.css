@@ -1422,10 +1422,9 @@ h6 {
   }
 }
 
-/* Shared B2B dialogs (`@/b2b/components/ui/B2BModal`) rendered on this
-   surface. Colour tokens live on `:root` in osceTokens.css; these rules
-   cover the dialog chrome the retiring `b2b-globals.css` is not here to
-   supply. */
+/* Shared B2B dialogs (`B2BModal`, in `capabilities/authoring/structure`)
+   rendered on this surface. Colour tokens live on `:root` in osceTokens.css;
+   these rules cover the dialog chrome. */
 .b2b-portal {
   background-color: var(--osce-surface);
   color: var(--osce-ink-700);

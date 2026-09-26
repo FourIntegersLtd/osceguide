@@ -18,7 +18,7 @@ import { orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
  * running, instead of leaving the live view for a separate screen per
  * station. A rubric fillable independent of machine scoring, against the
  * station's `marking_layout`, is a further redesign and stays out of scope —
- * see the Task 1 note in `docs/parity-fix-plan.md`.
+ * see `docs/BACKLOG.md`.
  */
 export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; orgSlug: string }) {
   const finished = useMemo(

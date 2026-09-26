@@ -53,9 +53,8 @@ function noticeTone(tone: AuthNoticeTone): "info" | "success" | "danger" {
  * `GET /auth/sso/sign-in?host=<this host>`, which names the organisation and
  * says whether to draw the password form at all. A host nobody has claimed
  * answers `null` and the page is the ordinary password form. **`sso_only` is a
- * display rule only** — it hides the password form; nothing here refuses a
- * password login, because who verifies an identity is still an open backend
- * decision (`docs/port-gaps.md`, S-1). The door itself works: the button
+ * display rule here** — it hides the password form. The refusal is the
+ * backend's: an SSO-only account has `password_login_disabled` set. The door itself works: the button
  * follows `POST /auth/sso/login`'s `sign_in_url` out and `/auth/sso/callback`
  * completes the return. What has no screen yet is the *other* half — claiming
  * a host for an organisation (`GET`/`PUT /platform/orgs/{slug}/sso` are

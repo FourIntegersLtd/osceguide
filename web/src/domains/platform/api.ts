@@ -10,8 +10,8 @@
  * no `GET /platform/organizations/{slug}`, and the org-scoped read allows a
  * platform admin through on purpose (`require_org(..., allow_platform_admin)`).
  * A console admin may *read* any organisation for support and inherits none of
- * its powers — which is also why the memberships list and the audit log, both
- * `OrgAdmin`, are not readable from here at all. See `docs/port-gaps.md`.
+ * its powers. Its memberships and audit log are read through their own
+ * platform-scope routes (`listOrgMembershipsForSupport`, `listOrgAuditForSupport`).
  */
 import { platformRequest, type components } from "@/foundation/platform-client";
 
@@ -119,7 +119,7 @@ export function listOrganizations(
  * The directory is searched and grouped in the browser — by name, by slug and
  * by type — because the endpoint takes `status`, `cursor` and `limit` and
  * nothing else. That is fine at this size and stops being fine in the
- * thousands; `docs/port-gaps.md` says so.
+ * thousands; `docs/BACKLOG.md` says so.
  */
 export function listAllOrganizations(
   status?: string | null,

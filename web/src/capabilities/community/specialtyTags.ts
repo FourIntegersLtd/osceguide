@@ -1,8 +1,8 @@
 /**
  * The specialty tags a question can carry.
  *
- * Mirrors the retiring client's `MEDICAL_SPECIALTIES_CATEGORIES`
- * (`frontend/src/b2c/config/constants/constants.ts`) key-for-key, because the
+ * Keeps the retiring client's `MEDICAL_SPECIALTIES_CATEGORIES` key-for-key,
+ * because the
  * stored tag *is* the key: the backend normalises to lowercase and the feed
  * filter matches on it, so a key that drifted would silently orphan every
  * question already tagged with the old spelling. The colour each entry carried

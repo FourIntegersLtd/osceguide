@@ -15,7 +15,7 @@ import type { CircuitConsole } from "@/domains/assess/sessions/api";
  * been, which is the same rule the old card enforced.
  *
  * There is no read for whether this has already been published — see
- * `docs/port-gaps.md` — so the card says what it did rather than what is true.
+ * `docs/BACKLOG.md` — so the card says what it did rather than what is true.
  */
 export function CircuitFeedbackCard({
   data,

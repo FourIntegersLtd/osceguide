@@ -10,7 +10,7 @@ import { useSession } from "@/foundation/session";
  * clock: a circuit runs one clock for everybody on it, so stretching it for one
  * candidate would stretch it for the rest. An institution granting extra time in
  * an examination hall does it to the circuit's own timing instead. See
- * `docs/port-gaps.md` and platform-api's S-2.
+ * `docs/BACKLOG.md`, S-2.
  */
 export function useExtraReadingPercent(): number {
   const { session } = useSession();

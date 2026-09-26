@@ -116,11 +116,11 @@ export interface ObserverRoom {
 /**
  * The examiner's way into the room.
  *
- * Subscribe-only, and that is a guarantee rather than a UI state: the token
- * the backend mints carries no publish permission at all, so a candidate
- * cannot be prompted and the transcript stays a record of what they said to
- * the patient. The retiring runner gave the supervisor a microphone and a
- * camera in this room; see `docs/port-gaps.md`.
+ * In exam mode, subscribe-only, and that is a guarantee rather than a UI
+ * state: the token the backend mints carries no publish permission, so a
+ * candidate cannot be prompted and the transcript stays a record of what they
+ * said to the patient. A training-mode token may publish (`RoomGrant.can_publish`),
+ * so a supervisor can demonstrate on camera.
  */
 export function useObserverRoom(orgSlug: string, circuitId: string): ObserverRoom {
   const [grant, setGrant] = useState<RoomGrant | null>(null);

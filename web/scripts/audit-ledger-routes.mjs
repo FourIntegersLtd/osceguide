@@ -1,12 +1,12 @@
 // Is the ledger's map of the API still the API's map?
 //
-// `docs/port-gaps.md` and `docs/gap-closure-plan.md` name a lot of routes. When
+// `docs/BACKLOG.md` names a lot of routes. When
 // a row says a route is served, or cites one as the shape a screen waits for,
 // the reader cannot tell which is which without opening openapi.json — and the
-// failure §6 of the parity plan exists to stop is a ledger that quietly
+// failure this exists to stop is a ledger that quietly
 // understates (or overstates) what the backend already does.
 //
-// So: every `METHOD /path` in those two files must either exist in
+// So: every `METHOD /path` in that file must either exist in
 // openapi.json or be framed, in its own sentence, as absent/future. A route
 // named as bare fact that is not in the document is the contradiction worth
 // failing on. Legacy Flask paths (`/api/…`, not `/api/v1`) are exempt — those
@@ -28,7 +28,7 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const OPENAPI = resolve(root, "../backend/platform-api/openapi.json");
-const DOCS = ["docs/port-gaps.md", "docs/gap-closure-plan.md"];
+const DOCS = ["docs/BACKLOG.md"];
 
 // A path parameterised differently ("{id}" vs "{user_id}") is the same route.
 const norm = (p) => p.replace(/\{[^}]+\}/g, "{}");

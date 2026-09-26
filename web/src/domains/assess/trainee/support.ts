@@ -252,10 +252,10 @@ export function practisable(stations: readonly OrgStation[]): OrgStation[] {
  * writes there. `candidate_brief` is accepted too because station content
  * authored before that route existed uses it.
  *
- * Nothing else in `content` is read on purpose. The organisation's station
- * list hands a trainee the **whole** document, the patient's material
- * included, so picking one field is the difference between a reading brief and
- * a candidate who can see the diagnosis. See `docs/port-gaps.md`.
+ * Nothing else in `content` is read on purpose. The backend strips the
+ * patient's material from the organisation's station list for a trainee
+ * (`stations/domain_content.py`); picking one field here is the second line
+ * between a reading brief and a candidate who can see the diagnosis.
  */
 export function readingBrief(station: OrgStation): string | null {
   const content = station.content;

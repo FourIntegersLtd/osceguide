@@ -149,7 +149,7 @@ function NotesSections({ brief }: { brief: Pick<AttemptBrief, "exam_code" | "doc
  *
  * A plain `<img>` rather than `next/image`: these are absolute URLs on hosts
  * this app does not configure, and an unconfigured host is a runtime error
- * rather than a slow image. See `docs/port-gaps.md`.
+ * rather than a slow image.
  */
 function Photos({
   urls,

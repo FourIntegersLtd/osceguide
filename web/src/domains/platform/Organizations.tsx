@@ -27,7 +27,7 @@ type TypeFilter = "all" | string;
  * The status filter is the backend's — `GET /platform/organizations` takes
  * one — and changing it reloads. The search box and the type filter are over
  * what has been paged in, because the endpoint takes neither; the whole
- * directory is walked for exactly that reason, and `docs/port-gaps.md` says
+ * directory is walked for exactly that reason, and `docs/BACKLOG.md` says
  * where that stops scaling.
  *
  * There is no delete. The backend will not delete an organisation and that is

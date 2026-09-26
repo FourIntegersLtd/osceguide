@@ -22,10 +22,10 @@ export { default as PlanPicker } from "@/capabilities/account/settings/PlanPicke
  * The two Stripe return pages. Exported rather than mounted: they answer a
  * fixed address the backend puts in `success_url` and `cancel_url`, which is
  * outside a workspace and so outside this capability's one route. Their route
- * files are listed in `docs/port-gaps.md`.
+ * files are `app/billing/complete` and `app/(public)/pricing`.
  */
 export { default as PaymentReturn, CheckoutCancelled } from "@/capabilities/account/PaymentReturn";
 
-/* No backend — see `docs/port-gaps.md`. Ported as its own empty state. */
+/* Served by `GET /me/achievements`; `AchievementsLive` is the caller. */
 export { default as Achievements } from "@/capabilities/account/Achievements";
 export { default as ExamWishes } from "@/capabilities/account/ExamWishes";

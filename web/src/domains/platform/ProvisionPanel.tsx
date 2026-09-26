@@ -14,7 +14,7 @@ import { ORG_TYPES, slugify } from "@/domains/platform/support";
  * administrator to relay by hand — `platform-api` has no bootstrap-admin
  * route, and no password passes through this app at all. The first member is
  * seated on the organisation's own screen, by address, and the backend emails
- * them a link. See `docs/port-gaps.md`.
+ * them a link.
  */
 export function ProvisionForm({
   onProvisioned,

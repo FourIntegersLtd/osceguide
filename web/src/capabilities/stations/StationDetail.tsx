@@ -39,7 +39,7 @@ type DetailTab = "brief" | "discussion";
  * frozen server-side when an attempt is created and read by the worker, and
  * never travels through the browser, so a tampered payload cannot change what
  * is assessed. That is why the reading period lives inside the consultation
- * rather than on this page. See `docs/port-gaps.md`.
+ * rather than on this page.
  */
 export function StationDetail({ stationId }: { stationId: string }) {
   const { hrefFor } = useSurface();

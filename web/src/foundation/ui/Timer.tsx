@@ -50,7 +50,7 @@ export default function Timer({
    * practice attempt's reading seconds — see `capabilities/attempt-runner`'s
    * `withExtraReadingTime` — and the extended figure arrives here as `duration`.
    * A circuit's clock is never extended, because one clock serves everybody on
-   * it. Tracked in `docs/port-gaps.md`.
+   * it (`docs/BACKLOG.md`, S-2).
    */
   const effectiveDuration = defaultDuration;
 

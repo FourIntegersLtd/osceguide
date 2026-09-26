@@ -398,7 +398,7 @@ export function psychosocialAspects(item: MediaItem): string[] {
  * through, so it is the source that has data behind it. `MediaRead` does now
  * carry a root `specialty` column (see `openapi.json`), but nothing in the
  * porting wrote to it, and the facets these feed hide themselves when nothing
- * carries one — see `docs/port-gaps.md`.
+ * carries one — see `docs/BACKLOG.md`.
  */
 export function specialtiesOf(item: MediaItem): string[] {
   const one = stringField(item, "specialty");

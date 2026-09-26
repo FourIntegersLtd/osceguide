@@ -8,7 +8,7 @@ import Achievements from "@/capabilities/account/Achievements";
 /**
  * A real backend record, since 2026-09-24 — `GET /me/achievements`, built the
  * same day this went from a client-side approximation to a decision the
- * product owner made (`docs/decisions-2026-09-24.md`, item 1). Previously
+ * product owner made. Previously
  * this called `listMyAttempts({limit:100})` and recomputed streaks in the
  * browser on every load, which forgot anything past the hundredth attempt.
  */

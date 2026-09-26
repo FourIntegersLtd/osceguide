@@ -12,7 +12,7 @@
  * correctly on every arm. These exist so a ported screen keeps looking exactly
  * as it does today.
  */
-/** * Shared Tailwind class strings for B2C app surfaces. * Primary CTAs: classic landing blue (`Button variant="primary"` / `b2cButtonPrimary`). * Links / accents: `b2c-primary`, `b2cLink`. * * See `.cursor/rules/b2c-design-language.mdc`. */
+/** * Shared Tailwind class strings for B2C app surfaces. * Primary CTAs: classic landing blue (`Button variant="primary"` / `b2cButtonPrimary`). * Links / accents: `b2c-primary`, `b2cLink`. * * See `docs/DESIGN.md`. */
 import { getButtonClassName } from "@/foundation/ui/buttonStyles";
 import { getCardSurfaceClasses } from "@/foundation/ui/Card";
 import { getInputClassName } from "@/foundation/ui/inputStyles";

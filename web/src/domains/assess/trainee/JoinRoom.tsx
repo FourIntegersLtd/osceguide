@@ -18,9 +18,8 @@ import { phaseLabel } from "@/domains/assess/trainee/support";
  * set of pre-join states between them — ~430 lines to answer "am I allowed in
  * yet?", which the backend now answers with `can_join`.
  *
- * There is no supervisor here and no video: the observer token is
- * subscribe-only by construction and nothing in this product publishes a
- * camera. See `docs/port-gaps.md`.
+ * There is no supervisor video here: a candidate's room is the patient and
+ * the candidate.
  */
 export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () => void }) {
   const [grant, setGrant] = useState<RoomGrant | null>(null);

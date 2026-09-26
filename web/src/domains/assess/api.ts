@@ -305,7 +305,7 @@ export function readAttemptTranscript(
 /*
  * `mine` is a PUT and nothing else: there is no read for one's own review, so
  * a screen finds it in the slot's review list by the id on it. See
- * `docs/port-gaps.md`.
+ * `docs/BACKLOG.md`.
  */
 
 /**

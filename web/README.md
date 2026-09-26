@@ -4,9 +4,8 @@ The single frontend for every OSCE Guide product: consumer practice, an
 institution's examinations, the employer arm and the publishing partners. It talks to one backend
 (`platform-api`) and to the LiveKit workers in `assessment-platform`.
 
-It replaces `frontend/`, which is two source trees — `src/b2c` and `src/b2b` —
-inside one app. That project is untouched and still runs; this one is stood up
-beside it the way `platform-api` was stood up beside `b2b-api` and `b2c-api`.
+It replaces the retiring client, which kept the consumer and institution arms
+in two separate source trees.
 
 ## Why it is shaped like this
 
@@ -124,18 +123,13 @@ Staff routes already avoided `SurfaceShell` — see `src/app/staff/layout.tsx`.
 
 **Tips**
 
-- Prefer `npm run dev` (Turbopack). Use `npm run dev:webpack` when debugging
-  `@/b2b` resolution from `frontend/src/b2b`.
-- `predev` / `prebuild` symlink `frontend/node_modules` → this app's
-  `node_modules` so legacy `frontend/src/b2b` imports resolve npm packages.
-- Avoid running legacy `frontend/` dev at the same time if watchers feel hot.
+- Prefer `npm run dev` (Turbopack); `npm run dev:webpack` if Turbopack panics.
 - Rough startup timing: `node scripts/measure-dev-startup.mjs` (Turbopack) or
   pass `--webpack`.
 - `npm test` includes `devPerfImports.test.ts`, which fails if the workspace
   shell regresses to a static `screens.ts` import.
 
-Port 3100, not 3000, so the retiring `frontend/` can run at the same time. The
-API's `CORS_ORIGINS` must list `http://localhost:3100`.
+Port 3100. The API's `CORS_ORIGINS` must list `http://localhost:3100`.
 
 ### A database you can sign into
 

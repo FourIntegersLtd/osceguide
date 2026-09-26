@@ -10,9 +10,8 @@ import type { ParsedReferralParams } from "@/foundation/attribution/partnerTypes
  *
  * A partner's link is the whole commercial relationship: `utm_source=<partner>`
  * plus a `ref_id`, and the numbers the partner is billed on are the arrivals and
- * the signups that carry them. The retiring client did this in
- * `frontend/src/proxy.ts`, and this port shipped with the parser and the cookie
- * names but nothing that used them — so a visitor arriving from BMJ was recorded
+ * the signups that carry them. The retiring client did this at its edge, and
+ * this port shipped with the parser and the cookie names but nothing that used them — so a visitor arriving from BMJ was recorded
  * nowhere, and `POST /api/v1/growth/arrivals` had no caller in the product.
  *
  * It runs here rather than in a landing component because a referral landing is

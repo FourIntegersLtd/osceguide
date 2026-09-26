@@ -20,8 +20,7 @@ const { b2cButtonPrimary, b2cIconEmptyLg } = productTokens;
 /**
  * Station badges, streak badges and the longest streak.
  *
- * Served by `GET /me/achievements` since 2026-09-24
- * (`docs/decisions-2026-09-24.md`, item 1) — `AchievementsLive.tsx` is the
+ * Served by `GET /me/achievements` since 2026-09-24 — `AchievementsLive.tsx` is the
  * only caller and reads real numbers through `AsyncBoundary`, so a failed
  * load renders as a retry prompt rather than silently as a beginner's zeroes.
  * This component itself stays prop-driven and default-to-zero so it also

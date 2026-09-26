@@ -31,6 +31,8 @@ supplying an org id to a capability that knows nothing about institutions.
 A new capability needs a `capability.ts` declaring its `surfaces`, and an entry
 in `capabilities/registry.ts`. Mounting it on an arm is a route file.
 
+What is still missing is in `docs/BACKLOG.md`; delete a row when you land it.
+
 ## Non-negotiable
 
 - **One HTTP path.** `platformRequest` from `foundation/platform-client`. No
@@ -45,7 +47,8 @@ in `capabilities/registry.ts`. Mounting it on an arm is a route file.
   render as "no data" — that was a finding in the old client's UX audit, 173
   times over.
 - **Colours come from tokens.** `bg-canvas`, `text-ink`, `bg-accent`. A literal
-  `bg-blue-600` picks one arm's side and breaks the other three skins.
+  `bg-blue-600` picks one arm's side and breaks the other three skins. For any
+  UI work, read `docs/DESIGN.md`: tokens, type scale, radii, reading tones.
 - **The exam clock is the server's.** Read `remaining_seconds` and
   `phase_ends_at`. Never run an authoritative countdown in the browser.
 - Strict types. No `any` — it is a lint error.
@@ -57,9 +60,25 @@ npm run ci
 node scripts/smoke.mjs   # needs a live platform-api
 ```
 
+After a backend schema change: `make openapi` in platform-api, then
+`npm run platform:types`, then `npm run types`. One session at a time:
+`schema.d.ts` is one generated file, and parallel writers collide.
+
 `npm run ci` cannot tell you the backend renamed a field, because the types are
 generated from a document that can be stale. `smoke.mjs` can. Run it whenever
 you touch an `api.ts`, and regenerate with `npm run platform:types`.
+
+## Owners
+
+| Area | Owner agent | Proof recipe |
+|---|---|---|
+| How everything is built: foundation, surfaces, tiers, design system; `domains/train`, `domains/marketing` | `platform-web-owner` | `verify` skill (`.claude/skills/verify/`) |
+| `domains/assess`, `domains/platform` behaviour | `institution-owner` | `verify-institution`, then `verify` |
+| `foundation/session`, `capabilities/account`, `staff-growth`, `domains/partner`, middleware | `access-owner` | `verify-access`, then `verify` |
+| `capabilities/stations`, `authoring`, `media`, `staff-media`, `staff-moderation`, `community`, `peer-practice` | `content-owner` | `verify-content`, then `verify` |
+| `foundation/livekit`, `capabilities/onboarding`, `help` | `voice-station-owner` | `verify-voice-station`, then `verify` |
+
+Owner agents live in the workspace root's `.claude/`.
 
 ## Ask first
 

@@ -9,8 +9,7 @@ const RECONCILE_MS = [10_000, 15_000, 20_000, 30_000, 45_000];
 const MAX_WAIT_MS = 10 * 60 * 1000;
 
 /**
- * Polls attempt status until a result exists — platform-api has no legacy SSE
- * yet; see `docs/port-gaps.md` (B6).
+ * Polls attempt status until a result exists.
  */
 export function PendingFeedbackWatcher({
   job,

@@ -189,7 +189,7 @@ export const fieldClass =
  * The retiring composer posted a body and nothing else; `platform-api` takes a
  * title beside it. Rather than put a second box in front of somebody who is
  * used to one, the first line stands in as the title — recorded in
- * `docs/port-gaps.md` as the shape disagreement it is.
+ * `docs/BACKLOG.md` as the shape disagreement it is.
  */
 export function titleFromBody(body: string): string {
   const firstLine = body.trim().split("\n")[0]?.trim() ?? "";

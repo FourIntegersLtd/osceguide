@@ -368,7 +368,8 @@ async function main() {
      * organisation it does not belong to, both answer 403 — `OrgAdmin` is
      * declared `allow_platform_admin=False`, so a console admin may read an
      * organisation for support and inherits none of its powers. That is why
-     * the staff console shows neither. `docs/port-gaps.md` carries it.
+     * the staff console reads both through the platform-scope routes
+     * (`/platform/organizations/{slug}/memberships` and `/audit`) instead.
      */
     await step("platform overview", "/api/v1/platform/overview", {
       allow: [403],

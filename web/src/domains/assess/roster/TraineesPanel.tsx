@@ -39,8 +39,8 @@ type Message = { tone: "success" | "warning" | "danger"; text: string };
  *
  * Revoking is the reversible removal, offered for anyone: a trainee who has
  * sat something keeps their results on revoke, where deleting the row would
- * take an examination's candidate with it. Delete exists too, since 2026-09-24
- * (`docs/parity-fix-plan.md` §8) — offered on every row, same as the old
+ * take an examination's candidate with it. Delete exists too, since 2026-09-24,
+ * offered on every row, same as the old
  * client's "Remove from team" — but the backend refuses it the moment a
  * decision is recorded (`trainee_in_use`), which is what makes it safe to
  * offer unconditionally rather than trying to know in advance.

@@ -10,7 +10,7 @@
  */
 import { getCardSurfaceClasses } from "@/foundation/ui/Card";
 import { getInputClassName } from "@/foundation/ui/inputStyles";
-/** * Shared Tailwind class strings for B2B surfaces (Cursor-inspired tokens in tailwind `b2b-*`). * Primary CTAs: black (`B2BButton variant="commit"`). * Accent / links: blue (`b2b-accent`, `B2BButton variant="primary"`). * Note this is the inverse of B2C, where blue is the ordinary primary and black is reserved for the one committing action on a screen. * Here black is the default and blue the exception — 92 call sites to 8. * * Modals: use `@/b2b/components/ui/B2BModal` For B2B dialogs (`chrome="titlebar"` For confirms, `chrome="plain"` For * large custom bodies). Do not import the legacy B2C `Modal` Under `src/b2b`. * * Session data: for the common session + trainees + stations + staff bundle, see `b2bPrefetchSessionBundle` In * `@/b2b/lib/api/b2bSessionBundle`. */ const b2bIconFocus =
+/** * Shared Tailwind class strings for B2B surfaces (Cursor-inspired tokens in tailwind `b2b-*`). * Primary CTAs: black (`B2BButton variant="commit"`). * Accent / links: blue (`b2b-accent`, `B2BButton variant="primary"`). * Note this is the inverse of B2C, where blue is the ordinary primary and black is reserved for the one committing action on a screen. * Here black is the default and blue the exception — 92 call sites to 8. * * Modals: use `B2BModal` (`capabilities/authoring/structure/b2b/components/ui`) For B2B dialogs (`chrome="titlebar"` For confirms, `chrome="plain"` For * large custom bodies). */ const b2bIconFocus =
   "focus:outline-none focus:ring-2 focus:ring-b2b-headline/10 focus:ring-offset-1 rounded-md"; /** Apply on UI portaled to `document.body` So B2B design tokens resolve. */
 export const b2bPortalRoot = "b2b-app b2b-portal";
 export const b2bIconButton = `inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-b2b-border bg-white text-b2b-graphite hover:bg-b2b-cream disabled:pointer-events-none disabled:opacity-50 ${b2bIconFocus}`;
@@ -31,7 +31,7 @@ export const b2bLinkMuted = "font-medium text-b2b-mid hover:text-b2b-headline";
 export const b2bInputFocus =
   "focus:border-osce-accent focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle";
 export const b2bInputBase = getInputClassName();
-export const b2bCard = getCardSurfaceClasses({ themeType: "b2b" }); /** * Design language v3. Cursor-inspired calm surfaces. * See repo `.cursor/rules/b2b-design-language.mdc`. */ /** Section label above grouped content (e.g. "User API Keys", "Source Control") */
+export const b2bCard = getCardSurfaceClasses({ themeType: "b2b" }); /** * Design language v3. Cursor-inspired calm surfaces. * See `docs/DESIGN.md`. */ /** Section label above grouped content (e.g. "User API Keys", "Source Control") */
 export const b2bEyebrow =
   "text-osce-meta font-medium text-b2b-mid"; /** Constrain readable hero / body copy width only (not full-page rails) */
 export const b2bProseMeasure = "max-w-2xl";

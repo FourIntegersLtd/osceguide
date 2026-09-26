@@ -14,11 +14,9 @@ import { SEAT_ROLES } from "@/domains/platform/support";
  * new tenant has none, so without this the console could provision, rename and
  * suspend an organisation but not give anybody a way in.
  *
- * It is a one-way door from here, and deliberately: a platform admin holds no
- * org role, so this app cannot list this organisation's members, change a role
- * or revoke one — those reads and writes are `OrgAdmin`, which a console admin
- * is not. Adding somebody by mistake is undone by the administrator you just
- * seated. See `docs/port-gaps.md`.
+ * Listing, revoking and restoring an organisation's members is the support
+ * panel's job (`domains/platform/support`), through the platform-scope
+ * membership routes; a console admin still holds no org role.
  */
 export function SeatMemberPanel({ slug }: { slug: string }) {
   const toast = useToast();
