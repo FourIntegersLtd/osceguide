@@ -24,7 +24,12 @@ const results = [];
  * the platform scope means this account is not a platform admin, which is a
  * fact about the seed and not a broken route.
  */
-async function step(label, path, { method = "GET", body, expect, allow = [] } = {}) {
+/**
+ * `allow` passes any response with one of those statuses. `refusal` is stricter:
+ * `{ status, code }` passes only that exact refusal, so a step that proves a
+ * route says no cannot pass on a different no.
+ */
+async function step(label, path, { method = "GET", body, expect, allow = [], refusal } = {}) {
   try {
     const response = await fetch(`${API}${path}`, {
       method,
@@ -36,7 +41,8 @@ async function step(label, path, { method = "GET", body, expect, allow = [] } = 
     });
     const text = await response.text();
     const payload = text ? JSON.parse(text) : null;
-    if (allow.includes(response.status)) {
+    const isExpectedRefusal = refusal && response.status === refusal.status && payload?.code === refusal.code;
+    if (allow.includes(response.status) || isExpectedRefusal) {
       results.push({ label, ok: true, detail: `${response.status} ${payload?.code ?? ""}`.trim() });
       return null;
     }
@@ -130,9 +136,23 @@ async function main() {
     expect: (p) => must(Array.isArray(p.items), "not a page"),
   });
 
+  // Practice needs a live grant for the station's exam. A platform admin's
+  // library lists every exam, so the stations below come from one exam this
+  // account holds; taking the library's first rows mixed exams and failed
+  // `not_entitled` for a reason that said nothing about the routes.
+  const grants = await step("exam access for practice", "/api/v1/me/entitlements", {
+    expect: (p) =>
+      must(
+        p.items.some((grant) => grant.live),
+        "no live exam access; from platform-api run `make grant-exam-access EMAIL=<this account>`",
+      ),
+  });
+  const practiceExam = grants?.items?.find((grant) => grant.live)?.exam_code;
+  const practiceLibrary = (limit) => `/api/v1/stations?exam_code=${practiceExam}&limit=${limit}`;
+
   // Build a session the way the Setup tab does, then run its whole loop:
   // start an attempt at the first entry, and ask to debrief it.
-  const forSet = await step("library for a session", "/api/v1/stations?limit=2");
+  const forSet = practiceExam ? await step("library for a session", practiceLibrary(2)) : null;
   if (forSet?.items?.length) {
     const set = await step("create a session", "/api/v1/me/station-sets", {
       method: "POST",
@@ -154,9 +174,13 @@ async function main() {
         { method: "POST", expect: (p) => must(p.attempt_id, "no attempt id") },
       );
       if (started) {
-        await step("debrief it", `/api/v1/me/station-sets/${set.id}/entries/${entryId}/debriefs`, {
+        // A debrief talks through a finished attempt. The one above was only
+        // started, so the right answer is the refusal; a 2xx here would mean
+        // the rule had come unwired. Finishing a station needs a voice room,
+        // which this script does not run.
+        await step("debrief refuses an unfinished attempt", `/api/v1/me/station-sets/${set.id}/entries/${entryId}/debriefs`, {
           method: "POST",
-          expect: (p) => must(p.attempt_id, "no debrief attempt id"),
+          refusal: { status: 409, code: "nothing_to_debrief" },
         });
         await step("abandon the session attempt", `/api/v1/attempts/${started.attempt_id}/abandon`, {
           method: "POST",
@@ -274,7 +298,7 @@ async function main() {
   // and frozen, then `voice` mints a room token and decides Cloud or
   // self-hosted. If this fails with `voice_unavailable`, the API has no
   // LIVEKIT_* credentials — see README, "Talking to the workers".
-  const library = await step("library for an attempt", "/api/v1/stations?limit=1");
+  const library = practiceExam ? await step("library for an attempt", practiceLibrary(1)) : null;
   const versionId = library?.items?.[0]?.version_id;
   if (versionId) {
     const attempt = await step("create an attempt", "/api/v1/attempts", {
