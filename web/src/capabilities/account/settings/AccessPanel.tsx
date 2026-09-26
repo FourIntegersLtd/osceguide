@@ -10,7 +10,13 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { listEntitlements, listPlans, type Entitlement } from "@/capabilities/account/api";
+import { useCurrentExam } from "@/foundation/session";
+import {
+  listEntitlements,
+  listPlans,
+  type Entitlement,
+  type Plan,
+} from "@/capabilities/account/api";
 import PlanPicker from "@/capabilities/account/settings/PlanPicker";
 import ReceiptsCard from "@/capabilities/account/settings/ReceiptsCard";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
@@ -28,10 +34,16 @@ const { b2cFieldLabel, b2cFieldValue, b2cSettingsCardHeaderIcon } = productToken
  * A live grant is `live === true` and nothing else. `list_for_user` returns
  * revoked and expired rows too, and reading the list as "what I have" is how a
  * revoked entitlement went on unlocking stations.
+ *
+ * The plans on offer are the current exam's only. The exam is chosen at
+ * sign-up and moving somebody is a support action, so listing PLAB and ORTHO
+ * beside SCA sold an SCA account a library every other screen hides; checkout
+ * refuses those plans too (`billing/service_checkout.py`).
  */
 export default function AccessPanel() {
   const entitlements = useAsync((signal) => listEntitlements(signal), []);
   const plans = useAsync((signal) => listPlans(signal), []);
+  const exam = useCurrentExam();
 
   return (
     <SettingsTabShell>
@@ -40,29 +52,44 @@ export default function AccessPanel() {
       </AsyncBoundary>
 
       <AsyncBoundary state={plans}>
-        {(page) => (
-          <B2CPanelCard className="mt-0 overflow-hidden">
-            <B2CPanelCardHeader>
-              <HiOutlineCreditCard className={b2cSettingsCardHeaderIcon} aria-hidden />
-              Payments
-            </B2CPanelCardHeader>
-            <B2CPanelCardBody>
-              {page.items.length === 0 ? (
-                <ModalHelper className="mt-0">
-                  There are no plans on sale at the moment. Get in touch and we will set
-                  your access up.
-                </ModalHelper>
-              ) : (
-                <PlanPicker plans={page.items} />
-              )}
-            </B2CPanelCardBody>
-          </B2CPanelCard>
-        )}
+        {(page) => {
+          // Wait for the exam rather than flash every exam's plans first.
+          if (exam.loading) return null;
+          const onSale = plansForExam(page.items, exam.code);
+          return (
+            <B2CPanelCard className="mt-0 overflow-hidden">
+              <B2CPanelCardHeader>
+                <HiOutlineCreditCard className={b2cSettingsCardHeaderIcon} aria-hidden />
+                Payments
+              </B2CPanelCardHeader>
+              <B2CPanelCardBody>
+                {onSale.length === 0 ? (
+                  <ModalHelper className="mt-0">
+                    There are no plans on sale at the moment. Get in touch and we will set
+                    your access up.
+                  </ModalHelper>
+                ) : (
+                  // Keyed by exam so switching exams resets the selected plan.
+                  <PlanPicker key={exam.code ?? "any"} plans={onSale} />
+                )}
+              </B2CPanelCardBody>
+            </B2CPanelCard>
+          );
+        }}
       </AsyncBoundary>
 
       <ReceiptsCard />
     </SettingsTabShell>
   );
+}
+
+/**
+ * The plans this person may buy: their current exam's, or every plan when they
+ * have no exam yet, because what they buy then becomes their exam.
+ */
+function plansForExam(plans: Plan[], examCode: string | null): Plan[] {
+  if (examCode === null) return plans;
+  return plans.filter((plan) => plan.exam_code === examCode);
 }
 
 function EntitlementsCard({ items }: { items: Entitlement[] }) {

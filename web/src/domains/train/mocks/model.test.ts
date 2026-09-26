@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { StationSet } from "@/domains/train/api";
 import {
+  anyStationMarking,
   attemptedVersionIds,
+  attemptsWithTranscript,
   checkMilestone,
   chooseStations,
   groupSets,
@@ -10,6 +12,8 @@ import {
   sessionAction,
   sessionMinutes,
   sessionState,
+  stationFeedbackState,
+  type AttemptStatusRecord,
 } from "@/domains/train/mocks/model";
 
 function set(over: Partial<StationSet> = {}): StationSet {
@@ -113,6 +117,107 @@ describe("chooseStations", () => {
   it("falls back to the whole library rather than returning too few", () => {
     const picked = chooseStations(library, 3, { excludeVersionIds: new Set(["a", "b"]) });
     assert.equal(picked.length, 3);
+  });
+});
+
+/** A minimal attempt record for `stationFeedbackState` and `attemptsWithTranscript`. */
+function attempt(
+  status: AttemptStatusRecord["status"],
+  over: Partial<AttemptStatusRecord> = {},
+): AttemptStatusRecord {
+  return {
+    status,
+    has_result: false,
+    created_at: "2026-01-01T00:00:00Z",
+    ...over,
+  };
+}
+
+describe("stationFeedbackState", () => {
+  it("reads not_attempted when there is no attempt at all", () => {
+    assert.equal(stationFeedbackState([]), "not_attempted");
+  });
+
+  it("reads not_attempted for a station opened and left at created", () => {
+    assert.equal(stationFeedbackState([attempt("created")]), "not_attempted");
+  });
+
+  it("reads not_attempted for a station left mid-consultation at running", () => {
+    assert.equal(stationFeedbackState([attempt("running")]), "not_attempted");
+  });
+
+  it("reads marking for a finished consultation still waiting on its result", () => {
+    assert.equal(stationFeedbackState([attempt("interaction_complete")]), "marking");
+  });
+
+  it("reads review once a result exists, regardless of status", () => {
+    assert.equal(
+      stationFeedbackState([attempt("interaction_complete", { has_result: true })]),
+      "review",
+    );
+  });
+
+  it("reads failed for an attempt the worker gave up on", () => {
+    assert.equal(stationFeedbackState([attempt("failed")]), "failed");
+  });
+
+  it("picks the most recent attempt when there are several", () => {
+    const attempts = [
+      attempt("failed", { created_at: "2026-01-01T00:00:00Z" }),
+      attempt("interaction_complete", { created_at: "2026-01-03T00:00:00Z" }),
+      attempt("created", { created_at: "2026-01-02T00:00:00Z" }),
+    ];
+    assert.equal(stationFeedbackState(attempts), "marking");
+  });
+
+  it("keeps earlier feedback reachable after the station is opened again and left", () => {
+    const attempts = [
+      attempt("evaluated", { has_result: true, created_at: "2026-01-01T00:00:00Z" }),
+      attempt("created", { created_at: "2026-01-02T00:00:00Z" }),
+    ];
+    assert.equal(stationFeedbackState(attempts), "review");
+  });
+
+  it("keeps earlier feedback reachable after a later run fails", () => {
+    const attempts = [
+      attempt("evaluated", { has_result: true, created_at: "2026-01-01T00:00:00Z" }),
+      attempt("failed", { created_at: "2026-01-02T00:00:00Z" }),
+    ];
+    assert.equal(stationFeedbackState(attempts), "review");
+  });
+});
+
+describe("anyStationMarking", () => {
+  it("is true when at least one row is marking", () => {
+    assert.equal(anyStationMarking(["not_attempted", "marking", "review"]), true);
+  });
+
+  it("is false once nothing is marking", () => {
+    assert.equal(anyStationMarking(["not_attempted", "review", "failed"]), false);
+  });
+
+  it("is false for an empty list", () => {
+    assert.equal(anyStationMarking([]), false);
+  });
+});
+
+describe("attemptsWithTranscript", () => {
+  it("drops an attempt that never finished the consultation", () => {
+    const attempts = [attempt("created"), attempt("running")];
+    assert.deepEqual(attemptsWithTranscript(attempts), []);
+  });
+
+  it("keeps interaction_complete, evaluated and failed attempts", () => {
+    const attempts = [
+      attempt("created"),
+      attempt("interaction_complete"),
+      attempt("evaluated"),
+      attempt("failed"),
+    ];
+    assert.deepEqual(
+      attemptsWithTranscript(attempts).map((item) => item.status),
+      ["interaction_complete", "evaluated", "failed"],
+    );
   });
 });
 

@@ -11,6 +11,7 @@ import {
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
 } from "@/capabilities";
+import ChooseExam from "@/capabilities/account/ChooseExam";
 import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
 import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeProvider";
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
@@ -77,6 +78,10 @@ export function TrainConsumerShell({
     () => items.map((item) => ({ key: item.key, label: item.label, path: item.href })),
     [items],
   );
+
+  // A consumer app with no exam shows every exam's plans and no exam's
+  // library, so an account without one answers that first.
+  if (session && !session.user.exam_code) return <ChooseExam />;
 
   return (
     <SurfaceProvider surface={manifest.id} orgSlug={workspace.orgSlug ?? null} basePath={basePath}>

@@ -41,8 +41,8 @@ export default function Register() {
    * `appType` that every request carried, and the whole app was that one exam.
    * There is no picker here because the exam catalogue needs a token to read
    * and this form is the last screen before there is one — somebody who
-   * arrives at the site root signs up without an exam and gets one when they
-   * buy, or from the organisation that rostered them.
+   * arrives at the site root signs up without an exam, and the first screen
+   * after this one asks for it (`ChooseExam`).
    */
   const examCode = normalizeExamCode(useSearchParams().get("appType"));
 

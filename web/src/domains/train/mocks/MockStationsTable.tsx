@@ -14,6 +14,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listMyAttempts } from "@/capabilities/attempt-runner";
 import type { SetEntry, StationSet } from "@/domains/train/api";
+import { attemptsWithTranscript } from "@/domains/train/mocks/model";
 
 export interface StationRow {
   entry: SetEntry;
@@ -204,14 +205,20 @@ function EntryHistory({ setId, entry }: { setId: string; entry: SetEntry }) {
 
   const stationHref = hrefFor(`/mocks/${setId}/stations/${entry.id}`);
   const attempts = state.data?.items ?? [];
+  // Only an attempt that actually finished its consultation left a
+  // transcript; one still `created` or `running` never sat the station, so it
+  // must not inflate this count.
+  const transcribedAttempts = attemptsWithTranscript(attempts);
   const marked = attempts.filter((item) => item.has_result).length;
 
   return (
     <div className="flex items-center gap-3">
       <Pill
-        href={attempts.length > 0 ? `${stationHref}?action=review&tab=simulation` : null}
+        href={transcribedAttempts.length > 0 ? `${stationHref}?action=review&tab=simulation` : null}
         label={
-          attempts.length > 0 ? `All previous Transcripts (${attempts.length})` : "No transcripts yet"
+          transcribedAttempts.length > 0
+            ? `All previous Transcripts (${transcribedAttempts.length})`
+            : "No transcripts yet"
         }
       />
       <Pill

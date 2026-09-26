@@ -4,6 +4,7 @@ export { default as ForgotPassword } from "@/capabilities/account/ForgotPassword
 export { default as ResetPassword } from "@/capabilities/account/ResetPassword";
 export { default as AuthShell } from "@/capabilities/account/AuthShell";
 export { ChangePasswordRequired } from "@/capabilities/account/ChangePasswordRequired";
+export { default as ChooseExam } from "@/capabilities/account/ChooseExam";
 export { default as AuthFormField } from "@/capabilities/account/AuthFormField";
 export { sanitizeReturnTo, isPublicPath } from "@/capabilities/account/support/sessionEvents";
 export { accountCapability } from "@/capabilities/account/capability";

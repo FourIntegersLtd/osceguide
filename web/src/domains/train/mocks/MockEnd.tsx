@@ -1,16 +1,32 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import { PracticeOptions } from "@/capabilities/peer-practice/PracticeOptions";
 
 import { HiOutlineArrowRight } from "react-icons/hi2";
-import { AsyncBoundary, B2CPanelCard, B2CPanelCardBody, B2CPanelCardHeader, LoadingSpinner } from "@/foundation/ui";
+import {
+  AsyncBoundary,
+  B2CPanelCard,
+  B2CPanelCardBody,
+  B2CPanelCardHeader,
+  Badge,
+  LoadingSpinner,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
 import { loadStationCatalogue, readDashboard, readSet } from "@/domains/train/api";
 import { MockComplete } from "@/domains/train/mocks/MockComplete";
-import { entriesInOrder } from "@/domains/train/mocks/model";
+import { anyStationMarking, entriesInOrder, stationFeedbackState } from "@/domains/train/mocks/model";
 import type { StationRow } from "@/domains/train/mocks/MockStationsTable";
+
+/**
+ * How often to re-check the list while a station is still being marked.
+ *
+ * Marking normally finishes in seconds, not minutes; this is a safety net for
+ * the rare slow job, not a countdown, so a relaxed interval is fine.
+ */
+const MARKING_REFRESH_INTERVAL_MS = 15_000;
 
 /**
  * The end of a session: what was sat, and whether it has been marked yet.
@@ -56,6 +72,28 @@ export function MockEnd({ setId }: { setId: string }) {
     [setId],
   );
 
+  // The state each row is in right now, decided from the real attempt status
+  // rather than "an attempt with no result exists" (the bug this screen had).
+  // Computed outside the render prop too, so the polling effect below can see
+  // it without duplicating the lookup.
+  const rowFeedbackStates = useMemo(() => {
+    const loaded = state.data;
+    if (!loaded) return [];
+    return loaded.rows.map((row) => stationFeedbackState(loaded.attempts.get(row.entry.id) ?? []));
+  }, [state.data]);
+
+  const isAnyStationStillMarking = anyStationMarking(rowFeedbackStates);
+
+  // This screen otherwise loads once: a station that is genuinely being
+  // marked would never flip over to "Review feedback" without a manual
+  // reload. Poll while at least one row is really marking, and stop as soon
+  // as none are (including on unmount, via the effect cleanup).
+  useEffect(() => {
+    if (!isAnyStationStillMarking) return undefined;
+    const intervalId = setInterval(() => state.reload(), MARKING_REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [isAnyStationStillMarking, state.reload]);
+
   return (
     <AsyncBoundary state={state}>
       {({ set, rows, attempts, stationsCompleted }) => (
@@ -69,8 +107,7 @@ export function MockEnd({ setId }: { setId: string }) {
               <ul className="divide-y divide-b2c-border">
                 {rows.map((row, index) => {
                   const sat = attempts.get(row.entry.id) ?? [];
-                  const marked = sat.find((item) => item.has_result);
-                  const running = sat.length > 0 && !marked;
+                  const feedbackState = stationFeedbackState(sat);
 
                   return (
                     <li
@@ -80,7 +117,7 @@ export function MockEnd({ setId }: { setId: string }) {
                       <span className="min-w-0 truncate text-osce-body text-osce-ink-900">
                         {`Station ${index + 1}: ${row.title}`}
                       </span>
-                      {marked ? (
+                      {feedbackState === "review" ? (
                         <a
                           href={`${hrefFor(`/mocks/${setId}/stations/${row.entry.id}`)}?action=review&tab=feedback`}
                           className="inline-flex items-center gap-1.5 text-osce-body text-osce-accent hover:text-osce-accent-hover"
@@ -88,10 +125,12 @@ export function MockEnd({ setId }: { setId: string }) {
                           Review feedback
                           <HiOutlineArrowRight className="h-4 w-4" aria-hidden />
                         </a>
-                      ) : running ? (
+                      ) : feedbackState === "marking" ? (
                         <span className="inline-flex items-center gap-2 text-osce-meta text-b2c-text-muted">
                           <LoadingSpinner /> Marking station {index + 1}…
                         </span>
+                      ) : feedbackState === "failed" ? (
+                        <Badge variant="warning">Couldn&apos;t be marked</Badge>
                       ) : (
                         <span className="text-osce-meta text-b2c-text-muted">Not attempted</span>
                       )}

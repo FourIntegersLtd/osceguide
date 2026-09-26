@@ -38,8 +38,9 @@ export interface StationAttempt {
  * carries no station content on purpose, so there is nothing to show until an
  * attempt exists to ask about.
  *
- * That makes a reload dangerous — the backend counts an attempt against the
- * exam's limit at creation — so the id is kept in `sessionStorage` under the
+ * The backend counts an attempt against the exam's limit only once the
+ * consultation starts, not at creation, but a reload should still not leave a
+ * pile of unused attempts behind. So the id is kept in `sessionStorage` under the
  * station being sat, and a reload picks the same one back up. Session storage
  * rather than local: it belongs to this tab's sitting of this station, and a
  * second tab is a second attempt, which is the truth.

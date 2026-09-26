@@ -1,4 +1,5 @@
 import type { SetEntry, StationSet } from "@/domains/train/api";
+import type { AttemptHistoryItem } from "@/capabilities/attempt-runner";
 
 /**
  * The arithmetic the mocks screens do, kept out of the components.
@@ -139,6 +140,96 @@ function shuffle<T>(items: readonly T[]): T[] {
     copy[j] = a;
   }
   return copy;
+}
+
+/**
+ * Only the fields the feedback-status decision actually looks at.
+ *
+ * A narrower type than `AttemptHistoryItem` so the pure function below can be
+ * tested with plain literals instead of a full API row.
+ */
+export type AttemptStatusRecord = Pick<AttemptHistoryItem, "status" | "has_result" | "created_at">;
+
+/**
+ * What a session's end screen and a station row show for one entry's marking.
+ *
+ * - `review`: a result exists, so there is feedback to open.
+ * - `marking`: the consultation finished and is waiting on its result. This is
+ *   the only state that will ever resolve on its own — everything else is a
+ *   dead end and the screen should say so plainly instead of spinning forever.
+ * - `failed`: the attempt's own status is `failed` (the worker gave up, or the
+ *   candidate abandoned mid-consultation). Nothing will mark it.
+ * - `not_attempted`: no relevant attempt, or the most recent one never got
+ *   past `created`/`running` — the candidate opened the station and left
+ *   before finishing it, so there is nothing to mark yet.
+ */
+export type StationFeedbackState = "review" | "marking" | "failed" | "not_attempted";
+
+/** The one attempt, among several against the same entry, worth reading a state off. */
+function mostRecentAttempt<T extends { created_at: string }>(
+  attempts: readonly T[],
+): T | null {
+  if (attempts.length === 0) return null;
+  return attempts.reduce((latest, candidate) =>
+    candidate.created_at > latest.created_at ? candidate : latest,
+  );
+}
+
+/**
+ * Decide one entry's feedback state from its most recent attempt's real
+ * `status`, not from "an attempt with no result exists".
+ *
+ * The bug this replaces: `sat.length > 0 && !marked` called every attempt
+ * without a result "being marked", including one still `created` (never
+ * started) or `failed` — both of which nothing will ever mark, so the
+ * screen showed a spinner that never stopped.
+ */
+export function stationFeedbackState(
+  attempts: readonly AttemptStatusRecord[],
+): StationFeedbackState {
+  const latestAttempt = mostRecentAttempt(attempts);
+  if (!latestAttempt) return "not_attempted";
+  // The newest consultation is finished and its result is on its way.
+  if (latestAttempt.status === "interaction_complete" && !latestAttempt.has_result) return "marking";
+  // Any earlier result stays reachable: opening the station again, or a later
+  // failed run, must not hide feedback the candidate already has.
+  if (attempts.some((attempt) => attempt.has_result)) return "review";
+  if (latestAttempt.status === "failed") return "failed";
+  // `created` or `running`: the candidate opened the station but never
+  // finished the consultation, so nothing is waiting to be marked.
+  return "not_attempted";
+}
+
+/** Whether any entry is still genuinely being marked, and so worth polling for. */
+export function anyStationMarking(states: readonly StationFeedbackState[]): boolean {
+  return states.some((state) => state === "marking");
+}
+
+/**
+ * Statuses at which a recording actually exists to look at.
+ *
+ * A transcript is written once the consultation's interaction is over, so an
+ * attempt still `created` or `running` never produced one — even though it is
+ * a row in the same attempts list. Mirrors `REVIEWABLE` in the backend's
+ * `attempts/domain.py`.
+ */
+const STATUSES_WITH_TRANSCRIPT: ReadonlySet<string> = new Set([
+  "interaction_complete",
+  "evaluated",
+  "failed",
+]);
+
+/**
+ * Of a station's attempts, only the ones that actually left a transcript.
+ *
+ * The bug this replaces: a station's history row counted every attempt
+ * against it as a transcript, including one the candidate opened and walked
+ * away from without ever starting the consultation.
+ */
+export function attemptsWithTranscript<T extends { status: string }>(
+  attempts: readonly T[],
+): T[] {
+  return attempts.filter((attempt) => STATUSES_WITH_TRANSCRIPT.has(attempt.status));
 }
 
 export interface Milestone {
