@@ -22,6 +22,7 @@ def resolve_system_prompt(
     exam_code: str | None,
     allow_custom_override: bool,
 ) -> str:
+    """The system prompt autogeneration runs with, for this template's structure and exam."""
     profile_key = resolve_profile_key_from_structure(structure, exam_code)
     raw_generation = structure.get("generation")
     generation: dict[str, Any] = raw_generation if isinstance(raw_generation, dict) else {}

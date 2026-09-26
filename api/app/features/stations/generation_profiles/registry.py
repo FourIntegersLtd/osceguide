@@ -29,6 +29,7 @@ ORTHO_PROFILE_BY_TYPE: dict[str, str] = {
 
 @dataclass(frozen=True)
 class GenerationProfileMeta:
+    """A profile's identity, without its content: what the picker in the author UI lists."""
 
     profile_key: str
     label: str
@@ -38,11 +39,13 @@ class GenerationProfileMeta:
 
 @dataclass(frozen=True)
 class GenerationProfile:
+    """A profile in full: its identity plus the per-block hints it feeds to autogeneration."""
 
     meta: GenerationProfileMeta
     block_hints: dict[str, str]
 
     def system_prompt(self) -> str:
+        """This profile's system prompt for autogeneration, or empty for the custom profile."""
         if self.meta.profile_key == "custom":
             return ""
         exam = self.meta.exam_code or "sca"
@@ -56,6 +59,7 @@ def _json_path_for_key(profile_key: str) -> Path:
 
 @lru_cache(maxsize=1)
 def _load_all_profiles() -> dict[str, GenerationProfile]:
+    """Every generation profile shipped in `_generated/`, read from disk once and cached."""
     profiles: dict[str, GenerationProfile] = {}
     for path in _GENERATED_DIR.glob("*.json"):
         if path.name == "index.json":
@@ -77,6 +81,7 @@ def _load_all_profiles() -> dict[str, GenerationProfile]:
 
 
 def list_profile_meta() -> list[GenerationProfileMeta]:
+    """Every profile's identity, for the picker. Read from the prebuilt index when there is one."""
     index_path = _GENERATED_DIR / "index.json"
     if index_path.is_file():
         index = json.loads(index_path.read_text(encoding="utf-8"))
@@ -102,6 +107,7 @@ def default_profile_key_for_exam(
     exam_code: str | None,
     ortho_station_type: str | None = None,
 ) -> str:
+    """The profile a station of this exam (and, for ortho, this station type) generates from by default."""
     exam = (exam_code or "sca").strip().lower()
     if exam == "ortho" and ortho_station_type:
         ortho = ortho_station_type.strip().lower()
@@ -113,6 +119,7 @@ def resolve_profile_key_from_structure(
     structure: dict[str, Any],
     exam_code: str | None,
 ) -> str:
+    """The profile a template names explicitly, or the exam's default when it names none."""
     generation = structure.get("generation")
     if isinstance(generation, dict):
         key = generation.get("profileKey")

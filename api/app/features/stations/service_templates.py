@@ -33,6 +33,7 @@ from app.features.stations.station_validator import (
 
 
 def _ensure_valid_structure(structure: dict[str, Any], *, org_id: uuid.UUID | None) -> None:
+    """Refuse a template structure whose fields, or generation settings, do not hold up."""
     is_valid, structure_errors = validate_station_structure(structure)
     if not is_valid:
         raise InvalidInput(f"Template structure invalid: {structure_errors}")
@@ -67,6 +68,7 @@ async def create_template(
 
 
 async def list_templates(session: AsyncSession, org_id: uuid.UUID | None) -> list[StationTemplateRead]:
+    """This org's own templates and the platform's, each with all its versions."""
     templates_read: list[StationTemplateRead] = []
     for template in await repository.templates_visible_to(session, org_id):
         versions = await repository.template_versions(session, org_id, template.id)
@@ -107,6 +109,7 @@ async def edit_version(
     structure: dict[str, Any],
     title: str | None = None,
 ) -> StationTemplateVersionRead:
+    """Overwrite a draft template version's structure, and the template's title if given."""
     template_version = await _version(session, org_id, template_id, version)
     try:
         domain.ensure_editable(
@@ -154,6 +157,7 @@ async def archive_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationTemplateVersionRead:
+    """Retire a published template version so no new station may be built on it."""
     template_version = await _version(session, org_id, template_id, version)
     try:
         new_status = domain.archive(
@@ -207,6 +211,7 @@ async def bindable_version(
 async def _require_template(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID
 ) -> StationTemplate:
+    """This org's template by id, or refuse if there is no such template."""
     template = await repository.template_by_id(session, org_id, template_id)
     if template is None:
         raise errors.StationTemplateNotFound()
@@ -216,6 +221,7 @@ async def _require_template(
 async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
 ) -> StationTemplateVersion:
+    """One numbered version of this org's template, or refuse if there is no such version."""
     await _require_template(session, org_id, template_id)
     for template_version in await repository.template_versions(session, org_id, template_id):
         if template_version.version == version:
@@ -224,6 +230,7 @@ async def _version(
 
 
 async def _exam_code(session: AsyncSession, template: StationTemplate) -> str | None:
+    """The exam code this template's exam id resolves to, or `None` for an exam-agnostic template."""
     if template.exam_id is None:
         return None
     return await exam_code_by_id(session, template.exam_id)
@@ -232,6 +239,7 @@ async def _exam_code(session: AsyncSession, template: StationTemplate) -> str | 
 def _template_read(
     template: StationTemplate, exam_code: str | None, versions: list[StationTemplateVersion]
 ) -> StationTemplateRead:
+    """Map a template and its versions onto the schema."""
     return StationTemplateRead(
         id=template.id,
         title=template.title,
@@ -241,6 +249,7 @@ def _template_read(
 
 
 def _version_read(template_version: StationTemplateVersion) -> StationTemplateVersionRead:
+    """Map a template version onto the schema."""
     return StationTemplateVersionRead(
         id=template_version.id,
         template_id=template_version.template_id,

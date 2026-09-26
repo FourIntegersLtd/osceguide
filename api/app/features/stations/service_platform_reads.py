@@ -23,6 +23,7 @@ class StationVersions:
 
 
 async def station_versions(session: AsyncSession, station_id: uuid.UUID) -> StationVersions | None:
+    """One station and its version ids, whoever owns it, or `None` if there is no such station."""
     found = await repository.station_with_versions(session, station_id)
     if found is None:
         return None
@@ -49,6 +50,7 @@ class VersionOwner:
 async def owners_by_version_id(
     session: AsyncSession, version_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, VersionOwner]:
+    """Which station owns each of these versions, in one query, whoever owns the station."""
     owner_pairs = await repository.versions_with_stations_any_owner(session, version_ids)
     codes = await catalog.exam_codes_by_id(session, list({station.exam_id for _, station in owner_pairs}))
     return {

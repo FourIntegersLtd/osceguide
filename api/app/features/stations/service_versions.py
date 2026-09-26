@@ -60,6 +60,7 @@ async def edit_version(
     *,
     content: dict[str, Any],
 ) -> StationVersionRead:
+    """Overwrite a draft version's content."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_editable(
@@ -80,6 +81,9 @@ async def publish_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationVersionRead:
+    """Publish a draft version. A station's patient material must never reach a trainee before their
+    attempt, so this is also what makes the version schedulable in a circuit.
+    """
     station_version = await _version(session, org_id, station_id, version)
     try:
         new_status = domain.publish(
@@ -105,6 +109,7 @@ async def archive_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationVersionRead:
+    """Retire a published version so it can no longer be scheduled."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         new_status = domain.archive(
@@ -121,6 +126,7 @@ async def archive_version(
 async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
 ) -> StationVersion:
+    """One numbered version of this org's station, or refuse if there is no such version."""
     await read_station(session, org_id, station_id)
     station_version = await repository.version_by_number(session, org_id, station_id, version)
     if station_version is None:
@@ -151,6 +157,7 @@ async def version_history(
 
 
 def _version_read(station_version: StationVersion) -> StationVersionRead:
+    """Map a station version onto the schema."""
     return StationVersionRead(
         id=station_version.id,
         station_id=station_version.station_id,

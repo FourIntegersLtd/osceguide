@@ -43,6 +43,7 @@ class StationTemplate(Base, UUIDPrimaryKey, Timestamps):
 
 
 class StationTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
+    """One draft, published or archived revision of a station template's structure."""
 
     __tablename__ = "station_template_versions"
     __table_args__ = (

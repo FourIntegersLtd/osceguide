@@ -51,18 +51,24 @@ __all__ = [
 
 
 class TemplateNotPublished(LifecycleError):
-    pass
+    """A station was built on a station template version that is still a draft."""
 
 
 class StationNotPublished(LifecycleError):
-    pass
+    """A circuit or an attempt named a station version that is still a draft."""
 
 
 def ensure_bindable(template_version: VersionRef) -> None:
+    """Refuse to build a station on a template version that is not published."""
     if template_version.status is not Status.PUBLISHED:
         raise TemplateNotPublished("A station can only be built on a published template version.")
 
 
 def ensure_usable_in_circuit(station_version: VersionRef) -> None:
+    """Refuse to schedule a station version that is not published.
+
+    A station's patient material must never reach a trainee before their attempt, and a draft
+    version is exactly the material still being written.
+    """
     if station_version.status is not Status.PUBLISHED:
         raise StationNotPublished("A circuit can only use a published station.")

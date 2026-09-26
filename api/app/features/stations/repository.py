@@ -28,6 +28,7 @@ async def create_station(
     exam_id: uuid.UUID,
     title: str,
 ) -> Station:
+    """Create a new station shell, with no versions yet."""
     station = Station(owner_kind=owner_kind_for(org_id), org_id=org_id, exam_id=exam_id, title=title)
     session.add(station)
     await session.flush()
@@ -44,6 +45,7 @@ async def add_version(
     content: dict[str, Any],
     template_version_id: uuid.UUID | None = None,
 ) -> StationVersion:
+    """Add a new draft version to a station."""
     station_version = StationVersion(
         station_id=station_id,
         org_id=org_id,
@@ -60,6 +62,7 @@ async def add_version(
 async def station_by_id(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID
 ) -> Station | None:
+    """One station this org owns, by id."""
     stmt = select(Station).where(owned_by(Station, org_id), Station.id == station_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -78,6 +81,7 @@ async def exists_by_id(session: AsyncSession, station_id: uuid.UUID) -> bool:
 async def versions_for_station(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID
 ) -> list[StationVersion]:
+    """Every version of this station, oldest first."""
     stmt = (
         select(StationVersion)
         .where(owned_by(StationVersion, org_id), StationVersion.station_id == station_id)
@@ -89,6 +93,7 @@ async def versions_for_station(
 async def version_by_number(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
 ) -> StationVersion | None:
+    """One version of this station, by its version number."""
     stmt = select(StationVersion).where(
         owned_by(StationVersion, org_id),
         StationVersion.station_id == station_id,
@@ -100,6 +105,7 @@ async def version_by_number(
 async def set_version_content(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID, *, content: dict[str, Any]
 ) -> None:
+    """Overwrite a draft version's content."""
     await session.execute(
         update(StationVersion)
         .where(owned_by(StationVersion, org_id), StationVersion.id == version_id)
@@ -116,6 +122,7 @@ async def set_version_status(
     at: datetime,
     by: uuid.UUID,
 ) -> None:
+    """Move a version to `published` or `archived`, stamping who did it and when."""
     values: dict[str, Any] = {"status": status}
     if status == "published":
         values |= {"published_at": at, "published_by": by}
@@ -131,6 +138,7 @@ async def set_version_status(
 async def set_current_version(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, version_id: uuid.UUID
 ) -> None:
+    """Point the station at its newly published version."""
     await session.execute(
         update(Station)
         .where(owned_by(Station, org_id), Station.id == station_id)
@@ -147,6 +155,7 @@ async def list_for_org(
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
 ) -> tuple[list[Station], str | None]:
+    """A page of this org's stations, newest first, optionally filtered by exam or title."""
     stmt = select(Station).where(owned_by(Station, org_id))
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
@@ -161,6 +170,7 @@ async def list_for_org(
 async def _station_page(
     session: AsyncSession, stmt: Select[Any], *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[Station], str | None]:
+    """Apply the shared keyset pagination to a stations query, oldest first."""
     return await keyset_page(
         session,
         stmt,
@@ -193,6 +203,7 @@ async def version_for_attempt(
 
 
 async def count_for_org(session: AsyncSession, org_id: uuid.UUID | None) -> int:
+    """How many stations this org owns."""
     stmt = select(func.count()).select_from(Station).where(owned_by(Station, org_id))
     return int((await session.execute(stmt)).scalar_one())
 
@@ -231,6 +242,7 @@ async def delete_version(session: AsyncSession, org_id: uuid.UUID | None, versio
 async def station_with_versions(
     session: AsyncSession, station_id: uuid.UUID
 ) -> tuple[Station, list[StationVersion]] | None:
+    """A station and all its versions, regardless of owner, for staff working on it by id."""
     station = (await session.execute(select(Station).where(Station.id == station_id))).scalar_one_or_none()
     if station is None:
         return None

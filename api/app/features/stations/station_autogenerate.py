@@ -74,6 +74,7 @@ async def _exam_code_for_template_version(
     org_id: uuid.UUID | None,
     template_version: Any,
 ) -> str:
+    """The exam this template version belongs to, or the SCA fallback if it has none."""
     template = await template_repository.template_by_id(session, org_id, template_version.template_id)
     if template is None or template.exam_id is None:
         return "sca"

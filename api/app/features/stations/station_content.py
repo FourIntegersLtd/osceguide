@@ -51,6 +51,7 @@ def normalize_station_ai_content(structure: Any, payload: Any) -> dict[str, Any]
     flat: dict[str, Any] = {}
 
     def walk(node: Any) -> None:
+        """Recurse into a nested section object, pulling out any key that names a known block."""
         if not isinstance(node, dict):
             return
         for key, block_value in node.items():
@@ -69,6 +70,7 @@ def normalize_station_ai_content(structure: Any, payload: Any) -> dict[str, Any]
 
 
 def _preview_block_value(value: Any, *, max_str: int = 120) -> Any:
+    """Shorten one block's value for a log line: text truncated, structure otherwise left alone."""
     if value is None:
         return None
     if isinstance(value, str):

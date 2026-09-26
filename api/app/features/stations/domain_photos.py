@@ -40,6 +40,7 @@ class InvalidPhoto(Exception):
 
 
 def validate_upload(*, filename: str, size: int) -> None:
+    """Refuse an upload by its declared name and size, before its bytes are even read."""
     suffix = PurePosixPath(filename.lower()).suffix
     if suffix not in ALLOWED_SUFFIXES:
         raise InvalidPhoto("Only PNG and JPEG images are allowed.")
@@ -71,6 +72,7 @@ def ensure_real_image(header: bytes) -> None:
 
 
 def object_key(*, station_id: uuid.UUID, filename: str) -> str:
+    """Where this upload lands in the bucket: one folder per station, a fresh name per file."""
     suffix = PurePosixPath(filename.lower()).suffix
     return f"{KEY_PREFIX}/{station_id}/{uuid.uuid4().hex}{suffix}"
 

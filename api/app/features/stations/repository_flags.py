@@ -18,6 +18,7 @@ from app.features.stations.models import Station, StationFlag
 
 
 async def find(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID) -> StationFlag | None:
+    """This person's existing report against this station, if they have already filed one."""
     stmt = select(StationFlag).where(
         StationFlag.station_id == station_id,
         StationFlag.user_id == user_id,
@@ -26,6 +27,7 @@ async def find(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UU
 
 
 async def add(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID) -> StationFlag:
+    """File a new open report against a station."""
     flag = StationFlag(station_id=station_id, user_id=user_id)
     session.add(flag)
     await session.flush()
@@ -96,6 +98,7 @@ async def set_resolved(
     actor_id: uuid.UUID,
     resolved_at: datetime | None,
 ) -> StationFlag:
+    """Mark a report resolved (or reopen it), recording who did it and their note."""
     flag.status = status
     flag.resolution_note = note
     flag.resolved_by = actor_id

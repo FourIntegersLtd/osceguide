@@ -10,6 +10,7 @@ from app.features.stations.generation_profiles.resolve import effective_block_hi
 
 
 def list_profiles() -> list[dict[str, Any]]:
+    """Every generation profile's identity, for the author's picker."""
     return [
         {
             "profileKey": meta.profile_key,
@@ -22,6 +23,7 @@ def list_profiles() -> list[dict[str, Any]]:
 
 
 def profile_detail(profile_key: str) -> dict[str, Any]:
+    """One profile in full: its system prompt and block hints, or refuse if it does not exist."""
     profile = get_profile(profile_key)
     if profile is None:
         raise GenerationProfileNotFound()

@@ -31,6 +31,7 @@ from app.features.stations.service_versions import _version, _version_read
 
 
 def _ensure_storage(settings: Settings) -> None:
+    """Refuse a photo operation outright when no object storage is configured."""
     if not storage.is_configured(settings):
         raise errors.PhotoStorageUnavailable()
 
@@ -38,6 +39,7 @@ def _ensure_storage(settings: Settings) -> None:
 async def _editable_version(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
 ) -> StationVersion:
+    """The named version, if its brief may still be edited (T5's rule, shared with photos)."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_brief_editable(

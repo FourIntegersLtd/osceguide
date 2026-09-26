@@ -22,6 +22,7 @@ from app.features.stations.models import StationTemplate, StationTemplateVersion
 async def create_template(
     session: AsyncSession, org_id: uuid.UUID | None, *, exam_id: uuid.UUID | None, title: str
 ) -> StationTemplate:
+    """Create a new template shell, with no versions yet."""
     template = StationTemplate(owner_kind=owner_kind_for(org_id), org_id=org_id, exam_id=exam_id, title=title)
     session.add(template)
     await session.flush()
@@ -32,6 +33,7 @@ async def create_template(
 async def template_by_id(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID
 ) -> StationTemplate | None:
+    """One template this org owns, by id."""
     stmt = select(StationTemplate).where(owned_by(StationTemplate, org_id), StationTemplate.id == template_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -49,6 +51,7 @@ async def templates_visible_to(session: AsyncSession, org_id: uuid.UUID | None) 
 async def template_versions(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID
 ) -> list[StationTemplateVersion]:
+    """Every version of this template, oldest first."""
     stmt = (
         select(StationTemplateVersion)
         .where(
@@ -78,6 +81,7 @@ async def add_template_version(
     version: int,
     structure: dict[str, Any],
 ) -> StationTemplateVersion:
+    """Add a new draft version to a template."""
     template_version = StationTemplateVersion(
         owner_kind=owner_kind_for(org_id),
         org_id=org_id,
@@ -94,6 +98,7 @@ async def add_template_version(
 async def set_template_title(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, *, title: str
 ) -> None:
+    """Rename a template."""
     await session.execute(
         update(StationTemplate)
         .where(owned_by(StationTemplate, org_id), StationTemplate.id == template_id)
@@ -104,6 +109,7 @@ async def set_template_title(
 async def set_template_version_structure(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID, *, structure: dict[str, Any]
 ) -> None:
+    """Overwrite a draft template version's structure."""
     await session.execute(
         update(StationTemplateVersion)
         .where(owned_by(StationTemplateVersion, org_id), StationTemplateVersion.id == version_id)
@@ -114,6 +120,7 @@ async def set_template_version_structure(
 async def delete_template_version(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
 ) -> None:
+    """Remove a draft template version."""
     await session.execute(
         delete(StationTemplateVersion).where(
             owned_by(StationTemplateVersion, org_id), StationTemplateVersion.id == version_id
@@ -122,6 +129,7 @@ async def delete_template_version(
 
 
 async def delete_template(session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID) -> None:
+    """Remove a template that has no versions left."""
     await session.execute(
         delete(StationTemplate).where(owned_by(StationTemplate, org_id), StationTemplate.id == template_id)
     )
@@ -136,6 +144,7 @@ async def set_template_version_status(
     at: datetime,
     by: uuid.UUID | None,
 ) -> None:
+    """Move a template version to `published` or `archived`, stamping who did it and when."""
     values: dict[str, Any] = {"status": status}
     if status == "published":
         values.update(published_at=at, published_by=by)

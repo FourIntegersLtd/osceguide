@@ -59,6 +59,7 @@ async def create_station(
 
 
 async def read_station(session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID) -> Station:
+    """One station this org owns, or refuse if there is no such station."""
     station = await repository.station_by_id(session, org_id, station_id)
     if station is None:
         raise errors.StationNotFound()
@@ -104,6 +105,7 @@ async def list_stations(
 
 
 async def _exam_code(session: AsyncSession, station: Station) -> str:
+    """The exam code this station's exam id resolves to, or empty if it no longer does."""
     from app.features.catalog.service import exam_code_by_id  # noqa: PLC0415 - import cycle
 
     return await exam_code_by_id(session, station.exam_id) or ""
@@ -112,6 +114,7 @@ async def _exam_code(session: AsyncSession, station: Station) -> str:
 def _station_read(
     station: Station, exam_code: str, version: StationVersion | None, *, full_content: bool
 ) -> StationRead:
+    """Map a station and its latest version onto the schema, projected for the reader's audience."""
     content = dict(version.content) if version else None
     if not full_content:
         content = domain_content.candidate_content(content)
