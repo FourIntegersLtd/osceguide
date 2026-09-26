@@ -66,10 +66,6 @@ package-mode = false
 pytest = ">=8.3,<9"
 pytest-asyncio = ">=0.25,<1"
 pytest-xdist = ">=3.6,<4"
-# File lock so only one xdist worker migrates the shared CI database; without
-# it two workers racing on `alembic upgrade head` both try to create the
-# `alembic_version` table.
-filelock = ">=3.16,<4"
 testcontainers = { version = ">=4.8,<5", extras = ["postgres"] }
 ruff = ">=0.8,<1"
 mypy = ">=1.13,<2"

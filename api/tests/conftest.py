@@ -76,6 +76,18 @@ POSTGRES_IMAGE = "pgvector/pgvector:pg16"
 def database_url() -> Iterator[str]:
     explicit = os.environ.get("TEST_DATABASE_URL")
     if explicit:
+        worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+        if worker != "main":
+            # Each xdist worker gets its own database. The shared CI database
+            # serialised database tests across workers: even though each test
+            # rolls back, row-level locks block concurrent writes to the same
+            # tables, so four workers ran no faster than one.
+            worker_url = _create_worker_database(explicit, worker)
+            try:
+                yield sqlalchemy_url(worker_url)
+            finally:
+                _drop_worker_database(explicit, worker_url)
+            return
         yield sqlalchemy_url(explicit)
         return
     try:
@@ -97,8 +109,43 @@ def database_url() -> Iterator[str]:
         container.stop()
 
 
+def _worker_db_name(base: str, worker_id: str) -> str:
+    """Derive a per-worker database name from the base URL and worker id."""
+    from urllib.parse import urlparse
+
+    parsed = urlparse(base)
+    return f"{parsed.path.lstrip('/')}_pytest_{worker_id}"
+
+
+def _create_worker_database(base_url: str, worker_id: str) -> str:
+    """Create a per-worker database and return its URL."""
+    import psycopg
+
+    worker_db = _worker_db_name(base_url, worker_id)
+    admin_url = base_url.rsplit("/", 1)[0] + "/postgres"
+
+    with psycopg.connect(admin_url, autocommit=True) as conn:
+        conn.execute(f'DROP DATABASE IF EXISTS "{worker_db}"')
+        conn.execute(f'CREATE DATABASE "{worker_db}"')
+
+    return base_url.rsplit("/", 1)[0] + f"/{worker_db}"
+
+
+def _drop_worker_database(base_url: str, worker_url: str) -> None:
+    """Drop a per-worker database after the session ends."""
+    from urllib.parse import urlparse
+
+    import psycopg
+
+    worker_db = urlparse(worker_url).path.lstrip("/")
+    admin_url = base_url.rsplit("/", 1)[0] + "/postgres"
+
+    with psycopg.connect(admin_url, autocommit=True) as conn:
+        conn.execute(f'DROP DATABASE IF EXISTS "{worker_db}" WITH (FORCE)')
+
+
 @pytest.fixture(scope="session")
-def migrated_database(database_url: str, tmp_path_factory: pytest.TempPathFactory) -> str:
+def migrated_database(database_url: str) -> str:
     from alembic.config import Config
 
     from alembic import command
@@ -107,21 +154,7 @@ def migrated_database(database_url: str, tmp_path_factory: pytest.TempPathFactor
     get_settings.cache_clear()
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "alembic"))
-
-    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
-    if worker == "main":
-        command.upgrade(cfg, "head")
-    else:
-        # Under xdist all workers share one database (CI's service container
-        # or a local TEST_DATABASE_URL). Two workers racing on `alembic
-        # upgrade head` both try to create the `alembic_version` table; the
-        # file lock serialises them so the second sees the table and no-ops.
-        from filelock import FileLock
-
-        root_tmp = tmp_path_factory.getbasetemp().parent
-        with FileLock(str(root_tmp / "migrate.lock")):
-            command.upgrade(cfg, "head")
-
+    command.upgrade(cfg, "head")
     return database_url
 
 
