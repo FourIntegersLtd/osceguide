@@ -11,9 +11,10 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import { startCheckout, type Plan } from "@/capabilities/account/api";
 
-const { b2cLink } = productTokens;
+const { b2cFieldLabel, b2cLink, b2cSettingsFieldInput } = productTokens;
 
 /**
  * Pick a plan, and pay for it.
@@ -25,6 +26,10 @@ const { b2cLink } = productTokens;
  * durations are the backend's answer to `/billing/plans` rather than four
  * constants compiled into the bundle, which is how the retiring client came to
  * show one price and charge another after a change in Stripe.
+ *
+ * A friend's referral code is optional. Typing one shows each plan's 10%-off
+ * price, but only the backend decides whether the code is good: it refuses an
+ * unknown code (or the buyer's own) before Stripe is ever opened.
  */
 export default function PlanPicker({
   plans,
@@ -37,8 +42,12 @@ export default function PlanPicker({
   const [agreedToPolicies, setAgreedToPolicies] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState("");
 
   const chosen = plans.find((plan) => plan.code === selected) ?? null;
+  // Blank means "no code": the full price, and nothing sent to the backend.
+  const trimmedReferralCode = referralCode.trim();
+  const hasReferralCode = trimmedReferralCode.length > 0;
 
   const handleCheckout = async () => {
     setError(null);
@@ -52,14 +61,25 @@ export default function PlanPicker({
 
     setIsLoading(true);
     try {
-      const { checkout_url } = await startCheckout(chosen.code);
+      const { checkout_url } = await startCheckout(
+        chosen.code,
+        hasReferralCode ? trimmedReferralCode : null,
+      );
       // Leave `isLoading` true: the browser is on its way to Stripe, and a
       // button that springs back to "Upgrade" invites a second checkout.
       window.location.assign(checkout_url);
     } catch (cause) {
-      setError(
-        `${errorMessage(cause)} No money has left your account. Please try again or email ${SUPPORT_EMAIL}.`,
-      );
+      // A refused code is the buyer's to fix, so say so plainly. Everything
+      // else is ours, and they need to hear no money moved.
+      if (hasCode(cause, "referral_not_found")) {
+        setError("That referral code is not valid. Check it, or clear it to pay the full price.");
+      } else if (hasCode(cause, "referral_discount_unavailable")) {
+        setError("That plan has no referral discount. Choose another plan, or clear the code.");
+      } else {
+        setError(
+          `${errorMessage(cause)} No money has left your account. Please try again or email ${SUPPORT_EMAIL}.`,
+        );
+      }
       setIsLoading(false);
     }
   };
@@ -109,11 +129,26 @@ export default function PlanPicker({
                   isSelected ? "text-osce-accent-hover" : "text-osce-accent",
                 )}
               >
-                {formatMoney(plan.amount_pence, plan.currency)}
+                <PlanPrice plan={plan} hasReferralCode={hasReferralCode} />
               </span>
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-6">
+        <label htmlFor="checkout-referral-code" className={b2cFieldLabel}>
+          Friend&apos;s referral code (optional)
+        </label>
+        <input
+          id="checkout-referral-code"
+          className={`mt-1.5 ${b2cSettingsFieldInput}`}
+          value={referralCode}
+          onChange={(event) => setReferralCode(event.target.value)}
+          placeholder="Enter a code for 10% off"
+          autoComplete="off"
+          maxLength={32}
+        />
       </div>
 
       <div className="mt-6 flex items-start gap-3">
@@ -150,7 +185,9 @@ export default function PlanPicker({
                 <PiSparkle className="h-4 w-4 shrink-0" aria-hidden />
                 <span>
                   Upgrade Now
-                  {chosen ? ` · ${formatMoney(chosen.amount_pence, chosen.currency)}` : ""}
+                  {chosen
+                    ? ` · ${formatMoney(chargedPence(chosen, hasReferralCode), chosen.currency)}`
+                    : ""}
                 </span>
               </>
             )}
@@ -165,6 +202,26 @@ export default function PlanPicker({
       </div>
     </ModalContent>
   );
+}
+
+/**
+ * A plan's price: the full price alone, or struck through beside the 10%-off
+ * price once a referral code is typed and the plan has a discounted price.
+ */
+function PlanPrice({ plan, hasReferralCode }: { plan: Plan; hasReferralCode: boolean }) {
+  const discountedPence = hasReferralCode ? plan.referral_amount_pence : null;
+  if (discountedPence == null) return <>{formatMoney(plan.amount_pence, plan.currency)}</>;
+  return (
+    <>
+      <s className="font-normal text-b2c-text-muted">{formatMoney(plan.amount_pence, plan.currency)}</s>
+      {formatMoney(discountedPence, plan.currency)}
+    </>
+  );
+}
+
+/** What the buyer will be charged: the referral price when a code is typed and the plan has one. */
+function chargedPence(plan: Plan, hasReferralCode: boolean): number {
+  return (hasReferralCode ? plan.referral_amount_pence : null) ?? plan.amount_pence;
 }
 
 export const SUPPORT_EMAIL = "hello@fourintegers.com";

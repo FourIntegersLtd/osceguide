@@ -15,12 +15,8 @@ export interface paths {
         put?: never;
         /**
          * Reindex Material
-         * @description Rebuild the material index now, rather than waiting for tonight's run.
-         *
-         *     Synchronous on purpose, unlike most admin actions here. An author who has
-         *     just published a correction wants to know it is searchable, and a job id to
-         *     go and poll answers a different question. The whole library is thousands of
-         *     passages, which is a request that takes a while, not one that times out.
+         * @description Rebuild the material index now, rather than waiting for tonight's run. Synchronous:
+         *     the response confirms the material is searchable.
          */
         post: operations["tutor_memory_reindex_material"];
         delete?: never;
@@ -508,11 +504,9 @@ export interface paths {
          * Sso Login
          * @description Where to send the browser to sign in to this organisation.
          *
-         *     **Unauthenticated**, like the discovery read above it: this is the first
-         *     step of signing in, before anybody has. The URL is returned rather than
-         *     followed — the frontend owns navigation and the platform sets no cookies
-         *     (ADR 0004) — and points the broker back at a frontend page that posts the
-         *     token to `POST /auth/sso/callback`.
+         *     Unauthenticated: this is the first step of signing in, before anybody
+         *     has. The URL is returned rather than followed — the frontend owns
+         *     navigation and the platform sets no cookies (ADR 0004).
          */
         post: operations["sso_sso_login"];
         delete?: never;
@@ -532,15 +526,10 @@ export interface paths {
          * Read Sign In
          * @description Whether this visitor's organisation signs in somewhere else.
          *
-         *     **Unauthenticated, and it has to be**: this is what a sign-in page asks
-         *     before anybody has signed in. The retiring client answered it from a
-         *     hostname allow-list compiled into the bundle, so adding a partner meant a
-         *     frontend deploy and the tenant slug, the button's wording and the
-         *     "no password form" rule were three things that could disagree with the
-         *     backend.
-         *
-         *     A 404 means "sign in here, with a password", which is the ordinary case and
-         *     what every host that is not a partner's gets.
+         *     Unauthenticated, and it has to be: this is what a sign-in page asks
+         *     before anybody has signed in. A 404 means "sign in here, with a
+         *     password", which is the ordinary case and what every host that is not a
+         *     partner's gets.
          */
         get: operations["sso_read_sign_in"];
         put?: never;
@@ -602,11 +591,8 @@ export interface paths {
         put?: never;
         /**
          * Start Checkout
-         * @description Begin paying for a plan.
-         *
-         *     The client names a plan code and never a price or an amount: b2c matched
-         *     the pence paid against a hardcoded table, so a price change broke
-         *     purchases after the card was charged.
+         * @description Begin paying for a plan, at 10% off with somebody's referral code. The client names a plan
+         *     code, never a price or an amount.
          */
         post: operations["billing_start_checkout"];
         delete?: never;
@@ -624,8 +610,7 @@ export interface paths {
         };
         /**
          * List Plans
-         * @description Public: the pricing page reads this rather than hardcoding amounts, which
-         *     is how b2c's client and server came to disagree about what a plan costs.
+         * @description List the plans currently on sale.
          */
         get: operations["billing_list_plans"];
         put?: never;
@@ -647,11 +632,7 @@ export interface paths {
         put?: never;
         /**
          * Stripe Webhook
-         * @description Apply one delivery, at most once, and only if Stripe sent it.
-         *
-         *     The **raw body** is what the signature covers, so it is read and verified
-         *     before being parsed. Declaring a parsed body parameter instead would hand
-         *     FastAPI the bytes first and leave the signature checking something else.
+         * @description Apply one Stripe webhook delivery, at most once, and only if Stripe sent it.
          */
         post: operations["billing_stripe_webhook"];
         delete?: never;
@@ -860,12 +841,8 @@ export interface paths {
          * List Exams
          * @description The exams the platform offers. Small set, so no cursor is ever returned.
          *
-         *     The consumer catalogue: platform exams only. An institution's own exams are
-         *     not here and never are — they are that institution's, not ours to publish.
-         *     See `/orgs/{org_slug}/exams` for those.
-         *
-         *     A platform admin sees the platform's drafts, because they are the person
-         *     writing them, and nobody else's.
+         *     The consumer catalogue: platform exams only. See `/orgs/{org_slug}/exams`
+         *     for an institution's own. A platform admin also sees the platform's drafts.
          */
         get: operations["catalog_list_exams"];
         put?: never;
@@ -889,10 +866,7 @@ export interface paths {
          * Credit Signup
          * @description Credit this new account to whoever sent them, once.
          *
-         *     Its own route rather than a step inside registering: `growth` sits above
-         *     `identity`, so registration cannot call it, and a partner who sent somebody
-         *     was credited with nothing at all until this existed. Null when there is
-         *     nothing to credit, which is the ordinary case.
+         *     Returns null when there is nothing to credit, which is the ordinary case.
          */
         post: operations["growth_credit_signup"];
         delete?: never;
@@ -913,9 +887,6 @@ export interface paths {
         /**
          * Record Arrival
          * @description Public: a visitor arriving from a partner link, before any account exists.
-         *
-         *     Unauthenticated by necessity — there is nobody to authenticate yet — which
-         *     is why the partner must be a known one and the visitor key is opaque.
          */
         post: operations["growth_record_arrival"];
         delete?: never;
@@ -933,8 +904,7 @@ export interface paths {
         };
         /**
          * Read Funnel
-         * @description Checked against the partner in the path, so one partner's reporter
-         *     cannot read another's numbers.
+         * @description A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner.
          */
         get: operations["growth_read_funnel"];
         put?: never;
@@ -956,8 +926,7 @@ export interface paths {
          * Read Tracking References
          * @description The references this partner puts in its links, one per exam in the pilot.
          *
-         *     Reporter-gated like the funnel: a reference is commercially meaningful, and
-         *     one partner has no business reading another's.
+         *     Reporter-gated like the funnel.
          */
         get: operations["growth_read_tracking_references"];
         put?: never;
@@ -999,8 +968,7 @@ export interface paths {
          * List Referrals
          * @description The settlement queue: redeemed referrals, and whether each has been paid.
          *
-         *     Platform admin only, and deliberately not a partner's or a referrer's
-         *     view — it names both sides of every referral and what is owed on it.
+         *     Platform admin only — it names both sides of every referral and what is owed.
          */
         get: operations["growth_list_referrals"];
         put?: never;
@@ -1024,9 +992,7 @@ export interface paths {
          * Set Referral Payout
          * @description Record a settlement made outside the product.
          *
-         *     Nothing here moves money. It writes down that somebody did, who said so
-         *     and when, which is the whole of what the retiring app's `payout_status`
-         *     flag meant and rather more than it recorded.
+         *     Nothing here moves money — it records who said it happened, and when.
          */
         post: operations["growth_set_referral_payout"];
         delete?: never;
@@ -1112,9 +1078,8 @@ export interface paths {
         };
         /**
          * List Open Slots
-         * @description Availability and claimed slots this caller can see — the public pool plus
-         *     every institution and group they belong to. Matches the retiring marketplace
-         *     feed (open posts plus historic claimed sessions).
+         * @description Availability and claimed slots this caller can see — the public pool plus every institution and
+         *     group they belong to.
          */
         get: operations["marketplace_list_open_slots"];
         put?: never;
@@ -1223,10 +1188,7 @@ export interface paths {
         put?: never;
         /**
          * Record Activity
-         * @description What this person has been reading and practising.
-         *
-         *     A batch, and accepted rather than created: the browser sends these as it
-         *     goes, often as a tab is closing, and a repeat inside the dedup window is a
+         * @description What this person has been reading and practising. Accepted as a batch; a repeat is a
          *     success that records nothing.
          */
         post: operations["tutor_memory_record_activity"];
@@ -1329,11 +1291,7 @@ export interface paths {
         };
         /**
          * Read Dashboard
-         * @description One call for a screen that currently makes seven.
-         *
-         *     A read model over several aggregates. "Dashboard" is not a domain concept —
-         *     nothing owns one and no rule is enforced about it — which is why this slice
-         *     has no tables and no domain module.
+         * @description The trainee's home screen: access, recent attempts and progress at a glance.
          */
         get: operations["dashboard_read_dashboard"];
         put?: never;
@@ -1461,13 +1419,7 @@ export interface paths {
          * Read Performance
          * @description How this person is doing at one exam: per domain, overall, over time.
          *
-         *     Separate from `/me/dashboard` because it is a different question over a
-         *     different set of rows — the marked attempts at one exam — and a screen that
-         *     only lists access and recent attempts should not pay for reading every
-         *     result document.
-         *
-         *     An exam with nothing marked yet is an empty answer, not a refusal: that is
-         *     the dashboard's empty state, and a 404 would make it read as an error.
+         *     An exam with nothing marked yet returns an empty answer, not a 404.
          */
         get: operations["dashboard_read_performance"];
         put?: never;
@@ -1663,11 +1615,7 @@ export interface paths {
         };
         /**
          * Read Receipt
-         * @description One receipt, rendered.
-         *
-         *     Scoped to the caller. A receipt id is short and printed on a document that
-         *     gets forwarded to an accountant or an employer, so it must not be a key
-         *     anybody holding it can read.
+         * @description One receipt, rendered. Scoped to the caller.
          */
         get: operations["billing_read_receipt"];
         put?: never;
@@ -1688,10 +1636,6 @@ export interface paths {
         /**
          * Read Receipt Document
          * @description The receipt as something to print, keep or send to an accountant.
-         *
-         *     Served inline rather than as a download: a browser can print it to PDF,
-         *     and a `Content-Disposition: attachment` would stop somebody simply
-         *     looking at it.
          */
         get: operations["billing_read_receipt_document"];
         put?: never;
@@ -1739,26 +1683,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/referrals/redeem": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Redeem Referral
-         * @description Codes could be issued and never redeemed, so a referrer earned nothing.
-         */
-        post: operations["growth_redeem_referral"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/me/results/{sitting_id}": {
         parameters: {
             query?: never;
@@ -1790,7 +1714,7 @@ export interface paths {
         put?: never;
         /**
          * Acknowledge My Result
-         * @description "I have read this." Appended to the decision's event chain, once per revision.
+         * @description Record that the candidate has read their result. Idempotent per revision.
          */
         post: operations["results_acknowledge_my_result"];
         delete?: never;
@@ -1809,10 +1733,6 @@ export interface paths {
         /**
          * Read My Sittings
          * @description What a trainee is rostered onto, and whether it is their turn.
-         *
-         *     The portal asks two endpoints every five seconds and joins them in the
-         *     browser to answer that. The organisation slugs come from the caller's own
-         *     token, which already carries them.
          */
         get: operations["dashboard_read_my_sittings"];
         put?: never;
@@ -1907,12 +1827,9 @@ export interface paths {
          * Delete Set
          * @description Throw a practice set away.
          *
-         *     The retiring client's delete took the session and its progress counters and
-         *     left the transcripts of what had been sat inside it orphaned. Here the
-         *     recordings cannot be left pointing at a row that has gone — the schema
-         *     refuses — so a set somebody has started a station in is refused rather than
-         *     emptied of its history. The console route that deletes a person's progress
-         *     on a stated reason is the one that takes a set's attempts with it.
+         *     Refused if the set holds any attempts, so a station somebody has already sat is never left
+         *     pointing at a deleted set. Use the platform console's progress-deletion route to remove a set's
+         *     attempts first.
          */
         delete: operations["station_sets_delete_set"];
         options?: never;
@@ -2035,14 +1952,11 @@ export interface paths {
          * @description Published material: the titles to anybody, the bodies to subscribers.
          *
          *     No token required, because a signed-out visitor still needs the landing
-         *     page's article rail and a shared link still needs to say what it points at.
-         *     What a token changes is `content`: the slide decks and the A to Z are the
-         *     paid half of the product and used to come back in full to anyone who asked,
-         *     signed in or not.
+         *     page's article rail and a shared link still needs to say what it points
+         *     at. What a token changes is `content`: the slide decks and the A to Z are
+         *     the paid half of the product.
          *
-         *     `exam_code` and `q` narrow the query rather than the answer. A client that
-         *     filtered in the browser had to pull the whole library down to do it, six
-         *     pages at a time, and could only ever match what those pages contained.
+         *     `exam_code` and `q` narrow the query server-side.
          */
         get: operations["media_list_published"];
         put?: never;
@@ -2275,11 +2189,10 @@ export interface paths {
         get?: never;
         /**
          * Rebuild Circuit
-         * @description Change who is on a circuit and which stations they sit (C3).
+         * @description Change who is on a circuit and which stations they sit.
          *
-         *     A structural edit rebuilds the slots, so it is refused once one of them
-         *     means something: `circuit_locked` (409) if a consultation is in progress,
-         *     if feedback has been recorded, or if any station has already been run.
+         *     Refused with `circuit_locked` (409) if a consultation is in progress, if
+         *     feedback has been recorded, or if any station has already been run.
          */
         put: operations["sittings_rebuild_circuit"];
         post?: never;
@@ -2327,9 +2240,9 @@ export interface paths {
          * @description Add people to a training circuit, into the room it is already using.
          *
          *     Each arrival may name the station it takes, positionally with
-         *     `trainee_ids`; name none and they all join the station the circuit is on.
-         *     Either way the station has to be one this circuit already runs — bringing a
-         *     new one in is a change to what the circuit is, which is the structural edit.
+         *     `trainee_ids`; name none and they all join the station the circuit is
+         *     currently on. Either way, the station must already be one this circuit
+         *     runs.
          */
         post: operations["sittings_append_trainees"];
         delete?: never;
@@ -2367,10 +2280,7 @@ export interface paths {
         };
         /**
          * Read Circuit Console
-         * @description One request for the screen an examination is run from.
-         *
-         *     Replaces a session read, a station list, a trainee list, a staff list and a
-         *     feedback probe per slot — repeated every eight seconds while a circuit runs.
+         * @description The screen an examination is run from: session, stations, trainees, staff and feedback state.
          */
         get: operations["dashboard_read_circuit_console"];
         put?: never;
@@ -2390,15 +2300,11 @@ export interface paths {
         };
         /**
          * Stream Circuit Console
-         * @description The console, pushed. The streaming form of the route above it.
+         * @description The console, pushed. Every frame is a whole `CircuitConsole`, so a client renders a
+         *     stream and a poll with the same code.
          *
-         *     Every frame is a whole `CircuitConsole`, so a client renders a stream and a
-         *     poll with the same code — and a missed event costs a reconnect rather than
-         *     a wrong screen.
-         *
-         *     Access is resolved once, before the stream opens, against a short session
-         *     of its own: this route cannot take the request session, because that
-         *     transaction would stay open for as long as the supervisor's tab does.
+         *     Access is resolved against a short session of its own, not the request session, so the
+         *     transaction does not stay open for as long as the client's connection does.
          */
         get: operations["dashboard_stream_circuit_console"];
         put?: never;
@@ -2750,11 +2656,8 @@ export interface paths {
         put?: never;
         /**
          * Grant Org Entitlement
-         * @description Grant one of this institution's people access to an exam it runs.
-         *
-         *     A trainee's exam-day slot never needs this: a dispatched slot skips the
-         *     gate. This is for practising between sittings, which otherwise runs out
-         *     with the consumer free trial.
+         * @description Grant one of this institution's people access to an exam it runs, for practising between
+         *     sittings. A trainee's exam-day slot never needs this: a dispatched slot skips the gate.
          */
         post: operations["entitlements_grant_org_entitlement"];
         delete?: never;
@@ -2791,9 +2694,8 @@ export interface paths {
          * List Org Exams
          * @description This institution's own exams, plus the platform catalogue.
          *
-         *     `drafts=true` narrows to the institution's own rows, published or not: its
-         *     drafts are its own business. It never widens the listing to the platform's
-         *     drafts, which it cannot see at all.
+         *     `drafts=true` narrows to the institution's own rows, published or not. The
+         *     platform's own drafts are never included.
          */
         get: operations["catalog_list_org_exams"];
         put?: never;
@@ -2801,9 +2703,8 @@ export interface paths {
          * Create Org Exam
          * @description An institution's own exam, as a draft.
          *
-         *     Written without asking the platform and without picking from a list: an
-         *     institution defines the exams it assesses against. The code is unique
-         *     within this organisation only, so two schools may both have a `finals`.
+         *     The code is unique within this organisation only, so two schools may both
+         *     have a `finals`.
          */
         post: operations["catalog_create_org_exam"];
         delete?: never;
@@ -2826,9 +2727,8 @@ export interface paths {
          * Delete Org Exam
          * @description Remove an exam nothing was ever built on. Retire the rest.
          *
-         *     `exam_in_use` (409) is the answer for anything real: a station, a
-         *     sitting, an attempt, a rubric binding. This is only for a draft an
-         *     institution changed its mind about before it went anywhere.
+         *     Returns `exam_in_use` (409) if a station, sitting, attempt or rubric
+         *     binding already references it.
          */
         delete: operations["catalog_delete_org_exam"];
         options?: never;
@@ -2964,11 +2864,9 @@ export interface paths {
          * Add Memberships
          * @description A team at once: the browser parses the spreadsheet, this takes the rows.
          *
-         *     Each row is the single act below it, so an unknown address is invited and
-         *     an existing one is not re-invited. A person already holding the role is
-         *     reported in `skipped` rather than failing the other rows — the retiring
-         *     backend's staff upload wrote a team row by row and an administrator reads
-         *     the result as a list of names, not as an error page.
+         *     Each row is the single act below it, so an unknown address is invited and an existing
+         *     one is not re-invited. A person already holding the role is reported in `skipped`
+         *     rather than failing the other rows.
          */
         post: operations["tenancy_add_memberships"];
         delete?: never;
@@ -3228,19 +3126,16 @@ export interface paths {
         };
         /**
          * Read Sitting
-         * @description Circuits and slots embedded, because every screen that opens a sitting
-         *     needs all three and would otherwise fetch them one by one.
+         * @description Circuits and slots are embedded, since a sitting screen needs all three.
          */
         get: operations["sittings_read_sitting"];
         /**
          * Update Sitting
          * @description Correct a sitting that has already been scheduled.
          *
-         *     Only what was sent is written, so the edit screen restates nothing. The name
-         *     and the date stay open for the life of the record; what the sitting examines
-         *     — its mode, its type, the programme its rubric is resolved from — freezes the
-         *     moment any circuit on it has started, because the marks already given were
-         *     given against the other answer.
+         *     Only fields sent are written. The name and date stay editable indefinitely.
+         *     The mode, type and programme freeze once any circuit has started, since
+         *     marks already given were given against the other answer.
          */
         put: operations["sittings_update_sitting"];
         post?: never;
@@ -3261,8 +3156,7 @@ export interface paths {
         get: operations["results_read_decision"];
         /**
          * Save Decision
-         * @description Each save is a new revision. The table is append-only, so what was
-         *     previously considered survives.
+         * @description Save a decision as a draft. Each save is a new revision.
          *
          *     `expected_revision` names the revision this screen read; a save against a
          *     stale one is refused with `decision_revised` rather than superseding it.
@@ -3286,10 +3180,8 @@ export interface paths {
         put?: never;
         /**
          * Release
-         * @description Release re-checks the evidence.
-         *
-         *     A station re-marked between sign-off and release would otherwise send a
-         *     candidate an outcome nobody approved.
+         * @description Release re-checks the evidence: a station re-marked between sign-off and
+         *     release would otherwise send a candidate an outcome nobody approved.
          */
         post: operations["results_release"];
         delete?: never;
@@ -3341,12 +3233,7 @@ export interface paths {
         };
         /**
          * Read Cohort Summary
-         * @description How this sitting's candidates compare, ranked.
-         *
-         *     What a GP lead opens after an examination to decide who to review first.
-         *     Completion ranks before score: a candidate who sat three of five stations
-         *     has a problem nobody has looked at, while one who scored badly has at least
-         *     been assessed.
+         * @description How this sitting's candidates compare, ranked. Completion ranks before score.
          *
          *     Exam sittings only — `not_an_exam_sitting` (422) for a training one.
          */
@@ -3368,10 +3255,8 @@ export interface paths {
         };
         /**
          * Read Sitting Readout
-         * @description The document a course lead downloads after an examination: the cohort
-         *     ranked, what it adds up to, and what the ranking recommends. Org admin, as the
-         *     legacy export was — it names every candidate and their score in one payload,
-         *     and is written to be printed. Exam sittings only, on the cohort's own rule.
+         * @description The document a course lead downloads after an examination: the cohort ranked, what it
+         *     adds up to, and what it recommends. Org admin only. Exam sittings only.
          */
         get: operations["dashboard_read_sitting_readout"];
         put?: never;
@@ -3391,9 +3276,8 @@ export interface paths {
         };
         /**
          * Read Sitting Report
-         * @description The whole sitting, per candidate: stations sat, marking, reviewers'
-         *     ratings and where the decision stands. Org admin only, because it carries
-         *     decisions that are not yet released.
+         * @description The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision
+         *     status. Org admin only — carries decisions not yet released.
          */
         get: operations["dashboard_read_sitting_report"];
         put?: never;
@@ -3415,10 +3299,8 @@ export interface paths {
         get: operations["reviews_read_gp_lead_review"];
         /**
          * Save Gp Lead Review
-         * @description Institution admin only, and revisioned.
-         *
-         *     The revision the client last read is required, so two people with the same
-         *     screen open cannot silently overwrite one another.
+         * @description Save the GP-lead review for this slot. Requires the last-read `revision`
+         *     to prevent two reviewers overwriting one another.
          */
         put: operations["reviews_save_gp_lead_review"];
         post?: never;
@@ -3439,8 +3321,7 @@ export interface paths {
          * List Slot Reviews
          * @description Every review of this slot, with what they add up to.
          *
-         *     Not a `Page`: a slot has as many reviews as it has observers, and the
-         *     summary is about the set, so paging it would be paging half an answer.
+         *     Not paginated: a slot has as many reviews as it has observers.
          */
         get: operations["reviews_list_slot_reviews"];
         put?: never;
@@ -3461,10 +3342,7 @@ export interface paths {
         get?: never;
         /**
          * Submit My Review
-         * @description One review per person per slot, edited in place.
-         *
-         *     `mine` rather than an id: a reviewer has exactly one, and addressing it by
-         *     id would invite editing somebody else's.
+         * @description Submit or update your own review of this slot. One per reviewer per slot.
          */
         put: operations["reviews_submit_my_review"];
         post?: never;
@@ -3581,12 +3459,9 @@ export interface paths {
          * List Stations
          * @description The stations this organisation has authored.
          *
-         *     `OrgReader` admits every rostered trainee, and the document is the patient's
-         *     material and the examiner's notes as much as it is the brief — so a reader
-         *     whose only relationship to the org is trainee gets the candidate-facing
-         *     projection of each `content` (S1), the same material their own attempt's
-         *     brief read discloses. Staff — an org admin or an assigned supervisor, the
-         *     predicate `OrgStaff` runs on — and a platform admin read the whole thing.
+         *     `OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each
+         *     `content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform
+         *     admin read the whole thing.
          */
         get: operations["stations_list_stations"];
         put?: never;
@@ -3769,10 +3644,7 @@ export interface paths {
         };
         /**
          * Read Supervisor Circuits
-         * @description The circuits assigned to the caller, whatever else they can see.
-         *
-         *     Assigned, not visible: an administrator who supervises nothing gets an
-         *     empty list here and reads the sittings routes for the rest.
+         * @description The circuits assigned to the caller. Assigned, not all visible circuits.
          */
         get: operations["dashboard_read_supervisor_circuits"];
         put?: never;
@@ -3821,8 +3693,7 @@ export interface paths {
         head?: never;
         /**
          * Rename Group
-         * @description Rename a group. Its members stay — that is the rule the whole roster
-         *     slice exists to hold, where b2b matched a label and a rename emptied it.
+         * @description Rename a group. Its members are unaffected.
          */
         patch: operations["roster_rename_group"];
         trace?: never;
@@ -3837,8 +3708,7 @@ export interface paths {
         get?: never;
         /**
          * Set Group Members
-         * @description PUT, not POST: the body states who is in the group. b2b has no
-         *     membership table at all and matches a label instead.
+         * @description Replace the group's full membership list.
          */
         put: operations["roster_set_group_members"];
         post?: never;
@@ -3904,10 +3774,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Trainee
-         * @description Remove a roster row nothing was ever decided about.
-         *
-         *     `trainee_in_use` (409) is the answer for a real decision. Revoking access
-         *     is the mechanism for everyone else — see `service_edit.delete_trainee`.
+         * @description Remove a roster row nothing was ever decided about. Returns 409
+         *     `trainee_in_use` if a decision exists; revoke access instead in that case.
          */
         delete: operations["roster_delete_trainee"];
         options?: never;
@@ -3952,8 +3820,8 @@ export interface paths {
         put?: never;
         /**
          * Anonymise Trainee
-         * @description GDPR erasure for a trainee `delete` refuses — real history stays,
-         *     the person's name and address do not. See `service_edit.anonymise_trainee`.
+         * @description GDPR erasure for a trainee `delete` refuses: history stays, the person's
+         *     name and address do not.
          */
         post: operations["roster_anonymise_trainee"];
         delete?: never;
@@ -3973,13 +3841,8 @@ export interface paths {
         put?: never;
         /**
          * Resend Invitation
-         * @description Send the choose-a-password link again.
-         *
-         *     A new token, not the one in the first email: that one is stored hashed, so
-         *     nobody here can read it back out. `invitation_not_pending` is the answer
-         *     when the person has already chosen a password, because mailing a
-         *     set-password link to somebody who can sign in is an invitation to take over
-         *     their account.
+         * @description Send the choose-a-password link again, as a new token. Returns 409
+         *     `invitation_not_pending` if the person has already chosen a password.
          */
         post: operations["roster_resend_invitation"];
         delete?: never;
@@ -4223,8 +4086,8 @@ export interface paths {
         };
         /**
          * List Directory
-         * @description Every account, newest first, with the facts beside each that the old
-         *     console showed as columns.
+         * @description Every account, newest first, with the facts beside each: payment, activity,
+         *     entitlements and sign-in status.
          */
         get: operations["dashboard_list_directory"];
         put?: never;
@@ -4328,10 +4191,6 @@ export interface paths {
         /**
          * Create Exam
          * @description A new platform exam, as a draft — the consumer catalogue.
-         *
-         *     The table starts empty and stays that way until somebody writes one. There
-         *     is no seed: four exams used to be inserted by a migration and mirrored by a
-         *     tuple in this slice, and a fifth needed both changed and shipped.
          */
         post: operations["catalog_create_exam"];
         delete?: never;
@@ -4765,12 +4624,11 @@ export interface paths {
         get: operations["sso_read_config"];
         /**
          * Save Config
-         * @description Write it. Platform admin only, deliberately.
+         * @description Write the SSO arrangement. Platform admin only, deliberately.
          *
-         *     Whoever controls the issuer controls who may sign in as that institution's
-         *     members, so this is not a field to put on a customer's own settings screen
-         *     beside their logo. When there is an onboarding flow with a domain
-         *     verification step in it, that is where this moves.
+         *     Whoever controls the issuer controls who may sign in as that
+         *     institution's members, so this is not exposed to a customer's own
+         *     settings screen.
          */
         put: operations["sso_save_config"];
         post?: never;
@@ -5358,18 +5216,15 @@ export interface paths {
         };
         /**
          * List User Entitlements For Support
-         * @description Every grant this person has held — purchase, institution, trial, admin —
-         *     with `live` computed now and revoked ones kept, because "your access ended
-         *     on the 3rd" is the answer support is usually looking for.
+         * @description Every grant this person has held — purchase, institution, trial, admin — with `live`
+         *     computed now and revoked ones kept.
          */
         get: operations["entitlements_list_user_entitlements_for_support"];
         put?: never;
         /**
          * Grant Entitlement For Support
-         * @description Grant access outright, source `admin`, with the reason in the audit log.
-         *
-         *     For the payment that was taken under another address, the sponsor's seat,
-         *     the goodwill month. Not for a purchase that failed to apply: replay that.
+         * @description Grant access outright, source `admin`, with the reason in the audit log. Not for a
+         *     purchase that failed to apply: replay that instead.
          */
         post: operations["entitlements_grant_entitlement_for_support"];
         delete?: never;
@@ -5515,11 +5370,7 @@ export interface paths {
         };
         /**
          * Read Cloud Capacity
-         * @description How many LiveKit Cloud sessions are held against the metered cap.
-         *
-         *     A count, not a reservation: `LiveKit Cloud "Updating"` on the dashboard is
-         *     usually a worker recycle, and this is what says whether sessions are
-         *     actually running through it.
+         * @description How many LiveKit Cloud sessions are currently held against the metered cap.
          */
         get: operations["voice_read_cloud_capacity"];
         put?: never;
@@ -5566,14 +5417,9 @@ export interface paths {
          * Read Statistics
          * @description The counters on the landing page's numbers band.
          *
-         *     Unauthenticated, because the landing page is what a visitor sees before
-         *     anything else. The retiring backend served these from `/landing`; the
-         *     replacement had no equivalent, so the band hid itself rather than showing
-         *     zeroes.
-         *
-         *     Cached for ten minutes: the busiest page on the site should not cost four
-         *     aggregate queries per view, and no figure here changes meaningfully in
-         *     that time.
+         *     Unauthenticated, because the landing page is what a visitor sees before anything else. Cached for
+         *     ten minutes: the busiest page on the site should not cost four aggregate queries per view, and no
+         *     figure here changes meaningfully in that time.
          */
         get: operations["public_site_read_statistics"];
         put?: never;
@@ -5629,18 +5475,9 @@ export interface paths {
          * Browse Library
          * @description The published platform library, scoped to what the caller may open.
          *
-         *     Every signed-in user, because the library is the product: a consumer builds
-         *     a practice set from it and an institution draws on it to build a circuit.
-         *     The rows carry no station content — see `LibraryStationRead`.
-         *
-         *     `search` is a fragment of a title, matched in SQL. Typing one used to mean
-         *     paging the catalogue in the browser and filtering what had arrived, so a
-         *     term could only ever match what the screen had already fetched.
-         *
-         *     A platform admin browses the whole catalogue, because curating it is their
-         *     job. Everybody else gets their own exam, and asking for another is refused
-         *     rather than answered — the retiring client had one exam per deployment and
-         *     no picker at all.
+         *     Rows carry no station content — see `LibraryStationRead`. `search` matches a title fragment in
+         *     SQL. A platform admin browses the whole catalogue; everybody else gets their own exam, and asking
+         *     for another is refused.
          */
         get: operations["stations_browse_library"];
         put?: never;
@@ -5660,16 +5497,10 @@ export interface paths {
         };
         /**
          * Read Library Station
-         * @description One station from the platform library, for whoever a link found them to be.
+         * @description One station from the platform library: a title and the ids needed to bind it, not the document.
          *
-         *     The row the browse page already gives — a title and the ids needed to bind
-         *     it — and none of the document inside it. A shared link used to be answered
-         *     by walking that page a hundred stations at a time in the browser, because
-         *     there was no read that took an id and no organisation's slug.
-         *
-         *     One refusal covers every station that is not the library's: another
-         *     institution's private case and a draft nobody has published answer
-         *     identically, because which of them it was is somebody else's tenant.
+         *     One refusal covers every station that is not the library's — another institution's private case
+         *     and a draft nobody has published answer identically.
          */
         get: operations["stations_read_library_station"];
         put?: never;
@@ -5707,13 +5538,9 @@ export interface paths {
         };
         /**
          * Station Version History
-         * @description Every revision this station has had, newest first. The author's own view.
+         * @description Every revision this station has had, newest first — whole documents, so staff-only.
          *
-         *     The lifecycle had no reader: a station could be drafted, published,
-         *     superseded and archived, and nothing listed the revisions those acts
-         *     produced — so the authoring screen could not offer a previous one. Whole
-         *     documents, which is why the audience is staff and not the station's org
-         *     members at large (the rule, and why, are in `service_versions`).
+         *     See `service_versions` for the audience rule.
          */
         get: operations["stations_station_version_history"];
         put?: never;
@@ -5771,11 +5598,8 @@ export interface paths {
          * Run Assistant Tool
          * @description One tool call. `result` is spoken; `display` goes to the browser unchanged.
          *
-         *     Timed, because this sits inside a voice loop. The model says a holding line
-         *     and then waits on this round trip, so a slow tool is heard as a pause in
-         *     the conversation rather than seen as a slow request — and nothing else in
-         *     the system would show it. `search_material` is the one to watch: one
-         *     embedding call plus one pgvector query, budgeted at about 350ms.
+         *     Timed, because this sits inside a voice loop: a slow tool is heard as a pause in the
+         *     conversation. `search_material` is the one to watch, budgeted at about 350ms.
          */
         post: operations["worker_run_assistant_tool"];
         delete?: never;
@@ -5939,11 +5763,6 @@ export interface components {
         /**
          * AchievementsRead
          * @description A person's practice record, computed from their whole marked history.
-         *
-         *     Ported from the client-side calculator the consumer screen used to run
-         *     over its last 100 attempts (`achievementsFromAttempts.ts`) — same
-         *     definition, same numbers, now a durable read over everything rather than
-         *     a snapshot that forgot itself on refresh past the hundredth attempt.
          */
         AchievementsRead: {
             /** Current Streak */
@@ -5968,8 +5787,8 @@ export interface components {
         };
         /**
          * ActivityAccepted
-         * @description How many were new. A repeat within the dedup window is accepted and not
-         *     recorded, which is a success rather than an error.
+         * @description How many were new. A repeat is accepted and not recorded, which is a success
+         *     rather than an error.
          */
         ActivityAccepted: {
             /** Accepted */
@@ -6020,12 +5839,9 @@ export interface components {
          * AppendTrainees
          * @description Who has just arrived, and where they go.
          *
-         *     `station_version_ids` is the pairing `CreateCircuit` already uses — the nth
-         *     arrival takes the nth station — because b2b's live "add trainee" dialog
-         *     named a station with each person rather than assuming it. Omit the list and
-         *     everyone joins the station the circuit is already running, which is what a
-         *     single latecomer to a group practice wants and what this route used to do
-         *     whatever the caller meant.
+         *     `station_version_ids` pairs positionally with `trainee_ids` — the nth
+         *     arrival takes the nth station. Omit it and everyone joins the station the
+         *     circuit is currently running.
          */
         AppendTrainees: {
             /** Station Version Ids */
@@ -6088,10 +5904,8 @@ export interface components {
          * AttemptBriefRead
          * @description The reading-time screen, keyed on the attempt rather than the station.
          *
-         *     On the attempt because that is what the entitlement check has already been
-         *     made against: `LibraryStationRead` deliberately carries no content, since
-         *     the library is browsable by everyone and the brief is part of the exam.
-         *     Once somebody has started a station, the brief is theirs to read.
+         *     Keyed on the attempt because that is what the entitlement check has already been made against;
+         *     the library itself is browsable by everyone but carries no content.
          */
         AttemptBriefRead: {
             /**
@@ -6232,8 +6046,8 @@ export interface components {
          * AudienceIn
          * @description How a client says who something is for.
          *
-         *     Lives in core beside the rule, like `Page` and `CursorParams`: three slices
-         *     take the same three fields, and three copies would drift.
+         *     Lives in core beside the rule, like `Page` and `CursorParams`, since all
+         *     three slices take the same three fields.
          */
         AudienceIn: {
             /** Group Id */
@@ -6340,14 +6154,8 @@ export interface components {
         };
         /**
          * BulkCreateMemberships
-         * @description A team at once, in one request.
-         *
-         *     The retiring backend's "invite the whole team" path was a CSV upload it
-         *     parsed and wrote row by row, with a temporary password in the file or
-         *     generated in the browser. Here the browser parses the sheet and posts rows,
-         *     and no password is involved: an address with no account is invited and
-         *     chooses one. Capped so one request cannot invite a whole hospital by
-         *     accident.
+         * @description A team at once, in one request. Capped so one request cannot invite a whole
+         *     hospital by accident.
          */
         BulkCreateMemberships: {
             /** Memberships */
@@ -6434,11 +6242,7 @@ export interface components {
         };
         /**
          * Capabilities
-         * @description What the caller may do, decided here rather than in the browser.
-         *
-         *     The B2B frontend keeps a table mirroring the backend policy and uses it to
-         *     decide whether to issue a request at all. Two copies of an authorisation
-         *     rule is one too many; this is the served answer.
+         * @description What the caller may do, decided here rather than duplicated in the frontend.
          */
         Capabilities: {
             /** Active Org Slug */
@@ -6851,19 +6655,13 @@ export interface components {
          * CreateAttempt
          * @description What a client may ask for directly.
          *
-         *     Deliberately narrower than `attempts.create_attempt`. The other kinds are
-         *     *about* something a different slice owns — a slot, a set entry, a peer
-         *     pairing, an earlier attempt — and `attempts` sits below all of them in the
-         *     layer order, so it cannot check that the caller owns the thing they named.
-         *
-         *     This route used to take every one of those ids straight from the body and
-         *     store them unverified, which let anyone attach their attempt to another
-         *     organisation's exam slot or another person's set entry. Each of those
-         *     kinds has its own route, on the slice that can do the checking:
-         *     `POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set
-         *     station and its debrief, and the circuit itself for an exam slot (ADR
-         *     0018). `room_name` is likewise not the client's to choose — `voice`
-         *     derives it from the attempt.
+         *     Deliberately narrower than `attempts.create_attempt`. The other kinds are *about* something a
+         *     different feature owns — a slot, a set entry, a peer pairing, an earlier attempt. Taking those ids
+         *     straight from the body unverified once let a caller attach their attempt to another organisation's
+         *     exam slot or another person's set entry, so each of those kinds instead has its own route that
+         *     checks ownership: `POST /me/station-sets/{set_id}/entries/{entry_id}/attempts` for a set station
+         *     and its debrief, and the circuit itself for an exam slot (ADR 0018). `room_name` is likewise not
+         *     the client's to choose — `voice` derives it from the attempt.
          */
         CreateAttempt: {
             /** Exam Code */
@@ -7107,8 +6905,8 @@ export interface components {
          * CreditSignup
          * @description Ties the signed-in account to the visit that brought them.
          *
-         *     Sent after registering, with the key the arrival was logged under. The
-         *     browser holds it; the backend never sees a partner cookie.
+         *     Sent after registering, with the key the arrival was logged under; the
+         *     browser holds it and the backend never sees a partner cookie.
          */
         CreditSignup: {
             /** Visitor Key */
@@ -7147,9 +6945,8 @@ export interface components {
          * CvUploadResult
          * @description What an upload answers with, before the model has read it.
          *
-         *     The row exists and is `processing`; the structured sections arrive later,
-         *     read back from the list. The message is the one the retiring backend
-         *     showed, because it sets the expectation that this is not instant.
+         *     The row exists and is `processing`; the structured sections arrive later, read back from the
+         *     list. The message sets the expectation that this is not instant.
          */
         CvUploadResult: {
             /**
@@ -7164,10 +6961,7 @@ export interface components {
         };
         /**
          * Dashboard
-         * @description Replaces seven calls on the SCA dashboard alone.
-         *
-         *     The legacy screen fans out to four RAG endpoints, a weekly trend and two
-         *     marketplace lists, then joins them in the browser.
+         * @description A trainee's home screen: entitlements, progress, recent attempts and question sets.
          */
         Dashboard: {
             /** Current Exam Code */
@@ -7260,8 +7054,7 @@ export interface components {
         };
         /**
          * DirectoryUser
-         * @description One row of the directory: the seven columns the retiring console had,
-         *     each answered by the slice that owns the fact.
+         * @description One row of the account directory.
          */
         DirectoryUser: {
             /** Access Ends At */
@@ -7354,9 +7147,7 @@ export interface components {
          * DomainComposition
          * @description How many marked attempts landed red, amber or green on one domain.
          *
-         *     Classed from the same 0–100 domain score the bars already use: 83 and
-         *     above is green (a clear G), 50 to 83 is amber, below that is red. Counts,
-         *     not a new mark.
+         *     83 and above is green, 50 to 83 is amber, below that is red.
          */
         DomainComposition: {
             /** Amber */
@@ -7491,7 +7282,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "assistant_tools_not_available" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_already_redeemed" | "referral_code_taken" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "tag_too_long" | "template_not_published" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "tag_too_long" | "template_not_published" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -7524,7 +7315,7 @@ export interface components {
         };
         /**
          * ExamDirectorySummary
-         * @description How many accounts an exam has, split the way the old filter did.
+         * @description How many accounts an exam has, split by paid/trial/not-started.
          */
         ExamDirectorySummary: {
             /** Code */
@@ -7743,6 +7534,8 @@ export interface components {
             checks: {
                 [key: string]: "ok" | "error" | "disabled";
             };
+            /** Commit */
+            commit: string;
             /**
              * Status
              * @enum {string}
@@ -7880,10 +7673,8 @@ export interface components {
         };
         /**
          * InvitationRead
-         * @description A re-sent invitation, answered with what the email actually says.
-         *
-         *     The token itself is not here: it is a credential, and it goes only to the
-         *     address it was minted for.
+         * @description A re-sent invitation. The token itself is never returned; it goes only to
+         *     the address it was minted for.
          */
         InvitationRead: {
             /** Email */
@@ -8164,18 +7955,10 @@ export interface components {
         };
         /**
          * MediaPage
-         * @description A page of the catalogue, and how many items the filters matched.
+         * @description A page of the catalogue, and how many items matched the filters.
          *
-         *     `core.pagination.Page` carries `items` and `next_cursor` and is shared by
-         *     every slice, so it cannot grow a count for one screen's sake. A page that
-         *     reports only what it returned made the media library print "24 found" for
-         *     a library of six hundred, because that is all a cursor page knows. Media
-         *     gets its own wrapper instead; the two field names `Page` had are unchanged,
-         *     so a client reading `items` and `next_cursor` keeps working.
-         *
-         *     `total_count` counts everything matching the filters, not the entitlement
-         *     of the reader: a locked item is still an item the search found, and it is
-         *     listed with `locked: true` rather than dropped.
+         *     `total_count` counts everything matching the filters, not the reader's
+         *     entitlement: a locked item is still listed, with `locked: true`.
          */
         MediaPage: {
             /** Items */
@@ -8188,9 +7971,6 @@ export interface components {
         /**
          * MediaSearchPage
          * @description A page of search hits, and how many the query matched.
-         *
-         *     Separate from `MediaPage` for the same reason: `core.pagination.Page` is
-         *     shared and cannot be widened from here.
          */
         MediaSearchPage: {
             /** Items */
@@ -8301,10 +8081,7 @@ export interface components {
         };
         /**
          * MySittings
-         * @description The trainee portal's whole screen, in one request.
-         *
-         *     It polls two lists every five seconds and joins them in the browser to
-         *     answer one question: is it my turn yet?
+         * @description The trainee portal's whole screen, in one request: what they are rostered onto.
          */
         MySittings: {
             /** Items */
@@ -8375,7 +8152,7 @@ export interface components {
         };
         /**
          * OnboardingScene
-         * @description One demo scenario. The spelling is the worker's and the browser's, which is b2c's.
+         * @description One demo scenario. The spelling is the worker's and the browser's.
          */
         OnboardingScene: {
             /** Patientline */
@@ -8407,7 +8184,7 @@ export interface components {
         };
         /**
          * OrgCounts
-         * @description What the setup checklist counts. Four legacy calls existed to produce these.
+         * @description What the setup checklist counts.
          */
         OrgCounts: {
             /** Library Stations */
@@ -8501,12 +8278,8 @@ export interface components {
         };
         /**
          * Override
-         * @description What every override may carry: why it was done.
-         *
-         *     Optional, and free text, because the reasons are the ones nobody predicted
-         *     — that is what an override is for. It is written to the record beside the
-         *     action, so "the clock was extended" is answerable with "because the fire
-         *     alarm went".
+         * @description Why the override was done. Optional free text, recorded beside the
+         *     action for later review.
          */
         Override: {
             /** Reason */
@@ -8765,11 +8538,9 @@ export interface components {
          * PatientReviewRead
          * @description The patient's side, as a candidate may read it afterwards.
          *
-         *     Not a passthrough: `persona`, `opening_sentence`, `expanded_history` and
-         *     the hidden question list are how the patient is played, and they stay on
-         *     the server. What is here is what the old management screen showed — the
-         *     biodata line and the ideas, concerns and expectations the candidate was
-         *     supposed to draw out.
+         *     Not a passthrough: `persona`, `opening_sentence`, `expanded_history` and the hidden question list
+         *     are how the patient is played, and stay on the server. What is here is the biodata line and the
+         *     ideas, concerns and expectations the candidate was supposed to draw out.
          */
         PatientReviewRead: {
             /** Concerns */
@@ -8842,12 +8613,8 @@ export interface components {
         };
         /**
          * Performance
-         * @description The charts on the consumer exam dashboard, in one call.
-         *
-         *     The legacy screen asks four RAG endpoints and a weekly trend for this and
-         *     joins them in the browser. `exam_code` is null only when the caller named
-         *     no exam and has never attempted one — there is no exam to report on, and
-         *     an empty string would be a code.
+         * @description The performance charts for one exam. `exam_code` is null only when the caller named
+         *     no exam and has never attempted one.
          */
         Performance: {
             /** Composition */
@@ -8863,9 +8630,6 @@ export interface components {
         /**
          * PerformanceSummary
          * @description How the marked attempts divide, as rates rather than counts.
-         *
-         *     Rates because the chart draws bands, and because a candidate with four
-         *     attempts and one with forty should read the same way.
          */
         PerformanceSummary: {
             /** Critical Rate */
@@ -8894,6 +8658,8 @@ export interface components {
             duration_days: number;
             /** Exam Code */
             exam_code: string | null;
+            /** Referral Amount Pence */
+            referral_amount_pence?: number | null;
         };
         /** PlatformAdminInviteRead */
         PlatformAdminInviteRead: {
@@ -9012,10 +8778,8 @@ export interface components {
         };
         /**
          * PlatformAuditRead
-         * @description An audit row as the console reads it across every organisation.
-         *
-         *     `org_id` is None for the platform's own acts; `meta` is whatever the
-         *     action recorded beyond its summary, such as the old and new value.
+         * @description An audit row as the console reads it across every organisation. `org_id` is None for
+         *     the platform's own acts.
          */
         PlatformAuditRead: {
             /** Action */
@@ -9111,6 +8875,8 @@ export interface components {
             checks: {
                 [key: string]: "ok" | "error" | "disabled";
             };
+            /** Commit */
+            commit: string;
             /** Jobs By Status */
             jobs_by_status: {
                 [key: string]: number;
@@ -9499,9 +9265,8 @@ export interface components {
          * QueueStatus
          * @description Where someone stands, and what to do next.
          *
-         *     `position` is why this is one call: b2c polls a status endpoint every three
-         *     seconds, and it should be able to answer "am I matched yet?" in one round
-         *     trip.
+         *     `position` is why this is one call: a polling client should be able to
+         *     answer "am I matched yet?" in one round trip.
          */
         QueueStatus: {
             audience: components["schemas"]["AudienceOut"];
@@ -9559,11 +9324,11 @@ export interface components {
         };
         /**
          * RebuildCircuit
-         * @description A circuit's new shape. Everything omitted is left as it is.
+         * @description A circuit's full new roster and stations.
          *
-         *     The trainees and the stations are sent whole rather than as a patch: the
-         *     slots are rebuilt from them, and a partial edit would leave the API
-         *     guessing which pairing the supervisor meant.
+         *     Both lists are sent whole, not as a patch: the slots are rebuilt from
+         *     them. `name`, `supervisor_user_id` and `timing` are left as they are when
+         *     omitted.
          */
         RebuildCircuit: {
             /** Name */
@@ -9578,11 +9343,8 @@ export interface components {
         };
         /**
          * ReceiptRead
-         * @description A payment receipt, rendered.
-         *
-         *     Every field is a string already formatted for display: a receipt is read by
-         *     people rather than parsed by clients, and rendering money and dates in the
-         *     browser is how two surfaces come to show the same payment differently.
+         * @description A payment receipt, rendered. Every field is a string already formatted for display, so
+         *     two clients cannot render the same payment differently.
          */
         ReceiptRead: {
             /** Amount Subtotal */
@@ -9677,17 +9439,11 @@ export interface components {
             /** Stripe Payment Intent Id */
             stripe_payment_intent_id?: string | null;
         };
-        /** RedeemReferral */
-        RedeemReferral: {
-            /** Code */
-            code: string;
-        };
         /**
          * ReferralAdminRead
          * @description One referral, as the person settling it needs to see it.
          *
-         *     Emails rather than ids: whoever is reconciling bank transfers is matching
-         *     names on a statement, and a uuid is not on the statement.
+         *     Emails rather than ids: a uuid is not on a bank statement.
          */
         ReferralAdminRead: {
             /** Code */
@@ -9768,10 +9524,7 @@ export interface components {
         };
         /**
          * RenewContract
-         * @description New dates, and whether a suspension should lift with them.
-         *
-         *     One call rather than a `PATCH` and a `restore`: a renewal that sets the
-         *     date and forgets to restore leaves a paying customer locked out.
+         * @description New contract dates, and whether a suspension should lift with them.
          */
         RenewContract: {
             /**
@@ -9937,14 +9690,12 @@ export interface components {
         };
         /**
          * SaveDecision
-         * @description Drafting a decision.
+         * @description A decision to save as a draft.
          *
          *     `expected_revision` is the revision this screen last read, or 0 when it has
          *     read nothing. A save that does not name the current one is refused with
          *     `decision_revised` (409), so two administrators cannot overwrite each
-         *     other's draft. The release route reuses this body and does not consult it,
-         *     because a release is already guarded by the workflow state and by the
-         *     evidence fingerprint.
+         *     other's draft.
          */
         SaveDecision: {
             /** Assessment Outcome */
@@ -10045,12 +9796,7 @@ export interface components {
         };
         /**
          * SearchHit
-         * @description One match.
-         *
-         *     `excerpt` defaults to empty rather than being required so a client that
-         *     builds hits of its own stays valid — the retiring A-to-Z's substring
-         *     fallback did, and `platform-web` still carries a copy of it. This backend
-         *     always fills it in.
+         * @description One search match. `excerpt` defaults to empty; this backend always fills it in.
          */
         SearchHit: {
             /**
@@ -10297,11 +10043,8 @@ export interface components {
          * SlotRagSummary
          * @description What several reviewers of one slot agreed, or did not.
          *
-         *     The worst rating wins per domain, which is b2b's tie-break and worth
-         *     keeping: when two reviewers disagree about a candidate, the lower rating is
-         *     the one that should prompt a conversation. Computed here rather than in the
-         *     browser so a supervisor's screen, a released result and an export cannot
-         *     each arrive at a different answer.
+         *     The worst rating wins per domain: when reviewers disagree, the lower
+         *     rating is the one that should prompt a conversation.
          */
         SlotRagSummary: {
             /** By Domain */
@@ -10401,10 +10144,17 @@ export interface components {
         /**
          * SsoCallbackRequest
          * @description The token the broker handed back, and the organisation it was for.
+         *
+         *     `state` (SEC-015) is the signed anti-forgery value the sign-in URL carried
+         *     and the OIDC provider echoed back on the redirect. It is optional on the
+         *     contract — Clerk's flow does not carry one — but required for a provider
+         *     that runs the code flow (Entra), which the callback enforces.
          */
         SsoCallbackRequest: {
             /** Org Slug */
             org_slug: string;
+            /** State */
+            state?: string | null;
             /** Token */
             token: string;
         };
@@ -10450,10 +10200,8 @@ export interface components {
          * SsoLoginResult
          * @description Where to send the browser to sign in.
          *
-         *     A URL rather than a server-side redirect: the frontend owns navigation and
-         *     the platform issues no cookies (ADR 0004). The broker sends the browser
-         *     back to `{frontend_url}/auth/sso/callback`, which posts the token it was
-         *     handed to `POST /auth/sso/callback`.
+         *     A URL rather than a server-side redirect: the frontend owns navigation
+         *     and the platform issues no cookies (ADR 0004).
          */
         SsoLoginResult: {
             /** Sign In Url */
@@ -10482,12 +10230,10 @@ export interface components {
         };
         /**
          * SsoSignIn
-         * @description What a sign-in page may know before anybody has proved anything.
+         * @description What a sign-in page may show before anybody has proved anything.
          *
-         *     Deliberately thin. This is served without a token, to anyone who asks, so
-         *     it carries what a button needs and nothing about the organisation beyond
-         *     the name it already puts on its own front page. No issuer, no bindings, no
-         *     counts: those are configuration, and configuration is for administrators.
+         *     Deliberately thin: served without a token, to anyone who asks. No
+         *     issuer, no bindings, no counts — those are configuration.
          */
         SsoSignIn: {
             /** Default Exam Code */
@@ -10510,6 +10256,8 @@ export interface components {
         StartCheckout: {
             /** Plan Code */
             plan_code: string;
+            /** Referral Code */
+            referral_code?: string | null;
         };
         /** StartSession */
         StartSession: {
@@ -10519,6 +10267,8 @@ export interface components {
             };
             /** Session Type */
             session_type: string;
+            /** Station Version Id */
+            station_version_id?: string | null;
         };
         /**
          * StartedAttempt
@@ -10996,12 +10746,8 @@ export interface components {
         };
         /**
          * SwitchWorkspace
-         * @description Which workspace to re-issue the token against.
-         *
-         *     `None` means the person's own practice. That is a real destination, not an
-         *     absence: somebody who belongs to an institution still has their own
-         *     entitlements and their own attempts, and without this there is no way back
-         *     to them once an organisation is active.
+         * @description Which workspace to re-issue the token against. `None` means the person's own practice
+         *     — a real destination, not an absence.
          */
         SwitchWorkspace: {
             /** Org Slug */
@@ -11122,11 +10868,10 @@ export interface components {
         };
         /**
          * TraineeResultRead
-         * @description What a candidate sees.
+         * @description A candidate's own view of their result.
          *
          *     Deliberately narrower than the internal record: moderation notes and the
-         *     evidence snapshot are ours, not theirs. b2b's own schema doc says not to
-         *     reproduce disclosure policy in frontend transforms — so it is applied here.
+         *     evidence snapshot stay internal.
          */
         TraineeResultRead: {
             /** Acknowledged At */
@@ -11245,11 +10990,8 @@ export interface components {
         };
         /**
          * UpdateCohort
-         * @description Rename an intake, or say which academic year it belongs to.
-         *
-         *     Absent means "leave it alone". b2b's `examIds` is not here: which exams a
-         *     cohort is bound to is `catalog`'s answer, and this slice's row carries no
-         *     such column, so exposing the field would promise a write that goes nowhere.
+         * @description Rename an intake, or say which academic year it belongs to. Fields left out
+         *     are unchanged.
          */
         UpdateCohort: {
             /** Academic Year */
@@ -11277,8 +11019,7 @@ export interface components {
         };
         /**
          * UpdateGroup
-         * @description Rename a group. Who is in it does not move with the name — that is the
-         *     whole of why membership is a table here and a matched string in b2b.
+         * @description Rename a group. Membership does not change.
          */
         UpdateGroup: {
             /** Label */
@@ -11322,10 +11063,7 @@ export interface components {
         };
         /**
          * UpdateOrganization
-         * @description What a platform administrator may change about an organisation.
-         *
-         *     Not the slug: every foreign key points at `id` and the slug is the URL, so
-         *     renaming one is a redirect problem rather than a field edit.
+         * @description What a platform administrator may change about an organisation. Not the slug.
          */
         UpdateOrganization: {
             /** Contract Ends At */
@@ -11361,8 +11099,7 @@ export interface components {
          *
          *     The name, and only the name. A set carries no description and no timings —
          *     the length of a session is the sum of its stations' exam timings, which the
-         *     exam owns — so there is nothing else to write, and the retiring client's
-         *     edit screen asked for a name and a list of stations and nothing more.
+         *     exam owns — so there is nothing else to write.
          *
          *     Whitespace strips to nothing, which is then too short: a set called `"   "`
          *     is an unlabelled row in the list the learner has to keep.
@@ -11373,14 +11110,10 @@ export interface components {
         };
         /**
          * UpdateSitting
-         * @description The sitting edit screen's fields. Absent means "leave it alone", which is
-         *     what the legacy PUT meant too: it sent only what the screen had changed.
+         * @description Fields to change on a sitting. An omitted field is left alone.
          *
-         *     The b2b screen offered a name, a type and a feedback template. This backend
-         *     resolves the template through the programme, so the third of those is
-         *     `programme_id` here and the bound rubric moves with it. `status` is not
-         *     offered: that is the run machine's to move, and a route that could set it
-         *     would let a screen end an examination by editing a name.
+         *     `status` is not offered here: that belongs to the run machine, not this
+         *     route.
          */
         UpdateSitting: {
             /** Mode */
@@ -11422,16 +11155,9 @@ export interface components {
         };
         /**
          * UpdateTrainee
-         * @description The roster edit screen's fields. Absent means "leave it alone", sent means
-         *     "write this", including a null that clears it.
-         *
-         *     Not the address: `email` is what identifies the entry inside the
-         *     organisation (unique per org, and the account link is made against it), so
-         *     editing it is not correcting a typo but re-pointing a person's results. The
-         *     b2b edit screen offered first name, last name and the group; the group is
-         *     `cohort_id` here, and the other half of the legacy's `cohort` string — the
-         *     list a circuit is built from — is a membership row rather than a field, so
-         *     it is set by `PUT /trainee-groups/{id}/members`.
+         * @description Correct a trainee's name or intake. Fields left out are unchanged; a field sent
+         *     as null clears it. The email address cannot be changed here. Group membership is
+         *     set separately via `PUT /trainee-groups/{id}/members`.
          */
         UpdateTrainee: {
             /** Cohort Id */
@@ -11544,11 +11270,8 @@ export interface components {
         Visibility: "public" | "organisation" | "group";
         /**
          * VoiceGrant
-         * @description What the browser needs to join, and nothing more.
-         *
-         *     No agent name and no backend label: those are dispatch details the client
-         *     has no use for, and b2c currently hands the browser a metadata blob it
-         *     simply passes back.
+         * @description What the browser needs to join a room with its patient or tutor. No agent
+         *     name or backend label: those are dispatch details the client has no use for.
          */
         VoiceGrant: {
             /**
@@ -11766,19 +11489,10 @@ export interface components {
          * MediaRead
          * @description One piece of study material.
          *
-         *     `content` is the body — the slide deck, the summary, the article — and it
-         *     is the paid half. It is `None` for a reader who does not hold the exam it
-         *     belongs to, and `locked` says which of the two happened, so the client can
-         *     show the upgrade prompt the retiring app showed rather than an empty page.
-         *
-         *     Everything else is deliberately public: the landing page's article rail and
-         *     a shared link both need a title and a summary without a token.
-         *
-         *     `specialty` and `updated_at` are read out of `content` by the projection
-         *     (`service_reads`) rather than stored in columns of their own. Both are
-         *     fields the authoring payload has always carried and only some kinds use, so
-         *     a column for either would be null for most rows — and a screen that wants
-         *     one should not have to know the document's shape to get it.
+         *     `content` is the paid body — the slide deck, the summary, the article. It
+         *     is `None` for a reader who does not hold the exam it belongs to, and
+         *     `locked` says which happened, so the client can show an upgrade prompt
+         *     rather than an empty page. Everything else — title, summary — is public.
          */
         app__features__media__schemas__MediaRead: {
             /** Content */
@@ -11882,13 +11596,8 @@ export interface components {
          * @description What a browser needs to join a circuit's room, and nothing more.
          *
          *     A candidate taking their place before their station starts, or an examiner
-         *     stepping in to watch. Neither names a recording: the candidate has none yet
-         *     and the examiner never will, which is what separates this from the token
-         *     issued against an attempt.
-         *
-         *     This slice's own shape rather than `voice`'s, even though the two agree
-         *     today: a wire contract belongs to the routes that serve it, and sharing one
-         *     is how two slices come to be unable to change it separately.
+         *     stepping in to watch. Neither names a recording: the candidate has none
+         *     yet and the examiner never will.
          */
         app__features__sittings__schemas__RoomGrant: {
             /**
@@ -13157,6 +12866,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     identity_refresh: {
@@ -13234,6 +12952,15 @@ export interface operations {
             };
             /** @description weak_password */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13517,7 +13244,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description plan_not_available */
+            /** @description plan_not_available, referral_not_found, referral_discount_unavailable */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16398,66 +16125,6 @@ export interface operations {
             };
         };
     };
-    growth_redeem_referral: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RedeemReferral"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReferralRead"];
-                };
-            };
-            /** @description unauthenticated, account_suspended */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description referral_not_found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description referral_already_redeemed */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     results_read_my_result: {
         parameters: {
             query?: never;
@@ -18046,7 +17713,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description circuit_already_ended, circuit_locked, invalid_circuit, trainee_revoked */
+            /** @description circuit_already_ended, circuit_locked, invalid_circuit, trainee_revoked, trainee_not_on_roster */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -18183,7 +17850,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked */
+            /** @description circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked, trainee_not_on_roster */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -21412,7 +21079,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_circuit, trainee_revoked */
+            /** @description invalid_circuit, trainee_revoked, trainee_not_on_roster */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -22,7 +22,6 @@ import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
   issueReferralCode,
   readReferrals,
-  redeemReferral,
   type Referral,
 } from "@/capabilities/account/api";
 import ReferralsInfo from "@/capabilities/account/settings/ReferralsInfo";
@@ -31,12 +30,12 @@ import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShe
 const { b2cFieldLabel, b2cSettingsCardHeaderIcon, b2cSettingsFieldInput } = productTokens;
 
 /**
- * Share a code, and redeem one.
+ * Share your referral code, and see what it has earned.
  *
- * Both halves, which the retiring client never had together: codes could be
- * issued and never redeemed, so a referrer earned nothing and nobody could see
- * why. `redeemed_count` and `earned_pence` are the backend's own tally, not a
- * number this screen adds up.
+ * There is nothing to redeem here: as in b2c, a friend types the code at
+ * checkout (see `PlanPicker`), pays 10% less, and the backend credits the code's
+ * owner once Stripe confirms the payment. `redeemed_count` and `earned_pence`
+ * are the backend's own tally, not a number this screen adds up.
  */
 export default function ReferralsPanel() {
   const referrals = useAsync((signal) => readReferrals(signal), []);
@@ -54,7 +53,6 @@ export default function ReferralsPanel() {
             />
           )}
         </AsyncBoundary>
-        <RedeemCard onRedeemed={referrals.reload} />
       </div>
 
       {showInfo ? (
@@ -123,18 +121,19 @@ function ReferralCodeCard({
       </B2CPanelCardHeader>
       <B2CPanelCardBody className="space-y-4">
         <ModalHelper className="mt-0">
-          Share your code. Redemptions are counted here. The balance is recorded and is not paid out.
+          Share your code. Friends get 10% off at checkout, and you earn £2.50 for each 1-month
+          plan and £5 for each 3- or 6-month plan they buy.
         </ModalHelper>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
-            <p className={b2cFieldLabel}>Recorded balance (not paid out)</p>
+            <p className={b2cFieldLabel}>Earned so far</p>
             <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
               £{(referral.earned_pence / 100).toFixed(2)}
             </p>
           </div>
           <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
-            <p className={b2cFieldLabel}>People who redeemed</p>
+            <p className={b2cFieldLabel}>Purchases with your code</p>
             <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
               {referral.redeemed_count}
             </p>
@@ -181,67 +180,5 @@ function ReferralCodeCard({
         )}
       </B2CPanelCardFooter>
     </B2CPanelCard>
-  );
-}
-
-function RedeemCard({ onRedeemed }: { onRedeemed: () => void }) {
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const handleRedeem = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await redeemReferral(code.trim());
-      setDone(true);
-      setCode("");
-      onRedeemed();
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleRedeem}>
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>
-          <HiOutlineGift className={b2cSettingsCardHeaderIcon} aria-hidden />
-          Somebody referred you?
-        </B2CPanelCardHeader>
-        <B2CPanelCardBody className="space-y-4">
-          <ModalHelper className="mt-0">
-            Enter their code once. It is counted against their referrals when you do.
-          </ModalHelper>
-          <div>
-            <label htmlFor="redeem-code" className={b2cFieldLabel}>
-              Referral code
-            </label>
-            <input
-              id="redeem-code"
-              className={`mt-1.5 ${b2cSettingsFieldInput}`}
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              placeholder="Their code"
-            />
-            {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
-            {done ? (
-              <p className="mt-1 text-osce-meta text-osce-success-text">
-                Redeemed. Thank them for us.
-              </p>
-            ) : null}
-          </div>
-        </B2CPanelCardBody>
-        <B2CPanelCardFooter>
-          <ModalPrimaryButton type="submit" disabled={busy || code.trim().length === 0}>
-            {busy ? "Redeeming…" : "Redeem code"}
-          </ModalPrimaryButton>
-        </B2CPanelCardFooter>
-      </B2CPanelCard>
-    </form>
   );
 }

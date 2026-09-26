@@ -107,7 +107,7 @@ Protocol and schema work in `peer_practice`, none of it started:
 | — | Peer practice recording, transcript and AI feedback | Decide scope |
 | — | Ortho CV upload | No decision on record |
 | C-1 | **CASC is marked with the RCGP GP prompt**, on both scoring paths. No CASC marking prompt exists, and the engine maps `casc-rcpsych-v1` to the SCA prompt | This is live behaviour, so fixing it changes feedback real users are reading. It needs a prompt, plus a decision about existing feedback |
-| B-3 | Referral discounts: b2c swaps to a discounted price id and credits the referrer a flat amount. Not ported | Codes are paused in the product copy. The price-id lookup already treats a discounted price as its own plan row |
+| B-3 | Referral discounts are built (checkout swaps to the `<plan>_referral` row, the webhook credits £2.50 / £5), but no environment has the 10%-off Stripe prices or `_referral` plan rows yet | Create them per exam after the code deploys; before that, a code at checkout is refused `referral_discount_unavailable` |
 | R-2 | Sign-off requires an outcome and a rationale; the proposal also wanted full "readiness" for a pass or fail, and no readiness concept exists | Decide whether readiness is a real gate or drop it from the invariant |
 | T-2 | A templated station contributes nothing to the tutor's material index: its blocks are all patient-private or expected answers | Needs a template block role that means "reading material" before any code |
 | M-2 | Generation uses b2c's prompts but `gpt-4o-mini` / `gpt-4o`, not b2c's o3/Claude Instructor stack. Podcast audio and slide video rendering are not ported | Decide whether model parity and the AV pipeline are wanted |

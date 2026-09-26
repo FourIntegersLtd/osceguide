@@ -58,12 +58,20 @@ export function listPlans(signal?: AbortSignal) {
  * Nothing is granted by this call. Access arrives when Stripe's webhook says
  * the money did, which is why the return page confirms rather than assumes.
  */
-export function startCheckout(planCode: string): Promise<{ checkout_url: string }> {
+/**
+ * Start paying for a plan. A friend's referral code, when given, makes the
+ * backend charge the plan's 10%-off price and credit the friend once paid.
+ */
+export function startCheckout(
+  planCode: string,
+  referralCode: string | null = null,
+): Promise<{ checkout_url: string }> {
   return platformRequest<components["schemas"]["CheckoutStarted"]>("/api/v1/billing/checkout", {
     method: "POST",
-    body: { plan_code: planCode },
-    // A double-submitted button is one intent to buy, not two.
-    idempotencyKey: `checkout:${planCode}`,
+    body: { plan_code: planCode, referral_code: referralCode },
+    // A double-submitted button is one intent to buy, not two. The code is in
+    // the key so fixing a mistyped code is a new attempt, not the old refusal.
+    idempotencyKey: `checkout:${planCode}:${referralCode ?? ""}`,
   });
 }
 
@@ -111,13 +119,6 @@ export function readReferrals(signal?: AbortSignal): Promise<Referral> {
 /** One code per person; asking again returns the one they have. */
 export function issueReferralCode(): Promise<Referral> {
   return platformRequest<Referral>("/api/v1/me/referral-code", { method: "POST" });
-}
-
-export function redeemReferral(code: string): Promise<void> {
-  return platformRequest<void>("/api/v1/me/referrals/redeem", {
-    method: "POST",
-    body: { code },
-  });
 }
 
 export function readTutorMemory(signal?: AbortSignal): Promise<TutorMemory> {

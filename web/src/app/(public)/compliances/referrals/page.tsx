@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "OSCE Guide - Referral Program Terms & Conditions",
   description:
-    "Review the terms and conditions for the OSCE Guide Referral Program, including eligibility, how a code is shared, and what the recorded balance means.",
+    "Review the terms and conditions for the OSCE Guide Referral Program, including eligibility, the 10% discount for friends, and the rewards referrers earn.",
   alternates: {
     canonical: "https://osceguide.com/compliances/referrals",
   },
@@ -19,7 +19,7 @@ export default function ReferralsPolicy() {
         <p className="text-osce-body text-osce-ink-600">
           Effective Date: January 1, 2025
           <br />
-          Last Updated: September 24, 2026
+          Last Updated: September 26, 2026
         </p>
       </div>
 
@@ -44,8 +44,8 @@ export default function ReferralsPolicy() {
               personal, non-commercial use
             </li>
             <li>
-              A bank account is not required. This programme does not pay
-              rewards by bank transfer
+              You do not need to give OSCE Guide bank details to take part.
+              Rewards are settled with you directly by the OSCE Guide team
             </li>
           </ul>
         </section>
@@ -59,31 +59,34 @@ export default function ReferralsPolicy() {
             </li>
             <li>Share your referral code with friends and colleagues</li>
             <li>
-              When someone redeems your code, that redemption is counted on
-              your referrals page
+              A friend who enters your code at checkout pays 10% less than the
+              standard price of the plan they choose
             </li>
             <li>
-              A balance in pence may be recorded against those redemptions. It
-              is a tally on your account, not a sum that will be paid out, and
-              it does not change the price at checkout
+              Your code can be used any number of times, by anyone but you
+            </li>
+            <li>
+              Each completed purchase made with your code earns you £2.50 for a
+              1-month plan, or £5 for a 3-month or 6-month plan. A reward is
+              earned only once the payment has gone through
             </li>
           </ul>
         </section>
 
         <section id="reward-payments">
-          <h2 className="text-osce-title font-semibold mb-6">4. Recorded balance</h2>
+          <h2 className="text-osce-title font-semibold mb-6">4. Rewards</h2>
           <ul className="list-disc list-inside space-y-3 text-osce-ink-700 ml-6">
             <li>
-              Your referrals page shows a code, how many people redeemed it,
-              and a recorded balance
+              Your referrals page shows your code, how many purchases were made
+              with it, and the total you have earned
             </li>
             <li>
-              That balance is not paid by bank transfer, and OSCE Guide does
-              not store bank details for this programme
+              The OSCE Guide team settles earned rewards with you directly. OSCE
+              Guide does not store bank details for this programme
             </li>
             <li>
-              Nothing on this page is a promise that the balance will be paid
-              in the future
+              A reward may be withheld for a purchase that is refunded, disputed
+              or found to breach these Terms
             </li>
           </ul>
         </section>
@@ -111,9 +114,7 @@ export default function ReferralsPolicy() {
           </h2>
           <ul className="list-disc list-inside space-y-3 text-osce-ink-700 ml-6">
             <li>
-              A recorded referral balance is not a payment. If a payment
-              programme is introduced later, tax on money you actually receive
-              is your responsibility
+              Any tax due on rewards you receive is your responsibility
             </li>
             <li>
               OSCE Guide is not responsible for your personal tax reporting or
@@ -151,8 +152,8 @@ export default function ReferralsPolicy() {
               securely in accordance with our Privacy Policy
             </li>
             <li>
-              Bank details are not collected for referrals, because rewards are
-              not transferred
+              Bank details are not collected in the app for referrals. Rewards
+              are settled with you directly
             </li>
           </ul>
         </section>
