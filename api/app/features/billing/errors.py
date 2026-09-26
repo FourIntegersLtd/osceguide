@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from app.core.errors import AppError, Conflict, InvalidInput, NotFound, Unavailable
 
+# Re-exported: checkout refuses a referral code with growth's own error, and the
+# router may only name this slice's errors.
+from app.features.growth.errors import ReferralNotFound as ReferralNotFound
+
 
 class UnknownPlanError(NotFound):
     """A charged payment with nothing to grant.
@@ -71,6 +75,14 @@ class PlanNotAvailable(NotFound):
 
     code = "plan_not_available"
     default_message = "That plan is not available"
+
+
+class ReferralDiscountUnavailable(NotFound):
+    """The code is fine, but this plan has no referral price to switch to. Refused rather than
+    charged in full: the customer typed a code expecting 10% off."""
+
+    code = "referral_discount_unavailable"
+    default_message = "That plan has no referral discount"
 
 
 class CheckoutFailed(Unavailable):

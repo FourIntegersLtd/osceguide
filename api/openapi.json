@@ -4210,8 +4210,8 @@
               "programme_required",
               "queue_entry_not_found",
               "receipt_not_found",
-              "referral_already_redeemed",
               "referral_code_taken",
+              "referral_discount_unavailable",
               "referral_not_found",
               "referral_not_redeemed",
               "result_not_found",
@@ -8047,6 +8047,17 @@
               }
             ],
             "title": "Exam Code"
+          },
+          "referral_amount_pence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Amount Pence"
           }
         },
         "required": [
@@ -10379,21 +10390,6 @@
         "title": "RecordManualPayment",
         "type": "object"
       },
-      "RedeemReferral": {
-        "properties": {
-          "code": {
-            "maxLength": 32,
-            "minLength": 1,
-            "title": "Code",
-            "type": "string"
-          }
-        },
-        "required": [
-          "code"
-        ],
-        "title": "RedeemReferral",
-        "type": "object"
-      },
       "ReferralAdminRead": {
         "description": "One referral, as the person settling it needs to see it.\n\nEmails rather than ids: a uuid is not on a bank statement.",
         "properties": {
@@ -12354,6 +12350,18 @@
             "minLength": 1,
             "title": "Plan Code",
             "type": "string"
+          },
+          "referral_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Code"
           }
         },
         "required": [
@@ -18119,7 +18127,7 @@
     },
     "/api/v1/billing/checkout": {
       "post": {
-        "description": "Begin paying for a plan. The client names a plan code, never a price or an amount.",
+        "description": "Begin paying for a plan, at 10% off with somebody's referral code. The client names a plan\ncode, never a price or an amount.",
         "operationId": "billing_start_checkout",
         "requestBody": {
           "content": {
@@ -18164,9 +18172,11 @@
                 }
               }
             },
-            "description": "plan_not_available",
+            "description": "plan_not_available, referral_not_found, referral_discount_unavailable",
             "x-codes": [
-              "plan_not_available"
+              "plan_not_available",
+              "referral_not_found",
+              "referral_discount_unavailable"
             ]
           },
           "422": {
@@ -22848,93 +22858,6 @@
           }
         ],
         "summary": "Read My Referrals",
-        "tags": [
-          "growth"
-        ]
-      }
-    },
-    "/api/v1/me/referrals/redeem": {
-      "post": {
-        "description": "Redeem a referral code, crediting the referrer.",
-        "operationId": "growth_redeem_referral",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RedeemReferral"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReferralRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unauthenticated, account_suspended",
-            "x-codes": [
-              "unauthenticated",
-              "account_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "referral_not_found",
-            "x-codes": [
-              "referral_not_found"
-            ]
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "referral_already_redeemed",
-            "x-codes": [
-              "referral_already_redeemed"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Redeem Referral",
         "tags": [
           "growth"
         ]

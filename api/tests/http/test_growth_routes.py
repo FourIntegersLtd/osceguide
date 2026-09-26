@@ -154,9 +154,7 @@ async def test_you_cannot_refer_yourself(client: AsyncClient, db_session: AsyncS
     from app.features.growth.errors import ReferralNotFound
 
     with pytest.raises(ReferralNotFound):
-        await service.redeem_code(
-            db_session, code=code, referred_user_id=user.id, earned_pence=500, now=now()
-        )
+        await service.check_code_for_purchase(db_session, code=code, buyer_user_id=user.id)
 
 
 async def test_a_signup_is_credited_to_the_partner_who_sent_them(
@@ -200,41 +198,49 @@ async def test_signing_up_without_a_partner_credits_nobody(client: AsyncClient, 
     assert response.json() is None
 
 
-async def test_a_referral_code_can_be_redeemed(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
-    """Codes were issued and there was no route to redeem one, so `earned_pence`
-    could only ever be zero."""
-    referrer = await make_actor("referrer@example.com")
-    issued = await client.post("/api/v1/me/referral-code", headers=bearer(referrer))
-    code = issued.json()["code"]
-
-    friend = await make_actor("friend@example.com")
-    redeemed = await client.post("/api/v1/me/referrals/redeem", json={"code": code}, headers=bearer(friend))
-    assert redeemed.status_code == 200, redeemed.text
+async def test_a_code_keeps_working_after_somebody_buys_with_it(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """As in b2c, a code is shared, not spent. Each purchase made with it credits
+    its owner: £2.50 for one month, £5 for three."""
+    referrer = await make_actor("reusable-referrer@example.com")
+    code = (await client.post("/api/v1/me/referral-code", headers=bearer(referrer))).json()["code"]
+    for friend_email, plan_duration_days in (("friend-a@example.com", 30), ("friend-b@example.com", 90)):
+        await make_actor(friend_email)
+        friend = await identity_repo.user_by_email(db_session, friend_email)
+        assert friend is not None
+        await service.check_code_for_purchase(db_session, code=code.lower(), buyer_user_id=friend.id)
+        credited = await service.credit_referral_purchase(
+            db_session,
+            code=code,
+            referred_user_id=friend.id,
+            plan_duration_days=plan_duration_days,
+            now=now(),
+        )
+        assert credited is True
+    await db_session.flush()
 
     mine = await client.get("/api/v1/me/referrals", headers=bearer(referrer))
-    assert mine.json()["redeemed_count"] == 1
-    assert mine.json()["earned_pence"] > 0
+    assert mine.json() == {"code": code, "redeemed_count": 2, "earned_pence": 750}
 
 
-async def test_a_code_cannot_be_redeemed_twice(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
-    referrer = await make_actor("referrer2@example.com")
-    code = (await client.post("/api/v1/me/referral-code", headers=bearer(referrer))).json()["code"]
-    first_friend = await make_actor("friend2a@example.com")
-    second_friend = await make_actor("friend2b@example.com")
-
-    await client.post("/api/v1/me/referrals/redeem", json={"code": code}, headers=bearer(first_friend))
-    again = await client.post(
-        "/api/v1/me/referrals/redeem", json={"code": code}, headers=bearer(second_friend)
-    )
-    assert again.status_code == 409
-    assert again.json()["code"] == "referral_already_redeemed"
-
-
-async def test_redeeming_your_own_code_is_not_a_referral(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_buying_with_your_own_code_credits_nobody(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Checked again at payment, not only at checkout: the credit must never
+    depend on the web having asked first."""
     token = await make_actor("selfref@example.com")
     code = (await client.post("/api/v1/me/referral-code", headers=bearer(token))).json()["code"]
-    response = await client.post("/api/v1/me/referrals/redeem", json={"code": code}, headers=bearer(token))
-    assert response.status_code == 404
+    user = await identity_repo.user_by_email(db_session, "selfref@example.com")
+    assert user is not None
+
+    credited = await service.credit_referral_purchase(
+        db_session, code=code, referred_user_id=user.id, plan_duration_days=30, now=now()
+    )
+
+    assert credited is False
+    mine = await client.get("/api/v1/me/referrals", headers=bearer(token))
+    assert mine.json()["redeemed_count"] == 0
 
 
 async def test_a_partner_reporter_can_be_appointed_and_reads_the_funnel(
@@ -381,7 +387,9 @@ async def _a_redeemed_referral(client: AsyncClient, db_session: AsyncSession, ma
     await make_actor(f"{tag}-referee@example.com")
     referee = await identity_repo.user_by_email(db_session, f"{tag}-referee@example.com")
     assert referee is not None
-    await service.redeem_code(db_session, code=code, referred_user_id=referee.id, earned_pence=500, now=now())
+    await service.credit_referral_purchase(
+        db_session, code=code, referred_user_id=referee.id, plan_duration_days=90, now=now()
+    )
     await db_session.flush()
     return code
 

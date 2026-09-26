@@ -14,6 +14,9 @@ class PlanRead(BaseModel):
     currency: str
     duration_days: int
     exam_code: str | None
+    # What this plan costs with a referral code, or None when it has no
+    # referral discount. The discounted plan is not listed on its own.
+    referral_amount_pence: int | None = None
 
 
 class WebhookResult(BaseModel):
@@ -47,6 +50,8 @@ class StartCheckout(BaseModel):
     """Which plan to buy. A code, never a price: the plan row owns the price."""
 
     plan_code: str = Field(min_length=1, max_length=32)
+    # Somebody else's referral code, for 10% off. Checked before Stripe is called.
+    referral_code: str | None = Field(default=None, max_length=32)
 
 
 class CheckoutStarted(BaseModel):

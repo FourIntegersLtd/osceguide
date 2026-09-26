@@ -76,3 +76,9 @@ def test_other_events_are_acknowledged_and_ignored(event_type: str) -> None:
     """Acknowledged, not errored: returning non-2xx would make Stripe retry an
     event we will never act on."""
     assert not domain.grants_access(event_type)
+
+
+def test_a_referral_discount_is_named_after_its_full_price_plan() -> None:
+    assert domain.referral_plan_code("sca_1m") == "sca_1m_referral"
+    assert domain.is_referral_plan("sca_1m_referral")
+    assert not domain.is_referral_plan("sca_1m")

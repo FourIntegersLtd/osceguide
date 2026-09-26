@@ -18,6 +18,23 @@ DEFAULT_PLAN_DAYS = {"one_month": 30, "three_month": 90, "six_month": 180}
 
 ACCESS_GRANTING_EVENTS = frozenset({"checkout.session.completed"})
 
+# A referral discount is its own plan row: the same exam and duration at 10% off,
+# on its own Stripe price, coded as the full-price plan plus this suffix (so
+# `sca_1m` is discounted by `sca_1m_referral`). A row rather than a Stripe coupon
+# because settlement already turns any price id into a plan, so a discounted
+# payment grants access exactly as a full-price one does.
+REFERRAL_PLAN_SUFFIX = "_referral"
+
+
+def referral_plan_code(plan_code: str) -> str:
+    """The code of the plan that sells `plan_code` at the referral discount."""
+    return f"{plan_code}{REFERRAL_PLAN_SUFFIX}"
+
+
+def is_referral_plan(plan_code: str) -> bool:
+    """Whether this plan is a referral discount, which is bought only with a code."""
+    return plan_code.endswith(REFERRAL_PLAN_SUFFIX)
+
 
 class UnknownPlan(LookupError):
     """A price id with no plan. Reached only after the customer has been charged, so it must

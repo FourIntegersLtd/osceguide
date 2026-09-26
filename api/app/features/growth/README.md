@@ -28,6 +28,11 @@ so the rules are strict and nothing is inferred.
 - Conversion is a share of the stage before, which is the only reading that
   shows where people are lost.
 - You cannot refer yourself.
+- A referral code works as it did in b2c: reusable, by anybody but its owner, as
+  often as they buy. It is typed at checkout, where it swaps the plan for its
+  10%-off twin (see `billing`), and its owner is credited only when that payment
+  arrives: £2.50 for a one-month plan, £5 for anything longer. Each such purchase
+  is its own redeemed row, coded `<CODE>-<suffix>`, which the payout queue lists.
 
 ## Routes
 | Method | Path | Auth | Notes |
@@ -36,7 +41,6 @@ so the rules are strict and nothing is inferred.
 | GET | `/api/v1/growth/partners/{partner}/funnel` | reporter for that partner | `not_a_partner_reporter` (403) |
 | GET | `/api/v1/growth/partners/{partner}/ref-ids` | reporter for that partner | the references to put in their links, one per pilot exam |
 | POST | `/api/v1/growth/partners/{partner}/reporters` | platform admin | |
-| POST | `/api/v1/me/referrals/redeem` | bearer | `referral_not_found` (404), `referral_already_redeemed` (409) |
 | POST | `/api/v1/me/referral-code` | bearer | idempotent |
 | GET | `/api/v1/me/referrals` | bearer | |
 

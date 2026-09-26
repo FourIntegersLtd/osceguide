@@ -44,13 +44,6 @@ class ReferralNotFound(NotFound):
     default_message = "No such referral code"
 
 
-class ReferralAlreadyRedeemed(Conflict):
-    """The code has already been used by somebody else and cannot be used again."""
-
-    code = "referral_already_redeemed"
-    default_message = "That referral code has already been used"
-
-
 class ReferralNotRedeemed(Conflict):
     """A code nobody has used has no payout to record.
 

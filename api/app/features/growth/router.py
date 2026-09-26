@@ -108,20 +108,6 @@ async def add_reporter(
 
 
 @router.post(
-    "/me/referrals/redeem",
-    response_model=schemas.ReferralRead,
-    responses=error_responses(Unauthenticated, errors.ReferralNotFound, errors.ReferralAlreadyRedeemed),
-)
-async def redeem_referral(
-    body: schemas.RedeemReferral, principal: CurrentPrincipal, session: Session, clock: ClockDep
-) -> schemas.ReferralRead:
-    """Redeem a referral code, crediting the referrer."""
-    return await service.redeem_code(
-        session, code=body.code, referred_user_id=principal.user_id, now=clock.now()
-    )
-
-
-@router.post(
     "/me/referral-code",
     response_model=schemas.ReferralRead,
     responses=error_responses(Unauthenticated),

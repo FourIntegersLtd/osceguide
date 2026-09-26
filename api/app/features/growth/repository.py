@@ -122,9 +122,14 @@ async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> Pa
 # --- referrals -------------------------------------------------------------
 
 
-async def referral_by_code(session: AsyncSession, code: str) -> Referral | None:
-    """The referral a code names, matched case-insensitively."""
-    stmt = select(Referral).where(Referral.code == code.strip().upper())
+async def shareable_code(session: AsyncSession, code: str) -> Referral | None:
+    """The row for a code somebody shares, matched case-insensitively.
+
+    Only an unredeemed row counts. Each purchase made with a code is its own
+    redeemed row (see `record_redemption`), and one of those is a record of a
+    sale, not a code anyone can use.
+    """
+    stmt = select(Referral).where(Referral.code == code.strip().upper(), Referral.redeemed_at.is_(None))
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
@@ -143,24 +148,31 @@ async def referrals_for(session: AsyncSession, user_id: uuid.UUID) -> list[Refer
     return list((await session.execute(stmt)).scalars())
 
 
-async def redeem(
+async def record_redemption(
     session: AsyncSession,
-    referral_id: uuid.UUID,
     *,
+    referrer_user_id: uuid.UUID,
+    redemption_code: str,
     referred_user_id: uuid.UUID,
     earned_pence: int,
     at: datetime,
-) -> None:
-    """Mark a referral redeemed, but only if it has not already been.
+) -> Referral:
+    """Store one purchase made with somebody's code, as a redeemed row the payout queue lists.
 
-    The `redeemed_at IS NULL` guard in the WHERE clause is what stops two
-    concurrent redemptions of the same code both succeeding.
+    The shared code itself stays unredeemed so it keeps working. `redemption_code` is that
+    code with a suffix, because `referrals.code` is unique; the importer stores b2c's
+    redemptions the same way.
     """
-    await session.execute(
-        update(Referral)
-        .where(Referral.id == referral_id, Referral.redeemed_at.is_(None))
-        .values(referred_user_id=referred_user_id, redeemed_at=at, earned_pence=earned_pence)
+    redemption = Referral(
+        referrer_user_id=referrer_user_id,
+        code=redemption_code,
+        referred_user_id=referred_user_id,
+        redeemed_at=at,
+        earned_pence=earned_pence,
     )
+    session.add(redemption)
+    await session.flush()
+    return redemption
 
 
 async def redeemed_referrals_page(

@@ -24,10 +24,9 @@ log = get_logger(__name__)
 
 REFERRAL_CODE_BYTES = 4
 
-# What a referrer earns when somebody redeems their code. A constant rather
-# than a database value: it is the same for everyone, so changing it is a
-# deploy, not a data change.
-REFERRAL_REWARD_PENCE = 500
+# The random part of a redemption's own code, and the column's width.
+REDEMPTION_SUFFIX_BYTES = 3
+REFERRAL_CODE_MAX_LENGTH = 32
 
 
 async def record_arrival(
@@ -154,32 +153,52 @@ async def read_my_referrals(session: AsyncSession, user_id: uuid.UUID) -> Referr
     return _referral_read(code, referrals)
 
 
-async def redeem_code(
+async def check_code_for_purchase(session: AsyncSession, *, code: str, buyer_user_id: uuid.UUID) -> str:
+    """Confirm a code may discount this person's purchase, and return it normalised.
+
+    Called by billing before a discounted checkout starts. As in b2c, a code is reusable:
+    anybody but its owner may buy with it, as often as they buy. Refused as `ReferralNotFound`
+    when no shareable code matches or the code is the buyer's own.
+    """
+    shared = await repository.shareable_code(session, code)
+    if shared is None or shared.referrer_user_id == buyer_user_id:
+        # Referring yourself is not a referral, and saying "that is your own
+        # code" would confirm to a guesser that the code exists.
+        raise errors.ReferralNotFound()
+    return shared.code
+
+
+async def credit_referral_purchase(
     session: AsyncSession,
     *,
     code: str,
     referred_user_id: uuid.UUID,
+    plan_duration_days: int,
     now: datetime,
-    earned_pence: int = REFERRAL_REWARD_PENCE,
-) -> ReferralRead:
-    """Redeem a code for the person who was referred, crediting the referrer.
+) -> bool:
+    """Credit the owner of `code` for a purchase that has just been paid for.
 
-    Refused if the code does not exist, names the person redeeming it, or has
-    already been used.
+    Called by billing's webhook in the payment's own transaction, so a credit exists exactly
+    when the payment does. Returns False, and credits nobody, if the code no longer resolves or
+    is the buyer's own. That is logged rather than raised: the customer has paid, and a
+    referral problem must never stop them getting what they bought.
     """
-    referral = await repository.referral_by_code(session, code)
-    if referral is None:
-        raise errors.ReferralNotFound()
-    if referral.referrer_user_id == referred_user_id:
-        # Referring yourself is not a referral.
-        raise errors.ReferralNotFound()
-    if referral.redeemed_at is not None:
-        raise errors.ReferralAlreadyRedeemed()
-    await repository.redeem(
-        session, referral.id, referred_user_id=referred_user_id, earned_pence=earned_pence, at=now
+    shared = await repository.shareable_code(session, code)
+    if shared is None or shared.referrer_user_id == referred_user_id:
+        log.warning("a paid referral checkout named a code that no longer credits anyone", code=code)
+        return False
+    # The shared code plus a random suffix: `referrals.code` is unique, and the
+    # suffix keeps the redemption readable next to the code it came from.
+    redemption_suffix = secrets.token_hex(REDEMPTION_SUFFIX_BYTES).upper()
+    await repository.record_redemption(
+        session,
+        referrer_user_id=shared.referrer_user_id,
+        redemption_code=f"{shared.code}-{redemption_suffix}"[:REFERRAL_CODE_MAX_LENGTH],
+        referred_user_id=referred_user_id,
+        earned_pence=domain.referral_reward_pence(plan_duration_days),
+        at=now,
     )
-    referrals = await repository.referrals_for(session, referral.referrer_user_id)
-    return _referral_read("", referrals)
+    return True
 
 
 def _referral_read(code: str, referrals: list) -> ReferralRead:  # type: ignore[type-arg]

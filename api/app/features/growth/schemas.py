@@ -53,10 +53,6 @@ class AcquisitionRead(BaseModel):
     acquired_at: datetime
 
 
-class RedeemReferral(BaseModel):
-    code: str = Field(min_length=1, max_length=32)
-
-
 class AddReporter(BaseModel):
     email: str = Field(min_length=3, max_length=320)
 

@@ -984,7 +984,9 @@ UNIQUE `(partner, email)`.
 ### `referrals`
 `referrer_user_id` → `users.id` CASCADE (indexed), `code varchar(32) not null unique`,
 `referred_user_id` → `users.id` SET NULL, `redeemed_at timestamptz null`,
-`earned_pence int not null default 0`. Settlement happens outside the product;
+`earned_pence int not null default 0`. A row with no `redeemed_at` is a
+person's shareable code, reusable as in b2c; each purchase made with it is its
+own redeemed row coded `<CODE>-<suffix>`. Settlement happens outside the product;
 these four are the record of whether it has: `payout_status varchar(16) not
 null default 'unpaid'` (indexed with `redeemed_at IS NOT NULL`, since the
 settlement queue never asks about a code nobody has used), `paid_at

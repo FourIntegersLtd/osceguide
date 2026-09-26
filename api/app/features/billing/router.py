@@ -108,7 +108,13 @@ async def read_receipt_document(
     "/billing/checkout",
     response_model=schemas.CheckoutStarted,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.PlanNotAvailable, errors.CheckoutFailed),
+    responses=error_responses(
+        Unauthenticated,
+        errors.PlanNotAvailable,
+        errors.ReferralNotFound,
+        errors.ReferralDiscountUnavailable,
+        errors.CheckoutFailed,
+    ),
 )
 async def start_checkout(
     body: schemas.StartCheckout,
@@ -117,12 +123,14 @@ async def start_checkout(
     settings: SettingsDep,
     checkout: Annotated[CheckoutSessions, Depends(service_checkout.get_checkout)],
 ) -> schemas.CheckoutStarted:
-    """Begin paying for a plan. The client names a plan code, never a price or an amount."""
+    """Begin paying for a plan, at 10% off with somebody's referral code. The client names a plan
+    code, never a price or an amount."""
     url = await service_checkout.start_checkout(
         session,
         user_id=principal.user_id,
         email=principal.email,
         plan_code=body.plan_code,
+        referral_code=body.referral_code,
         checkout=checkout,
         settings=settings,
     )

@@ -108,3 +108,17 @@ def test_an_empty_funnel_does_not_divide_by_zero() -> None:
     funnel = domain.funnel(arrivals=0, signups=0, purchases=0)
     assert funnel.signup_rate == 0.0
     assert funnel.purchase_rate == 0.0
+
+
+# --- referral rewards -------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("plan_duration_days", "reward_pence"),
+    [(30, 250), (90, 500), (180, 500)],
+)
+def test_a_referrer_earns_what_b2c_paid_for_each_plan_length(
+    plan_duration_days: int, reward_pence: int
+) -> None:
+    """b2c paid £2.50 for a one-month purchase and £5 for three or six months."""
+    assert domain.referral_reward_pence(plan_duration_days) == reward_pence

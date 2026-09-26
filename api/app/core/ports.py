@@ -49,9 +49,19 @@ class CheckoutSessions(Protocol):
     """
 
     async def create(
-        self, *, price_id: str, customer_email: str, success_url: str, cancel_url: str, client_reference: str
+        self,
+        *,
+        price_id: str,
+        customer_email: str,
+        success_url: str,
+        cancel_url: str,
+        client_reference: str,
+        referral_code: str | None,
     ) -> str:
         """Start a checkout and return the URL to send the customer to.
+
+        `referral_code` rides on the session so the webhook can credit its owner once the
+        payment arrives; None for a full-price checkout.
 
         Raises `CheckoutUnavailable` when the processor cannot be reached or
         refuses; never returns a URL it is not sure of.

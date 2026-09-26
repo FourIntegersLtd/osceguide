@@ -391,6 +391,7 @@ class FakeCheckoutSessions:
         success_url: str,
         cancel_url: str,
         client_reference: str,
+        referral_code: str | None = None,
     ) -> str:
         from app.core.ports import CheckoutUnavailable
 
@@ -400,6 +401,7 @@ class FakeCheckoutSessions:
                 "customer_email": customer_email,
                 "success_url": success_url,
                 "cancel_url": cancel_url,
+                "referral_code": referral_code or "",
                 "client_reference": client_reference,
             }
         )

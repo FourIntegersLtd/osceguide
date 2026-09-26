@@ -129,3 +129,21 @@ def normalise_payout_status(payout_status: str) -> str:
     if key not in PAYOUT_STATUSES:
         raise ValueError(f"A payout is {' or '.join(PAYOUT_STATUSES)}, not {payout_status!r}.")
     return key
+
+
+# --- referral rewards -------------------------------------------------------
+
+# Oracle: b2c `payment_service._update_user_subscription`. A referrer earns
+# £2.50 when their code buys a one-month plan and £5 when it buys anything
+# longer. Constants rather than database values: the same for everyone, so a
+# change is a deploy, not a data change.
+ONE_MONTH_PLAN_DAYS = 30
+ONE_MONTH_REFERRAL_REWARD_PENCE = 250
+LONGER_PLAN_REFERRAL_REWARD_PENCE = 500
+
+
+def referral_reward_pence(plan_duration_days: int) -> int:
+    """What a referrer earns when their code buys a plan lasting this many days."""
+    if plan_duration_days <= ONE_MONTH_PLAN_DAYS:
+        return ONE_MONTH_REFERRAL_REWARD_PENCE
+    return LONGER_PLAN_REFERRAL_REWARD_PENCE

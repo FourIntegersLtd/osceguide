@@ -35,6 +35,7 @@ class StripeCheckout:
         success_url: str,
         cancel_url: str,
         client_reference: str,
+        referral_code: str | None,
     ) -> str:
         """Start a Stripe checkout session for one price and return its URL.
 
@@ -60,6 +61,10 @@ class StripeCheckout:
             # on the session object verbatim.
             "metadata[price_id]": price_id,
         }
+        if referral_code:
+            # Echoed back on the completed session like the price, so the
+            # webhook knows whose code bought this and whom to credit.
+            form["metadata[referral_code]"] = referral_code
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
                 response = await client.post(STRIPE_CHECKOUT_URL, data=form, auth=(self._secret_key, ""))

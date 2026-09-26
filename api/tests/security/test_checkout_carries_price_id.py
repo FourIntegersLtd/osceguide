@@ -36,7 +36,40 @@ async def test_the_checkout_form_sends_the_price_id_as_metadata(monkeypatch: pyt
         success_url="https://app.test/ok",
         cancel_url="https://app.test/cancel",
         client_reference="ref-1",
+        referral_code=None,
     )
 
     assert sent["metadata[price_id]"] == ["price_123"]
     assert sent["line_items[0][price]"] == ["price_123"]
+    # A full-price checkout credits nobody, so it carries no code.
+    assert "metadata[referral_code]" not in sent
+
+
+async def test_a_referral_checkout_carries_its_code_for_the_webhook(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The webhook credits the referrer from `metadata.referral_code`. Without it
+    on the form, every discounted sale would credit nobody."""
+    sent: dict[str, list[str]] = {}
+
+    def stripe(request: httpx.Request) -> httpx.Response:
+        sent.update(parse_qs(request.content.decode()))
+        return httpx.Response(200, json={"url": "https://checkout.stripe.test/c/pay"})
+
+    real_client = httpx.AsyncClient
+
+    def fake_client(*args: object, **kwargs: object) -> httpx.AsyncClient:
+        kwargs["transport"] = httpx.MockTransport(stripe)
+        return real_client(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(checkout.httpx, "AsyncClient", fake_client)
+
+    await checkout.StripeCheckout("sk_test_x").create(
+        price_id="price_discounted",
+        customer_email="buyer@example.com",
+        success_url="https://app.test/ok",
+        cancel_url="https://app.test/cancel",
+        client_reference="ref-1",
+        referral_code="FRIEND42",
+    )
+
+    assert sent["metadata[referral_code]"] == ["FRIEND42"]
+    assert sent["line_items[0][price]"] == ["price_discounted"]

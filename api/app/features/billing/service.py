@@ -13,6 +13,7 @@ from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.features.billing import domain, errors, repository, signature
 from app.features.billing.service_settlement import _as_plans, settle_payment
+from app.features.growth import service as growth
 from app.features.identity import service as identity
 
 log = get_logger(__name__)
@@ -149,9 +150,28 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
         now=now,
     )
 
+    # The referral credit, in the same transaction as the payment, so it exists
+    # exactly when the payment does. Only a discounted plan earns one: that is
+    # the proof the checkout went through a code check (`service_checkout`).
+    referral_code = str((checkout_payload.get("metadata") or {}).get("referral_code") or "").strip()
+    if referral_code and domain.is_referral_plan(plan_row.code):
+        await growth.credit_referral_purchase(
+            session,
+            code=referral_code,
+            referred_user_id=user.id,
+            plan_duration_days=plan_row.duration_days,
+            now=now,
+        )
+
 
 async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
-    """Every plan on sale, as plain dicts the router turns into `schemas.PlanRead`."""
+    """Every plan on sale, as plain dicts the router turns into `schemas.PlanRead`.
+
+    A referral discount is not listed as a plan of its own. Its price rides on the full-price
+    plan as `referral_amount_pence`, so the pricing page can show what a code would save.
+    """
+    plans = await repository.active_plans(session)
+    referral_prices = {plan.code: plan.amount_pence for plan in plans if domain.is_referral_plan(plan.code)}
     return [
         {
             "code": plan.code,
@@ -159,8 +179,10 @@ async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
             "currency": plan.currency,
             "duration_days": plan.duration_days,
             "exam_code": plan.exam_code,
+            "referral_amount_pence": referral_prices.get(domain.referral_plan_code(plan.code)),
         }
-        for plan in await repository.active_plans(session)
+        for plan in plans
+        if not domain.is_referral_plan(plan.code)
     ]
 
 

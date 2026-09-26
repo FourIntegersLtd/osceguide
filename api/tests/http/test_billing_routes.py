@@ -449,3 +449,215 @@ async def test_a_processor_that_is_down_says_try_again(
     assert response.status_code == 503
     assert response.json()["code"] == "checkout_failed"
     assert "stripe is down" not in response.text
+
+
+# --- referral discounts -----------------------------------------------------
+
+
+async def a_plan_with_a_referral_discount(db_session: AsyncSession) -> None:
+    """The full-price plan, plus its 10%-off twin as b2c priced it: £24.99 and £22.49."""
+    await a_plan(db_session)
+    await billing_repo.create_plan(
+        db_session,
+        code="one_month_referral",
+        stripe_price_id="price_one_month_referral",
+        amount_pence=2249,
+        duration_days=30,
+        exam_code="sca",
+    )
+    await db_session.flush()
+
+
+async def a_shared_code(client: AsyncClient, make_actor, email: str) -> tuple[str, str]:  # type: ignore[no-untyped-def]
+    """A referrer's sign-in token and their code, as they would copy it from their settings."""
+    referrer_token = await make_actor(email)
+    issued = await client.post("/api/v1/me/referral-code", headers=bearer(referrer_token))
+    return referrer_token, str(issued.json()["code"])
+
+
+async def test_the_plan_list_shows_the_referral_price_on_the_full_price_plan(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The discounted twin is bought only with a code, so it is not a plan of its own on the page."""
+    await a_plan_with_a_referral_discount(db_session)
+
+    response = await client.get("/api/v1/billing/plans")
+
+    assert [
+        (plan["code"], plan["amount_pence"], plan["referral_amount_pence"])
+        for plan in response.json()["items"]
+    ] == [("one_month", 2499, 2249)]
+
+
+async def test_a_referral_code_buys_at_the_discounted_price(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan_with_a_referral_discount(db_session)
+    _, code = await a_shared_code(client, make_actor, "sharer@example.com")
+    buyer = await make_actor("discounted@example.com")
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_code": "one_month", "referral_code": f" {code.lower()} "},
+        headers=bearer(buyer),
+    )
+
+    assert response.status_code == 201, response.text
+    assert fake.calls[0]["price_id"] == "price_one_month_referral"
+    assert fake.calls[0]["referral_code"] == code
+
+
+@pytest.mark.parametrize("whose_code", ["unknown", "own"])
+async def test_a_code_that_is_unknown_or_your_own_is_refused_before_stripe(
+    client: AsyncClient, make_actor, db_session: AsyncSession, whose_code: str
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan_with_a_referral_discount(db_session)
+    buyer = await make_actor("chancer@example.com")
+    code = "NOSUCHCODE"
+    if whose_code == "own":
+        code = str((await client.post("/api/v1/me/referral-code", headers=bearer(buyer))).json()["code"])
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_code": "one_month", "referral_code": code},
+        headers=bearer(buyer),
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "referral_not_found"
+    assert not fake.calls
+
+
+async def test_the_discounted_plan_cannot_be_bought_by_naming_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Otherwise 10% off needs no code at all, only a look at the network tab."""
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan_with_a_referral_discount(db_session)
+    buyer = await make_actor("sneaky@example.com")
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month_referral"}, headers=bearer(buyer)
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "plan_not_available"
+    assert not fake.calls
+
+
+async def test_a_plan_with_no_referral_price_refuses_the_code(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Refused rather than charged in full: the customer typed a code expecting 10% off."""
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    _, code = await a_shared_code(client, make_actor, "sharer-no-discount@example.com")
+    buyer = await make_actor("full-price@example.com")
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_code": "one_month", "referral_code": code},
+        headers=bearer(buyer),
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "referral_discount_unavailable"
+    assert not fake.calls
+
+
+def referral_checkout_event(event_id: str, email: str, *, price_id: str, referral_code: str) -> dict:
+    """A completed checkout that was started with a referral code."""
+    event = checkout_event(event_id, email, price_id=price_id)
+    event["data"]["object"]["metadata"]["referral_code"] = referral_code
+    event["data"]["object"]["amount_total"] = 2249
+    return event
+
+
+async def test_a_paid_referral_purchase_grants_access_and_credits_the_referrer(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan_with_a_referral_discount(db_session)
+    referrer_token, code = await a_shared_code(client, make_actor, "earner@example.com")
+    await a_customer(db_session, "referred-buyer@example.com")
+
+    response = await post_event(
+        client,
+        referral_checkout_event(
+            "evt_referral_1",
+            "referred-buyer@example.com",
+            price_id="price_one_month_referral",
+            referral_code=code,
+        ),
+    )
+
+    assert response.json()["status"] == "applied"
+    buyer = await identity_repo.user_by_email(db_session, "referred-buyer@example.com")
+    assert buyer is not None
+    assert [grant.source for grant in await ent_repo.for_user(db_session, buyer.id)] == ["purchase"]
+    mine = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert mine.json() == {"code": code, "redeemed_count": 1, "earned_pence": 250}
+
+
+async def test_a_full_price_payment_carrying_a_code_credits_nobody(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Only a discounted plan proves the checkout went through the code check."""
+    await a_plan_with_a_referral_discount(db_session)
+    referrer_token, code = await a_shared_code(client, make_actor, "not-earner@example.com")
+    await a_customer(db_session, "full-payer@example.com")
+
+    response = await post_event(
+        client,
+        referral_checkout_event(
+            "evt_referral_2", "full-payer@example.com", price_id="price_one_month", referral_code=code
+        ),
+    )
+
+    assert response.json()["status"] == "applied"
+    mine = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert mine.json()["redeemed_count"] == 0
+
+
+async def test_a_code_that_stopped_resolving_still_grants_what_was_paid_for(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The customer has paid. A referral problem must never cost them their access."""
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan_with_a_referral_discount(db_session)
+    await a_customer(db_session, "orphan-code@example.com")
+
+    response = await post_event(
+        client,
+        referral_checkout_event(
+            "evt_referral_3",
+            "orphan-code@example.com",
+            price_id="price_one_month_referral",
+            referral_code="GONE1234",
+        ),
+    )
+
+    assert response.json()["status"] == "applied"
+    buyer = await identity_repo.user_by_email(db_session, "orphan-code@example.com")
+    assert buyer is not None
+    assert len(await ent_repo.for_user(db_session, buyer.id)) == 1
