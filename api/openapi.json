@@ -4045,6 +4045,11 @@
             "title": "Debrief Attempts",
             "type": "integer"
           },
+          "feedback_ready": {
+            "default": false,
+            "title": "Feedback Ready",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4061,6 +4066,17 @@
               }
             ],
             "title": "Last Attempt At"
+          },
+          "last_attempt_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt Status"
           },
           "position": {
             "title": "Position",
@@ -4191,10 +4207,13 @@
               "org_not_found",
               "org_slug_taken",
               "organization_suspended",
+              "partner_unavailable",
               "password_change_required",
               "password_login_disabled",
               "payment_already_recorded",
               "payment_not_found",
+              "payout_account_number_required",
+              "payout_details_not_found",
               "peer_session_not_found",
               "peer_session_not_open",
               "photo_not_on_station",
@@ -4204,7 +4223,9 @@
               "post_not_found",
               "post_not_yours",
               "post_unavailable",
+              "practice_feedback_not_open",
               "practice_session_ended",
+              "practice_session_not_accepted",
               "practice_session_not_found",
               "programme_exists",
               "programme_not_found",
@@ -4223,12 +4244,14 @@
               "rubric_not_found",
               "rubric_version_not_found",
               "rubric_version_not_published",
+              "set_entry_has_attempts",
               "set_entry_not_found",
               "set_has_attempts",
               "set_locked",
               "set_not_found",
               "sitting_locked",
               "sitting_not_found",
+              "slot_already_claimed",
               "slot_not_found",
               "slug_taken",
               "sso_binding_taken",
@@ -4243,8 +4266,10 @@
               "station_not_published",
               "station_template_not_found",
               "station_template_version_not_found",
+              "station_version_not_usable",
               "tag_too_long",
               "template_not_published",
+              "too_early_to_join",
               "too_many_requests",
               "too_many_tags",
               "tool_arguments_invalid",
@@ -5899,6 +5924,28 @@
         "title": "ManagementPlanRead",
         "type": "object"
       },
+      "MeEventEnvelope": {
+        "description": "One frame of the `/me/events` fan-in stream: a named event and its small id payload.\n\nEvery other stream's frame is the same shape as its `GET`'s response model, named by\n`sse_responses`. `/me/events` multiplexes many differently-shaped events (`attempt`,\n`practice.session_updated`, `cv.read`, `media.updated`, `coverage`, ...) onto one\nconnection, so there is no single response model to point at. This envelope documents\nthe shape every frame shares instead: the event's name, and a small object of the ids\nnaming what changed \u2014 never the changed data itself, which the client re-fetches.",
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "MeEventEnvelope",
+        "type": "object"
+      },
       "MediaPage": {
         "description": "A page of the catalogue, and how many items matched the filters.\n\n`total_count` counts everything matching the filters, not the reader's\nentitlement: a locked item is still listed, with `locked: true`.",
         "properties": {
@@ -7339,6 +7386,33 @@
         "title": "Page[ReferralAdminRead]",
         "type": "object"
       },
+      "Page_ReferralHistoryRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralHistoryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ReferralHistoryRead]",
+        "type": "object"
+      },
       "Page_RubricRead_": {
         "properties": {
           "items": {
@@ -7850,6 +7924,119 @@
           }
         },
         "title": "PatientRoleplayRead",
+        "type": "object"
+      },
+      "PayoutDetailsAdminRead": {
+        "description": "A referrer's bank details, decrypted, as platform admin settlement needs them.\n\nNever returned to anyone but the person settling the payout \u2014 the account\nnumber is in full here, unlike `PayoutDetailsRead`.",
+        "properties": {
+          "account_holder_name": {
+            "title": "Account Holder Name",
+            "type": "string"
+          },
+          "account_number": {
+            "title": "Account Number",
+            "type": "string"
+          },
+          "bank_name": {
+            "title": "Bank Name",
+            "type": "string"
+          },
+          "sort_code": {
+            "title": "Sort Code",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank_name",
+          "account_holder_name",
+          "sort_code",
+          "account_number",
+          "updated_at"
+        ],
+        "title": "PayoutDetailsAdminRead",
+        "type": "object"
+      },
+      "PayoutDetailsRead": {
+        "description": "A referrer's own bank details, as they see them on reload.\n\nThe sort code only identifies a branch, not an account, so it is shown in\nfull \u2014 matching how the retiring client redisplayed it. The account\nnumber stays masked to its last four digits.",
+        "properties": {
+          "account_holder_name": {
+            "title": "Account Holder Name",
+            "type": "string"
+          },
+          "account_number_last4": {
+            "title": "Account Number Last4",
+            "type": "string"
+          },
+          "bank_name": {
+            "title": "Bank Name",
+            "type": "string"
+          },
+          "sort_code": {
+            "title": "Sort Code",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank_name",
+          "account_holder_name",
+          "sort_code",
+          "account_number_last4",
+          "updated_at"
+        ],
+        "title": "PayoutDetailsRead",
+        "type": "object"
+      },
+      "PayoutDetailsWrite": {
+        "description": "What a referrer submits to save or update their bank details.\n\n`account_number` is optional so someone can change their bank name\nwithout retyping a number that never left the client the first time\naround; the service keeps the previously stored number when this is\nomitted, and refuses with `payout_account_number_required` if none was\never stored.",
+        "properties": {
+          "account_holder_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Account Holder Name",
+            "type": "string"
+          },
+          "account_number": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "minLength": 6,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Number"
+          },
+          "bank_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Bank Name",
+            "type": "string"
+          },
+          "sort_code": {
+            "maxLength": 8,
+            "minLength": 6,
+            "title": "Sort Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank_name",
+          "account_holder_name",
+          "sort_code"
+        ],
+        "title": "PayoutDetailsWrite",
         "type": "object"
       },
       "PeerSessionRead": {
@@ -8943,6 +9130,28 @@
             "title": "Created At",
             "type": "string"
           },
+          "custom_reading_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Reading Seconds"
+          },
+          "custom_simulation_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Simulation Seconds"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -8969,11 +9178,6 @@
               }
             ],
             "title": "Exam Date"
-          },
-          "extra_reading_percent": {
-            "default": 0,
-            "title": "Extra Reading Percent",
-            "type": "integer"
           },
           "id": {
             "format": "uuid",
@@ -9019,6 +9223,11 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "needs_extra_time": {
+            "default": false,
+            "title": "Needs Extra Time",
+            "type": "boolean"
           },
           "status": {
             "default": "active",
@@ -9441,6 +9650,18 @@
       },
       "PracticeSessionRead": {
         "properties": {
+          "accept_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accept Expires At"
+          },
           "current_phase": {
             "anyOf": [
               {
@@ -9513,9 +9734,19 @@
             "title": "Id",
             "type": "string"
           },
+          "my_accepted": {
+            "default": false,
+            "title": "My Accepted",
+            "type": "boolean"
+          },
           "my_role": {
             "title": "My Role",
             "type": "string"
+          },
+          "partner_accepted": {
+            "default": false,
+            "title": "Partner Accepted",
+            "type": "boolean"
           },
           "partner_joined": {
             "default": false,
@@ -9562,6 +9793,18 @@
               }
             ],
             "title": "Preparation Started At"
+          },
+          "requeued_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requeued Entry Id"
           },
           "room_name": {
             "anyOf": [
@@ -10419,6 +10662,16 @@
             ],
             "title": "Paid At"
           },
+          "payout_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PayoutDetailsAdminRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "payout_reference": {
             "anyOf": [
               {
@@ -10474,6 +10727,84 @@
           "payout_reference"
         ],
         "title": "ReferralAdminRead",
+        "type": "object"
+      },
+      "ReferralHistoryRead": {
+        "description": "One redeemed referral, as the person who issued the code reads their own history.\n\n`referee_email` is exposed here (unlike `ReferralAdminRead`'s two-sided\nview being admin-only): this row belongs to the caller, and the retiring\nclient's history table names the referee in its \"Referee Email\" column.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "earned_pence": {
+            "title": "Earned Pence",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payout_status": {
+            "title": "Payout Status",
+            "type": "string"
+          },
+          "plan_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Code"
+          },
+          "plan_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Label"
+          },
+          "redeemed_at": {
+            "format": "date-time",
+            "title": "Redeemed At",
+            "type": "string"
+          },
+          "referee_email": {
+            "title": "Referee Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "referee_email",
+          "redeemed_at",
+          "plan_code",
+          "plan_label",
+          "earned_pence",
+          "payout_status",
+          "paid_at"
+        ],
+        "title": "ReferralHistoryRead",
         "type": "object"
       },
       "ReferralRead": {
@@ -11402,11 +11733,12 @@
         "type": "object"
       },
       "SessionFeedback": {
+        "description": "What one participant leaves after a session, matching what the legacy form asked for.\n\n`would_practice_again` is the one field the legacy form always required \u2014\na session either felt worth repeating or it did not, and that answer is\nwhat a good-match signal is built from. The star rating was always\noptional there, which this keeps: someone declining to rate a partner is\nnot the same as having nothing to say about practising with them again.",
         "properties": {
           "comment": {
             "anyOf": [
               {
-                "maxLength": 2000,
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -11416,25 +11748,25 @@
             "title": "Comment"
           },
           "rating": {
-            "maximum": 5.0,
-            "minimum": 1.0,
-            "title": "Rating",
-            "type": "integer"
-          },
-          "would_practice_again": {
             "anyOf": [
               {
-                "type": "boolean"
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Would Practice Again"
+            "title": "Rating"
+          },
+          "would_practice_again": {
+            "title": "Would Practice Again",
+            "type": "boolean"
           }
         },
         "required": [
-          "rating"
+          "would_practice_again"
         ],
         "title": "SessionFeedback",
         "type": "object"
@@ -11553,6 +11885,11 @@
           "exam_code": {
             "title": "Exam Code",
             "type": "string"
+          },
+          "feedback_ready": {
+            "default": false,
+            "title": "Feedback Ready",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -14308,6 +14645,32 @@
             ],
             "title": "Colleague Waiting Email"
           },
+          "custom_reading_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3659.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Reading Seconds"
+          },
+          "custom_simulation_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3659.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Simulation Seconds"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -14333,18 +14696,17 @@
             ],
             "title": "Exam Date"
           },
-          "extra_reading_percent": {
+          "exam_time": {
             "anyOf": [
               {
-                "maximum": 100.0,
-                "minimum": 0.0,
-                "type": "integer"
+                "format": "time",
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Extra Reading Percent"
+            "title": "Exam Time"
           },
           "name": {
             "anyOf": [
@@ -14358,6 +14720,17 @@
               }
             ],
             "title": "Name"
+          },
+          "needs_extra_time": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Extra Time"
           },
           "replay_onboarding": {
             "anyOf": [
@@ -14488,6 +14861,32 @@
       },
       "UpdatePlatformUser": {
         "properties": {
+          "custom_reading_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3659.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Reading Seconds"
+          },
+          "custom_simulation_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3659.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Simulation Seconds"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -14513,19 +14912,6 @@
             ],
             "title": "Exam Date"
           },
-          "extra_reading_percent": {
-            "anyOf": [
-              {
-                "maximum": 100.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Reading Percent"
-          },
           "name": {
             "anyOf": [
               {
@@ -14538,6 +14924,17 @@
               }
             ],
             "title": "Name"
+          },
+          "needs_extra_time": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Extra Time"
           },
           "status": {
             "anyOf": [
@@ -14570,13 +14967,28 @@
         "type": "object"
       },
       "UpdateSet": {
-        "description": "What a learner may still change about a set they have built.\n\nThe name, and only the name. A set carries no description and no timings \u2014\nthe length of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.",
+        "description": "What a learner may still change about a set they have built.\n\nThe name, and \u2014 since this replaces the legacy \"edit session\" screen \u2014 the\nstations themselves. Swapping the list does not touch an entry that stays\nin it: its counters are what an attempt points at, so `replace_entries`\nmatches kept versions back onto their existing entry rather than deleting\nand recreating it. A set carries no description and no timings \u2014 the\nlength of a session is the sum of its stations' exam timings, which the\nexam owns \u2014 so there is nothing else to write.\n\nWhitespace strips to nothing, which is then too short: a set called `\"   \"`\nis an unlabelled row in the list the learner has to keep.\n\n`station_version_ids` left out (`None`) means \"just the name\"; an empty\nlist is a real request to empty the set, and is rejected only if that\nwould mean removing a station that already has an attempt against it.",
         "properties": {
           "name": {
             "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "station_version_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Version Ids"
           }
         },
         "required": [
@@ -14790,6 +15202,28 @@
             "title": "Colleague Waiting Email",
             "type": "boolean"
           },
+          "custom_reading_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Reading Seconds"
+          },
+          "custom_simulation_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Simulation Seconds"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -14817,10 +15251,17 @@
             ],
             "title": "Exam Date"
           },
-          "extra_reading_percent": {
-            "default": 0,
-            "title": "Extra Reading Percent",
-            "type": "integer"
+          "exam_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Time"
           },
           "id": {
             "format": "uuid",
@@ -14857,6 +15298,11 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "needs_extra_time": {
+            "default": false,
+            "title": "Needs Extra Time",
+            "type": "boolean"
           },
           "replay_onboarding": {
             "default": false,
@@ -20759,9 +21205,10 @@
                 }
               }
             },
-            "description": "post_unavailable, cannot_claim_own_post",
+            "description": "post_unavailable, slot_already_claimed, cannot_claim_own_post",
             "x-codes": [
               "post_unavailable",
+              "slot_already_claimed",
               "cannot_claim_own_post"
             ]
           },
@@ -21495,6 +21942,88 @@
         ]
       }
     },
+    "/api/v1/me/events": {
+      "get": {
+        "description": "One stream, every kind of thing that happens to this person.\n\nThe one live-update connection a signed-in tab holds. Each frame names\nwhat happened (`attempt`, `practice.session_updated`, `practice.matched`,\n`practice.accepted`, `cv.read`, `media.updated`, `coverage`, ...) and\ncarries just enough of a payload \u2014 an id \u2014 for a screen to tell whether it\nis the one being talked about; it still re-reads its own resource rather\nthan trusting the frame's content as truth. This replaces the polling\nintervals every screen used to run on its own: marking status, a partner's\nanswer, a CV finishing, a live coverage panel, media production status.\n\nUnlike `/attempts/{id}/stream` or `/sittings/stream`, there is no single\nread model behind this route to snapshot, so it is built on\n`fan_in_stream` rather than `event_stream` \u2014 see `app.core.sse` for why.",
+        "operationId": "identity_stream_my_events",
+        "parameters": [
+          {
+            "description": "A stream ticket from POST /auth/stream-ticket",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A stream ticket from POST /auth/stream-ticket",
+              "title": "Ticket"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeEventEnvelope"
+                }
+              }
+            },
+            "description": "An SSE stream multiplexing this user's own events onto one connection: `connected`, then a named event (`attempt`, `practice.session_updated`, `cv.read`, `media.updated`, `coverage`, ...) each time something changes, whose shape is `MeEventEnvelope`, and `ping` every 25 seconds."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream My Events",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/v1/me/marketplace/posts": {
       "get": {
         "operationId": "marketplace_list_my_posts",
@@ -21759,9 +22288,10 @@
                 }
               }
             },
-            "description": "peer_session_not_open",
+            "description": "peer_session_not_open, too_early_to_join",
             "x-codes": [
-              "peer_session_not_open"
+              "peer_session_not_open",
+              "too_early_to_join"
             ]
           },
           "422": {
@@ -21985,6 +22515,183 @@
         ]
       }
     },
+    "/api/v1/me/practice-sessions/{session_id}/accept": {
+      "post": {
+        "operationId": "peer_practice_accept_match",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "partner_unavailable",
+            "x-codes": [
+              "partner_unavailable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Match",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
+    "/api/v1/me/practice-sessions/{session_id}/decline": {
+      "post": {
+        "operationId": "peer_practice_decline_match",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_session_not_found",
+            "x-codes": [
+              "practice_session_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "partner_unavailable, practice_session_ended",
+            "x-codes": [
+              "partner_unavailable",
+              "practice_session_ended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decline Match",
+        "tags": [
+          "peer-practice"
+        ]
+      }
+    },
     "/api/v1/me/practice-sessions/{session_id}/end": {
       "post": {
         "operationId": "peer_practice_end_session",
@@ -22056,9 +22763,10 @@
                 }
               }
             },
-            "description": "practice_session_ended",
+            "description": "practice_session_ended, practice_session_not_accepted",
             "x-codes": [
-              "practice_session_ended"
+              "practice_session_ended",
+              "practice_session_not_accepted"
             ]
           },
           "422": {
@@ -22146,6 +22854,19 @@
               "practice_session_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_feedback_not_open",
+            "x-codes": [
+              "practice_feedback_not_open"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -22229,9 +22950,10 @@
                 }
               }
             },
-            "description": "practice_session_ended",
+            "description": "practice_session_ended, practice_session_not_accepted",
             "x-codes": [
-              "practice_session_ended"
+              "practice_session_ended",
+              "practice_session_not_accepted"
             ]
           },
           "422": {
@@ -22578,9 +23300,10 @@
                 }
               }
             },
-            "description": "practice_session_ended",
+            "description": "practice_session_ended, practice_session_not_accepted",
             "x-codes": [
-              "practice_session_ended"
+              "practice_session_ended",
+              "practice_session_not_accepted"
             ]
           },
           "422": {
@@ -22850,6 +23573,123 @@
         ]
       }
     },
+    "/api/v1/me/referral-payout-details": {
+      "get": {
+        "description": "This person's own bank details for referral payouts, sort code in full, account number masked.",
+        "operationId": "growth_read_my_payout_details",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDetailsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "payout_details_not_found",
+            "x-codes": [
+              "payout_details_not_found"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Payout Details",
+        "tags": [
+          "growth"
+        ]
+      },
+      "put": {
+        "description": "Save or update this person's bank details for referral payouts.",
+        "operationId": "growth_write_my_payout_details",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayoutDetailsWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutDetailsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_input, payout_account_number_required",
+            "x-codes": [
+              "invalid_input",
+              "payout_account_number_required"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Write My Payout Details",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/me/referrals": {
       "get": {
         "operationId": "growth_read_my_referrals",
@@ -22885,6 +23725,71 @@
           }
         ],
         "summary": "Read My Referrals",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/me/referrals/history": {
+      "get": {
+        "description": "This person's own redeemed referrals: who joined, what they bought, and what it earned.\n\nNo cursor: the frontend pages and searches this list client-side, so one\ncall returns up to `limit` rows and there is nothing to page further.",
+        "operationId": "growth_read_my_referral_history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ReferralHistoryRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Referral History",
         "tags": [
           "growth"
         ]
@@ -23623,8 +24528,8 @@
         ]
       },
       "patch": {
-        "description": "Rename one of your own practice sets.\n\nOwner-only, and a set that is not yours answers 404 rather than 403: an id\nis not something a stranger should be able to confirm exists by the shape\nof the refusal.",
-        "operationId": "station_sets_rename_set",
+        "description": "Rename one of your own practice sets, and \u2014 the legacy \"edit session\" screen \u2014 swap its stations.\n\nOwner-only, and a set that is not yours answers 404 rather than 403: an id\nis not something a stranger should be able to confirm exists by the shape\nof the refusal. `station_version_ids` left out of the body changes only the\nname; given, it replaces the set's stations first (which can itself refuse:\nthe set is locked, a version cannot be used, or an entry being dropped has\nalready been attempted) and renames the result.",
+        "operationId": "station_sets_update_set",
         "parameters": [
           {
             "in": "path",
@@ -23685,6 +24590,21 @@
               "set_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_locked, station_version_not_usable, set_entry_has_attempts",
+            "x-codes": [
+              "set_locked",
+              "station_version_not_usable",
+              "set_entry_has_attempts"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -23701,7 +24621,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Rename Set",
+        "summary": "Update Set",
         "tags": [
           "station-sets"
         ]

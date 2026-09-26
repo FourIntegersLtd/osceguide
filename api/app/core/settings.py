@@ -41,6 +41,10 @@ _LOCAL_CORS_ORIGINS = (
 )
 _LOCAL_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/osce_platform"
 _LOCAL_JWT_SECRET = "dev-only-jwt-secret-change-me"  # noqa: S105 — local and test only
+# A real Fernet key (32 url-safe base64 bytes), fixed rather than generated per
+# process: local and test data must decrypt the same way across restarts, and
+# nobody should mistake this for a secret worth protecting.
+_LOCAL_PAYOUT_DETAILS_KEY = "6cPODgYlKDgonNz1cBKWl39dFazTwpMyf4VLADcjQH8="  # noqa: S105
 
 
 # The values a deployed process refuses to start without, named once so the
@@ -57,6 +61,7 @@ REQUIRED_WHEN_DEPLOYED: Final[tuple[str, ...]] = (
     "STRIPE_WEBHOOK_SECRET",
     "RESEND_API_KEY",
     "OPENAI_API_KEY",
+    "PAYOUT_DETAILS_KEY",
 )
 
 
@@ -163,6 +168,12 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # A referrer's bank details (A1) are the one plaintext this platform would
+    # otherwise store that a database dump could turn straight into fraud, so
+    # they are encrypted at rest under this key (Fernet, symmetric). See
+    # `app.core.secrets_at_rest`.
+    payout_details_key: str = ""
+
     # Marking. One default for every exam, rather than b2c's gpt-5-mini and
     # b2b's gpt-4o producing results nobody can compare (E-2). The effort is
     # set explicitly: unset means "medium" under any gpt-5 model, which is a
@@ -235,6 +246,7 @@ class Settings(BaseSettings):
             self.jwt_secret = self.jwt_secret or _LOCAL_JWT_SECRET
             self.database_url = self.database_url or _LOCAL_DATABASE_URL
             self.cors_origins = self.cors_origins or list(_LOCAL_CORS_ORIGINS)
+            self.payout_details_key = self.payout_details_key or _LOCAL_PAYOUT_DETAILS_KEY
             return self
         present = {
             "JWT_SECRET": self.jwt_secret,
@@ -247,6 +259,7 @@ class Settings(BaseSettings):
             "STRIPE_WEBHOOK_SECRET": self.stripe_webhook_secret,
             "RESEND_API_KEY": self.resend_api_key,
             "OPENAI_API_KEY": self.openai_api_key,
+            "PAYOUT_DETAILS_KEY": self.payout_details_key,
         }
         missing = [name for name in REQUIRED_WHEN_DEPLOYED if not present[name].strip()]
         if missing:

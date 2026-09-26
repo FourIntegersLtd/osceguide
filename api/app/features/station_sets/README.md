@@ -17,6 +17,8 @@ Both produce rows in the one `attempts` table.
 - As a **consumer**, I talk an attempt through afterwards, against a separate limit.
 - As a **consumer**, I debrief a station I have already run.
 - As a **consumer**, I rename a set, and throw away one I have not started.
+- As a **consumer**, I edit a set's stations — the legacy "edit session" screen —
+  keeping, dropping and adding stations in one call.
 - As a **consumer** whose access lapsed, my sets are still there when I renew.
 
 ## Aggregates & invariants
@@ -44,13 +46,22 @@ Both produce rows in the one `attempts` table.
 - Counters are incremented in SQL inside the attempt's transaction, not read then
   written. b2c mutates an array on the user document with no transaction, so two
   sessions finishing together lose a count and a limit can be exceeded.
+- **Editing a set's stations keeps, drops and adds, not replace-and-lose-progress.**
+  A version that stays in the new list keeps its existing entry, counters and
+  all — a station left in place must not look, to the candidate, like one they
+  have never sat. A version dropped is only actually removed if nothing has
+  been attempted at it yet; one that has is left in place and reported as
+  `set_entry_has_attempts`, the same shape as a whole set that cannot be deleted.
+  Matching a requested version against an existing entry is by position among
+  equal version ids, so asking for the same station twice keeps both of its
+  entries rather than treating the second as new.
 
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET/POST | `/api/v1/me/station-sets` | bearer | each set carries its own progress |
 | GET | `/api/v1/me/station-sets/{id}` | owner | `set_not_found` (404) |
-| PATCH | `/api/v1/me/station-sets/{id}` | owner | rename; the name and nothing else — a set holds no description and its length is the exam's timings summed over its stations. `set_not_found` (404), blank rejected |
+| PATCH | `/api/v1/me/station-sets/{id}` | owner | rename, and/or — the legacy "edit session" screen — replace its stations via `station_version_ids` (keeps entries for versions that stay, drops those with no attempts, adds the rest). `set_not_found` (404), blank name rejected, `set_locked` (409), `station_version_not_usable` (409), `set_entry_has_attempts` (409) |
 | DELETE | `/api/v1/me/station-sets/{id}` | owner | throw a set away with its entries. `set_not_found` (404); `set_has_attempts` (409) while a recording of a consultation still points at one of them |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/attempts` | owner | `attempt_limit_reached` (409), `set_locked` (409) |
 | POST | `/api/v1/me/station-sets/{id}/entries/{entry_id}/debriefs` | owner | Talk through an attempt already made; `nothing_to_debrief` (409), `attempt_limit_reached` (409) |

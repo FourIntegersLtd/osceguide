@@ -202,6 +202,14 @@ async def peer_session_by_id(session: AsyncSession, peer_session_id: uuid.UUID) 
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def sessions_for_post(session: AsyncSession, post_id: uuid.UUID) -> list[PeerSession]:
+    """The session(s) a slot booked. A post can only be claimed once, so this is
+    at most one row in practice, but `withdraw_slot` reads it as a list rather
+    than assume that will always stay true."""
+    stmt = select(PeerSession).where(PeerSession.post_id == post_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 async def sessions_for_user(
     session: AsyncSession,
     user_id: uuid.UUID,

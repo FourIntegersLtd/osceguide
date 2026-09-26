@@ -23,6 +23,18 @@ class PostUnavailableError(Conflict):
     default_message = "That slot is no longer available"
 
 
+class SlotAlreadyClaimedError(Conflict):
+    """Somebody else claimed the slot in the moment between the caller loading it and pressing claim.
+
+    Its own code, distinct from `post_unavailable`: this is the one refusal
+    that resolves itself by showing the next open slot, rather than one that
+    means the offer is simply gone (withdrawn, expired, already started).
+    """
+
+    code = "slot_already_claimed"
+    default_message = "Someone else has already claimed that slot"
+
+
 class CannotClaimOwnPostError(Conflict):
     """The caller tried to claim the slot they offered themselves."""
 
@@ -45,9 +57,21 @@ class SessionNotFound(NotFound):
 
 
 class SessionNotOpen(Conflict):
-    """The session is cancelled, not yet open, or past its join window."""
+    """The session is cancelled or past its join window."""
 
     code = "peer_session_not_open"
+    default_message = "That session can no longer be joined"
+
+
+class TooEarlyToJoinError(Conflict):
+    """The session's join window has not opened yet.
+
+    Split out from `peer_session_not_open`: a client that gets this back knows
+    the session is fine and can say "come back closer to the start time",
+    which is a different message to the one for a session that is simply over.
+    """
+
+    code = "too_early_to_join"
     default_message = "That session has not opened yet"
 
 

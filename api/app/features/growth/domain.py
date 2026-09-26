@@ -7,6 +7,7 @@ owed to the wrong party.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -147,3 +148,58 @@ def referral_reward_pence(plan_duration_days: int) -> int:
     if plan_duration_days <= ONE_MONTH_PLAN_DAYS:
         return ONE_MONTH_REFERRAL_REWARD_PENCE
     return LONGER_PLAN_REFERRAL_REWARD_PENCE
+
+
+# --- referral payout bank details --------------------------------------------
+
+# Oracle: the retiring client's `BankDetails.tsx`, which accepted a sort code
+# either grouped ("12-34-56") or bare ("123456") — a UK sort code is always
+# three pairs of digits identifying a bank branch, never anything longer or
+# shorter.
+SORT_CODE_PATTERN = re.compile(r"^\d{2}-?\d{2}-?\d{2}$")
+SORT_CODE_DIGITS = 6
+
+# The legacy form never enforced a specific length; UK account numbers are
+# eight digits in practice, but building societies and some international
+# transfers use fewer or a couple more, so this accepts the same 6-10 digit
+# range the corrected spec calls for rather than the legacy client's
+# unenforced free text.
+ACCOUNT_NUMBER_MIN_DIGITS = 6
+ACCOUNT_NUMBER_MAX_DIGITS = 10
+ACCOUNT_NUMBER_PATTERN = re.compile(rf"^\d{{{ACCOUNT_NUMBER_MIN_DIGITS},{ACCOUNT_NUMBER_MAX_DIGITS}}}$")
+
+
+class InvalidSortCode(ValueError):
+    """A sort code did not match "12-34-56" or "123456"."""
+
+
+class InvalidAccountNumber(ValueError):
+    """An account number was not 6–10 digits."""
+
+
+def normalise_sort_code(sort_code: str) -> str:
+    """A sort code, stripped of its separators down to six digits for storage.
+
+    Accepts either the grouped or bare legacy form; always stores and later
+    displays the grouped form, since that is what someone recognises as a sort
+    code rather than a phone number.
+    """
+    candidate = (sort_code or "").strip()
+    if not SORT_CODE_PATTERN.match(candidate):
+        raise InvalidSortCode(f"{sort_code!r} is not a sort code (expected 12-34-56 or 123456).")
+    return candidate.replace("-", "")
+
+
+def format_sort_code(digits: str) -> str:
+    """The six stored digits, grouped for display: "123456" -> "12-34-56"."""
+    return f"{digits[0:2]}-{digits[2:4]}-{digits[4:6]}"
+
+
+def validate_account_number(account_number: str) -> str:
+    """An account number, unchanged but checked to be 6-10 digits."""
+    candidate = (account_number or "").strip()
+    if not ACCOUNT_NUMBER_PATTERN.match(candidate):
+        raise InvalidAccountNumber(
+            f"An account number is {ACCOUNT_NUMBER_MIN_DIGITS}-{ACCOUNT_NUMBER_MAX_DIGITS} digits."
+        )
+    return candidate

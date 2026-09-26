@@ -68,17 +68,30 @@ async def read_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Sess
 @router.patch(
     "/me/station-sets/{set_id}",
     response_model=schemas.SetRead,
-    responses=error_responses(Unauthenticated, errors.SetNotFound),
+    responses=error_responses(
+        Unauthenticated,
+        errors.SetNotFound,
+        errors.SetLockedError,
+        errors.StationVersionNotUsableError,
+        errors.EntryHasAttemptsError,
+    ),
 )
-async def rename_set(
+async def update_set(
     set_id: uuid.UUID, body: schemas.UpdateSet, principal: CurrentPrincipal, session: Session
 ) -> schemas.SetRead:
-    """Rename one of your own practice sets.
+    """Rename one of your own practice sets, and — the legacy "edit session" screen — swap its stations.
 
     Owner-only, and a set that is not yours answers 404 rather than 403: an id
     is not something a stranger should be able to confirm exists by the shape
-    of the refusal.
+    of the refusal. `station_version_ids` left out of the body changes only the
+    name; given, it replaces the set's stations first (which can itself refuse:
+    the set is locked, a version cannot be used, or an entry being dropped has
+    already been attempted) and renames the result.
     """
+    if body.station_version_ids is not None:
+        await service.replace_entries(
+            session, principal.user_id, set_id, station_version_ids=body.station_version_ids
+        )
     return await service.rename_set(session, principal.user_id, set_id, name=body.name)
 
 

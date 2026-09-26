@@ -148,6 +148,17 @@ async def position_of(session: AsyncSession, entry: QueueEntry) -> int:
     return int((await session.execute(stmt)).scalar_one()) + 1
 
 
+async def entries_matched_to(session: AsyncSession, practice_session_id: uuid.UUID) -> list[QueueEntry]:
+    """The queue entries that were paired into one practice session.
+
+    Read back after a decline or an accept timeout, so the person being
+    requeued goes into the same room (public, or their institution's, or one
+    teaching group) they were originally waiting in rather than a default one.
+    """
+    stmt = select(QueueEntry).where(QueueEntry.matched_session_id == practice_session_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 async def mark_matched(session: AsyncSession, entry_ids: list[uuid.UUID], *, session_id: uuid.UUID) -> None:
     """Mark both queue entries as paired, pointing at the practice session they were matched into."""
     await session.execute(

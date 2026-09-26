@@ -36,6 +36,36 @@ class SessionAlreadyEnded(Conflict):
     default_message = "That session has already finished"
 
 
+class NotYetAcceptedError(Conflict):
+    """The pairing has not been accepted by both sides yet, so there is nowhere to join.
+
+    Raised on presence while a session is still `pending_accept`: the room the
+    handshake leads to does not exist for either side until then.
+    """
+
+    code = "practice_session_not_accepted"
+    default_message = "Both sides must accept this match before joining it"
+
+
+class FeedbackNotOpenError(Conflict):
+    """Feedback is only taken on a session that ended after its consultation began."""
+
+    code = "practice_feedback_not_open"
+    default_message = "Feedback opens once a session you took part in has finished"
+
+
+class PartnerUnavailableError(Conflict):
+    """The other side of the accept handshake is no longer there.
+
+    Raised when a caller tries to accept or decline a pairing that has
+    already ended because the other person declined it or the 120-second
+    accept window ran out before both sides answered.
+    """
+
+    code = "partner_unavailable"
+    default_message = "Your partner is no longer available for this session"
+
+
 class UnknownExamError(NotFound):
     """Mirrors `catalog.errors.UnknownExamError` and shares its code, so this
     slice's routes can document the refusal without importing another
@@ -55,6 +85,8 @@ from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 __all__ = [
     "AlreadyQueued",
     "NotEntitled",
+    "NotYetAcceptedError",
+    "PartnerUnavailableError",
     "QueueEntryNotFound",
     "SessionAlreadyEnded",
     "SessionNotFound",

@@ -71,6 +71,15 @@ async def test_live_evidence_is_grounded_and_owner_only(client, db_session, make
     await update_coverage(db_session, sat.attempt_id)
     snapshot = await repository.read(db_session, sat.attempt_id)
     assert snapshot and len(snapshot["items"]) == 1
+    # `LiveCoveragePanel` re-reads on this instead of polling every few seconds.
+    from app.core.events import PENDING_KEY, user_topic
+    from app.features.attempts.service_coverage import COVERAGE
+
+    assert (
+        user_topic(sat.user_id),
+        COVERAGE,
+        {"attempt_id": str(sat.attempt_id)},
+    ) in db_session.info[PENDING_KEY]
     await update_coverage(db_session, sat.attempt_id)
     assert call.call_count == 1
     await db_session.commit()

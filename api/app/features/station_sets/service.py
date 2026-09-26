@@ -17,6 +17,7 @@ from app.features.catalog.service import resolve_exam
 from app.features.station_sets import domain, errors, repository
 from app.features.station_sets.models import StationSet, StationSetEntry
 from app.features.station_sets.schemas import EntryRead, SetRead, StartedAttempt
+from app.features.stations import service_reads as stations_reads
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.AttemptLimitReached: errors.AttemptLimitReachedError,
@@ -45,7 +46,7 @@ async def create_set(
     await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
     station_set = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
     entries = await repository.add_entries(session, station_set.id, station_version_ids=station_version_ids)
-    return _set_read(station_set, exam.code, entries)
+    return await _set_read(session, station_set, exam.code, entries)
 
 
 async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> SetRead:
@@ -53,7 +54,7 @@ async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid
     station_set = await _require(session, owner_user_id, set_id)
     entries = await repository.entries_for(session, set_id)
     code = await catalog.exam_code_by_id(session, station_set.exam_id)
-    return _set_read(station_set, code or "", entries)
+    return await _set_read(session, station_set, code or "", entries)
 
 
 async def rename_set(
@@ -67,6 +68,87 @@ async def rename_set(
     """
     station_set = await _require(session, owner_user_id, set_id)
     await repository.rename_set(session, station_set, name=name)
+    return await read_set(session, owner_user_id, set_id)
+
+
+async def replace_entries(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    set_id: uuid.UUID,
+    *,
+    station_version_ids: list[uuid.UUID],
+) -> SetRead:
+    """Swap a set's stations for a different list, in this order — the legacy "edit session" screen.
+
+    A version that stays in the list keeps its existing entry, counters and all: an entry is what an
+    attempt points at, so a station left in place must not look, to the candidate, like a station they
+    have never sat. Matching is by position among equal version ids (a "bucket pop"), not by first
+    occurrence only, so asking for the same station twice keeps both of its existing entries rather
+    than treating the second as brand new.
+
+    A version dropped from the list is only actually removed if nothing has been attempted at it yet;
+    one that has is left in place and reported as `EntryHasAttemptsError`, naming what is in the way,
+    the same shape `delete_set` already uses for a whole set that cannot be thrown away.
+
+    Refuses outright, before touching anything, if the set is locked (access lapsed — nothing about it
+    may change) or if any requested version does not exist, was never published, or belongs to a
+    station filed under a different exam than this set's own: legacy's edit screen had no minimum or
+    maximum station count, so none is enforced here either.
+    """
+    station_set = await _require(session, owner_user_id, set_id)
+    if station_set.locked:
+        raise errors.SetLockedError()
+
+    if station_version_ids:
+        summaries = await stations_reads.summaries_by_version_id(session, None, station_version_ids)
+        for version_id in station_version_ids:
+            summary = summaries.get(version_id)
+            if summary is None or summary.status != "published" or summary.exam_id != station_set.exam_id:
+                raise errors.StationVersionNotUsableError()
+
+    existing_entries = await repository.entries_for(session, set_id)
+    # Bucket the existing entries by the version they point at, in the order they
+    # were added, so each requested version id can "pop" its earliest surviving
+    # match rather than always grabbing the first entry that was ever created
+    # for it — the difference matters only when a version appears more than once.
+    entries_by_version: dict[uuid.UUID, list[StationSetEntry]] = {}
+    for entry in existing_entries:
+        entries_by_version.setdefault(entry.station_version_id, []).append(entry)
+
+    # Walk the request once, popping each version's earliest surviving entry as it is
+    # claimed. `None` in `final_order` is a placeholder for "a new entry goes here",
+    # filled in once `add_entries` hands back the ids it created for `new_version_ids_in_order`.
+    kept_entry_ids_in_order: list[uuid.UUID] = []
+    new_version_ids_in_order: list[uuid.UUID] = []
+    final_order: list[uuid.UUID | None] = []
+    for version_id in station_version_ids:
+        bucket = entries_by_version.get(version_id)
+        if bucket:
+            entry_id = bucket.pop(0).id
+            kept_entry_ids_in_order.append(entry_id)
+            final_order.append(entry_id)
+        else:
+            new_version_ids_in_order.append(version_id)
+            final_order.append(None)
+
+    # Whatever is left in every bucket after that popping is a station the new
+    # list does not ask for at all, and is the set of entries to consider removing.
+    removed_entry_ids = [entry.id for bucket in entries_by_version.values() for entry in bucket]
+    sat_entry_ids = await attempts_reads.set_entries_with_attempts(session, removed_entry_ids)
+    if sat_entry_ids:
+        raise errors.EntryHasAttemptsError()
+
+    # Park the surviving entries out of the way of the positions `0..n` before either
+    # deleting the ones going away or inserting the ones that are new: both of the
+    # next two steps would otherwise collide with the unique `(set_id, position)`.
+    await repository.park_entries(session, kept_entry_ids_in_order)
+    if removed_entry_ids:
+        await repository.delete_entries(session, set_id, removed_entry_ids)
+    new_entries = await repository.add_entries(session, set_id, station_version_ids=new_version_ids_in_order)
+    new_entry_ids = iter(entry.id for entry in new_entries)
+    resolved_order = [entry_id if entry_id is not None else next(new_entry_ids) for entry_id in final_order]
+
+    await repository.reposition_entries(session, resolved_order)
     return await read_set(session, owner_user_id, set_id)
 
 
@@ -97,7 +179,7 @@ async def list_sets(
     for station_set in station_sets:
         entries = await repository.entries_for(session, station_set.id)
         code = await catalog.exam_code_by_id(session, station_set.exam_id)
-        set_reads.append(_set_read(station_set, code or "", entries))
+        set_reads.append(await _set_read(session, station_set, code or "", entries))
     return set_reads, next_cursor
 
 
@@ -214,13 +296,42 @@ async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid
     return station_set
 
 
-def _set_read(station_set: StationSet, exam_code: str, entries: list[StationSetEntry]) -> SetRead:
-    """Turn a stored set and its entries into the shape a client reads."""
+async def _set_read(
+    session: AsyncSession, station_set: StationSet, exam_code: str, entries: list[StationSetEntry]
+) -> SetRead:
+    """Turn a stored set and its entries into the shape a client reads.
+
+    One query answers "what did the newest attempt on each entry reach" for
+    every entry in the set at once (`latest_status_by_set_entry`), rather than
+    asking `attempts` once per entry — a set can hold a dozen stations, and this
+    is read every time the session list loads.
+    """
     states = [
         domain.EntryState(attempts=entry.attempts, debrief_attempts=entry.debrief_attempts)
         for entry in entries
     ]
     attempted, total = domain.progress(states)
+    latest_status_by_entry = await attempts_reads.latest_status_by_set_entry(
+        session, [entry.id for entry in entries]
+    )
+    entry_reads = []
+    any_feedback_ready = False
+    for entry in entries:
+        last_status = latest_status_by_entry.get(entry.id)
+        entry_feedback_ready = last_status == "evaluated"
+        any_feedback_ready = any_feedback_ready or entry_feedback_ready
+        entry_reads.append(
+            EntryRead(
+                id=entry.id,
+                position=entry.position,
+                station_version_id=entry.station_version_id,
+                attempts=entry.attempts,
+                debrief_attempts=entry.debrief_attempts,
+                last_attempt_at=entry.last_attempt_at,
+                last_attempt_status=last_status,
+                feedback_ready=entry_feedback_ready,
+            )
+        )
     return SetRead(
         id=station_set.id,
         name=station_set.name,
@@ -229,15 +340,6 @@ def _set_read(station_set: StationSet, exam_code: str, entries: list[StationSetE
         completed_at=station_set.completed_at,
         attempted_entries=attempted,
         total_entries=total,
-        entries=[
-            EntryRead(
-                id=entry.id,
-                position=entry.position,
-                station_version_id=entry.station_version_id,
-                attempts=entry.attempts,
-                debrief_attempts=entry.debrief_attempts,
-                last_attempt_at=entry.last_attempt_at,
-            )
-            for entry in entries
-        ],
+        entries=entry_reads,
+        feedback_ready=any_feedback_ready,
     )

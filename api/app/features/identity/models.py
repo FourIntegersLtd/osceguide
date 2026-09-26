@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
@@ -14,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -32,6 +34,20 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     """
 
     __tablename__ = "users"
+    __table_args__ = (
+        # 61 minutes and 59 seconds is the legacy `TimerSettingsModal`'s own
+        # ceiling (minutes 0-60, seconds 0-59); a timer of zero is not a
+        # custom timer at all, so each column is either unset or at least a
+        # second.
+        CheckConstraint(
+            "custom_reading_seconds IS NULL OR custom_reading_seconds BETWEEN 1 AND 3659",
+            name="custom_reading_seconds_range",
+        ),
+        CheckConstraint(
+            "custom_simulation_seconds IS NULL OR custom_simulation_seconds BETWEEN 1 AND 3659",
+            name="custom_simulation_seconds_range",
+        ),
+    )
 
     # citext, so "Alice@…" and "alice@…" collide in the database rather than
     # only in the code that remembers to lowercase.
@@ -55,6 +71,11 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     # When they are sitting the real thing. The consumer dashboard counts down
     # to it, and the exam-wishes prompt appears in the week before.
     exam_date: Mapped[date | None] = mapped_column(Date)
+    # The time of day on `exam_date`, if they said one. Optional in the
+    # legacy client too — a date on its own is still enough for the
+    # countdown. Cleared whenever `exam_date` is cleared: a time with no date
+    # names nothing.
+    exam_time: Mapped[time | None] = mapped_column(Time)
 
     # Which exam this account is for, chosen at sign-up. A code, not a foreign
     # key, since this slice cannot resolve one. It is a preference and not a
@@ -62,8 +83,21 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     # unresolvable code yields no current exam rather than access to anything.
     exam_code: Mapped[str | None] = mapped_column(String(32))
 
-    # An access arrangement, as a percentage of extra reading time.
+    # An access arrangement, as a percentage of extra reading time. Superseded
+    # on the API surface by `needs_extra_time` plus the two custom durations
+    # below (A3); the column stays because `app.migration` still reads it off
+    # legacy exports, but no route reads or writes it any more.
     extra_reading_percent: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # Whether the two custom timers below apply at all. Legacy's
+    # `accessibility.needs_extra_reading_time`: unticking it kept whatever
+    # durations were saved but stopped using them (`Timer.tsx`), so this is a
+    # gate, not a delete-on-clear.
+    needs_extra_time: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # Custom reading-phase and simulation-phase timer durations, in seconds.
+    # Each is independently optional — the legacy modal saved either, both or
+    # neither — and only takes effect while `needs_extra_time` is true.
+    custom_reading_seconds: Mapped[int | None] = mapped_column(Integer)
+    custom_simulation_seconds: Mapped[int | None] = mapped_column(Integer)
     # Consent is whether this person's consultations may be used to train
     # models. The waiting email is a peer-practice nudge. Replay asks the
     # dashboard to offer the guided tour again.

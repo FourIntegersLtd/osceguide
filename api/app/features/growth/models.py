@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -99,3 +99,34 @@ class Referral(Base, UUIDPrimaryKey, Timestamps):
     # The bank transfer's own reference, so a row can be tied back to a
     # statement. This is what replaces storing anybody's account number.
     payout_reference: Mapped[str | None] = mapped_column(String(64))
+    # The plan the redeeming purchase was for, e.g. "sca_3m". Null for a
+    # referral's own unredeemed row (there is no purchase yet) and for rows
+    # imported before this column existed. Lets a referrer's own history
+    # (`GET /me/referrals/history`) show what each referral bought without a
+    # join into `billing`, which this slice does not otherwise need.
+    plan_code: Mapped[str | None] = mapped_column(String(64))
+
+
+class ReferralPayoutDetails(Base, UUIDPrimaryKey, Timestamps):
+    """Where to send a referrer's earnings, one row per person.
+
+    `sort_code_ciphertext` and `account_number_ciphertext` are Fernet tokens
+    (`app.core.secrets_at_rest`), never plaintext columns: a database dump
+    must not hand out anyone's bank details. `bank_name` and
+    `account_holder_name` are not secrets on their own — a bank's name and a
+    person's name are not enough to move money — so they are stored plainly,
+    matching how the retiring client's form treated them.
+    """
+
+    __tablename__ = "referral_payout_details"
+    # No explicit name: the naming convention in `app.core.db` derives
+    # `uq_referral_payout_details_user_id` from the column, matching the
+    # literal name the migration gives its `UniqueConstraint` — a mismatch
+    # here reads as drop-one/add-another to `test_models_and_schema_do_not_drift`.
+    __table_args__ = (UniqueConstraint("user_id"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    bank_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    account_holder_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    sort_code_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    account_number_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)

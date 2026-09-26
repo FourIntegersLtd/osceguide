@@ -140,6 +140,33 @@ async def test_the_job_records_a_failure_when_no_model_is_configured(db_session)
     assert refreshed.error and "OPENAI_API_KEY" in refreshed.error
 
 
+async def test_the_job_tells_the_owner_the_read_finished(db_session) -> None:  # type: ignore[no-untyped-def]
+    """`cv.read` is what lets `CvPanel` stop watching a row without polling it.
+
+    The model call is unreachable here (no API key in the test environment), so
+    this exercises the failure branch of the job — the row still settles, and
+    the settling is still what the owner's `/me/events` stream should carry,
+    whichever way the read ended.
+    """
+    from datetime import UTC, datetime
+
+    from app.core.events import PENDING_KEY, user_topic
+    from app.features.cv.service import CV_READ
+    from app.features.identity import repository as identity_repository
+
+    user = await identity_repository.create_user(
+        db_session, email="cv-event@example.com", name="Dr", password_hash=None
+    )
+    row = await repository.create(
+        db_session, user_id=user.id, original_filename="CV.pdf", extracted_text="x" * 60
+    )
+    await db_session.flush()
+
+    await service.run_extraction_job(db_session, row.id, settings=get_settings(), now=datetime.now(UTC))
+
+    assert (user_topic(user.id), CV_READ, {"cv_id": str(row.id)}) in db_session.info[PENDING_KEY]
+
+
 async def test_the_job_leaves_an_already_finished_row_alone(db_session) -> None:  # type: ignore[no-untyped-def]
     """A redelivery must not overwrite a completed read."""
     from datetime import UTC, datetime

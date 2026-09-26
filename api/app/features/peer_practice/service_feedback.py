@@ -99,7 +99,9 @@ async def build_feedback(
     )
 
     await repository_sessions.set_doctor_attempt(session, session_id, attempt_id=attempt_read.id)
-    publish_after_commit(session, user_topic(practice_session.doctor_user_id), SESSION_UPDATED)
+    publish_after_commit(
+        session, user_topic(practice_session.doctor_user_id), SESSION_UPDATED, {"session_id": str(session_id)}
+    )
     log.info(
         "peer session marked", session_id=str(session_id), attempt_id=str(attempt_read.id), turns=len(turns)
     )

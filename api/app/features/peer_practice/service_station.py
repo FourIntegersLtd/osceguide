@@ -52,11 +52,16 @@ _TEACHING_KEYS = (
 
 
 def _block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
-    """The first of these keys whose value is itself a nested object, or empty."""
+    """The first of these keys whose value is itself a nested object, or empty.
+
+    Fields authored as `null` are dropped: they mean "not given", and passing
+    them through made a list field such as `recent_notes` fail validation, so
+    every read of that session was a 500.
+    """
     for key in keys:
         candidate = content.get(key)
         if isinstance(candidate, Mapping):
-            return dict(candidate)
+            return {field: value for field, value in candidate.items() if value is not None}
     return {}
 
 
@@ -86,7 +91,7 @@ async def session_read(
 ) -> PracticeSessionRead:
     """Build the full session read payload, delegating station resolution here."""
     from app.features.catalog import service as catalog
-    from app.features.peer_practice import domain
+    from app.features.peer_practice import domain, repository
 
     code = await catalog.exam_code_by_id(session, practice_session.exam_id)
     is_doctor = practice_session.doctor_user_id == viewer_id
@@ -98,6 +103,25 @@ async def session_read(
         reveal_review=practice_session.current_phase in {"debrief", "completed"}
         or practice_session.status == "ended",
     )
+    my_accepted_at = (
+        practice_session.doctor_accepted_at if is_doctor else practice_session.patient_accepted_at
+    )
+    partner_accepted_at = (
+        practice_session.patient_accepted_at if is_doctor else practice_session.doctor_accepted_at
+    )
+    requeued_entry_id: uuid.UUID | None = None
+    if (
+        practice_session.status == "ended"
+        and practice_session.end_reason in {"declined", "no_response"}
+        and my_accepted_at is not None
+    ):
+        # This pairing ended without the viewer's say-so while they had
+        # already accepted it, which is exactly when `service_match` puts them
+        # back in the queue. Read back rather than threaded through as a
+        # parameter: any live queue place answers "was I requeued", without
+        # the ended session needing to remember one of its own.
+        live_entry = await repository.live_entry(session, viewer_id, practice_session.exam_id)
+        requeued_entry_id = live_entry.id if live_entry is not None else None
     return PracticeSessionRead(
         id=practice_session.id,
         exam_code=code or "",
@@ -117,6 +141,12 @@ async def session_read(
         partner_joined=partner_joined,
         doctor_attempt_id=practice_session.doctor_attempt_id if is_doctor else None,
         feedback_state=_feedback_state(practice_session) if is_doctor else "none",
+        accept_expires_at=practice_session.accept_expires_at
+        if practice_session.status == "pending_accept"
+        else None,
+        my_accepted=my_accepted_at is not None,
+        partner_accepted=partner_accepted_at is not None,
+        requeued_entry_id=requeued_entry_id,
     )
 
 
@@ -171,8 +201,8 @@ def _station_payload(
         patient.get("patient_script") or patient.get("script") or content.get("patient_script") or ""
     )
     management = _text(plan.get("management_plan") or plan.get("plan") or "")
-    scenario = {key: content[key] for key in _SCENARIO_KEYS if key in content} or None
-    teaching = {key: content[key] for key in _TEACHING_KEYS if key in content}
+    scenario = {key: content[key] for key in _SCENARIO_KEYS if content.get(key) is not None} or None
+    teaching = {key: content[key] for key in _TEACHING_KEYS if content.get(key) is not None}
     actor = (
         PracticePatientRoleplayRead(
             **{

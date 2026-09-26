@@ -13,9 +13,28 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.secrets_at_rest import decrypt_text
 from app.features.growth import domain, errors, repository
-from app.features.growth.schemas import ReferralAdminRead
+from app.features.growth.models import ReferralPayoutDetails
+from app.features.growth.schemas import PayoutDetailsAdminRead, ReferralAdminRead
 from app.features.identity import service as identity
+
+
+def _admin_payout_details(stored: ReferralPayoutDetails | None) -> PayoutDetailsAdminRead | None:
+    """Decrypt one referrer's stored bank details for platform admin settlement.
+
+    `None` when nothing was ever saved, which the settlement queue reads as
+    "pay this the way it was paid before this existed."
+    """
+    if stored is None:
+        return None
+    return PayoutDetailsAdminRead(
+        bank_name=stored.bank_name,
+        account_holder_name=stored.account_holder_name,
+        sort_code=domain.format_sort_code(decrypt_text(stored.sort_code_ciphertext)),
+        account_number=decrypt_text(stored.account_number_ciphertext),
+        updated_at=stored.updated_at,
+    )
 
 
 async def list_redeemed_referrals(
@@ -27,8 +46,9 @@ async def list_redeemed_referrals(
 ) -> tuple[list[ReferralAdminRead], str | None]:
     """The settlement queue, newest referral first.
 
-    Emails are resolved in one lookup rather than per row, to avoid a join per
-    row on a screen read far more often than it is written.
+    Emails and bank details are each resolved in one lookup rather than per
+    row, to avoid a join per row on a screen read far more often than it is
+    written.
     """
     status = domain.normalise_payout_status(payout_status) if payout_status else None
     referrals, next_cursor = await repository.redeemed_referrals_page(
@@ -38,6 +58,9 @@ async def list_redeemed_referrals(
         referral.referred_user_id for referral in referrals if referral.referred_user_id is not None
     }
     people = await identity.user_refs_by_ids(session, list(ids))
+    payout_details = await repository.payout_details_by_user_ids(
+        session, [referral.referrer_user_id for referral in referrals]
+    )
     admin_reads: list[ReferralAdminRead] = []
     for referral in referrals:
         referrer = people.get(referral.referrer_user_id)
@@ -53,6 +76,7 @@ async def list_redeemed_referrals(
                 payout_status=referral.payout_status,
                 paid_at=referral.paid_at,
                 payout_reference=referral.payout_reference,
+                payout_details=_admin_payout_details(payout_details.get(referral.referrer_user_id)),
             )
         )
     return admin_reads, next_cursor
@@ -94,11 +118,12 @@ async def set_referral_payout(
 
 
 async def _referral_admin_read(session: AsyncSession, referral) -> ReferralAdminRead:  # type: ignore[no-untyped-def]
-    """Shape one referral for the settlement queue, resolving both people's emails."""
+    """Shape one referral for the settlement queue, resolving both people's emails and bank details."""
     ids = [referral.referrer_user_id] + ([referral.referred_user_id] if referral.referred_user_id else [])
     people = await identity.user_refs_by_ids(session, ids)
     referrer = people.get(referral.referrer_user_id)
     referred = people.get(referral.referred_user_id) if referral.referred_user_id else None
+    payout_details = await repository.payout_details_by_user(session, referral.referrer_user_id)
     return ReferralAdminRead(
         id=referral.id,
         code=referral.code,
@@ -109,4 +134,5 @@ async def _referral_admin_read(session: AsyncSession, referral) -> ReferralAdmin
         payout_status=referral.payout_status,
         paid_at=referral.paid_at,
         payout_reference=referral.payout_reference,
+        payout_details=_admin_payout_details(payout_details),
     )

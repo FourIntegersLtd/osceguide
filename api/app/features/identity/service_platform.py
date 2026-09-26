@@ -33,7 +33,9 @@ class SupportUser:
     last_login_at: datetime | None
     exam_code: str | None
     exam_date: date | None = None
-    extra_reading_percent: int = 0
+    needs_extra_time: bool = False
+    custom_reading_seconds: int | None = None
+    custom_simulation_seconds: int | None = None
     consumer_role: str = "user"
 
 
@@ -50,7 +52,9 @@ def _support(user: User) -> SupportUser:
         last_login_at=user.last_login_at,
         exam_code=user.exam_code,
         exam_date=user.exam_date,
-        extra_reading_percent=user.extra_reading_percent,
+        needs_extra_time=user.needs_extra_time,
+        custom_reading_seconds=user.custom_reading_seconds,
+        custom_simulation_seconds=user.custom_simulation_seconds,
         consumer_role=user.consumer_role,
     )
 
@@ -146,7 +150,9 @@ async def update_user(
     exam_code: str | None = None,
     status: str | None = None,
     exam_date: date | None = None,
-    extra_reading_percent: int | None = None,
+    needs_extra_time: bool | None = None,
+    custom_reading_seconds: int | None = None,
+    custom_simulation_seconds: int | None = None,
 ) -> SupportUser | None:
     """Write only what the console sent; `None` means "leave it"."""
     if await repository.user_by_id(session, user_id) is None:
@@ -156,7 +162,9 @@ async def update_user(
         "exam_code": exam_code,
         "status": status,
         "exam_date": exam_date,
-        "extra_reading_percent": extra_reading_percent,
+        "needs_extra_time": needs_extra_time,
+        "custom_reading_seconds": custom_reading_seconds,
+        "custom_simulation_seconds": custom_simulation_seconds,
     }
     changes = {field: value for field, value in sent.items() if value is not None}
     await repository_platform.update_admin_fields(session, user_id, **changes)

@@ -38,8 +38,7 @@ _PRODUCTION_ERRORS = (
 async def generate_summary_podcast(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
-    _ = admin
-    return await service.enqueue_summary_podcast(session, item_id)
+    return await service.enqueue_summary_podcast(session, item_id, requested_by=admin.user_id)
 
 
 # Starts re-rendering a slide deck's narrated video after its slides have changed.
@@ -52,8 +51,7 @@ async def generate_summary_podcast(
 async def regenerate_slide_av(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
-    _ = admin
-    return await service.enqueue_slide_regenerate(session, item_id)
+    return await service.enqueue_slide_regenerate(session, item_id, requested_by=admin.user_id)
 
 
 # Starts voicing a podcast episode's script into an audio file.
@@ -66,5 +64,4 @@ async def regenerate_slide_av(
 async def generate_podcast_audio(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
-    _ = admin
-    return await service.enqueue_podcast_audio(session, item_id)
+    return await service.enqueue_podcast_audio(session, item_id, requested_by=admin.user_id)

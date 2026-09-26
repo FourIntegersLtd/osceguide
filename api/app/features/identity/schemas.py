@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -32,11 +32,21 @@ class UserRead(BaseModel):
     memberships: list[MembershipRead] = Field(default_factory=list)
     active_org_slug: str | None = None
     last_login_at: datetime | None = None
-    # When they sit the real thing, and what extra reading time they are
-    # granted. Both are the person's own, and both are on `/me` because every
-    # screen that needs them already reads it.
+    # When they sit the real thing. The consumer dashboard counts down to it,
+    # and both fields are on `/me` because every screen that needs them
+    # already reads it. `exam_time` is optional even when `exam_date` is set —
+    # a date alone is enough for the countdown.
     exam_date: date | None = None
-    extra_reading_percent: int = 0
+    exam_time: time | None = None
+    # Whether the two custom timers below apply. Off leaves whatever durations
+    # are saved unused, matching the retiring client's "Extra reading time"
+    # checkbox.
+    needs_extra_time: bool = False
+    # Custom reading-phase and simulation-phase timer durations, in seconds.
+    # Replaces `extra_reading_percent` on this surface (A3); each is
+    # independently optional.
+    custom_reading_seconds: int | None = None
+    custom_simulation_seconds: int | None = None
     # Which exam this account is for, chosen at sign-up. A preference, not a
     # grant: what somebody may open is decided by their entitlements, not this
     # field. `GET /me/dashboard` is what turns it into an exam somebody can use.
@@ -46,12 +56,27 @@ class UserRead(BaseModel):
     replay_onboarding: bool = False
 
 
+# A timer of zero is not a custom timer at all; 3659 is 60 minutes 59 seconds,
+# the retiring client's own ceiling (`TimerSettingsModal`: minutes 0-60,
+# seconds 0-59).
+CUSTOM_TIMER_MIN_SECONDS = 1
+CUSTOM_TIMER_MAX_SECONDS = 3659
+
+
 class UpdateMe(BaseModel):
     """What a person may change about themselves. Absent means "leave it"."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     exam_date: date | None = None
-    extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
+    # Sent as an explicit `null` to clear; see `fields_sent` in `service.update_me`.
+    exam_time: time | None = None
+    needs_extra_time: bool | None = None
+    custom_reading_seconds: int | None = Field(
+        default=None, ge=CUSTOM_TIMER_MIN_SECONDS, le=CUSTOM_TIMER_MAX_SECONDS
+    )
+    custom_simulation_seconds: int | None = Field(
+        default=None, ge=CUSTOM_TIMER_MIN_SECONDS, le=CUSTOM_TIMER_MAX_SECONDS
+    )
     # Settable once, by an account with no exam; refused as `exam_already_chosen` after that.
     exam_code: str | None = Field(default=None, min_length=1, max_length=32)
     ai_training_consent: bool | None = None

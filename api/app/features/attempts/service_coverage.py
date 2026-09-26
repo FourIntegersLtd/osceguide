@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_after_commit, user_topic
 from app.core.settings import get_settings
 from app.features.attempts import domain_definition, repository
 from app.features.attempts import repository_transcript as transcripts
@@ -15,6 +16,11 @@ from app.features.attempts.schemas import CoverageItemRead, CoverageRead
 from app.features.attempts.service_reads import _ensure_visible, _require
 
 PRACTICE_KINDS = frozenset({"practice", "set_station", "self_practice"})
+
+# Published to the candidate's `/me/events` topic once a new coverage snapshot
+# is written, so `LiveCoveragePanel` learns without polling every few seconds
+# while a station is still running.
+COVERAGE = "coverage"
 
 
 def framework_for(attempt: Attempt) -> dict[str, Any] | None:
@@ -108,3 +114,4 @@ async def update_coverage(session: AsyncSession, attempt_id: uuid.UUID) -> None:
     )
     updated = await asyncio.to_thread(detector.detect, snapshot=snapshot, messages=messages, policy=policy)
     await repository.save(session, attempt_id, updated.model_dump(mode="json"))
+    publish_after_commit(session, user_topic(attempt.user_id), COVERAGE, {"attempt_id": str(attempt_id)})

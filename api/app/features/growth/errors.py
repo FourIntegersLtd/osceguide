@@ -53,3 +53,21 @@ class ReferralNotRedeemed(Conflict):
 
     code = "referral_not_redeemed"
     default_message = "That referral has not been redeemed, so it has no payout"
+
+
+class PayoutDetailsNotFound(NotFound):
+    """This person has never saved bank details for their referral payouts."""
+
+    code = "payout_details_not_found"
+    default_message = "No payout details are on file"
+
+
+class PayoutAccountNumberRequired(InvalidInput):
+    """A first-time save of payout details must include an account number.
+
+    Omitting it is only valid on an update, where the service keeps the
+    number already on file.
+    """
+
+    code = "payout_account_number_required"
+    default_message = "An account number is required the first time you save payout details"

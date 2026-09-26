@@ -62,6 +62,24 @@ the patient.
   session through `attempts.peer_session_id`. From there it is marked by the
   same engine, against the same frozen rubric, as a mock — there is no second
   scoring path to keep in step.
+- **A queue match is not a joinable session until both sides accept it.**
+  `match_waiting` starts a pair `pending_accept`, with `accept_expires_at` set
+  `ACCEPT_WINDOW_SECONDS` (120) out. Either side calls `accept` or `decline`;
+  `touch_presence` and `end_session` both refuse a session still
+  `pending_accept` as `practice_session_not_accepted` — there is no room to be
+  present in, or to end, until it becomes one. Accepting one already settled
+  the other way (declined, or timed out) is `partner_unavailable`, not a plain
+  404: the session did exist, and that is what tells this side why nothing
+  happened. The window is checked lazily — `expire_if_due` runs at the top of
+  `read_session`, `touch_presence`, `accept_match` and `decline_match`, the
+  same way `advance_phases_if_due` is — so a pairing nobody is polling still
+  resolves itself the next time somebody looks, on no clock of its own.
+  Declining, or the window timing out, ends the session (`declined` /
+  `no_response`) and puts back in the queue whichever side had *already*
+  accepted before it ended (excluding the decliner; a timeout excludes
+  nobody), into the same room its original queue entry addressed. Once both
+  accept, the pairing becomes `matched` and both sides are pushed
+  `practice.accepted` so a waiting client's stream wakes up.
 
 ## Routes
 | Method | Path | Auth | Notes |
@@ -72,7 +90,9 @@ the patient.
 | DELETE | `/api/v1/peer-practice/queue/{id}` | owner | |
 | GET | `/api/v1/me/practice-sessions` | bearer | |
 | GET | `/api/v1/me/practice-sessions/{id}` | participant | |
-| POST | `/api/v1/me/practice-sessions/{id}/end` | participant | |
+| POST | `/api/v1/me/practice-sessions/{id}/accept` | participant | accept a pending match; becomes joinable once both have. `partner_unavailable` (409) if the other side already declined or the window timed out |
+| POST | `/api/v1/me/practice-sessions/{id}/decline` | participant | refuse a pending match, ending it and requeuing a partner who had already accepted. `partner_unavailable` (409), `practice_session_ended` (409) once both have already accepted |
+| POST | `/api/v1/me/practice-sessions/{id}/end` | participant | `practice_session_not_accepted` (409) while still `pending_accept` |
 | POST | `/api/v1/me/practice-sessions/{id}/voice-token` | bearer | Join the room the pair were matched into; `practice_session_ended` (409) |
 
 There is deliberately no `start-egress`, `transcribe` or `feedback-status`
@@ -107,3 +127,10 @@ recorder, `media_production.service_storage` for the object store, and
 `attempts.service_offline` to turn a finished transcript into a marked attempt.
 Each of those is a named function on a service, which is the only door a slice
 offers another.
+
+`marketplace` calls back the other way: cancelling a booked slot whose pair
+had already joined and started a live consultation ends that practice session
+too, through `service.end_session_if_still_running` — a no-op for a session
+that has already ended or never existed, so a caller that is not one of its
+two participants does not have to read the row itself first to decide whether
+to call.

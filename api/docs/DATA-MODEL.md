@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-67 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+68 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -94,8 +94,12 @@ names both.
 | `password_login_disabled` | `bool not null default false` | set once by `identity.service_sso.sign_in_external` when this person signs in through an `sso_only` organisation; `identity` sits below `sso` and cannot read that configuration at login time, so the fact is written down here instead. Never cleared automatically |
 | `last_login_at` | `timestamptz null` | |
 | `exam_date` | `date null` | when they sit the real thing; the consumer dashboard counts down to it |
+| `exam_time` | `time null` | the time of day on `exam_date`, optional; cleared whenever `exam_date` is cleared, since a time with no date names nothing |
 | `exam_code` | `varchar(32) null` | which exam they signed up for; a preference, not a grant |
-| `extra_reading_percent` | `int not null default 0` | an access arrangement, as a percentage of extra reading time. CHECK 0–100. Applies to their own practice, never to a circuit's clock — one clock serves everybody on it |
+| `extra_reading_percent` | `int not null default 0` | superseded on the live API surface by `needs_extra_time`/`custom_reading_seconds`/`custom_simulation_seconds` below (A3); the column and its CHECK 0–100 stay only for `app.migration`, which still derives it from the same legacy flag |
+| `needs_extra_time` | `bool not null default false` | the access-arrangement gate: the two custom timers below apply only while this is set (legacy `Timer.tsx`/`MockRule.tsx` kept the durations even when the checkbox was off) |
+| `custom_reading_seconds` | `int null` | a reading-timer override in seconds. CHECK 1–3659 (60 minutes 59 seconds, the legacy modal's ceiling) when not null |
+| `custom_simulation_seconds` | `int null` | a simulation-timer override in seconds. Same CHECK 1–3659 when not null |
 | `ai_training_consent` | `bool not null default false` | whether this person's consultations may be used to train models |
 | `colleague_waiting_email` | `bool not null default false` | email when a peer is waiting to practise |
 | `replay_onboarding` | `bool not null default false` | offer the guided voice tour again on the dashboard |
@@ -949,7 +953,7 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `amount_tax_pence` | `int not null default 0` | |
 | `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |
 
-## growth — 4 tables
+## growth — 5 tables
 
 `PILOT_PARTNERS = {bmj}`, `PILOT_EXAMS = (sca, plab, ortho)`,
 `ATTRIBUTION_WINDOW = 90 days`, landing paths under `/exams/`.
@@ -984,15 +988,31 @@ UNIQUE `(partner, email)`.
 ### `referrals`
 `referrer_user_id` → `users.id` CASCADE (indexed), `code varchar(32) not null unique`,
 `referred_user_id` → `users.id` SET NULL, `redeemed_at timestamptz null`,
-`earned_pence int not null default 0`. A row with no `redeemed_at` is a
+`earned_pence int not null default 0`, `plan_code varchar(64) null` — the
+redeeming purchase's plan, carried onto the row so `GET /me/referrals/history`
+(A2) can show "Subscription type (referee)" without a join back through
+billing. A row with no `redeemed_at` is a
 person's shareable code, reusable as in b2c; each purchase made with it is its
 own redeemed row coded `<CODE>-<suffix>`. Settlement happens outside the product;
 these four are the record of whether it has: `payout_status varchar(16) not
 null default 'unpaid'` (indexed with `redeemed_at IS NOT NULL`, since the
 settlement queue never asks about a code nobody has used), `paid_at
 timestamptz null`, `paid_by_user_id` → `users.id` SET NULL, and
-`payout_reference varchar(64) null` — the bank transfer's own reference,
-which is what replaces storing anybody's account number.
+`payout_reference varchar(64) null` — the bank transfer's own reference.
+
+### `referral_payout_details`
+Where a referrer sits the bank details settlement pays out to (A1), added
+because the retiring client's Settings screen collects them but nothing here
+stored them. `user_id` → `users.id` CASCADE (UNIQUE — one set of details per
+person), `bank_name varchar(200) not null`, `account_holder_name varchar(200)
+not null`, `sort_code_ciphertext text not null`, `account_number_ciphertext
+text not null`. The sort code and account number are Fernet-encrypted at rest
+(`app.core.secrets_at_rest`, key `PAYOUT_DETAILS_KEY`) and never stored in the
+clear: `GET /me/referral-payout-details` decrypts and returns the full sort
+code (it only identifies a bank branch) but masks the account number to its
+last 4 digits; the platform admin settlement queue
+(`ReferralAdminRead.payout_details`) is the only reader that sees the account
+number decrypted in full.
 
 ---
 
@@ -1098,6 +1118,16 @@ consultation, feedback — driven by the circuit clock), `phase_ends_at timestam
 (per-participant timing), `started_at` / `ended_at timestamptz null`,
 `end_reason varchar(32) null`, `feedback_rating int null`,
 `feedback_comment varchar(2000) null`, `would_practice_again bool null`.
+
+The accept handshake: a matched pair starts `status='pending_accept'` rather
+than joinable, with `accept_expires_at timestamptz null` — 120 seconds after
+the match, past which a still-silent side's pairing times out
+(`end_reason='no_response'`). `doctor_accepted_at` / `patient_accepted_at
+timestamptz null` record when each side accepted; once both are set the
+session becomes `status='matched'`. A decline before both accept ends the
+session with `end_reason='declined'`. Both are null for a marketplace-booked
+pair (`peer_session_id` set), which skips the handshake and starts `matched`
+straight away — the pair already agreed to a fixed time when they booked it.
 
 Recording and feedback: `egress_id varchar(128) null` (the LiveKit Egress the stop has
 to find), `recording_key varchar(512) null` (the S3 object key — the URL is presigned

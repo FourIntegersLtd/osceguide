@@ -175,36 +175,63 @@ async def test_a_person_may_set_their_exam_date_and_reading_arrangement(
     client: AsyncClient,
     make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
-    """Two fields the ported screens needed and had nowhere to read."""
+    """Fields the ported settings screens needed and had nowhere to read: an exam date with an
+    optional time, and the custom timers gated by `needs_extra_time` (A3/A4)."""
     token = await make_actor("amara@example.com")
 
     saved = await client.patch(
         "/api/v1/me",
-        json={"exam_date": "2026-11-03", "extra_reading_percent": 25},
+        json={
+            "exam_date": "2026-11-03",
+            "exam_time": "09:30:00",
+            "needs_extra_time": True,
+            "custom_reading_seconds": 90,
+            "custom_simulation_seconds": 480,
+        },
         headers=bearer(token),
     )
     assert saved.status_code == 200, saved.text
-    assert saved.json()["exam_date"] == "2026-11-03"
-    assert saved.json()["extra_reading_percent"] == 25
+    body = saved.json()
+    assert body["exam_date"] == "2026-11-03"
+    assert body["exam_time"] == "09:30:00"
+    assert body["needs_extra_time"] is True
+    assert body["custom_reading_seconds"] == 90
+    assert body["custom_simulation_seconds"] == 480
 
     # A PATCH writes only what it was sent.
     renamed = await client.patch("/api/v1/me", json={"name": "Amara O."}, headers=bearer(token))
     assert renamed.json()["name"] == "Amara O."
     assert renamed.json()["exam_date"] == "2026-11-03"
+    assert renamed.json()["custom_reading_seconds"] == 90
 
-    # And "set to nothing" is distinguishable from "not mentioned".
-    cleared = await client.patch("/api/v1/me", json={"exam_date": None}, headers=bearer(token))
-    assert cleared.json()["exam_date"] is None
-    assert cleared.json()["extra_reading_percent"] == 25
+    # Clearing just the timer is distinguishable from "not mentioned", and the
+    # gate can be turned off without losing the other timer's value.
+    cleared_one_timer = await client.patch(
+        "/api/v1/me",
+        json={"custom_reading_seconds": None, "needs_extra_time": False},
+        headers=bearer(token),
+    )
+    assert cleared_one_timer.json()["custom_reading_seconds"] is None
+    assert cleared_one_timer.json()["custom_simulation_seconds"] == 480
+    assert cleared_one_timer.json()["needs_extra_time"] is False
+
+    # Clearing the exam date also clears the exam time: a time with no date
+    # names nothing.
+    cleared_exam = await client.patch("/api/v1/me", json={"exam_date": None}, headers=bearer(token))
+    assert cleared_exam.json()["exam_date"] is None
+    assert cleared_exam.json()["exam_time"] is None
 
 
 async def test_an_impossible_reading_arrangement_is_refused(
     client: AsyncClient,
     make_actor,  # type: ignore[no-untyped-def]
 ) -> None:
+    """The legacy modal's own ceiling: 60 minutes 59 seconds, never zero."""
     token = await make_actor("amara@example.com")
-    for bad in (-10, 500):
-        refused = await client.patch("/api/v1/me", json={"extra_reading_percent": bad}, headers=bearer(token))
+    for bad in (0, -10, 3660, 9999):
+        refused = await client.patch(
+            "/api/v1/me", json={"custom_reading_seconds": bad}, headers=bearer(token)
+        )
         assert refused.status_code == 422, refused.text
 
 

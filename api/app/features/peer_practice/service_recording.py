@@ -77,9 +77,13 @@ async def stop_recording_and_queue(
     practice_session: PracticeSession,
     *,
     now: datetime,
+    mark: bool = True,
     recorder: RoomRecorder | None = None,
 ) -> None:
     """Stop the recording and queue the transcription, in one transaction.
+
+    `mark=False` still stops the egress (a running one costs money) but queues
+    nothing: an abandoned consultation was promised no feedback.
 
     The job is deferred on this session rather than through procrastinate's own
     connector, so the row saying "stopped" and the work that reads it commit
@@ -98,6 +102,8 @@ async def stop_recording_and_queue(
         # so this is worth transcribing anyway rather than abandoning.
         log.warning("peer recording not stopped cleanly", session_id=str(practice_session.id), error=str(exc))
     await repository_sessions.set_recording_state(session, practice_session.id, state="stopped")
+    if not mark:
+        return
     await enqueue_transcription(session, session_id=practice_session.id, now=now)
 
 

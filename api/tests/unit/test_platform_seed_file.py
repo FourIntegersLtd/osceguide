@@ -80,14 +80,11 @@ def test_a_disambiguated_competency_still_says_what_it_was_called() -> None:
         assert competency["id"].endswith(competency["legacy_id"])
 
 
-def test_casc_records_that_it_is_marked_with_the_wrong_prompt() -> None:
-    """Open question C-1, and live production behaviour.
-
-    No CASC marking prompt exists anywhere, and both legacy backends mark it
-    with the RCGP GP one. The seed reproduces that because the point is
-    parity, but it must say so rather than let the next person assume a CASC
-    rubric was ever written.
-    """
+def test_every_exam_is_marked_with_its_own_prompt() -> None:
+    """CASC was marked with the RCGP GP prompt for years (C-1). No exam borrows another's."""
+    for exam in EXAMS:
+        assert "prompt_warning" not in exam["rubric"]
     casc = next(exam for exam in EXAMS if exam["code"] == "casc")
-    assert casc["rubric"]["prompt_source"] == "b2c_sca_system.txt"
-    assert "C-1" in casc["rubric"]["prompt_warning"]
+    assert casc["rubric"]["prompt_source"] == "casc_system.txt"
+    assert "Royal College of Psychiatrists CASC examiner" in casc["rubric"]["system_prompt"]
+    assert "RCGP" not in casc["rubric"]["system_prompt"]

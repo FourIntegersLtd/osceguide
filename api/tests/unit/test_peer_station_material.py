@@ -57,3 +57,16 @@ def test_debrief_reveals_structured_management_for_both_roles():
         result = material(doctor=doctor, review=True)
         assert result.management.explanation == "Discuss the likely cause"
         assert result.patient_information.idea == ["Thyroid problem"]
+
+
+def test_fields_authored_as_null_read_as_not_given():
+    mat = VersionMaterial(
+        version_id=uuid4(),
+        station_id=uuid4(),
+        title="Rosacea",
+        exam_id=uuid4(),
+        content={"doctor_information": {"patient_biodata": "Daniel Cooper, 52", "recent_notes": None}},
+    )
+    result = _station_payload(mat, is_doctor=True, reveal_review=False)
+    assert result.doctor_information.recent_notes == []
+    assert result.doctor_information.patient_biodata == "Daniel Cooper, 52"

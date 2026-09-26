@@ -88,6 +88,11 @@ def test_dates_are_spelled_out() -> None:
         ("three_month", "3-Month Access"),
         ("six_month", "6-Month Access"),
         ("test", "Test Plan"),
+        # platform-api's own codes, full price and referral twin alike.
+        ("sca_1m", "1-Month Access"),
+        ("sca_3m", "3-Month Access"),
+        ("all_6m", "6-Month Access"),
+        ("sca_1m_referral", "1-Month Access"),
     ],
 )
 def test_plan_labels_are_what_a_customer_recognises(code: str, label: str) -> None:

@@ -30,6 +30,7 @@ class StationSummary:
     status: str
     owner_kind: str
     published_at: datetime | None
+    exam_id: uuid.UUID
 
 
 async def summaries_by_version_id(
@@ -50,6 +51,7 @@ async def summaries_by_version_id(
             status=version.status,
             owner_kind=station.owner_kind,
             published_at=version.published_at,
+            exam_id=station.exam_id,
         )
         for version, station in pairs
     }

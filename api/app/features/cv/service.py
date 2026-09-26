@@ -15,10 +15,15 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_after_commit, user_topic
 from app.core.settings import Settings
 from app.features.cv import domain, errors, llm, repository, schemas
 from app.features.cv.jobs import enqueue_extraction
 from app.features.cv.models import Cv
+
+# Published to the owner's `/me/events` topic once the background reading job
+# has an outcome, success or failure, so `CvPanel` learns without polling.
+CV_READ = "cv.read"
 
 UPLOAD_MESSAGE = "CV uploaded. We're reading it now and it will appear here shortly."
 
@@ -74,8 +79,10 @@ async def run_extraction_job(
     parsed, error = await llm.extract_structured(cv.extracted_text or "", settings=settings)
     if parsed is None:
         await repository.mark_failed(session, cv_id, error=error or "extraction failed", at=now)
+        publish_after_commit(session, user_topic(cv.user_id), CV_READ, {"cv_id": str(cv_id)})
         return
     await repository.mark_completed(session, cv_id, structured=parsed.model_dump(), at=now)
+    publish_after_commit(session, user_topic(cv.user_id), CV_READ, {"cv_id": str(cv_id)})
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID) -> schemas.CvList:

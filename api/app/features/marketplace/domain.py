@@ -28,6 +28,18 @@ class PostUnavailable(Exception):
     pass
 
 
+class SlotAlreadyClaimed(PostUnavailable):
+    """Raised specifically when the slot is gone because somebody else already claimed it.
+
+    A subclass of `PostUnavailable`, not a sibling: `raise_mapped` matches by
+    `isinstance` in the order `service._REFUSALS` lists its entries, so this
+    must be listed ahead of the plain `PostUnavailable` mapping there or it
+    would never be reached. Its own error code exists because "someone beat
+    you to it" is worth telling a caller apart from "that slot is gone" —
+    the first is nobody's fault and the client can just show the next slot.
+    """
+
+
 class CannotClaimOwnPost(Exception):
     """Raised when the person offering a slot tries to claim it themselves."""
 
@@ -38,6 +50,16 @@ class NotYours(Exception):
 
 class SessionNotJoinable(Exception):
     """Raised when a booked session is cancelled, not yet open, or past its join window."""
+
+
+class TooEarlyToJoin(SessionNotJoinable):
+    """Raised specifically when the join window has not opened yet.
+
+    A subclass of `SessionNotJoinable` for the same `raise_mapped` ordering
+    reason as `SlotAlreadyClaimed` above. Worth its own code because it is the
+    one join refusal that resolves itself — the client can just say "come back
+    at ten past" rather than "something is wrong with this session".
+    """
 
 
 @dataclass(frozen=True)
@@ -62,6 +84,8 @@ class SessionState:
 def ensure_claimable(post: PostState, *, claimer_id: str, now: datetime) -> None:
     """Refuse to claim a slot that is gone, already started, or the caller's own."""
     if post.status not in CLAIMABLE_STATUSES:
+        if post.status == "claimed":
+            raise SlotAlreadyClaimed(f"That slot is no longer available ({post.status}).")
         raise PostUnavailable(f"That slot is no longer available ({post.status}).")
     if post.owner_id == claimer_id:
         raise CannotClaimOwnPost("You cannot claim your own slot.")
@@ -87,6 +111,6 @@ def ensure_joinable(peer_session: SessionState, *, now: datetime) -> None:
     if peer_session.status not in JOINABLE_STATUSES:
         raise SessionNotJoinable(f"That session is {peer_session.status} and can no longer be joined.")
     if now < peer_session.starts_at - OPENS_BEFORE_START:
-        raise SessionNotJoinable("That session has not opened yet.")
+        raise TooEarlyToJoin("That session has not opened yet.")
     if now > peer_session.starts_at + CLOSES_AFTER_START:
         raise SessionNotJoinable("That session has expired.")

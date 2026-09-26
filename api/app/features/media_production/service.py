@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_after_commit, user_topic
 from app.core.settings import get_settings
 from app.features.catalog import service as catalog
 from app.features.media import service as media_service
@@ -19,6 +20,10 @@ from app.features.media_production import domain
 from app.features.media_production.errors import AvAlreadyRunning, WrongMediaKind
 from app.features.media_production.repository import defer_job, lock_for_media
 from app.features.media_production.schemas import MediaRead
+
+# Published to the requesting admin's `/me/events` topic once a production job
+# settles, success or failure, so `MediaDetailScreen` learns without polling.
+MEDIA_UPDATED = "media.updated"
 
 
 async def _set_status(
@@ -34,7 +39,9 @@ async def _read(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
     return MediaRead.model_validate(item.model_dump())
 
 
-async def enqueue_summary_podcast(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+async def enqueue_summary_podcast(
+    session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> MediaRead:
     """Starts turning a summary into a podcast, refusing the wrong kind of item or a job already running."""
     item = await production_item(session, item_id)
     if item.kind != "summary":
@@ -46,13 +53,15 @@ async def enqueue_summary_podcast(session: AsyncSession, item_id: uuid.UUID) -> 
         session,
         queue="media",
         task="produce_summary_podcast",
-        args={"media_id": str(item_id)},
+        args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "podcast"),
     )
     return await _read(session, item_id)
 
 
-async def enqueue_slide_regenerate(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+async def enqueue_slide_regenerate(
+    session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> MediaRead:
     """Starts re-rendering a slide deck's narrated video, refusing the wrong kind or a job already running."""
     item = await production_item(session, item_id)
     if item.kind != "slide_deck":
@@ -64,13 +73,15 @@ async def enqueue_slide_regenerate(session: AsyncSession, item_id: uuid.UUID) ->
         session,
         queue="media",
         task="regenerate_slide_av",
-        args={"media_id": str(item_id)},
+        args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "slides"),
     )
     return await _read(session, item_id)
 
 
-async def enqueue_podcast_audio(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+async def enqueue_podcast_audio(
+    session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> MediaRead:
     """Starts voicing a podcast episode's script, refusing the wrong kind of item or a job already running."""
     item = await production_item(session, item_id)
     if item.kind != "podcast":
@@ -82,7 +93,7 @@ async def enqueue_podcast_audio(session: AsyncSession, item_id: uuid.UUID) -> Me
         session,
         queue="media",
         task="produce_podcast_audio",
-        args={"media_id": str(item_id)},
+        args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "episode"),
     )
     return await _read(session, item_id)
@@ -93,7 +104,9 @@ def work_dir(media_id: str) -> Path:
     return Path(tempfile.gettempdir()) / "media_av" / media_id
 
 
-async def run_summary_podcast_job(session: AsyncSession, media_id: uuid.UUID) -> None:
+async def run_summary_podcast_job(
+    session: AsyncSession, media_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> None:
     """Renders a summary item's podcast audio and stores it, marking the item failed if that throws."""
     from app.features.media_production.podcast_tts import produce_summary_podcast
 
@@ -112,10 +125,10 @@ async def run_summary_podcast_job(session: AsyncSession, media_id: uuid.UUID) ->
         failed = dict(item.content)
         failed["status"] = domain.FAILED
         await replace_content(session, media_id, failed)
-        raise
+    publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
 
 
-async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID) -> None:
+async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID, *, requested_by: uuid.UUID) -> None:
     """Re-renders a slide deck's narrated video and stores it, marking the item failed if that throws."""
     from app.features.media_production.slide_av import regenerate_slide_av
 
@@ -139,10 +152,12 @@ async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID) -> None:
         failed = dict(current.content)
         failed["status"] = domain.FAILED
         await replace_content(session, media_id, failed)
-        raise
+    publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
 
 
-async def run_podcast_audio_job(session: AsyncSession, media_id: uuid.UUID) -> None:
+async def run_podcast_audio_job(
+    session: AsyncSession, media_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> None:
     """Renders a podcast episode's audio and stores it, marking the item failed if that throws."""
     from app.features.media_production.podcast_tts import produce_podcast_episode_audio
 
@@ -161,4 +176,4 @@ async def run_podcast_audio_job(session: AsyncSession, media_id: uuid.UUID) -> N
         failed = dict(item.content)
         failed["status"] = domain.FAILED
         await replace_content(session, media_id, failed)
-        raise
+    publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})

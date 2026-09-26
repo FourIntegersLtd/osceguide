@@ -101,6 +101,13 @@ class PracticeSession(Base, UUIDPrimaryKey, Timestamps):
     feedback_comment: Mapped[str | None] = mapped_column(String(2000))
     would_practice_again: Mapped[bool | None] = mapped_column(Boolean)
 
+    # The accept handshake: a session starts `pending_accept` rather than
+    # joinable, and each side records when they accepted. `accept_expires_at`
+    # is when a side that never answers times the pairing out.
+    doctor_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    patient_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accept_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # Recording, and what it eventually becomes. Two people practising have no
     # agent in the room keeping a transcript the way an attempt's patient
     # does, so this recording is the only record there will ever be, and the

@@ -25,8 +25,11 @@ from app.features.marketplace import domain, errors, repository, service_reads
 from app.features.marketplace.models import AvailabilityPost
 from app.features.marketplace.schemas import PeerSessionRead, PostRead
 
-# Which client-facing error each rule in `domain` becomes.
+# Which client-facing error each rule in `domain` becomes. `raise_mapped` matches by
+# `isinstance` in this order, so `SlotAlreadyClaimed` — a `PostUnavailable` subclass —
+# must be listed ahead of the plain `PostUnavailable` entry or it would never be reached.
 _REFUSALS: dict[type[Exception], type[AppError]] = {
+    domain.SlotAlreadyClaimed: errors.SlotAlreadyClaimedError,
     domain.PostUnavailable: errors.PostUnavailableError,
     domain.CannotClaimOwnPost: errors.CannotClaimOwnPostError,
     domain.NotYours: errors.NotYoursError,
@@ -142,8 +145,18 @@ async def withdraw_slot(
         domain.ensure_cancellable(_post_state(post), actor_id=str(actor_id))
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
+    booked_sessions = await repository.sessions_for_post(session, post_id)
     await repository.mark_cancelled(session, post_id, at=now)
     await repository.cancel_sessions_for_post(session, post_id, at=now)
+    # `peer_practice.service` owns ending a session — see the note in
+    # `service_sessions.cancel_peer_session`, which ends the same way.
+    from app.features.peer_practice import service as peer_practice
+
+    for booked_session in booked_sessions:
+        if booked_session.practice_session_id is not None:
+            await peer_practice.end_session_if_still_running(
+                session, booked_session.practice_session_id, reason="cancelled", now=now
+            )
 
 
 async def list_open_slots(

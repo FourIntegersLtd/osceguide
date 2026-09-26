@@ -9,6 +9,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
+from app.core.secrets_at_rest import decrypt_text, encrypt_text
 from app.features.billing import service as billing
 from app.features.catalog import service as catalog
 from app.features.growth import domain, errors, repository
@@ -16,9 +17,13 @@ from app.features.growth.schemas import (
     AcquisitionRead,
     ArrivalRecorded,
     FunnelRead,
+    PayoutDetailsRead,
+    PayoutDetailsWrite,
+    ReferralHistoryRead,
     ReferralRead,
     TrackingReference,
 )
+from app.features.identity import service as identity
 
 log = get_logger(__name__)
 
@@ -175,13 +180,15 @@ async def credit_referral_purchase(
     referred_user_id: uuid.UUID,
     plan_duration_days: int,
     now: datetime,
+    plan_code: str | None = None,
 ) -> bool:
     """Credit the owner of `code` for a purchase that has just been paid for.
 
     Called by billing's webhook in the payment's own transaction, so a credit exists exactly
     when the payment does. Returns False, and credits nobody, if the code no longer resolves or
     is the buyer's own. That is logged rather than raised: the customer has paid, and a
-    referral problem must never stop them getting what they bought.
+    referral problem must never stop them getting what they bought. `plan_code` is stored on
+    the redeemed row so the referrer's own history can name what was bought.
     """
     shared = await repository.shareable_code(session, code)
     if shared is None or shared.referrer_user_id == referred_user_id:
@@ -197,8 +204,112 @@ async def credit_referral_purchase(
         referred_user_id=referred_user_id,
         earned_pence=domain.referral_reward_pence(plan_duration_days),
         at=now,
+        plan_code=plan_code,
     )
     return True
+
+
+# --- A1: a referrer's own bank details for payouts --------------------------
+
+# How many digits of a stored account number are shown back to the person who
+# owns it. Matches the retiring client's `blurAccountNumber`.
+ACCOUNT_NUMBER_VISIBLE_DIGITS = 4
+
+
+async def read_my_payout_details(session: AsyncSession, *, user_id: uuid.UUID) -> PayoutDetailsRead:
+    """This person's own bank details, sort code in full and account number masked.
+
+    Raises `PayoutDetailsNotFound` when nothing has ever been saved — the
+    router turns that into a 404 the settings screen reads as "nothing on
+    file yet" rather than an error.
+    """
+    stored = await repository.payout_details_by_user(session, user_id)
+    if stored is None:
+        raise errors.PayoutDetailsNotFound()
+    account_number = decrypt_text(stored.account_number_ciphertext)
+    return PayoutDetailsRead(
+        bank_name=stored.bank_name,
+        account_holder_name=stored.account_holder_name,
+        sort_code=domain.format_sort_code(decrypt_text(stored.sort_code_ciphertext)),
+        account_number_last4=account_number[-ACCOUNT_NUMBER_VISIBLE_DIGITS:],
+        updated_at=stored.updated_at,
+    )
+
+
+async def write_my_payout_details(
+    session: AsyncSession, *, user_id: uuid.UUID, body: PayoutDetailsWrite
+) -> PayoutDetailsRead:
+    """Save this person's bank details, encrypting the sort code and account number.
+
+    `account_number` may be omitted on an update, keeping whatever is already
+    stored — so changing a bank's name does not force retyping a number that
+    never left the client the first time. Omitting it with nothing stored yet
+    is refused as `PayoutAccountNumberRequired`.
+    """
+    existing = await repository.payout_details_by_user(session, user_id)
+    if body.account_number is not None:
+        account_number = domain.validate_account_number(body.account_number)
+    elif existing is not None:
+        account_number = decrypt_text(existing.account_number_ciphertext)
+    else:
+        raise errors.PayoutAccountNumberRequired()
+    sort_code_digits = domain.normalise_sort_code(body.sort_code)
+    stored = await repository.upsert_payout_details(
+        session,
+        user_id=user_id,
+        bank_name=body.bank_name.strip(),
+        account_holder_name=body.account_holder_name.strip(),
+        sort_code_ciphertext=encrypt_text(sort_code_digits),
+        account_number_ciphertext=encrypt_text(account_number),
+    )
+    return PayoutDetailsRead(
+        bank_name=stored.bank_name,
+        account_holder_name=stored.account_holder_name,
+        sort_code=domain.format_sort_code(sort_code_digits),
+        account_number_last4=account_number[-ACCOUNT_NUMBER_VISIBLE_DIGITS:],
+        updated_at=stored.updated_at,
+    )
+
+
+# --- A2: a referrer's own referral history -----------------------------------
+
+# The frontend pages through this client-side (10 per page, searching by
+# email) rather than asking the server again, so it fetches up to this many
+# rows in one call instead of the usual keyset page size.
+MAX_REFERRAL_HISTORY_ROWS = 500
+
+
+async def read_my_referral_history(
+    session: AsyncSession, *, user_id: uuid.UUID, limit: int
+) -> list[ReferralHistoryRead]:
+    """This person's own redeemed referrals, newest first, with who joined and what they bought.
+
+    Referee emails are resolved in one lookup rather than per row.
+    """
+    bounded_limit = min(limit, MAX_REFERRAL_HISTORY_ROWS)
+    redeemed = await repository.my_redeemed_referrals_page(
+        session, referrer_user_id=user_id, limit=bounded_limit
+    )
+    referee_ids = [referral.referred_user_id for referral in redeemed if referral.referred_user_id]
+    referees = await identity.user_refs_by_ids(session, referee_ids)
+    rows: list[ReferralHistoryRead] = []
+    for referral in redeemed:
+        referee = referees.get(referral.referred_user_id) if referral.referred_user_id else None
+        rows.append(
+            ReferralHistoryRead(
+                id=referral.id,
+                code=referral.code,
+                referee_email=referee.email if referee else "",
+                # Not None: `redeemed` only contains rows where it is set.
+                redeemed_at=referral.redeemed_at,
+                plan_code=referral.plan_code,
+                plan_label=billing.plan_label(referral.plan_code) if referral.plan_code else None,
+                earned_pence=referral.earned_pence,
+                payout_status=referral.payout_status,
+                paid_at=referral.paid_at,
+            )
+        )
+    return rows
 
 
 def _referral_read(code: str, referrals: list) -> ReferralRead:  # type: ignore[type-arg]

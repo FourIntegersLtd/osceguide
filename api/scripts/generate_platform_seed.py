@@ -24,6 +24,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = ROOT / "tests/fixtures/legacy_schemas/b2c"
 PROMPTS = ROOT / "tests/fixtures/legacy_prompts"
+# Marking prompts written for this platform, for exams legacy never had one for.
+AUTHORED_PROMPTS = ROOT / "seeds/prompts"
 OUT = ROOT / "seeds/platform-starter.json"
 
 # Persistence keys on the legacy models, not anything anyone is marked on.
@@ -133,8 +135,11 @@ def build() -> dict[str, Any]:
         "exams": [],
     }
     for code, (name, reading, simulation) in EXAMS.items():
-        own_prompt = PROMPTS / f"b2c_{code}_system.txt"
-        source = own_prompt if own_prompt.exists() else PROMPTS / "b2c_sca_system.txt"
+        # An authored prompt wins over the captured legacy one. No fallback: an
+        # exam with no prompt of its own is refused here rather than marked with
+        # another exam's (CASC was marked with the RCGP GP prompt for years).
+        authored_prompt = AUTHORED_PROMPTS / f"{code}_system.txt"
+        source = authored_prompt if authored_prompt.exists() else PROMPTS / f"b2c_{code}_system.txt"
         total, history, intro, safety = PACING[code]
         rubric: dict[str, Any] = {
             "title": f"{name} marking rubric",
@@ -148,15 +153,6 @@ def build() -> dict[str, Any]:
             },
             "prompt_source": source.name,
         }
-        if not own_prompt.exists():
-            # Open question C-1, recorded rather than hidden: no CASC marking
-            # prompt exists anywhere, and both legacy paths mark it with the
-            # RCGP GP one. Seeding reproduces live behaviour; it does not
-            # endorse it.
-            rubric["prompt_warning"] = (
-                f"No {code} marking prompt exists; using the SCA one, which is what both "
-                "legacy backends do today (open question C-1). Author a real one."
-            )
         out["exams"].append(
             {
                 "code": code,

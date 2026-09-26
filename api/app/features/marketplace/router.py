@@ -84,6 +84,7 @@ async def offer_slot(
         Unauthenticated,
         errors.PostNotFound,
         errors.PostUnavailableError,
+        errors.SlotAlreadyClaimedError,
         errors.CannotClaimOwnPostError,
         errors.NotEntitled,
     ),
@@ -142,7 +143,9 @@ async def list_my_sessions(
 @router.post(
     "/me/peer-sessions/{session_id}/join",
     response_model=schemas.PeerSessionRead,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.SessionNotOpen),
+    responses=error_responses(
+        Unauthenticated, errors.SessionNotFound, errors.SessionNotOpen, errors.TooEarlyToJoinError
+    ),
 )
 async def join_session(
     session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep

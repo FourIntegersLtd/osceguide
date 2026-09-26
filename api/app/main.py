@@ -24,6 +24,7 @@ from app.core.openapi import (
     TAGS,
     document_shared_auth_errors,
     install_error_catalogue,
+    install_me_event_schema,
     operation_id,
 )
 from app.core.redis import close_redis
@@ -215,6 +216,7 @@ def create_app() -> FastAPI:
     # catalogue walk sees the whole hierarchy.
     document_shared_auth_errors(app)
     install_error_catalogue(app)
+    install_me_event_schema(app)
     return app
 
 

@@ -8,16 +8,21 @@ Two adapters behind one port:
 - **In-process**, when Redis is off (tests, and local development). Correct
   for one replica, and honest about being no more than that.
 
-Events carry a name and nothing else. Subscribers rebuild the read model from
-the database, so a missed event costs a reconnect rather than a wrong screen,
-and no user data crosses the bus.
+Events carry a name and, optionally, a small id-only payload. Most subscribers
+still just rebuild the read model from the database on any wakeup, so a
+missed event costs a reconnect rather than a wrong screen. `/me/events`
+(`app.features.identity.router_me`) is the one subscriber that reads the
+payload, because it multiplexes many kinds of change onto a single
+connection and a screen needs the id to know whether an event is about it.
+No user data beyond ids crosses the bus.
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator, Sequence
+import json
+from collections.abc import AsyncIterator, Mapping, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,15 +52,29 @@ def org_topic(org_id: object) -> str:
 PENDING_KEY = "pending_events"
 
 
-def publish_after_commit(session: AsyncSession, topic: str, name: str) -> None:
+def encode_message(name: str, payload: Mapping[str, object] | None = None) -> str:
+    """The wire form of one event: its name, and a small id-only payload.
+
+    Always JSON, even when `payload` is empty, so every subscriber decodes the
+    same shape. A subscriber that only wants a wakeup (most of them: they
+    rebuild their read model from the database) can go on ignoring the
+    content; `/me/events` is the one that reads `data` back out.
+    """
+    return json.dumps({"event": name, "data": dict(payload or {})})
+
+
+def publish_after_commit(
+    session: AsyncSession, topic: str, name: str, payload: Mapping[str, object] | None = None
+) -> None:
     """Queue an event to go out once this request's transaction commits.
 
     Publishing inline would wake a subscriber before the commit, which
     re-reads the database, sees the old rows, and renders a stale screen.
     Held on the session, not a context variable, so the buffer cannot leak
-    across requests.
+    across requests. `payload` is a handful of ids at most — never user data —
+    because it crosses process boundaries over Redis in production.
     """
-    session.info.setdefault(PENDING_KEY, []).append((topic, name))
+    session.info.setdefault(PENDING_KEY, []).append((topic, name, dict(payload or {})))
 
 
 async def flush_pending(session: AsyncSession, bus: EventBus | None = None) -> None:
@@ -65,13 +84,13 @@ async def flush_pending(session: AsyncSession, bus: EventBus | None = None) -> N
     screen updating late on reconnect is better than reporting failure for
     work that succeeded.
     """
-    pending: list[tuple[str, str]] = session.info.pop(PENDING_KEY, [])
+    pending: list[tuple[str, str, dict[str, object]]] = session.info.pop(PENDING_KEY, [])
     if not pending:
         return
     target = bus or get_event_bus()
-    for topic, name in pending:
+    for topic, name, payload in pending:
         with contextlib.suppress(Exception):
-            await target.publish(topic, name)
+            await target.publish(topic, encode_message(name, payload))
 
 
 async def _drain(queue: asyncio.Queue[str]) -> AsyncIterator[str]:

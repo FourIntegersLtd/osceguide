@@ -60,6 +60,34 @@ class SetHasAttemptsError(Conflict):
     default_message = "This set still has attempts recorded against it"
 
 
+class StationVersionNotUsableError(Conflict):
+    """One of the requested stations cannot go into this set.
+
+    Covers three refusals a client cannot tell apart by id alone: the version
+    does not exist, it has never been published, or it belongs to a station
+    filed under a different exam than the set's own. All three are the same
+    fact from the caller's side — "you may not build a session out of this" —
+    and the picker screen shows a station only once it is in this state, so a
+    stale list is the one realistic way to reach any of them.
+    """
+
+    code = "station_version_not_usable"
+    default_message = "One of these stations is not available for this exam"
+
+
+class EntryHasAttemptsError(Conflict):
+    """Asked to drop a station from a set that has already been attempted.
+
+    The entry is what an attempt points at (`RESTRICT`), so removing it would
+    either fail on the foreign key or, if the caller worked around that, orphan
+    a recording. Refused with the station named, rather than silently keeping
+    it: `replace_entries` otherwise looks like it granted a request it did not.
+    """
+
+    code = "set_entry_has_attempts"
+    default_message = "This set has a station that has already been attempted and cannot be removed"
+
+
 class NothingToDebriefError(Conflict):
     """Asked to debrief a station that has never been attempted."""
 

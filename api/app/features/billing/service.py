@@ -11,12 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.core.logging import get_logger
-from app.features.billing import domain, errors, repository, signature
+from app.features.billing import domain, errors, receipts, repository, signature
 from app.features.billing.service_settlement import _as_plans, settle_payment
 from app.features.growth import service as growth
 from app.features.identity import service as identity
 
 log = get_logger(__name__)
+
+
+def plan_label(plan_code: str) -> str:
+    """A plan code as a person reads it (`receipts.plan_label`), exposed here so
+    another slice can ask for it without reaching past this service into
+    `billing.receipts`, which the cross-slice import guard does not allow."""
+    return receipts.plan_label(plan_code)
 
 
 def verified_event(raw: bytes, header: str, *, secret: str, now: int) -> dict[str, Any]:
@@ -161,6 +168,7 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
             referred_user_id=user.id,
             plan_duration_days=plan_row.duration_days,
             now=now,
+            plan_code=plan_row.code,
         )
 
 

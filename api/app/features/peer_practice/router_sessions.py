@@ -28,6 +28,7 @@ from app.features.peer_practice import (
     errors,
     schemas,
     service,
+    service_match,
     service_reports,
     service_stream,
     service_voice,
@@ -67,12 +68,40 @@ async def read_session(
 @router.post(
     "/me/practice-sessions/{session_id}/presence",
     response_model=schemas.PracticeSessionRead,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.SessionAlreadyEnded),
+    responses=error_responses(
+        Unauthenticated, errors.SessionNotFound, errors.SessionAlreadyEnded, errors.NotYetAcceptedError
+    ),
 )
 async def record_presence(
     session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
 ) -> schemas.PracticeSessionRead:
     return await service.touch_presence(session, session_id, user_id=principal.user_id, now=clock.now())
+
+
+# Accept a pending match. The pair is joinable once both sides have.
+@router.post(
+    "/me/practice-sessions/{session_id}/accept",
+    response_model=schemas.PracticeSessionRead,
+    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.PartnerUnavailableError),
+)
+async def accept_match(
+    session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.PracticeSessionRead:
+    return await service_match.accept_match(session, session_id, user_id=principal.user_id, now=clock.now())
+
+
+# Decline a pending match, ending it and requeuing a partner who had already accepted.
+@router.post(
+    "/me/practice-sessions/{session_id}/decline",
+    response_model=schemas.PracticeSessionRead,
+    responses=error_responses(
+        Unauthenticated, errors.SessionNotFound, errors.PartnerUnavailableError, errors.SessionAlreadyEnded
+    ),
+)
+async def decline_match(
+    session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> schemas.PracticeSessionRead:
+    return await service_match.decline_match(session, session_id, user_id=principal.user_id, now=clock.now())
 
 
 # Pushes this session's phase and presence until it ends.
@@ -98,7 +127,7 @@ async def stream_session(
 @router.post(
     "/me/practice-sessions/{session_id}/feedback",
     response_model=schemas.PracticeSessionRead,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound),
+    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.FeedbackNotOpenError),
 )
 async def session_feedback(
     session_id: uuid.UUID,
@@ -168,7 +197,9 @@ async def report_no_show(
 @router.post(
     "/me/practice-sessions/{session_id}/end",
     response_model=schemas.PracticeSessionRead,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.SessionAlreadyEnded),
+    responses=error_responses(
+        Unauthenticated, errors.SessionNotFound, errors.SessionAlreadyEnded, errors.NotYetAcceptedError
+    ),
 )
 async def end_session(
     session_id: uuid.UUID,
@@ -190,7 +221,11 @@ async def end_session(
     "/me/practice-sessions/{session_id}/voice-token",
     response_model=schemas.RoomGrant,
     responses=error_responses(
-        Unauthenticated, errors.SessionNotFound, errors.SessionAlreadyEnded, errors.VoiceUnavailable
+        Unauthenticated,
+        errors.SessionNotFound,
+        errors.SessionAlreadyEnded,
+        errors.NotYetAcceptedError,
+        errors.VoiceUnavailable,
     ),
 )
 async def voice_token(

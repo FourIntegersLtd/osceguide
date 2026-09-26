@@ -309,6 +309,102 @@ async def test_a_debrief_can_be_started_from_an_entry(
     assert debrief.json()["kind"] == "debrief"
 
 
+async def test_feedback_is_not_ready_until_the_newest_attempt_is_marked(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """A station last sat is not the same as a station last marked.
+
+    `finish_consultation` only drives an attempt to `interaction_complete` —
+    sat, not yet scored — so a set whose only station reached that far must
+    still say `feedback_ready: false`, both on the entry and on the set as a
+    whole. Only once the attempt is `evaluated` does either flip to `true`.
+    """
+    from app.features.attempts import repository as attempts_repo
+    from app.features.attempts.domain import Status
+
+    token = await a_learner(client, db_session, make_actor, "feedback-pending@example.com")
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    assert created["feedback_ready"] is False
+    assert created["entries"][0]["feedback_ready"] is False
+    assert created["entries"][0]["last_attempt_status"] is None
+
+    set_id, entry_id = created["id"], created["entries"][0]["id"]
+    attempt = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
+    )
+    attempt_id = uuid.UUID(attempt.json()["attempt_id"])
+    await start(client, str(attempt_id))
+    await finish_consultation(db_session, attempt_id)
+
+    sat_not_marked = await client.get(f"/api/v1/me/station-sets/{set_id}", headers=bearer(token))
+    assert sat_not_marked.json()["feedback_ready"] is False
+    assert sat_not_marked.json()["entries"][0]["feedback_ready"] is False
+    assert sat_not_marked.json()["entries"][0]["last_attempt_status"] == "interaction_complete"
+
+    await attempts_repo.set_status(db_session, attempt_id, status=Status.EVALUATED, at=datetime.now(UTC))
+    await db_session.flush()
+
+    marked = await client.get(f"/api/v1/me/station-sets/{set_id}", headers=bearer(token))
+    assert marked.json()["feedback_ready"] is True
+    assert marked.json()["entries"][0]["feedback_ready"] is True
+    assert marked.json()["entries"][0]["last_attempt_status"] == "evaluated"
+
+
+async def test_feedback_ready_is_a_set_wide_flag_from_any_one_entry(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """One marked station out of several is enough to show the badge on the set.
+
+    A learner works through a session station by station, and each one is
+    marked on its own schedule — waiting for every station before saying
+    anything would hide feedback that is already sitting there for the first.
+    """
+    from app.features.attempts import repository as attempts_repo
+    from app.features.attempts.domain import Status
+
+    token = await a_learner(client, db_session, make_actor, "feedback-partial@example.com")
+    version_a = await a_station_version(db_session)
+    version_b = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={
+                "name": "W",
+                "exam_code": "sca",
+                "station_version_ids": [str(version_a), str(version_b)],
+            },
+            headers=bearer(token),
+        )
+    ).json()
+    set_id = created["id"]
+    first_entry_id = created["entries"][0]["id"]
+
+    attempt = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{first_entry_id}/attempts", headers=bearer(token)
+    )
+    attempt_id = uuid.UUID(attempt.json()["attempt_id"])
+    await start(client, str(attempt_id))
+    await finish_consultation(db_session, attempt_id)
+    await attempts_repo.set_status(db_session, attempt_id, status=Status.EVALUATED, at=datetime.now(UTC))
+    await db_session.flush()
+
+    read_back = await client.get(f"/api/v1/me/station-sets/{set_id}", headers=bearer(token))
+    body = read_back.json()
+    assert body["feedback_ready"] is True
+    entries_by_id = {entry["id"]: entry for entry in body["entries"]}
+    assert entries_by_id[first_entry_id]["feedback_ready"] is True
+    other_entry_id = next(e["id"] for e in body["entries"] if e["id"] != first_entry_id)
+    assert entries_by_id[other_entry_id]["feedback_ready"] is False
+    assert entries_by_id[other_entry_id]["last_attempt_status"] is None
+
+
 async def test_a_debrief_does_not_recheck_exam_access_after_the_source_attempt(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

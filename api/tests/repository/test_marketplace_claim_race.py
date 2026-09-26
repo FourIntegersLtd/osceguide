@@ -78,7 +78,8 @@ async def test_only_one_of_two_simultaneous_claims_succeeds(db_session: AsyncSes
         async with factory() as claimant, claimant.begin():
             try:
                 await service.claim_slot(claimant, post_id, claimer_user_id=user_id, now=NOW)
-            except errors.PostUnavailableError:
+            except errors.SlotAlreadyClaimedError:
+                # The loser is told somebody else got there first, not that the slot is gone.
                 return "refused"
             return "claimed"
 

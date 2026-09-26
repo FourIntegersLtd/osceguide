@@ -216,19 +216,21 @@ async def test_the_detail_now_says_which_state_the_account_is_in_and_takes_the_t
     assert before.status_code == 200, before.text
     assert before.json()["status"] == "active"
     assert before.json()["exam_date"] is None
-    assert before.json()["extra_reading_percent"] == 0
+    assert before.json()["needs_extra_time"] is False
+    assert before.json()["custom_reading_seconds"] is None
 
     updated = await client.patch(
         f"/api/v1/platform/users/{person}",
-        json={"exam_date": "2026-11-03", "extra_reading_percent": 25},
+        json={"exam_date": "2026-11-03", "needs_extra_time": True, "custom_reading_seconds": 120},
         headers=bearer(root),
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["exam_date"] == "2026-11-03"
-    assert updated.json()["extra_reading_percent"] == 25
+    assert updated.json()["needs_extra_time"] is True
+    assert updated.json()["custom_reading_seconds"] == 120
 
     refused = await client.patch(
-        f"/api/v1/platform/users/{person}", json={"extra_reading_percent": 250}, headers=bearer(root)
+        f"/api/v1/platform/users/{person}", json={"custom_reading_seconds": 3660}, headers=bearer(root)
     )
     assert refused.status_code == 422
 

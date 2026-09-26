@@ -129,7 +129,7 @@ async def score_attempt_now(
         # Announced as loudly as a success: somebody is watching this attempt
         # waiting for feedback, and a failure they are never told about is a
         # spinner that turns for ever.
-        publish_after_commit(session, user_topic(attempt.user_id), "attempt")
+        publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
         return False
 
     try:
@@ -158,7 +158,7 @@ async def score_attempt_now(
     # Marking takes a minute or two of model time, so the browser has to learn
     # it finished somehow. b2c polled; this says so once, after the commit,
     # and the poll goes.
-    publish_after_commit(session, user_topic(attempt.user_id), "attempt")
+    publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
     return True
 
 

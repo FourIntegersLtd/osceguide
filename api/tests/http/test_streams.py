@@ -338,6 +338,53 @@ async def test_a_candidate_is_told_when_their_marking_finishes(
         assert first["status"] == "created"
 
 
+async def test_me_events_requires_a_ticket_or_a_token(client: AsyncClient) -> None:
+    assert (await client.get("/api/v1/me/events")).status_code == 401
+
+
+async def test_me_events_names_a_declined_match_with_its_session_id(
+    client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The one stream a signed-in tab holds, told about a peer-practice match falling through.
+
+    Replaces `usePeerSession`'s five-second poll for a partner's answer
+    (BACKLOG P-3): the decliner's own request is what pushes the frame, not a
+    clock either side is running.
+    """
+    from app.features.peer_practice import service as peer_service
+    from tests.support.catalog import ensure_exam
+
+    await ensure_exam(db_session, "sca")
+    a_token = await make_actor("stream-decline-a@example.com")
+    b_token = await make_actor("stream-decline-b@example.com")
+    await client.post("/api/v1/peer-practice/queue", json={"exam_code": "sca"}, headers=bearer(a_token))
+    await client.post("/api/v1/peer-practice/queue", json={"exam_code": "sca"}, headers=bearer(b_token))
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    matched = await peer_service.match_waiting(db_session, exam.id)
+    assert matched is not None
+    matched_id = matched.id
+    await db_session.flush()
+
+    await client.post(f"/api/v1/me/practice-sessions/{matched_id}/accept", headers=bearer(a_token))
+
+    ticket = (await client.post("/api/v1/auth/stream-ticket", headers=bearer(a_token))).json()["ticket"]
+    async with streaming_client.stream("GET", f"/api/v1/me/events?ticket={ticket}") as response:
+        assert response.status_code == 200
+        lines = response.aiter_lines()
+        opening = await asyncio.wait_for(frames(lines, 1), timeout=10)
+        assert opening[0][0] == "connected"
+
+        declined = await client.post(
+            f"/api/v1/me/practice-sessions/{matched_id}/decline", headers=bearer(b_token)
+        )
+        assert declined.status_code == 200, declined.text
+
+        pushed = await asyncio.wait_for(frames(lines, 1), timeout=10)
+        assert pushed[0][0] == "practice.session_updated"
+        assert json.loads(pushed[0][1]) == {"session_id": str(matched_id)}
+
+
 async def test_the_attempt_stream_refuses_somebody_elses_attempt(
     client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

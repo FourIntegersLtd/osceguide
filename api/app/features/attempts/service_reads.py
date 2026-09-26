@@ -215,6 +215,17 @@ async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[u
     return await repository.set_entries_with_attempts(session, list(entry_ids))
 
 
+async def latest_status_by_set_entry(
+    session: AsyncSession, entry_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The status of each entry's most recently created attempt, keyed by entry id.
+
+    `station_sets` reads this to show a "Feedback" badge only once the newest
+    attempt at a station has actually been marked, not merely sat.
+    """
+    return await repository.latest_status_by_set_entry(session, list(entry_ids))
+
+
 async def count_consultations(session: AsyncSession) -> int:
     """Every consultation this platform has run, debriefs excluded."""
     return await repository.count_completed(session)

@@ -75,6 +75,10 @@ async def join_session(
         raise errors.SessionNotFound()
     try:
         domain.ensure_joinable(state, now=now)
+    except domain.TooEarlyToJoin as refusal:
+        # Caught ahead of the plain `SessionNotJoinable` below: `TooEarlyToJoin` is a
+        # subclass of it, and would otherwise match that broader `except` first.
+        raise errors.TooEarlyToJoinError(str(refusal)) from refusal
     except domain.SessionNotJoinable as refusal:
         raise errors.SessionNotOpen(str(refusal)) from refusal
 
@@ -113,6 +117,11 @@ async def cancel_peer_session(
 
     Cancelling one that is already cancelled is refused as `peer_session_not_open`.
     Anyone else is told the session does not exist.
+
+    If the pair had already joined and started a live consultation, that
+    practice session is ended too, with reason `cancelled` — otherwise the
+    booking shows cancelled while a room the other person could still be
+    sitting in keeps running underneath it.
     """
     peer_session = await repository.peer_session_by_id(session, peer_session_id)
     if peer_session is None:
@@ -121,3 +130,14 @@ async def cancel_peer_session(
         raise errors.SessionNotFound()
     if not await repository.mark_peer_cancelled(session, peer_session_id, at=now):
         raise errors.SessionNotOpen("That session is no longer scheduled or under way.")
+    if peer_session.practice_session_id is not None:
+        # `peer_practice.service` owns ending a session — it is also what stops
+        # and queues the recording, which reaching into its repository directly
+        # would skip. `end_session_if_still_running` exists for exactly this: a
+        # caller outside that slice that knows a practice session id but is not
+        # one of its two participants.
+        from app.features.peer_practice import service as peer_practice
+
+        await peer_practice.end_session_if_still_running(
+            session, peer_session.practice_session_id, reason="cancelled", now=now
+        )

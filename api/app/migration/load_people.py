@@ -47,6 +47,16 @@ def _apply_profile(user: User, merged: MergedUser, *, creating: bool) -> None:
         user.exam_date = merged.exam_date
     if merged.extra_reading_percent > user.extra_reading_percent:
         user.extra_reading_percent = merged.extra_reading_percent
+    # A3's replacement fields: the gate is OR'd in (once true from any legacy
+    # record, it stays true) and each timer duration is only ever filled in
+    # when this account does not already have one, so a person's own edit
+    # since import is never overwritten by a second run.
+    if merged.needs_extra_time:
+        user.needs_extra_time = True
+    if merged.custom_reading_seconds is not None and user.custom_reading_seconds is None:
+        user.custom_reading_seconds = merged.custom_reading_seconds
+    if merged.custom_simulation_seconds is not None and user.custom_simulation_seconds is None:
+        user.custom_simulation_seconds = merged.custom_simulation_seconds
     if merged.consumer_role == "admin":
         user.consumer_role = "admin"
     if creating and merged.created_at:
@@ -122,6 +132,9 @@ async def load_users(
                 exam_code=merged.exam_code,
                 exam_date=merged.exam_date,
                 extra_reading_percent=merged.extra_reading_percent,
+                needs_extra_time=merged.needs_extra_time,
+                custom_reading_seconds=merged.custom_reading_seconds,
+                custom_simulation_seconds=merged.custom_simulation_seconds,
                 consumer_role=merged.consumer_role,
                 last_login_at=merged.last_login_at,
             )

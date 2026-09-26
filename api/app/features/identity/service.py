@@ -65,7 +65,10 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         is_platform_admin=user.is_platform_admin,
         must_change_password=user.must_change_password,
         exam_date=user.exam_date,
-        extra_reading_percent=user.extra_reading_percent,
+        exam_time=user.exam_time,
+        needs_extra_time=user.needs_extra_time,
+        custom_reading_seconds=user.custom_reading_seconds,
+        custom_simulation_seconds=user.custom_simulation_seconds,
         exam_code=user.exam_code,
         ai_training_consent=user.ai_training_consent,
         colleague_waiting_email=user.colleague_waiting_email,
@@ -142,9 +145,12 @@ async def update_me(
 ) -> UserRead:
     """Change what is a person's own to change.
 
-    `extra_reading_percent` is **not** applied to an institution's examination: a circuit's
-    clock is one clock for everybody on it. An accommodation there is granted on the
-    circuit's timing instead. See `platform-web/docs/BACKLOG.md`, S-2.
+    The custom reading/simulation timers (`custom_reading_seconds`,
+    `custom_simulation_seconds`) are **not** applied to an institution's examination: a
+    circuit's clock is one clock for everybody on it. An accommodation there is granted on the
+    circuit's timing instead. See `platform-web/docs/BACKLOG.md`, S-2. They only take effect at
+    all while `needs_extra_time` is true, matching the retiring client's "Extra reading time"
+    checkbox.
 
     The exam is set here once, by an account that has none, and never changed: see
     `_exam_to_set`.
@@ -154,7 +160,10 @@ async def update_me(
         principal.user_id,
         name=body.name,
         exam_date=body.exam_date,
-        extra_reading_percent=body.extra_reading_percent,
+        needs_extra_time=body.needs_extra_time,
+        custom_reading_seconds=body.custom_reading_seconds,
+        custom_simulation_seconds=body.custom_simulation_seconds,
+        exam_time=body.exam_time,
         exam_code=await _exam_to_set(session, principal.user_id, body.exam_code),
         ai_training_consent=body.ai_training_consent if "ai_training_consent" in fields_sent else None,
         colleague_waiting_email=(
@@ -162,8 +171,16 @@ async def update_me(
         ),
         replay_onboarding=body.replay_onboarding if "replay_onboarding" in fields_sent else None,
         # A PATCH that cannot tell "not mentioned" from "set to nothing" makes
-        # clearing an exam date impossible.
+        # clearing any of these impossible. Clearing `exam_date` also clears
+        # `exam_time`: a time with no date names nothing.
         clear_exam_date="exam_date" in fields_sent and body.exam_date is None,
+        clear_exam_time="exam_time" in fields_sent and body.exam_time is None,
+        clear_custom_reading_seconds=(
+            "custom_reading_seconds" in fields_sent and body.custom_reading_seconds is None
+        ),
+        clear_custom_simulation_seconds=(
+            "custom_simulation_seconds" in fields_sent and body.custom_simulation_seconds is None
+        ),
     )
     if user is None:
         raise InvalidCredentials()

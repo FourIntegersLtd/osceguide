@@ -15,6 +15,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from pydantic import BaseModel
 
 from app.core.errors import error_codes
 
@@ -172,3 +173,58 @@ def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[
         "content": {SSE_MEDIA_TYPE: {"schema": {"$ref": f"#/components/schemas/{frame.__name__}"}}},
     }
     return responses
+
+
+class MeEventEnvelope(BaseModel):
+    """One frame of the `/me/events` fan-in stream: a named event and its small id payload.
+
+    Every other stream's frame is the same shape as its `GET`'s response model, named by
+    `sse_responses`. `/me/events` multiplexes many differently-shaped events (`attempt`,
+    `practice.session_updated`, `cv.read`, `media.updated`, `coverage`, ...) onto one
+    connection, so there is no single response model to point at. This envelope documents
+    the shape every frame shares instead: the event's name, and a small object of the ids
+    naming what changed — never the changed data itself, which the client re-fetches.
+    """
+
+    event: str
+    data: dict[str, str]
+
+
+def fan_in_responses(*errors: type[Any]) -> dict[int | str, dict[str, Any]]:
+    """Document `/me/events`: many named events on one connection, not one snapshot's frame.
+
+    See `sse_responses` for the single-snapshot case this is the fan-in counterpart of.
+    """
+    from app.core.errors import error_responses  # noqa: PLC0415 - avoids an import cycle
+
+    responses = error_responses(*errors)
+    responses[200] = {
+        "description": (
+            "An SSE stream multiplexing this user's own events onto one connection: "
+            "`connected`, then a named event (`attempt`, `practice.session_updated`, "
+            "`cv.read`, `media.updated`, `coverage`, ...) each time something changes, "
+            "whose shape is `MeEventEnvelope`, and `ping` every 25 seconds."
+        ),
+        "content": {SSE_MEDIA_TYPE: {"schema": {"$ref": "#/components/schemas/MeEventEnvelope"}}},
+    }
+    return responses
+
+
+def install_me_event_schema(app: FastAPI) -> None:
+    """Register `MeEventEnvelope` in the document even though no route uses it as a `response_model`.
+
+    Every other SSE route's frame schema rides along for free because it is also some `GET`'s
+    response model. This stream has no snapshot `GET` to borrow a schema from, so its frame
+    shape is patched into the built document the same way `install_error_catalogue` patches
+    in the error-code enum — otherwise the `$ref` `fan_in_responses` declares would dangle.
+    """
+    build = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        """Build the document as FastAPI would, then add the fan-in frame's schema."""
+        spec = build()
+        schemas = spec.setdefault("components", {}).setdefault("schemas", {})
+        schemas.setdefault("MeEventEnvelope", MeEventEnvelope.model_json_schema())
+        return spec
+
+    app.openapi = openapi  # type: ignore[method-assign]

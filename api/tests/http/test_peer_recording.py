@@ -131,6 +131,33 @@ async def test_ending_early_still_stops_and_queues(
     assert recorder.stopped == ["EG_1"]
 
 
+async def test_an_abandoned_consultation_is_stopped_but_not_marked(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The End dialog promised no feedback; the egress must still stop, it costs money."""
+    from sqlalchemy import text
+
+    row = await _matched(client, make_actor, db_session, "rec-abandon")
+    recorder = FakeRoomRecorder()
+    await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
+    started = await repository_sessions.session_by_id(db_session, row.id)
+    assert started is not None
+
+    await service_recording.stop_recording_and_queue(
+        db_session, started, now=datetime.now(UTC), mark=False, recorder=recorder
+    )
+
+    refreshed = await repository_sessions.session_by_id(db_session, row.id)
+    assert refreshed is not None
+    assert refreshed.recording_state == "stopped"
+    assert recorder.stopped == ["EG_1"]
+    queued = await db_session.execute(
+        text("SELECT count(*) FROM procrastinate_jobs WHERE queueing_lock LIKE :lock"),
+        {"lock": f"transcribe:{row.id}:%"},
+    )
+    assert queued.scalar_one() == 0
+
+
 async def test_only_the_doctor_is_told_where_their_feedback_is(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

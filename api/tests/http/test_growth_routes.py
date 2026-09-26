@@ -511,3 +511,261 @@ async def test_only_staff_may_read_the_payout_queue(client: AsyncClient, make_ac
     token = await make_actor("curious@example.com")
     response = await client.get("/api/v1/growth/referrals", headers=bearer(token))
     assert response.status_code == 403
+
+
+# --- bank details for payout (A1) -------------------------------------------
+
+PAYOUT_DETAILS = "/api/v1/me/referral-payout-details"
+
+
+async def test_reading_bank_details_before_any_are_saved_is_a_named_404(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The legacy card had nothing to show on a fresh account either; the
+    frontend tells that apart from a real failure by this stable code."""
+    token = await make_actor("no-bank-yet@example.com")
+
+    response = await client.get(PAYOUT_DETAILS, headers=bearer(token))
+
+    assert response.status_code == 404, response.text
+    assert response.json()["code"] == "payout_details_not_found"
+
+
+async def test_saving_bank_details_masks_the_account_number_on_read_back(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The sort code only names a branch and is redisplayed in full, exactly as
+    the legacy card did; the account number is the one thing kept masked."""
+    token = await make_actor("saver@example.com")
+
+    saved = await client.put(
+        PAYOUT_DETAILS,
+        json={
+            "bank_name": "Monzo",
+            "account_holder_name": "Amara Okafor",
+            "sort_code": "12-34-56",
+            "account_number": "12345678",
+        },
+        headers=bearer(token),
+    )
+
+    assert saved.status_code == 200, saved.text
+    body = saved.json()
+    assert body["bank_name"] == "Monzo"
+    assert body["account_holder_name"] == "Amara Okafor"
+    assert body["sort_code"] == "12-34-56"
+    assert body["account_number_last4"] == "5678"
+    assert "account_number" not in body
+    assert "12345678" not in str(body)
+
+    read_back = await client.get(PAYOUT_DETAILS, headers=bearer(token))
+    assert read_back.status_code == 200, read_back.text
+    assert read_back.json() == body
+
+
+async def test_a_bare_sort_code_is_normalised_to_the_grouped_form(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The legacy form accepted "123456" as readily as "12-34-56"."""
+    token = await make_actor("bare-sort-code@example.com")
+
+    saved = await client.put(
+        PAYOUT_DETAILS,
+        json={
+            "bank_name": "Starling",
+            "account_holder_name": "Femi Adeyemi",
+            "sort_code": "654321",
+            "account_number": "87654321",
+        },
+        headers=bearer(token),
+    )
+
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["sort_code"] == "65-43-21"
+
+
+@pytest.mark.parametrize("bad_sort_code", ["1234567", "ab-cd-ef", "12-34", ""])
+async def test_an_unrecognisable_sort_code_is_refused(
+    client: AsyncClient, make_actor, bad_sort_code: str
+) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor(f"bad-sort-{abs(hash(bad_sort_code))}@example.com")
+
+    response = await client.put(
+        PAYOUT_DETAILS,
+        json={
+            "bank_name": "Monzo",
+            "account_holder_name": "Someone",
+            "sort_code": bad_sort_code,
+            "account_number": "12345678",
+        },
+        headers=bearer(token),
+    )
+
+    assert response.status_code == 422, response.text
+
+
+@pytest.mark.parametrize("bad_account_number", ["12345", "12345678901", "abcdefgh"])
+async def test_an_unrecognisable_account_number_is_refused(
+    client: AsyncClient, make_actor, bad_account_number: str
+) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor(f"bad-acct-{abs(hash(bad_account_number))}@example.com")
+
+    response = await client.put(
+        PAYOUT_DETAILS,
+        json={
+            "bank_name": "Monzo",
+            "account_holder_name": "Someone",
+            "sort_code": "12-34-56",
+            "account_number": bad_account_number,
+        },
+        headers=bearer(token),
+    )
+
+    assert response.status_code == 422, response.text
+
+
+async def test_changing_the_bank_name_alone_keeps_the_stored_account_number(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The account number is optional on a second PUT, so somebody can fix a
+    typo in the bank name without retyping a number they cannot see."""
+    token = await make_actor("edits-bank-name@example.com")
+    await client.put(
+        PAYOUT_DETAILS,
+        json={
+            "bank_name": "Monzo",
+            "account_holder_name": "Amara Okafor",
+            "sort_code": "12-34-56",
+            "account_number": "12345678",
+        },
+        headers=bearer(token),
+    )
+
+    updated = await client.put(
+        PAYOUT_DETAILS,
+        json={"bank_name": "Monzo Bank Ltd", "account_holder_name": "Amara Okafor", "sort_code": "12-34-56"},
+        headers=bearer(token),
+    )
+
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["bank_name"] == "Monzo Bank Ltd"
+    assert updated.json()["account_number_last4"] == "5678"
+
+
+async def test_omitting_the_account_number_with_nothing_stored_is_refused(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("nothing-stored-yet@example.com")
+
+    response = await client.put(
+        PAYOUT_DETAILS,
+        json={"bank_name": "Monzo", "account_holder_name": "Amara Okafor", "sort_code": "12-34-56"},
+        headers=bearer(token),
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "payout_account_number_required"
+
+
+async def test_the_settlement_queue_shows_the_referrers_bank_details_decrypted(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Settlement happens by hand outside the product, so the person who does it
+    needs the real account number, not the masked one the referrer sees."""
+    referrer = await make_actor("settle-payout-referrer@example.com")
+    await client.put(
+        PAYOUT_DETAILS,
+        json={
+            "bank_name": "Monzo",
+            "account_holder_name": "Amara Okafor",
+            "sort_code": "12-34-56",
+            "account_number": "12345678",
+        },
+        headers=bearer(referrer),
+    )
+    code = (await client.post("/api/v1/me/referral-code", headers=bearer(referrer))).json()["code"]
+    await make_actor("settle-payout-referee@example.com")
+    referee = await identity_repo.user_by_email(db_session, "settle-payout-referee@example.com")
+    assert referee is not None
+    await service.credit_referral_purchase(
+        db_session, code=code, referred_user_id=referee.id, plan_duration_days=90, now=now()
+    )
+    await db_session.flush()
+    admin = await make_actor("settle-payout-admin@osceguide.com", platform_admin=True)
+
+    response = await client.get("/api/v1/growth/referrals", headers=bearer(admin))
+
+    assert response.status_code == 200, response.text
+    row = response.json()["items"][0]
+    assert row["payout_details"]["bank_name"] == "Monzo"
+    assert row["payout_details"]["account_number"] == "12345678"
+    assert row["payout_details"]["sort_code"] == "12-34-56"
+
+
+async def test_nobody_may_read_or_write_another_persons_bank_details(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`/me/...` is scoped by the caller's own token; there is no id in the URL
+    to swap for somebody else's."""
+    token = await make_actor("no-token-no-details@example.com")
+    unauthenticated = await client.get(PAYOUT_DETAILS)
+    assert unauthenticated.status_code == 401
+    _ = token
+
+
+# --- per-referee referral history (A2) --------------------------------------
+
+
+async def test_a_referrer_reads_their_own_redeemed_history(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The legacy table: referee email, date joined, amount earned, payout
+    status — plus the code used and the plan bought, for the detail view."""
+    referrer = await make_actor("history-referrer@example.com")
+    code = (await client.post("/api/v1/me/referral-code", headers=bearer(referrer))).json()["code"]
+    await make_actor("history-referee@example.com")
+    referee = await identity_repo.user_by_email(db_session, "history-referee@example.com")
+    assert referee is not None
+    await service.credit_referral_purchase(
+        db_session,
+        code=code,
+        referred_user_id=referee.id,
+        plan_duration_days=90,
+        now=now(),
+        plan_code="three_month",
+    )
+    await db_session.flush()
+
+    response = await client.get("/api/v1/me/referrals/history", headers=bearer(referrer))
+
+    assert response.status_code == 200, response.text
+    rows = response.json()["items"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["referee_email"] == "history-referee@example.com"
+    assert row["redeemed_at"] is not None
+    assert row["earned_pence"] == 500
+    assert row["payout_status"] == "unpaid"
+    assert row["paid_at"] is None
+    assert row["plan_code"] == "three_month"
+    assert row["plan_label"]
+    assert row["code"].startswith(code)
+
+
+async def test_the_history_never_shows_someone_elses_referrals(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    await _a_redeemed_referral(client, db_session, make_actor, "not-mine")
+    outsider = await make_actor("outsider-of-history@example.com")
+
+    response = await client.get("/api/v1/me/referrals/history", headers=bearer(outsider))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["items"] == []
+
+
+async def test_an_unredeemed_code_does_not_appear_in_the_history(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A shareable code with nobody behind it yet is not a redemption."""
+    referrer = await make_actor("unredeemed-history@example.com")
+    await client.post("/api/v1/me/referral-code", headers=bearer(referrer))
+
+    response = await client.get("/api/v1/me/referrals/history", headers=bearer(referrer))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["items"] == []

@@ -57,6 +57,22 @@ make guards                                    # tests/guards only, fast
   `APP_ENV=staging`; seed staging with `scripts/seed_platform.py` instead.
 - The e2e run (`pytest -m e2e`) installs `aiohttp` and the LiveKit SDK. Remove
   them afterwards or `make typecheck` fails on `voice/adapter.py`.
+- **A failed request rolls back the whole test's session, not just itself.**
+  `tests/conftest.py`'s `override_get_session` hands every request in one HTTP
+  test the same `db_session`. A 422, or any `AppError` with the default
+  `persist_effects=False` (every plain 409), rolls it back — erasing a row a
+  service call inserted directly into `db_session` and only `flush()`-ed, and
+  expiring every ORM attribute already read off it, so reading one later
+  raises `MissingGreenlet` far from the real cause. Capture ids into a plain
+  variable as soon as you create the row, and put a request expected to fail
+  after any request whose committed effect the test still relies on.
+- **A mutation on a `Timestamps` row must `session.refresh()` it before
+  returning, if the caller reads `updated_at`.** `onupdate=func.now()` runs in
+  Postgres, so the ORM object is left expired after the `UPDATE`; reading the
+  expired attribute outside the request's async context raises
+  `MissingGreenlet` with a stack trace that points nowhere near the real cause.
+  A create path that refreshes and an update path that doesn't is an easy
+  split to miss — test a second write, not just the first.
 
 ## Owners
 

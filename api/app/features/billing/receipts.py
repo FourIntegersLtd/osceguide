@@ -11,6 +11,7 @@ Financial output, so every format here is an oracle rather than a preference:
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -22,6 +23,11 @@ PLAN_LABELS = {
     "six_month": "6-Month Access",
     "test": "Test Plan",
 }
+
+# platform-api's own plan codes are `<exam>_<months>m`, with the referral twin
+# suffixed (`sca_3m`, `all_6m`, `sca_1m_referral`). The customer bought the
+# same thing whichever code Stripe reported, so they read the same label.
+PLAN_CODE_MONTHS = re.compile(r"^[a-z]+_(?P<months>\d+)m(?:_referral)?$")
 
 SELLER_NAME = "Four Integers Ltd"
 
@@ -63,8 +69,17 @@ def format_receipt_date(moment: datetime | None) -> str:
 
 
 def plan_label(plan_code: str) -> str:
-    """Oracle: `plan_duration_label`, including its fallback."""
-    return PLAN_LABELS.get(plan_code, plan_code.replace("_", " "))
+    """Oracle: `plan_duration_label`, including its fallback.
+
+    Legacy codes read from the table; platform-api codes derive the months from
+    the code itself; anything else is spelt out rather than shown raw or blank.
+    """
+    if plan_code in PLAN_LABELS:
+        return PLAN_LABELS[plan_code]
+    matched = PLAN_CODE_MONTHS.match(plan_code)
+    if matched:
+        return f"{int(matched.group('months'))}-Month Access"
+    return plan_code.replace("_", " ")
 
 
 def stripe_reference_display(payment_intent_id: str | None) -> str:

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
@@ -132,6 +133,63 @@ async def event_stream(
                 yield frame("snapshot", current.data)
                 if current.final:
                     return
+        finally:
+            pumping.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await pumping
+
+
+def _decode_message(raw: str) -> tuple[str, str]:
+    """Split one bus message into its event name and JSON payload.
+
+    `raw` is whatever `app.core.events.encode_message` produced: a JSON object
+    with `event` and `data`. Anything else (a message from before this shape
+    existed, or a stray publish elsewhere) is treated as an unnamed change
+    with no payload, rather than breaking the stream.
+    """
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return raw, "{}"
+    if isinstance(parsed, dict) and "event" in parsed:
+        return str(parsed["event"]), json.dumps(parsed.get("data") or {})
+    return raw, "{}"
+
+
+async def fan_in_stream(
+    *, topics: Sequence[str], bus: EventBus, heartbeat_seconds: float = HEARTBEAT_SECONDS
+) -> AsyncIterator[str]:
+    """Forward every named event published on `topics`, as it arrives.
+
+    Unlike `event_stream`, there is no single read model to snapshot: this is
+    `/me/events`, one connection carrying many kinds of change (an attempt
+    marked, a peer session updated, a CV read), each named and carrying just
+    enough of a payload — an id — for a screen to tell whether it is the one
+    being talked about. A screen that cares still re-reads its own resource;
+    this only tells it when to. Never final: a person's own stream outlives
+    any one thing that happened on it.
+    """
+    yield frame("connected", "{}")
+    async with bus.subscription(list(topics)) as events:
+        queued: asyncio.Queue[str] = asyncio.Queue()
+
+        async def pump() -> None:
+            """Move every raw message off the subscription and onto the queue this loop reads."""
+            async for raw in events:
+                await queued.put(raw)
+
+        pumping = asyncio.create_task(pump())
+        try:
+            while True:
+                try:
+                    raw = await asyncio.wait_for(queued.get(), timeout=heartbeat_seconds)
+                except TimeoutError:
+                    if pumping.done():
+                        return
+                    yield frame("ping", "{}")
+                    continue
+                name, payload = _decode_message(raw)
+                yield frame(name, payload)
         finally:
             pumping.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):

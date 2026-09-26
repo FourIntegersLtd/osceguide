@@ -47,6 +47,10 @@ async def voice_grant(
         raise errors.SessionNotFound()
     if practice_session.status == "ended" or not practice_session.room_name:
         raise errors.SessionAlreadyEnded()
+    # No way into the room until both have accepted: a pairing one side may
+    # still decline is not a session yet.
+    if practice_session.status == "pending_accept":
+        raise errors.NotYetAcceptedError()
     granted = voice.grant_for_room(
         room=practice_session.room_name,
         identity=str(user_id),

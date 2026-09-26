@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -124,6 +124,53 @@ async def issue_code(principal: CurrentPrincipal, session: Session) -> schemas.R
 )
 async def read_my_referrals(principal: CurrentPrincipal, session: Session) -> schemas.ReferralRead:
     return await service.read_my_referrals(session, principal.user_id)
+
+
+# The frontend does its own client-side paging (10 per page) and search over a
+# single fetch, so this accepts a much larger cap than the keyset pages
+# elsewhere in this router.
+MAX_REFERRAL_HISTORY_LIMIT = service.MAX_REFERRAL_HISTORY_ROWS
+
+
+@router.get(
+    "/me/referrals/history",
+    response_model=Page[schemas.ReferralHistoryRead],
+    responses=error_responses(Unauthenticated),
+)
+async def read_my_referral_history(
+    principal: CurrentPrincipal,
+    session: Session,
+    limit: Annotated[int, Query(ge=1, le=MAX_REFERRAL_HISTORY_LIMIT)] = MAX_REFERRAL_HISTORY_LIMIT,
+) -> Page[schemas.ReferralHistoryRead]:
+    """This person's own redeemed referrals: who joined, what they bought, and what it earned.
+
+    No cursor: the frontend pages and searches this list client-side, so one
+    call returns up to `limit` rows and there is nothing to page further.
+    """
+    rows = await service.read_my_referral_history(session, user_id=principal.user_id, limit=limit)
+    return Page(items=rows, next_cursor=None)
+
+
+@router.get(
+    "/me/referral-payout-details",
+    response_model=schemas.PayoutDetailsRead,
+    responses=error_responses(Unauthenticated, errors.PayoutDetailsNotFound),
+)
+async def read_my_payout_details(principal: CurrentPrincipal, session: Session) -> schemas.PayoutDetailsRead:
+    """This person's own bank details for referral payouts, sort code in full, account number masked."""
+    return await service.read_my_payout_details(session, user_id=principal.user_id)
+
+
+@router.put(
+    "/me/referral-payout-details",
+    response_model=schemas.PayoutDetailsRead,
+    responses=error_responses(Unauthenticated, InvalidInput, errors.PayoutAccountNumberRequired),
+)
+async def write_my_payout_details(
+    body: schemas.PayoutDetailsWrite, principal: CurrentPrincipal, session: Session
+) -> schemas.PayoutDetailsRead:
+    """Save or update this person's bank details for referral payouts."""
+    return await service.write_my_payout_details(session, user_id=principal.user_id, body=body)
 
 
 @router.get(

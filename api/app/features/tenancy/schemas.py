@@ -49,8 +49,11 @@ class UpdatePlatformUser(BaseModel):
     exam_code: str | None = Field(default=None, min_length=1, max_length=32)
     status: str | None = Field(default=None, pattern="^(active|deactivated)$")
     exam_date: date | None = None
-    # An access arrangement: 25 is what the old client's bare "yes" meant.
-    extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
+    # An access arrangement, gating the two custom timers below — replaces the
+    # old bare "yes" `extra_reading_percent` on this surface (A3).
+    needs_extra_time: bool | None = None
+    custom_reading_seconds: int | None = Field(default=None, ge=1, le=3659)
+    custom_simulation_seconds: int | None = Field(default=None, ge=1, le=3659)
 
 
 class PlatformUserDetail(UserSummary):
@@ -60,7 +63,9 @@ class PlatformUserDetail(UserSummary):
     last_login_at: datetime | None = None
     exam_code: str | None = None
     exam_date: date | None = None
-    extra_reading_percent: int = 0
+    needs_extra_time: bool = False
+    custom_reading_seconds: int | None = None
+    custom_simulation_seconds: int | None = None
     consumer_role: str = "user"
     legacy_consumer_ids: dict[str, str] = Field(default_factory=dict)
     memberships: list[MembershipRead] = Field(default_factory=list)

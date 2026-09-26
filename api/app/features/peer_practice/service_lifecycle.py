@@ -131,7 +131,7 @@ async def advance_phases_if_due(
     refreshed = await repository_sessions.session_by_id(session, practice_session.id)
     assert refreshed is not None
     for user_id in (refreshed.doctor_user_id, refreshed.patient_user_id):
-        publish_after_commit(session, user_topic(user_id), SESSION_UPDATED)
+        publish_after_commit(session, user_topic(user_id), SESSION_UPDATED, {"session_id": str(refreshed.id)})
     return refreshed
 
 
@@ -179,7 +179,9 @@ async def record_presence(
         assert refreshed is not None
         practice_session = refreshed
         for participant in (practice_session.doctor_user_id, practice_session.patient_user_id):
-            publish_after_commit(session, user_topic(participant), SESSION_UPDATED)
+            publish_after_commit(
+                session, user_topic(participant), SESSION_UPDATED, {"session_id": str(practice_session.id)}
+            )
 
     return await advance_phases_if_due(
         session, practice_session, exam_code=exam_code, now=now, recorder=recorder

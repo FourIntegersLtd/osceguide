@@ -25,14 +25,23 @@ async def create_session(
     patient_user_id: uuid.UUID,
     station_version_id: uuid.UUID | None = None,
     peer_session_id: uuid.UUID | None = None,
+    status: str | None = None,
+    accept_expires_at: datetime | None = None,
 ) -> PracticeSession:
-    """Create the matched pair's practice session row."""
+    """Create the matched pair's practice session row.
+
+    `status`/`accept_expires_at` are left out for a marketplace-booked pair,
+    which both already agreed to a fixed time and skips the accept handshake;
+    the queue's own matcher passes both, starting the pair in `pending_accept`.
+    """
     practice_session = PracticeSession(
         exam_id=exam_id,
         doctor_user_id=doctor_user_id,
         patient_user_id=patient_user_id,
         station_version_id=station_version_id,
         peer_session_id=peer_session_id,
+        accept_expires_at=accept_expires_at,
+        **({"status": status} if status is not None else {}),
     )
     session.add(practice_session)
     await session.flush()
@@ -109,15 +118,28 @@ async def record_feedback(
     session: AsyncSession,
     session_id: uuid.UUID,
     *,
-    rating: int,
-    comment: str | None,
-    would_practice_again: bool | None = None,
+    would_practice_again: bool,
+    rating: int | None = None,
+    comment: str | None = None,
 ) -> None:
-    """Record the rating and comment one participant leaves after their session."""
+    """Record the feedback one participant leaves after their session."""
     await session.execute(
         update(PracticeSession)
         .where(PracticeSession.id == session_id)
         .values(feedback_rating=rating, feedback_comment=comment, would_practice_again=would_practice_again)
+    )
+
+
+async def record_accept(session: AsyncSession, session_id: uuid.UUID, *, column: str, at: datetime) -> None:
+    """Stamp one side's acceptance of a pending pairing.
+
+    `column` is always `doctor_accepted_at` or `patient_accepted_at`, chosen
+    by the caller from which role the accepting user plays — there is no
+    third option, so this stays a plain column write rather than a case
+    expression.
+    """
+    await session.execute(
+        update(PracticeSession).where(PracticeSession.id == session_id).values(**{column: at})
     )
 
 

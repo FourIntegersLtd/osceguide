@@ -116,6 +116,31 @@ async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[u
     return {entry_id for entry_id in (await session.execute(stmt)).scalars() if entry_id is not None}
 
 
+async def latest_status_by_set_entry(
+    session: AsyncSession, entry_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The status of the most recently created attempt against each of these set entries.
+
+    One query for every entry a set holds, not one per entry: `DISTINCT ON` asks
+    Postgres to keep only the newest row per `set_entry_id`, ordered by when the
+    attempt was created (ties broken by id so the answer is stable). This is what
+    `station_sets` reads to decide whether a set has a "Feedback" badge to show —
+    an entry whose latest attempt has not reached `evaluated` is not ready yet,
+    even if an earlier attempt at the same station was.
+    """
+    if not entry_ids:
+        return {}
+    stmt = (
+        select(Attempt.set_entry_id, Attempt.status)
+        .where(Attempt.set_entry_id.in_(list(entry_ids)))
+        .distinct(Attempt.set_entry_id)
+        .order_by(Attempt.set_entry_id, Attempt.created_at.desc(), Attempt.id.desc())
+    )
+    return {
+        entry_id: status for entry_id, status in (await session.execute(stmt)).all() if entry_id is not None
+    }
+
+
 async def list_for_user(
     session: AsyncSession,
     user_id: uuid.UUID,

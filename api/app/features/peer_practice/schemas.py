@@ -154,12 +154,30 @@ class PracticeSessionRead(BaseModel):
     # patient always reads `none` and never sees somebody else's attempt id.
     doctor_attempt_id: uuid.UUID | None = None
     feedback_state: str = "none"
+    # The accept handshake. `accept_expires_at` is only set while `status` is
+    # `pending_accept`; `my_accepted`/`partner_accepted` read the two acceptance
+    # columns from whichever side the viewer is. `requeued_entry_id` is the
+    # viewer's own new queue place, set only when this pairing ended by a
+    # decline or a timeout and the viewer had already accepted it.
+    accept_expires_at: datetime | None = None
+    my_accepted: bool = False
+    partner_accepted: bool = False
+    requeued_entry_id: uuid.UUID | None = None
 
 
 class SessionFeedback(BaseModel):
-    rating: int = Field(ge=1, le=5)
-    comment: str | None = Field(default=None, max_length=2000)
-    would_practice_again: bool | None = None
+    """What one participant leaves after a session, matching what the legacy form asked for.
+
+    `would_practice_again` is the one field the legacy form always required —
+    a session either felt worth repeating or it did not, and that answer is
+    what a good-match signal is built from. The star rating was always
+    optional there, which this keeps: someone declining to rate a partner is
+    not the same as having nothing to say about practising with them again.
+    """
+
+    would_practice_again: bool
+    rating: int | None = Field(default=None, ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=500)
 
 
 class ReportAbuse(BaseModel):

@@ -11,8 +11,8 @@ import asyncio
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
-from app.core.events import InProcessEventBus
-from app.core.sse import Snapshot, StreamFinished, event_stream, frame
+from app.core.events import InProcessEventBus, encode_message
+from app.core.sse import Snapshot, StreamFinished, event_stream, fan_in_stream, frame
 
 
 def test_a_frame_is_an_event_and_a_data_line() -> None:
@@ -155,3 +155,46 @@ async def test_a_topic_nobody_watches_is_not_an_error() -> None:
 
 async def _snapshot(data: str, *, final: bool = False) -> Snapshot:
     return Snapshot(data, final=final)
+
+
+# --- fan_in_stream: /me/events, many named events on one connection -------
+
+
+async def test_fan_in_stream_opens_with_connected_and_then_heartbeats() -> None:
+    bus = InProcessEventBus()
+    stream = fan_in_stream(topics=["user:1"], bus=bus, heartbeat_seconds=0.01)
+    assert await anext(stream) == "event: connected\ndata: {}\n\n"
+    assert await anext(stream) == "event: ping\ndata: {}\n\n"
+    await stream.aclose()
+
+
+async def test_fan_in_stream_forwards_a_published_event_by_its_own_name() -> None:
+    """Unlike `event_stream`, there is no read model to rebuild: the frame this
+    yields is exactly what `encode_message` put on the bus, named and small."""
+    bus = InProcessEventBus()
+    stream = fan_in_stream(topics=["user:1"], bus=bus)
+    assert await anext(stream) == "event: connected\ndata: {}\n\n"
+
+    # Reading the next frame is what subscribes; a bare `await asyncio.sleep(0)`
+    # lets that run (it is all synchronous up to the queue read) before this
+    # publishes, the same ordering an HTTP client gets for free by opening the
+    # stream and *then* triggering the change in a separate request.
+    next_frame = asyncio.ensure_future(anext(stream))
+    await asyncio.sleep(0)
+    await bus.publish("user:1", encode_message("cv.read", {"cv_id": "abc"}))
+    assert await asyncio.wait_for(next_frame, timeout=1) == 'event: cv.read\ndata: {"cv_id": "abc"}\n\n'
+    await stream.aclose()
+
+
+async def test_fan_in_stream_treats_an_unshaped_message_as_an_unnamed_change() -> None:
+    """A message from before this shape existed, or a stray publish, should
+    not break the stream — it forwards as a nameless, payload-less event."""
+    bus = InProcessEventBus()
+    stream = fan_in_stream(topics=["user:1"], bus=bus)
+    assert await anext(stream) == "event: connected\ndata: {}\n\n"
+
+    next_frame = asyncio.ensure_future(anext(stream))
+    await asyncio.sleep(0)
+    await bus.publish("user:1", "circuit.started")
+    assert await asyncio.wait_for(next_frame, timeout=1) == "event: circuit.started\ndata: {}\n\n"
+    await stream.aclose()

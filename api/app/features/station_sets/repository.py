@@ -77,6 +77,60 @@ async def entry_by_id(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def delete_entries(session: AsyncSession, set_id: uuid.UUID, entry_ids: Collection[uuid.UUID]) -> None:
+    """Remove specific entries from one set, by id.
+
+    Only ever called once the caller has confirmed none of them has an
+    attempt against it: an entry with attempts `RESTRICT`s, so this would
+    otherwise fail on the foreign key rather than explain itself.
+    """
+    if not entry_ids:
+        return
+    await session.execute(
+        delete(StationSetEntry).where(
+            StationSetEntry.set_id == set_id, StationSetEntry.id.in_(list(entry_ids))
+        )
+    )
+
+
+async def park_entries(session: AsyncSession, entry_ids: Collection[uuid.UUID]) -> None:
+    """Move these entries to positions nothing else in the set will ever hold (negative ones).
+
+    Called before inserting replacement entries at positions `0..n`, so a kept
+    entry that already happens to sit at one of those low numbers is out of the
+    way rather than colliding with the unique `(set_id, position)` the moment
+    the new row is written.
+    """
+    for offset, entry_id in enumerate(entry_ids):
+        await session.execute(
+            update(StationSetEntry).where(StationSetEntry.id == entry_id).values(position=-(offset + 1))
+        )
+
+
+async def reposition_entries(session: AsyncSession, ordered_entry_ids: list[uuid.UUID]) -> None:
+    """Renumber a set's entries to `0..n-1` in exactly this order.
+
+    Two passes, not one: entries scattered across both a leftover negative
+    range (parked kept entries) and a small non-negative range (entries just
+    inserted) would collide with the unique `(set_id, position)` if written
+    straight to their final numbers, because some entry already sits at almost
+    every number below `n`. Landing everything on a range more negative than
+    any of those first guarantees nothing already occupies a target position
+    when the second pass writes it.
+    """
+    total = len(ordered_entry_ids)
+    for offset, entry_id in enumerate(ordered_entry_ids):
+        await session.execute(
+            update(StationSetEntry)
+            .where(StationSetEntry.id == entry_id)
+            .values(position=-(total + offset + 1))
+        )
+    for position, entry_id in enumerate(ordered_entry_ids):
+        await session.execute(
+            update(StationSetEntry).where(StationSetEntry.id == entry_id).values(position=position)
+        )
+
+
 async def try_record_started_attempt(
     session: AsyncSession, entry_id: uuid.UUID, *, at: datetime, limit: int, debrief: bool = False
 ) -> uuid.UUID | None:

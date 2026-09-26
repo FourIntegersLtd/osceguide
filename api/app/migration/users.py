@@ -63,6 +63,13 @@ class MergedUser:
     exam_code: str | None = None
     exam_date: date | None = None
     extra_reading_percent: int = 0
+    # A3's replacement for `extra_reading_percent` on the live API: the two
+    # custom timer durations (seconds) and the gate that turns them on.
+    # `extra_reading_percent` itself is left as-is above — this column stays
+    # on `users` and nothing here changes how it is derived.
+    needs_extra_time: bool = False
+    custom_reading_seconds: int | None = None
+    custom_simulation_seconds: int | None = None
     consumer_role: str = "user"
 
 
@@ -139,6 +146,46 @@ def extra_reading_from_record(record: dict[str, Any]) -> int:
     return 0
 
 
+def _positive_int(raw: Any) -> int | None:
+    """A legacy timer duration as a positive number of seconds, or None if it is missing,
+    zero, or not a number — the legacy client never saved a timer of zero (A3)."""
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+@dataclass(frozen=True)
+class AccessibilityTimers:
+    """The A3 custom-timer fields a legacy `accessibility` block implies."""
+
+    needs_extra_time: bool
+    custom_reading_seconds: int | None
+    custom_simulation_seconds: int | None
+
+
+def accessibility_timers_from_record(record: dict[str, Any]) -> AccessibilityTimers:
+    """Oracle: legacy `accessibility.needs_extra_reading_time`,
+    `accessibility.doctor_timer_duration` and `accessibility.simulation_timer_duration`
+    (`frontend/src/b2c/components/shared/ui/Timer.tsx`, `TimerSettingsModal.tsx`).
+
+    The gate and the two durations are independent in the legacy data too:
+    unticking the checkbox left the durations in place but stopped using
+    them, so this reads all three rather than deriving one from another.
+    """
+    accessibility = record.get("accessibility")
+    if not isinstance(accessibility, dict):
+        return AccessibilityTimers(
+            needs_extra_time=False, custom_reading_seconds=None, custom_simulation_seconds=None
+        )
+    return AccessibilityTimers(
+        needs_extra_time=bool(accessibility.get("needs_extra_reading_time")),
+        custom_reading_seconds=_positive_int(accessibility.get("doctor_timer_duration")),
+        custom_simulation_seconds=_positive_int(accessibility.get("simulation_timer_duration")),
+    )
+
+
 def exam_for_product(app_type: Any) -> str:
     """The exam code for a legacy `app_type`, or `UnknownLegacyProduct` if none is mapped."""
     key = str(app_type or "").strip().lower()
@@ -202,6 +249,14 @@ def merge_users(
         reading = extra_reading_from_record(record)
         if reading > user.extra_reading_percent:
             user.extra_reading_percent = reading
+
+        timers = accessibility_timers_from_record(record)
+        if timers.needs_extra_time:
+            user.needs_extra_time = True
+        if timers.custom_reading_seconds is not None and user.custom_reading_seconds is None:
+            user.custom_reading_seconds = timers.custom_reading_seconds
+        if timers.custom_simulation_seconds is not None and user.custom_simulation_seconds is None:
+            user.custom_simulation_seconds = timers.custom_simulation_seconds
 
         exam_on_record = parse_date(record.get("exam_date"))
         if exam_on_record and user.exam_date is None:

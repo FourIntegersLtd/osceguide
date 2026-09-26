@@ -10,7 +10,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
-from app.features.growth.models import Acquisition, PartnerArrival, PartnerReporter, Referral
+from app.features.growth.models import (
+    Acquisition,
+    PartnerArrival,
+    PartnerReporter,
+    Referral,
+    ReferralPayoutDetails,
+)
 
 
 async def record_arrival(
@@ -156,12 +162,14 @@ async def record_redemption(
     referred_user_id: uuid.UUID,
     earned_pence: int,
     at: datetime,
+    plan_code: str | None = None,
 ) -> Referral:
     """Store one purchase made with somebody's code, as a redeemed row the payout queue lists.
 
     The shared code itself stays unredeemed so it keeps working. `redemption_code` is that
     code with a suffix, because `referrals.code` is unique; the importer stores b2c's
-    redemptions the same way.
+    redemptions the same way. `plan_code` is what was bought, so the referrer's own history
+    can show it without a join into `billing`.
     """
     redemption = Referral(
         referrer_user_id=referrer_user_id,
@@ -169,10 +177,29 @@ async def record_redemption(
         referred_user_id=referred_user_id,
         redeemed_at=at,
         earned_pence=earned_pence,
+        plan_code=plan_code,
     )
     session.add(redemption)
     await session.flush()
     return redemption
+
+
+async def my_redeemed_referrals_page(
+    session: AsyncSession, *, referrer_user_id: uuid.UUID, limit: int
+) -> list[Referral]:
+    """This person's own redeemed referrals, newest first, up to `limit` of them.
+
+    Not keyset-paginated like the admin queue: the frontend does its own
+    client-side paging and searching over a single, larger fetch (up to 500
+    rows), so a plain offset-free `LIMIT` is all this needs.
+    """
+    stmt = (
+        select(Referral)
+        .where(Referral.referrer_user_id == referrer_user_id, Referral.redeemed_at.is_not(None))
+        .order_by(Referral.redeemed_at.desc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())
 
 
 async def redeemed_referrals_page(
@@ -226,3 +253,68 @@ async def set_payout(
             paid_by_user_id=paid_by_user_id,
         )
     )
+
+
+# --- referral payout bank details --------------------------------------------
+
+
+async def payout_details_by_user(session: AsyncSession, user_id: uuid.UUID) -> ReferralPayoutDetails | None:
+    """This person's own stored bank details, if they have ever saved any."""
+    stmt = select(ReferralPayoutDetails).where(ReferralPayoutDetails.user_id == user_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def payout_details_by_user_ids(
+    session: AsyncSession, user_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, ReferralPayoutDetails]:
+    """Several people's bank details in one query, keyed by user id.
+
+    Used by the settlement queue, which shows one row per referral rather than
+    per referrer — fetching per row would be the same query run once per row
+    on the page.
+    """
+    if not user_ids:
+        return {}
+    stmt = select(ReferralPayoutDetails).where(ReferralPayoutDetails.user_id.in_(user_ids))
+    rows = (await session.execute(stmt)).scalars()
+    return {row.user_id: row for row in rows}
+
+
+async def upsert_payout_details(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    bank_name: str,
+    account_holder_name: str,
+    sort_code_ciphertext: str,
+    account_number_ciphertext: str,
+) -> ReferralPayoutDetails:
+    """Create this person's bank details, or overwrite the ones already on file.
+
+    One row per person (`uq_referral_payout_details_user_id`): saving again is
+    always a correction to the same destination, never a second one.
+    """
+    existing = await payout_details_by_user(session, user_id)
+    if existing is None:
+        details = ReferralPayoutDetails(
+            user_id=user_id,
+            bank_name=bank_name,
+            account_holder_name=account_holder_name,
+            sort_code_ciphertext=sort_code_ciphertext,
+            account_number_ciphertext=account_number_ciphertext,
+        )
+        session.add(details)
+        await session.flush()
+        await session.refresh(details)
+        return details
+    existing.bank_name = bank_name
+    existing.account_holder_name = account_holder_name
+    existing.sort_code_ciphertext = sort_code_ciphertext
+    existing.account_number_ciphertext = account_number_ciphertext
+    await session.flush()
+    # `updated_at` is set by Postgres (`onupdate=func.now()`), so the Python
+    # object is left expired after the UPDATE; without this the caller's next
+    # read of `updated_at` triggers a lazy load outside the request's async
+    # context and raises `MissingGreenlet`.
+    await session.refresh(existing)
+    return existing
