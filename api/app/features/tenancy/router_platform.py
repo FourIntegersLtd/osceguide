@@ -37,10 +37,10 @@ async def list_organizations(
     status: Annotated[str | None, Query(description="Filter by organisation status")] = None,
 ) -> Page[schemas.OrganizationRead]:
     """Every organisation on the platform. The console's first screen."""
-    items, next_cursor = await service_platform.list_organizations(
+    organizations, next_cursor = await service_platform.list_organizations(
         session, limit=page.limit, cursor=page.cursor, status=status
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=organizations, next_cursor=next_cursor)
 
 
 @router.patch(
@@ -102,6 +102,7 @@ async def renew_contract(
     )
 
 
+# A page of one organisation's audit log, as seen by the platform console.
 @router.get(
     "/platform/organizations/{org_slug}/audit",
     response_model=Page[schemas.AuditRead],
@@ -114,10 +115,10 @@ async def list_org_audit_for_support(
     page: Annotated[CursorParams, Depends()],
 ) -> Page[schemas.AuditRead]:
     _ = admin
-    items, next_cursor = await service.list_audit(
+    audit_entries, next_cursor = await service.list_audit(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=audit_entries, next_cursor=next_cursor)
 
 
 @router.get(
@@ -137,7 +138,7 @@ async def list_platform_audit(
 ) -> Page[schemas.PlatformAuditRead]:
     """Who changed what, across every organisation and the platform itself."""
     _ = admin
-    items, next_cursor = await service_platform.list_audit(
+    audit_entries, next_cursor = await service_platform.list_audit(
         session,
         org_slug=org_slug,
         actor_email=actor_email,
@@ -145,4 +146,4 @@ async def list_platform_audit(
         limit=page.limit,
         cursor=page.cursor,
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=audit_entries, next_cursor=next_cursor)

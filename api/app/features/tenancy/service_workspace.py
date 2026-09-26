@@ -58,7 +58,12 @@ async def switch_workspace(
         )
 
     target = domain.resolve_workspace(
-        [domain.MembershipRef(org_slug=m.org_slug, role=m.role, surface=m.surface) for m in memberships],
+        [
+            domain.MembershipRef(
+                org_slug=membership.org_slug, role=membership.role, surface=membership.surface
+            )
+            for membership in memberships
+        ],
         org_slug,
     )
     if target is None:

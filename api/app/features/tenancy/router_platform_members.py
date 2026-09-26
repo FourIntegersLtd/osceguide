@@ -39,10 +39,10 @@ async def list_org_memberships_for_support(
 ) -> Page[schemas.MembershipRead]:
     """Read-only member list for platform support."""
     _ = admin
-    items, next_cursor = await service_memberships.list_memberships(
+    memberships, next_cursor = await service_memberships.list_memberships(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=memberships, next_cursor=next_cursor)
 
 
 @router.post(

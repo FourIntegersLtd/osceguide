@@ -56,14 +56,14 @@ async def search_users(
     platform_admin: bool | None = None,
 ) -> tuple[list[UserSummary], str | None]:
     """Find an account by email, for the people who answer support."""
-    rows, next_cursor = await accounts.search_users(
+    users, next_cursor = await accounts.search_users(
         session, query=query, limit=limit, cursor=cursor, platform_admin=platform_admin
     )
-    return [_user_summary(row) for row in rows], next_cursor
+    return [_user_summary(user) for user in users], next_cursor
 
 
 async def list_platform_admins(session: AsyncSession, *, limit: int = 100) -> list[UserSummary]:
-    return [_user_summary(row) for row in await accounts.list_platform_admins(session, limit=limit)]
+    return [_user_summary(user) for user in await accounts.list_platform_admins(session, limit=limit)]
 
 
 async def invite_platform_admin(
@@ -120,15 +120,15 @@ async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDe
     user = await _require(session, user_id)
     memberships = [
         MembershipRead(
-            id=row.id,
-            user_id=row.user_id,
+            id=membership.id,
+            user_id=membership.user_id,
             email=user.email,
-            role=row.role,
-            product_surface=row.product_surface,
-            status=row.status,
-            revoked_at=row.revoked_at,
+            role=membership.role,
+            product_surface=membership.product_surface,
+            status=membership.status,
+            revoked_at=membership.revoked_at,
         )
-        for row in await repository.memberships_for_user(session, user_id)
+        for membership in await repository.memberships_for_user(session, user_id)
     ]
     legacy_ids = await accounts.consumer_legacy_ids(session, user_id)
     return PlatformUserDetail(
@@ -209,7 +209,7 @@ async def list_audit_about_user(
 ) -> tuple[list[PlatformAuditRead], str | None]:
     """What was done to this account, and what it did — the history tab."""
     await _require(session, user_id)
-    rows, next_cursor = await repository_platform.list_audit_about_user(
+    entries, next_cursor = await repository_platform.list_audit_about_user(
         session, user_id, limit=limit, cursor=cursor
     )
-    return [platform_audit_read(row) for row in rows], next_cursor
+    return [platform_audit_read(entry) for entry in entries], next_cursor

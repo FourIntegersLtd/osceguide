@@ -37,12 +37,12 @@ async def add_memberships(
     so a sheet that lists the same tutor twice invites them once and says so
     rather than failing on the second row.
     """
-    result = BulkMembershipsResult()
+    outcome = BulkMembershipsResult()
     seen: set[tuple[str, str]] = set()
     for entry in entries:
         key = (entry.email.strip().lower(), entry.role.strip().lower())
         if key in seen:
-            result.skipped.append(
+            outcome.skipped.append(
                 SkippedMembership(email=entry.email, role=entry.role, code=MembershipExists.code)
             )
             continue
@@ -58,7 +58,7 @@ async def add_memberships(
                 now=now,
             )
         except MembershipExists as exc:
-            result.skipped.append(SkippedMembership(email=entry.email, role=entry.role, code=exc.code))
+            outcome.skipped.append(SkippedMembership(email=entry.email, role=entry.role, code=exc.code))
             continue
-        result.created.append(created)
-    return result
+        outcome.created.append(created)
+    return outcome

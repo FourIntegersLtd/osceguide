@@ -107,7 +107,7 @@ async def live_memberships_with_orgs(
         )
         .order_by(Membership.created_at, Membership.id)
     )
-    return [(row[0], row[1]) for row in (await session.execute(stmt)).all()]
+    return [(membership, organization) for membership, organization in (await session.execute(stmt)).all()]
 
 
 async def membership_for_user_in_org(

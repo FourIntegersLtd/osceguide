@@ -29,7 +29,7 @@ def _guard_role_grant(actor: Principal, org_id: uuid.UUID, role: str) -> None:
         raise InvalidInput(f"Unknown role: {role!r}")
     if actor.is_platform_admin:
         return
-    membership = next((m for m in actor.memberships if m.org_id == org_id), None)
+    membership = next((membership for membership in actor.memberships if membership.org_id == org_id), None)
     actor_role = membership.role if membership else None
     if not domain.may_grant_role(actor_role, role):
         raise Forbidden("You cannot grant a role above your own.")
@@ -38,14 +38,16 @@ def _guard_role_grant(actor: Principal, org_id: uuid.UUID, role: str) -> None:
 async def list_memberships(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[MembershipRead], str | None]:
-    rows, next_cursor = await repository.list_memberships(session, org_id, limit=limit, cursor=cursor)
+    memberships, next_cursor = await repository.list_memberships(session, org_id, limit=limit, cursor=cursor)
     # The addresses are read for the page instead of being left null. A team
     # list without an email can only show the front of a user id, which is a
     # uuid printed as if it were a name; the one join is the whole of the fix.
-    people = await identity.user_refs_by_ids(session, [row.user_id for row in rows])
+    people = await identity.user_refs_by_ids(session, [membership.user_id for membership in memberships])
     return [
-        _membership_read(row, email=people[row.user_id].email if row.user_id in people else None)
-        for row in rows
+        _membership_read(
+            membership, email=people[membership.user_id].email if membership.user_id in people else None
+        )
+        for membership in memberships
     ], next_cursor
 
 
@@ -110,13 +112,15 @@ async def change_membership_role(
     return await _read_with_email(session, await _require_membership(session, org_id, membership_id))
 
 
-async def _read_with_email(session: AsyncSession, row: Any) -> MembershipRead:
+async def _read_with_email(session: AsyncSession, membership: Any) -> MembershipRead:
     """A membership answered the way the list answers it, with the email attached.
 
     `add_membership` does not need this — it looked the person up by address already.
     """
-    people = await identity.user_refs_by_ids(session, [row.user_id])
-    return _membership_read(row, email=people[row.user_id].email if row.user_id in people else None)
+    people = await identity.user_refs_by_ids(session, [membership.user_id])
+    return _membership_read(
+        membership, email=people[membership.user_id].email if membership.user_id in people else None
+    )
 
 
 async def set_membership_revoked(
@@ -149,21 +153,21 @@ async def set_membership_revoked(
 
 
 async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID) -> Any:
-    row = await repository.membership_by_id(session, org_id, membership_id)
-    if row is None:
+    membership = await repository.membership_by_id(session, org_id, membership_id)
+    if membership is None:
         raise MembershipNotFound()
-    return row
+    return membership
 
 
-def _membership_read(row: Any, *, email: str | None = None, invited: bool = False) -> MembershipRead:
+def _membership_read(membership: Any, *, email: str | None = None, invited: bool = False) -> MembershipRead:
     return MembershipRead(
-        id=row.id,
-        user_id=row.user_id,
+        id=membership.id,
+        user_id=membership.user_id,
         email=email,
-        role=row.role,
-        product_surface=row.product_surface,
-        status=row.status,
-        revoked_at=row.revoked_at,
+        role=membership.role,
+        product_surface=membership.product_surface,
+        status=membership.status,
+        revoked_at=membership.revoked_at,
         invited=invited,
     )
 

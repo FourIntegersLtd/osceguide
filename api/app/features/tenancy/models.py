@@ -14,6 +14,7 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class Organization(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "organizations"
 
     # The slug is the URL identifier and nothing else. Every foreign key in

@@ -27,6 +27,7 @@ router = APIRouter(tags=["tenancy"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Provisions a new organisation on the platform.
 @router.post(
     "/platform/organizations",
     response_model=schemas.OrganizationRead,
@@ -61,6 +62,7 @@ async def read_organization(workspace: OrgReader, session: Session) -> schemas.O
     return await service.read_organization(session, workspace.org_id)
 
 
+# A page of an organisation's memberships.
 @router.get(
     "/orgs/{org_slug}/memberships",
     response_model=Page[schemas.MembershipRead],
@@ -69,10 +71,10 @@ async def read_organization(workspace: OrgReader, session: Session) -> schemas.O
 async def list_memberships(
     workspace: OrgAdmin, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.MembershipRead]:
-    items, next_cursor = await service_memberships.list_memberships(
+    memberships, next_cursor = await service_memberships.list_memberships(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=memberships, next_cursor=next_cursor)
 
 
 @router.post(
@@ -120,6 +122,7 @@ async def add_memberships(
     )
 
 
+# Changes what role a membership holds.
 @router.patch(
     "/orgs/{org_slug}/memberships/{membership_id}",
     response_model=schemas.MembershipRead,
@@ -152,6 +155,7 @@ async def revoke_membership(
     )
 
 
+# Restores a previously revoked membership.
 @router.post(
     "/orgs/{org_slug}/memberships/{membership_id}/restore",
     response_model=schemas.MembershipRead,
@@ -170,6 +174,7 @@ async def restore_membership(
     )
 
 
+# A page of an organisation's audit log.
 @router.get(
     "/orgs/{org_slug}/audit",
     response_model=Page[schemas.AuditRead],
@@ -178,12 +183,13 @@ async def restore_membership(
 async def list_audit(
     workspace: OrgAdmin, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.AuditRead]:
-    items, next_cursor = await service.list_audit(
+    audit_entries, next_cursor = await service.list_audit(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=audit_entries, next_cursor=next_cursor)
 
 
+# Re-issues the signed-in person's token for another workspace.
 @router.post(
     "/auth/switch-workspace",
     response_model=schemas.WorkspaceToken,

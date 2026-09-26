@@ -58,19 +58,24 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
         TokenMembership(
             org_id=org.id,
             org_slug=org.slug,
-            role=row.role,
-            surface=row.product_surface,
+            role=membership.role,
+            surface=membership.product_surface,
             org_name=org.name,
             org_type=org.org_type,
         )
-        for row, org in await repository.live_memberships_with_orgs(session, user_id)
+        for membership, org in await repository.live_memberships_with_orgs(session, user_id)
     ]
 
 
 def default_workspace_for(memberships: list[TokenMembership]) -> str | None:
     """Which workspace a fresh token lands in."""
     picked = domain.pick_default_workspace(
-        [domain.MembershipRef(org_slug=m.org_slug, role=m.role, surface=m.surface) for m in memberships],
+        [
+            domain.MembershipRef(
+                org_slug=membership.org_slug, role=membership.role, surface=membership.surface
+            )
+            for membership in memberships
+        ],
         preferred_order=(),
     )
     return picked.slug if picked else None
@@ -130,18 +135,18 @@ async def suspend_organization(
 async def list_audit(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[AuditRead], str | None]:
-    rows, next_cursor = await repository.list_audit(session, org_id, limit=limit, cursor=cursor)
+    entries, next_cursor = await repository.list_audit(session, org_id, limit=limit, cursor=cursor)
     return [
         AuditRead(
-            id=r.id,
-            actor_email=r.actor_email,
-            action=r.action,
-            target_type=r.target_type,
-            target_id=r.target_id,
-            summary=r.summary,
-            at=r.at,
+            id=entry.id,
+            actor_email=entry.actor_email,
+            action=entry.action,
+            target_type=entry.target_type,
+            target_id=entry.target_id,
+            summary=entry.summary,
+            at=entry.at,
         )
-        for r in rows
+        for entry in entries
     ], next_cursor
 
 

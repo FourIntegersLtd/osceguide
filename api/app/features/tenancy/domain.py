@@ -149,14 +149,14 @@ def pick_default_workspace(
     workspace at all — which would make every org-scoped route 403 for someone
     who is plainly a member.
     """
-    valid = [m for m in memberships if m.slug]
+    valid = [membership for membership in memberships if membership.slug]
     if not valid:
         return None
     for raw in preferred_order:
         slug = str(raw or "").strip()
         if not slug:
             continue
-        match = next((m for m in valid if m.slug == slug), None)
+        match = next((membership for membership in valid if membership.slug == slug), None)
         if match:
             return match
     return valid[0]
@@ -171,4 +171,4 @@ def resolve_workspace(memberships: Sequence[MembershipRef], org_slug: str) -> Me
     slug = str(org_slug or "").strip()
     if not slug:
         return None
-    return next((m for m in memberships if m.slug == slug), None)
+    return next((membership for membership in memberships if membership.slug == slug), None)

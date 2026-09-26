@@ -41,10 +41,10 @@ ENDING_SOON = timedelta(days=30)
 async def list_organizations(
     session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None, status: str | None = None
 ) -> tuple[list[OrganizationRead], str | None]:
-    rows, next_cursor = await repository_platform.list_organizations(
+    organizations, next_cursor = await repository_platform.list_organizations(
         session, limit=limit, cursor=cursor, status=status
     )
-    return [_org_read(row) for row in rows], next_cursor
+    return [_org_read(org) for org in organizations], next_cursor
 
 
 async def update_organization(
@@ -116,7 +116,7 @@ async def overview(session: AsyncSession, *, now: datetime) -> PlatformOverview:
 
 async def _at_risk(session: AsyncSession, *, now: datetime) -> list[OrgAtRisk]:
     statuses = sorted(domain.ACTIVE_ORG_STATUSES | {"suspended"})
-    out: list[OrgAtRisk] = []
+    at_risk_orgs: list[OrgAtRisk] = []
     for org in await repository_platform.organizations_in_statuses(session, statuses=statuses):
         if org.status == "suspended":
             reason = "suspended"
@@ -126,7 +126,7 @@ async def _at_risk(session: AsyncSession, *, now: datetime) -> list[OrgAtRisk]:
             reason = "contract_ending"
         else:
             continue
-        out.append(
+        at_risk_orgs.append(
             OrgAtRisk(
                 slug=org.slug,
                 name=org.name,
@@ -135,7 +135,7 @@ async def _at_risk(session: AsyncSession, *, now: datetime) -> list[OrgAtRisk]:
                 reason=reason,
             )
         )
-    return out
+    return at_risk_orgs
 
 
 async def renew_contract(
@@ -221,22 +221,22 @@ async def list_audit(
         if org is None:
             raise OrgNotFound()
         org_id = org.id
-    rows, next_cursor = await repository_platform.list_audit_across_orgs(
+    entries, next_cursor = await repository_platform.list_audit_across_orgs(
         session, org_id=org_id, actor_email=actor_email, action=action, limit=limit, cursor=cursor
     )
-    return [platform_audit_read(row) for row in rows], next_cursor
+    return [platform_audit_read(entry) for entry in entries], next_cursor
 
 
-def platform_audit_read(row: AuditEntry) -> PlatformAuditRead:
+def platform_audit_read(entry: AuditEntry) -> PlatformAuditRead:
     return PlatformAuditRead(
-        id=row.id,
-        actor_email=row.actor_email,
-        action=row.action,
-        target_type=row.target_type,
-        target_id=row.target_id,
-        summary=row.summary,
-        at=row.at,
-        org_id=row.org_id,
-        actor_user_id=row.actor_user_id,
-        meta=row.meta,
+        id=entry.id,
+        actor_email=entry.actor_email,
+        action=entry.action,
+        target_type=entry.target_type,
+        target_id=entry.target_id,
+        summary=entry.summary,
+        at=entry.at,
+        org_id=entry.org_id,
+        actor_user_id=entry.actor_user_id,
+        meta=entry.meta,
     )

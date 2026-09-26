@@ -36,10 +36,10 @@ async def search_users(
 ) -> Page[schemas.UserSummary]:
     """Find an account by email, for the people who answer "I cannot sign in"."""
     _ = admin
-    items, next_cursor = await service_platform_users.search_users(
+    users, next_cursor = await service_platform_users.search_users(
         session, query=q, limit=page.limit, cursor=page.cursor, platform_admin=platform_admin
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=users, next_cursor=next_cursor)
 
 
 @router.get(
@@ -148,7 +148,7 @@ async def list_user_audit_for_support(
 ) -> Page[schemas.PlatformAuditRead]:
     """Everything done to this account and everything it did, newest first."""
     _ = admin
-    items, next_cursor = await service_platform_users.list_audit_about_user(
+    audit_entries, next_cursor = await service_platform_users.list_audit_about_user(
         session, user_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=audit_entries, next_cursor=next_cursor)
