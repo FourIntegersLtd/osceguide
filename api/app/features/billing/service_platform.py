@@ -31,62 +31,65 @@ async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> UserRef:
 
 async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[PlatformPaymentRead]:
     await _require_user(session, user_id)
-    rows = await repository.payments_for_user(session, user_id)
-    plans = {row.plan_id for row in rows if row.plan_id is not None}
+    payments = await repository.payments_for_user(session, user_id)
+    plans = {payment.plan_id for payment in payments if payment.plan_id is not None}
     codes = {}
     for plan_id in plans:
         plan = await repository.plan_by_id(session, plan_id)
         codes[plan_id] = plan.code if plan else None
-    return [_payment_read(row, plan_code=codes.get(row.plan_id) if row.plan_id else None) for row in rows]
+    return [
+        _payment_read(payment, plan_code=codes.get(payment.plan_id) if payment.plan_id else None)
+        for payment in payments
+    ]
 
 
 async def list_events(
     session: AsyncSession, *, failed_only: bool, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[StripeEventRead], str | None]:
-    rows, next_cursor = await repository.list_events(
+    events, next_cursor = await repository.list_events(
         session, failed_only=failed_only, limit=limit, cursor=cursor
     )
-    return [_event_read(row) for row in rows], next_cursor
+    return [_event_read(event) for event in events], next_cursor
 
 
 async def events_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[StripeEventRead]:
     """Every delivery that named this person's address, applied or not."""
     user = await _require_user(session, user_id)
-    return [_event_read(row) for row in await repository.events_for_email(session, user.email)]
+    return [_event_read(event) for event in await repository.events_for_email(session, user.email)]
 
 
-def _payment_read(row: Payment, *, plan_code: str | None) -> PlatformPaymentRead:
+def _payment_read(payment: Payment, *, plan_code: str | None) -> PlatformPaymentRead:
     return PlatformPaymentRead(
-        id=row.id,
-        user_id=row.user_id,
-        receipt_id=row.receipt_id,
-        stripe_payment_intent_id=row.stripe_payment_intent_id,
-        checkout_session_id=row.checkout_session_id,
-        amount_total_pence=row.amount_total_pence,
-        amount_tax_pence=row.amount_tax_pence,
-        currency=row.currency,
-        paid_at=row.paid_at,
+        id=payment.id,
+        user_id=payment.user_id,
+        receipt_id=payment.receipt_id,
+        stripe_payment_intent_id=payment.stripe_payment_intent_id,
+        checkout_session_id=payment.checkout_session_id,
+        amount_total_pence=payment.amount_total_pence,
+        amount_tax_pence=payment.amount_tax_pence,
+        currency=payment.currency,
+        paid_at=payment.paid_at,
         plan_code=plan_code,
-        plan_starts_at=row.plan_starts_at,
-        plan_ends_at=row.plan_ends_at,
-        entitlement_id=row.entitlement_id,
-        receipt_url=row.receipt_url,
-        customer_email=row.customer_email,
+        plan_starts_at=payment.plan_starts_at,
+        plan_ends_at=payment.plan_ends_at,
+        entitlement_id=payment.entitlement_id,
+        receipt_url=payment.receipt_url,
+        customer_email=payment.customer_email,
     )
 
 
-def _event_read(row: StripeEvent) -> StripeEventRead:
-    payload = ((row.payload or {}).get("data") or {}).get("object") or {}
-    email = payload.get("customer_email") or (payload.get("customer_details") or {}).get("email")
+def _event_read(event: StripeEvent) -> StripeEventRead:
+    event_payload = ((event.payload or {}).get("data") or {}).get("object") or {}
+    email = event_payload.get("customer_email") or (event_payload.get("customer_details") or {}).get("email")
     return StripeEventRead(
-        event_id=row.event_id,
-        event_type=row.event_type,
-        received_at=row.received_at,
-        processed_at=row.processed_at,
-        failure=row.failure,
+        event_id=event.event_id,
+        event_type=event.event_type,
+        received_at=event.received_at,
+        processed_at=event.processed_at,
+        failure=event.failure,
         customer_email=str(email).strip() if email else None,
-        price_id=_price_id(payload) or None,
-        payment_intent_id=str(payload.get("payment_intent") or "").strip() or None,
+        price_id=_price_id(event_payload) or None,
+        payment_intent_id=str(event_payload.get("payment_intent") or "").strip() or None,
     )
 
 
@@ -114,8 +117,8 @@ async def payer_ids_on_plan(session: AsyncSession, plan_code: str) -> set[uuid.U
 async def latest_payment_by_user(
     session: AsyncSession, user_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, PaymentFact]:
-    rows = await repository.latest_payments(session, user_ids)
+    latest_by_user = await repository.latest_payments(session, user_ids)
     return {
         user_id: PaymentFact(plan_code=code, paid_at=paid_at, plan_ends_at=ends_at)
-        for user_id, (code, paid_at, ends_at) in rows.items()
+        for user_id, (code, paid_at, ends_at) in latest_by_user.items()
     }

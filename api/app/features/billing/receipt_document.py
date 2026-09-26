@@ -27,17 +27,17 @@ _ROWS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _row(label: str, value: object) -> str:
+def _field_row(label: str, field_value: object) -> str:
     return (
         '<tr><th style="text-align:left;padding:6px 16px 6px 0;font-weight:500;color:#555;'
         f'vertical-align:top">{escape(label)}</th>'
-        f'<td style="padding:6px 0;color:#111">{escape(str(value or "—"))}</td></tr>'
+        f'<td style="padding:6px 0;color:#111">{escape(str(field_value or "—"))}</td></tr>'
     )
 
 
 def render_receipt_html(fields: dict[str, Any]) -> str:
     """One receipt, from exactly the fields `receipts.receipt_fields` produced."""
-    rows = "".join(_row(label, fields.get(key)) for label, key in _ROWS)
+    rows_html = "".join(_field_row(label, fields.get(key)) for label, key in _ROWS)
 
     money = [("Subtotal", fields.get("amount_subtotal"))]
     # No tax, no row: a "£0.00" tax line invites the question this document
@@ -49,8 +49,8 @@ def render_receipt_html(fields: dict[str, Any]) -> str:
         f'<tr><th style="text-align:left;padding:6px 16px 6px 0;font-weight:'
         f'{"600" if label == "Total paid" else "500"};color:#111">{escape(label)}</th>'
         f'<td style="padding:6px 0;text-align:right;font-variant-numeric:tabular-nums;'
-        f'font-weight:{"600" if label == "Total paid" else "400"}">{escape(str(value or ""))}</td></tr>'
-        for label, value in money
+        f'font-weight:{"600" if label == "Total paid" else "400"}">{escape(str(amount or ""))}</td></tr>'
+        for label, amount in money
     )
 
     stripe_url = fields.get("stripe_receipt_url")
@@ -68,7 +68,7 @@ def render_receipt_html(fields: dict[str, Any]) -> str:
         'max-width:36rem;margin:0 auto;padding:2rem;color:#111;background:#fff">'
         f'<h1 style="font-size:1.25rem;margin:0 0 .25rem">Payment receipt</h1>'
         f'<p style="margin:0 0 1.5rem;color:#555">{escape(str(fields.get("seller_name", "")))}</p>'
-        f'<table style="border-collapse:collapse;width:100%">{rows}</table>'
+        f'<table style="border-collapse:collapse;width:100%">{rows_html}</table>'
         '<hr style="border:0;border-top:1px solid #e5e5e5;margin:1.5rem 0">'
         f'<table style="border-collapse:collapse;width:100%">{money_rows}</table>'
         f"{card_link}"

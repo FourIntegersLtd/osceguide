@@ -16,12 +16,14 @@ class UnknownPlanError(NotFound):
 
 
 class InvalidSignature(AppError):
+
     status = 400
     code = "invalid_signature"
     default_message = "That webhook could not be verified"
 
 
 class PaymentAlreadyRecorded(Conflict):
+
     code = "payment_already_recorded"
     default_message = "That payment has already been applied"
 
@@ -81,10 +83,12 @@ class PayerNotFound(NotFound):
 
 
 class BillingEventNotFound(NotFound):
+
     code = "billing_event_not_found"
     default_message = "No such webhook delivery"
 
 
 class PaymentNotFound(NotFound):
+
     code = "payment_not_found"
     default_message = "No such payment"

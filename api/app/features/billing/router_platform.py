@@ -65,10 +65,10 @@ async def list_billing_events(
 ) -> Page[schemas.StripeEventRead]:
     """The webhook ledger, newest first. With `failed_only`, the reconcile queue."""
     _ = admin
-    items, next_cursor = await service_platform.list_events(
+    events, next_cursor = await service_platform.list_events(
         session, failed_only=failed_only, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=events, next_cursor=next_cursor)
 
 
 @router.post(
@@ -88,8 +88,8 @@ async def replay_billing_event(
     """Apply a refused delivery again, once its cause is fixed. `already_applied`
     for one that went through; the same refusal, and a new audit row, for one
     whose cause is not fixed yet."""
-    result = await service_platform_actions.replay_event(session, event_id, actor=admin, now=clock.now())
-    return schemas.WebhookResult(**result)
+    outcome = await service_platform_actions.replay_event(session, event_id, actor=admin, now=clock.now())
+    return schemas.WebhookResult(**outcome)
 
 
 @router.post(

@@ -28,8 +28,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 )
 async def list_plans(session: Session) -> Page[schemas.PlanRead]:
     """List the plans currently on sale."""
-    items = [schemas.PlanRead(**p) for p in await service.list_plans(session)]
-    return Page(items=items, next_cursor=None)
+    plans = [schemas.PlanRead(**plan_data) for plan_data in await service.list_plans(session)]
+    return Page(items=plans, next_cursor=None)
 
 
 @router.post(
@@ -58,8 +58,8 @@ async def stripe_webhook(
         secret=settings.stripe_webhook_secret,
         now=int(clock.now().timestamp()),
     )
-    result = await service.handle_event(session, event=event, now=clock.now())
-    return schemas.WebhookResult(**result)
+    outcome = await service.handle_event(session, event=event, now=clock.now())
+    return schemas.WebhookResult(**outcome)
 
 
 @router.get(

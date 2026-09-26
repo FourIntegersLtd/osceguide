@@ -22,6 +22,7 @@ TIMEOUT_SECONDS = 15.0
 
 
 class StripeCheckout:
+
     def __init__(self, secret_key: str) -> None:
         self._secret_key = secret_key
 

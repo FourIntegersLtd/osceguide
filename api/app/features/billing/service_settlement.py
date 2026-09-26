@@ -18,15 +18,15 @@ from app.features.identity import service as identity
 from app.features.notifications import service as notifications
 
 
-def _as_plans(rows: list[Plan]) -> list[domain.Plan]:
+def _as_plans(plan_rows: list[Plan]) -> list[domain.Plan]:
     return [
         domain.Plan(
-            code=r.code,
-            price_id=r.stripe_price_id,
-            duration_days=r.duration_days,
-            amount_pence=r.amount_pence,
+            code=plan_row.code,
+            price_id=plan_row.stripe_price_id,
+            duration_days=plan_row.duration_days,
+            amount_pence=plan_row.amount_pence,
         )
-        for r in rows
+        for plan_row in plan_rows
     ]
 
 

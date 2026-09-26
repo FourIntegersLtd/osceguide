@@ -32,20 +32,20 @@ def _parse(header: str) -> tuple[int, list[str]]:
     timestamp: int | None = None
     signatures: list[str] = []
     for part in (header or "").split(","):
-        key, _, value = part.strip().partition("=")
+        key, _, raw_value = part.strip().partition("=")
         if key == "t":
             try:
-                timestamp = int(value)
+                timestamp = int(raw_value)
             except ValueError as exc:
                 raise InvalidSignature("The signature timestamp is not a number.") from exc
-        elif key == SCHEME and value:
-            signatures.append(value)
+        elif key == SCHEME and raw_value:
+            signatures.append(raw_value)
     if timestamp is None or not signatures:
         raise InvalidSignature("The signature header is malformed.")
     return timestamp, signatures
 
 
-def verify(payload: bytes, header: str, *, secret: str, now: int) -> None:
+def verify(body: bytes, header: str, *, secret: str, now: int) -> None:
     """Raise unless `payload` was signed by `secret` recently enough."""
     if not secret:
         raise SigningSecretMissing("No Stripe signing secret is configured; webhooks cannot be verified.")
@@ -56,7 +56,7 @@ def verify(payload: bytes, header: str, *, secret: str, now: int) -> None:
         # cannot manage but a clock skew of minutes would suggest.
         raise InvalidSignature("That signature is outside the tolerance window.")
 
-    expected = hmac.new(secret.encode(), f"{timestamp}.".encode() + payload, hashlib.sha256).hexdigest()
+    expected = hmac.new(secret.encode(), f"{timestamp}.".encode() + body, hashlib.sha256).hexdigest()
     # `compare_digest`, so a wrong signature takes the same time to reject
     # whatever it got right. Any match passes: Stripe sends several during a
     # secret rotation.

@@ -30,7 +30,7 @@ async def create_plan(
     exam_code: str | None = None,
     currency: str = "gbp",
 ) -> Plan:
-    row = Plan(
+    plan = Plan(
         code=code,
         stripe_price_id=stripe_price_id,
         amount_pence=amount_pence,
@@ -38,10 +38,10 @@ async def create_plan(
         exam_code=exam_code,
         currency=currency,
     )
-    session.add(row)
+    session.add(plan)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(plan)
+    return plan
 
 
 async def processed_event_ids(session: AsyncSession, event_id: str) -> set[str]:
@@ -59,7 +59,7 @@ async def event_by_id(session: AsyncSession, event_id: str) -> StripeEvent | Non
 
 
 async def record_event(
-    session: AsyncSession, *, event_id: str, event_type: str, payload: dict[str, Any] | None
+    session: AsyncSession, *, event_id: str, event_type: str, event_payload: dict[str, Any] | None
 ) -> bool:
     """Write the ledger row. False if it already existed.
 
@@ -68,7 +68,7 @@ async def record_event(
     """
     stmt = (
         pg_insert(StripeEvent)
-        .values(event_id=event_id, event_type=event_type, payload=payload)
+        .values(event_id=event_id, event_type=event_type, payload=event_payload)
         .on_conflict_do_nothing(index_elements=["event_id"])
         .returning(StripeEvent.event_id)
     )
@@ -104,7 +104,7 @@ async def record_payment(
     plan_starts_at: datetime | None = None,
     plan_ends_at: datetime | None = None,
 ) -> Payment:
-    row = Payment(
+    payment = Payment(
         user_id=user_id,
         plan_id=plan_id,
         stripe_payment_intent_id=stripe_payment_intent_id,
@@ -121,10 +121,10 @@ async def record_payment(
         plan_starts_at=plan_starts_at,
         plan_ends_at=plan_ends_at,
     )
-    session.add(row)
+    session.add(payment)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(payment)
+    return payment
 
 
 async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Payment]:
@@ -172,8 +172,8 @@ async def list_events(
 
 
 def _payload_email(field: str) -> Any:
-    payload = StripeEvent.payload
-    return func.lower(payload["data"]["object"][field].astext)
+    payload_column = StripeEvent.payload
+    return func.lower(payload_column["data"]["object"][field].astext)
 
 
 async def events_for_email(session: AsyncSession, email: str) -> list[StripeEvent]:

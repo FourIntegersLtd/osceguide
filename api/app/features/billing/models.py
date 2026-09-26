@@ -49,6 +49,7 @@ class StripeEvent(Base, UUIDPrimaryKey):
 
 
 class Payment(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "payments"
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)

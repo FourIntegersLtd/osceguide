@@ -54,12 +54,12 @@ def format_amount_gbp(amount_pence: int | None) -> str:
     return f"£{amount_pence / 100:.2f}"
 
 
-def format_receipt_date(value: datetime | None) -> str:
+def format_receipt_date(moment: datetime | None) -> str:
     """Oracle: `format_receipt_date` — `01 January 2025`. Spelled out rather than numeric,
     because `01/02/2025` is two different days on either side of the Atlantic."""
-    if value is None:
+    if moment is None:
         return "-"
-    return value.strftime("%d %B %Y")
+    return moment.strftime("%d %B %Y")
 
 
 def plan_label(plan_code: str) -> str:

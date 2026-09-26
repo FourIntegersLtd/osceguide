@@ -26,16 +26,16 @@ async def replay_event(
 ) -> dict[str, str]:
     """Apply a recorded delivery again. `handle_event` is already idempotent — an applied event
     answers `already_applied` — so this cannot grant twice."""
-    row = await repository.event_by_id(session, event_id)
-    if row is None:
+    event = await repository.event_by_id(session, event_id)
+    if event is None:
         raise errors.BillingEventNotFound()
     try:
-        result = await service.handle_event(session, event=dict(row.payload or {}), now=now)
+        outcome = await service.handle_event(session, event=dict(event.payload or {}), now=now)
     except AppError as exc:
         await _audit_replay(session, actor, event_id, outcome=exc.code)
         raise
-    await _audit_replay(session, actor, event_id, outcome=result["status"])
-    return result
+    await _audit_replay(session, actor, event_id, outcome=outcome["status"])
+    return outcome
 
 
 async def _audit_replay(session: AsyncSession, actor: Principal, event_id: str, *, outcome: str) -> None:

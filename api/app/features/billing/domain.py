@@ -30,6 +30,7 @@ class InvalidEvent(ValueError):
 
 @dataclass(frozen=True)
 class Plan:
+
     code: str
     price_id: str
     duration_days: int
