@@ -48,6 +48,7 @@ async def list_open_slots(
     return Page(items=posts, next_cursor=next_cursor)
 
 
+# Offer a new slot, addressed to the public, one institution or one teaching group.
 @router.post(
     "/marketplace/slots",
     response_model=schemas.PostRead,
@@ -95,6 +96,7 @@ async def claim_slot(
     return await service.claim_slot(session, post_id, claimer_user_id=principal.user_id, now=clock.now())
 
 
+# Take back a slot you offered. Only the person who offered it may withdraw it.
 @router.delete(
     "/marketplace/slots/{post_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -109,6 +111,7 @@ async def withdraw_slot(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# Every slot this caller has offered, including claimed and cancelled history.
 @router.get(
     "/me/marketplace/posts",
     response_model=Page[schemas.PostRead],
@@ -119,6 +122,7 @@ async def list_my_posts(principal: CurrentPrincipal, session: Session) -> Page[s
     return Page(items=posts, next_cursor=None)
 
 
+# Every session this caller has offered or claimed, latest start time first.
 @router.get(
     "/me/peer-sessions",
     response_model=Page[schemas.PeerSessionRead],
@@ -146,6 +150,7 @@ async def join_session(
     return await service.join_session(session, session_id, user_id=principal.user_id, now=clock.now())
 
 
+# Either person can call off a session that is still scheduled or under way.
 @router.post(
     "/me/peer-sessions/{session_id}/cancel",
     status_code=status.HTTP_204_NO_CONTENT,
