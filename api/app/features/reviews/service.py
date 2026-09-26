@@ -72,16 +72,16 @@ async def submit_slot_review(
     required_domains = await _required_domains(session, org_id, slot_id)
     try:
         normalized = domain.normalize_status(status)
-        for key, value in field_values.items():
-            if key.endswith(".score") and isinstance(value, str):
-                field_values[key] = domain.normalize_rag(value)
+        for key, rating in field_values.items():
+            if key.endswith(".score") and isinstance(rating, str):
+                field_values[key] = domain.normalize_rag(rating)
         domain.ensure_completable(
             scored=_scored_domains(field_values), required=required_domains, status=normalized
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    row = await repository.upsert_slot_review(
+    slot_review = await repository.upsert_slot_review(
         session,
         org_id,
         slot_id=slot_id,
@@ -92,7 +92,7 @@ async def submit_slot_review(
         status=normalized,
         completed_at=now if normalized == "completed" else None,
     )
-    return _slot_read(row)
+    return _slot_read(slot_review)
 
 
 async def save_gp_lead_review(
@@ -121,7 +121,7 @@ async def save_gp_lead_review(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    row = await repository.save_gp_lead_review(
+    review = await repository.save_gp_lead_review(
         session,
         org_id,
         slot_id=slot_id,
@@ -133,16 +133,16 @@ async def save_gp_lead_review(
         reviewed_by=reviewed_by,
         completed_at=now if normalized == "completed" else None,
     )
-    return _gp_read(row)
+    return _gp_read(review)
 
 
 async def read_gp_lead_review(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> GpLeadReviewRead:
-    row = await repository.gp_lead_review(session, org_id, slot_id)
-    if row is None:
+    review = await repository.gp_lead_review(session, org_id, slot_id)
+    if review is None:
         raise errors.ReviewNotFound()
-    return _gp_read(row)
+    return _gp_read(review)
 
 
 async def finalize_circuit(
@@ -154,7 +154,7 @@ async def finalize_circuit(
     finalized_by: uuid.UUID,
     now: datetime,
 ) -> CircuitReviewRead:
-    row = await repository.finalize_circuit_review(
+    review = await repository.finalize_circuit_review(
         session,
         org_id,
         circuit_id=circuit_id,
@@ -164,10 +164,10 @@ async def finalize_circuit(
         at=now,
     )
     return CircuitReviewRead(
-        id=row.id,
-        circuit_id=row.circuit_id,
-        merged_notes=row.merged_notes,
-        finalized_at=row.finalized_at,
+        id=review.id,
+        circuit_id=review.circuit_id,
+        merged_notes=review.merged_notes,
+        finalized_at=review.finalized_at,
     )
 
 
@@ -175,29 +175,29 @@ async def slot_has_review(session: AsyncSession, slot_id: uuid.UUID) -> bool:
     return await repository.slot_has_any_review(session, slot_id)
 
 
-def _slot_read(row: SlotReview) -> SlotReviewRead:
+def _slot_read(slot_review: SlotReview) -> SlotReviewRead:
     return SlotReviewRead(
-        id=row.id,
-        slot_id=row.slot_id,
-        submitted_by=row.submitted_by,
-        observer_trainee_id=row.observer_trainee_id,
-        status=row.status,
-        field_values=dict(row.field_values or {}),
-        notes=row.notes,
-        completed_at=row.completed_at,
+        id=slot_review.id,
+        slot_id=slot_review.slot_id,
+        submitted_by=slot_review.submitted_by,
+        observer_trainee_id=slot_review.observer_trainee_id,
+        status=slot_review.status,
+        field_values=dict(slot_review.field_values or {}),
+        notes=slot_review.notes,
+        completed_at=slot_review.completed_at,
     )
 
 
-def _gp_read(row: GpLeadReview) -> GpLeadReviewRead:
+def _gp_read(review: GpLeadReview) -> GpLeadReviewRead:
     return GpLeadReviewRead(
-        id=row.id,
-        slot_id=row.slot_id,
-        revision=row.revision,
-        status=row.status,
-        overall_rag=row.overall_rag,
-        field_values=dict(row.field_values or {}),
-        notes=row.notes,
-        completed_at=row.completed_at,
+        id=review.id,
+        slot_id=review.slot_id,
+        revision=review.revision,
+        status=review.status,
+        overall_rag=review.overall_rag,
+        field_values=dict(review.field_values or {}),
+        notes=review.notes,
+        completed_at=review.completed_at,
     )
 
 

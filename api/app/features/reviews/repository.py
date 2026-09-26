@@ -44,10 +44,10 @@ async def slot_reviews_for_slots(
         .where(SlotReview.org_id == org_id, SlotReview.slot_id.in_(list(slot_ids)))
         .order_by(SlotReview.created_at)
     )
-    out: dict[uuid.UUID, list[SlotReview]] = {slot_id: [] for slot_id in slot_ids}
-    for row in (await session.execute(stmt)).scalars():
-        out[row.slot_id].append(row)
-    return out
+    reviews_by_slot: dict[uuid.UUID, list[SlotReview]] = {slot_id: [] for slot_id in slot_ids}
+    for review in (await session.execute(stmt)).scalars():
+        reviews_by_slot[review.slot_id].append(review)
+    return reviews_by_slot
 
 
 async def upsert_slot_review(
@@ -64,7 +64,7 @@ async def upsert_slot_review(
 ) -> SlotReview:
     existing = await slot_review_for(session, org_id, slot_id, submitted_by)
     if existing is None:
-        row = SlotReview(
+        slot_review = SlotReview(
             org_id=org_id,
             slot_id=slot_id,
             submitted_by=submitted_by,
@@ -74,10 +74,10 @@ async def upsert_slot_review(
             status=status,
             completed_at=completed_at,
         )
-        session.add(row)
+        session.add(slot_review)
         await session.flush()
-        await session.refresh(row)
-        return row
+        await session.refresh(slot_review)
+        return slot_review
 
     await session.execute(
         update(SlotReview)
@@ -105,7 +105,7 @@ async def gp_lead_reviews_for_slots(
     if not slot_ids:
         return {}
     stmt = select(GpLeadReview).where(GpLeadReview.org_id == org_id, GpLeadReview.slot_id.in_(list(slot_ids)))
-    return {row.slot_id: row for row in (await session.execute(stmt)).scalars()}
+    return {review.slot_id: review for review in (await session.execute(stmt)).scalars()}
 
 
 async def save_gp_lead_review(
@@ -123,7 +123,7 @@ async def save_gp_lead_review(
 ) -> GpLeadReview:
     existing = await gp_lead_review(session, org_id, slot_id)
     if existing is None:
-        row = GpLeadReview(
+        review = GpLeadReview(
             org_id=org_id,
             slot_id=slot_id,
             revision=revision,
@@ -134,10 +134,10 @@ async def save_gp_lead_review(
             reviewed_by=reviewed_by,
             completed_at=completed_at,
         )
-        session.add(row)
+        session.add(review)
         await session.flush()
-        await session.refresh(row)
-        return row
+        await session.refresh(review)
+        return review
 
     await session.execute(
         update(GpLeadReview)
@@ -174,7 +174,7 @@ async def finalize_circuit_review(
 ) -> CircuitReview:
     existing = await circuit_review(session, org_id, circuit_id)
     if existing is None:
-        row = CircuitReview(
+        review = CircuitReview(
             org_id=org_id,
             circuit_id=circuit_id,
             merged_notes=merged_notes,
@@ -182,10 +182,10 @@ async def finalize_circuit_review(
             finalized_by=finalized_by,
             finalized_at=at,
         )
-        session.add(row)
+        session.add(review)
         await session.flush()
-        await session.refresh(row)
-        return row
+        await session.refresh(review)
+        return review
 
     await session.execute(
         update(CircuitReview)
@@ -211,4 +211,4 @@ async def slots_with_any_review(session: AsyncSession, slot_ids: Sequence[uuid.U
     if not slot_ids:
         return set()
     stmt = select(SlotReview.slot_id).where(SlotReview.slot_id.in_(list(slot_ids))).distinct()
-    return {row for row in (await session.execute(stmt)).scalars()}
+    return {slot_id for slot_id in (await session.execute(stmt)).scalars()}

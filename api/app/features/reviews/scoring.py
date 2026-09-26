@@ -64,18 +64,18 @@ def domain_scores(field_values: Mapping[str, object]) -> dict[str, float]:
     that domain like any other.
     """
     letters: dict[str, list[str]] = {}
-    for path, value in field_values.items():
+    for path, rating in field_values.items():
         parts = _score_path_parts(path)
-        if parts is None or not isinstance(value, str):
+        if parts is None or not isinstance(rating, str):
             continue
-        letters.setdefault(parts[0], []).append(value)
+        letters.setdefault(parts[0], []).append(rating)
 
-    out: dict[str, float] = {}
+    scores: dict[str, float] = {}
     for domain_id, ratings in letters.items():
         majority = majority_rag(ratings)
         if majority is not None:
-            out[domain_id] = RAG_SCORES[majority]
-    return out
+            scores[domain_id] = RAG_SCORES[majority]
+    return scores
 
 
 def station_score(scores: Mapping[str, float]) -> float | None:
@@ -98,14 +98,14 @@ def apply_review_overrides(marked: Mapping[str, object], reviewed: Mapping[str, 
     """
     overlaid: dict[str, object] = dict(marked)
     domain_level: dict[str, str] = {}
-    for path, value in reviewed.items():
+    for path, rating in reviewed.items():
         parts = _score_path_parts(path)
-        if parts is None or not isinstance(value, str):
+        if parts is None or not isinstance(rating, str):
             continue
         if len(parts) == 1:
-            domain_level[parts[0]] = value
+            domain_level[parts[0]] = rating
         else:
-            overlaid[path] = value
+            overlaid[path] = rating
 
     effective = domain_scores(overlaid)
     for domain_id, rag in domain_level.items():

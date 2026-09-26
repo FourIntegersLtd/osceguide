@@ -38,29 +38,29 @@ class ReviewConflict(Exception):
     pass
 
 
-def normalize_rag(value: str) -> str:
-    key = (value or "").strip().upper()
+def normalize_rag(rating: str) -> str:
+    key = (rating or "").strip().upper()
     if key not in RAG_VALUES:
-        raise InvalidRag(f"{value!r} is not one of {', '.join(RAG_VALUES)}.")
+        raise InvalidRag(f"{rating!r} is not one of {', '.join(RAG_VALUES)}.")
     return key
 
 
-def normalize_status(value: str) -> str:
-    key = (value or "").strip().lower()
+def normalize_status(status: str) -> str:
+    key = (status or "").strip().lower()
     if key not in REVIEW_STATUSES:
-        raise InvalidStatus(f"A review is {' or '.join(REVIEW_STATUSES)}, not {value!r}.")
+        raise InvalidStatus(f"A review is {' or '.join(REVIEW_STATUSES)}, not {status!r}.")
     return key
 
 
-def combine_rag(values: Sequence[str]) -> str | None:
+def combine_rag(ratings: Sequence[str]) -> str | None:
     """One rating from several: the worst wins.
 
     When two reviewers disagree, the lower rating is the one that should
     prompt a conversation.
     """
-    if not values:
+    if not ratings:
         return None
-    return min((normalize_rag(v) for v in values), key=lambda r: _RAG_SEVERITY[r])
+    return min((normalize_rag(rating) for rating in ratings), key=lambda rating: _RAG_SEVERITY[rating])
 
 
 def ensure_completable(*, scored: Collection[str], required: Collection[str], status: str) -> None:

@@ -110,6 +110,7 @@ async def save_gp_lead_review(
     )
 
 
+# Finalise a supervisor's merged review for a whole circuit.
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/review/finalize",
     response_model=schemas.CircuitReviewRead,
