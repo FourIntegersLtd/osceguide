@@ -33,6 +33,7 @@ class EngineTutorPromptRenderer:
         self._formatter = formatter
 
     def render(self, *, brief: dict[str, object], labels: Mapping[str, str]) -> str:
+        """Turn one learner's brief into the finished system prompt the worker is handed."""
         try:
             instructions = self._formatter(brief, labels=dict(labels))
         except Exception as exc:  # noqa: BLE001 - any formatter failure is the same failure here

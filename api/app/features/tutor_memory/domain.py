@@ -161,6 +161,7 @@ def validate_tool_arguments(schema: Mapping[str, Any], arguments: Mapping[str, A
 
 
 def _coerce(name: str, value: Any, spec: Mapping[str, Any]) -> Any:
+    """One argument, converted and range- or length-checked against its schema entry."""
     declared = spec.get("type")
     if declared == "integer":
         try:
@@ -185,12 +186,14 @@ def _coerce(name: str, value: Any, spec: Mapping[str, Any]) -> Any:
 
 
 def _sequence(value: Any) -> list[Any]:
+    """`value` as a list, or empty if it isn't a sequence (a bare string doesn't count)."""
     if isinstance(value, Sequence) and not isinstance(value, str):
         return list(value)
     return []
 
 
 def _texts(value: Any) -> list[str]:
+    """Plain strings out of a list that may hold bare strings or `{"text": ...}` entries."""
     texts: list[str] = []
     for entry in _sequence(value):
         text = str(entry.get("text") if isinstance(entry, Mapping) else entry or "").strip()

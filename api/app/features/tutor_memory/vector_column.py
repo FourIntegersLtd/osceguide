@@ -39,6 +39,7 @@ class VECTOR(UserDefinedType[Any]):
 
 @compiles(VECTOR)
 def _compile_vector(type_: VECTOR, compiler: Any, **_kwargs: Any) -> str:
+    """The DDL for one `VECTOR` column, however Alembic renders the type."""
     return type_.get_col_spec()
 
 
@@ -53,6 +54,7 @@ class Vector(TypeDecorator[Sequence[float]]):
         super().__init__(dimensions)
 
     def load_dialect_impl(self, dialect: Any) -> Any:
+        """The real `vector` type on Postgres, or plain text anywhere else."""
         # Outside Postgres there is no extension to lean on. The tutor's index
         # is Postgres-only by design, and this keeps `create_all` usable in a
         # non-Postgres context rather than failing on an unknown type.
@@ -64,6 +66,7 @@ class Vector(TypeDecorator[Sequence[float]]):
         return None if value is None else to_literal(value)
 
     def process_result_value(self, value: Any, dialect: Any) -> list[float] | None:
+        """A stored vector's text form, read back as a list of floats."""
         if value is None:
             return None
         return [float(part) for part in str(value).strip("[]").split(",") if part]

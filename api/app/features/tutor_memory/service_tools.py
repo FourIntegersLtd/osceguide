@@ -99,6 +99,7 @@ async def run(
 
 
 def _recall_args(cleaned: dict[str, Any]) -> dict[str, Any]:
+    """The validated `recall_history` arguments, as `service_recall.recall`'s keywords."""
     return {
         "query": str(cleaned.get("query") or ""),
         "kind": str(cleaned.get("kind") or "any"),
@@ -107,6 +108,7 @@ def _recall_args(cleaned: dict[str, Any]) -> dict[str, Any]:
 
 
 def _search_args(cleaned: dict[str, Any]) -> dict[str, Any]:
+    """The validated `search_material` arguments, as `service_search.answer_question`'s keywords."""
     kind = str(cleaned.get("kind") or tools_catalog.ANY_KIND)
     return {
         "query": str(cleaned.get("query") or ""),
@@ -189,6 +191,7 @@ async def _may_open(
 async def _remember(
     session: AsyncSession, *, user_id: uuid.UUID, session_id: uuid.UUID, fact: str
 ) -> ToolResult:
+    """Write down a fact the doctor told the tutor to remember, trimmed to something sayable."""
     clipped = domain.clip_fact(fact)
     if not clipped:
         return ToolResult(result="There was nothing to write down. Carry on.")

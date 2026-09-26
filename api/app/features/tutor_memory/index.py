@@ -43,6 +43,11 @@ class PgVectorMaterialIndex:
         title: str,
         chunks: Sequence[Mapping[str, Any]],
     ) -> int:
+        """Embed one document's chunks and replace whatever it previously indexed.
+
+        No chunks means the source has gone or come back empty, so its old passages
+        are forgotten instead.
+        """
         if not chunks:
             return await repository_index.forget_source(self._session, corpus=corpus, source_id=source_id)
 
@@ -69,6 +74,7 @@ class PgVectorMaterialIndex:
     async def search(
         self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
     ) -> list[Passage]:
+        """The nearest passages to `query`, restricted to exams the caller is entitled to."""
         if not exam_ids or not query.strip():
             return []
 
@@ -108,6 +114,7 @@ class NoMaterialIndex:
         title: str,
         chunks: Sequence[Mapping[str, Any]],
     ) -> int:
+        """Log and do nothing: there is no index to write these chunks into."""
         log.info("material index not configured", corpus=corpus, source_id=source_id)
         return 0
 

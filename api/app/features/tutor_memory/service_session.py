@@ -64,6 +64,7 @@ async def render_dashboard_session(
 
 
 def _renderer() -> TutorPromptRenderer:
+    """The default renderer, imported lazily so a test can pass its own instead."""
     from app.features.tutor_memory.renderer import build_renderer
 
     return build_renderer()

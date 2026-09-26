@@ -44,6 +44,7 @@ class OpenAIEmbedder:
         self._model = model
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        """One vector per text, in `EMBED_BATCH`-sized requests to stay within the API's limits."""
         import asyncio  # noqa: PLC0415
 
         wanted = list(texts)
@@ -51,6 +52,7 @@ class OpenAIEmbedder:
             return []
 
         def _call(batch: list[str]) -> list[list[float]]:
+            """One request for one batch, its vectors put back in the batch's own order."""
             response = self._client.embeddings.create(
                 model=self._model, input=batch, timeout=EMBEDDING_TIMEOUT_SECONDS
             )

@@ -177,5 +177,6 @@ BY_NAME = {tool["name"]: tool for tool in CATALOG}
 
 
 def schema_for(name: str) -> dict[str, Any] | None:
+    """The JSON schema arguments to this named tool must satisfy, or `None` if it is unknown."""
     tool = BY_NAME.get(name)
     return dict(tool["parameters"]) if tool else None

@@ -110,6 +110,7 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
 async def _index_one(
     index: MaterialIndex, *, corpus: str, source_id: str, exam_id: str | None, title: str, text: str
 ) -> int:
+    """Chunk one source's text and hand the chunks to the index."""
     chunks = chunking.chunk(text)
     return await index.upsert(
         corpus=corpus,

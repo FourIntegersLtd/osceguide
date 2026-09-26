@@ -80,6 +80,7 @@ def register() -> None:
 
     @app.task(name=SESSION_SUMMARY_TASK, queue=SUMMARIES_QUEUE)
     async def summarise_assistant_session(session_id: str) -> None:
+        """Turn one finished dashboard conversation into a note, then delete its turns."""
         from app.core.db import job_session
         from app.features.tutor_memory import service_summaries
         from app.features.tutor_memory.summariser import build_summariser
@@ -92,6 +93,7 @@ def register() -> None:
     @app.periodic(cron=REINDEX_CRON)
     @app.task(name=REINDEX_TASK, queue=INDEX_QUEUE)
     async def reindex_material(timestamp: int = 0) -> None:
+        """Nightly: re-embed every source the library holds, wiring a fresh index."""
         from app.core.db import job_session
         from app.features.tutor_memory import service_material
         from app.features.tutor_memory.index import build_material_index
@@ -101,6 +103,7 @@ def register() -> None:
 
     @app.task(name=DEBRIEF_SUMMARY_TASK, queue=SUMMARIES_QUEUE)
     async def summarise_debrief(attempt_id: str) -> None:
+        """Write the debrief summary a finished debrief attempt is owed."""
         from app.core.db import job_session
         from app.features.tutor_memory import service_summaries
         from app.features.tutor_memory.summariser import build_summariser

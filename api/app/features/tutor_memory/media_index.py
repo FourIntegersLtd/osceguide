@@ -69,6 +69,7 @@ class PgVectorMediaIndex:
         )
 
     async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
+        """The media items whose best passage is closest to `query`, one hit per item."""
         try:
             embedder = build_embedder()
         except Exception as exc:  # noqa: BLE001 - an unconfigured search finds nothing
@@ -93,4 +94,5 @@ class PgVectorMediaIndex:
 
 
 def build_media_index(session: AsyncSession) -> VectorIndex:
+    """Wire the media search box to this request's database session."""
     return PgVectorMediaIndex(session)

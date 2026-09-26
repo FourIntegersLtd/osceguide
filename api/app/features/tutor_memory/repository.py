@@ -51,6 +51,7 @@ async def add_event(
     occurred_at: datetime,
     meta: dict[str, Any] | None,
 ) -> LearningEvent:
+    """Record one sighting of something this person viewed, practised or listened to."""
     learning_event = LearningEvent(
         user_id=user_id,
         exam_id=exam_id,
@@ -67,6 +68,7 @@ async def add_event(
 
 
 async def recent_events(session: AsyncSession, user_id: uuid.UUID, *, limit: int) -> list[LearningEvent]:
+    """This person's most recent sightings, newest first."""
     stmt = (
         select(LearningEvent)
         .where(LearningEvent.user_id == user_id)
@@ -85,6 +87,7 @@ async def add_note(
     kind: str,
     body: dict[str, Any],
 ) -> TutorNote:
+    """Write one note: a session summary or a fact the tutor was told to remember."""
     note = TutorNote(user_id=user_id, exam_id=exam_id, session_id=session_id, kind=kind, body=body)
     session.add(note)
     await session.flush()
@@ -94,6 +97,7 @@ async def add_note(
 async def notes_of_kind(
     session: AsyncSession, user_id: uuid.UUID, *, kind: str, limit: int
 ) -> list[TutorNote]:
+    """This person's notes of one kind (session summaries, or stated facts), newest first."""
     stmt = (
         select(TutorNote)
         .where(TutorNote.user_id == user_id, TutorNote.kind == kind)
@@ -104,6 +108,7 @@ async def notes_of_kind(
 
 
 async def summary_for_session(session: AsyncSession, session_id: uuid.UUID) -> TutorNote | None:
+    """The session-summary note written for this assistant session, if it has one yet."""
     stmt = select(TutorNote).where(TutorNote.session_id == session_id, TutorNote.kind == "session_summary")
     return (await session.execute(stmt)).scalars().first()
 
@@ -146,6 +151,7 @@ async def add_debrief_summary(
     narrative: str | None,
     model_used: str | None,
 ) -> DebriefSummary:
+    """Write the summary a finished debrief produced."""
     summary = DebriefSummary(
         attempt_id=attempt_id,
         user_id=user_id,
@@ -161,6 +167,7 @@ async def add_debrief_summary(
 
 
 async def debrief_summary_for_attempt(session: AsyncSession, attempt_id: uuid.UUID) -> DebriefSummary | None:
+    """The summary written for this debrief attempt, if it has one yet."""
     stmt = select(DebriefSummary).where(DebriefSummary.attempt_id == attempt_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -179,6 +186,7 @@ async def set_action_plan(session: AsyncSession, summary_id: uuid.UUID, plan: li
 async def recent_debrief_summaries(
     session: AsyncSession, user_id: uuid.UUID, *, limit: int
 ) -> list[DebriefSummary]:
+    """This person's most recent debrief summaries, newest first."""
     stmt = (
         select(DebriefSummary)
         .where(DebriefSummary.user_id == user_id)
@@ -191,6 +199,7 @@ async def recent_debrief_summaries(
 async def page_debrief_summaries(
     session: AsyncSession, user_id: uuid.UUID, params: CursorParams
 ) -> tuple[list[DebriefSummary], str | None]:
+    """One page of this person's debrief summaries, for the history screen."""
     return await keyset_page(
         session,
         select(DebriefSummary).where(DebriefSummary.user_id == user_id),

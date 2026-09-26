@@ -163,6 +163,7 @@ async def _exam_id(session: AsyncSession, exam_code: str | None) -> uuid.UUID | 
 async def list_debriefs(
     session: AsyncSession, user_id: uuid.UUID, params: CursorParams
 ) -> Page[DebriefSummaryRead]:
+    """One page of this person's debrief history, most recent first."""
     debriefs, cursor = await repository.page_debrief_summaries(session, user_id, params)
     sources = await debrief_sources(session, user_id, [debrief.attempt_id for debrief in debriefs])
     return Page(

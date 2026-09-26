@@ -46,6 +46,7 @@ async def compose(session: AsyncSession, *, user_id: uuid.UUID, now: datetime) -
 
 
 async def _titles(session: AsyncSession, refs: list[attempts.AttemptRef]) -> dict[uuid.UUID, str]:
+    """Station titles for a set of attempts, looked up once for the whole brief."""
     version_ids = [ref.station_version_id for ref in refs if ref.station_version_id]
     summaries = await stations.summaries_by_version_id(session, None, version_ids)
     return {version_id: summary.title for version_id, summary in summaries.items()}
@@ -93,6 +94,7 @@ async def _debriefs(
     *,
     now: datetime,
 ) -> list[dict[str, Any]]:
+    """The most recent debrief summaries, each with its consultation's title where known."""
     attempts_by_id = {ref.id: ref for ref in refs}
     briefs: list[dict[str, Any]] = []
     for summary in await repository.recent_debrief_summaries(session, user_id, limit=MAX_DEBRIEFS):
@@ -111,6 +113,7 @@ async def _debriefs(
 async def _last_conversation(
     session: AsyncSession, user_id: uuid.UUID, *, now: datetime
 ) -> dict[str, Any] | None:
+    """How the last dashboard conversation ended, or `None` if there hasn't been one."""
     notes = await repository.notes_of_kind(session, user_id, kind="session_summary", limit=1)
     if not notes:
         return None
@@ -123,11 +126,13 @@ async def _last_conversation(
 
 
 async def _facts(session: AsyncSession, user_id: uuid.UUID) -> list[str]:
+    """Facts this person has told the tutor to remember, most recent first."""
     notes = await repository.notes_of_kind(session, user_id, kind="stated_fact", limit=MAX_FACTS)
     return [str((note.body or {}).get("fact") or "") for note in notes if (note.body or {}).get("fact")]
 
 
 async def _activity(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[dict[str, Any]]:
+    """What this person has read, practised or listened to lately."""
     events = await repository.recent_events(session, user_id, limit=MAX_ACTIVITY)
     return [
         {"kind": event.kind, "title": event.title, "days_ago": domain.days_ago(event.occurred_at, now)}

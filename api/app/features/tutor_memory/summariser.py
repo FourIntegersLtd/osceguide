@@ -36,6 +36,7 @@ class OpenAISummariser:
         schema: dict[str, object],
         instructions: str,
     ) -> dict[str, object]:
+        """Turn a transcript into the shape `schema` describes, tagged with which model wrote it."""
         import asyncio  # noqa: PLC0415
 
         body = "\n".join(f"{turn.get('role')}: {turn.get('message')}" for turn in transcript)
@@ -43,6 +44,7 @@ class OpenAISummariser:
             raise SummaryFailed(f"there is no {kind} transcript to summarise")
 
         def _call() -> str:
+            """One blocking request for the raw JSON text the model returns."""
             response = self._client.chat.completions.create(
                 model=self._model,
                 messages=[
