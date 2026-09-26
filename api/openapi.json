@@ -44481,10 +44481,11 @@
                 }
               }
             },
-            "description": "attempt_not_ready, station_not_published",
+            "description": "attempt_not_ready, station_not_published, attempt_limit_reached",
             "x-codes": [
               "attempt_not_ready",
-              "station_not_published"
+              "station_not_published",
+              "attempt_limit_reached"
             ]
           },
           "422": {
