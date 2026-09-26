@@ -1,0 +1,18 @@
+# Railway config for the `platform-worker` service (background jobs: marking,
+# media, emails, scheduled sweeps). Point the service at it in Settings →
+# Config-as-code: /platform-api/railway.worker.toml
+#
+# Same image as the API (see Dockerfile), started as the worker. It has no
+# pre-deploy step: platform-api runs the migrations, and two migrators at once
+# would race. It serves no HTTP, so it has no health check either.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# Rebuild only when platform-api changes, never for a b2c-api or b2b-api push.
+watchPatterns = ["/platform-api/**"]
+
+[deploy]
+startCommand = "python -m app.worker.main"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

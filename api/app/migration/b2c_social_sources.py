@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from app.migration import b2c_firestore
+
 CommunityDocKind = Literal["question", "reply", "comment"]
 MarketplaceDocKind = Literal["post", "session"]
 
@@ -125,20 +127,13 @@ def stream_b2c_community_documents(
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Stream community question/reply/comment documents from consumer Firestore (read-only)."""
-    try:
-        from google.cloud import firestore  # type: ignore[import-untyped]
-    except ImportError as exc:
-        raise RuntimeError(
-            "google-cloud-firestore is not installed. Install the dev dependency: poetry install --with dev"
-        ) from exc
-
     selected_kinds = list(kinds) if kinds is not None else ["question", "reply", "comment"]
     selected_products = list(products) if products is not None else list(ALL_EXAMS)
     for product in selected_products:
         if product not in ALL_EXAMS:
             raise ValueError(f"unknown product {product!r}")
 
-    db = firestore.Client()
+    db = b2c_firestore.client()
     documents: list[dict[str, Any]] = []
     for app_type in selected_products:
         if "question" in selected_kinds:
@@ -177,20 +172,13 @@ def stream_b2c_marketplace_documents(
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Stream marketplace post/session documents from consumer Firestore (read-only)."""
-    try:
-        from google.cloud import firestore  # type: ignore[import-untyped]
-    except ImportError as exc:
-        raise RuntimeError(
-            "google-cloud-firestore is not installed. Install the dev dependency: poetry install --with dev"
-        ) from exc
-
     selected_kinds = list(kinds) if kinds is not None else ["post", "session"]
     selected_products = list(products) if products is not None else list(ALL_EXAMS)
     for product in selected_products:
         if product not in ALL_EXAMS:
             raise ValueError(f"unknown product {product!r}")
 
-    db = firestore.Client()
+    db = b2c_firestore.client()
     documents: list[dict[str, Any]] = []
     for app_type in selected_products:
         if "post" in selected_kinds:

@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from app.migration import b2c_firestore
+
 MediaKindSource = Literal["summary", "blog", "slide_deck"]
 
 B2C_MEDIA_SUMMARY_COLLECTIONS: dict[str, str] = {
@@ -92,13 +94,6 @@ def stream_b2c_media_documents(
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Stream study-material documents from consumer Firestore collections (read-only)."""
-    try:
-        from google.cloud import firestore  # type: ignore[import-untyped]
-    except ImportError as exc:
-        raise RuntimeError(
-            "google-cloud-firestore is not installed. Install the dev dependency: poetry install --with dev"
-        ) from exc
-
     selected_kinds = list(kinds) if kinds is not None else list(ALL_MEDIA_KINDS)
     unknown_kinds = [kind for kind in selected_kinds if kind not in _MEDIA_KIND_TO_MAP]
     if unknown_kinds:
@@ -112,7 +107,7 @@ def stream_b2c_media_documents(
         if unknown:
             raise ValueError(f"unknown product(s) for {kind}: {unknown}")
 
-    db = firestore.Client()
+    db = b2c_firestore.client()
     documents: list[dict[str, Any]] = []
     for media_kind in selected_kinds:
         collections = _MEDIA_KIND_TO_MAP[media_kind]

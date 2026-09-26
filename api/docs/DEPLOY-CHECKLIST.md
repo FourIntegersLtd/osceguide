@@ -1,14 +1,17 @@
 # platform-api deploy checklist
 
-Use this before deploying the **platform-api** Railway service (not b2c-api/b2b-api).
-Classic production on Railway only redeploys when `b2c-api/**` or `b2b-api/**` change;
-a push that touches only `platform-api/**` does not rebuild those services.
+Use this before promoting **platform-api** to production (not b2c-api/b2b-api).
+A push to `main` deploys staging by itself; production changes only through the
+promote workflow (see [ENVIRONMENT.md](ENVIRONMENT.md), "Staging and production").
+Each backend redeploys only for its own folder: `platform-api/**`, `b2c-api/**`
+or `b2b-api/**`.
 
 ## Before deploy
 
-1. **Migrations** — Run Alembic against the target database in a maintenance window:
-   `alembic upgrade head` (Docker/Railway start command does this on boot; confirm
-   revision chain locally first).
+1. **Migrations** — Railway runs `alembic upgrade head` before every platform-api
+   deploy (`preDeployCommand` in `railway.toml`); a failed migration stops the deploy
+   and the previous version keeps serving. Make sure each new migration only adds:
+   a rollback keeps the new schema.
 2. **Tests** — `cd platform-api && poetry run pytest -q` (or rely on CI on `main`).
 3. **Staging smoke** — Sign in, start a practice attempt, confirm voice bootstrap and
    marking jobs complete on staging.
@@ -21,7 +24,8 @@ a push that touches only `platform-api/**` does not rebuild those services.
 
 ## After deploy
 
-- Confirm `/health` and one authenticated read (`/api/v1/me`).
+- Confirm `/health` reports `status: ok` and the promoted `commit`, and one
+  authenticated read (`/api/v1/me`).
 - Watch `GET /platform/jobs?status=failed` if staff console is wired.
 - If peer-practice or coverage migrations ran, spot-check queue join and live
   coverage on staging before announcing.
@@ -30,6 +34,7 @@ a push that touches only `platform-api/**` does not rebuild those services.
 
 | Service | Trigger |
 |---------|---------|
+| platform-api, platform-worker | `platform-api/**`: staging on a push to `main`, production when the promote workflow moves `production` |
 | b2c-api | `b2c-api/**` in backend repo |
 | b2b-api | `b2b-api/**` in backend repo |
 | assessment-platform workers | Push to `assessment-platform` `main` → GHCR (+ optional K8s rollout) |

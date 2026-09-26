@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.migration import b2c_firestore
+
 B2C_STATION_COLLECTIONS: dict[str, str] = {
     "sca": "stations",
     "plab": "plab_stations",
@@ -60,19 +62,12 @@ def stream_b2c_station_documents(
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Stream all station documents from the four consumer collections (read-only)."""
-    try:
-        from google.cloud import firestore  # type: ignore[import-untyped]
-    except ImportError as exc:
-        raise RuntimeError(
-            "google-cloud-firestore is not installed. Install the dev dependency: poetry install --with dev"
-        ) from exc
-
     selected = list(products) if products is not None else list(B2C_STATION_COLLECTIONS)
     unknown = [product for product in selected if product not in B2C_STATION_COLLECTIONS]
     if unknown:
         raise ValueError(f"unknown product(s): {unknown}; expected {sorted(B2C_STATION_COLLECTIONS)}")
 
-    db = firestore.Client()
+    db = b2c_firestore.client()
     documents: list[dict[str, Any]] = []
     for app_type in selected:
         collection = B2C_STATION_COLLECTIONS[app_type]

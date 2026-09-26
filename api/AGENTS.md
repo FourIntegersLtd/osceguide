@@ -49,6 +49,12 @@ make guards                                    # tests/guards only, fast
   `LIVEKIT_AGENT_NAMESPACE` (run with it empty); `tests/migration` errors when
   run after `tests/repository`, so run it alone. DB tests silently skip without
   the docker services, and a pass then means nothing.
+- **A push to `main` deploys staging, not production.** Production moves only
+  through the "Promote platform-api to production" workflow, which is ask-first.
+  Every deploy runs `alembic upgrade head`, so a migration must only add (a
+  rollback keeps the new schema). See `docs/ENVIRONMENT.md`, "Staging and production".
+- **Real data never goes to staging.** `app.migration` refuses to import under
+  `APP_ENV=staging`; seed staging with `scripts/seed_platform.py` instead.
 - The e2e run (`pytest -m e2e`) installs `aiohttp` and the LiveKit SDK. Remove
   them afterwards or `make typecheck` fails on `voice/adapter.py`.
 

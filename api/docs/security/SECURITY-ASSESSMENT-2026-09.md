@@ -134,7 +134,9 @@ remains open and requires the organisation to rotate the affected credentials.
 
 At the retest on 25 September 2026, fourteen findings were resolved and
 verified. Five were remediated in source but awaited merge into the main code
-line or verification in a deployed environment. One remained open.
+line or verification in a deployed environment. One remained open. SEC-009's
+deployment was verified on 26 September 2026, bringing the resolved count to
+fifteen.
 
 ### 2.4 Key Findings
 
@@ -143,7 +145,7 @@ line or verification in a deployed environment. One remained open.
 | SEC-001 | A lower-privileged organisation role could grant itself examination sign-off authority | High | Undermines the integrity of examination results, the platform's central assurance to institutions | Resolved |
 | SEC-002 | Content displayed in the web application could carry executable script | High | Could let one user act in another user's session, including staff sessions | Remediated – pending merge |
 | SEC-012 | Private keys and access credentials present in code history and on disk | High | If still valid, could allow impersonation of the service's TLS certificate, repository write access, or cloud resource access | **Open** |
-| SEC-009 | Backend container ran with full privileges and could embed a repository token | Medium | Increases the damage any future compromise could do; the token may be exposed to anyone able to pull the image | Resolved – deployment unverified |
+| SEC-009 | Backend container ran with full privileges and could embed a repository token | Medium | Increases the damage any future compromise could do; the token may be exposed to anyone able to pull the image | Resolved |
 | SEC-015 | Enterprise single sign-on did not bind the login to the user's browser | Medium | A user could be silently signed into an attacker-controlled account | Resolved |
 | SEC-007 | Users could rewrite the AI tutor's instructions | Medium | Misuse of the AI assistant and uncontrolled AI running costs | Resolved |
 
@@ -153,10 +155,10 @@ line or verification in a deployed environment. One remained open.
 |---|---|---|---|---|
 | Critical | 0 | – | – | – |
 | High | 3 | 1 | 1 | 1 |
-| Medium | 6 | 4 | 2 | 0 |
+| Medium | 6 | 5 | 1 | 0 |
 | Low | 8 | 6 | 2 | 0 |
 | Informational | 3 | 3 | 0 | 0 |
-| **Total** | **20** | **14** | **5** | **1** |
+| **Total** | **20** | **15** | **4** | **1** |
 
 ### 2.6 Key Business Risks
 
@@ -373,7 +375,7 @@ remediation was verified.
 | SEC-001 | Privilege escalation through unvalidated organisation role assignment | **High** | 8.1 | platform-api — membership management | Resolved |
 | SEC-002 | Stored cross-site scripting through unsanitised markdown rendering | **High** | 7.6 | platform-web — markdown renderer | Remediated – pending merge |
 | SEC-012 | Private keys and access credentials in repository history and developer workspace | **High** | Not scored | Source repositories; development workspace | **Open** |
-| SEC-009 | Container runs as root and embeds a build-time repository token | Medium | 6.4 | platform-api — container image | Resolved – deployment unverified |
+| SEC-009 | Container runs as root and embeds a build-time repository token | Medium | 6.4 | platform-api — container image | Resolved |
 | SEC-015 | Missing OAuth `state` and OIDC `nonce` in Entra ID sign-in | Medium | 5.4 | platform-api — SSO | Resolved |
 | SEC-007 | Client-supplied data used to build the assistant's system prompt | Medium | 5.4 | platform-api — assistant | Resolved |
 | SEC-003 | Authentication rate limiting bypassable through `X-Forwarded-For` and fails open | Medium | 5.3 | platform-api — rate limiter | Resolved |
@@ -713,7 +715,7 @@ CWE-540; CWE-312.
 | **CWE** | CWE-250: Execution with Unnecessary Privileges; CWE-522: Insufficiently Protected Credentials |
 | **Reference standard** | CIS Docker Benchmark 4.1, 4.10 |
 | **Affected component** | `backend/platform-api/Dockerfile`; absence of `.dockerignore` |
-| **Status** | Resolved – deployment unverified |
+| **Status** | Resolved (deployment verified 26 September 2026, revision `67aeddd`) |
 
 **CVSS rationale.** Exploitation requires access to a built image or the
 running container (AV:L, PR:L) and further conditions (AC:H). The exposed token
@@ -754,8 +756,7 @@ compromise.
   unprivileged user (`appuser`, UID 10001). A `.dockerignore` now excludes
   `.git`, `.env*`, key material, `serviceAccountKey.json`, tests and
   documentation.
-- *Outstanding:* the first production build must be verified with the retest
-  below. The token must be rotated (SEC-012).
+- *Outstanding:* the token must be rotated (SEC-012).
 
 **Remediation priority.** Short term (deployment verification).
 
@@ -763,6 +764,15 @@ compromise.
 `docker history --no-trunc` shows no token and that the image user is
 `10001`. Confirm `id` inside the running container is non-root and the
 application starts normally.
+
+**Retest result (26 September 2026, revision `67aeddd`).** The production
+pipeline built and deployed the image; its build log confirmed the marking
+engine was present. In the running production container the application
+process (PID 1) runs as UID 10001 and started normally. The same Dockerfile at
+the same revision, built locally with a real token, produced a history of 19
+steps containing no occurrence of `ENGINE_REPO_TOKEN`, `x-access-token` or any
+GitHub token prefix (`gho_`, `ghp_`, `github_pat_`); the only step taken from
+the build stage is the copy of the installed packages. Resolved.
 
 **References.** CIS Docker Benchmark; Docker BuildKit secrets documentation;
 CWE-250; CWE-522.
@@ -1484,18 +1494,17 @@ verified.
 | Priority | Finding | Recommended action | Rationale |
 |---|---|---|---|
 | 3 | SEC-006 | Merge; validate the CSP in staging; switch to enforcing mode | Contains any future script injection |
-| 4 | SEC-009 | Verify the first pipeline build with the BuildKit secret; remove the build-argument fallback | Fix depends on deployment configuration |
-| 5 | SEC-008, SEC-010 | Merge; deploy the worker image and hardened manifests; smoke-test a session | Fixes not yet in the main code line or cluster |
-| 6 | SEC-003 | Confirm proxy `X-Forwarded-For` handling and `trusted_proxy_hops` in production | Fix effectiveness depends on proxy behaviour |
+| 4 | SEC-008, SEC-010 | Merge; deploy the worker image and hardened manifests; smoke-test a session | Fixes not yet in the main code line or cluster |
+| 5 | SEC-003 | Confirm proxy `X-Forwarded-For` handling and `trusted_proxy_hops` in production | Fix effectiveness depends on proxy behaviour |
 
 ### Medium Term
 
 | Priority | Finding | Recommended action | Rationale |
 |---|---|---|---|
-| 7 | SEC-013 | Set explicit `Content-Type`/`Content-Disposition`; fully decode images | Removes residual polyglot risk |
-| 8 | SEC-008 | Per-user concurrent-session and daily-usage limits | Cost control at the account level |
-| 9 | SEC-010 | Read-only root filesystem with `tmpfs` cache; pin images by digest | Further container hardening |
-| 10 | SEC-001 | Audit logging of role changes | Detection and accountability |
+| 6 | SEC-013 | Set explicit `Content-Type`/`Content-Disposition`; fully decode images | Removes residual polyglot risk |
+| 7 | SEC-008 | Per-user concurrent-session and daily-usage limits | Cost control at the account level |
+| 8 | SEC-010 | Read-only root filesystem with `tmpfs` cache; pin images by digest | Further container hardening |
+| 9 | SEC-001 | Audit logging of role changes | Detection and accountability |
 | 11 | All | Production-environment assessment with authenticated dynamic testing | Covers the limitations in Section 3.6 |
 
 ---
@@ -1512,7 +1521,7 @@ that the deployed artefact contains the fix.
 | SEC-001 | Role allow-list and rank check | Role grant above own tier; undefined role | `403` / `422` | Yes, in CI |
 | SEC-002 | Sanitised rendering, deployed | XSS payloads in each content source, in a browser | No execution; clean DOM | Yes, in CI |
 | SEC-012 | Credentials revoked | Authenticate with old credentials; history secret scan | Provider rejects old credentials; clean scan | Secret scanning on every push |
-| SEC-009 | Secret-mounted token; non-root image | `docker history`; `id` in container | No token; UID 10001 | Pipeline check |
+| SEC-009 | Token confined to the build stage; non-root image | `docker history`; `id` in container | No token; UID 10001 | Pipeline check |
 | SEC-015 | `state`/`nonce` binding | Callback without or with foreign state; nonce mismatch against a live tenant | Refused | Yes, in CI |
 | SEC-007 | Server-side prompt construction | Injection through `extras`; foreign station ID | Prompt unaffected | Yes, in CI |
 | SEC-003 | Trusted caller key; fail-closed | Varying `X-Forwarded-For` through the edge; datastore error | `429`; refusal | Yes, in CI and at the edge |

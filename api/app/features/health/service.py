@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
 from app.core.logging import get_logger
+from app.core.settings import get_settings
 from app.features.health import repository, repository_jobs
 from app.features.health.repository_jobs import JobRef
 from app.features.health.schemas import CheckState, HealthResponse, JobRead, JobsPage, PlatformHealth
@@ -48,7 +49,9 @@ async def health_report(session: AsyncSession, redis: Redis | None) -> HealthRes
         status = "degraded"
     else:
         status = "ok"
-    return HealthResponse(status=status, version=__version__, checks=checks)
+    return HealthResponse(
+        status=status, version=__version__, commit=get_settings().git_commit_sha, checks=checks
+    )
 
 
 # --- What the console asks about the platform's own machinery.

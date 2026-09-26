@@ -1,11 +1,26 @@
-# Railway: create two services from this directory.
-#   platform-api        uses the Dockerfile CMD (migrate, then uvicorn)
-#   platform-worker     same image; set Start Command to `python -m app.worker.main`
+# Railway config for the `platform-api` service (the HTTP API).
+# The worker has its own file, railway.worker.toml: same image, different start
+# command, and it must never run the migrations too (two migrators would race).
+#
+# Each Railway service reads the config file named in its Settings → Config-as-code.
+# platform-api uses this file (the default); platform-worker must point at
+# /platform-api/railway.worker.toml.
+#
+# Staging deploys from `main`, production from `production`, which only the
+# "Promote to production" workflow moves (.github/workflows/promote-production.yml).
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+# Rebuild only when platform-api changes, never for a b2c-api or b2b-api push.
+watchPatterns = ["/platform-api/**"]
 
 [deploy]
+# Runs in the new image, against the environment's own database, before any
+# traffic moves to it. If a migration fails, the deploy stops and the previous
+# version keeps serving. Migrations only ever add (see docs/ENVIRONMENT.md,
+# "Staging and production"), so the old code still runs on the new schema.
+preDeployCommand = ["alembic upgrade head"]
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"

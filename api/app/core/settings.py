@@ -205,6 +205,11 @@ class Settings(BaseSettings):
     # --- Observability ---
     log_level: str = "INFO"
     sentry_dsn: str = ""
+    # The git commit this process was built from. Railway sets
+    # RAILWAY_GIT_COMMIT_SHA on every deploy; it is empty locally. `/health`
+    # reports it so anyone can see what staging or production is running, and
+    # the promote workflow refuses a commit staging is not running.
+    git_commit_sha: str = Field(default="", validation_alias="RAILWAY_GIT_COMMIT_SHA")
 
     @property
     def is_deployed(self) -> bool:

@@ -4251,6 +4251,7 @@
               "trainee_exists",
               "trainee_in_use",
               "trainee_not_found",
+              "trainee_not_on_roster",
               "trainee_revoked",
               "tutor_note_not_found",
               "unauthenticated",
@@ -4900,6 +4901,10 @@
             "title": "Checks",
             "type": "object"
           },
+          "commit": {
+            "title": "Commit",
+            "type": "string"
+          },
           "status": {
             "enum": [
               "ok",
@@ -4917,6 +4922,7 @@
         "required": [
           "status",
           "version",
+          "commit",
           "checks"
         ],
         "title": "HealthResponse",
@@ -8686,6 +8692,10 @@
             "title": "Checks",
             "type": "object"
           },
+          "commit": {
+            "title": "Commit",
+            "type": "string"
+          },
           "jobs_by_status": {
             "additionalProperties": {
               "type": "integer"
@@ -8722,6 +8732,7 @@
         "required": [
           "status",
           "version",
+          "commit",
           "checks",
           "jobs_by_status",
           "worker_seen_at"
@@ -12126,13 +12137,25 @@
         "type": "object"
       },
       "SsoCallbackRequest": {
-        "description": "The token the broker handed back, and the organisation it was for.",
+        "description": "The token the broker handed back, and the organisation it was for.\n\n`state` (SEC-015) is the signed anti-forgery value the sign-in URL carried\nand the OIDC provider echoed back on the redirect. It is optional on the\ncontract \u2014 Clerk's flow does not carry one \u2014 but required for a provider\nthat runs the code flow (Entra), which the callback enforces.",
         "properties": {
           "org_slug": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Org Slug",
             "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
           },
           "token": {
             "maxLength": 4096,
@@ -12351,6 +12374,18 @@
             "minLength": 1,
             "title": "Session Type",
             "type": "string"
+          },
+          "station_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Version Id"
           }
         },
         "required": [
@@ -17565,6 +17600,19 @@
               "invalid_reset_token",
               "weak_password"
             ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "summary": "Confirm Password Reset",
@@ -17675,6 +17723,19 @@
             "description": "weak_password",
             "x-codes": [
               "weak_password"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },
@@ -25492,12 +25553,13 @@
                 }
               }
             },
-            "description": "circuit_already_ended, circuit_locked, invalid_circuit, trainee_revoked",
+            "description": "circuit_already_ended, circuit_locked, invalid_circuit, trainee_revoked, trainee_not_on_roster",
             "x-codes": [
               "circuit_already_ended",
               "circuit_locked",
               "invalid_circuit",
-              "trainee_revoked"
+              "trainee_revoked",
+              "trainee_not_on_roster"
             ]
           },
           "422": {
@@ -25729,14 +25791,15 @@
                 }
               }
             },
-            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked",
+            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked, trainee_not_on_roster",
             "x-codes": [
               "circuit_already_ended",
               "not_permitted_in_mode",
               "invalid_circuit",
               "trainee_already_on_circuit",
               "station_not_on_circuit",
-              "trainee_revoked"
+              "trainee_revoked",
+              "trainee_not_on_roster"
             ]
           },
           "422": {
@@ -31324,10 +31387,11 @@
                 }
               }
             },
-            "description": "invalid_circuit, trainee_revoked",
+            "description": "invalid_circuit, trainee_revoked, trainee_not_on_roster",
             "x-codes": [
               "invalid_circuit",
-              "trainee_revoked"
+              "trainee_revoked",
+              "trainee_not_on_roster"
             ]
           },
           "422": {

@@ -1,5 +1,6 @@
-# One image, two Railway services: `web` (default CMD) and `worker`
-# (start command overridden to `python -m app.worker.main`).
+# One image, two Railway services: `platform-api` (the default CMD below,
+# configured by railway.toml) and `platform-worker` (railway.worker.toml starts
+# it as `python -m app.worker.main`).
 #
 # Two stages. `dependencies` holds the build tools and the private-repo token
 # and installs every package into /opt/venv. The final stage starts again from

@@ -43,7 +43,10 @@ def configure_credentials_from_env() -> None:
 
 
 def client() -> Any:
-    """A Firestore client, credentialed from the environment. Read-only by convention."""
+    """A Firestore client, credentialed from the environment. Read-only by convention.
+
+    The only place this codebase opens Firestore; every source module asks here.
+    """
     try:
         from google.cloud import firestore  # type: ignore[import-untyped]
     except ImportError as exc:

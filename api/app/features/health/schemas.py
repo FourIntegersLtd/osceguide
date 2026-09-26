@@ -13,6 +13,8 @@ CheckState = Literal["ok", "error", "disabled"]
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded", "down"]
     version: str
+    # The git commit this deploy was built from; empty when run locally.
+    commit: str
     checks: dict[str, CheckState]
 
 

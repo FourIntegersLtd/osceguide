@@ -50,6 +50,7 @@ least 32 characters.
 | `MARKING_FALLBACK_MODEL` / `ANTHROPIC_API_KEY` | claude-sonnet-4-5 | Fallback marking. |
 | `WORKER_CONCURRENCY` | 4 | Background job parallelism. |
 | `FRONTEND_URL` / `LOG_LEVEL` | localhost:3000 / INFO | Link building and logging. Logs become JSON automatically when deployed. |
+| `RAILWAY_GIT_COMMIT_SHA` | — | Set by Railway on every deploy, never by hand. `/health` reports it as `commit`, so anyone can see what staging or production runs; the promote workflow refuses a commit staging is not running. |
 | `SENTRY_DSN` | — | Error reporting, off unless set. Traces are sampled at 5% because an API the console polls would otherwise bill for its own heartbeat, and the request body is never sent — it holds passwords, legacy tokens and transcripts. |
 | `CARTESIA_API_KEY` | — | TTS for slide and podcast production. Jobs raise `av_unavailable` without it. |
 | `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_S3_BUCKET` | — | Where produced audio and video are stored. Jobs raise `av_unavailable` without a bucket. |
@@ -80,3 +81,40 @@ decoration. `poetry install` prints "Installing osce-assessment" and exits
 zero even when the clone produced nothing, so without the check an image with
 no marking engine builds green, starts, answers its health check, serves every
 page and refuses the one thing it exists to do.
+
+## Staging and production
+
+Two Railway environments in the "OSCE Guide server backend" project, each with
+its own platform-api, platform-worker, Postgres (`platform-postgres`, our
+pgvector image in `infra/postgres/`) and Redis. Nothing is shared between them.
+
+| | Staging | Production |
+|---|---|---|
+| Deploys from | `main`, by itself after every push | `production`, moved only by the promote workflow |
+| `APP_ENV` | `staging` | `production` |
+| Data | Seeded test data only (`scripts/seed_platform.py`) | Real people |
+| LiveKit project | `new-test-agent` | the production project |
+| Stripe | test-mode keys and webhook | live keys and webhook |
+| `JWT_SECRET`, `WORKER_SECRET` | its own | its own, never copied to staging |
+
+**Getting a change to production.** Merge to `main`; CI runs and Railway deploys
+staging. Test it there. Then GitHub → Actions → "Promote platform-api to
+production" → Run workflow. It checks the commit is on `main`, CI passed, staging
+runs it and is healthy, and a test account can sign in on staging and read its
+dashboard; then it fast-forwards `production`, and Railway deploys it. `/health`
+on either environment reports the commit it runs.
+
+**Rolling back.** Railway → production → platform-api → Deployments → the
+previous deployment → Redeploy (about two minutes). Do the same for
+platform-worker. A rollback puts old code back but never undoes a migration.
+
+**Migrations only add.** Every deploy runs `alembic upgrade head` before traffic
+moves (`preDeployCommand` in `railway.toml`; the worker's `railway.worker.toml`
+does not, so two migrators never race). Because a rollback keeps the new schema,
+old code must still run on it: add columns and tables freely, and drop or rename
+one only in a later release, after no deployed code uses it.
+
+**Real data never reaches staging.** Every copy script imports `app.migration`,
+and that package refuses to load under `APP_ENV=staging`. Staging's database is
+reachable only from inside Railway's staging environment, where `APP_ENV` is
+always `staging`.
