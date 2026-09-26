@@ -20,6 +20,7 @@ class InvalidRubric(ValueError):
 
 @dataclass(frozen=True)
 class CompetencySpec:
+
     id: str
     label: str
     # What earns each point of the scale, keyed by scale value. Optional: a
@@ -29,6 +30,7 @@ class CompetencySpec:
 
 @dataclass(frozen=True)
 class DomainSpec:
+
     id: str
     label: str
     # Whether this domain can be judged while the consultation is still
@@ -49,10 +51,11 @@ class SectionSpec:
 
 @dataclass(frozen=True)
 class RubricStructure:
+
     scale: tuple[str, ...]
     domains: tuple[DomainSpec, ...]
     sections: tuple[SectionSpec, ...]
 
     @property
     def competencies(self) -> tuple[CompetencySpec, ...]:
-        return tuple(c for domain in self.domains for c in domain.competencies)
+        return tuple(competency for domain in self.domains for competency in domain.competencies)

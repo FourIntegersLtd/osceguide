@@ -23,20 +23,20 @@ async def published_version(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
 ) -> RubricVersion:
     """A published rubric version this owner may use, or a refusal saying why."""
-    row = await repository.version_by_id(session, org_id, version_id)
-    if row is None:
+    version_row = await repository.version_by_id(session, org_id, version_id)
+    if version_row is None:
         raise errors.RubricVersionNotFound()
-    if row.status != lifecycle.Status.PUBLISHED:
+    if version_row.status != lifecycle.Status.PUBLISHED:
         raise errors.RubricVersionNotPublished()
-    return row
+    return version_row
 
 
 async def published_platform_version(session: AsyncSession, version_id: uuid.UUID) -> RubricVersion:
     """What an exam may be marked with: published, and owned by the platform."""
-    row = await repository.published_platform_version(session, version_id)
-    if row is None:
+    version_row = await repository.published_platform_version(session, version_id)
+    if version_row is None:
         raise errors.RubricVersionNotFound("An exam must name a published rubric version the platform owns.")
-    return row
+    return version_row
 
 
 async def marking_snapshot(

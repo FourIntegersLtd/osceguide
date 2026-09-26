@@ -64,11 +64,11 @@ async def list_rubrics(
     session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[RubricRead], str | None]:
     rubrics, next_cursor = await repository.list_rubrics(session, org_id, limit=limit, cursor=cursor)
-    out = []
+    rubric_reads = []
     for rubric in rubrics:
         versions = await repository.versions_for_rubric(session, org_id, rubric.id)
-        out.append(rubric_read(rubric, list(versions)))
-    return out, next_cursor
+        rubric_reads.append(rubric_read(rubric, list(versions)))
+    return rubric_reads, next_cursor
 
 
 async def read_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> RubricRead:
@@ -89,9 +89,14 @@ async def add_version(
     """
     rubric = await _own_rubric(session, org_id, rubric_id)
     existing = list(await repository.versions_for_rubric(session, org_id, rubric_id))
-    refs = [lifecycle.VersionRef(number=v.version, status=lifecycle.Status(v.status)) for v in existing]
+    refs = [
+        lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
+        for version_row in existing
+    ]
     seed = lifecycle.seed_version(refs)
-    source = next((v for v in existing if seed and v.version == seed.number), None)
+    source = next(
+        (version_row for version_row in existing if seed and version_row.version == seed.number), None
+    )
     version = await repository.add_version(
         session,
         org_id,
@@ -120,10 +125,10 @@ async def edit_version(
     result_schema_override: dict[str, Any] | None,
     marking_layout: dict[str, Any] | None,
 ) -> RubricVersionRead:
-    row = await _version(session, org_id, rubric_id, version)
+    version_row = await _version(session, org_id, rubric_id, version)
     try:
         lifecycle.ensure_editable(
-            lifecycle.VersionRef(number=row.version, status=lifecycle.Status(row.status))
+            lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
         )
         parsed, checked_pacing = validated(structure, pacing)
         validate_marking_layout(marking_layout)
@@ -132,15 +137,15 @@ async def edit_version(
     await repository.set_version_body(
         session,
         org_id,
-        row.id,
+        version_row.id,
         structure=structure,
         system_prompt=system_prompt,
         pacing=checked_pacing,
         result_schema_override=result_schema_override,
         marking_layout=marking_layout,
     )
-    await session.refresh(row)
-    return version_read(row)
+    await session.refresh(version_row)
+    return version_read(version_row)
 
 
 async def publish_version(
@@ -152,28 +157,28 @@ async def publish_version(
     actor_id: uuid.UUID | None,
     now: datetime,
 ) -> RubricVersionRead:
-    row = await _version(session, org_id, rubric_id, version)
+    version_row = await _version(session, org_id, rubric_id, version)
     try:
         status = lifecycle.publish(
-            lifecycle.VersionRef(number=row.version, status=lifecycle.Status(row.status))
+            lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
         )
         # A rubric is only checked as hard as it is about to be used. Publishing
         # is that moment: after this the version is immutable and attempts will
         # be marked against it.
-        domain.parse_structure(row.structure)
-        domain.validate_pacing(row.pacing)
-        if not (row.system_prompt or "").strip():
+        domain.parse_structure(version_row.structure)
+        domain.validate_pacing(version_row.pacing)
+        if not (version_row.system_prompt or "").strip():
             raise domain.InvalidRubric("A rubric cannot be published without marking instructions.")
-        if org_id is None and not row.marking_layout:
+        if org_id is None and not version_row.marking_layout:
             raise domain.InvalidRubric(
                 "Platform catalogue rubrics need an examiner marking layout before publish."
             )
     except Exception as exc:  # noqa: BLE001
         raise_mapped(exc, REFUSALS)
-    await repository.set_version_status(session, org_id, row.id, status=status, at=now, by=actor_id)
-    await repository.set_current_version(session, org_id, rubric_id, version_id=row.id)
-    await session.refresh(row)
-    return version_read(row)
+    await repository.set_version_status(session, org_id, version_row.id, status=status, at=now, by=actor_id)
+    await repository.set_current_version(session, org_id, rubric_id, version_id=version_row.id)
+    await session.refresh(version_row)
+    return version_read(version_row)
 
 
 async def archive_version(
@@ -185,16 +190,16 @@ async def archive_version(
     actor_id: uuid.UUID | None,
     now: datetime,
 ) -> RubricVersionRead:
-    row = await _version(session, org_id, rubric_id, version)
+    version_row = await _version(session, org_id, rubric_id, version)
     try:
         status = lifecycle.archive(
-            lifecycle.VersionRef(number=row.version, status=lifecycle.Status(row.status))
+            lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
         )
     except Exception as exc:  # noqa: BLE001
         raise_mapped(exc, REFUSALS)
-    await repository.set_version_status(session, org_id, row.id, status=status, at=now, by=actor_id)
-    await session.refresh(row)
-    return version_read(row)
+    await repository.set_version_status(session, org_id, version_row.id, status=status, at=now, by=actor_id)
+    await session.refresh(version_row)
+    return version_read(version_row)
 
 
 async def _own_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> Rubric:
@@ -208,10 +213,10 @@ async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, version: int
 ) -> RubricVersion:
     await _own_rubric(session, org_id, rubric_id)
-    row = await repository.version_by_number(session, org_id, rubric_id, version)
-    if row is None:
+    version_row = await repository.version_by_number(session, org_id, rubric_id, version)
+    if version_row is None:
         raise errors.RubricVersionNotFound()
-    return row
+    return version_row
 
 
 # --- Mapping a rubric row onto the schema the routes return.
@@ -240,7 +245,7 @@ def rubric_read(rubric: Rubric, versions: list[RubricVersion]) -> RubricRead:
         org_id=rubric.org_id,
         title=rubric.title,
         current_version_id=rubric.current_version_id,
-        versions=[version_read(v) for v in versions],
+        versions=[version_read(version) for version in versions],
     )
 
 

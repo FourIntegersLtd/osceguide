@@ -83,7 +83,7 @@ async def add_version(
     result_schema_override: dict[str, Any] | None = None,
     marking_layout: dict[str, Any] | None = None,
 ) -> RubricVersion:
-    row = RubricVersion(
+    version_row = RubricVersion(
         rubric_id=rubric_id,
         org_id=org_id,
         version=version,
@@ -93,10 +93,10 @@ async def add_version(
         result_schema_override=result_schema_override,
         marking_layout=marking_layout,
     )
-    session.add(row)
+    session.add(version_row)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(version_row)
+    return version_row
 
 
 async def versions_for_rubric(
@@ -176,15 +176,15 @@ async def set_version_status(
     at: datetime,
     by: uuid.UUID | None,
 ) -> None:
-    values: dict[str, Any] = {"status": status}
+    column_values: dict[str, Any] = {"status": status}
     if status == "published":
-        values |= {"published_at": at, "published_by": by}
+        column_values |= {"published_at": at, "published_by": by}
     elif status == "archived":
-        values |= {"archived_at": at, "archived_by": by}
+        column_values |= {"archived_at": at, "archived_by": by}
     await session.execute(
         update(RubricVersion)
         .where(owned_by(RubricVersion, org_id), RubricVersion.id == version_id)
-        .values(**values)
+        .values(**column_values)
     )
 
 

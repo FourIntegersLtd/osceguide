@@ -36,10 +36,10 @@ _LIFECYCLE = (errors.NotEditableError, errors.AlreadyPublishedError, errors.NotA
 )
 async def list_org_rubrics(workspace: OrgReader, session: Session, page: Pager) -> Page[schemas.RubricRead]:
     """The organisation's own rubrics, and the platform's, which it may mark with."""
-    items, next_cursor = await service.list_rubrics(
+    rubrics, next_cursor = await service.list_rubrics(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=rubrics, next_cursor=next_cursor)
 
 
 @router.get(
@@ -51,6 +51,7 @@ async def read_org_rubric(rubric_id: uuid.UUID, workspace: OrgReader, session: S
     return await service.read_rubric(session, workspace.org_id, rubric_id)
 
 
+# A new rubric owned by this organisation, with its first draft version.
 @router.post(
     "/orgs/{org_slug}/rubrics",
     response_model=schemas.RubricRead,
@@ -84,6 +85,7 @@ async def add_org_version(
     return await service.add_version(session, workspace.org_id, rubric_id)
 
 
+# Rewrite this organisation's own draft version. Refused once it is published.
 @router.patch(
     "/orgs/{org_slug}/rubrics/{rubric_id}/versions/{version}",
     response_model=schemas.RubricVersionRead,
@@ -109,6 +111,7 @@ async def edit_org_version(
     )
 
 
+# Make this version the one new attempts against this organisation's exams are marked with.
 @router.post(
     "/orgs/{org_slug}/rubrics/{rubric_id}/versions/{version}/publish",
     response_model=schemas.RubricVersionRead,
@@ -127,6 +130,7 @@ async def publish_org_version(
     )
 
 
+# Retire this organisation's own version from use. Only a published version can be archived.
 @router.post(
     "/orgs/{org_slug}/rubrics/{rubric_id}/versions/{version}/archive",
     response_model=schemas.RubricVersionRead,

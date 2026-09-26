@@ -28,8 +28,11 @@ def derive_result_schema(structure: RubricStructure) -> dict[str, Any]:
             "type": "object",
             "title": domain.label,
             "additionalProperties": False,
-            "required": [c.id for c in domain.competencies],
-            "properties": {c.id: _scored_property(c, structure.scale) for c in domain.competencies},
+            "required": [competency.id for competency in domain.competencies],
+            "properties": {
+                competency.id: _scored_property(competency, structure.scale)
+                for competency in domain.competencies
+            },
         }
     for section in structure.sections:
         properties[section.id] = _section_property(section)
@@ -43,7 +46,9 @@ def derive_result_schema(structure: RubricStructure) -> dict[str, Any]:
 
 def _scored_property(competency: CompetencySpec, scale: Sequence[str]) -> dict[str, Any]:
     described = "\n".join(
-        f"{value}: {competency.descriptors[value]}" for value in scale if value in competency.descriptors
+        f"{scale_value}: {competency.descriptors[scale_value]}"
+        for scale_value in scale
+        if scale_value in competency.descriptors
     )
     return {
         "type": "object",
@@ -96,16 +101,18 @@ def framework_payload(
         "label": label,
         "version": version,
         "scale": list(structure.scale),
-        "domains": [{"id": d.id, "label": d.label, "live": d.live} for d in structure.domains],
+        "domains": [
+            {"id": domain.id, "label": domain.label, "live": domain.live} for domain in structure.domains
+        ],
         "competencies": [
             {
-                "id": c.id,
-                "label": c.label,
-                "domain_id": d.id,
-                "descriptors": dict(c.descriptors),
+                "id": competency.id,
+                "label": competency.label,
+                "domain_id": domain.id,
+                "descriptors": dict(competency.descriptors),
             }
-            for d in structure.domains
-            for c in d.competencies
+            for domain in structure.domains
+            for competency in domain.competencies
         ],
         "result_schema": result_schema_for(structure, override),
         "system_prompt": system_prompt,

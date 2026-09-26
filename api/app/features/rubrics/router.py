@@ -55,6 +55,7 @@ async def create_platform_rubric(
     )
 
 
+# The platform's own rubric library, newest first.
 @router.get(
     "/platform/rubrics",
     response_model=Page[schemas.RubricRead],
@@ -63,8 +64,8 @@ async def create_platform_rubric(
 async def list_platform_rubrics(
     admin: PlatformAdmin, session: Session, page: Pager
 ) -> Page[schemas.RubricRead]:
-    items, next_cursor = await service.list_rubrics(session, None, limit=page.limit, cursor=page.cursor)
-    return Page(items=items, next_cursor=next_cursor)
+    rubrics, next_cursor = await service.list_rubrics(session, None, limit=page.limit, cursor=page.cursor)
+    return Page(items=rubrics, next_cursor=next_cursor)
 
 
 @router.get(
@@ -90,6 +91,7 @@ async def add_platform_version(
     return await service.add_version(session, None, rubric_id)
 
 
+# Rewrite a draft platform version's body. Refused once it is published.
 @router.patch(
     "/platform/rubrics/{rubric_id}/versions/{version}",
     response_model=schemas.RubricVersionRead,
@@ -117,6 +119,7 @@ async def edit_platform_version(
     )
 
 
+# Make this version the one new attempts against the platform catalogue are marked with.
 @router.post(
     "/platform/rubrics/{rubric_id}/versions/{version}/publish",
     response_model=schemas.RubricVersionRead,
@@ -132,6 +135,7 @@ async def publish_platform_version(
     )
 
 
+# Retire this platform version from use. Only a published version can be archived.
 @router.post(
     "/platform/rubrics/{rubric_id}/versions/{version}/archive",
     response_model=schemas.RubricVersionRead,

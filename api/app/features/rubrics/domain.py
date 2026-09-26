@@ -50,7 +50,7 @@ __all__ = [
 
 # An id is used as a JSON property name and read back by code, so it is
 # constrained the way an identifier is rather than left as free text.
-_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+_IDENTIFIER_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 _SECTION_KINDS = ("text", "list", "object")
 
@@ -69,11 +69,11 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
     from the result; a descriptor for a score that is not on the scale would be
     an instruction the model cannot follow.
     """
-    data = raw or {}
-    if not isinstance(data, Mapping):
+    structure = raw or {}
+    if not isinstance(structure, Mapping):
         raise InvalidRubric("A rubric structure must be an object.")
 
-    scale = tuple(str(value) for value in data.get("scale") or ())
+    scale = tuple(str(scale_value) for scale_value in structure.get("scale") or ())
     if not scale:
         raise InvalidRubric("A rubric needs a scale: the scores a competency may be given.")
     if len(set(scale)) != len(scale):
@@ -83,7 +83,7 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
     seen_ids: set[str] = set()
     seen_competencies: set[str] = set()
 
-    for raw_domain in data.get("domains") or ():
+    for raw_domain in structure.get("domains") or ():
         domain_id = _identifier(raw_domain, "domain")
         if domain_id in seen_ids:
             raise InvalidRubric(f"Two domains are called {domain_id!r}.")
@@ -95,7 +95,10 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
             if competency_id in seen_competencies:
                 raise InvalidRubric(f"Two competencies are called {competency_id!r}.")
             seen_competencies.add(competency_id)
-            descriptors = {str(k): str(v) for k, v in (raw_competency.get("descriptors") or {}).items()}
+            descriptors = {
+                str(score): str(descriptor)
+                for score, descriptor in (raw_competency.get("descriptors") or {}).items()
+            }
             off_scale = sorted(set(descriptors) - set(scale))
             if off_scale:
                 raise InvalidRubric(
@@ -119,7 +122,7 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
         )
 
     sections: list[SectionSpec] = []
-    for raw_section in data.get("sections") or ():
+    for raw_section in structure.get("sections") or ():
         section_id = _identifier(raw_section, "section")
         if section_id in seen_ids:
             raise InvalidRubric(f"{section_id!r} is both a domain and a section.")
@@ -149,13 +152,13 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
 def _identifier(raw: Any, what: str) -> str:
     if not isinstance(raw, Mapping):
         raise InvalidRubric(f"Each {what} must be an object.")
-    value = str(raw.get("id") or "").strip()
-    if not _ID.match(value):
+    identifier = str(raw.get("id") or "").strip()
+    if not _IDENTIFIER_PATTERN.match(identifier):
         raise InvalidRubric(
-            f"{value!r} is not a usable {what} id: lower-case letters, digits and "
+            f"{identifier!r} is not a usable {what} id: lower-case letters, digits and "
             "underscores, starting with a letter."
         )
-    return value
+    return identifier
 
 
 def validate_pacing(raw: Mapping[str, Any] | None) -> dict[str, int]:
@@ -166,10 +169,10 @@ def validate_pacing(raw: Mapping[str, Any] | None) -> dict[str, int]:
     cannot be used, and the author should hear about it at the moment they
     write it rather than when a candidate starts a station.
     """
-    data = raw or {}
+    raw_pacing = raw or {}
     try:
         pacing = {
-            key: int(data[key])
+            key: int(raw_pacing[key])
             for key in ("total_seconds", "history_seconds", "introduction_seconds", "safety_net_seconds")
         }
     except (KeyError, TypeError, ValueError) as exc:
@@ -219,16 +222,16 @@ def narrow_structure(
     wanted = reviewable_domains(field_selection)
     if not wanted:
         return structure
-    unknown = sorted(wanted - {d.id for d in structure.domains})
+    unknown = sorted(wanted - {domain.id for domain in structure.domains})
     if unknown:
         raise InvalidRubric(f"The selection names {unknown}, which this rubric does not define.")
     return RubricStructure(
         scale=structure.scale,
-        domains=tuple(d for d in structure.domains if d.id in wanted),
+        domains=tuple(domain for domain in structure.domains if domain.id in wanted),
         sections=structure.sections,
     )
 
 
 def scoring_domain_ids(structure: RubricStructure) -> frozenset[str]:
     """Domains a human review must score when using the full rubric."""
-    return frozenset(d.id for d in structure.domains if d.id not in NON_SCORING_SECTIONS)
+    return frozenset(domain.id for domain in structure.domains if domain.id not in NON_SCORING_SECTIONS)
