@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 
-def _as_str_list(value: Any) -> list[str]:
-    if not isinstance(value, list):
+def _as_str_list(raw_value: Any) -> list[str]:
+    if not isinstance(raw_value, list):
         return []
-    return [str(item) for item in value if item is not None and str(item).strip()]
+    return [str(item) for item in raw_value if item is not None and str(item).strip()]
 
 
 def normalize_summary_response(raw: dict[str, Any]) -> dict[str, Any]:
@@ -61,14 +61,14 @@ def normalize_blog_response(raw: dict[str, Any]) -> dict[str, Any]:
     content = str(raw.get("content") or raw.get("body_md") or "")
     url = str(raw.get("url") or "")
     summary = str(raw.get("summary") or _first_paragraph(content))
-    out: dict[str, Any] = {
+    normalized: dict[str, Any] = {
         "title": title,
         "summary": summary,
         "body_md": content,
     }
     if url:
-        out["url"] = url
-    return out
+        normalized["url"] = url
+    return normalized
 
 
 def normalize_slide_deck_response(raw: dict[str, Any]) -> dict[str, Any]:

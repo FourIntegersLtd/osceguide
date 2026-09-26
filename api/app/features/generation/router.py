@@ -16,6 +16,7 @@ router = APIRouter(tags=["generation"])
 Session = Annotated[object, Depends(get_session)]
 
 
+# Drafts a new station from a free-text prompt, for the exam and (for ortho) the station type given.
 @router.post(
     "/platform/generate/station",
     response_model=schemas.GenerateResult,
@@ -37,6 +38,7 @@ async def generate_station(
     return schemas.GenerateResult(content=content)
 
 
+# Drafts a condition summary from a free-text prompt.
 @router.post(
     "/platform/generate/summary",
     response_model=schemas.GenerateResult,
@@ -53,6 +55,7 @@ async def generate_summary(
     return schemas.GenerateResult(content=content)
 
 
+# Drafts a blog post from a free-text prompt.
 @router.post(
     "/platform/generate/blog",
     response_model=schemas.GenerateResult,
@@ -69,6 +72,7 @@ async def generate_blog(
     return schemas.GenerateResult(content=content)
 
 
+# Drafts a slide deck from a free-text prompt.
 @router.post(
     "/platform/generate/slide-deck",
     response_model=schemas.GenerateResult,
@@ -87,6 +91,7 @@ async def generate_slide_deck(
     return schemas.GenerateResult(content=content)
 
 
+# Drafts a podcast script from source material given as a free-text prompt.
 @router.post(
     "/platform/generate/podcast",
     response_model=schemas.GenerateResult,
