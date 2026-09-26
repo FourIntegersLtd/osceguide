@@ -24,6 +24,7 @@ router = APIRouter(tags=["stations"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# This org's own templates and the platform's.
 @router.get(
     "/orgs/{org_slug}/station-templates",
     response_model=Page[schemas.StationTemplateRead],
@@ -34,6 +35,7 @@ async def list_station_templates(workspace: OrgReader, session: Session) -> Page
     return Page(items=items, next_cursor=None)
 
 
+# Author a new template owned by this org.
 @router.post(
     "/orgs/{org_slug}/station-templates",
     response_model=schemas.StationTemplateRead,
@@ -65,6 +67,7 @@ async def add_station_template_version(
     return await service_templates.add_version(session, workspace.org_id, template_id)
 
 
+# Overwrite a draft template version's structure.
 @router.patch(
     "/orgs/{org_slug}/station-templates/{template_id}/versions/{version}",
     response_model=schemas.StationTemplateVersionRead,
@@ -107,6 +110,7 @@ async def publish_station_template(
     )
 
 
+# Retire a published template version.
 @router.post(
     "/orgs/{org_slug}/station-templates/{template_id}/versions/{version}/archive",
     response_model=schemas.StationTemplateVersionRead,

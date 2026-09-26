@@ -8,36 +8,43 @@ from app.core.errors import Conflict, InvalidInput, NotFound, Unavailable
 
 
 class StationNotFound(NotFound):
+
     code = "station_not_found"
     default_message = "No such station"
 
 
 class VersionNotFound(NotFound):
+
     code = "version_not_found"
     default_message = "No such version"
 
 
 class StationFlagNotFound(NotFound):
+
     code = "station_flag_not_found"
     default_message = "No such report on a station"
 
 
 class NotEditableError(Conflict):
+
     code = "not_editable"
     default_message = "Published content cannot be edited; create a new version"
 
 
 class NotDeletableError(Conflict):
+
     code = "not_deletable"
     default_message = "Only a draft can be deleted"
 
 
 class AlreadyPublishedError(Conflict):
+
     code = "already_published"
     default_message = "That version is already published"
 
 
 class NotArchivableError(Conflict):
+
     code = "not_archivable"
     default_message = "Only a published version can be archived"
 
@@ -54,6 +61,7 @@ class StationNotPublishedError(Conflict):
 
 
 class TemplateNotPublishedError(Conflict):
+
     code = "template_not_published"
     default_message = "A station can only be built on a published template version"
 
@@ -86,11 +94,13 @@ class StationTemplateNotFound(NotFound):
 
 
 class StationTemplateVersionNotFound(NotFound):
+
     code = "station_template_version_not_found"
     default_message = "No such station template version"
 
 
 class GenerationProfileNotFound(NotFound):
+
     code = "generation_profile_not_found"
     default_message = "No such generation profile"
 
@@ -105,6 +115,7 @@ __all__ = ["NotEntitled", "GenerationUnavailable"]
 
 
 class InvalidPhotoError(InvalidInput):
+
     code = "invalid_photo"
     default_message = "That file cannot be used as a station image"
 
@@ -121,5 +132,6 @@ class PhotoNotOnStationError(NotFound):
 
 
 class PhotoStorageUnavailable(Unavailable):
+
     code = "photo_storage_unavailable"
     default_message = "Image storage is not configured"

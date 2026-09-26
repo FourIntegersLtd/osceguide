@@ -29,6 +29,7 @@ ORTHO_PROFILE_BY_TYPE: dict[str, str] = {
 
 @dataclass(frozen=True)
 class GenerationProfileMeta:
+
     profile_key: str
     label: str
     exam_code: str | None
@@ -37,6 +38,7 @@ class GenerationProfileMeta:
 
 @dataclass(frozen=True)
 class GenerationProfile:
+
     meta: GenerationProfileMeta
     block_hints: dict[str, str]
 

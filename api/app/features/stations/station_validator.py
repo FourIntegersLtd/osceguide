@@ -40,75 +40,70 @@ def validate_station_structure(structure: Any) -> tuple[bool, list[str]]:
 
     block_ids_seen: set[str] = set()
 
-    for s_idx, section in enumerate(sections):
+    for section_index, section in enumerate(sections):
         if not isinstance(section, dict):
-            errors.append(f"sections[{s_idx}] must be an object")
+            errors.append(f"sections[{section_index}] must be an object")
             continue
 
         if not section.get("id"):
-            errors.append(f"sections[{s_idx}].id is required")
+            errors.append(f"sections[{section_index}].id is required")
 
         if "readingBriefDefault" in section and not isinstance(section.get("readingBriefDefault"), bool):
-            errors.append(f"sections[{s_idx}].readingBriefDefault must be a boolean when present")
+            errors.append(f"sections[{section_index}].readingBriefDefault must be a boolean when present")
 
         blocks = section.get("blocks")
         if not isinstance(blocks, list):
-            errors.append(f"sections[{s_idx}].blocks must be an array")
+            errors.append(f"sections[{section_index}].blocks must be an array")
             continue
 
-        for b_idx, block in enumerate(blocks):
+        for block_index, block in enumerate(blocks):
+            block_path = f"sections[{section_index}].blocks[{block_index}]"
             if not isinstance(block, dict):
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}] must be an object")
+                errors.append(f"{block_path} must be an object")
                 continue
 
             block_id = block.get("id")
             if not block_id:
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}].id is required")
+                errors.append(f"{block_path}.id is required")
             elif block_id in block_ids_seen:
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}].id: duplicate block id: {block_id}")
+                errors.append(f"{block_path}.id: duplicate block id: {block_id}")
             else:
                 block_ids_seen.add(block_id)
 
             if "readingBrief" in block and not isinstance(block.get("readingBrief"), bool):
-                errors.append(
-                    f"sections[{s_idx}].blocks[{b_idx}].readingBrief must be a boolean when present"
-                )
+                errors.append(f"{block_path}.readingBrief must be a boolean when present")
 
             block_type = block.get("type")
             if block_type not in _VALID_BLOCK_TYPES:
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}].type: invalid block type '{block_type}'")
+                errors.append(f"{block_path}.type: invalid block type '{block_type}'")
                 continue
 
             if block_type in ("singleSelect", "multiSelect"):
                 options = block.get("options")
                 if not isinstance(options, list) or len(options) == 0:
-                    errors.append(f"sections[{s_idx}].blocks[{b_idx}].options is required for select blocks")
+                    errors.append(f"{block_path}.options is required for select blocks")
 
             if block_type == "checklist":
                 items = block.get("items")
                 if not isinstance(items, list) or len(items) == 0:
-                    errors.append(f"sections[{s_idx}].blocks[{b_idx}].items is required for checklist blocks")
+                    errors.append(f"{block_path}.items is required for checklist blocks")
 
             if block_type == "scale" and (
                 not isinstance(block.get("min"), (int, float))
                 or not isinstance(block.get("max"), (int, float))
             ):
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}] scale block requires numeric min and max")
+                errors.append(f"{block_path} scale block requires numeric min and max")
 
             if block_type == "ragCriterion":
                 path_stem = block.get("pathStem")
                 if not isinstance(path_stem, str) or not path_stem.strip():
-                    errors.append(
-                        f"sections[{s_idx}].blocks[{b_idx}].pathStem is required for ragCriterion blocks"
-                    )
+                    errors.append(f"{block_path}.pathStem is required for ragCriterion blocks")
 
-            gen_hint = block.get("generationHint")
-            if gen_hint is not None and not isinstance(gen_hint, str):
-                errors.append(f"sections[{s_idx}].blocks[{b_idx}].generationHint must be a string when set")
-            elif isinstance(gen_hint, str) and len(gen_hint) > 8_000:
-                errors.append(
-                    f"sections[{s_idx}].blocks[{b_idx}].generationHint exceeds maximum length (8000)"
-                )
+            generation_hint = block.get("generationHint")
+            if generation_hint is not None and not isinstance(generation_hint, str):
+                errors.append(f"{block_path}.generationHint must be a string when set")
+            elif isinstance(generation_hint, str) and len(generation_hint) > 8_000:
+                errors.append(f"{block_path}.generationHint exceeds maximum length (8000)")
 
     return len(errors) == 0, errors
 

@@ -91,6 +91,7 @@ async def list_stations(
     return Page(items=items, next_cursor=next_cursor)
 
 
+# Author a new station on this org's own template version.
 @router.post(
     "/orgs/{org_slug}/stations",
     response_model=schemas.StationRead,
@@ -115,6 +116,7 @@ async def create_station(
     )
 
 
+# Draft a new station's content from a prompt, against this org's template version.
 @router.post(
     "/orgs/{org_slug}/stations/autogenerate-draft",
     response_model=schemas.AutogenerateStationDraftResult,
@@ -132,14 +134,14 @@ async def autogenerate_station_draft(
     session: Session,
     settings: SettingsDep,
 ) -> schemas.AutogenerateStationDraftResult:
-    result = await station_autogenerate.autogenerate_station_draft(
+    draft_result = await station_autogenerate.autogenerate_station_draft(
         session,
         workspace.org_id,
         prompt=body.prompt,
         template_version_id=body.template_version_id,
         settings=settings,
     )
-    return schemas.AutogenerateStationDraftResult(**result)
+    return schemas.AutogenerateStationDraftResult(**draft_result)
 
 
 @router.post(
@@ -154,6 +156,7 @@ async def add_version(
     return await service_versions.add_version(session, workspace.org_id, station_id)
 
 
+# Overwrite a draft version's content.
 @router.patch(
     "/orgs/{org_slug}/stations/{station_id}/versions/{version}",
     response_model=schemas.StationVersionRead,
@@ -171,6 +174,8 @@ async def edit_version(
     )
 
 
+# Publish a draft version. A station's patient material must never reach a trainee before their
+# attempt, so nothing may schedule this station's earlier drafts once this happens.
 @router.post(
     "/orgs/{org_slug}/stations/{station_id}/versions/{version}/publish",
     response_model=schemas.StationVersionRead,
@@ -189,6 +194,7 @@ async def publish_version(
     )
 
 
+# Retire a published version so it can no longer be scheduled.
 @router.post(
     "/orgs/{org_slug}/stations/{station_id}/versions/{version}/archive",
     response_model=schemas.StationVersionRead,

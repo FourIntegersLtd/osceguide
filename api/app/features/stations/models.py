@@ -43,6 +43,7 @@ class StationTemplate(Base, UUIDPrimaryKey, Timestamps):
 
 
 class StationTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "station_template_versions"
     __table_args__ = (
         UniqueConstraint("template_id", "version", name="uq_station_template_versions_template_version"),

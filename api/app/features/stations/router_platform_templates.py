@@ -40,6 +40,7 @@ async def list_platform_station_templates(
     return Page(items=await service_templates.list_templates(session, None), next_cursor=None)
 
 
+# Author a new platform-owned template.
 @router.post(
     "/platform/station-templates",
     response_model=schemas.StationTemplateRead,
@@ -66,6 +67,7 @@ async def add_platform_template_version(
     return await service_templates.add_version(session, None, template_id)
 
 
+# Overwrite a draft template version's structure.
 @router.patch(
     "/platform/station-templates/{template_id}/versions/{version}",
     response_model=schemas.StationTemplateVersionRead,
@@ -83,6 +85,7 @@ async def edit_platform_template_version(
     )
 
 
+# Publish the template's newest version, which stations may then be built on.
 @router.post(
     "/platform/station-templates/{template_id}/publish",
     response_model=schemas.StationTemplateVersionRead,
@@ -96,6 +99,7 @@ async def publish_platform_station_template(
     )
 
 
+# Retire a published template version.
 @router.post(
     "/platform/station-templates/{template_id}/versions/{version}/archive",
     response_model=schemas.StationTemplateVersionRead,

@@ -229,11 +229,11 @@ def structure_spec(structure: Any) -> dict[str, Any]:
                 ):
                     compact_block["options"] = block.get("options")
                 if block.get("type") == "checklist" and isinstance(block.get("items"), list):
-                    items = block["items"]
+                    checklist_items = block["items"]
                     compact_block["items"] = [
-                        {"id": item.get("id"), "label": item.get("label")}
-                        for item in items
-                        if isinstance(item, dict)
+                        {"id": checklist_item.get("id"), "label": checklist_item.get("label")}
+                        for checklist_item in checklist_items
+                        if isinstance(checklist_item, dict)
                     ]
                 if block.get("type") == "scale":
                     compact_block["min"] = block.get("min")

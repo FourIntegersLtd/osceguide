@@ -42,14 +42,14 @@ async def add_version(
     if seed is not None:
         source = next(version for version in existing if version.version == seed.number)
         content = dict(source.content)
-    version_row = await repository.add_version(
+    station_version = await repository.add_version(
         session,
         org_id,
         station_id=station_id,
         version=domain.next_version_number(refs),
         content=content,
     )
-    return _version_read(version_row)
+    return _version_read(station_version)
 
 
 async def edit_version(
@@ -60,14 +60,14 @@ async def edit_version(
     *,
     content: dict[str, Any],
 ) -> StationVersionRead:
-    version_row = await _version(session, org_id, station_id, version)
+    station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_editable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    await repository.set_version_content(session, org_id, version_row.id, content=content)
+    await repository.set_version_content(session, org_id, station_version.id, content=content)
     return _version_read(await _version(session, org_id, station_id, version))
 
 
@@ -80,19 +80,19 @@ async def publish_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationVersionRead:
-    version_row = await _version(session, org_id, station_id, version)
+    station_version = await _version(session, org_id, station_id, version)
     try:
         new_status = domain.publish(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.set_version_status(
-        session, org_id, version_row.id, status=str(new_status), at=now, by=actor_id
+        session, org_id, station_version.id, status=str(new_status), at=now, by=actor_id
     )
     # The station points at its newest published version, so a circuit can
     # reference the station and still get a frozen revision.
-    await repository.set_current_version(session, org_id, station_id, version_id=version_row.id)
+    await repository.set_current_version(session, org_id, station_id, version_id=station_version.id)
     return _version_read(await _version(session, org_id, station_id, version))
 
 
@@ -105,15 +105,15 @@ async def archive_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationVersionRead:
-    version_row = await _version(session, org_id, station_id, version)
+    station_version = await _version(session, org_id, station_id, version)
     try:
         new_status = domain.archive(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.set_version_status(
-        session, org_id, version_row.id, status=str(new_status), at=now, by=actor_id
+        session, org_id, station_version.id, status=str(new_status), at=now, by=actor_id
     )
     return _version_read(await _version(session, org_id, station_id, version))
 
@@ -122,10 +122,10 @@ async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
 ) -> StationVersion:
     await read_station(session, org_id, station_id)
-    version_row = await repository.version_by_number(session, org_id, station_id, version)
-    if version_row is None:
+    station_version = await repository.version_by_number(session, org_id, station_id, version)
+    if station_version is None:
         raise errors.VersionNotFound()
-    return version_row
+    return station_version
 
 
 async def version_history(
@@ -147,18 +147,18 @@ async def version_history(
         station.org_id is None or station.org_id not in admin_org_ids(caller)
     ):
         raise Forbidden()
-    return [_version_read(version_row) for version_row in reversed(versions)]
+    return [_version_read(station_version) for station_version in reversed(versions)]
 
 
-def _version_read(version_row: StationVersion) -> StationVersionRead:
+def _version_read(station_version: StationVersion) -> StationVersionRead:
     return StationVersionRead(
-        id=version_row.id,
-        station_id=version_row.station_id,
-        version=version_row.version,
-        status=version_row.status,
-        content=dict(version_row.content),
-        published_at=version_row.published_at,
-        archived_at=version_row.archived_at,
+        id=station_version.id,
+        station_id=station_version.station_id,
+        version=station_version.version,
+        status=station_version.status,
+        content=dict(station_version.content),
+        published_at=station_version.published_at,
+        archived_at=station_version.archived_at,
     )
 
 
@@ -170,14 +170,14 @@ async def delete_version(
     Only a draft: a published revision is what somebody's attempt was assessed against, and an
     archived one is how that attempt is still readable.
     """
-    version_row = await _version(session, org_id, station_id, version)
+    station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_deletable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    await repository.delete_version(session, org_id, version_row.id)
+    await repository.delete_version(session, org_id, station_version.id)
 
 
 async def edit_brief(
@@ -193,15 +193,15 @@ async def edit_brief(
     The documented exception to "published content is immutable": a typo in the brief should not
     require a new revision and a fresh publish. An archived version is still refused.
     """
-    version_row = await _version(session, org_id, station_id, version)
+    station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_brief_editable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
 
-    content = dict(version_row.content or {})
+    content = dict(station_version.content or {})
     content[BRIEF_KEY] = brief
-    await repository.set_version_content(session, org_id, version_row.id, content=content)
+    await repository.set_version_content(session, org_id, station_version.id, content=content)
     return _version_read(await _version(session, org_id, station_id, version))

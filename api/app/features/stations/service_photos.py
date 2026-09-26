@@ -38,14 +38,14 @@ def _ensure_storage(settings: Settings) -> None:
 async def _editable_version(
     session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
 ) -> StationVersion:
-    version_row = await _version(session, org_id, station_id, version)
+    station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_brief_editable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    return version_row
+    return station_version
 
 
 async def add_photos(
@@ -65,9 +65,9 @@ async def add_photos(
     _ensure_storage(settings)
     station = await read_station(session, org_id, station_id)
     exam_code = await _exam_code(session, station)
-    version_row = await _editable_version(session, org_id, station_id, version)
+    station_version = await _editable_version(session, org_id, station_id, version)
 
-    content = dict(version_row.content or {})
+    content = dict(station_version.content or {})
     failed: list[dict[str, str]] = []
     for filename, size, handle in files:
         try:
@@ -84,7 +84,7 @@ async def add_photos(
         url = storage.put_object(settings, handle, key)
         content = domain_photos.with_photo(content, url=url, exam_code=exam_code)
 
-    await repository.set_version_content(session, org_id, version_row.id, content=content)
+    await repository.set_version_content(session, org_id, station_version.id, content=content)
     return _version_read(await _version(session, org_id, station_id, version)), failed
 
 
@@ -104,13 +104,13 @@ async def remove_photo(
     that does not.
     """
     _ensure_storage(settings)
-    version_row = await _editable_version(session, org_id, station_id, version)
+    station_version = await _editable_version(session, org_id, station_id, version)
 
-    content = dict(version_row.content or {})
+    content = dict(station_version.content or {})
     updated, found = domain_photos.without_photo(content, url=url)
     if not found:
         raise errors.PhotoNotOnStationError()
 
     storage.remove_object(settings, url)
-    await repository.set_version_content(session, org_id, version_row.id, content=updated)
+    await repository.set_version_content(session, org_id, station_version.id, content=updated)
     return _version_read(await _version(session, org_id, station_id, version))

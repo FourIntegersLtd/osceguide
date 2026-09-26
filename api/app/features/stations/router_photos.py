@@ -121,6 +121,7 @@ async def add_platform_station_photos(
     )
 
 
+# Take one image off a library station, and out of the bucket.
 @router.post(
     "/platform/stations/{station_id}/versions/{version}/photos/remove",
     response_model=schemas.StationVersionRead,

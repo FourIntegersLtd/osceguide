@@ -105,6 +105,7 @@ class UpdateStationTemplateVersion(BaseModel):
     # accepts a rename and then drops it is how an author "saves" the old title.
     title: str | None = Field(default=None, min_length=1, max_length=200)
 
+    # Refuse a title that is empty once whitespace is trimmed off.
     @field_validator("title")
     @classmethod
     def title_is_visible(cls, title: str | None) -> str | None:

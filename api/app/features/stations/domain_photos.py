@@ -124,13 +124,13 @@ def without_photo(content: dict[str, Any], *, url: str) -> tuple[dict[str, Any],
 
     additional = list(updated.get("additional_image_urls") or [])
     if url in additional:
-        updated["additional_image_urls"] = [item for item in additional if item != url]
+        updated["additional_image_urls"] = [image_url for image_url in additional if image_url != url]
         found = True
 
     doctor = dict(updated.get("doctor_information") or {})
     photos = list(doctor.get("photos") or [])
     if url in photos:
-        doctor["photos"] = [item for item in photos if item != url]
+        doctor["photos"] = [photo_url for photo_url in photos if photo_url != url]
         updated["doctor_information"] = doctor
         found = True
 

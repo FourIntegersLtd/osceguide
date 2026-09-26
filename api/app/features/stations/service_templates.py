@@ -33,12 +33,12 @@ from app.features.stations.station_validator import (
 
 
 def _ensure_valid_structure(structure: dict[str, Any], *, org_id: uuid.UUID | None) -> None:
-    ok, errs = validate_station_structure(structure)
-    if not ok:
-        raise InvalidInput(f"Template structure invalid: {errs}")
-    policy_errs = validate_generation_policy(structure, org_id=org_id)
-    if policy_errs:
-        raise InvalidInput(f"Template generation settings invalid: {policy_errs}")
+    is_valid, structure_errors = validate_station_structure(structure)
+    if not is_valid:
+        raise InvalidInput(f"Template structure invalid: {structure_errors}")
+    policy_errors = validate_generation_policy(structure, org_id=org_id)
+    if policy_errors:
+        raise InvalidInput(f"Template generation settings invalid: {policy_errors}")
 
 
 async def create_template(
@@ -88,14 +88,14 @@ async def add_version(
     structure: dict[str, Any] = {}
     if seed is not None:
         structure = dict(next(version for version in existing if version.version == seed.number).structure)
-    version_row = await repository.add_template_version(
+    template_version = await repository.add_template_version(
         session,
         org_id,
         template_id=template_id,
         version=domain.next_version_number(refs),
         structure=structure,
     )
-    return _version_read(version_row)
+    return _version_read(template_version)
 
 
 async def edit_version(
@@ -107,17 +107,17 @@ async def edit_version(
     structure: dict[str, Any],
     title: str | None = None,
 ) -> StationTemplateVersionRead:
-    version_row = await _version(session, org_id, template_id, version)
+    template_version = await _version(session, org_id, template_id, version)
     try:
         domain.ensure_editable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=template_version.version, status=domain.Status(template_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     _ensure_valid_structure(structure, org_id=org_id)
     if title is not None:
         await repository.set_template_title(session, org_id, template_id, title=title)
-    await repository.set_template_version_structure(session, org_id, version_row.id, structure=structure)
+    await repository.set_template_version_structure(session, org_id, template_version.id, structure=structure)
     return _version_read(await _version(session, org_id, template_id, version))
 
 
@@ -154,15 +154,15 @@ async def archive_version(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> StationTemplateVersionRead:
-    version_row = await _version(session, org_id, template_id, version)
+    template_version = await _version(session, org_id, template_id, version)
     try:
         new_status = domain.archive(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=template_version.version, status=domain.Status(template_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.set_template_version_status(
-        session, org_id, version_row.id, status=str(new_status), at=now, by=actor_id
+        session, org_id, template_version.id, status=str(new_status), at=now, by=actor_id
     )
     return _version_read(await _version(session, org_id, template_id, version))
 
@@ -171,14 +171,14 @@ async def delete_version(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
 ) -> None:
     """Throw away a draft. When it was the template's only version, remove the template too."""
-    version_row = await _version(session, org_id, template_id, version)
+    template_version = await _version(session, org_id, template_id, version)
     try:
         domain.ensure_deletable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=template_version.version, status=domain.Status(template_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    await repository.delete_template_version(session, org_id, version_row.id)
+    await repository.delete_template_version(session, org_id, template_version.id)
     if not await repository.template_versions(session, org_id, template_id):
         await repository.delete_template(session, org_id, template_id)
 
@@ -192,16 +192,16 @@ async def bindable_version(
     draft. The rule was written and unit-tested with nothing to call it, so a
     station could have been built on a shape somebody was still deciding.
     """
-    version_row = await repository.bindable_template_version(session, org_id, version_id)
-    if version_row is None:
+    template_version = await repository.bindable_template_version(session, org_id, version_id)
+    if template_version is None:
         raise errors.StationTemplateVersionNotFound()
     try:
         domain.ensure_bindable(
-            domain.VersionRef(number=version_row.version, status=domain.Status(version_row.status))
+            domain.VersionRef(number=template_version.version, status=domain.Status(template_version.status))
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    return version_row
+    return template_version
 
 
 async def _require_template(
@@ -217,9 +217,9 @@ async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, template_id: uuid.UUID, version: int
 ) -> StationTemplateVersion:
     await _require_template(session, org_id, template_id)
-    for version_row in await repository.template_versions(session, org_id, template_id):
-        if version_row.version == version:
-            return version_row
+    for template_version in await repository.template_versions(session, org_id, template_id):
+        if template_version.version == version:
+            return template_version
     raise errors.VersionNotFound()
 
 
@@ -240,12 +240,12 @@ def _template_read(
     )
 
 
-def _version_read(version_row: StationTemplateVersion) -> StationTemplateVersionRead:
+def _version_read(template_version: StationTemplateVersion) -> StationTemplateVersionRead:
     return StationTemplateVersionRead(
-        id=version_row.id,
-        template_id=version_row.template_id,
-        version=version_row.version,
-        status=version_row.status,
-        structure=dict(version_row.structure),
-        published_at=version_row.published_at,
+        id=template_version.id,
+        template_id=template_version.template_id,
+        version=template_version.version,
+        status=template_version.status,
+        structure=dict(template_version.structure),
+        published_at=template_version.published_at,
     )

@@ -69,6 +69,7 @@ async def list_platform_stations(
     return Page(items=items, next_cursor=next_cursor)
 
 
+# Author a new library station on a platform template version.
 @router.post(
     "/platform/stations",
     response_model=schemas.StationRead,
@@ -93,6 +94,7 @@ async def create_platform_station(
     )
 
 
+# Draft a new library station's content from a prompt, against a platform template version.
 @router.post(
     "/platform/stations/autogenerate-draft",
     response_model=schemas.AutogenerateStationDraftResult,
@@ -111,14 +113,14 @@ async def autogenerate_platform_station_draft(
     settings: SettingsDep,
 ) -> schemas.AutogenerateStationDraftResult:
     _ = admin
-    result = await station_autogenerate.autogenerate_station_draft(
+    draft_result = await station_autogenerate.autogenerate_station_draft(
         session,
         None,
         prompt=body.prompt,
         template_version_id=body.template_version_id,
         settings=settings,
     )
-    return schemas.AutogenerateStationDraftResult(**result)
+    return schemas.AutogenerateStationDraftResult(**draft_result)
 
 
 @router.post(
@@ -162,6 +164,7 @@ async def publish_platform_station_version(
     )
 
 
+# Retire a published library station version so it can no longer be scheduled.
 @router.post(
     "/platform/stations/{station_id}/versions/{version}/archive",
     response_model=schemas.StationVersionRead,
