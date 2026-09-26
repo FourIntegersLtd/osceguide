@@ -1,3 +1,5 @@
+"""The shapes billing sends and receives: plans, checkout, receipts, and payments for platform staff."""
+
 from __future__ import annotations
 
 import uuid

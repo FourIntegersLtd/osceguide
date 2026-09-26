@@ -19,6 +19,7 @@ from app.features.notifications import service as notifications
 
 
 def _as_plans(plan_rows: list[Plan]) -> list[domain.Plan]:
+    """The stored `Plan` ORM rows, translated into the domain's plain `domain.Plan` shape."""
     return [
         domain.Plan(
             code=plan_row.code,

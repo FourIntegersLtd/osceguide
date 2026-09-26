@@ -20,7 +20,7 @@ SCHEME = "v1"
 
 
 class InvalidSignature(Exception):
-    pass
+    """The header was malformed, its timestamp too old, or no digest in it matched."""
 
 
 class SigningSecretMissing(Exception):
@@ -29,6 +29,9 @@ class SigningSecretMissing(Exception):
 
 
 def _parse(header: str) -> tuple[int, list[str]]:
+    """Split a `Stripe-Signature` header into its timestamp and the `v1` digests to check
+    against it. Raises `InvalidSignature` if either is missing or the timestamp is not a
+    number."""
     timestamp: int | None = None
     signatures: list[str] = []
     for part in (header or "").split(","):
@@ -46,7 +49,7 @@ def _parse(header: str) -> tuple[int, list[str]]:
 
 
 def verify(body: bytes, header: str, *, secret: str, now: int) -> None:
-    """Raise unless `payload` was signed by `secret` recently enough."""
+    """Raise unless `body` was signed by `secret` recently enough."""
     if not secret:
         raise SigningSecretMissing("No Stripe signing secret is configured; webhooks cannot be verified.")
 

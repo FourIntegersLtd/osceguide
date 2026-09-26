@@ -25,11 +25,16 @@ class UnknownPlan(LookupError):
 
 
 class InvalidEvent(ValueError):
-    pass
+    """A webhook delivery that cannot be reasoned about at all, such as one with no event id."""
 
 
 @dataclass(frozen=True)
 class Plan:
+    """One thing a customer can buy: a price, a duration and the plan code that names it.
+
+    A pure-domain shape rather than the `Plan` ORM row itself (see `service_settlement._as_plans`),
+    so this module stays free of SQLAlchemy and is testable with plain values.
+    """
 
     code: str
     price_id: str
@@ -38,6 +43,7 @@ class Plan:
 
 
 def plan_for_price(plans: Sequence[Plan], price_id: str) -> Plan:
+    """The plan a Stripe price id names, or raise `UnknownPlan` if none of `plans` matches."""
     key = (price_id or "").strip()
     for plan in plans:
         if plan.price_id == key:

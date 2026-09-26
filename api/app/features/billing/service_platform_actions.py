@@ -39,6 +39,8 @@ async def replay_event(
 
 
 async def _audit_replay(session: AsyncSession, actor: Principal, event_id: str, *, outcome: str) -> None:
+    """Log that support replayed a delivery and what happened, whether it succeeded or failed
+    again with the same or a different cause."""
     await service_audit.record(
         session,
         actor=actor,

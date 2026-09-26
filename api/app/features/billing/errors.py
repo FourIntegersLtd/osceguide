@@ -1,3 +1,5 @@
+"""The errors this slice raises. Each `code` is a contract clients branch on, never `message`."""
+
 from __future__ import annotations
 
 from app.core.errors import AppError, Conflict, InvalidInput, NotFound, Unavailable
@@ -16,6 +18,8 @@ class UnknownPlanError(NotFound):
 
 
 class InvalidSignature(AppError):
+    """The `Stripe-Signature` header did not verify: wrong secret, tampered body, or a replay
+    outside the tolerance window (see `signature.verify`)."""
 
     status = 400
     code = "invalid_signature"
@@ -23,6 +27,8 @@ class InvalidSignature(AppError):
 
 
 class PaymentAlreadyRecorded(Conflict):
+    """A manual payment with this reference has already been recorded once. Recording it again
+    would grant access twice for one purchase."""
 
     code = "payment_already_recorded"
     default_message = "That payment has already been applied"
@@ -83,12 +89,14 @@ class PayerNotFound(NotFound):
 
 
 class BillingEventNotFound(NotFound):
+    """No webhook delivery with that id is on the ledger, so there is nothing to replay."""
 
     code = "billing_event_not_found"
     default_message = "No such webhook delivery"
 
 
 class PaymentNotFound(NotFound):
+    """No payment with that id, so there is nothing to refund."""
 
     code = "payment_not_found"
     default_message = "No such payment"

@@ -1,3 +1,5 @@
+"""Billing routes: the plans on sale, Stripe checkout and its webhook, and a person's own receipts."""
+
 from __future__ import annotations
 
 from typing import Annotated

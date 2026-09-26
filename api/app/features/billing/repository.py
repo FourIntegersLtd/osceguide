@@ -16,6 +16,7 @@ from app.features.billing.models import Payment, Plan, StripeEvent
 
 
 async def active_plans(session: AsyncSession) -> list[Plan]:
+    """Every plan on sale, cheapest first."""
     stmt = select(Plan).where(Plan.active.is_(True)).order_by(Plan.amount_pence)
     return list((await session.execute(stmt)).scalars())
 
@@ -30,6 +31,7 @@ async def create_plan(
     exam_code: str | None = None,
     currency: str = "gbp",
 ) -> Plan:
+    """Insert a new plan row for a Stripe price. Used by seeding, not by any customer path."""
     plan = Plan(
         code=code,
         stripe_price_id=stripe_price_id,
@@ -54,6 +56,7 @@ async def processed_event_ids(session: AsyncSession, event_id: str) -> set[str]:
 
 
 async def event_by_id(session: AsyncSession, event_id: str) -> StripeEvent | None:
+    """The ledger row for one Stripe event id, or `None` if it was never recorded."""
     stmt = select(StripeEvent).where(StripeEvent.event_id == event_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -76,6 +79,8 @@ async def record_event(
 
 
 async def mark_event_processed(session: AsyncSession, *, event_id: str, at: datetime) -> None:
+    """Record that a delivery was applied, or acknowledged and deliberately ignored, and clear
+    any earlier failure now that it has gone through."""
     await session.execute(
         update(StripeEvent).where(StripeEvent.event_id == event_id).values(processed_at=at, failure=None)
     )
@@ -104,6 +109,7 @@ async def record_payment(
     plan_starts_at: datetime | None = None,
     plan_ends_at: datetime | None = None,
 ) -> Payment:
+    """Insert the payment row that records one settled purchase."""
     payment = Payment(
         user_id=user_id,
         plan_id=plan_id,
@@ -128,6 +134,7 @@ async def record_payment(
 
 
 async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Payment]:
+    """This person's payments, most recent first."""
     stmt = select(Payment).where(Payment.user_id == user_id).order_by(Payment.paid_at.desc())
     return list((await session.execute(stmt)).scalars())
 
@@ -172,6 +179,8 @@ async def list_events(
 
 
 def _payload_email(field: str) -> Any:
+    """A case-folded SQL expression reading one email-shaped field out of the stored JSON
+    payload, for matching an address regardless of how Stripe capitalised it."""
     payload_column = StripeEvent.payload
     return func.lower(payload_column["data"]["object"][field].astext)
 
@@ -194,6 +203,7 @@ async def payment_by_id(session: AsyncSession, payment_id: uuid.UUID) -> Payment
 
 
 async def payment_by_intent(session: AsyncSession, intent_id: str) -> Payment | None:
+    """The payment recorded against a Stripe payment intent (or a manual reference), if any."""
     stmt = select(Payment).where(Payment.stripe_payment_intent_id == intent_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 

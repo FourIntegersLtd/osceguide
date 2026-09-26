@@ -23,6 +23,7 @@ from app.features.identity.service import UserRef
 
 
 async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> UserRef:
+    """The account a support read is scoped to, or raise `PayerNotFound` if it does not exist."""
     user = await identity.user_ref_by_id(session, user_id)
     if user is None:
         raise errors.PayerNotFound()
@@ -30,6 +31,7 @@ async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> UserRef:
 
 
 async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[PlatformPaymentRead]:
+    """This person's payments, newest first, with the plan code each one bought resolved in."""
     await _require_user(session, user_id)
     payments = await repository.payments_for_user(session, user_id)
     plans = {payment.plan_id for payment in payments if payment.plan_id is not None}
@@ -46,6 +48,7 @@ async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[P
 async def list_events(
     session: AsyncSession, *, failed_only: bool, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[StripeEventRead], str | None]:
+    """The webhook ledger, a page at a time; `failed_only` narrows it to the reconcile queue."""
     events, next_cursor = await repository.list_events(
         session, failed_only=failed_only, limit=limit, cursor=cursor
     )
@@ -59,6 +62,8 @@ async def events_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Str
 
 
 def _payment_read(payment: Payment, *, plan_code: str | None) -> PlatformPaymentRead:
+    """A payment row as the platform console's read model, with its plan code already resolved
+    (a `Payment` row keeps only `plan_id`, an internal key support never sees)."""
     return PlatformPaymentRead(
         id=payment.id,
         user_id=payment.user_id,
@@ -79,6 +84,8 @@ def _payment_read(payment: Payment, *, plan_code: str | None) -> PlatformPayment
 
 
 def _event_read(event: StripeEvent) -> StripeEventRead:
+    """A ledger row as the platform console's read model, with the customer email and price it
+    named pulled back out of the stored Stripe payload for display."""
     event_payload = ((event.payload or {}).get("data") or {}).get("object") or {}
     email = event_payload.get("customer_email") or (event_payload.get("customer_details") or {}).get("email")
     return StripeEventRead(
@@ -117,6 +124,7 @@ async def payer_ids_on_plan(session: AsyncSession, plan_code: str) -> set[uuid.U
 async def latest_payment_by_user(
     session: AsyncSession, user_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, PaymentFact]:
+    """Each of these people's most recent purchase, for the account directory's "paid" facet."""
     latest_by_user = await repository.latest_payments(session, user_ids)
     return {
         user_id: PaymentFact(plan_code=code, paid_at=paid_at, plan_ends_at=ends_at)

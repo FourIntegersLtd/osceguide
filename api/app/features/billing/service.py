@@ -85,7 +85,8 @@ def _price_id(checkout_payload: dict[str, Any]) -> str:
 
     A `checkout.session` object carries no top-level price: it is in `metadata.price_id` when
     checkout was created with it (ours is), or in the expanded `line_items`. A prior read of
-    `payload["price_id"]` matched nothing Stripe sends, so every real delivery was refused.
+    `checkout_payload["price_id"]` matched nothing Stripe sends, so every real delivery was
+    refused.
     """
     metadata = checkout_payload.get("metadata") or {}
     if metadata.get("price_id"):
@@ -98,6 +99,12 @@ def _price_id(checkout_payload: dict[str, Any]) -> str:
 
 
 async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> None:
+    """Turn one `checkout.session.completed` event into a settled payment and a grant.
+
+    Raises `InvalidWebhook` for a payload missing what settlement needs, `UnknownPlanError` for
+    a price with no matching plan row — both leave the ledger row in place for a retry once the
+    cause is fixed (see `errors.InvalidWebhook`).
+    """
     checkout_payload = (event.get("data") or {}).get("object") or {}
     email = str(
         checkout_payload.get("customer_email")
@@ -144,6 +151,7 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
 
 
 async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
+    """Every plan on sale, as plain dicts the router turns into `schemas.PlanRead`."""
     return [
         {
             "code": plan.code,

@@ -28,6 +28,8 @@ _ROWS: tuple[tuple[str, str], ...] = (
 
 
 def _field_row(label: str, field_value: object) -> str:
+    """One `<tr>` of the receipt's field table. An em dash for a missing value, never a blank
+    cell that could be misread as a formatting fault."""
     return (
         '<tr><th style="text-align:left;padding:6px 16px 6px 0;font-weight:500;color:#555;'
         f'vertical-align:top">{escape(label)}</th>'

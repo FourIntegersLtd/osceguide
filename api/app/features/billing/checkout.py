@@ -22,6 +22,7 @@ TIMEOUT_SECONDS = 15.0
 
 
 class StripeCheckout:
+    """The `CheckoutSessions` port, backed by Stripe's hosted checkout page."""
 
     def __init__(self, secret_key: str) -> None:
         self._secret_key = secret_key
@@ -35,6 +36,13 @@ class StripeCheckout:
         cancel_url: str,
         client_reference: str,
     ) -> str:
+        """Start a Stripe checkout session for one price and return its URL.
+
+        Sends the form-encoded fields Stripe's REST API expects (see the module docstring for
+        why `httpx` rather than the `stripe` package). Raises `CheckoutUnavailable` on any
+        failure to reach Stripe, on a refusal, or on a response with no URL — this never returns
+        a value that is not a usable checkout link.
+        """
         form = {
             "mode": "payment",
             "line_items[0][price]": price_id,

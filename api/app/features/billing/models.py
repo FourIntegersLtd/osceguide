@@ -49,6 +49,11 @@ class StripeEvent(Base, UUIDPrimaryKey):
 
 
 class Payment(Base, UUIDPrimaryKey, Timestamps):
+    """A single purchase: what was charged, what plan it bought, and the receipt it produced.
+
+    Kept independent of `entitlements`: a refund revokes the grant `entitlement_id` points at
+    without erasing evidence that the sale happened.
+    """
 
     __tablename__ = "payments"
 
