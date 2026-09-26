@@ -98,7 +98,7 @@ def database_url() -> Iterator[str]:
 
 
 @pytest.fixture(scope="session")
-def migrated_database(database_url: str) -> str:
+def migrated_database(database_url: str, tmp_path_factory: pytest.TempPathFactory) -> str:
     from alembic.config import Config
 
     from alembic import command
@@ -107,7 +107,21 @@ def migrated_database(database_url: str) -> str:
     get_settings.cache_clear()
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "alembic"))
-    command.upgrade(cfg, "head")
+
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+    if worker == "main":
+        command.upgrade(cfg, "head")
+    else:
+        # Under xdist all workers share one database (CI's service container
+        # or a local TEST_DATABASE_URL). Two workers racing on `alembic
+        # upgrade head` both try to create the `alembic_version` table; the
+        # file lock serialises them so the second sees the table and no-ops.
+        from filelock import FileLock
+
+        root_tmp = tmp_path_factory.getbasetemp().parent
+        with FileLock(str(root_tmp / "migrate.lock")):
+            command.upgrade(cfg, "head")
+
     return database_url
 
 

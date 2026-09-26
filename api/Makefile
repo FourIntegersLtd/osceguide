@@ -50,10 +50,10 @@ worker:
 	poetry run python -m app.worker.main
 
 test:
-	poetry run pytest -q
+	poetry run pytest -q -n auto
 
 test-unit:
-	poetry run pytest -q tests/unit
+	poetry run pytest -q -n auto tests/unit
 
 guards:
 	poetry run pytest -q tests/guards
