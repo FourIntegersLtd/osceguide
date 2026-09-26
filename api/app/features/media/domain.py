@@ -17,6 +17,7 @@ MAX_EXCERPT = 160
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
 
 
+# The four products a media item can be. Reaches openapi.json wherever it appears in a schema.
 class MediaKind(StrEnum):
     SLIDE_DECK = "slide_deck"
     SUMMARY = "summary"

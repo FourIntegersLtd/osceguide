@@ -48,7 +48,7 @@ async def create(
         raise errors.SlugTaken()
 
     exam_id = (await resolve_exam(session, exam_code)).id if exam_code else None
-    row = await repository.create(
+    item = await repository.create(
         session,
         kind=media_kind,
         slug=slug,
@@ -58,7 +58,7 @@ async def create(
         exam_id=exam_id,
         author_id=author_id,
     )
-    return await service_reads.read_one(session, row)
+    return await service_reads.read_one(session, item)
 
 
 async def update(
@@ -69,9 +69,9 @@ async def update(
     summary: str | None,
     content: dict[str, Any] | None,
 ) -> MediaRead:
-    row = await _require(session, item_id)
+    item = await _require(session, item_id)
     try:
-        domain.ensure_editable(status=row.status)
+        domain.ensure_editable(status=item.status)
     except domain.NotEditable as exc:
         raise_mapped(exc, _REFUSALS)
 
@@ -95,27 +95,27 @@ async def publish(
     Indexed on publish rather than on write: a draft nobody can read should not
     surface in search.
     """
-    row = await _require(session, item_id)
+    item = await _require(session, item_id)
     try:
-        status = domain.publish(status=row.status)
+        status = domain.publish(status=item.status)
     except domain.AlreadyPublished as exc:
         raise_mapped(exc, _REFUSALS)
 
     await repository.update_item(session, item_id, status=status, published_at=now)
     await index.index(
-        doc_id=str(row.id),
-        text=f"{row.title}\n{row.summary or ''}",
-        metadata={"kind": row.kind, "slug": row.slug},
+        doc_id=str(item.id),
+        text=f"{item.title}\n{item.summary or ''}",
+        metadata={"kind": item.kind, "slug": item.slug},
     )
     return await service_reads.read_one(session, await _require(session, item_id), unlocked_exam_ids=None)
 
 
 async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_admin: bool) -> MediaRead:
-    row = await _require(session, item_id)
-    if not domain.is_public(status=row.status) and not viewer_is_admin:
+    item = await _require(session, item_id)
+    if not domain.is_public(status=item.status) and not viewer_is_admin:
         raise errors.ItemNotFound()
     unlocked = None if viewer_is_admin else frozenset[uuid.UUID]()
-    return await service_reads.read_one(session, row, unlocked_exam_ids=unlocked)
+    return await service_reads.read_one(session, item, unlocked_exam_ids=unlocked)
 
 
 async def read_by_slug(
@@ -125,11 +125,13 @@ async def read_by_slug(
     viewer_is_admin: bool,
     unlocked: frozenset[uuid.UUID] = frozenset(),
 ) -> MediaRead:
-    row = await repository.by_slug(session, slug)
-    if row is None or (not domain.is_public(status=row.status) and not viewer_is_admin):
+    item = await repository.by_slug(session, slug)
+    if item is None or (not domain.is_public(status=item.status) and not viewer_is_admin):
         # 404 for an unpublished draft: its existence is not public either.
         raise errors.ItemNotFound()
-    return await service_reads.read_one(session, row, unlocked_exam_ids=None if viewer_is_admin else unlocked)
+    return await service_reads.read_one(
+        session, item, unlocked_exam_ids=None if viewer_is_admin else unlocked
+    )
 
 
 async def list_catalog(
@@ -165,14 +167,14 @@ async def list_catalog(
             raise_mapped(exc, _REFUSALS)
     exam_id = (await resolve_exam(session, exam_code)).id if exam_code else None
     narrowed: dict[str, Any] = {"kind": kind, "statuses": statuses, "exam_id": exam_id, "search": search}
-    rows, next_cursor = await repository.list_catalog(session, limit=limit, cursor=cursor, **narrowed)
+    records, next_cursor = await repository.list_catalog(session, limit=limit, cursor=cursor, **narrowed)
     total = await repository.count_catalog(session, **narrowed)
     # Staff listing the public catalogue still get bodies: a slug read already
     # unlocks for admins, and the episode player loads its playlist from this
     # list. Locking the list while unlocking the page made every episode
     # render as "no audio attached".
     read_unlocked = None if viewer_is_admin else unlocked
-    items = await service_reads.read_many(session, rows, unlocked_exam_ids=read_unlocked)
+    items = await service_reads.read_many(session, records, unlocked_exam_ids=read_unlocked)
     return items, next_cursor, total
 
 
@@ -202,19 +204,19 @@ async def list_published(
 
 
 async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
-    row = await _require(session, item_id)
+    item = await _require(session, item_id)
     try:
-        domain.ensure_deletable(status=row.status)
+        domain.ensure_deletable(status=item.status)
     except domain.NotDeletable as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.delete_item(session, item_id)
 
 
 async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
-    row = await repository.by_id(session, item_id)
-    if row is None:
+    item = await repository.by_id(session, item_id)
+    if item is None:
         raise errors.ItemNotFound()
-    return row
+    return item
 
 
 # --- The body of a media item, as the AV production jobs need it.
@@ -222,6 +224,7 @@ async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
 
 @dataclass(frozen=True)
 class ProductionItem:
+
     id: uuid.UUID
     kind: str
     title: str
@@ -230,15 +233,15 @@ class ProductionItem:
 
 
 async def production_item(session: AsyncSession, item_id: uuid.UUID) -> ProductionItem:
-    row = await repository.by_id(session, item_id)
-    if row is None:
+    item = await repository.by_id(session, item_id)
+    if item is None:
         raise errors.ItemNotFound()
     return ProductionItem(
-        id=row.id,
-        kind=row.kind,
-        title=row.title,
-        content=dict(row.content or {}),
-        exam_id=row.exam_id,
+        id=item.id,
+        kind=item.kind,
+        title=item.title,
+        content=dict(item.content or {}),
+        exam_id=item.exam_id,
     )
 
 

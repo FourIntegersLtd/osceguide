@@ -65,21 +65,21 @@ async def search(
 
     hits = await index.search(query=cleaned, limit=limit)
     scores = {uuid.UUID(doc_id): score for doc_id, score in hits}
-    rows = await repository.by_ids(session, list(scores))
+    items = await repository.by_ids(session, list(scores))
     return sorted(
         (
             SearchHit(
-                id=r.id,
-                kind=r.kind,
-                slug=r.slug,
-                title=r.title,
-                score=scores.get(r.id, 0.0),
-                excerpt=domain.excerpt(r.summary, r.title),
+                id=item.id,
+                kind=item.kind,
+                slug=item.slug,
+                title=item.title,
+                score=scores.get(item.id, 0.0),
+                excerpt=domain.excerpt(item.summary, item.title),
             )
-            for r in rows
-            if domain.is_public(status=r.status)
-            and (wanted is None or r.kind == wanted)
-            and (r.exam_id is None or r.exam_id in unlocked)
+            for item in items
+            if domain.is_public(status=item.status)
+            and (wanted is None or item.kind == wanted)
+            and (item.exam_id is None or item.exam_id in unlocked)
         ),
         key=lambda hit: (hit.score, hit.id),
         reverse=True,
@@ -141,7 +141,7 @@ async def unlocked_exam_ids(
     if user_id is None:
         return frozenset()
     grants = await entitlements.list_for_user(session, user_id, now=now)
-    unlocked = {g.exam_id for g in grants if g.live and g.exam_id}
+    unlocked = {grant.exam_id for grant in grants if grant.live and grant.exam_id}
     user = await identity.user_ref_by_id(session, user_id)
     if (
         user

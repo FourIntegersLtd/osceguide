@@ -54,7 +54,7 @@ async def list_published(
     unlocked = await service_search.unlocked_exam_ids(
         session, principal.user_id if principal else None, now=clock.now()
     )
-    items, next_cursor, total_count = await service.list_catalog(
+    media_items, next_cursor, total_count = await service.list_catalog(
         session,
         kind=kind,
         limit=page.limit,
@@ -65,7 +65,7 @@ async def list_published(
         search=q,
         unlocked=unlocked,
     )
-    return schemas.MediaPage(items=items, next_cursor=next_cursor, total_count=total_count)
+    return schemas.MediaPage(items=media_items, next_cursor=next_cursor, total_count=total_count)
 
 
 @router.get(
@@ -99,7 +99,7 @@ async def search(
     Paged like every other list here: `total_count` is how many hits the query
     matched, `next_cursor` continues past the ones this page carried.
     """
-    items, next_cursor, total_count = await service_search.search_page(
+    hits, next_cursor, total_count = await service_search.search_page(
         session,
         query=q,
         index=index,
@@ -108,7 +108,7 @@ async def search(
         cursor=page.cursor,
         unlocked=await service_search.unlocked_exam_ids(session, principal.user_id, now=clock.now()),
     )
-    return schemas.MediaSearchPage(items=items, next_cursor=next_cursor, total_count=total_count)
+    return schemas.MediaSearchPage(items=hits, next_cursor=next_cursor, total_count=total_count)
 
 
 @router.get(
@@ -158,6 +158,7 @@ async def read_by_slug(
     )
 
 
+# Creates a new draft. Only a platform admin can author study material.
 @router.post(
     "/media",
     response_model=schemas.MediaRead,
@@ -182,6 +183,7 @@ async def create(body: schemas.CreateMedia, admin: PlatformAdmin, session: Sessi
     )
 
 
+# Replaces a draft's editable fields. Refuses once the item is published.
 @router.patch(
     "/media/{item_id}",
     response_model=schemas.MediaRead,
@@ -199,6 +201,7 @@ async def update(
     )
 
 
+# Deletes a draft outright. Refuses once the item is published: publishing is a one-way door.
 @router.delete(
     "/media/{item_id}",
     status_code=status.HTTP_204_NO_CONTENT,

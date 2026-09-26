@@ -21,14 +21,14 @@ from app.features.media.schemas import MediaRead
 
 
 async def read_one(
-    session: AsyncSession, row: MediaItem, *, unlocked_exam_ids: frozenset[uuid.UUID] | None = None
+    session: AsyncSession, item: MediaItem, *, unlocked_exam_ids: frozenset[uuid.UUID] | None = None
 ) -> MediaRead:
-    return (await read_many(session, [row], unlocked_exam_ids=unlocked_exam_ids))[0]
+    return (await read_many(session, [item], unlocked_exam_ids=unlocked_exam_ids))[0]
 
 
 async def read_many(
     session: AsyncSession,
-    rows: list[MediaItem],
+    items: list[MediaItem],
     *,
     unlocked_exam_ids: frozenset[uuid.UUID] | None = None,
 ) -> list[MediaRead]:
@@ -47,43 +47,43 @@ async def read_many(
     public catalogue facet like `kind` and `title`, so a locked item still
     needs it to appear on a facet list. The body itself stays gated.
     """
-    codes = await catalog.exam_codes_by_id(session, [row.exam_id for row in rows if row.exam_id])
-    out: list[MediaRead] = []
-    for row in rows:
-        content = dict(row.content or {})
-        locked = _locked(row, unlocked_exam_ids)
-        out.append(
+    codes = await catalog.exam_codes_by_id(session, [item.exam_id for item in items if item.exam_id])
+    reads: list[MediaRead] = []
+    for item in items:
+        content = dict(item.content or {})
+        locked = _locked(item, unlocked_exam_ids)
+        reads.append(
             MediaRead(
-                id=row.id,
-                kind=row.kind,
-                slug=row.slug,
-                title=row.title,
-                summary=row.summary,
+                id=item.id,
+                kind=item.kind,
+                slug=item.slug,
+                title=item.title,
+                summary=item.summary,
                 content=None if locked else content,
                 locked=locked,
-                exam_code=codes.get(row.exam_id) if row.exam_id else None,
+                exam_code=codes.get(item.exam_id) if item.exam_id else None,
                 specialty=domain.specialty_of(content),
-                status=row.status,
-                created_at=row.created_at,
-                published_at=row.published_at,
-                updated_at=updated_at(row, content),
+                status=item.status,
+                created_at=item.created_at,
+                published_at=item.published_at,
+                updated_at=updated_at(item, content),
             )
         )
-    return out
+    return reads
 
 
-def updated_at(row: MediaItem, content: dict[str, Any]) -> datetime:
+def updated_at(item: MediaItem, content: dict[str, Any]) -> datetime:
     """When this material last changed.
 
     The document's own `updated_at` first, so a migrated item keeps its
     original edit date rather than the day it was imported. Otherwise the
     row's own `updated_at`, which is `created_at` for a row nobody has edited.
     """
-    return domain.content_updated_at(content) or row.updated_at
+    return domain.content_updated_at(content) or item.updated_at
 
 
-def _locked(row: MediaItem, unlocked_exam_ids: frozenset[uuid.UUID] | None) -> bool:
+def _locked(item: MediaItem, unlocked_exam_ids: frozenset[uuid.UUID] | None) -> bool:
     """Whether the body is withheld: material for an exam the reader does not hold."""
-    if unlocked_exam_ids is None or row.exam_id is None:
+    if unlocked_exam_ids is None or item.exam_id is None:
         return False
-    return row.exam_id not in unlocked_exam_ids
+    return item.exam_id not in unlocked_exam_ids

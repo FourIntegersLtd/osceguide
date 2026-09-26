@@ -23,7 +23,7 @@ async def create(
     exam_id: uuid.UUID | None,
     author_id: uuid.UUID | None,
 ) -> MediaItem:
-    row = MediaItem(
+    item = MediaItem(
         kind=kind,
         slug=slug,
         title=title,
@@ -32,10 +32,10 @@ async def create(
         exam_id=exam_id,
         author_id=author_id,
     )
-    session.add(row)
+    session.add(item)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(item)
+    return item
 
 
 async def by_id(session: AsyncSession, item_id: uuid.UUID) -> MediaItem | None:
@@ -146,6 +146,6 @@ async def list_published(
 
 
 async def delete_item(session: AsyncSession, item_id: uuid.UUID) -> None:
-    row = await by_id(session, item_id)
-    if row is not None:
-        await session.delete(row)
+    item = await by_id(session, item_id)
+    if item is not None:
+        await session.delete(item)
