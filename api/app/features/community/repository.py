@@ -27,7 +27,7 @@ async def create_post(
     station_id: uuid.UUID | None = None,
     tags: list[str] | None = None,
 ) -> Post:
-    row = Post(
+    post = Post(
         kind=kind,
         author_id=author_id,
         body=body,
@@ -42,10 +42,10 @@ async def create_post(
         audience_org_id=audience.org_id,
         audience_group_id=audience.group_id,
     )
-    session.add(row)
+    session.add(post)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(post)
+    return post
 
 
 async def post_by_id(session: AsyncSession, post_id: uuid.UUID) -> Post | None:
@@ -159,8 +159,8 @@ async def like_counts(
     if not post_ids:
         return {}, set()
     counts = {
-        row[0]: row[1]
-        for row in (
+        count_row[0]: count_row[1]
+        for count_row in (
             await session.execute(
                 select(PostLike.post_id, func.count(PostLike.id))
                 .where(PostLike.post_id.in_(post_ids))
@@ -181,14 +181,14 @@ async def like_counts(
 async def reply_counts(session: AsyncSession, post_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
     if not post_ids:
         return {}
-    rows = (
+    count_rows = (
         await session.execute(
             select(Post.parent_id, func.count(Post.id))
             .where(Post.parent_id.in_(post_ids), Post.removed_at.is_(None))
             .group_by(Post.parent_id)
         )
     ).all()
-    return {row[0]: row[1] for row in rows}
+    return {count_row[0]: count_row[1] for count_row in count_rows}
 
 
 async def list_recent_for_moderation(session: AsyncSession, *, since: datetime, limit: int) -> list[Post]:

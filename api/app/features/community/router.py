@@ -39,7 +39,7 @@ async def list_questions(
     group the caller belongs to, which is what a single feed should be. `tag`
     narrows that answer and can never widen it.
     """
-    items, next_cursor = await service.list_questions(
+    questions, next_cursor = await service.list_questions(
         session,
         viewer_id=principal.user_id,
         limit=page.limit,
@@ -48,7 +48,7 @@ async def list_questions(
         mine=mine,
         tag=tag,
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=questions, next_cursor=next_cursor)
 
 
 @router.get(
@@ -71,10 +71,10 @@ async def list_replies_by_author(
     """
     if author.strip().lower() != "me":
         raise errors.InvalidAuthorFilter()
-    items, next_cursor = await service.list_my_answers(
+    replies, next_cursor = await service.list_my_answers(
         session, viewer_id=principal.user_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=replies, next_cursor=next_cursor)
 
 
 @router.get(
@@ -89,6 +89,7 @@ async def read_question(
     return await service.question_detail(session, question_id, viewer_id=principal.user_id)
 
 
+# Ask a new question in the caller's chosen room, tagged for the feed filter.
 @router.post(
     "/community/questions",
     response_model=schemas.PostRead,
@@ -117,6 +118,7 @@ async def ask(
     )
 
 
+# Every reply under one question, oldest first.
 @router.get(
     "/community/questions/{question_id}/replies",
     response_model=Page[schemas.PostRead],
@@ -125,8 +127,8 @@ async def ask(
 async def list_replies(
     question_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> Page[schemas.PostRead]:
-    items = await service.list_replies(session, question_id, viewer_id=principal.user_id)
-    return Page(items=items, next_cursor=None)
+    replies = await service.list_replies(session, question_id, viewer_id=principal.user_id)
+    return Page(items=replies, next_cursor=None)
 
 
 @router.post(
@@ -187,6 +189,7 @@ async def remove(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# Comments on one station that the caller may see.
 @router.get(
     "/stations/{station_id}/comments",
     response_model=Page[schemas.PostRead],
@@ -195,10 +198,11 @@ async def remove(
 async def list_station_comments(
     station_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 ) -> Page[schemas.PostRead]:
-    items = await service.list_station_comments(session, station_id, viewer_id=principal.user_id)
-    return Page(items=items, next_cursor=None)
+    comments = await service.list_station_comments(session, station_id, viewer_id=principal.user_id)
+    return Page(items=comments, next_cursor=None)
 
 
+# Leave a comment on a station, in the caller's chosen room.
 @router.post(
     "/stations/{station_id}/comments",
     response_model=schemas.PostRead,

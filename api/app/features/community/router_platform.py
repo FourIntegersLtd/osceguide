@@ -31,5 +31,5 @@ async def list_moderation_posts(
 ) -> Page[schemas.PostRead]:
     """Recent community and station posts for platform moderators."""
     _ = admin
-    items = await service.list_moderation_queue(session, viewer_id=principal.user_id, days=days, limit=limit)
-    return Page(items=items, next_cursor=None)
+    posts = await service.list_moderation_queue(session, viewer_id=principal.user_id, days=days, limit=limit)
+    return Page(items=posts, next_cursor=None)

@@ -18,6 +18,7 @@ from app.core.db import AUDIENCE_CHECK, Addressed, Base, Timestamps, UUIDPrimary
 
 
 class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
+
     __tablename__ = "posts"
     __table_args__ = (
         # A question starts a thread, a reply sits under a post, and a comment

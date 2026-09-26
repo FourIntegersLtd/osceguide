@@ -58,7 +58,7 @@ async def ask(
     if exam_code:
         exam_id = (await resolve_exam(session, exam_code)).id
 
-    row = await repository.create_post(
+    question = await repository.create_post(
         session,
         kind="question",
         author_id=author_id,
@@ -68,7 +68,7 @@ async def ask(
         audience=audience,
         tags=cleaned_tags,
     )
-    return await read_one(session, row, viewer_id=author_id)
+    return await read_one(session, question, viewer_id=author_id)
 
 
 async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.UUID, body: str) -> PostRead:
@@ -87,7 +87,7 @@ async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    row = await repository.create_post(
+    created_reply = await repository.create_post(
         session,
         kind="reply",
         author_id=author_id,
@@ -96,7 +96,7 @@ async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.
         exam_id=parent.exam_id,
         audience=audience,
     )
-    return await read_one(session, row, viewer_id=author_id)
+    return await read_one(session, created_reply, viewer_id=author_id)
 
 
 async def comment_on_station(
@@ -117,7 +117,7 @@ async def comment_on_station(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
     ensure_may_address(audience, await audiences_for(session, author_id))
-    row = await repository.create_post(
+    comment = await repository.create_post(
         session,
         kind="comment",
         author_id=author_id,
@@ -126,7 +126,7 @@ async def comment_on_station(
         station_id=station_id,
         audience=audience,
     )
-    return await read_one(session, row, viewer_id=author_id)
+    return await read_one(session, comment, viewer_id=author_id)
 
 
 async def remove(
@@ -138,17 +138,17 @@ async def remove(
     moderates_org_ids: frozenset[uuid.UUID],
     now: datetime,
 ) -> None:
-    row = await repository.post_by_id(session, post_id)
-    if row is None:
+    post = await repository.post_by_id(session, post_id)
+    if post is None:
         raise errors.PostNotFound()
     try:
         domain.ensure_removable(
-            author_id=str(row.author_id),
+            author_id=str(post.author_id),
             actor_id=str(actor_id),
             actor_is_admin=actor_is_admin,
             # An institution moderates what is addressed inside it, which is
             # the whole of what org and group audiences are for.
-            actor_moderates_audience=row.audience_org_id in moderates_org_ids,
+            actor_moderates_audience=post.audience_org_id in moderates_org_ids,
         )
     except domain.NotYours as exc:
         raise_mapped(exc, _REFUSALS)
@@ -156,16 +156,16 @@ async def remove(
 
 
 async def set_like(session: AsyncSession, post_id: uuid.UUID, *, user_id: uuid.UUID, liked: bool) -> PostRead:
-    row = await repository.post_by_id(session, post_id)
-    if row is None:
+    post = await repository.post_by_id(session, post_id)
+    if post is None:
         raise errors.PostNotFound()
     # SEC-020: mirror the audience gate that question_detail / list_replies use,
     # so a post outside the viewer's audience cannot be liked (or probed by id
     # via a like succeeding). Indistinguishable from a post that does not exist.
-    if not can_see(audience_of(row), await audiences_for(session, user_id)):
+    if not can_see(audience_of(post), await audiences_for(session, user_id)):
         raise errors.PostNotFound()
     await repository.set_like(session, post_id, user_id, liked=liked)
-    return await read_one(session, row, viewer_id=user_id)
+    return await read_one(session, post, viewer_id=user_id)
 
 
 async def list_questions(
@@ -179,7 +179,7 @@ async def list_questions(
     tag: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
     viewer = await audiences_for(session, viewer_id)
-    rows, next_cursor = await repository.list_questions(
+    questions, next_cursor = await repository.list_questions(
         session,
         viewer=viewer,
         limit=limit,
@@ -190,7 +190,7 @@ async def list_questions(
         # "cardiology". A blank filter is no filter.
         tag=domain.normalize_tag(tag) if tag else None,
     )
-    return await read_many(session, rows, viewer_id=viewer_id), next_cursor
+    return await read_many(session, questions, viewer_id=viewer_id), next_cursor
 
 
 async def question_detail(session: AsyncSession, question_id: uuid.UUID, *, viewer_id: uuid.UUID) -> PostRead:
@@ -202,12 +202,12 @@ async def question_detail(session: AsyncSession, question_id: uuid.UUID, *, view
     visibility rule as the replies beneath it: something the viewer may not see
     answers the same as something that does not exist.
     """
-    row = await repository.post_by_id(session, question_id)
-    if row is None or row.kind != "question":
+    question = await repository.post_by_id(session, question_id)
+    if question is None or question.kind != "question":
         raise errors.PostNotFound()
-    if not can_see(audience_of(row), await audiences_for(session, viewer_id)):
+    if not can_see(audience_of(question), await audiences_for(session, viewer_id)):
         raise errors.PostNotFound()
-    return await read_one(session, row, viewer_id=viewer_id)
+    return await read_one(session, question, viewer_id=viewer_id)
 
 
 async def list_my_answers(
@@ -218,10 +218,10 @@ async def list_my_answers(
     cursor: dict[str, Any] | None,
 ) -> tuple[list[PostRead], str | None]:
     viewer = await audiences_for(session, viewer_id)
-    rows, next_cursor = await repository.list_answers(
+    replies, next_cursor = await repository.list_answers(
         session, viewer=viewer, author_id=viewer_id, limit=limit, cursor=cursor
     )
-    return await read_many(session, rows, viewer_id=viewer_id), next_cursor
+    return await read_many(session, replies, viewer_id=viewer_id), next_cursor
 
 
 async def list_replies(
@@ -234,60 +234,60 @@ async def list_replies(
         # Indistinguishable from a question that does not exist, so a private
         # thread cannot be probed by id.
         raise errors.PostNotFound()
-    rows = await repository.list_children(session, parent_id)
-    return await read_many(session, rows, viewer_id=viewer_id)
+    replies = await repository.list_children(session, parent_id)
+    return await read_many(session, replies, viewer_id=viewer_id)
 
 
 async def list_station_comments(
     session: AsyncSession, station_id: uuid.UUID, *, viewer_id: uuid.UUID
 ) -> list[PostRead]:
     viewer = await audiences_for(session, viewer_id)
-    rows = await repository.list_station_comments(session, station_id, viewer=viewer)
-    return await read_many(session, rows, viewer_id=viewer_id)
+    comments = await repository.list_station_comments(session, station_id, viewer=viewer)
+    return await read_many(session, comments, viewer_id=viewer_id)
 
 
 async def list_moderation_queue(
     session: AsyncSession, *, viewer_id: uuid.UUID, days: int = 7, limit: int = 100
 ) -> list[PostRead]:
     since = datetime.now(tz=UTC) - timedelta(days=days)
-    rows = await repository.list_recent_for_moderation(session, since=since, limit=limit)
-    return await read_many(session, rows, viewer_id=viewer_id)
+    posts = await repository.list_recent_for_moderation(session, since=since, limit=limit)
+    return await read_many(session, posts, viewer_id=viewer_id)
 
 
-# --- Turning `Post` rows into `PostRead`, for one row or a whole page.
+# --- Turning `Post` posts into `PostRead`, for one post or a whole page.
 
 
-async def read_one(session: AsyncSession, row: Post, *, viewer_id: uuid.UUID) -> PostRead:
-    return (await read_many(session, [row], viewer_id=viewer_id))[0]
+async def read_one(session: AsyncSession, post: Post, *, viewer_id: uuid.UUID) -> PostRead:
+    return (await read_many(session, [post], viewer_id=viewer_id))[0]
 
 
-async def read_many(session: AsyncSession, rows: list[Post], *, viewer_id: uuid.UUID) -> list[PostRead]:
+async def read_many(session: AsyncSession, posts: list[Post], *, viewer_id: uuid.UUID) -> list[PostRead]:
     """Counts and names fetched for the whole page at once rather than per row."""
-    ids = [r.id for r in rows]
+    ids = [post.id for post in posts]
     counts, mine = await repository.like_counts(session, ids, viewer_id)
-    replies = await repository.reply_counts(session, ids)
-    people = await identity.user_refs_by_ids(session, list({r.author_id for r in rows}))
+    reply_counts = await repository.reply_counts(session, ids)
+    people = await identity.user_refs_by_ids(session, list({post.author_id for post in posts}))
     return [
         PostRead(
-            id=r.id,
-            kind=r.kind,
-            parent_id=r.parent_id,
-            author_id=r.author_id,
+            id=post.id,
+            kind=post.kind,
+            parent_id=post.parent_id,
+            author_id=post.author_id,
             # Null when the account is gone. Falling back to the id prints a
             # uuid where a name belongs.
-            author_name=people[r.author_id].name if r.author_id in people else None,
-            title=r.title,
-            body=r.body,
+            author_name=people[post.author_id].name if post.author_id in people else None,
+            title=post.title,
+            body=post.body,
             # `or []` for a row written before tags existed and read back
             # NULL by a driver, though the column default says that cannot
             # happen: a None here would fail the schema instead of reading
             # as the empty list it means.
-            tags=list(r.tags or []),
-            audience=AudienceOut.of(r),
-            like_count=counts.get(r.id, 0),
-            liked_by_me=r.id in mine,
-            reply_count=replies.get(r.id, 0),
-            created_at=r.created_at,
+            tags=list(post.tags or []),
+            audience=AudienceOut.of(post),
+            like_count=counts.get(post.id, 0),
+            liked_by_me=post.id in mine,
+            reply_count=reply_counts.get(post.id, 0),
+            created_at=post.created_at,
         )
-        for r in rows
+        for post in posts
     ]

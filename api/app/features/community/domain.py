@@ -17,22 +17,27 @@ MAX_TAG_LENGTH = 32
 
 
 class NotYours(Exception):
+
     pass
 
 
 class EmptyContent(Exception):
+
     pass
 
 
 class ContentTooLong(Exception):
+
     pass
 
 
 class TagTooLong(Exception):
+
     pass
 
 
 class TooManyTags(Exception):
+
     pass
 
 
@@ -62,8 +67,8 @@ def clean_tags(raw: Iterable[str]) -> list[str]:
     question tagged differently from what its author asked.
     """
     tags: list[str] = []
-    for item in raw:
-        tag = normalize_tag(item)
+    for raw_tag in raw:
+        tag = normalize_tag(raw_tag)
         if not tag:
             continue
         if len(tag) > MAX_TAG_LENGTH:
