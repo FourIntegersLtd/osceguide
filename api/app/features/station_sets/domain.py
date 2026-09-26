@@ -29,6 +29,7 @@ class NothingToDebrief(Exception):
 
 @dataclass(frozen=True)
 class EntryState:
+
     attempts: int = 0
     debrief_attempts: int = 0
 
@@ -54,8 +55,8 @@ def set_complete(entries: Sequence[EntryState]) -> bool:
     An empty set is not complete: otherwise one created and never populated
     reports itself finished the moment it exists.
     """
-    return bool(entries) and all(e.attempts > 0 for e in entries)
+    return bool(entries) and all(entry.attempts > 0 for entry in entries)
 
 
 def progress(entries: Sequence[EntryState]) -> tuple[int, int]:
-    return sum(1 for e in entries if e.attempts > 0), len(entries)
+    return sum(1 for entry in entries if entry.attempts > 0), len(entries)

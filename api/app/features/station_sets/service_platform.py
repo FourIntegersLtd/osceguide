@@ -26,18 +26,20 @@ async def station_progress(session: AsyncSession, user_id: uuid.UUID) -> list[St
     """One row per station, newest activity first: the attempts that exist
     and the counters on the person's set entries, side by side."""
     by_version = await attempts.progress_by_version(session, user_id)
-    owners = await stations.owners_by_version_id(session, [row.station_version_id for row in by_version])
+    owners = await stations.owners_by_version_id(
+        session, [version_progress.station_version_id for version_progress in by_version]
+    )
 
-    rows: dict[uuid.UUID, StationProgressRead] = {}
+    progress_by_station: dict[uuid.UUID, StationProgressRead] = {}
     for progress in by_version:
         owner = owners.get(progress.station_version_id)
         if owner is None:
             continue
-        current = rows.get(owner.station_id)
+        current = progress_by_station.get(owner.station_id)
         newer = current is None or (
             current.last_attempt_at is not None and progress.last_attempt_at > current.last_attempt_at
         )
-        rows[owner.station_id] = StationProgressRead(
+        progress_by_station[owner.station_id] = StationProgressRead(
             station_id=owner.station_id,
             title=owner.title,
             exam_code=owner.exam_code,
@@ -52,10 +54,14 @@ async def station_progress(session: AsyncSession, user_id: uuid.UUID) -> list[St
     entries = await repository.entries_for_owner_by_versions(session, user_id, list(owners))
     for entry in entries:
         owner = owners[entry.station_version_id]
-        row = rows[owner.station_id]
-        row.entry_attempts += entry.attempts
-        row.set_entry_ids.append(entry.id)
-    return sorted(rows.values(), key=lambda row: row.last_attempt_at or datetime.min, reverse=True)
+        progress_row = progress_by_station[owner.station_id]
+        progress_row.entry_attempts += entry.attempts
+        progress_row.set_entry_ids.append(entry.id)
+    return sorted(
+        progress_by_station.values(),
+        key=lambda progress_row: progress_row.last_attempt_at or datetime.min,
+        reverse=True,
+    )
 
 
 async def _target(session: AsyncSession, user_id: uuid.UUID, station_id: uuid.UUID) -> StationVersions:

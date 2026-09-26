@@ -43,16 +43,16 @@ async def create_set(
     """
     exam = await resolve_exam(session, exam_code)
     await attempts.require_entitlement(session, user_id=owner_user_id, exam_id=exam.id, now=now)
-    row = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
-    entries = await repository.add_entries(session, row.id, station_version_ids=station_version_ids)
-    return _set_read(row, exam.code, entries)
+    station_set = await repository.create_set(session, owner_user_id, exam_id=exam.id, name=name)
+    entries = await repository.add_entries(session, station_set.id, station_version_ids=station_version_ids)
+    return _set_read(station_set, exam.code, entries)
 
 
 async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> SetRead:
-    row = await _require(session, owner_user_id, set_id)
+    station_set = await _require(session, owner_user_id, set_id)
     entries = await repository.entries_for(session, set_id)
-    code = await catalog.exam_code_by_id(session, row.exam_id)
-    return _set_read(row, code or "", entries)
+    code = await catalog.exam_code_by_id(session, station_set.exam_id)
+    return _set_read(station_set, code or "", entries)
 
 
 async def rename_set(
@@ -64,8 +64,8 @@ async def rename_set(
     attempt points at, so swapping the list would be deleting somebody's history and numbering a new
     one from zero.
     """
-    row = await _require(session, owner_user_id, set_id)
-    await repository.rename_set(session, row, name=name)
+    station_set = await _require(session, owner_user_id, set_id)
+    await repository.rename_set(session, station_set, name=name)
     return await read_set(session, owner_user_id, set_id)
 
 
@@ -88,13 +88,15 @@ async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uu
 async def list_sets(
     session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[SetRead], str | None]:
-    rows, next_cursor = await repository.list_for_owner(session, owner_user_id, limit=limit, cursor=cursor)
-    out = []
-    for row in rows:
-        entries = await repository.entries_for(session, row.id)
-        code = await catalog.exam_code_by_id(session, row.exam_id)
-        out.append(_set_read(row, code or "", entries))
-    return out, next_cursor
+    station_sets, next_cursor = await repository.list_for_owner(
+        session, owner_user_id, limit=limit, cursor=cursor
+    )
+    set_reads = []
+    for station_set in station_sets:
+        entries = await repository.entries_for(session, station_set.id)
+        code = await catalog.exam_code_by_id(session, station_set.exam_id)
+        set_reads.append(_set_read(station_set, code or "", entries))
+    return set_reads, next_cursor
 
 
 async def start_entry_attempt(
@@ -111,12 +113,12 @@ async def start_entry_attempt(
     The counter moves in the same transaction as the attempt is created, so a limit cannot be
     exceeded by two requests arriving together.
     """
-    row = await _require(session, owner_user_id, set_id)
+    station_set = await _require(session, owner_user_id, set_id)
     entry = await repository.entry_by_id(session, set_id, entry_id)
     if entry is None:
         raise errors.EntryNotFound()
 
-    exam = await catalog.exam_ref_by_id(session, row.exam_id)
+    exam = await catalog.exam_ref_by_id(session, station_set.exam_id)
     if exam is None:
         raise errors.SetNotFound()
 
@@ -125,7 +127,7 @@ async def start_entry_attempt(
         if debrief:
             domain.ensure_debriefable(state, limit=exam.station_attempt_limit)
         else:
-            domain.ensure_attemptable(state, limit=exam.station_attempt_limit, locked=row.locked)
+            domain.ensure_attemptable(state, limit=exam.station_attempt_limit, locked=station_set.locked)
     except Exception as exc:  # noqa: BLE001 - mapped below
         raise_mapped(exc, _REFUSALS)
 
@@ -158,11 +160,14 @@ async def start_entry_attempt(
 
     entries = await repository.entries_for(session, set_id)
     if domain.set_complete(
-        [domain.EntryState(attempts=e.attempts, debrief_attempts=e.debrief_attempts) for e in entries]
+        [
+            domain.EntryState(attempts=set_entry.attempts, debrief_attempts=set_entry.debrief_attempts)
+            for set_entry in entries
+        ]
     ):
         await repository.mark_complete(session, set_id, at=now)
 
-    used = next((e.attempts for e in entries if e.id == entry.id), entry.attempts + 1)
+    used = next((set_entry.attempts for set_entry in entries if set_entry.id == entry.id), entry.attempts + 1)
     return StartedAttempt(
         attempt_id=attempt.id,
         kind=attempt.kind,
@@ -173,32 +178,35 @@ async def start_entry_attempt(
 
 
 async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:
-    row = await repository.set_by_id(session, owner_user_id, set_id)
-    if row is None:
+    station_set = await repository.set_by_id(session, owner_user_id, set_id)
+    if station_set is None:
         raise errors.SetNotFound()
-    return row
+    return station_set
 
 
-def _set_read(row: StationSet, exam_code: str, entries: list[StationSetEntry]) -> SetRead:
-    states = [domain.EntryState(attempts=e.attempts, debrief_attempts=e.debrief_attempts) for e in entries]
+def _set_read(station_set: StationSet, exam_code: str, entries: list[StationSetEntry]) -> SetRead:
+    states = [
+        domain.EntryState(attempts=entry.attempts, debrief_attempts=entry.debrief_attempts)
+        for entry in entries
+    ]
     attempted, total = domain.progress(states)
     return SetRead(
-        id=row.id,
-        name=row.name,
+        id=station_set.id,
+        name=station_set.name,
         exam_code=exam_code,
-        locked=row.locked,
-        completed_at=row.completed_at,
+        locked=station_set.locked,
+        completed_at=station_set.completed_at,
         attempted_entries=attempted,
         total_entries=total,
         entries=[
             EntryRead(
-                id=e.id,
-                position=e.position,
-                station_version_id=e.station_version_id,
-                attempts=e.attempts,
-                debrief_attempts=e.debrief_attempts,
-                last_attempt_at=e.last_attempt_at,
+                id=entry.id,
+                position=entry.position,
+                station_version_id=entry.station_version_id,
+                attempts=entry.attempts,
+                debrief_attempts=entry.debrief_attempts,
+                last_attempt_at=entry.last_attempt_at,
             )
-            for e in entries
+            for entry in entries
         ],
     )

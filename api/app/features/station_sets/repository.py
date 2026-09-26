@@ -17,25 +17,25 @@ from app.features.station_sets.models import StationSet, StationSetEntry
 async def create_set(
     session: AsyncSession, owner_user_id: uuid.UUID, *, exam_id: uuid.UUID, name: str
 ) -> StationSet:
-    row = StationSet(owner_user_id=owner_user_id, exam_id=exam_id, name=name)
-    session.add(row)
+    station_set = StationSet(owner_user_id=owner_user_id, exam_id=exam_id, name=name)
+    session.add(station_set)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(station_set)
+    return station_set
 
 
 async def add_entries(
     session: AsyncSession, set_id: uuid.UUID, *, station_version_ids: list[uuid.UUID]
 ) -> list[StationSetEntry]:
-    rows = [
-        StationSetEntry(set_id=set_id, position=i, station_version_id=station_version_id)
-        for i, station_version_id in enumerate(station_version_ids)
+    entries = [
+        StationSetEntry(set_id=set_id, position=position, station_version_id=station_version_id)
+        for position, station_version_id in enumerate(station_version_ids)
     ]
-    session.add_all(rows)
+    session.add_all(entries)
     await session.flush()
-    for row in rows:
-        await session.refresh(row)
-    return rows
+    for entry in entries:
+        await session.refresh(entry)
+    return entries
 
 
 async def set_by_id(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet | None:
@@ -43,9 +43,9 @@ async def set_by_id(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uui
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def rename_set(session: AsyncSession, row: StationSet, *, name: str) -> None:
+async def rename_set(session: AsyncSession, station_set: StationSet, *, name: str) -> None:
     """Write the name. The owner was checked by whoever loaded the row."""
-    row.name = name
+    station_set.name = name
     await session.flush()
 
 
@@ -143,12 +143,12 @@ async def reset_counters(
     entry — what the old console's "reset attempts" did to `station_progress`."""
     if not version_ids:
         return 0
-    result = await session.execute(
+    update_outcome = await session.execute(
         update(StationSetEntry)
         .where(StationSetEntry.id.in_(_owned_entry_ids(owner_user_id, version_ids)))
         .values(attempts=0, debrief_attempts=0, last_attempt_at=None)
     )
-    return int(getattr(result, "rowcount", 0) or 0)
+    return int(getattr(update_outcome, "rowcount", 0) or 0)
 
 
 async def remove_entries(
@@ -158,7 +158,7 @@ async def remove_entries(
     that pointed at the entries must already be gone: they `RESTRICT`."""
     if not version_ids:
         return 0
-    result = await session.execute(
+    delete_outcome = await session.execute(
         delete(StationSetEntry).where(StationSetEntry.id.in_(_owned_entry_ids(owner_user_id, version_ids)))
     )
-    return int(getattr(result, "rowcount", 0) or 0)
+    return int(getattr(delete_outcome, "rowcount", 0) or 0)

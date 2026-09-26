@@ -28,12 +28,13 @@ async def list_sets(
 ) -> Page[schemas.SetRead]:
     """Each set carries its own progress, so the list does not need a call per
     station to work out how far along someone is."""
-    items, next_cursor = await service.list_sets(
+    sets, next_cursor = await service.list_sets(
         session, principal.user_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=sets, next_cursor=next_cursor)
 
 
+# Builds the set and all its entries from the given stations in one call.
 @router.post(
     "/me/station-sets",
     response_model=schemas.SetRead,
