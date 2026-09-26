@@ -1,0 +1,195 @@
+name: Promote to production
+
+# The only way the production website changes.
+#
+# How it fits together: Vercel builds every push to `main` onto
+# staging.osceguide.com, and builds the `production` branch as production. This
+# workflow is what moves the `production` branch, and it only moves it to a
+# commit staging is already serving.
+#
+# How to use it: GitHub → Actions → "Promote to production" → Run workflow (from main).
+#   - Leave "commit_sha" empty to promote whatever staging is serving right now.
+#
+# What happens:
+#   1. check works out which commit to ship and refuses unless it is safe: the
+#      commit is on main, it moves production forward, CI passed on it, staging
+#      serves exactly that commit, and staging's sign-in page loads.
+#   2. deploy pushes the commit to the `production` branch (a plain fast-forward,
+#      never a force push), then waits until Vercel reports the production build
+#      of that commit as successful.
+#
+# Rollback is not done here. Vercel keeps every production build, so the fast way
+# back is Vercel → platform-web → Deployments → the previous production build →
+# "Instant Rollback" (seconds, no rebuild). After a rollback Vercel stops putting
+# new production builds live on its own: fix forward on main, promote again, then
+# in Vercel press "Undo Rollback" (or promote that new build) to make it live.
+#
+# Who may promote: anyone who can run workflows here, which today is only the owner,
+# so pressing "Run workflow" is the approval.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Commit to promote. Empty = whatever staging is serving now.
+        required: false
+        default: ""
+
+# Each job asks for exactly what it needs below.
+permissions: {}
+
+# One promotion at a time, so two runs never race to move the branch.
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+# Staging sits behind Vercel's login (only the owner may open it). Each call to it
+# below sends the repo secret VERCEL_AUTOMATION_BYPASS_SECRET as the
+# x-vercel-protection-bypass header; Vercel → platform-web → Settings →
+# Deployment Protection → "Protection Bypass for Automation" holds the same value.
+env:
+  STAGING_SITE_URL: https://staging.osceguide.com
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # read the git history (is the commit on main / ahead of production?)
+      actions: read # look up the CI run for the commit
+    outputs:
+      commit_sha: ${{ steps.target.outputs.commit_sha }}
+    steps:
+      # The gate below must be main's reviewed copy, not whatever a branch carries.
+      - name: Refuse runs from any branch but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Run this workflow from main (Use workflow from: main), not ${GITHUB_REF}." >&2
+          exit 1
+
+      # Full history, so the ancestry checks below can see main and production.
+      - name: Checkout main with history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      # Turn the input (or, when empty, the commit staging serves) into a full sha
+      # that exists in this repository.
+      - name: Work out which commit to ship
+        id: target
+        env:
+          REQUESTED_COMMIT: ${{ inputs.commit_sha }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          requested_commit="$(echo "$REQUESTED_COMMIT" | tr -d '[:space:]')"
+          if [[ -z "$requested_commit" ]]; then
+            # /version answers {"commit": "<VERCEL_GIT_COMMIT_SHA>"}.
+            requested_commit="$(curl --fail --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" "${STAGING_SITE_URL}/version" | jq -r '.commit')"
+            echo "commit_sha was empty, so promoting what staging serves: ${requested_commit}"
+          fi
+          # Only hex, so the value is safe to pass to git and into later steps.
+          [[ "$requested_commit" =~ ^[0-9a-f]{7,40}$ ]] || { echo "'${requested_commit}' is not a commit sha." >&2; exit 1; }
+          full_commit_sha="$(git rev-parse --verify --quiet "${requested_commit}^{commit}")" \
+            || { echo "Commit ${requested_commit} is not in this repository." >&2; exit 1; }
+          echo "commit_sha=${full_commit_sha}" >> "$GITHUB_OUTPUT"
+
+      # Ship only reviewed code, and never step production backwards: if production
+      # has commits this one lacks, promoting it would silently undo them.
+      - name: Check the commit's history
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+        run: |
+          git merge-base --is-ancestor "$COMMIT_SHA" origin/main \
+            || { echo "${COMMIT_SHA} is not on main. Merge it to main (and let staging serve it) first." >&2; exit 1; }
+          if git rev-parse --verify --quiet origin/production >/dev/null; then
+            git merge-base --is-ancestor origin/production "$COMMIT_SHA" \
+              || { echo "production has commits that ${COMMIT_SHA} does not; promote a newer commit." >&2; exit 1; }
+          fi
+          echo "${COMMIT_SHA} is on main and moves production forward."
+
+      - name: Check CI passed on the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+        run: |
+          successful_ci_runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$COMMIT_SHA" \
+            --status success --json databaseId --jq 'length')"
+          [[ "$successful_ci_runs" -gt 0 ]] || { echo "CI has not passed on ${COMMIT_SHA}." >&2; exit 1; }
+          echo "CI passed on ${COMMIT_SHA}."
+
+      # The heart of the gate: staging must be serving this exact commit, and a
+      # real page (sign-in, which renders without a session) must load.
+      - name: Check staging serves this commit
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          staging_commit="$(curl --fail --silent --show-error --max-time 20 --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" "${STAGING_SITE_URL}/version" | jq -r '.commit')"
+          [[ "$staging_commit" == "$COMMIT_SHA" ]] \
+            || { echo "Staging serves ${staging_commit:-nothing}, not ${COMMIT_SHA}. Wait for Vercel's staging build of it." >&2; exit 1; }
+          sign_in_status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 20 --header "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" "${STAGING_SITE_URL}/login")"
+          [[ "$sign_in_status" == "200" ]] \
+            || { echo "Staging's sign-in page answered ${sign_in_status}, not 200." >&2; exit 1; }
+          echo "Staging serves ${COMMIT_SHA} and its sign-in page loads."
+
+      - name: Record what was approved
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+        run: |
+          echo "### Promoting \`${COMMIT_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "On main, CI green, served by ${STAGING_SITE_URL}, sign-in page loads." >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: deploy
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: write # move the production branch
+      deployments: read # read Vercel's deployment status for the commit
+    steps:
+      - name: Checkout main with history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      # A plain push, so git itself refuses anything but a fast-forward. Vercel's
+      # GitHub App sees the push (pushes made with GITHUB_TOKEN skip other
+      # workflows, not app webhooks) and starts the production build.
+      - name: Move the production branch to the commit
+        env:
+          COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
+        run: |
+          git push origin "${COMMIT_SHA}:refs/heads/production"
+          echo "production → ${COMMIT_SHA}" >> "$GITHUB_STEP_SUMMARY"
+
+      # Vercel records each build as a GitHub deployment on the commit, in an
+      # environment named like "Production – platform-web". Wait for that one to
+      # succeed, so a green run means production is actually serving the commit.
+      - name: Wait for Vercel's production build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
+        run: |
+          for poll_attempt in $(seq 1 60); do
+            production_deployment_id="$(gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${COMMIT_SHA}" \
+              --jq '[.[] | select(.environment | startswith("Production"))][0].id // empty')"
+            if [[ -n "$production_deployment_id" ]]; then
+              build_state="$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${production_deployment_id}/statuses" \
+                --jq '.[0].state // "pending"')"
+              case "$build_state" in
+                success)
+                  echo "Vercel's production build of ${COMMIT_SHA} succeeded."
+                  echo "Vercel production build: success" >> "$GITHUB_STEP_SUMMARY"
+                  exit 0 ;;
+                failure|error)
+                  echo "Vercel's production build of ${COMMIT_SHA} ended in '${build_state}'. Production still serves the previous build; see Vercel's build log." >&2
+                  exit 1 ;;
+              esac
+            fi
+            sleep 15
+          done
+          echo "Vercel had not finished building ${COMMIT_SHA} after 15 minutes; check the Vercel dashboard." >&2
+          exit 1

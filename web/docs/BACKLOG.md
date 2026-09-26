@@ -90,6 +90,13 @@ Protocol and schema work in `peer_practice`, none of it started:
 | T-1 | Chunker never size-caps a mid-document section | Only the tail after the last heading is size-capped, so the oracle fixture emits 3815 characters against an 1800 limit. This is legacy behaviour, pinned byte-for-byte by `tests/unit/test_tutor_memory_chunking.py`. Fix it as its own change, updating the oracle in the same commit, then re-index |
 | T-3 | Nothing re-indexes tutor material on publish | Material is re-indexed nightly, or by an admin through `POST /api/v1/admin/tutor-memory/reindex`, so a correction made in the morning is not searchable until the next night. Fix: let the job take one source, then call it from `media.service.publish` |
 
+### Website hosting
+
+| # | Item | State |
+|---|---|---|
+| W-1 | Enforcing the CSP blocks every script | Found on staging 2026-09-26 with `PLATFORM_WEB_CSP_ENFORCE=true`: pages are prerendered, so their `<script>` tags carry no nonce, and the enforced policy (`'nonce-…' 'strict-dynamic'`, where `'self'` no longer counts) blocks them all. The page never hydrates and loads forever. Staging and production stay on Report-Only until pages render per request (the nonce needs that) or the policy stops relying on a nonce. Prove it on staging before setting the variable again |
+| W-2 | The analytics consent prompt shows where no analytics can load | Staging and previews resolve no GA id (`foundation/analytics/gaMeasurementId.ts`), yet the "Allow analytics" prompt still covers the page. Skip it when there is no id |
+
 ## Open: needs a product decision
 
 | # | Question | Recommendation on record |
