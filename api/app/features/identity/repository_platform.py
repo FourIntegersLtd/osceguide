@@ -148,8 +148,8 @@ async def list_platform_admins(session: AsyncSession, *, limit: int) -> list[Use
     return list((await session.execute(stmt)).scalars())
 
 
-async def update_admin_fields(session: AsyncSession, user_id: uuid.UUID, **values: Any) -> None:
+async def update_admin_fields(session: AsyncSession, user_id: uuid.UUID, **fields: Any) -> None:
     """Write what the console changed. The caller decides which fields; an
     empty change is a no-op rather than an `UPDATE ... SET` with nothing in it."""
-    if values:
-        await session.execute(update(User).where(User.id == user_id).values(**values))
+    if fields:
+        await session.execute(update(User).where(User.id == user_id).values(**fields))

@@ -34,6 +34,8 @@ router = APIRouter(tags=["identity"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Create the account and sign them in immediately: registering is also the
+# first login, so there is no separate first-session step.
 @router.post(
     "/auth/register",
     response_model=schemas.AuthResult,
@@ -61,6 +63,8 @@ async def register(
     )
 
 
+# The ordinary password sign-in, refused for an account an SSO-only
+# arrangement has switched to signing in elsewhere.
 @router.post(
     "/auth/login",
     response_model=schemas.AuthResult,
@@ -87,6 +91,9 @@ async def login(
     )
 
 
+# Trade a refresh token for a new access/refresh pair, rotating the chain;
+# presenting one already spent revokes the whole chain rather than just
+# refusing the one request, since that shape means the token leaked.
 @router.post(
     "/auth/refresh",
     response_model=schemas.TokenPair,
@@ -178,6 +185,8 @@ async def logout(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# Always 202, whether or not the address has an account: telling the two
+# apart would make this an account-enumeration oracle.
 @router.post(
     "/auth/password-reset",
     response_model=schemas.Accepted,
@@ -199,6 +208,8 @@ async def begin_password_reset(
     return schemas.Accepted()
 
 
+# Redeem a reset token for a new password. Ends every existing session, the
+# same as a password change: a reset is itself a sign of possible compromise.
 @router.post(
     "/auth/password-reset/confirm",
     response_model=schemas.Accepted,
@@ -219,6 +230,8 @@ async def confirm_password_reset(
     return schemas.Accepted()
 
 
+# Change the password when the current one still works. Ends every other
+# session, so a stolen credential does not survive the owner locking it out.
 @router.post(
     "/auth/change-password",
     response_model=schemas.Accepted,

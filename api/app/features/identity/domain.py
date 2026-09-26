@@ -86,10 +86,10 @@ def validate_password(raw: str) -> None:
     if len(raw) < MIN_PASSWORD_LENGTH:
         raise WeakPassword(f"Use at least {MIN_PASSWORD_LENGTH} characters")
     classes = (
-        any(c.islower() for c in raw),
-        any(c.isupper() for c in raw),
-        any(c.isdigit() for c in raw),
-        any(not c.isalnum() for c in raw),
+        any(character.islower() for character in raw),
+        any(character.isupper() for character in raw),
+        any(character.isdigit() for character in raw),
+        any(not character.isalnum() for character in raw),
     )
     if sum(classes) < 2:
         raise WeakPassword("Mix letters with numbers, punctuation, or capitals")
@@ -107,6 +107,7 @@ class RefreshChain:
 
 @dataclass(frozen=True)
 class RefreshDecision:
+
     accepted: bool
     revoke_chain: bool = False
     reason: str | None = None

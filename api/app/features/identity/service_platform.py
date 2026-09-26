@@ -81,7 +81,7 @@ async def search_users(
     `except_ids` narrow to or away from a set the caller computed, and
     `no_exam` is the accounts that chose none.
     """
-    rows, next_cursor = await repository_platform.search_users(
+    users, next_cursor = await repository_platform.search_users(
         session,
         query=query,
         limit=limit,
@@ -94,7 +94,7 @@ async def search_users(
         except_ids=except_ids,
         no_exam=no_exam,
     )
-    return [_support(row) for row in rows], next_cursor
+    return [_support(user) for user in users], next_cursor
 
 
 async def count_users_matching(
@@ -133,7 +133,7 @@ async def user_by_id(session: AsyncSession, user_id: uuid.UUID) -> SupportUser |
 
 
 async def list_platform_admins(session: AsyncSession, *, limit: int) -> list[SupportUser]:
-    return [_support(row) for row in await repository_platform.list_platform_admins(session, limit=limit)]
+    return [_support(user) for user in await repository_platform.list_platform_admins(session, limit=limit)]
 
 
 async def update_user(
@@ -156,7 +156,7 @@ async def update_user(
         "exam_date": exam_date,
         "extra_reading_percent": extra_reading_percent,
     }
-    changes = {k: v for k, v in sent.items() if v is not None}
+    changes = {field: value for field, value in sent.items() if value is not None}
     await repository_platform.update_admin_fields(session, user_id, **changes)
     return await user_by_id(session, user_id)
 

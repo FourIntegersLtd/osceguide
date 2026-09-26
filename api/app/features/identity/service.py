@@ -69,14 +69,14 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         replay_onboarding=user.replay_onboarding,
         memberships=[
             MembershipRead(
-                org_id=m.org_id,
-                org_slug=m.org_slug,
-                org_name=m.org_name,
-                org_type=m.org_type,
-                role=m.role,
-                surface=m.surface,
+                org_id=membership.org_id,
+                org_slug=membership.org_slug,
+                org_name=membership.org_name,
+                org_type=membership.org_type,
+                role=membership.role,
+                surface=membership.surface,
             )
-            for m in memberships
+            for membership in memberships
         ],
         active_org_slug=default_workspace_slug(memberships),
         last_login_at=user.last_login_at,
@@ -192,8 +192,8 @@ def _ref(user: User) -> UserRef:
 async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, UserRef]:
     """The people behind a set of ids, keyed by id. One query for a whole screen rather than
     one per row."""
-    rows = await repository.users_by_ids(session, list(user_ids))
-    return {row.id: _ref(row) for row in rows}
+    users = await repository.users_by_ids(session, list(user_ids))
+    return {user.id: _ref(user) for user in users}
 
 
 async def count_users(session: AsyncSession) -> int:

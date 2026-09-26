@@ -93,11 +93,11 @@ async def consumer_legacy_ids(session: AsyncSession, user_id: uuid.UUID) -> dict
         UserIdentity.user_id == user_id,
         UserIdentity.provider == "consumer",
     )
-    out: dict[str, str] = {}
+    legacy_ids_by_exam: dict[str, str] = {}
     for slug, subject in (await session.execute(stmt)).all():
         key = str(slug or "unknown").lower()
-        out[key] = str(subject)
-    return out
+        legacy_ids_by_exam[key] = str(subject)
+    return legacy_ids_by_exam
 
 
 # --- refresh chains --------------------------------------------------------

@@ -24,6 +24,7 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class User(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "users"
 
     # citext, so "Alice@…" and "alice@…" collide in the database rather than
@@ -113,6 +114,7 @@ class RefreshToken(Base, UUIDPrimaryKey, Timestamps):
 
 
 class PasswordResetToken(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "password_reset_tokens"
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
