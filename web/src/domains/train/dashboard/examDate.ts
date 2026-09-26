@@ -3,9 +3,10 @@
  *
  * Brought across from the retiring `ScaDashboard`, which computed a live
  * "time remaining" for the header pill and a coarser "N weeks until your exam"
- * for the subtitle. `users.exam_date` is a plain date (no time), so a bare
- * `YYYY-MM-DD` is read as UTC midnight — the same instant the legacy
- * `apiUtcDate` helper produced for a date with no `T` and no zone.
+ * for the subtitle. The date and time are stored apart (`exam_date`,
+ * `exam_time`) and joined by `examMoment`. A date with a time and no zone is
+ * read as UTC, and a bare date as UTC midnight: the same instant the legacy
+ * `apiUtcDate` helper produced for the combined value the old card saved.
  *
  * These are pure so the header control can tick them every second without the
  * rest of the dashboard re-rendering, and so the subtitle can read them once.
@@ -18,6 +19,18 @@ const MS_PER_WEEK = 7 * MS_PER_DAY;
 
 /** The sentinel the legacy screen used for a date already behind us. */
 export const EXAM_PASSED = "Exam date has passed";
+
+/**
+ * The instant the countdowns count to, as the old combined value: the date
+ * alone, or `YYYY-MM-DDTHH:MM:SS` when a time was saved with it.
+ */
+export function examMoment(
+  examDate: string | null | undefined,
+  examTime: string | null | undefined,
+): string | null {
+  if (!examDate) return null;
+  return examTime ? `${examDate}T${examTime.slice(0, 8)}` : examDate;
+}
 
 /** Parse an exam date as a UTC instant, or `null` when there is none. */
 export function parseExamDate(value: string | null | undefined): Date | null {

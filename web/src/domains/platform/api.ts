@@ -52,7 +52,10 @@ export interface UpdatePlatformUserInput {
   status?: "active" | "deactivated" | null;
   /** `YYYY-MM-DD`. */
   exam_date?: string | null;
-  extra_reading_percent?: number | null;
+  needs_extra_time?: boolean | null;
+  /** Seconds, 1–3659. `null` clears it back to the exam's own length. */
+  custom_reading_seconds?: number | null;
+  custom_simulation_seconds?: number | null;
 }
 
 /** The directory's facets. `access` is the old filter modal's three states. */

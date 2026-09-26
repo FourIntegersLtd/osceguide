@@ -82,8 +82,11 @@ const LEGACY_SAMPLE: readonly [string, string][] = [
   ["/transcripts/t1", "/app/me/transcripts/t1"],
   ["/community", "/app/me/discussion"],
   ["/community/question/q1", "/app/me/discussion?question=q1"],
-  ["/marketplace", "/app/me/peers"],
-  ["/human-practice/session/s1", "/app/me/peers"],
+  ["/marketplace", "/app/me/marketplace"],
+  ["/peers", "/app/me/marketplace"],
+  ["/human-practice", "/app/me/marketplace"],
+  ["/human-practice/session/s1", "/app/me/marketplace/session/s1"],
+  ["/human-practice/session/s1/feedback", "/app/me/marketplace/session/s1/feedback"],
   ["/partner/p1/reporting", "/app/p1/reporting"],
   ["/features/f1", "/"],
   // Back office.

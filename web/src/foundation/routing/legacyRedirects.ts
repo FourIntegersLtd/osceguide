@@ -56,10 +56,10 @@ export const CONSUMER_REDIRECTS: readonly LegacyRedirect[] = [
   { from: "/blogs", to: personal("/articles") },
   { from: "/community", to: personal("/discussion") },
   { from: "/discussion", to: personal("/discussion") },
-  { from: "/marketplace", to: personal("/peers") },
-  { from: "/peers", to: personal("/peers") },
-  { from: "/partner-marketplace", to: personal("/peers") },
-  { from: "/human-practice", to: personal("/peers") },
+  { from: "/marketplace", to: personal("/marketplace") },
+  { from: "/peers", to: personal("/marketplace") },
+  { from: "/partner-marketplace", to: personal("/marketplace") },
+  { from: "/human-practice", to: personal("/marketplace") },
   { from: "/transcripts", to: personal("/transcripts") },
   /*
    * One debrief is still a page of its own; the *list* was never a page here —
@@ -228,7 +228,9 @@ export const PREFIX_REDIRECTS: readonly { pattern: RegExp; to: string }[] = [
   // The feed opens one thread off a query, so a question id survives the move.
   { pattern: /^\/community\/question\/([^/]+)$/, to: `${personal("/discussion")}?question=$1` },
   { pattern: /^\/community(?:\/.*)?$/, to: personal("/discussion") },
-  { pattern: /^\/human-practice(?:\/.*)?$/, to: personal("/peers") },
+  // A live session link survives the move: the room and its feedback page kept their shape.
+  { pattern: /^\/human-practice\/session\/([^/]+)(\/feedback)?$/, to: personal("/marketplace/session/$1$2") },
+  { pattern: /^\/human-practice(?:\/.*)?$/, to: personal("/marketplace") },
   { pattern: /^\/practice(?:\/.*)?$/, to: personal("/dashboard") },
   { pattern: /^\/settings\/referrals(?:\/.*)?$/, to: `${personal("/settings")}?tab=referrals` },
   { pattern: /^\/settings(?:\/.*)?$/, to: personal("/settings") },

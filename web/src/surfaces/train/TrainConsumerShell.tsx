@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { b2cPageColumn, b2cShellMain } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui";
-import { useSession, can as hasPermission, type Permission } from "@/foundation/session";
+import { useCurrentExam, useSession, can as hasPermission, type Permission } from "@/foundation/session";
 import {
   SurfaceProvider,
   capabilitiesFor,
@@ -38,6 +38,8 @@ export function TrainConsumerShell({
   children,
 }: TrainConsumerShellProps) {
   const { session } = useSession();
+  // The marketplace is SCA-only in navigation, like the retiring `scaOnly`.
+  const { code: examCode } = useCurrentExam();
   const [menuOpen, setMenuOpen] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [helpExpanded, setHelpExpanded] = useState(false);
@@ -54,6 +56,7 @@ export function TrainConsumerShell({
     const mounted = capabilitiesFor(manifest.id, {
       can: session?.capabilities.can ?? {},
       basePath,
+      examCode,
     }).map((capability) => ({
       key: capability.id,
       label: capability.title,
@@ -62,7 +65,7 @@ export function TrainConsumerShell({
       section: capability.section,
     }));
     return [...own, ...mounted];
-  }, [manifest, workspace, session, href, basePath]);
+  }, [manifest, workspace, session, href, basePath, examCode]);
 
   const groups = useMemo(() => {
     const ungrouped = items.filter((item) => !item.section);

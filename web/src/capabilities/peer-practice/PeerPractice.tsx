@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiOutlineCalendarDays, HiOutlinePlus } from "react-icons/hi2";
+import { HiOutlinePlus } from "react-icons/hi2";
+import Alert from "@/foundation/forms/Alert";
 import {
-  Alert,
   AsyncBoundary,
   B2CPageHeader,
   B2CSegmentedTabs,
@@ -12,11 +12,11 @@ import {
   Modal,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { failureText } from "@/capabilities/peer-practice/support/failure";
+import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam } from "@/foundation/session";
-import { listExams } from "@/capabilities/stations";
 import {
   claimSlot,
-  listPracticeSessions,
   listMyPosts,
   listAllSlots,
   offerSlot,
@@ -39,20 +39,20 @@ import {
 } from "@/capabilities/peer-practice/marketplace/OfferSlotForm";
 import { MySlots, SlotSections } from "@/capabilities/peer-practice/marketplace/SlotSections";
 import { UpcomingSessions } from "@/capabilities/peer-practice/marketplace/UpcomingSessions";
+import { ListLoadError, ListLoading } from "@/capabilities/peer-practice/marketplace/listStates";
 import { LivePracticeButton } from "@/capabilities/peer-practice/queue/LivePracticeButton";
 import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/time";
 
 import { PeerPracticeProvider, usePeerPractice } from "./PeerPracticeProvider";
 
+/** Every slot is thirty minutes; the retiring form never asked. */
+const SLOT_MINUTES = 30;
+
+/** A message plus a counter, so the same toast can be raised twice in a row. */
+type Notice = { id: number; type: "success" | "error"; text: string };
+
 /**
- * Practise with another person.
- *
- * Two halves of one thing: a marketplace of arranged times, and a queue that
- * pairs you with whoever else is waiting. They were two folders and forty-one
- * files in the retiring client, connected through a context, a localStorage
- * key per exam and a polling hook each; they are one screen here because they
- * are one question — "who can I practise with?" — and the answer to it is
- * either a time or a person.
+ * The marketplace: arranged times, and the button that pairs you now.
  *
  * `orgId` scopes both halves to one organisation's cohort when a surface
  * supplies it. The component itself knows only that an audience exists, which
@@ -60,13 +60,18 @@ import { PeerPracticeProvider, usePeerPractice } from "./PeerPracticeProvider";
  */
 export function PeerPractice({ orgId = null }: { orgId?: string | null }) {
   const shared = usePeerPractice();
-  if (!shared || shared.orgId !== orgId) return <PeerPracticeProvider orgId={orgId}><PeerPracticeContent orgId={orgId} /></PeerPracticeProvider>;
+  if (!shared || shared.orgId !== orgId) {
+    return (
+      <PeerPracticeProvider orgId={orgId}>
+        <PeerPracticeContent orgId={orgId} />
+      </PeerPracticeProvider>
+    );
+  }
   return <PeerPracticeContent orgId={orgId} />;
 }
+
 function PeerPracticeContent({ orgId }: { orgId: string | null }) {
   const shared = usePeerPractice()!;
-  const queue = shared.queue;
-  const setChosenSessionId = shared.openSession;
   const [tab, setTab] = useState<MarketplaceTab>("available");
   const [reloadKey, setReloadKey] = useState(0);
   const [offering, setOffering] = useState(false);
@@ -75,211 +80,192 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
-  // The exam is the app's, not this screen's. There used to be a dropdown
-  // here over every published exam, which offered to pair somebody for an exam
-  // they had never bought — and `POST /peer-practice/queue` now refuses that.
+  // The exam is the app's, not this screen's: one answer, set once per account.
   const { code: activeExam } = useCurrentExam();
-  const exams = useAsync((signal) => listExams(signal), []);
   const slots = useAsync(
-    async (signal) => {
-      const items = await listAllSlots({ orgId, examCode: activeExam || null }, signal);
-      return { items, next_cursor: null };
-    },
+    (signal) => listAllSlots({ orgId, examCode: activeExam || null }, signal),
     [orgId, activeExam, reloadKey],
   );
   const myPosts = useAsync((signal) => listMyPosts(signal), [reloadKey]);
-  const mySessions = useAsync((signal) => listPracticeSessions(signal), [reloadKey]);
-  // Still read, but only to put a name on the exam rather than to choose one.
-  const examLabel =
-    (exams.data?.items ?? []).find((exam) => exam.code === activeExam)?.name ??
-    (activeExam ?? "").toUpperCase();
-  // The slot is offered for the exam being practised, so the form is handed
-  // that one rather than the catalogue.
-  const offerableExams = activeExam ? [{ code: activeExam, name: examLabel }] : [];
 
-  const live = (mySessions.data?.items ?? []).find((session) => session.status !== "ended");
+  const say = useCallback((type: Notice["type"], text: string) => {
+    setNotice((previous) => ({ id: (previous?.id ?? 0) + 1, type, text }));
+  }, []);
+
+  const reloadAll = useCallback(() => {
+    setReloadKey((key) => key + 1);
+    shared.refresh();
+  }, [shared]);
 
   const post = useCallback(
     async (input: OfferSlotInput) => {
+      if (!activeExam) return;
       setPosting(true);
-      setSuccess(null);
-      setFailure(null);
+      setNotice(null);
       try {
-        await offerSlot({ ...input, orgId });
+        await offerSlot({
+          examCode: activeExam,
+          startsAt: input.startsAt,
+          durationMinutes: SLOT_MINUTES,
+          note: input.note,
+          orgId,
+        });
         setOffering(false);
-        setSuccess("Availability posted successfully!");
+        say("success", "Availability posted successfully!");
         setTab("myPosts");
-        setReloadKey((key) => key + 1);
-        shared.refresh();
+        reloadAll();
       } catch (cause) {
-        setFailure(errorMessage(cause));
+        say("error", failureText(cause, "Failed to create post. Please try again."));
       } finally {
         setPosting(false);
       }
     },
-    [orgId, shared],
+    [activeExam, orgId, reloadAll, say],
   );
 
+  // The modal closes the moment the claim is confirmed; the card spins instead.
   const confirmClaim = useCallback(async () => {
     const slot = claiming;
-    if (!slot) return;
-    if (claimingId) return;
+    if (!slot || claimingId) return;
+    setClaiming(null);
     setClaimingId(slot.id);
-    setSuccess(null);
-    setFailure(null);
+    setNotice(null);
     try {
       const session = await claimSlot(slot.id);
-      setSuccess(
-        `Session booked! You will practice on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`,
+      say(
+        "success",
+        `Session booked! You will practice with ${session.partner_username} on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`,
       );
-      setClaiming(null);
       setTab("upcoming");
     } catch (cause) {
-      setFailure(errorMessage(cause));
+      say(
+        "error",
+        hasCode(cause, "slot_already_claimed")
+          ? "This slot has already been claimed by someone else."
+          : failureText(cause, "Failed to claim slot. Please try again."),
+      );
     } finally {
       setClaimingId(null);
-      // Always refresh: the slot is gone either way, whether we took it or
-      // somebody beat us to it by a fraction of a second.
-      setReloadKey((key) => key + 1);
-        shared.refresh();
+      // The slot is gone either way, whether we took it or somebody beat us.
+      reloadAll();
     }
-  }, [claiming, claimingId, shared]);
+  }, [claiming, claimingId, reloadAll, say]);
 
   const confirmWithdraw = useCallback(async () => {
     const postId = withdrawing;
     setWithdrawing(null);
     if (!postId) return;
-    setSuccess(null);
-    setFailure(null);
+    setNotice(null);
     try {
       await withdrawSlot(postId);
-      setSuccess("Post cancelled successfully.");
+      say("success", "Post cancelled successfully.");
     } catch (cause) {
-      setFailure(errorMessage(cause));
+      say("error", failureText(cause, "Failed to cancel post. Please try again."));
     } finally {
-      setReloadKey((key) => key + 1);
-        shared.refresh();
+      reloadAll();
     }
-  }, [withdrawing, shared]);
+  }, [withdrawing, reloadAll, say]);
 
-  const actions = {
-    onClaim: (slot: Slot) => { setFailure(null); setClaiming(slot); },
-    onWithdraw: setWithdrawing,
-    claimingId,
-  };
+  const actions = { onClaim: setClaiming, onWithdraw: setWithdrawing, claimingId };
 
   return (
-    <div className="w-full pb-24">
-      <B2CPageHeader
-        title="Practise with someone"
-        subtitle="Be paired with another candidate now, or arrange a time."
-        icon={HiOutlineCalendarDays}
-      />
+    <>
+      <B2CPageHeader title="Marketplace" />
+      <div className="w-full pb-24">
+        {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
 
-      {!activeExam && <Alert tone="info" className="mb-4">Choose an available exam in your account to post availability. For Live Practice, choose your exam in the dialog.</Alert>}
-      {success && <Alert tone="success" className="mb-4">{success}</Alert>}
-      {failure && <Alert tone="danger" className="mb-4">{failure}</Alert>}
+        <div className="mb-4 flex min-w-0 flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between md:mb-6">
+          <B2CSegmentedTabs
+            items={MARKETPLACE_TABS}
+            value={tab}
+            onChange={setTab}
+            aria-label="Marketplace"
+          />
 
-      {live && (
-        <Alert tone="info" className="mb-4">
-          You have a practice session in progress.{" "}
-          <button
-            type="button"
-            onClick={() => setChosenSessionId(live.id)}
-            className="font-semibold underline underline-offset-2"
+          {tab === "available" && (
+            <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+              <LivePracticeButton queue={shared.queue} examCode={activeExam || null} />
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => setOffering((open) => !open)}
+                className="w-full gap-1.5 sm:w-auto"
+              >
+                <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" />
+                <span>Post Availability</span>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="mb-6 sm:mb-8">
+          <MarketplaceIntroCard examCode={activeExam || null} onLearnMore={() => setExplaining(true)} />
+        </div>
+
+        <div id={`tab-panel-${tab}`} role="tabpanel">
+          {tab === "upcoming" ? (
+            <UpcomingSessions reloadKey={reloadKey} onOpenPracticeSession={shared.openSession} />
+          ) : tab === "available" ? (
+            <AsyncBoundary
+              state={slots}
+              isEmpty={() => false}
+              loading={<ListLoading />}
+              failure={(error, retry) => (
+                <ListLoadError message={errorMessage(error)} onRetry={retry} />
+              )}
+            >
+              {(items) => <SlotSections slots={items} actions={actions} />}
+            </AsyncBoundary>
+          ) : (
+            <AsyncBoundary
+              state={myPosts}
+              isEmpty={() => false}
+              loading={<ListLoading />}
+              failure={(_error, retry) => (
+                <ListLoadError message="Failed to load your posts. Please try again." onRetry={retry} />
+              )}
+            >
+              {(page) => <MySlots slots={page.items} actions={actions} />}
+            </AsyncBoundary>
+          )}
+        </div>
+
+        {offering && (
+          <Modal
+            onClose={() => setOffering(false)}
+            width={OFFER_SLOT_MODAL_WIDTH}
+            height="fit-content"
           >
-            Rejoin it
-          </button>
-        </Alert>
-      )}
+            <OfferSlotForm
+              onSubmit={post}
+              isLoading={posting}
+              onCancel={() => setOffering(false)}
+            />
+          </Modal>
+        )}
 
-      <div className="mb-6 flex min-w-0 flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
-        <B2CSegmentedTabs
-          compact
-          className="min-w-0 flex-1"
-          items={MARKETPLACE_TABS}
-          value={tab}
-          onChange={setTab}
-          aria-label="Marketplace"
+        <ClaimConfirmationModal
+          slot={claiming}
+          isClaiming={claiming !== null && claimingId === claiming.id}
+          onConfirm={() => void confirmClaim()}
+          onCancel={() => setClaiming(null)}
         />
 
-        {tab === "available" && (
-          <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-            <LivePracticeButton queue={queue} examCode={activeExam || null} />
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              onClick={() => { setFailure(null); setOffering(true); }}
-              disabled={!activeExam}
-              className="w-full gap-1.5 sm:w-auto"
-            >
-              <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" />
-              <span>Post Availability</span>
-            </Button>
-          </div>
-        )}
+        {explaining && <MarketplaceHowItWorksModal onClose={() => setExplaining(false)} />}
+
+        <ConfirmModal
+          isOpen={withdrawing !== null}
+          onCancel={() => setWithdrawing(null)}
+          onConfirm={() => void confirmWithdraw()}
+          title="Cancel post?"
+          message="Are you sure you want to cancel this post?"
+          confirmText="Yes, cancel post"
+          cancelText="Keep post"
+        />
       </div>
-
-      <div className="mb-6 sm:mb-8">
-        <MarketplaceIntroCard examLabel={examLabel} onLearnMore={() => setExplaining(true)} />
-      </div>
-
-      <div id={`tab-panel-${tab}`} role="tabpanel">
-        {tab === "upcoming" ? (
-          <UpcomingSessions
-            reloadKey={reloadKey}
-            onOpenPracticeSession={setChosenSessionId}
-          />
-        ) : tab === "available" ? (
-          <AsyncBoundary state={slots} isEmpty={() => false}>
-            {(page) => <SlotSections slots={page.items} actions={actions} />}
-          </AsyncBoundary>
-        ) : (
-          <AsyncBoundary state={myPosts} isEmpty={() => false}>
-            {(page) => <MySlots slots={page.items} actions={actions} />}
-          </AsyncBoundary>
-        )}
-      </div>
-
-      {offering && (
-        <Modal
-          onClose={() => !posting && setOffering(false)}
-          width={OFFER_SLOT_MODAL_WIDTH}
-          height="fit-content"
-        >
-          <OfferSlotForm
-            exams={offerableExams}
-            onSubmit={post}
-            isLoading={posting}
-            error={failure}
-            onCancel={() => setOffering(false)}
-          />
-        </Modal>
-      )}
-
-      <ClaimConfirmationModal
-        slot={claiming}
-        error={failure}
-        isClaiming={claimingId !== null}
-        onConfirm={() => void confirmClaim()}
-        onCancel={() => !claimingId && setClaiming(null)}
-      />
-
-      {explaining && <MarketplaceHowItWorksModal onClose={() => setExplaining(false)} />}
-
-      <ConfirmModal
-        isOpen={withdrawing !== null}
-        onCancel={() => setWithdrawing(null)}
-        onConfirm={() => void confirmWithdraw()}
-        title="Cancel post?"
-        message="Are you sure you want to cancel this post?"
-        confirmText="Yes, cancel post"
-        cancelText="Keep post"
-      />
-    </div>
+    </>
   );
 }

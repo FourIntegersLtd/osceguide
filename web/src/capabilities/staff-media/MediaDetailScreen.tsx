@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HiOutlineArrowLeft } from "react-icons/hi2";
 import { Alert, Button, Card, Input } from "@/foundation/ui";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { errorMessage, useAsync, useMeEvents, useToast } from "@/foundation/hooks";
 import { MEDIA_KIND_LABELS, isMediaKind } from "@/capabilities/media/api";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { avStatus, isAvRunning, mergeContent } from "@/capabilities/staff-media/content/b2cMediaShapes";
@@ -57,11 +57,18 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
     setPollAv(isAvRunning(status));
   }, [load.data]);
 
-  useEffect(() => {
-    if (!pollAv) return;
-    const id = window.setInterval(() => load.reload(), 5000);
-    return () => window.clearInterval(id);
-  }, [pollAv, load]);
+  // The AV job publishes `media.updated` to the staff member who requested it
+  // once it settles, so this re-reads on that event rather than on a timer.
+  const reload = load.reload;
+  useMeEvents(
+    pollAv ? ["media.updated"] : null,
+    useCallback(
+      (event) => {
+        if (event.name === "resync" || event.data.media_id === itemId) reload();
+      },
+      [itemId, reload],
+    ),
+  );
 
   useEffect(() => {
     const status = avStatus(content);

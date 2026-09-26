@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   EXAM_PASSED,
+  examMoment,
   examCountdownSubtitle,
   examTimeRemaining,
   isExamWeek,
@@ -54,5 +55,12 @@ describe("exam date countdown", () => {
     assert.equal(examTimeRemaining(null, NOW), null);
     assert.equal(examCountdownSubtitle(null, NOW), undefined);
     assert.equal(isExamWeek(null, NOW), false);
+  });
+
+  it("counts to the saved time of day, not midnight", () => {
+    assert.equal(examMoment("2026-09-22", "09:30:00"), "2026-09-22T09:30:00");
+    assert.equal(examMoment("2026-09-22", null), "2026-09-22");
+    assert.equal(examMoment(null, "09:30:00"), null);
+    assert.equal(examTimeRemaining(examMoment("2026-09-22", "09:30:00"), NOW), "1 days 9 hours");
   });
 });

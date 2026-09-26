@@ -1,17 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { HiOutlineClipboardDocumentList, HiOutlinePlay } from "react-icons/hi2";
 import {
-  Alert,
   B2CPanelCard,
   B2CPanelCardBody,
   B2CPanelCardHeader,
-  Button,
   ButtonLink,
   cn,
   productTokens,
 } from "@/foundation/ui";
-import { useMicPreflight } from "@/foundation/livekit";
+import { MicrophoneCheck } from "@/foundation/livekit";
 import { useSurface } from "@/capabilities";
 import type { Exam } from "@/capabilities/stations";
 import type { SetEntry, StationSet } from "@/domains/train/api";
@@ -36,8 +35,9 @@ export function MockRules({
   exam: Exam | null;
 }) {
   const { hrefFor } = useSurface();
-  const mic = useMicPreflight();
-  const micReady = mic.status === "ready";
+  const [micReady, setMicReady] = useState(false);
+  // A session with no stations has nowhere to start; the button stays inert.
+  const canStart = micReady && entry !== null;
 
   const doctorMinutes = (exam?.default_reading_seconds ?? 180) / 60;
   const simulationMinutes = (exam?.default_simulation_seconds ?? 720) / 60;
@@ -111,34 +111,26 @@ export function MockRules({
         </B2CPanelCardBody>
       </B2CPanelCard>
 
-      {mic.message ? <Alert tone="warning">{mic.message}</Alert> : null}
+      <MicrophoneCheck onReadyChange={setMicReady} />
 
-      {entry === null ? (
-        <Alert tone="warning">This session has no stations in it yet.</Alert>
-      ) : micReady ? (
-        <ButtonLink
-          href={hrefFor(`/mocks/${set.id}/stations/${entry.id}`)}
-          variant="commit"
-          size="hero"
-          fullWidth
-          className="inline-flex items-center justify-center gap-2 text-center"
-        >
-          <HiOutlinePlay className="h-4 w-4" aria-hidden />
-          Start Session
-        </ButtonLink>
-      ) : (
-        <Button
-          type="button"
-          variant="commit"
-          size="hero"
-          fullWidth
-          onClick={() => void mic.request()}
-          className="inline-flex items-center justify-center gap-2 text-center"
-        >
-          <HiOutlinePlay className="h-4 w-4" aria-hidden />
-          Allow your microphone to start
-        </Button>
-      )}
+      <ButtonLink
+        href={
+          entry
+            ? `${hrefFor(`/mocks/${set.id}/stations/${entry.id}`)}?action=attempt`
+            : hrefFor(`/mocks/${set.id}`)
+        }
+        variant="commit"
+        size="hero"
+        fullWidth
+        aria-disabled={!canStart}
+        className={cn(
+          "inline-flex items-center justify-center gap-2 text-center",
+          !canStart && "pointer-events-none opacity-60",
+        )}
+      >
+        <HiOutlinePlay className="h-4 w-4" aria-hidden />
+        {micReady ? "Start Session" : "Allow your microphone to start"}
+      </ButtonLink>
     </div>
   );
 }

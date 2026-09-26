@@ -28,8 +28,7 @@ import {
   StationBrief,
   consultationPatientFromBrief,
   useAttemptSession,
-  useExtraReadingPercent,
-  withExtraReadingTime,
+  usePracticeTimers,
 } from "@/capabilities/attempt-runner";
 import { readResults } from "@/capabilities/attempt-runner";
 import { MarkingModal } from "@/capabilities/station-runner/MarkingModal";
@@ -88,8 +87,8 @@ export function StationScreen(props: StationScreenProps) {
     step: initialStep,
     attemptId: attemptFromUrl,
     stationVersionId,
-    readingSeconds,
-    simulationSeconds,
+    readingSeconds: examReadingSeconds,
+    simulationSeconds: examSimulationSeconds,
     index,
     total,
     attemptsUsed,
@@ -106,13 +105,14 @@ export function StationScreen(props: StationScreenProps) {
   const pendingFeedback = useOptionalPendingFeedback();
 
   /*
-   * A person's own extra reading time extends the reading period of their own
-   * practice — never the consultation, and never a circuit's clock (this screen
-   * is practice only). Zero for everybody with no arrangement, so the reading
-   * timer is exactly the exam's default then.
+   * A person's own timers replace the exam's while their extra-time
+   * arrangement is on. This screen is practice only, so no circuit's clock is
+   * ever stretched; with no arrangement both are exactly the exam's defaults.
    */
-  const extraReadingPercent = useExtraReadingPercent();
-  const effectiveReadingSeconds = withExtraReadingTime(readingSeconds, extraReadingPercent);
+  const { readingSeconds: effectiveReadingSeconds, simulationSeconds } = usePracticeTimers({
+    readingSeconds: examReadingSeconds,
+    simulationSeconds: examSimulationSeconds,
+  });
 
   const [step, setStep] = useState<StationStep>(initialStep ?? "patient");
   const [confirmingStart, setConfirmingStart] = useState(false);

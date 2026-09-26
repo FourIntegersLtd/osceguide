@@ -2,7 +2,6 @@
 
 import { HiOutlineArrowPath, HiOutlineCalendarDays, HiOutlineVideoCamera } from "react-icons/hi2";
 import {
-  Alert,
   Modal,
   ModalBody,
   ModalFooterActions,
@@ -23,13 +22,11 @@ export function ClaimConfirmationModal({
   isClaiming,
   onConfirm,
   onCancel,
-  error,
 }: {
   slot: Slot | null;
   isClaiming: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-  error?: string | null;
 }) {
   if (!slot) return null;
 
@@ -52,17 +49,13 @@ export function ClaimConfirmationModal({
               <span className="font-medium text-osce-ink-900">Time:</span>{" "}
               {meridiemTime(slot.starts_at)}
             </p>
-            <p>
-              <span className="font-medium text-osce-ink-900">Length:</span>{" "}
-              {slot.duration_minutes} minutes
-            </p>
           </div>
         </ModalSection>
 
         <ModalSection title="What happens when you claim">
           <ModalSectionBullets
             items={[
-              <>You&apos;ll be paired with this colleague for a practice session</>,
+              <>You&apos;ll be paired with {slot.owner_username || "this user"} for a practice session</>,
               <>Both of you will receive a confirmation</>,
               <>The session will appear in your &quot;Upcoming Sessions&quot; tab</>,
               <>You can join the session at the scheduled time</>,
@@ -71,9 +64,8 @@ export function ClaimConfirmationModal({
           />
         </ModalSection>
 
-        {error && <Alert tone="danger">{error}</Alert>}
         <ModalFooterActions>
-          <ModalSecondaryButton onClick={onCancel} disabled={isClaiming}>Cancel</ModalSecondaryButton>
+          <ModalSecondaryButton onClick={onCancel}>Cancel</ModalSecondaryButton>
           <ModalPrimaryButton onClick={onConfirm} disabled={isClaiming} className="gap-2">
             {isClaiming ? (
               <>

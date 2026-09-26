@@ -24,6 +24,8 @@ import {
   readReferrals,
   type Referral,
 } from "@/capabilities/account/api";
+import BankDetails from "@/capabilities/account/settings/BankDetails";
+import ReferralHistory from "@/capabilities/account/settings/ReferralHistory";
 import ReferralsInfo from "@/capabilities/account/settings/ReferralsInfo";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
@@ -32,10 +34,12 @@ const { b2cFieldLabel, b2cSettingsCardHeaderIcon, b2cSettingsFieldInput } = prod
 /**
  * Share your referral code, and see what it has earned.
  *
- * There is nothing to redeem here: as in b2c, a friend types the code at
- * checkout (see `PlanPicker`), pays 10% less, and the backend credits the code's
- * owner once Stripe confirms the payment. `redeemed_count` and `earned_pence`
- * are the backend's own tally, not a number this screen adds up.
+ * The retiring client's Referrals tab (admin-only there, admin-only here): the
+ * "Referral program" and "Bank details" cards side by side, then "Referral
+ * history". There is nothing to redeem on this screen: a friend's code is
+ * applied at checkout, they pay 10% less, and the backend credits the code's
+ * owner once Stripe confirms the payment. `earned_pence` is the backend's own
+ * tally. Each card loads on its own, as the old ones did.
  */
 export default function ReferralsPanel() {
   const referrals = useAsync((signal) => readReferrals(signal), []);
@@ -43,17 +47,21 @@ export default function ReferralsPanel() {
 
   return (
     <SettingsTabShell fullWidth>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
-        <AsyncBoundary state={referrals}>
-          {(referral: Referral) => (
-            <ReferralCodeCard
-              referral={referral}
-              onIssued={referrals.reload}
-              onShowInfo={() => setShowInfo(true)}
-            />
-          )}
-        </AsyncBoundary>
-      </div>
+      <AsyncBoundary state={referrals}>
+        {(referral: Referral) => (
+          <>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+              <ReferralCodeCard
+                referral={referral}
+                onIssued={referrals.reload}
+                onShowInfo={() => setShowInfo(true)}
+              />
+              <BankDetails />
+            </div>
+            <ReferralHistory />
+          </>
+        )}
+      </AsyncBoundary>
 
       {showInfo ? (
         <Modal
@@ -121,23 +129,14 @@ function ReferralCodeCard({
       </B2CPanelCardHeader>
       <B2CPanelCardBody className="space-y-4">
         <ModalHelper className="mt-0">
-          Share your code. Friends get 10% off at checkout, and you earn £2.50 for each 1-month
-          plan and £5 for each 3- or 6-month plan they buy.
+          Share your referral code and earn rewards paid to your bank account.
         </ModalHelper>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
-            <p className={b2cFieldLabel}>Earned so far</p>
-            <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
-              £{(referral.earned_pence / 100).toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
-            <p className={b2cFieldLabel}>Purchases with your code</p>
-            <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
-              {referral.redeemed_count}
-            </p>
-          </div>
+        <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
+          <p className={b2cFieldLabel}>Total referral earnings</p>
+          <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
+            £{(referral.earned_pence / 100).toFixed(2)}
+          </p>
         </div>
 
         <div>

@@ -1,205 +1,205 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert, AsyncBoundary, Button, ConfirmModal } from "@/foundation/ui";
+import Alert from "@/foundation/forms/Alert";
+import { AsyncBoundary, Button, ConfirmModal } from "@/foundation/ui";
 import { b2cCard, b2cMutedBand } from "@/foundation/ui/productTokens";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useAsync } from "@/foundation/hooks";
 import {
   cancelPeerSession,
   joinPeerSession,
   listAllMyPeerSessions,
   type PeerSession,
 } from "@/capabilities/peer-practice/api";
+import { ListLoadError, ListLoading } from "@/capabilities/peer-practice/marketplace/listStates";
+import { failureText } from "@/capabilities/peer-practice/support/failure";
+import { hasCode } from "@/foundation/platform-client";
 import {
   canJoin,
-  joinWindowClosed,
   JOIN_OPENS_MINUTES,
+  joinWindowClosed,
   longDate,
   meridiemTime,
   timeUntilJoin,
 } from "@/capabilities/peer-practice/support/time";
 
+type Notice = { id: number; type: "success" | "error"; text: string };
+
 /**
  * The sessions somebody has arranged, and the way into them.
  *
- * The retiring section refetched on a counter the parent incremented, which is
- * why claiming a slot and seeing it here were two separate round trips that
- * could disagree. It reloads itself now, and the parent asks for a reload
- * rather than owning one.
+ * The API lists every booking; the ones cancelled, completed or more than an
+ * hour past their start are left out here, which is what the retiring
+ * upcoming-sessions endpoint did on the server.
  */
 export function UpcomingSessions({
   reloadKey,
   onOpenPracticeSession,
 }: {
   reloadKey: number;
-  onOpenPracticeSession?: (practiceSessionId: string) => void;
+  onOpenPracticeSession: (practiceSessionId: string) => void;
 }) {
-  const state = useAsync(async (signal) => {
-    const items = await listAllMyPeerSessions(signal);
-    return { items, next_cursor: null };
-  }, [reloadKey]);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [joining, setJoining] = useState<string | null>(null);
+  const state = useAsync((signal) => listAllMyPeerSessions(signal), [reloadKey]);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [now, setNow] = useState<number | null>(null);
+
+  // Read the clock after hydration so the server and the browser agree.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const say = useCallback((type: Notice["type"], text: string) => {
+    setNotice((previous) => ({ id: (previous?.id ?? 0) + 1, type, text }));
+  }, []);
 
   const join = useCallback(
     async (session: PeerSession) => {
-      setJoining(session.id);
+      setJoiningId(session.id);
       setNotice(null);
-      setFailure(null);
       try {
         const updated = await joinPeerSession(session.id);
-        const practiceId = updated.practice_session_id;
-        if (practiceId && onOpenPracticeSession) {
-          onOpenPracticeSession(practiceId);
+        if (!updated.practice_session_id) {
+          say("error", "Invalid session data received. Please try again.");
+          setJoiningId(null);
           return;
         }
-        setFailure("Could not start the practice room. Please try again.");
+        onOpenPracticeSession(updated.practice_session_id);
       } catch (cause) {
-        setFailure(errorMessage(cause));
-      } finally {
-        setJoining(null);
+        say(
+          "error",
+          hasCode(cause, "too_early_to_join")
+            ? failureText(cause, "Too early to join.")
+            : failureText(cause, "Failed to join session. Please try again."),
+        );
+        setJoiningId(null);
       }
     },
-    [onOpenPracticeSession],
+    [onOpenPracticeSession, say],
+  );
+
+  const reload = state.reload;
+  const cancel = useCallback(
+    async (sessionId: string) => {
+      setCancellingId(sessionId);
+      setNotice(null);
+      try {
+        await cancelPeerSession(sessionId);
+        say("success", "Session cancelled. Your partner has been notified.");
+        reload();
+      } catch (cause) {
+        say("error", failureText(cause, "Failed to cancel session. Please try again."));
+      } finally {
+        setCancellingId(null);
+      }
+    },
+    [reload, say],
   );
 
   return (
-    <div className="space-y-4">
-      {notice && <Alert tone="success">{notice}</Alert>}
-      {failure && <Alert tone="danger">{failure}</Alert>}
-      <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
-        empty={{
-          title: "No sessions yet",
-          description: "Claim a slot from All Sessions to arrange your next practice session.",
-        }}
-      >
-        {(page) => {
-          const upcoming = page.items.filter(isShown);
-          const past = page.items.filter((session) => !isShown(session));
+    <AsyncBoundary
+      state={state}
+      isEmpty={() => false}
+      loading={<ListLoading />}
+      failure={(_error, retry) => (
+        <ListLoadError message="Failed to load upcoming sessions. Please try again." onRetry={retry} />
+      )}
+    >
+      {(sessions) => {
+        const upcoming = sessions.filter((session) => isUpcoming(session, now));
+        if (upcoming.length === 0) {
           return (
-            <div className="space-y-8">
-              {upcoming.length > 0 && (
-                <section>
-                  <h3 className="mb-3 text-osce-body font-semibold text-osce-ink-900">Upcoming</h3>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                    {upcoming.map((session) => (
-                      <UpcomingSessionCard
-                        key={session.id}
-                        session={session}
-                        onJoin={join}
-                        isJoining={joining === session.id}
-                        onCancelled={state.reload}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-              {past.length > 0 && (
-                <section>
-                  <h3 className="mb-3 text-osce-body font-semibold text-osce-ink-900">Past</h3>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                    {past.map((session) => (
-                      <PastSessionCard key={session.id} session={session} />
-                    ))}
-                  </div>
-                </section>
-              )}
-              {upcoming.length === 0 && past.length > 0 && (
-                <p className="text-osce-body text-b2c-text-secondary">
-                  You have no future sessions. Post availability or claim a slot to practise with a colleague.
+            <>
+              {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
+              <div className="py-12 text-center">
+                <p className="mb-2 text-osce-body text-b2c-text-muted">No upcoming sessions</p>
+                <p className="text-osce-body text-b2c-text-muted">
+                  Claim a slot from the Available sessions to schedule a session!
                 </p>
-              )}
-            </div>
+              </div>
+            </>
           );
-        }}
-      </AsyncBoundary>
-    </div>
+        }
+        return (
+          <div className="space-y-4">
+            {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+              {upcoming.map((session) => (
+                <UpcomingSessionCard
+                  key={session.id}
+                  session={session}
+                  now={now}
+                  onJoin={join}
+                  onCancel={(id) => void cancel(id)}
+                  isJoinLoading={joiningId === session.id}
+                  isCancelLoading={cancellingId === session.id}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      }}
+    </AsyncBoundary>
   );
 }
 
-function isShown(session: PeerSession): boolean {
+/** Until the clock lands, measure from the start so a valid card is never hidden. */
+function isUpcoming(session: PeerSession, now: number | null): boolean {
   if (session.status === "cancelled" || session.status === "completed") return false;
-  return session.status === "active" || !joinWindowClosed(session.starts_at);
-}
-
-function PastSessionCard({ session }: { session: PeerSession }) {
-  const partner = session.partner_username ? `@${session.partner_username}` : "A colleague";
-  return (
-    <div className={`flex w-full min-w-0 flex-col p-3 text-osce-body sm:p-5 ${b2cCard}`}>
-      <p className="text-osce-body text-b2c-text-muted">Practice session with</p>
-      <p className="mt-1 font-semibold text-osce-ink-900">{partner}</p>
-      <p className="mt-1 text-b2c-text-secondary">
-        {longDate(session.starts_at)} at {meridiemTime(session.starts_at)}
-      </p>
-      <p className="mt-2 text-osce-caption text-b2c-text-muted">
-        {session.exam_code.toUpperCase()}
-        {session.user_role ? ` · You were the ${session.user_role}` : ""}
-      </p>
-    </div>
-  );
+  return !joinWindowClosed(session.starts_at, now ?? new Date(session.starts_at).getTime());
 }
 
 function UpcomingSessionCard({
   session,
+  now,
   onJoin,
-  isJoining,
-  onCancelled,
+  onCancel,
+  isJoinLoading,
+  isCancelLoading,
 }: {
   session: PeerSession;
+  now: number | null;
   onJoin: (session: PeerSession) => void;
-  isJoining: boolean;
-  onCancelled: () => void;
+  onCancel: (sessionId: string) => void;
+  isJoinLoading: boolean;
+  isCancelLoading: boolean;
 }) {
-  const [now, setNow] = useState<number | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
-
-  // The clock is read in an effect rather than during render, so the server and
-  // the browser agree on the first frame; until it lands, measure from the
-  // start itself so a valid card is never hidden.
-  useEffect(() => {
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const reference = now ?? new Date(session.starts_at).getTime();
-  const active = session.status === "active";
-  const ready = active || (now !== null && canJoin(session.starts_at, reference) && !joinWindowClosed(session.starts_at, reference));
-  const until = timeUntilJoin(session.starts_at, reference);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const isActive = session.status === "active";
+  const joinable = now !== null && canJoin(session.starts_at, now);
+  const until = now === null ? null : timeUntilJoin(session.starts_at, now);
 
   return (
-    <div className={`flex w-full min-w-0 flex-col p-3 text-osce-body sm:p-5 ${b2cCard}`}>
+    <div className={`group flex w-full min-w-0 flex-col p-3 text-osce-body sm:p-5 ${b2cCard}`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-osce-body text-b2c-text-muted">Practice session with</span>
         <span
           className={`rounded-full px-2 py-0.5 text-osce-caption font-medium ${
-            active
+            isActive
               ? "bg-osce-success-bg text-osce-success-text"
-              : ready
+              : joinable
                 ? "bg-osce-accent-subtle text-osce-accent-hover"
                 : "bg-b2c-secondary text-b2c-text-secondary"
           }`}
         >
-          {active ? "In Progress" : ready ? "Ready to Join" : "Upcoming"}
+          {isActive ? "In Progress" : joinable ? "Ready to Join" : "Upcoming"}
         </span>
       </div>
 
       <div className="mb-3">
         <p className="leading-relaxed text-osce-ink-900">
-          <span className="font-semibold">
-            {session.partner_username ? `@${session.partner_username}` : "A colleague"}
-          </span>
+          <span className="font-semibold">@{session.partner_username}</span>
         </p>
         <p className="mt-1 text-b2c-text-secondary">
           {longDate(session.starts_at)} at {meridiemTime(session.starts_at)}
         </p>
       </div>
 
-      {!ready && until && (
+      {!joinable && !isActive && until && (
         <div className={`mb-3 rounded-lg px-3 py-2 ${b2cMutedBand}`}>
           <p className="text-osce-body text-b2c-text-secondary">
             Session starts in <span className="font-medium text-osce-ink-900">{until}</span>
@@ -210,51 +210,47 @@ function UpcomingSessionCard({
         </div>
       )}
 
-      {cancelError && (
-        <Alert tone="danger" className="mb-2">
-          {cancelError}
-        </Alert>
-      )}
-
       <div className="mt-auto flex flex-col items-stretch justify-between gap-3 border-t border-b2c-border pt-3 sm:flex-row sm:items-center sm:gap-2">
         <div className="flex items-center gap-2 text-osce-caption text-b2c-text-muted">
           <span>You are the {session.user_role}</span>
-          <span>·</span>
-          <span>{session.exam_code.toUpperCase()}</span>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
             type="button"
             variant="secondary"
-            onClick={() => setConfirming(true)}
+            onClick={() => setShowCancelConfirm(true)}
+            disabled={isCancelLoading}
             className="flex-1 sm:flex-none"
           >
-            Cancel
+            {isCancelLoading ? "Cancelling..." : "Cancel"}
           </Button>
           <Button
             type="button"
             onClick={() => onJoin(session)}
-            disabled={(!ready && !active) || isJoining}
+            disabled={(!joinable && !isActive) || isJoinLoading}
             className="flex-1 sm:flex-none"
           >
-            {isJoining ? "Joining..." : active ? "Rejoin Session" : ready ? "Join Session" : "Not Yet"}
+            {isJoinLoading ? "Joining..." : isActive ? "Rejoin Session" : joinable ? "Join Session" : "Not Yet"}
           </Button>
         </div>
       </div>
 
       <ConfirmModal
-        isOpen={confirming}
-        onCancel={() => setConfirming(false)}
+        isOpen={showCancelConfirm}
+        onCancel={() => setShowCancelConfirm(false)}
         onConfirm={() => {
-          setConfirming(false);
-          void cancelPeerSession(session.id).then(onCancelled).catch(() => {
-            setCancelError("Could not cancel this session. Try again or contact your partner.");
-          });
+          onCancel(session.id);
+          setShowCancelConfirm(false);
         }}
         title="Cancel session?"
-        tone="danger"
-        message="Your partner will no longer see this session as booked. This cannot be undone."
-        confirmText="Cancel session"
+        message={
+          <>
+            Are you sure you want to cancel this session with{" "}
+            <span className="font-medium">@{session.partner_username}</span>? Your partner will be
+            notified.
+          </>
+        }
+        confirmText="Yes, cancel session"
         cancelText="Keep session"
       />
     </div>

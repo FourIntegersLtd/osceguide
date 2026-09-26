@@ -4,6 +4,8 @@ import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   MockDetail,
   MockEnd,
+  MockList,
+  MockUpdate,
   Mocks,
   SetStation,
 } from "@/domains/train";
@@ -161,6 +163,12 @@ function AssessMockComplete({ params }: ScreenProps) {
   return <MockEnd setId={params?.setId ?? ""} />;
 }
 
+const AssessMockList = () => <MockList />;
+
+function AssessMockUpdate({ params }: ScreenProps) {
+  return <MockUpdate setId={params?.setId ?? ""} />;
+}
+
 /**
  * Borrowed wholesale by Hire, which declares `screensFrom: "assess"`.
  *
@@ -188,6 +196,8 @@ export const assessScreens: ScreenMap = {
   mockDetail: AssessMockDetail,
   mockStation: AssessMockStation,
   mockComplete: AssessMockComplete,
+  mockList: AssessMockList,
+  mockUpdate: AssessMockUpdate,
   attempt: AssessAttempt,
   practiceStation: AssessPracticeStation,
 };

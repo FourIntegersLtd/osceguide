@@ -30,7 +30,7 @@ import {
   ModalHelper,
   Spinner,
 } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useMeEvents } from "@/foundation/hooks";
 import { listCvs, deleteCv, readCv, uploadCv, type CvRead, type StructuredCv } from "@/capabilities/account/api";
 
 /**
@@ -99,11 +99,19 @@ export function CvPanel() {
       // hand the finished row back to it and stop asking about a single id.
       setWatching(null);
       reloadList();
-      return;
     }
-    const timer = window.setInterval(() => reloadWatched(), 5000);
-    return () => window.clearInterval(timer);
-  }, [watching, stillReading, reloadList, reloadWatched]);
+  }, [watching, stillReading, reloadList]);
+  // `run_extraction_job` publishes `cv.read` to the CV's owner when the job
+  // settles, so this re-reads on that event rather than polling for it.
+  useMeEvents(
+    watching !== null && stillReading ? ["cv.read"] : null,
+    useCallback(
+      (event) => {
+        if (event.name === "resync" || event.data.cv_id === watching) reloadWatched();
+      },
+      [watching, reloadWatched],
+    ),
+  );
 
   /*
    * Offered at any status, `processing` included: the server allows it and the

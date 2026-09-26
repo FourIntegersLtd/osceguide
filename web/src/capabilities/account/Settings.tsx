@@ -1,13 +1,30 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { B2CSegmentedTabs, type B2CSegmentedTabItem, PlatformTabbedScreen } from "@/foundation/ui";
+import type { IconType } from "react-icons";
+import {
+  HiOutlineAcademicCap,
+  HiOutlineAdjustmentsHorizontal,
+  HiOutlineCog6Tooth,
+  HiOutlineCreditCard,
+  HiOutlineGift,
+  HiOutlineSparkles,
+  HiOutlineUser,
+} from "react-icons/hi2";
+import {
+  B2CPageHeader,
+  B2CSegmentedTabs,
+  type B2CSegmentedTabItem,
+  LeaveConfirmModal,
+  PlatformTabbedScreen,
+} from "@/foundation/ui";
+import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
 import ExamPanel from "@/capabilities/account/settings/ExamPanel";
-import AccessPanel from "@/capabilities/account/settings/AccessPanel";
+import PaymentsPanel from "@/capabilities/account/settings/PaymentsPanel";
 import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
 import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
 
@@ -25,18 +42,17 @@ const VALID_TABS: SettingsTab[] = [
 /**
  * The retiring client's tabs, in its order, plus the tutor's memory.
  *
- * "Access" was this tab's label for a while and is "Payments" again: the old
- * one said Payments, and it is where somebody looks for a receipt. It was also
- * a nav item of its own for a while, rendering the same panel — one screen in
- * two places, neither of them canonical.
+ * Referrals is admin-only, as it was there: the old `SettingsCore` pushed the
+ * tab for `role === "admin"` and bounced `?tab=referrals` to Profile for
+ * everybody else.
  */
-const TABS: { id: SettingsTab; label: string }[] = [
-  { id: "profile", label: "Profile" },
-  { id: "preferences", label: "Preferences" },
-  { id: "exam", label: "Exam" },
-  { id: "payments", label: "Payments" },
-  { id: "referrals", label: "Referrals" },
-  { id: "memory", label: "Memory" },
+const TABS: { id: SettingsTab; label: string; icon: IconType; adminOnly?: boolean }[] = [
+  { id: "profile", label: "Profile", icon: HiOutlineUser },
+  { id: "preferences", label: "Preferences", icon: HiOutlineAdjustmentsHorizontal },
+  { id: "exam", label: "Exam", icon: HiOutlineAcademicCap },
+  { id: "payments", label: "Payments", icon: HiOutlineCreditCard },
+  { id: "referrals", label: "Referrals", icon: HiOutlineGift, adminOnly: true },
+  { id: "memory", label: "Memory", icon: HiOutlineSparkles },
 ];
 
 /**
@@ -47,10 +63,6 @@ const TABS: { id: SettingsTab; label: string }[] = [
  * person who signs off results — could not change their own password. Nothing
  * on this screen is consumer-specific: everybody has a name, a password, the
  * access they were granted or bought, and a tutor keeping notes on them.
- *
- * Referrals is shown to everybody rather than to admins, as the old one did.
- * The backend issues a code per person and counts redemptions per person;
- * hiding the screen from most of them hid the feature, not a permission.
  */
 export function Settings() {
   return (
@@ -63,9 +75,11 @@ export function Settings() {
 function SettingsTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session } = useSession();
+  const isAdmin = isPlatformAdmin(session);
   const requested = searchParams.get("tab");
   const [fallback, setFallback] = useState<SettingsTab>("profile");
-  const tab = isSettingsTab(requested) ? requested : fallback;
+  const tab = isSettingsTab(requested) && (requested !== "referrals" || isAdmin) ? requested : fallback;
 
   /*
    * The query string is the source of truth when it names a tab, so a link to
@@ -75,7 +89,7 @@ function SettingsTabs() {
    */
   const handleChange = (next: SettingsTab) => {
     setFallback(next);
-    router.replace(`?tab=${next}`, { scroll: false });
+    router.push(`?tab=${next}`, { scroll: false });
   };
 
   return <SettingsFrame tab={tab} onChange={handleChange} />;
@@ -89,20 +103,67 @@ function SettingsFrame({
   onChange: (tab: SettingsTab) => void;
 }) {
   const { surface } = useSurface();
-  const items: B2CSegmentedTabItem<SettingsTab>[] = TABS.map(({ id, label }) => ({
+  const { session } = useSession();
+  const isAdmin = isPlatformAdmin(session);
+  // The old screen's unsaved-changes guard: an edited, unsaved username stops
+  // a tab switch (and a page unload) until the person says so.
+  const [isDirty, setDirty] = useState(false);
+  const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
+  const handleTabChange = (next: SettingsTab) => {
+    if (next === tab) return;
+    if (isDirty) {
+      setPendingTab(next);
+      return;
+    }
+    onChange(next);
+  };
+
+  const confirmLeaveTab = () => {
+    const next = pendingTab;
+    setPendingTab(null);
+    setDirty(false);
+    if (next) onChange(next);
+  };
+
+  const items: B2CSegmentedTabItem<SettingsTab>[] = TABS.filter(
+    (entry) => !entry.adminOnly || isAdmin,
+  ).map(({ id, label, icon: Icon }) => ({
     id,
-    label,
+    label: (
+      <span className="inline-flex items-center gap-1.5">
+        <Icon className="h-4 w-4" aria-hidden />
+        {label}
+      </span>
+    ),
   }));
 
   const panels = (
     <>
-      {tab === "profile" ? <ProfilePanel /> : null}
+      {tab === "profile" ? <ProfilePanel onDirtyChange={setDirty} /> : null}
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "exam" ? <ExamPanel /> : null}
-      {tab === "payments" ? <AccessPanel /> : null}
-      {tab === "referrals" ? <ReferralsPanel /> : null}
+      {tab === "payments" ? <PaymentsPanel /> : null}
+      {isAdmin && tab === "referrals" ? <ReferralsPanel /> : null}
       {tab === "memory" ? <TutorMemoryPanel /> : null}
     </>
+  );
+
+  const leaveModal = (
+    <LeaveConfirmModal
+      isOpen={pendingTab !== null}
+      onStay={() => setPendingTab(null)}
+      onLeave={confirmLeaveTab}
+    />
   );
 
   if (surface === "platform") {
@@ -111,23 +172,27 @@ function SettingsFrame({
         title="Settings"
         tabs={items}
         value={tab}
-        onChange={onChange}
+        onChange={handleTabChange}
         ariaLabel="Settings"
       >
         {panels}
+        {leaveModal}
       </PlatformTabbedScreen>
     );
   }
 
   return (
     <div>
+      <B2CPageHeader title="Settings" icon={HiOutlineCog6Tooth} />
       <B2CSegmentedTabs
+        className="mb-8"
         items={items}
         value={tab}
-        onChange={onChange}
+        onChange={handleTabChange}
         aria-label="Settings"
       />
       <div>{panels}</div>
+      {leaveModal}
     </div>
   );
 }

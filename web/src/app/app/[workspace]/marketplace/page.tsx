@@ -12,7 +12,10 @@ import type { Metadata } from "next";
 import { Capability } from "@/app/app/[workspace]/capability";
 import { PeerPractice } from "@/capabilities/peer-practice";
 
-export const metadata: Metadata = { title: "Practise with someone" };
+export const metadata: Metadata = {
+  title: "Practice marketplace",
+  description: "Find another candidate to practise with.",
+};
 
 export default function Page() {
   return <Capability id="peer-practice"><PeerPractice /></Capability>;

@@ -56,7 +56,7 @@ export function SlotSections({ slots, actions }: { slots: Slot[]; actions: SlotA
     return (
       <B2CEmptyState
         icon={HiOutlineCalendarDays}
-        title="No open slots right now"
+        title="No availability posts yet"
         description="Be the first to post your availability!"
       />
     );

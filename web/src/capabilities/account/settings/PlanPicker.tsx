@@ -17,19 +17,45 @@ import { startCheckout, type Plan } from "@/capabilities/account/api";
 const { b2cFieldLabel, b2cLink, b2cSettingsFieldInput } = productTokens;
 
 /**
+ * The retiring client's `PLAN_TYPE_LABELS` and its blurb per plan, keyed by
+ * the months a plan runs for. A plan sold for some other length falls back to
+ * its own duration, so a new plan in Stripe still gets a sentence.
+ */
+const PLAN_COPY: Record<number, { title: string; description: string }> = {
+  1: {
+    title: "1-Month Access",
+    description: "50 Stations • Great for last minute preparation and intense practice",
+  },
+  3: {
+    title: "3-Month Access",
+    description: "100 Stations • Perfect for long-term exam preparation",
+  },
+  6: {
+    title: "6-Month Access",
+    description: "150 Stations • Best value for comprehensive preparation",
+  },
+};
+
+/** The old picker opened on the three-month plan. */
+const DEFAULT_MONTHS = 3;
+
+/**
  * Pick a plan, and pay for it.
  *
- * This is the only way anybody buys anything, so what it does and does not do
- * both matter. It sends a **plan code** — never a price — and then hands the
- * browser to Stripe's hosted page; no card detail passes through here, and
- * nothing in this file can grant access. The plans, their prices and their
- * durations are the backend's answer to `/billing/plans` rather than four
- * constants compiled into the bundle, which is how the retiring client came to
- * show one price and charge another after a change in Stripe.
+ * The retiring client's `PaymentsUpgrade`, string for string. It is the only
+ * way anybody buys anything, so what it does and does not do both matter. It
+ * sends a **plan code** — never a price — and then hands the browser to
+ * Stripe's hosted page; no card detail passes through here, and nothing in
+ * this file can grant access. The plans, their prices and their durations are
+ * the backend's answer to `/billing/plans` rather than constants compiled into
+ * the bundle, which is how the retiring client came to show one price and
+ * charge another after a change in Stripe.
  *
- * A friend's referral code is optional. Typing one shows each plan's 10%-off
- * price, but only the backend decides whether the code is good: it refuses an
- * unknown code (or the buyer's own) before Stripe is ever opened.
+ * One field the old picker did not have: a friend's referral code. The old
+ * client took it at sign-up; `platform-api` takes it only at checkout
+ * (`CheckoutStart.referral_code`), so without this box nobody could redeem
+ * one. Typing a code shows each plan's 10%-off price, but only the backend
+ * decides whether the code is good.
  */
 export default function PlanPicker({
   plans,
@@ -38,7 +64,7 @@ export default function PlanPicker({
   plans: Plan[];
   variant?: "modal" | "page";
 }) {
-  const [selected, setSelected] = useState<string | null>(plans[0]?.code ?? null);
+  const [selected, setSelected] = useState<string | null>(defaultPlanCode(plans));
   const [agreedToPolicies, setAgreedToPolicies] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +79,7 @@ export default function PlanPicker({
     setError(null);
     if (!agreedToPolicies) {
       setError(
-        "You must agree to the Terms of Service including our No Refund Policy before proceeding.",
+        "You must agree to the Privacy Policy including our No Refund Policy before proceeding.",
       );
       return;
     }
@@ -89,9 +115,7 @@ export default function PlanPicker({
 
   return (
     <ModalContent className="w-full">
-      <ModalHelper className="mb-5 mt-0">
-        Choose the option that suits you best
-      </ModalHelper>
+      <ModalHelper className="mb-5 mt-0">Choose the option that suits you best</ModalHelper>
 
       <div className={cn("divide-y divide-b2c-border", planListBleed)}>
         {plans.map((plan) => {
@@ -161,7 +185,12 @@ export default function PlanPicker({
         />
         <label htmlFor="policies" className="text-osce-meta text-b2c-text-muted">
           I agree to the{" "}
-          <a href="/compliances/terms-of-service" className={b2cLink}>
+          <a
+            href="/compliances/terms-of-service"
+            target="_blank"
+            rel="noreferrer"
+            className={b2cLink}
+          >
             Terms of Service
           </a>{" "}
           (including our No Refund Policy)
@@ -193,12 +222,8 @@ export default function PlanPicker({
             )}
           </ModalPrimaryButton>
         </div>
-        {error ? (
-          <p className="text-osce-meta text-osce-danger sm:text-right">{error}</p>
-        ) : null}
-        <ModalHelper className="mt-0 sm:text-right">
-          Secure payment powered by Stripe
-        </ModalHelper>
+        {error ? <p className="text-osce-meta text-osce-danger sm:text-right">{error}</p> : null}
+        <ModalHelper className="mt-0 sm:text-right">Secure payment powered by Stripe</ModalHelper>
       </div>
     </ModalContent>
   );
@@ -227,16 +252,23 @@ function chargedPence(plan: Plan, hasReferralCode: boolean): number {
 export const SUPPORT_EMAIL = "hello@fourintegers.com";
 
 /** Months, because a plan is sold in months and stored in days. */
+function planMonths(plan: Plan): number {
+  return Math.round(plan.duration_days / 30);
+}
+
+/** The three-month plan when it is on sale, else the first one, as the old picker did. */
+function defaultPlanCode(plans: Plan[]): string | null {
+  const preferred = plans.find((plan) => planMonths(plan) === DEFAULT_MONTHS);
+  return preferred?.code ?? plans[0]?.code ?? null;
+}
+
 export function planTitle(plan: Plan): string {
-  const months = Math.round(plan.duration_days / 30);
-  const period = months >= 1 ? `${months}-Month` : `${plan.duration_days}-Day`;
-  return plan.exam_code ? `${plan.exam_code.toUpperCase()} · ${period} Access` : `${period} Access`;
+  const months = planMonths(plan);
+  return PLAN_COPY[months]?.title ?? (months >= 1 ? `${months}-Month Access` : `${plan.duration_days}-Day Access`);
 }
 
 export function planDescription(plan: Plan): string {
-  return plan.exam_code
-    ? `${plan.duration_days} days of ${plan.exam_code.toUpperCase()} practice`
-    : `${plan.duration_days} days of practice across every exam`;
+  return PLAN_COPY[planMonths(plan)]?.description ?? `${plan.duration_days} days of practice`;
 }
 
 export function formatMoney(pence: number, currency: string): string {

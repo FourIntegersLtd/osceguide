@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/foundation/ui";
-import { RequireSession, useSession } from "@/foundation/session";
+import { isPlatformAdmin, RequireSession, useSession } from "@/foundation/session";
 import { PERSONAL_SLUG, workspaceBasePath } from "@/foundation/routing";
 import { lastWorkspace } from "@/foundation/routing/lastWorkspace";
 import { workspacesFor } from "@/surfaces";
@@ -15,6 +15,7 @@ import { workspacesFor } from "@/surfaces";
  * organisation, which is why somebody who belonged to a trust could not reach
  * their own practice at all. The rule now is simply "where you were last", and
  * failing that your own practice — because that is the workspace everyone has.
+ * Platform staff go to `/staff`.
  */
 export default function AppIndex() {
   return (
@@ -30,6 +31,12 @@ function Redirect() {
 
   useEffect(() => {
     if (!ready) return;
+    // Platform staff have a console rather than a workspace; their own
+    // practice is one link away from it.
+    if (isPlatformAdmin(session)) {
+      router.replace("/staff");
+      return;
+    }
     const available = workspacesFor(session?.user ?? null);
     const remembered = lastWorkspace();
     const target =

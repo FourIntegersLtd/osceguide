@@ -14,6 +14,10 @@ import type { PlatformCapabilities, PlatformUser, Session, SessionState, Session
 
 const SessionContext = createContext<SessionState | null>(null);
 
+/** How long to wait before asking `/me` again after a failure that was not a 401. */
+const RETRY_FIRST_MS = 1_000;
+const RETRY_MAX_MS = 30_000;
+
 // Installed at module scope so the very first request already carries a token;
 // doing it in an effect races the fetches a page fires on mount.
 let installed = false;
@@ -46,6 +50,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>("loading");
   const [sessionExpired, setSessionExpired] = useState(false);
   const [ready, setReady] = useState(false);
+  // Failures in a row that were not a 401; each one schedules another try.
+  const [failedAttempts, setFailedAttempts] = useState(0);
   const inFlight = useRef<Promise<void> | null>(null);
 
   const load = useCallback(async () => {
@@ -64,13 +70,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSession({ user, capabilities });
       setSessionExpired(false);
       setStatus("authenticated");
+      setFailedAttempts(0);
     } catch (cause) {
-      // A 401 means the stored pair was presented and refused. A network
-      // failure is not that: the person still has a session, the server just
-      // did not answer, and "your session expired" would be a lie.
-      setSession(null);
-      setSessionExpired(cause instanceof PlatformError && cause.status === 401);
-      setStatus("anonymous");
+      // Only a 401 is an answer about who this is: the stored pair was
+      // presented and refused. Anything else (a 500, a proxy reset, no network)
+      // says nothing about the person, so whatever was known is kept and the
+      // question is asked again. Treating every failure as a sign-out sent
+      // people to /login in the middle of a live peer session.
+      if (cause instanceof PlatformError && cause.status === 401) {
+        setSession(null);
+        setSessionExpired(true);
+        setStatus("anonymous");
+      } else {
+        setFailedAttempts((count) => count + 1);
+      }
     } finally {
       setReady(true);
     }
@@ -88,6 +101,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // After a failure that was not a 401, ask again: 1s, 2s, 4s … capped at 30s.
+  useEffect(() => {
+    if (failedAttempts === 0) return;
+    const delay = Math.min(RETRY_FIRST_MS * 2 ** (failedAttempts - 1), RETRY_MAX_MS);
+    const timer = setTimeout(() => void refresh(), delay);
+    return () => clearTimeout(timer);
+  }, [failedAttempts, refresh]);
 
   const signOut = useCallback(async () => {
     await apiLogout();

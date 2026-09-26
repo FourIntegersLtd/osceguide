@@ -16,6 +16,7 @@ export const peerPracticeCapability: CapabilityModule = {
   surfaces: ["train"],
   permission: null,
   section: "connect",
-  path: "/peers",
+  path: "/marketplace",
+  exams: ["sca"],
   icon: RiUserCommunityFill,
 };

@@ -2,20 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { HiOutlineCalendarDays } from "react-icons/hi2";
-import {
-  Alert,
-  Modal,
-  ModalContent,
-  ModalHelper,
-  ModalPrimaryButton,
-  productTokens,
-} from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
-import { useSession } from "@/foundation/session";
-import { updateMe } from "@/capabilities/account/api";
-import { EXAM_PASSED, examTimeRemaining } from "@/domains/train/dashboard/examDate";
-
-const { b2cFieldLabel, b2cInputBase } = productTokens;
+import { Modal } from "@/foundation/ui";
+import { useCurrentExam, useSession } from "@/foundation/session";
+import { AddExamDate } from "@/domains/train/dashboard/AddExamDate";
+import { EXAM_PASSED, examMoment, examTimeRemaining } from "@/domains/train/dashboard/examDate";
 
 /**
  * The dashboard's exam-date pill and its editor.
@@ -26,12 +16,13 @@ const { b2cFieldLabel, b2cInputBase } = productTokens;
  * This is that control. It owns its own ticking state so the once-a-second
  * countdown re-renders the pill alone rather than the whole dashboard.
  *
- * `users.exam_date` is a plain date, so the editor is a single date field; the
- * legacy form's separate time input has nothing to write to now.
+ * The modal holds the old `AddExamDate` card, date and time, and stays open
+ * after a save as the old one did, with the countdown behind it refreshed.
  */
 export function ExamDateControl() {
   const { session, refresh } = useSession();
-  const examDate = session?.user.exam_date ?? null;
+  const { code: examCode } = useCurrentExam();
+  const examDate = examMoment(session?.user.exam_date, session?.user.exam_time);
   const [open, setOpen] = useState(false);
 
   /*
@@ -70,74 +61,14 @@ export function ExamDateControl() {
 
       {open && (
         <Modal width="600px" height="fit-content" onClose={() => setOpen(false)}>
-          <ExamDateForm
-            initial={examDate}
-            onSaved={() => {
-              setOpen(false);
-              void refresh();
-            }}
+          <AddExamDate
+            examDate={session?.user.exam_date ?? null}
+            examTime={session?.user.exam_time ?? null}
+            isOrtho={examCode === "ortho"}
+            onSaved={() => void refresh()}
           />
         </Modal>
       )}
     </>
-  );
-}
-
-function ExamDateForm({ initial, onSaved }: { initial: string | null; onSaved: () => void }) {
-  const [value, setValue] = useState(() => (initial ? initial.split("T")[0]! : ""));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const save = async () => {
-    if (!value) {
-      setError("Please select an exam date");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await updateMe({ exam_date: value });
-      onSaved();
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalContent className="space-y-4">
-      <div>
-        <h3 className="text-osce-subheading font-semibold text-osce-accent-hover">Exam date</h3>
-        <ModalHelper className="mt-1">
-          Adding your exam date helps us personalize your study plan and track your progress more
-          effectively.
-        </ModalHelper>
-      </div>
-
-      {error && <Alert tone="danger">{error}</Alert>}
-
-      <div>
-        <label htmlFor="dashboard-exam-date" className={b2cFieldLabel}>
-          Exam date
-        </label>
-        <input
-          id="dashboard-exam-date"
-          type="date"
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value);
-            setError(null);
-          }}
-          className={`${b2cInputBase} mt-1.5`}
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <ModalPrimaryButton type="button" onClick={() => void save()} disabled={saving}>
-          {saving ? "Saving…" : "Save date"}
-        </ModalPrimaryButton>
-      </div>
-    </ModalContent>
   );
 }

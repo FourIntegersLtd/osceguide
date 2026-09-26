@@ -2,30 +2,53 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button } from "@/foundation/ui";
+import { HiOutlineArrowPath, HiOutlineExclamationTriangle, HiOutlineTrash } from "react-icons/hi2";
+import {
+  B2CPanelCard,
+  B2CPanelCardBody,
+  B2CPanelCardFooter,
+  B2CPanelCardHeader,
+  ConfirmModal,
+  ModalDangerButton,
+  ModalHelper,
+  productTokens,
+} from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { closeAccount } from "@/capabilities/account/api";
 
+const { b2cInputBase, b2cSettingsCardHeaderIcon } = productTokens;
+
 /**
- * Close the signed-in account.
+ * The retiring screen's "Danger zone": close the signed-in account.
  *
  * The row stays, so consultations and payments still have someone they
- * belonged to. Sign-in stops, and the password is cleared.
+ * belonged to. Sign-in stops, and the password is cleared. The backend asks
+ * for the password when the account has one and for the word "delete" when it
+ * does not (organisation sign-in), so the modal collects both and sends both.
+ * Platform admins are refused here, as they were on the old screen.
  */
-export function CloseAccount() {
+export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
   const router = useRouter();
   const { signOut } = useSession();
   const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const reset = () => {
+    setOpen(false);
+    setConfirmText("");
+    setPassword("");
+    setError(null);
+  };
 
   const close = async () => {
     setBusy(true);
     setError(null);
     try {
-      await closeAccount({ password: password || null, confirm: password ? null : "delete" });
+      await closeAccount({ password: password || null, confirm: confirmText.trim().toLowerCase() });
       await signOut();
       router.replace("/login?deleted=1");
     } catch (cause) {
@@ -36,38 +59,81 @@ export function CloseAccount() {
   };
 
   return (
-    <section className="mt-8 rounded-lg border border-osce-danger/30 p-4">
-      <h2 className="text-osce-body font-semibold text-osce-ink-900">Close account</h2>
-      <p className="mt-1 text-osce-meta text-b2c-text-muted">
-        You will be signed out and will not be able to sign in again. Your past consultations stay on record.
-      </p>
-      {open ? (
-        <div className="mt-3 space-y-3">
-          {error ? <Alert tone="danger">{error}</Alert> : null}
-          <label className="block text-osce-meta text-b2c-text-muted">
-            Password
+    <>
+      <B2CPanelCard className="mt-0">
+        <B2CPanelCardHeader>
+          <HiOutlineExclamationTriangle className={b2cSettingsCardHeaderIcon} aria-hidden />
+          Danger zone
+        </B2CPanelCardHeader>
+        <B2CPanelCardBody className="space-y-3">
+          <p className="text-osce-body font-semibold text-osce-danger">Delete your account</p>
+          <ModalHelper className="mt-0">
+            This action cannot be undone and you will not be able to restore your account.
+          </ModalHelper>
+          {isAdmin ? <ModalHelper>Admin accounts cannot be deleted from Settings.</ModalHelper> : null}
+        </B2CPanelCardBody>
+        <B2CPanelCardFooter>
+          <ModalDangerButton
+            type="button"
+            onClick={() => setOpen(true)}
+            disabled={isAdmin || busy}
+            className="gap-2"
+          >
+            {busy ? (
+              <>
+                <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <HiOutlineTrash className="h-4 w-4" aria-hidden />
+                Delete Account
+              </>
+            )}
+          </ModalDangerButton>
+        </B2CPanelCardFooter>
+      </B2CPanelCard>
+
+      <ConfirmModal
+        isOpen={open}
+        onCancel={reset}
+        onConfirm={() => void close()}
+        title="Delete your account?"
+        message="This permanently removes your account, your attempts and all your feedback. Any active subscription ends. Type DELETE to confirm."
+        confirmText="Delete my account"
+        cancelText="Keep account"
+        tone="danger"
+        isLoading={busy}
+        confirmDisabled={confirmText.trim().toUpperCase() !== "DELETE"}
+        error={error}
+      >
+        <div className="space-y-3 text-left">
+          <label className="block">
+            <span className="mb-1 block text-osce-meta text-b2c-text-muted">
+              Type <span className="font-mono font-semibold">DELETE</span> to confirm
+            </span>
             <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full max-w-sm rounded-md border border-osce-border bg-white px-3 py-2 text-osce-body text-osce-ink-900"
-              autoComplete="current-password"
+              type="text"
+              autoComplete="off"
+              value={confirmText}
+              onChange={(event) => setConfirmText(event.target.value)}
+              className={b2cInputBase}
             />
           </label>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={busy}>
-              Cancel
-            </Button>
-            <Button type="button" variant="danger" isLoading={busy} onClick={() => void close()}>
-              Close my account
-            </Button>
-          </div>
+          <label className="block">
+            <span className="mb-1 block text-osce-meta text-b2c-text-muted">
+              Password (leave blank if you sign in through your organisation)
+            </span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className={b2cInputBase}
+            />
+          </label>
         </div>
-      ) : (
-        <Button type="button" variant="danger" className="mt-3" onClick={() => setOpen(true)}>
-          Close account
-        </Button>
-      )}
-    </section>
+      </ConfirmModal>
+    </>
   );
 }

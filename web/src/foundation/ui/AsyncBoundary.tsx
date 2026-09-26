@@ -12,6 +12,10 @@ export interface AsyncBoundaryProps<T> {
   empty?: { title: ReactNode; description?: ReactNode; action?: ReactNode };
   /** Decides emptiness. Defaults to an empty array or a null result. */
   isEmpty?: (data: T) => boolean;
+  /** Replaces the default spinner, for a screen whose loading state is part of its design. */
+  loading?: ReactNode;
+  /** Replaces the default failure panel. It is handed the retry, so a retry still always exists. */
+  failure?: (error: Error, retry: () => void) => ReactNode;
   children: (data: T) => ReactNode;
 }
 
@@ -27,10 +31,18 @@ function defaultIsEmpty(data: unknown): boolean {
  * means a retry always exists on a failure, because there is nowhere to forget
  * to add one.
  */
-export function AsyncBoundary<T>({ state, empty, isEmpty, children }: AsyncBoundaryProps<T>) {
+export function AsyncBoundary<T>({
+  state,
+  empty,
+  isEmpty,
+  loading: loadingView,
+  failure,
+  children,
+}: AsyncBoundaryProps<T>) {
   const { data, error, loading, reload } = state;
 
   if (loading && data === null) {
+    if (loadingView !== undefined) return <>{loadingView}</>;
     return (
       <div className="flex items-center justify-center py-16">
         <Spinner />
@@ -39,6 +51,7 @@ export function AsyncBoundary<T>({ state, empty, isEmpty, children }: AsyncBound
   }
 
   if (error) {
+    if (failure) return <>{failure(error, reload)}</>;
     return (
       <Alert tone="danger" title="That did not load">
         <p>{errorText(error)}</p>

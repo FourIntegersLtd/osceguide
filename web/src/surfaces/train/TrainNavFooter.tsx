@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PiSparkle } from "react-icons/pi";
 import { cn } from "@/foundation/ui";
 import { b2cNavUpgradeButton } from "@/foundation/ui/productTokens";
-import { useCurrentExam, useSession } from "@/foundation/session";
+import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 
 /**
@@ -46,6 +46,12 @@ export function TrainNavFooter({ collapsed = false }: { collapsed?: boolean }) {
       {collapsed ? null : (
         <div className="text-center text-osce-meta text-b2c-text-secondary">
           <p className="truncate">{displayName}</p>
+
+          {isPlatformAdmin(session) && (
+            <Link href="/staff" className="mt-1 block font-medium text-osce-accent hover:underline">
+              Staff console
+            </Link>
+          )}
 
           {codes.length > 1 ? (
             <label className="mt-1 block">

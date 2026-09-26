@@ -155,7 +155,8 @@ export function ModalLead({
         <h2 id={id} className={b2cModalTitle}>
           {title}
         </h2>
-        {description ? <p className={b2cModalHelper}>{description}</p> : null}
+        {/* A div, not a p: callers pass paragraphs and lists as the description. */}
+        {description ? <div className={b2cModalHelper}>{description}</div> : null}
       </div>
     </header>
   );

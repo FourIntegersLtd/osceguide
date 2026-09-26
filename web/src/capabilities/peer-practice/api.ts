@@ -7,6 +7,7 @@ export type QueueStatus = components["schemas"]["QueueStatus"];
 export type PeerSession = components["schemas"]["PeerSessionRead"];
 export type PeerSessionPage = components["schemas"]["Page_PeerSessionRead_"];
 export type PracticeSession = components["schemas"]["PracticeSessionRead"];
+export type PracticeFeedbackInput = components["schemas"]["SessionFeedback"];
 export type PracticeSessionPage = components["schemas"]["Page_PracticeSessionRead_"];
 
 /**
@@ -225,13 +226,35 @@ export function recordPracticePresence(sessionId: string): Promise<PracticeSessi
   );
 }
 
+/**
+ * The rating one partner gives the other. `rating` is optional and
+ * `would_practice_again` required, as the retiring form asked them.
+ */
 export function submitPracticeFeedback(
   sessionId: string,
-  input: { rating: number; comment?: string | null; would_practice_again?: boolean | null },
+  input: PracticeFeedbackInput,
 ): Promise<PracticeSession> {
   return platformRequest<PracticeSession>(
     `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/feedback`,
     { method: "POST", body: input },
+  );
+}
+
+/**
+ * Answering the match. A pair is matched into a session that waits for both
+ * to accept; `partner_unavailable` when the other person has already gone.
+ */
+export function acceptPracticeMatch(sessionId: string): Promise<PracticeSession> {
+  return platformRequest<PracticeSession>(
+    `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/accept`,
+    { method: "POST" },
+  );
+}
+
+export function declinePracticeMatch(sessionId: string): Promise<PracticeSession> {
+  return platformRequest<PracticeSession>(
+    `/api/v1/me/practice-sessions/${encodeURIComponent(sessionId)}/decline`,
+    { method: "POST" },
   );
 }
 

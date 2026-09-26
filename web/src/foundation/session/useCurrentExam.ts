@@ -8,6 +8,33 @@ import { useSession } from "@/foundation/session/SessionProvider";
 
 type Dashboard = components["schemas"]["Dashboard"];
 
+/** How long one answer is shared: long enough to cover one page load's mounts, short enough that a later screen reads fresh. */
+const SHARE_FOR_MS = 10_000;
+
+/** The one `/me/dashboard` request every caller on the page is waiting on, per person. */
+let sharedLoad: { userId: string; startedAt: number; request: Promise<Dashboard> } | null = null;
+
+/**
+ * Ask for `/me/dashboard` once for everybody mounting at the same time.
+ *
+ * Each of the ~28 screens and nav items using this hook fetched it on its own,
+ * so a dashboard load sent about a dozen identical requests (BACKLOG W-3). A
+ * failed request is not shared, so the next caller asks again.
+ */
+function loadDashboardOnce(userId: string): Promise<Dashboard> {
+  const now = Date.now();
+  if (sharedLoad && sharedLoad.userId === userId && now - sharedLoad.startedAt < SHARE_FOR_MS) {
+    return sharedLoad.request;
+  }
+  const request = platformRequest<Dashboard>("/api/v1/me/dashboard");
+  const thisLoad = { userId, startedAt: now, request };
+  sharedLoad = thisLoad;
+  request.catch(() => {
+    if (sharedLoad === thisLoad) sharedLoad = null;
+  });
+  return request;
+}
+
 export interface CurrentExam {
   /** Every exam this person may open, most-entitled first. */
   codes: string[];
@@ -56,7 +83,7 @@ export function useCurrentExam(): CurrentExam {
     }
     let live = true;
     setLoading(true);
-    platformRequest<Dashboard>("/api/v1/me/dashboard")
+    loadDashboardOnce(userId)
       .then((data) => {
         if (!live) return;
         setCodes(data.exam_codes ?? []);

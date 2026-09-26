@@ -41,19 +41,23 @@ export function createSet(input: {
 }
 
 /**
- * Change what a session is called. Nothing else.
+ * Change a session's name and the stations in it, in one PATCH.
  *
- * The retiring client's edit screen asked for a name *and* the station list,
- * and the second half is not a rename: an entry carries the counters for what
- * was sat in it and is what an attempt points at, so swapping the list would be
- * deleting somebody's history and numbering a new one from zero. That is why
- * this PATCH takes a title, and why the pencil on the sessions list opens a
- * name field rather than the old "Update Session" page.
+ * The station list is sent whole. The server keeps the entries that are still
+ * in it (with the attempts that point at them), adds the new ones, drops the
+ * rest and numbers them again in the order given. The server refuses a locked
+ * session (`set_locked`), dropping a station somebody has already sat
+ * (`set_entry_has_attempts`), and a station that cannot be practised
+ * (`station_version_not_usable`), all before changing anything. The page shows
+ * the server's own sentence for each.
  */
-export function renameSet(setId: string, name: string): Promise<StationSet> {
+export function updateSet(
+  setId: string,
+  input: { name: string; stationVersionIds: string[] },
+): Promise<StationSet> {
   return platformRequest<StationSet>(`/api/v1/me/station-sets/${encodeURIComponent(setId)}`, {
     method: "PATCH",
-    body: { name },
+    body: { name: input.name, station_version_ids: input.stationVersionIds },
   });
 }
 

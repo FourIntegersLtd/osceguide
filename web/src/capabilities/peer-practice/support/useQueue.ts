@@ -8,6 +8,17 @@ import { joinQueue, leaveQueue, listPracticeSessions, readPracticeSession, readQ
 import { latestQueueStatus } from "./queueState";
 
 export type QueuePhase = "idle" | "joining" | "waiting" | "matched";
+
+/**
+ * What pressing "Join now" came to. The caller decides the words; the retiring
+ * context raised a different toast for each of these.
+ */
+export type JoinOutcome =
+  | { kind: "joined" }
+  | { kind: "busy" }
+  | { kind: "already_queued" }
+  | { kind: "existing_session"; sessionId: string }
+  | { kind: "failed"; cause: unknown };
 export interface Queue {
   phase: QueuePhase;
   expired: boolean;
@@ -17,18 +28,19 @@ export interface Queue {
   error: Error | null;
   restoring: boolean;
   retry: () => void;
-  join: (examCode: string) => Promise<void>;
+  join: (examCode: string) => Promise<JoinOutcome>;
   leave: () => Promise<void>;
   reset: () => void;
+  /** Follow a queue place the server made for us, e.g. a requeue after a declined match. */
+  adopt: (entryId: string) => void;
 }
 
 /** One SSE subscription; refresh and cross-tab changes re-read the saved entry. */
 export function useQueue(orgId: string | null, options: {
   entryId: string | null;
   onEntryId: (entryId: string | null) => void;
-  onExistingSession?: (sessionId: string) => void;
 }): Queue {
-  const { entryId, onEntryId, onExistingSession } = options;
+  const { entryId, onEntryId } = options;
   const [entry, setEntry] = useState<QueueStatus | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -51,24 +63,31 @@ export function useQueue(orgId: string | null, options: {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (hasCode(restored.error, "queue_entry_not_found")) reset();
   }, [restored.error, reset]);
-  const join = useCallback(async (examCode: string) => {
-    if (operation.current) return;
+  const join = useCallback(async (examCode: string): Promise<JoinOutcome> => {
+    if (operation.current) return { kind: "busy" };
     operation.current = true;
     setJoining(true);
     setError(null);
     try {
+      // A room already open for this exam wins over a second place in line.
       const sessions = await listPracticeSessions();
-      const existing = sessions.items.find((item) => item.exam_code === examCode && item.status !== "ended");
-      if (existing && onExistingSession) {
+      // An unanswered match is not a room yet: the queue entry still offers it.
+      const existing = sessions.items.find((item) => item.exam_code === examCode && item.status !== "ended" &&
+        (item.status !== "pending_accept" || item.my_accepted));
+      if (existing) {
         const current = await readPracticeSession(existing.id);
-        if (current.status !== "ended") { onExistingSession(current.id); return; }
+        if (current.status !== "ended") return { kind: "existing_session", sessionId: current.id };
       }
       const result = await joinQueue(examCode, orgId);
+      const wasQueued = result.entry_id === entryId && result.status === "waiting";
       setEntry(result);
       onEntryId(result.entry_id);
-    } catch (cause) { setError(asError(cause)); }
-    finally { operation.current = false; setJoining(false); }
-  }, [orgId, onEntryId, onExistingSession]);
+      return wasQueued ? { kind: "already_queued" } : { kind: "joined" };
+    } catch (cause) {
+      if (hasCode(cause, "already_queued")) return { kind: "already_queued" };
+      return { kind: "failed", cause };
+    } finally { operation.current = false; setJoining(false); }
+  }, [orgId, entryId, onEntryId]);
   const leave = useCallback(async () => {
     if (!entryId || operation.current) return;
     operation.current = true;
@@ -89,12 +108,17 @@ export function useQueue(orgId: string | null, options: {
       } else setError(asError(cause));
     } finally { operation.current = false; }
   }, [entryId, reset]);
+  const adopt = useCallback((adopted: string) => {
+    setEntry(null);
+    setError(null);
+    onEntryId(adopted);
+  }, [onEntryId]);
   return {
     phase: joining ? "joining" : matchedSessionId ? "matched" : status?.status === "waiting" ? "waiting" : "idle",
     expired: status?.status === "expired", status, matchedSessionId,
     live: stream.connected, error: error ?? restored.error ?? stream.error,
     restoring: Boolean(entryId && !base && restored.loading), retry: restored.reload,
-    join, leave, reset,
+    join, leave, reset, adopt,
   };
 }
 function asError(cause: unknown): Error {

@@ -2,27 +2,29 @@
 
 import {
   HiOutlineArrowPath,
-  HiOutlineLightBulb,
+  HiOutlineClock,
+  HiOutlineExclamationTriangle,
   HiOutlineUsers,
   HiOutlineXMark,
 } from "react-icons/hi2";
+import { LuUserX } from "react-icons/lu";
 import {
   Button,
   Modal,
-  ModalBody,
   ModalCallout,
   ModalContent,
+  ModalDangerButton,
   ModalFooterActions,
-  ModalFootnote,
   ModalLead,
-  ModalList,
-  ModalListRow,
   ModalPrimaryButton,
-  ModalSection,
-  ModalSectionBullets,
   ModalSecondaryButton,
 } from "@/foundation/ui";
-import type { QueueStatus } from "@/capabilities/peer-practice/api";
+import type { PartnerGone } from "../support/sessionState";
+
+/*
+ * The live-practice dialogs, in the retiring client's words and layout.
+ * Each is a 500px fit-content modal unless the old one said otherwise.
+ */
 
 /** The short "shall I start looking?" prompt behind the Live Practice button. */
 export function LivePracticeModal({
@@ -30,15 +32,11 @@ export function LivePracticeModal({
   onClose,
   onStartNow,
   isJoiningQueue,
-  canStart = true,
-  children,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onStartNow: () => void;
   isJoiningQueue: boolean;
-  canStart?: boolean;
-  children?: React.ReactNode;
 }) {
   if (!isOpen) return null;
   return (
@@ -50,15 +48,14 @@ export function LivePracticeModal({
       <ModalContent>
         <ModalLead
           title="Live practice"
-          description="We'll search for a practice partner for up to 10 minutes. You can get matched immediately and start a video session."
+          description="We'll search for an available colleague for up to 10 minutes. You can get matched immediately and start a video session."
           icon={<HiOutlineUsers className="h-4 w-4" />}
         />
-        {children}
         <ModalFooterActions>
           <ModalSecondaryButton onClick={onClose} disabled={isJoiningQueue}>
             Cancel
           </ModalSecondaryButton>
-          <ModalPrimaryButton onClick={onStartNow} disabled={isJoiningQueue || !canStart} className="gap-2">
+          <ModalPrimaryButton onClick={onStartNow} disabled={isJoiningQueue} className="gap-2">
             {isJoiningQueue ? (
               <>
                 <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
@@ -77,76 +74,30 @@ export function LivePracticeModal({
   );
 }
 
-/**
- * Waiting, with the place in the queue the backend actually knows.
- *
- * The retiring modal ran its own ten-minute countdown because the old backend
- * expired a queue entry and never said where anybody stood. This one shows the
- * two numbers the stream pushes — the position and how many are waiting — and
- * runs no clock, because there is no deadline to count towards.
- */
-export function QueueWaitingModal({
-  status,
-  live,
-  onCancel,
-  onKeepWaiting,
+/** Shown straight after joining; closing it leaves the floating indicator. */
+export function SearchingModal({
+  onCancelSearch,
+  onDismiss,
 }: {
-  status: QueueStatus | null;
-  live: boolean;
-  onCancel: () => void;
-  onKeepWaiting: () => void;
+  onCancelSearch: () => void;
+  onDismiss: () => void;
 }) {
-  const position = status?.position ?? null;
-
   return (
-    <Modal width="500px" height="fit-content" title="Searching for a practice partner…" onClose={onKeepWaiting}>
+    <Modal width="500px" height="fit-content" onClose={onDismiss}>
       <ModalContent>
         <ModalLead
-          title="Searching for a practice partner…"
-          description="We’ll search for up to 10 minutes. You can cancel your search or keep waiting in the background."
+          title="Searching for a practice partner"
+          description={
+            <>
+              We&apos;re looking for an available colleague to match you with.
+              We&apos;ll search for up to 10 minutes. You can close this and
+              continue browsing — we&apos;ll notify you when a match is found.
+            </>
+          }
           icon={<HiOutlineArrowPath className="h-4 w-4 animate-spin" />}
         />
-
-        <ModalSection>
-          <div className="text-osce-meta leading-relaxed text-b2c-text-secondary">
-            <p>
-              {position !== null ? (
-                <>
-                  You are <span className="font-semibold text-osce-ink-900">number {position}</span>{" "}
-                  in the queue.
-                </>
-              ) : (
-                "You are in the queue."
-              )}{" "}
-              <span className="font-semibold text-osce-ink-900">{status?.waiting_count ?? 0}</span>{" "}
-              waiting for this exam.
-            </p>
-            <p className="mt-1">
-              {live
-                ? "You can close this and carry on; we'll let you know the moment someone joins."
-                : "Reconnecting to the live updates — your place in the queue is safe."}
-            </p>
-          </div>
-        </ModalSection>
-
-        <ModalCallout>
-          <span className="inline-flex items-start gap-2">
-            <HiOutlineLightBulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              <strong className="font-semibold">Suggestion while you wait</strong>
-              <br />
-              Try AI practice to keep learning while we find you a human partner
-            </span>
-          </span>
-        </ModalCallout>
-
-        <ModalFooterActions className="flex-col md:flex-row">
-          <ModalSecondaryButton onClick={onCancel} className="w-full whitespace-normal md:flex-1">
-            Cancel search
-          </ModalSecondaryButton>
-          <ModalPrimaryButton onClick={onKeepWaiting} className="w-full whitespace-normal md:flex-1">
-            Keep waiting in the background
-          </ModalPrimaryButton>
+        <ModalFooterActions>
+          <ModalDangerButton onClick={onCancelSearch}>Cancel search</ModalDangerButton>
         </ModalFooterActions>
       </ModalContent>
     </Modal>
@@ -155,27 +106,130 @@ export function QueueWaitingModal({
 
 export function QueueExpiredModal({ onClose }: { onClose: () => void }) {
   return (
-    <Modal width="420px" height="fit-content" onClose={onClose}>
+    <Modal width="500px" height="fit-content" onClose={onClose}>
       <ModalContent>
         <ModalLead
-          title="No match found"
-          description="Nobody was available in the last ten minutes. You can try Live Practice again or post a time in the marketplace."
+          title="No Match Found"
+          description="No practice partner found within 10 minutes. Try again or use AI practice."
+          icon={<HiOutlineClock className="h-4 w-4" />}
+          iconTone="orange"
         />
+        <ModalCallout>
+          <span className="inline-flex items-start gap-2">
+            <HiOutlineUsers className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong className="font-semibold">Want to try again?</strong> Click the
+              &quot;Practice with colleague&quot; button again to rejoin the queue. You can
+              also practice with our AI assistant while waiting for human partners.
+            </span>
+          </span>
+        </ModalCallout>
         <ModalFooterActions>
-          <ModalPrimaryButton onClick={onClose}>OK</ModalPrimaryButton>
+          <ModalSecondaryButton onClick={onClose} className="w-full sm:w-auto">
+            Close
+          </ModalSecondaryButton>
         </ModalFooterActions>
       </ModalContent>
     </Modal>
   );
 }
 
-/** The floating card that keeps watching once the modal is dismissed. */
+export const PARTNER_UNAVAILABLE_MESSAGE =
+  "This practice session is no longer available. Someone else may have already joined.";
+
+export function PartnerUnavailableModal({
+  message = PARTNER_UNAVAILABLE_MESSAGE,
+  onClose,
+}: {
+  message?: string;
+  onClose: () => void;
+}) {
+  return (
+    <Modal width="500px" height="fit-content" onClose={onClose}>
+      <ModalContent>
+        <ModalLead
+          title="Session no longer available"
+          description={<>{message}</>}
+          icon={<LuUserX className="h-4 w-4" />}
+          iconTone="orange"
+        />
+        <ModalFooterActions>
+          <ModalPrimaryButton onClick={onClose} className="w-full sm:w-auto">
+            OK
+          </ModalPrimaryButton>
+        </ModalFooterActions>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+/**
+ * The partner never answered the match, or left the session early. Both offer
+ * to requeue, which is what "Yes, Requeue Me" does. It cannot be dismissed:
+ * the person has to choose.
+ */
+export function PartnerLeftModal({
+  reason,
+  isRequeuing,
+  onRequeue,
+  onGoToDashboard,
+}: {
+  reason: PartnerGone;
+  isRequeuing: boolean;
+  onRequeue?: () => void;
+  onGoToDashboard: () => void;
+}) {
+  const noResponse = reason === "no_response";
+  return (
+    <Modal width="500px" height="fit-content" hideCloseButton closeOnBackdrop={false} closeOnEscape={false} closeOnBack={false}>
+      <ModalContent>
+        <ModalLead
+          title={noResponse ? "Partner Didn't Respond" : "Partner Left"}
+          description={
+            noResponse
+              ? "Your practice partner didn't respond to the match in time."
+              : "Your practice partner has left the session."
+          }
+          icon={<HiOutlineExclamationTriangle className="h-4 w-4" />}
+          iconTone="amber"
+        />
+        <ModalCallout className="border-osce-warning-border bg-osce-warning-bg/60">
+          <span className="inline-flex items-start gap-2 text-osce-warning-text">
+            <HiOutlineUsers className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong className="font-semibold">Would you like to be requeued?</strong>{" "}
+              We can find you a new practice partner right away, or you can return to the
+              dashboard.
+            </span>
+          </span>
+        </ModalCallout>
+        <ModalFooterActions>
+          {onRequeue && (
+            <ModalPrimaryButton onClick={onRequeue} disabled={isRequeuing} className="w-full gap-2 sm:w-auto">
+              {isRequeuing ? (
+                <>
+                  <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
+                  Requeuing...
+                </>
+              ) : (
+                "Yes, Requeue Me"
+              )}
+            </ModalPrimaryButton>
+          )}
+          <ModalSecondaryButton onClick={onGoToDashboard} disabled={isRequeuing} className="w-full sm:w-auto">
+            No, Go to Dashboard
+          </ModalSecondaryButton>
+        </ModalFooterActions>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+/** The floating card that keeps watching once the searching modal is closed. */
 export function QueueIndicator({
-  waitingCount,
   onCancel,
   onDismiss,
 }: {
-  waitingCount: number;
   onCancel: () => void;
   onDismiss: () => void;
 }) {
@@ -198,11 +252,9 @@ export function QueueIndicator({
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-osce-body font-semibold text-osce-ink-900">
-            Finding a practice partner
-          </p>
+          <p className="text-osce-body font-semibold text-osce-ink-900">Finding a practice partner</p>
           <p className="mt-0.5 text-osce-caption text-osce-accent sm:text-osce-body">
-            {waitingCount} waiting · we&apos;ll notify you when matched
+            We&apos;ll notify you when matched
           </p>
         </div>
         <Button
@@ -228,94 +280,5 @@ export function QueueIndicator({
         Leave Queue
       </Button>
     </div>
-  );
-}
-
-/** The long-form explanation behind the (i) next to the practice button. */
-export function PeerPracticeInfoModal({
-  onStartPractice,
-  isLoading,
-  onClose,
-  canStart = true,
-}: {
-  onStartPractice: () => void;
-  isLoading: boolean;
-  canStart?: boolean;
-  onClose: () => void;
-}) {
-  return (
-    <Modal width="600px" height="fit-content" onClose={onClose}>
-      <ModalBody>
-        <ModalLead
-          title="Practice with colleagues"
-          description="Practice clinical scenarios with colleagues in real-time video consultations."
-          icon={<HiOutlineUsers className="h-5 w-5" />}
-        />
-
-        <ModalSection
-          title="How it works"
-          icon={<HiOutlineUsers className="h-3.5 w-3.5" />}
-          iconTone="emerald"
-          tint="emerald"
-        >
-          <ModalList>
-            <ModalListRow
-              marker={<StepMarker>1</StepMarker>}
-              title="Matching"
-              description="When you start, you join a queue for your exam. We pair whoever has been waiting longest, so you are told where you stand while you wait."
-            />
-            <ModalListRow
-              marker={<StepMarker>2</StepMarker>}
-              title="Role assignment"
-              description={
-                <>
-                  Your role (Doctor or Patient) is{" "}
-                  <strong className="font-medium text-osce-ink-900">assigned automatically</strong>{" "}
-                  from your practice history so opportunities stay balanced.
-                </>
-              }
-            />
-          </ModalList>
-        </ModalSection>
-
-        <ModalSection title="Session flow">
-          <ModalSectionBullets
-            items={[
-              <>
-                <strong className="font-medium text-osce-ink-900">Matching:</strong> You are put in
-                a room together as soon as a partner is found
-              </>,
-              <>
-                <strong className="font-medium text-osce-ink-900">Video:</strong> Allow your
-                microphone and camera · prepare together before the consultation
-              </>,
-              <>
-                <strong className="font-medium text-osce-ink-900">Ending:</strong> Either of you can
-                end the session when you are done
-              </>,
-            ]}
-          />
-        </ModalSection>
-
-        <ModalFooterActions>
-          <ModalPrimaryButton onClick={onStartPractice} disabled={isLoading || !canStart} className="gap-2">
-            <HiOutlineUsers className="h-3.5 w-3.5 shrink-0" />
-            {isLoading ? "Starting..." : "Start practice session"}
-          </ModalPrimaryButton>
-        </ModalFooterActions>
-
-        <ModalFootnote>
-          You can leave the queue at any time before a match is confirmed.
-        </ModalFootnote>
-      </ModalBody>
-    </Modal>
-  );
-}
-
-function StepMarker({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-osce-accent-muted text-osce-caption font-semibold text-osce-accent">
-      {children}
-    </span>
   );
 }

@@ -10,6 +10,8 @@ teaches you something it did not say (see `maintain-verification-skill`).
 | Workspaces and arms | `workspaces.md` | `surfaces/`, `app/app/[workspace]`, navigation, 404s |
 | Institution dashboard and sittings | `institution.md` | `domains/assess`, authoring, sittings |
 | Athena onboarding (voice) | `onboarding.md` | `capabilities/onboarding`, `foundation/livekit`, assistant calls |
+| AI Practice (mocks) | `mocks.md` | `domains/train/mocks`, `/app/[workspace]/mocks/**`, `MicrophoneCheck` |
+| Marketplace and live peer practice | `marketplace.md` | `capabilities/peer-practice`, `/app/[workspace]/marketplace/**`, platform-api `peer_practice` / `marketplace` |
 
 Test account (seeded): `walkthrough@example.com` — platform admin, owner of
 `kings`, partner admin of `bmj`, institution admin of `st-marys`.

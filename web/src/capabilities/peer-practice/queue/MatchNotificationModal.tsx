@@ -1,92 +1,135 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Modal, ModalContent, ModalLead, ModalFooterActions, ModalPrimaryButton, ModalSecondaryButton } from "@/foundation/ui";
-import { hasCode } from "@/foundation/platform-client";
-import { errorMessage, useAsync } from "@/foundation/hooks";
-import { endPracticeSession, readPracticeSession } from "../api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { HiOutlineBell, HiOutlineExclamationTriangle } from "react-icons/hi2";
+import {
+  Modal,
+  ModalCallout,
+  ModalContent,
+  ModalFooterActions,
+  ModalLead,
+  ModalPrimaryButton,
+  ModalSecondaryButton,
+  ModalSection,
+} from "@/foundation/ui";
 import { formatCountdown } from "../support/examTimers";
 
-/** Declining ends the immediately paired room; the API has no pending match. */
-export function MatchNotificationModal({ sessionId, onAccept, onDeclined }: {
-  sessionId: string; onAccept: () => void; onDeclined: () => void;
+/** How long somebody has to answer a match, as the retiring modal counted it. */
+export const MATCH_RESPONSE_SECONDS = 120;
+
+/**
+ * When the answer is due: the server's `accept_expires_at` once the session
+ * has been read, which is the clock that actually times the match out. Until
+ * then, a local two minutes that survives a reload, so refreshing the page
+ * does not buy another two minutes.
+ */
+function responseDeadline(sessionId: string, expiresAt: string | null): number {
+  const server = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  if (Number.isFinite(server)) return server;
+  const key = `peer_match_deadline_${sessionId}`;
+  const fresh = Date.now() + MATCH_RESPONSE_SECONDS * 1000;
+  try {
+    const stored = Number(localStorage.getItem(key));
+    if (stored > 0) return stored;
+    localStorage.setItem(key, String(fresh));
+  } catch {
+    /* Storage is optional; the countdown still runs for this page. */
+  }
+  return fresh;
+}
+
+/**
+ * "Practice partner found", with two minutes to answer. "Start Session" accepts
+ * (the provider calls `/accept`); "Not Now" and running out of time decline.
+ *
+ * Closing it (the X or the backdrop) answers nothing, exactly as before: the
+ * server's no-response timeout then tells the partner. Running out of time
+ * declines and turns the modal into its "automatically declined" state.
+ */
+export function MatchNotificationModal({
+  sessionId,
+  expiresAt,
+  isAccepting,
+  onAccept,
+  onDecline,
+  onAutoDecline,
+  onDismiss,
+}: {
+  sessionId: string;
+  expiresAt: string | null;
+  isAccepting: boolean;
+  onAccept: () => void;
+  onDecline: () => void;
+  onAutoDecline: () => void;
+  onDismiss: () => void;
 }) {
-  const acceptedKey = `peer_match_accepted_${sessionId}`;
-  const callbacks = useRef({ onAccept, onDeclined });
-  useEffect(() => { callbacks.current = { onAccept, onDeclined }; }, [onAccept, onDeclined]);
-  const [deadline] = useState(() => {
-    const key = `peer_match_deadline_${sessionId}`;
-    try {
-      const existing = Number(localStorage.getItem(key));
-      if (existing > 0) return existing;
-      const next = Date.now() + 120_000;
-      localStorage.setItem(key, String(next));
-      return next;
-    } catch { return Date.now() + 120_000; }
-  });
-  const [now, setNow] = useState(Date.now);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<unknown>(null);
-  const [expired, setExpired] = useState(false);
-  const loaded = useAsync((signal) => readPracticeSession(sessionId, signal), [sessionId]);
-  const ended = loaded.data?.status === "ended";
+  const deadline = useMemo(() => responseDeadline(sessionId, expiresAt), [sessionId, expiresAt]);
+  const secondsLeft = () => Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+  const [timeLeft, setTimeLeft] = useState(secondsLeft);
+  const [isExpired, setIsExpired] = useState(false);
+  const autoDecline = useRef(onAutoDecline);
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    if ("Notification" in window && Notification.permission === "granted") {
-      const notification = new Notification("Practice partner found", { body: "Your partner is ready. Accept your match within 2 minutes.", tag: sessionId });
-      notification.onclick = () => { window.focus(); notification.close(); };
-    }
+    autoDecline.current = onAutoDecline;
+  }, [onAutoDecline]);
+
+  useEffect(() => {
+    if (isExpired) return undefined;
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        setIsExpired(true);
+        autoDecline.current();
+      }
+    }, 1000);
     return () => window.clearInterval(timer);
-  }, [sessionId]);
-  useEffect(() => {
-    const syncAcceptance = () => {
-      try { if (localStorage.getItem(acceptedKey)) callbacks.current.onAccept(); } catch { /* Storage is optional. */ }
-    };
-    syncAcceptance();
-    window.addEventListener("storage", syncAcceptance);
-    return () => window.removeEventListener("storage", syncAcceptance);
-  }, [acceptedKey]);
-  const accept = () => {
-    try { localStorage.setItem(acceptedKey, "accepted"); } catch { /* Storage is optional. */ }
-    onAccept();
-  };
-  useEffect(() => {
-    const timer = window.setInterval(loaded.reload, 10_000);
-    return () => window.clearInterval(timer);
-  }, [loaded.reload]);
-  const declining = useRef(false);
-  const decline = useCallback(async () => {
-    if (declining.current) return;
-    declining.current = true;
-    setBusy(true); setFailure(null);
-    try { await endPracticeSession(sessionId, "match_declined"); callbacks.current.onDeclined(); }
-    catch (cause) {
-      if (hasCode(cause, "practice_session_ended")) callbacks.current.onDeclined();
-      else setFailure(cause);
-    }
-    finally { setBusy(false); declining.current = false; }
-  }, [sessionId]);
-  useEffect(() => {
-    if (ended) return;
-    const timer = window.setTimeout(() => {
-      try { if (localStorage.getItem(acceptedKey)) return; } catch { /* Storage is optional. */ }
-      setExpired(true);
-      void decline();
-    }, Math.max(0, deadline - Date.now()));
-    return () => window.clearTimeout(timer);
-  }, [deadline, ended, acceptedKey, decline]);
-  return <Modal width="min(95vw, 480px)" height="fit-content" title="Practice partner found" hideCloseButton closeOnEscape={false} closeOnBackdrop={false} closeOnBack={false}>
-    <ModalContent>
-      <ModalLead title={ended ? "Partner unavailable" : expired ? "Match expired" : "Practice partner found!"}
-        description={ended ? "Your practice partner is no longer available. Join the queue again to find someone else." : "A colleague is ready to practise with you. Would you like to accept?"} />
-      {!ended && <p className="text-center font-mono text-2xl" role="timer">{formatCountdown(Math.max(0, Math.ceil((deadline - now) / 1000)))}</p>}
-      {(failure || loaded.error) && <Alert tone="danger">{errorMessage(failure || loaded.error)}</Alert>}
-      <ModalFooterActions>
-        {ended ? <ModalPrimaryButton onClick={onDeclined}>Back to practice</ModalPrimaryButton> : <>
-          <ModalSecondaryButton disabled={busy} onClick={() => void decline()}>{expired ? "Close match" : "Not now"}</ModalSecondaryButton>
-          <ModalPrimaryButton disabled={busy || expired || loaded.loading || Boolean(loaded.error)} onClick={accept}>Accept</ModalPrimaryButton>
-        </>}
-      </ModalFooterActions>
-    </ModalContent>
-  </Modal>;
+  }, [deadline, isExpired]);
+
+  return (
+    <Modal width="500px" height="fit-content" onClose={onDismiss}>
+      {isExpired ? (
+        <ModalContent>
+          <ModalLead
+            title="Match automatically declined"
+            description="You have been automatically declined because no response was received within the time limit."
+            icon={<HiOutlineExclamationTriangle className="h-4 w-4" />}
+            iconTone="orange"
+          />
+          <ModalCallout>
+            <strong className="font-semibold">You can try again manually</strong> by clicking
+            the practice button again.
+          </ModalCallout>
+          <ModalFooterActions>
+            <ModalPrimaryButton onClick={onDismiss} className="w-full sm:w-auto">
+              Close
+            </ModalPrimaryButton>
+          </ModalFooterActions>
+        </ModalContent>
+      ) : (
+        <ModalContent>
+          <ModalLead
+            title="Practice partner found"
+            description="A practice partner is available. Start your practice session now?"
+            icon={<HiOutlineBell className="h-4 w-4" />}
+          />
+          <ModalSection tint="amber">
+            <p className="text-osce-meta font-medium text-osce-warning-text" role="timer">
+              Time to respond: {formatCountdown(timeLeft)}
+            </p>
+            <p className="mt-0.5 text-osce-meta leading-relaxed text-b2c-text-secondary">
+              This match will automatically decline if no response is received.
+            </p>
+          </ModalSection>
+          <ModalFooterActions>
+            <ModalSecondaryButton onClick={onDecline} disabled={isAccepting} className="flex-1 sm:flex-none">
+              Not Now
+            </ModalSecondaryButton>
+            <ModalPrimaryButton onClick={onAccept} disabled={isAccepting} className="flex-1 sm:flex-none">
+              Start Session
+            </ModalPrimaryButton>
+          </ModalFooterActions>
+        </ModalContent>
+      )}
+    </Modal>
+  );
 }

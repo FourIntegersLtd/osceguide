@@ -14,7 +14,7 @@ import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
  * practising with somebody), then Settings under General.
  *
  * **Access is not here.** It used to be a top-level item rendering the same
- * `AccessPanel` that Settings already shows as a tab, so the product had one
+ * payments panel that Settings already shows as a tab, so the product had one
  * screen in two places. Billing lives under Settings, which is where the old
  * client kept it and where people look for it.
  */
@@ -46,6 +46,8 @@ export const trainSurface: SurfaceManifest = {
     "mockDetail",
     "mockStation",
     "mockComplete",
+    "mockList",
+    "mockUpdate",
     "practiceStation",
     "attempt",
   ],

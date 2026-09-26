@@ -6,10 +6,10 @@ import { HiInformationCircle } from "react-icons/hi";
 import { HiOutlineArrowPath } from "react-icons/hi2";
 import Table, { type Column } from "@/foundation/table/Table";
 import {
-  Badge,
   B2CPanelCard,
   B2CPanelCardBody,
   B2CPanelCardHeader,
+  productTokens,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -74,14 +74,14 @@ export function FlaggedStations() {
     );
   }
 
-  if (rows.length === 0) {
+  if ((flags.data ?? []).length === 0) {
     return (
       <B2CPanelCard className="mt-0 mb-24">
         <B2CPanelCardHeader>Flagged stations</B2CPanelCardHeader>
         <B2CPanelCardBody>
           <div className="flex items-start gap-3 rounded-md border border-b2c-border bg-b2c-surface-muted p-3 sm:p-4">
             <HiInformationCircle className="mt-0.5 h-5 w-5 shrink-0 text-osce-accent" aria-hidden />
-            <p className="text-osce-body text-b2c-text-secondary">
+            <p className={productTokens.b2cBodyText}>
               Flag a station during a mock to see it here for quick review.
             </p>
           </div>
@@ -98,24 +98,15 @@ export function FlaggedStations() {
       header: "Station",
       key: "station_name",
       render: (row) => (
-        <span className="inline-flex flex-wrap items-center gap-2">
-          <Link
-            href={practiseHref(hrefFor, row.station_id)}
-            className="text-osce-accent hover:underline"
-          >
-            {row.station_name}
-          </Link>
-          {row.status === "resolved" ? <Badge tone="success">Reviewed</Badge> : null}
-        </span>
+        <Link href={practiseHref(hrefFor, row.station_id)} className={productTokens.b2cLink}>
+          {row.station_name}
+        </Link>
       ),
     },
     {
       header: "Action",
       key: (row) => (
-        <Link
-          href={practiseHref(hrefFor, row.station_id)}
-          className="text-osce-accent hover:underline"
-        >
+        <Link href={practiseHref(hrefFor, row.station_id)} className={productTokens.b2cLink}>
           View details
         </Link>
       ),

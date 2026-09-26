@@ -1,8 +1,8 @@
 "use client";
 
 import { HiOutlineVideoCamera } from "react-icons/hi2";
+import Alert from "@/foundation/forms/Alert";
 import {
-  Alert,
   Modal,
   ModalCallout,
   ModalContent,
@@ -14,10 +14,11 @@ import {
 import type { PeerSession } from "@/capabilities/peer-practice/api";
 import { longDate, meridiemTime } from "@/capabilities/peer-practice/support/time";
 
+/** "Your session is ready!" — raised anywhere once an arranged session opens. */
 export function JoinablePeerSessionModal({
   session,
-  isJoining,
-  joinError,
+  isJoining = false,
+  joinError = null,
   onJoin,
   onDismiss,
 }: {
@@ -27,27 +28,56 @@ export function JoinablePeerSessionModal({
   onJoin: () => void;
   onDismiss: () => void;
 }) {
-  const partner = session.partner_username ? `@${session.partner_username}` : "your partner";
-  const active = session.status === "active";
+  const partner = session.partner_username || "your partner";
+  const isActive = session.status === "active";
 
   return (
-    <Modal onClose={onDismiss} width="min(95vw, 440px)" height="fit-content">
+    <Modal width="500px" height="fit-content" onClose={onDismiss}>
       <ModalContent>
         <ModalLead
-          title={active ? "Session in progress" : "Your session is ready"}
-          description={`You have a session with ${partner} on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`}
+          title={<>{isActive ? "Session in progress" : "Your session is ready!"}</>}
+          description={
+            <>
+              You have a marketplace session with{" "}
+              <span className="font-medium text-osce-ink-900">@{partner}</span> on{" "}
+              {longDate(session.starts_at)} at {meridiemTime(session.starts_at)}.
+            </>
+          }
           icon={<HiOutlineVideoCamera className="h-4 w-4" />}
         />
+
         <ModalCallout>
-          {active ? "Rejoin the call to continue practising." : "You can join now — head to the call when you are ready."}
+          <strong className="font-semibold">
+            {isActive ? "Rejoin the session" : "You can join now"}
+          </strong>{" "}
+          . head to the call and start practicing.
         </ModalCallout>
-        {joinError && <Alert tone="danger" className="mt-3">{joinError}</Alert>}
-        <ModalFooterActions>
-          <ModalSecondaryButton onClick={onDismiss}>Not now</ModalSecondaryButton>
-          <ModalPrimaryButton onClick={onJoin} disabled={isJoining}>
-            {isJoining ? "Joining…" : active ? "Rejoin session" : "Join session"}
+
+        {joinError ? <Alert message={joinError} type="error" className="mt-4" /> : null}
+
+        <ModalFooterActions className="flex-col sm:flex-row">
+          <ModalSecondaryButton onClick={onDismiss} disabled={isJoining} className="w-full sm:flex-1">
+            Later
+          </ModalSecondaryButton>
+          <ModalPrimaryButton onClick={onJoin} disabled={isJoining} className="w-full gap-2 sm:flex-1">
+            {isJoining ? (
+              <>
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Joining...
+              </>
+            ) : isActive ? (
+              "Rejoin Session"
+            ) : (
+              "Join Session"
+            )}
           </ModalPrimaryButton>
         </ModalFooterActions>
+
+        <p className="mt-3 text-center text-osce-meta text-osce-ink-500">
+          To join later, go to{" "}
+          <span className="font-medium text-osce-ink-900">Marketplace → Upcoming Sessions</span>{" "}
+          tab
+        </p>
       </ModalContent>
     </Modal>
   );

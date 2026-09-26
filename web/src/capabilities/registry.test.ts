@@ -45,6 +45,22 @@ describe("capability registry", () => {
     assert.ok(study, "study material has no permission gate, so no grant is needed");
   });
 
+  it("shows the marketplace in navigation to SCA candidates only", () => {
+    // The retiring nav's `scaOnly`: PLAB, CASC and orthopaedic candidates
+    // never saw it. A direct link still opens it, so the route guard, which
+    // passes no exam, keeps finding it.
+    const navFor = (examCode: string | null) =>
+      capabilitiesFor("train", { basePath: "/app/me", examCode }).map((capability) => capability.href);
+    assert.ok(navFor("sca").includes("/app/me/marketplace"));
+    assert.ok(!navFor("plab").includes("/app/me/marketplace"));
+    assert.ok(!navFor(null).includes("/app/me/marketplace"));
+    assert.ok(
+      capabilitiesFor("train", { includeHidden: true })
+        .map((capability) => capability.id)
+        .includes("peer-practice"),
+    );
+  });
+
   it("keeps hidden capabilities out of navigation", () => {
     // Help is a docked panel on every screen, not a nav destination.
     const nav = capabilitiesFor("train").map((capability) => capability.id);

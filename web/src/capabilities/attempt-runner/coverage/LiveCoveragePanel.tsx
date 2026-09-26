@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { HiOutlineEye } from "react-icons/hi2";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { readCoverage, type CoverageUpdate } from "./api";
 import LiveCoverageFeed from "./LiveCoverageFeed";
 import { getLiveCoverageHidden, getLiveCoverageHiddenOnServer, setLiveCoverageHidden, subscribeLiveCoverageHidden } from "./preference";
@@ -14,11 +14,17 @@ export function LiveCoveragePanel({ attemptId, isLive }: { attemptId: string | n
   const state = useAsync((signal) => attemptId && !hidden
     ? readCoverage(attemptId, signal) : Promise.resolve(EMPTY), [attemptId, hidden]);
   const reload = state.reload;
-  useEffect(() => {
-    if (!attemptId || hidden || !isLive) return;
-    const timer = window.setInterval(reload, 4000);
-    return () => window.clearInterval(timer);
-  }, [attemptId, hidden, isLive, reload]);
+  // `update_coverage` publishes `coverage` to the attempt's owner as each item is
+  // marked live, so this re-reads on that event rather than on a fixed interval.
+  useMeEvents(
+    attemptId && !hidden && isLive ? ["coverage"] : null,
+    useCallback(
+      (event) => {
+        if (event.name === "resync" || event.data.attempt_id === attemptId) reload();
+      },
+      [attemptId, reload],
+    ),
+  );
 
   if (hidden) return <div className="shrink-0 border-t border-b2c-border px-4 py-2.5">
     <button type="button" onClick={() => setLiveCoverageHidden(false)}

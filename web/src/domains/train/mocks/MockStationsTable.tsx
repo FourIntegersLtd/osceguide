@@ -1,35 +1,30 @@
 "use client";
 
+import { Fragment, useState } from "react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiChevronUp } from "react-icons/hi2";
-import Table, {
-  type FetchPageParams,
-  type FetchPageResult,
-} from "@/foundation/table/Table";
-import { Button, cn } from "@/foundation/ui";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { HiArrowRight, HiChevronUp } from "react-icons/hi2";
+import { Button, cn, productTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listMyAttempts } from "@/capabilities/attempt-runner";
 import type { SetEntry, StationSet } from "@/domains/train/api";
 import { attemptsWithTranscript } from "@/domains/train/mocks/model";
 
+const { b2cGhostButton, b2cTableCell, b2cTableHeader, b2cTableThead } = productTokens;
+
 export interface StationRow {
   entry: SetEntry;
   title: string;
 }
 
-type StationTableRow = StationRow & { position: number; id: string };
-
 /**
  * The stations in a session, with where each one is up to.
  *
- * The expander is the old client's, and now so is what is behind it: the row
- * counts this entry's transcripts and markings and links to them. It said "No
- * transcripts yet" unconditionally for the whole port, because there was no
- * listing of a person's attempts to count; `GET /me/attempts` is that listing.
+ * A table on a wide screen and a card per station on a phone, as the retiring
+ * client drew it. A row opens to count this entry's transcripts and markings
+ * and link to them; those counts were hard-coded empty for most of the port,
+ * because there was no listing of a person's attempts until `GET /me/attempts`.
  */
 export function MockStationsTable({
   set,
@@ -45,146 +40,174 @@ export function MockStationsTable({
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   const toggleRow = (entryId: string) =>
-    setExpandedRows((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
+    setExpandedRows((previous) => ({ ...previous, [entryId]: !previous[entryId] }));
 
-  const attemptHref = (entryId: string) => hrefFor(`/mocks/${set.id}/stations/${entryId}`);
+  const stationHref = (entryId: string) => hrefFor(`/mocks/${set.id}/stations/${entryId}`);
 
+  const isCompleted = (entry: SetEntry) => entry.attempts >= attemptLimit;
   const attemptsLabel = (entry: SetEntry) =>
-    entry.attempts >= attemptLimit ? "Completed" : `${entry.attempts}/${attemptLimit} attempts`;
+    isCompleted(entry) ? "Completed" : `${entry.attempts}/${attemptLimit} attempts`;
+  const attemptsTone = (entry: SetEntry) =>
+    isCompleted(entry) ? "text-osce-success-text" : "text-b2c-text-secondary";
 
-  const attemptsClass = (entry: SetEntry) =>
-    entry.attempts >= attemptLimit ? "text-osce-success-text" : "text-b2c-text-secondary";
+  const startButton = (entry: SetEntry, fullWidth: boolean) =>
+    !set.locked && !isCompleted(entry) ? (
+      <Button
+        type="button"
+        fullWidth={fullWidth}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          router.push(`${stationHref(entry.id)}?action=attempt`);
+        }}
+      >
+        Start New Attempt
+      </Button>
+    ) : null;
 
-  const actions = (entry: SetEntry, fullWidth: boolean) => (
-    <>
-      {entry.attempts !== 0 && (
-        <Button
-          type="button"
-          variant="secondary"
-          fullWidth={fullWidth}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            router.push(`${attemptHref(entry.id)}?action=review&tab=management`);
-          }}
-        >
-          Review Last Attempt
-        </Button>
-      )}
-      {!set.locked && entry.attempts < attemptLimit && (
-        <Button
-          type="button"
-          fullWidth={fullWidth}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            router.push(attemptHref(entry.id));
-          }}
-        >
-          Start New Attempt
-        </Button>
-      )}
-    </>
-  );
-
-  const pool = useMemo(
-    () => rows.map((row, index) => ({ ...row, position: index + 1, id: row.entry.id })),
-    [rows],
-  );
-
-  const fetchPage = useCallback(
-    async (params: FetchPageParams): Promise<FetchPageResult<StationTableRow>> => {
-      let filtered = pool;
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = pool.filter((row) => row.title.toLowerCase().includes(q));
-      }
-      const start = (params.page - 1) * params.perPage;
-      const end = start + params.perPage;
-      return {
-        items: filtered.slice(start, end),
-        totalCount: filtered.length,
-      };
-    },
-    [pool],
-  );
-
-  const columns = useMemo(
-    () => [
-      {
-        header: "Station",
-        key: "position" as keyof StationTableRow,
-        priority: "detail" as const,
-        render: (row: StationTableRow) => (
-          <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
-            {row.position}
-          </span>
-        ),
-      },
-      {
-        header: "Station name",
-        key: "title" as keyof StationTableRow,
-        priority: "primary" as const,
-        render: (row: StationTableRow) => (
-          <div className="flex items-center gap-2">
-            <HiChevronUp
-              className={cn(
-                "h-5 w-5 shrink-0 transition-transform",
-                expandedRows[row.entry.id] && "rotate-180",
-              )}
-              aria-hidden
-            />
-            <Link
-              href={attemptHref(row.entry.id)}
-              className={cn(b2cTableCellText, "text-osce-ink-900 hover:text-osce-accent")}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {row.title}
-            </Link>
-          </div>
-        ),
-      },
-      {
-        header: "Attempts",
-        key: "entry" as keyof StationTableRow,
-        render: (row: StationTableRow) => (
-          <span className={cn("text-osce-data", attemptsClass(row.entry), b2cTableCellText)}>
-            {attemptsLabel(row.entry)}
-          </span>
-        ),
-      },
-      {
-        header: "Action",
-        key: "entry" as keyof StationTableRow,
-        priority: "secondary" as const,
-        render: (row: StationTableRow) => (
-          <div className="flex items-center gap-3" onClick={(event) => event.stopPropagation()}>
-            {actions(row.entry, false)}
-          </div>
-        ),
-      },
-    ],
-    [attemptHref, attemptLimit, expandedRows, set.locked],
-  );
+  const reviewButton = (entry: SetEntry, fullWidth: boolean) =>
+    entry.attempts !== 0 ? (
+      <Button
+        type="button"
+        variant="secondary"
+        fullWidth={fullWidth}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          router.push(`${stationHref(entry.id)}?action=review&tab=management`);
+        }}
+        className="gap-2"
+      >
+        Review Last Attempt
+        <HiArrowRight className="h-4 w-4" />
+      </Button>
+    ) : null;
 
   return (
     <div>
-      <Table<StationTableRow>
-        fetchPage={fetchPage}
-        columns={columns}
-        idField="id"
-        nameField="title"
-        showSearch={false}
-        showPagination={pool.length > 10}
-        defaultItemsPerPage={25}
-        isRowExpanded={(row) => Boolean(expandedRows[row.entry.id])}
-        onRowActivate={(row) => toggleRow(row.entry.id)}
-        renderExpandedRow={(row) => (
-          <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <EntryHistory setId={set.id} entry={row.entry} />
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto rounded-lg border border-b2c-border lg:block">
+        <table data-b2c-table="" className="min-w-full divide-y divide-b2c-border">
+          <thead className={b2cTableThead}>
+            <tr>
+              <th className={`min-w-[100px] px-6 py-3 text-left ${b2cTableHeader}`}>Station</th>
+              <th className={`min-w-[200px] px-6 py-3 text-left ${b2cTableHeader}`}>
+                Station Name
+              </th>
+              <th className={`min-w-[150px] px-6 py-3 text-left ${b2cTableHeader}`}>Attempts</th>
+              <th className={`min-w-[150px] px-6 py-3 text-left ${b2cTableHeader}`}>Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-b2c-border bg-osce-surface">
+            {rows.map((row, index) => (
+              <Fragment key={row.entry.id}>
+                <tr
+                  className="cursor-pointer transition-colors hover:bg-b2c-surface-muted"
+                  onClick={() => toggleRow(row.entry.id)}
+                >
+                  <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
+                    <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
+                      {index + 1}
+                    </span>
+                  </td>
+                  <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
+                    <div className="flex items-center gap-2">
+                      <HiChevronUp
+                        className={cn(
+                          "h-5 w-5 transition-transform",
+                          expandedRows[row.entry.id] && "rotate-180",
+                        )}
+                      />
+                      <Link
+                        href={stationHref(row.entry.id)}
+                        className="text-osce-ink-900 hover:text-osce-accent"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {row.title}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
+                    <div className="flex items-center">
+                      <span className={cn("text-osce-data", attemptsTone(row.entry))}>
+                        {attemptsLabel(row.entry)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className={cn("whitespace-nowrap px-6 py-4", b2cTableCell)}>
+                    <div className="flex items-center gap-3">
+                      {startButton(row.entry, false)}
+                      {reviewButton(row.entry, false)}
+                    </div>
+                  </td>
+                </tr>
+                {expandedRows[row.entry.id] && (
+                  <tr>
+                    <td colSpan={4} className="bg-b2c-surface-muted px-6 py-4">
+                      <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+                        <div className="flex items-center gap-3">
+                          <EntryHistory stationHref={stationHref(row.entry.id)} entry={row.entry} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="space-y-4 lg:hidden">
+        {rows.map((row, index) => (
+          <div
+            key={row.entry.id}
+            className="overflow-hidden rounded-none border border-b2c-border bg-osce-surface"
+          >
+            <div
+              className="cursor-pointer p-5 transition-colors hover:bg-b2c-surface-muted"
+              onClick={() => toggleRow(row.entry.id)}
+            >
+              <div className="mb-4 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-body font-medium text-osce-ink-900">
+                    {index + 1}
+                  </span>
+                  <HiChevronUp
+                    className={cn(
+                      "h-5 w-5 text-b2c-text-muted transition-transform",
+                      expandedRows[row.entry.id] && "rotate-180",
+                    )}
+                  />
+                </div>
+                <span className={cn("text-osce-body font-medium", attemptsTone(row.entry))}>
+                  {attemptsLabel(row.entry)}
+                </span>
+              </div>
+
+              <Link
+                href={stationHref(row.entry.id)}
+                className="text-osce-body font-medium text-osce-ink-900 transition-colors hover:text-osce-accent"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {row.title}
+              </Link>
+            </div>
+
+            <div className="space-y-3 px-5 pb-5">
+              {startButton(row.entry, true)}
+              {reviewButton(row.entry, true)}
+            </div>
+
+            {expandedRows[row.entry.id] && (
+              <div className="space-y-3 border-t border-b2c-border bg-b2c-surface-muted px-5 pb-5 pt-3">
+                <EntryHistory stationHref={stationHref(row.entry.id)} entry={row.entry} compact />
+              </div>
+            )}
           </div>
-        )}
-      />
+        ))}
+      </div>
     </div>
   );
 }
@@ -192,52 +215,87 @@ export function MockStationsTable({
 /**
  * What this station has produced: its transcripts and its markings.
  *
- * Both counts were hard-coded empty states for the whole port — there was no
- * listing of a person's attempts to count. Each links back into the station
- * screen, which is where both are actually read.
+ * Each links into the station screen, which is where both are read: the old
+ * client's `/transcripts` and `/feedbacks` lists filtered by station have no
+ * equivalent here, and the station's own review tabs are the same content.
  */
-function EntryHistory({ setId, entry }: { setId: string; entry: SetEntry }) {
-  const { hrefFor } = useSurface();
+function EntryHistory({
+  stationHref,
+  entry,
+  compact = false,
+}: {
+  stationHref: string;
+  entry: SetEntry;
+  /** The phone layout: full-width rows rather than two fixed-width pills. */
+  compact?: boolean;
+}) {
   const state = useAsync(
     (signal) => listMyAttempts({ setEntryId: entry.id, limit: 25 }, signal),
     [entry.id],
   );
-
-  const stationHref = hrefFor(`/mocks/${setId}/stations/${entry.id}`);
   const attempts = state.data?.items ?? [];
-  // Only an attempt that actually finished its consultation left a
-  // transcript; one still `created` or `running` never sat the station, so it
-  // must not inflate this count.
-  const transcribedAttempts = attemptsWithTranscript(attempts);
-  const marked = attempts.filter((item) => item.has_result).length;
+  // Only an attempt that finished its consultation left a transcript; one
+  // still `created` or `running` never sat the station.
+  const transcripts = attemptsWithTranscript(attempts).length;
+  const feedbacks = attempts.filter((item) => item.has_result).length;
 
   return (
-    <div className="flex items-center gap-3">
-      <Pill
-        href={transcribedAttempts.length > 0 ? `${stationHref}?action=review&tab=simulation` : null}
-        label={
-          transcribedAttempts.length > 0
-            ? `All previous Transcripts (${transcribedAttempts.length})`
-            : "No transcripts yet"
-        }
+    <>
+      <HistoryLink
+        href={`${stationHref}?action=review&tab=simulation`}
+        count={transcripts}
+        label="All previous Transcripts"
+        emptyLabel="No transcripts yet"
+        compact={compact}
       />
-      <Pill
-        href={marked > 0 ? `${stationHref}?action=review&tab=feedback` : null}
-        label={marked > 0 ? `All previous Feedbacks (${marked})` : "No feedbacks yet"}
+      <HistoryLink
+        href={`${stationHref}?action=review&tab=feedback`}
+        count={feedbacks}
+        label="All previous Feedbacks"
+        emptyLabel="No feedbacks yet"
+        compact={compact}
       />
-    </div>
+    </>
   );
 }
 
-function Pill({ href, label }: { href: string | null; label: string }) {
-  const className =
-    "flex min-w-[200px] items-center justify-center gap-2 rounded-md bg-b2c-secondary px-5 py-2.5 text-osce-body";
-  if (!href) {
-    return <div className={cn(className, "text-b2c-text-muted")}>{label}</div>;
+function HistoryLink({
+  href,
+  count,
+  label,
+  emptyLabel,
+  compact,
+}: {
+  href: string;
+  count: number;
+  label: string;
+  emptyLabel: string;
+  compact: boolean;
+}) {
+  if (count === 0) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center gap-2 rounded-md bg-b2c-secondary text-osce-body text-b2c-text-muted",
+          compact ? "px-4 py-3" : "min-w-[200px] px-5 py-2.5",
+        )}
+      >
+        {emptyLabel}
+      </div>
+    );
   }
   return (
-    <Link href={href} className={cn(className, "text-osce-accent hover:text-osce-accent-hover")}>
-      {label}
+    <Link
+      href={href}
+      className={cn(
+        b2cGhostButton,
+        compact ? "w-full justify-between gap-2 group" : "min-w-[200px] justify-center gap-2 group",
+      )}
+    >
+      <span>
+        {label} ({count})
+      </span>
+      <HiArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
     </Link>
   );
 }

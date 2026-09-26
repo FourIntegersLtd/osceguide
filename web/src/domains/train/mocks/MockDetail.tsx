@@ -1,16 +1,18 @@
 "use client";
 
 import { HiOutlineLockClosed } from "react-icons/hi2";
+import { RiSpeakLine } from "react-icons/ri";
 import {
   AsyncBoundary,
   B2CEmptyState,
+  Back,
   B2CPageHeader,
   B2CPanelCard,
   B2CPanelCardBody,
   productTokens,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { useSurface } from "@/capabilities";
+import { hasCode } from "@/foundation/platform-client";
 import { listExams } from "@/capabilities/stations";
 import { loadStationCatalogue, readSet } from "@/domains/train/api";
 import { MockRules } from "@/domains/train/mocks/MockRules";
@@ -26,11 +28,15 @@ import { entriesInOrder, sessionMinutes } from "@/domains/train/mocks/model";
  * because "attempted" is a fact about the set rather than a second question.
  */
 export function MockDetail({ setId }: { setId: string }) {
-  const { hrefFor } = useSurface();
-
   const state = useAsync(
     async (signal) => {
-      const set = await readSet(setId, signal);
+      // Someone else's id, or one since deleted, is the old screen's "No mock
+      // found" rather than an error with a retry that can never succeed.
+      const set = await readSet(setId, signal).catch((cause: unknown) => {
+        if (hasCode(cause, "set_not_found")) return null;
+        throw cause;
+      });
+      if (set === null) return null;
       // Entries carry a station version id and no title, so the library is the
       // lookup. One request for the exam beats one per entry.
       const [library, exams] = await Promise.all([
@@ -51,7 +57,16 @@ export function MockDetail({ setId }: { setId: string }) {
   return (
     <div className={productTokens.b2cPageColumn}>
       <AsyncBoundary state={state}>
-        {({ set, rows, exam }) => {
+        {(loaded) => {
+          if (loaded === null) {
+            return (
+              <>
+                <Back />
+                <p className="mt-4 text-osce-body text-b2c-text-muted">No mock found</p>
+              </>
+            );
+          }
+          const { set, rows, exam } = loaded;
           const attempted = set.attempted_entries > 0;
           const duration = sessionMinutes(
             set.total_entries,
@@ -64,8 +79,10 @@ export function MockDetail({ setId }: { setId: string }) {
           );
 
           return (
-            <div className="space-y-6">
-              <B2CPageHeader title={set.name} back={{ href: hrefFor("/mocks") }} />
+            <div className="mx-auto max-w-osce-page space-y-6">
+              <Back />
+
+              <B2CPageHeader title={set.name} icon={RiSpeakLine} />
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:w-2/3">
                 <B2CPanelCard>

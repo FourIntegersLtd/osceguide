@@ -10,6 +10,8 @@ import {
   ExamDashboard,
   MockDetail,
   MockEnd,
+  MockList,
+  MockUpdate,
   Mocks,
   PracticeStation,
   SetStation,
@@ -54,6 +56,12 @@ function TrainMockComplete({ params }: ScreenProps) {
   return <MockEnd setId={params?.setId ?? ""} />;
 }
 
+const TrainMockList = () => <MockList />;
+
+function TrainMockUpdate({ params }: ScreenProps) {
+  return <MockUpdate setId={params?.setId ?? ""} />;
+}
+
 function TrainPracticeStation({ params }: ScreenProps) {
   return (
     <PracticeStation
@@ -81,6 +89,8 @@ export const trainScreens: ScreenMap = {
   mockDetail: TrainMockDetail,
   mockStation: TrainMockStation,
   mockComplete: TrainMockComplete,
+  mockList: TrainMockList,
+  mockUpdate: TrainMockUpdate,
   practiceStation: TrainPracticeStation,
   attempt: TrainAttempt,
 };

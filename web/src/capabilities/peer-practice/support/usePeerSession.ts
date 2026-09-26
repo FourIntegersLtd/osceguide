@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAsync, useEventStream } from "@/foundation/hooks";
+import { useAsync, useEventStream, useMeEvents } from "@/foundation/hooks";
 import { useMicPreflight, type RoomGrant } from "@/foundation/livekit";
-import { endPracticeSession, practiceSessionStreamPath, practiceVoiceToken, readPracticeSession, recordPracticePresence, submitPracticeFeedback, type PracticeSession } from "../api";
+import { declinePracticeMatch, endPracticeSession, practiceSessionStreamPath, practiceVoiceToken, readPracticeSession, recordPracticePresence, type PracticeSession } from "../api";
 import { formatCountdown } from "./examTimers";
 import { latestSession, mapPhase, remainingSeconds } from "./sessionState";
 export type { RunnerPhase } from "./sessionState";
@@ -25,13 +25,37 @@ export function usePeerSession(sessionId: string) {
   const [now, setNow] = useState(Date.now);
   const mic = useMicPreflight(runnerPhase === "consultation" || runnerPhase === "debrief");
   if (ended && !streamEnded) setStreamEnded(true);
+  // A queue match is not a room until both sides accept it; presence and end
+  // are refused until then (`practice_session_not_accepted`).
+  const pending = session?.status === "pending_accept";
   useEffect(() => {
-    if (!session?.id || ended) return;
+    if (!session?.id || ended || pending) return;
     let live = true;
     void recordPracticePresence(sessionId).then((result) => { if (live) setMutation(result); })
       .catch((cause) => { if (live) setError(asError(cause)); });
     return () => { live = false; };
-  }, [session?.id, sessionId, ended]);
+  }, [session?.id, sessionId, ended, pending]);
+  // Both accepting, a decline, or the window expiring are all published as
+  // `practice.session_updated` on this user's own event stream; a timeout at
+  // the server's own deadline is the one clock still worth keeping, since the
+  // read there is what actually times the window out.
+  const reloadPending = loaded.reload;
+  useMeEvents(
+    pending ? ["practice.session_updated"] : null,
+    useCallback(
+      (event) => {
+        if (event.name === "resync" || event.data.session_id === sessionId) reloadPending();
+      },
+      [sessionId, reloadPending],
+    ),
+  );
+  useEffect(() => {
+    if (!pending) return;
+    const expiresAt = session?.accept_expires_at ? Date.parse(session.accept_expires_at) : Number.NaN;
+    const expiry = Number.isFinite(expiresAt)
+      ? window.setTimeout(loaded.reload, Math.max(0, expiresAt - Date.now()) + 250) : undefined;
+    return () => window.clearTimeout(expiry);
+  }, [pending, session?.accept_expires_at, loaded.reload]);
   useEffect(() => {
     if (ended) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -65,29 +89,25 @@ export function usePeerSession(sessionId: string) {
   const retry = useCallback(() => {
     setError(null);
     reloadSession();
-    if (!ended) void recordPracticePresence(sessionId).then(setMutation).catch((cause) => setError(asError(cause)));
-  }, [reloadSession, ended, sessionId]);
-  const end = useCallback(async (reason: string | null = null) => {
+    if (!ended && !pending) void recordPracticePresence(sessionId).then(setMutation).catch((cause) => setError(asError(cause)));
+  }, [reloadSession, ended, pending, sessionId]);
+  /** Ends the session; resolves to the failure, or null when it ended. */
+  const end = useCallback(async (reason: string | null = null): Promise<Error | null> => {
     setBusy(true); setError(null);
     try {
-      const result = await endPracticeSession(sessionId, reason);
+      // Leaving before both have accepted is declining the match.
+      const result = pending ? await declinePracticeMatch(sessionId) : await endPracticeSession(sessionId, reason);
       setEndedByMe(true); setMutation(result); setGrant(null);
-      return true;
-    } catch (cause) { setError(asError(cause)); return false; }
+      return null;
+    } catch (cause) { const failure = asError(cause); setError(failure); return failure; }
     finally { setBusy(false); }
-  }, [sessionId]);
-  const submitFeedback = useCallback(async (rating: number, comment: string | null, wouldPracticeAgain: boolean | null = null) => {
-    setBusy(true); setError(null);
-    try { await submitPracticeFeedback(sessionId, { rating, comment, would_practice_again: wouldPracticeAgain }); return true; }
-    catch (cause) { setError(asError(cause)); return false; }
-    finally { setBusy(false); }
-  }, [sessionId]);
+  }, [sessionId, pending]);
   const noteDisconnected = useCallback((unexpected: boolean) => { setGrant(null); setDropped(unexpected); }, []);
   const remaining = remainingSeconds(session?.phase_ends_at, now);
   return {
     runnerPhase, session, loading: loaded.loading, loadError: session ? null : loaded.error,
     reload: retry, grant: ended ? null : grant, busy, error: error ?? loaded.error ?? stream.error,
-    mic, connect, end, endedByMe, dropped, noteDisconnected, submitFeedback,
+    mic, connect, end, endedByMe, dropped, noteDisconnected,
     remaining, phaseCountdown: remaining === null ? null : formatCountdown(remaining),
   };
 }

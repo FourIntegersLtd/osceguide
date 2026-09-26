@@ -136,7 +136,7 @@ export function B2cUserOverview({
             </StatusRow>
             <StatusRow label="Extra reading">
               <span className="text-osce-body text-b2c-text-secondary">
-                {user.extra_reading_percent > 0 ? `${user.extra_reading_percent}%` : "None"}
+                {user.needs_extra_time ? extraTimeSummary(user) : "None"}
               </span>
             </StatusRow>
           </B2CPanelCardBody>
@@ -146,4 +146,21 @@ export function B2cUserOverview({
       <ProfileTab user={user} onSaved={onSaved} />
     </div>
   );
+}
+
+/** "Reading 5m 0s · Consultation 15m 0s", naming only the timers that are set. */
+function extraTimeSummary(user: {
+  custom_reading_seconds?: number | null;
+  custom_simulation_seconds?: number | null;
+}): string {
+  const parts: string[] = [];
+  if (user.custom_reading_seconds) parts.push(`Reading ${minutesAndSeconds(user.custom_reading_seconds)}`);
+  if (user.custom_simulation_seconds) {
+    parts.push(`Consultation ${minutesAndSeconds(user.custom_simulation_seconds)}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : "On, exam timings";
+}
+
+function minutesAndSeconds(total: number): string {
+  return `${Math.floor(total / 60)}m ${total % 60}s`;
 }

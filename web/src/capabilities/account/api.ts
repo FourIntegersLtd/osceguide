@@ -1,4 +1,5 @@
 import {
+  hasCode,
   platformRequest,
   rememberPlatformSession,
   type components,
@@ -117,6 +118,50 @@ export function readReferrals(signal?: AbortSignal): Promise<Referral> {
 }
 
 /** One code per person; asking again returns the one they have. */
+export type ReferralHistoryRow = components["schemas"]["ReferralHistoryRead"];
+export type PayoutDetails = components["schemas"]["PayoutDetailsRead"];
+export type PayoutDetailsWrite = components["schemas"]["PayoutDetailsWrite"];
+
+/** Most rows one person's history is read in; the table pages them in the browser, as the old one did. */
+const REFERRAL_HISTORY_LIMIT = 500;
+
+/** Everybody who joined with the signed-in person's code: one row per referee, newest first. */
+export async function readReferralHistory(signal?: AbortSignal): Promise<ReferralHistoryRow[]> {
+  const page = await platformRequest<{ items: ReferralHistoryRow[] }>(
+    `/api/v1/me/referrals/history?limit=${REFERRAL_HISTORY_LIMIT}`,
+    { signal },
+  );
+  return page.items;
+}
+
+/**
+ * Where referral rewards are paid; `details` is `null` when none are saved yet.
+ *
+ * The account number comes back as its last four digits only; the backend
+ * keeps the rest encrypted and never returns it to the browser.
+ */
+export async function readPayoutDetails(
+  signal?: AbortSignal,
+): Promise<{ details: PayoutDetails | null }> {
+  try {
+    const details = await platformRequest<PayoutDetails>("/api/v1/me/referral-payout-details", {
+      signal,
+    });
+    return { details };
+  } catch (cause) {
+    if (hasCode(cause, "payout_details_not_found")) return { details: null };
+    throw cause;
+  }
+}
+
+/** Save where referral rewards are paid. Leaving out the account number keeps the stored one. */
+export function savePayoutDetails(body: PayoutDetailsWrite): Promise<PayoutDetails> {
+  return platformRequest<PayoutDetails>("/api/v1/me/referral-payout-details", {
+    method: "PUT",
+    body,
+  });
+}
+
 export function issueReferralCode(): Promise<Referral> {
   return platformRequest<Referral>("/api/v1/me/referral-code", { method: "POST" });
 }

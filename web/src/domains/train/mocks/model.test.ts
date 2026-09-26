@@ -25,6 +25,7 @@ function set(over: Partial<StationSet> = {}): StationSet {
     completed_at: null,
     attempted_entries: 0,
     total_entries: 0,
+    feedback_ready: false,
     entries: [],
     ...over,
   };
@@ -37,6 +38,7 @@ function entry(versionId: string, attempts: number, position = 0) {
     station_version_id: versionId,
     attempts,
     debrief_attempts: 0,
+    feedback_ready: false,
     last_attempt_at: null,
   };
 }
@@ -64,10 +66,16 @@ describe("sessionState / sessionAction", () => {
     assert.equal(sessionAction(partial), "Start");
   });
 
-  it("turns a finished session over to Review", () => {
+  it("keeps a finished session on Start until a station has been marked", () => {
     const done = set({ attempted_entries: 3, total_entries: 3, completed_at: "2026-01-01T00:00:00Z" });
     assert.equal(sessionState(done), "completed");
-    assert.equal(sessionAction(done), "Review");
+    assert.equal(sessionAction(done), "Start");
+  });
+
+  it("turns a session over to Review once feedback is ready", () => {
+    const marked = set({ attempted_entries: 1, total_entries: 3, feedback_ready: true });
+    assert.equal(sessionState(marked), "attempted");
+    assert.equal(sessionAction(marked), "Review");
   });
 });
 

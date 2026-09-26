@@ -59,23 +59,18 @@ Checked against the code on 2026-09-25.
 |---|---|
 | Delete your own account | There is no delete route for `/me`. Needs a data-handling decision too |
 | Upload your own profile photo | `PhotoUpload` has a real caller for station photos (`stations/router_photos.py`); nothing supplies an `upload` for a person's avatar. Reuse the station-photo route family |
-| Referral history per referee | `GET /me/referrals` returns one aggregate row; there is no per-referee list |
-| Referral payouts | The backend serves `POST /growth/referrals/{referral_id}/payout`, but the staff growth screens do not call it. Bank details have no storage |
 | Voice onboarding scenes | No onboarding-scenes route in `assistant/`; needs design as well as code |
 | Assistant cards | `parseAssistantCardPayload` (`foundation/livekit/guidance/contracts.ts`) has no receiver |
 | Media specialty facet | Facets read `content.specialty`. `MediaRead.specialty` exists but nothing writes it; backfill, then switch |
+| AI practice: flagged stations open the library station | A flag carries no set entry, so the Flagged tab links to the station on its own, not inside the session it was flagged from |
 
 ### Peer practice
 
-Protocol and schema work in `peer_practice`, none of it started:
+The screens match legacy and drive the accept/decline handshake (proof:
+`.claude/skills/verify/features/marketplace.md`). Still open:
 
-- The two-minute decline-and-requeue handshake, and automatic requeue.
-- Telling "partner left" apart from a dropped connection.
-- Persisting `would_practice_again`.
-- Real partner and poster usernames.
-- A "partner unavailable" error code for the queue.
-- Cancelling a booked marketplace session leaves the practice session it already opened
-  running. Cancelling should end that too (`marketplace/service_sessions.py`).
+| # | Item | State |
+|---|---|---|
 
 ### Backend and workers
 
@@ -96,7 +91,6 @@ Protocol and schema work in `peer_practice`, none of it started:
 |---|---|---|
 | W-1 | Enforcing the CSP blocks every script | Found on staging 2026-09-26 with `PLATFORM_WEB_CSP_ENFORCE=true`: pages are prerendered, so their `<script>` tags carry no nonce, and the enforced policy (`'nonce-…' 'strict-dynamic'`, where `'self'` no longer counts) blocks them all. The page never hydrates and loads forever. Staging and production stay on Report-Only until pages render per request (the nonce needs that) or the policy stops relying on a nonce. Prove it on staging before setting the variable again |
 | W-2 | The analytics consent prompt shows where no analytics can load | Staging and previews resolve no GA id (`foundation/analytics/gaMeasurementId.ts`), yet the "Allow analytics" prompt still covers the page. Skip it when there is no id |
-| W-3 | The dashboard asks for `/me/dashboard` about seven times per load | Seen on staging 2026-09-26 after sign-in. Each extra call is a full backend round trip. Find which components each fetch it and share one load |
 
 ## Open: needs a product decision
 
@@ -109,12 +103,12 @@ Protocol and schema work in `peer_practice`, none of it started:
 | D9 | Deleting a non-empty group or in-use cohort is refused | Keep. Residual hole: a cohort that only scheduled sittings is deletable and detaches them |
 | D10 | A re-sent invitation spends the previous unused link | Confirm supersede; keeping the old link live is a one-line change |
 | — | Live marking: a rubric a supervisor fills **during** a consultation, independent of machine scoring (`LiveMarkingSidebar` marks finished stations only) | Out of scope until wanted; it is a redesign against `marking_layout` |
-| — | Preferences: AI-training consent, colleague-waiting email, onboarding replay. Only `extra_reading_percent` is stored | Decide which are worth storing |
+| — | Preferences: AI-training consent, colleague-waiting email, onboarding replay | Decide which are worth storing |
 | — | Push notifications. `web-push` is not a dependency, and legacy's service worker never sent one | Decide whether wanted at all |
-| — | Consumer performance extras: RAG by domain, category volume, SCA trends, exam date | No data source exists for them; decide what to record first |
-| — | Peer practice recording, transcript and AI feedback | Decide scope |
+| — | Consumer performance extras: RAG by domain, category volume, SCA trends | No data source exists for them; decide what to record first. `exam_date`/`exam_time` are now stored (A4) and read on `UserRead` |
+| — | Peer practice recording, transcript and AI feedback | Scope decided 2026-09-26: prove the existing pipeline on staging (egress uploads straight to S3; there are no local S3 keys). AWS settings copied from b2c-api to staging and production api + worker on 2026-09-26 (same bucket and keys as b2c-api; consider separating staging). Still to run: run a full session with two staging consumers (`~/.osce-staging-accounts.env`); check the S3 object `peer_practice/<exam>/<id>/consultation.ogg`, `recording_state` stopped → transcribing, `doctor_attempt_id` set, and the feedback page |
 | — | Ortho CV upload | No decision on record |
-| C-1 | **CASC is marked with the RCGP GP prompt**, on both scoring paths. No CASC marking prompt exists, and the engine maps `casc-rcpsych-v1` to the SCA prompt | This is live behaviour, so fixing it changes feedback real users are reading. It needs a prompt, plus a decision about existing feedback |
+| C-1 | **CASC existing databases still mark with the RCGP GP prompt.** A CASC prompt now exists (`platform-api/seeds/prompts/casc_system.txt`, 2026-09-26; b2c never had one, it fell back to SCA) and the seed uses it, but `seed_platform.py` never touches an exam that already exists | Publish a new CASC rubric version carrying the new prompt on staging and production (a deployed write: owner's go-ahead). Existing CASC feedback stays as it was marked |
 | B-3 | Referral discounts are built (checkout swaps to the `<plan>_referral` row, the webhook credits £2.50 / £5), but no environment has the 10%-off Stripe prices or `_referral` plan rows yet | Create them per exam after the code deploys; before that, a code at checkout is refused `referral_discount_unavailable` |
 | R-2 | Sign-off requires an outcome and a rationale; the proposal also wanted full "readiness" for a pass or fail, and no readiness concept exists | Decide whether readiness is a real gate or drop it from the invariant |
 | T-2 | A templated station contributes nothing to the tutor's material index: its blocks are all patient-private or expected answers | Needs a template block role that means "reading material" before any code |
@@ -135,9 +129,11 @@ Each is deliberate and explained in the code where it lives.
   subscribe-only in exam mode, so the transcript stays a record of the
   candidate. Training-mode supervisors may publish (since 2026-09-24).
 - **S-2: A circuit's clock is never extended** for one candidate's
-  `extra_reading_percent`; it extends their own practice only. A circuit has one
-  clock for everybody on it. An institution grants extra time by putting the
-  candidate on their own circuit with a longer `timing.reading_minutes`.
+  `needs_extra_time`/custom timers (formerly `extra_reading_percent`, still on
+  `users` for `app.migration` but superseded on the live API by A3); it extends
+  their own practice only. A circuit has one clock for everybody on it. An
+  institution grants extra time by putting the candidate on their own circuit
+  with a longer `timing.reading_minutes`.
 - **A station's scenario never reaches the browser before an attempt.** It is
   frozen server-side and read by the worker, so the station page is thin and
   reading happens inside the consultation. The org station list strips the
@@ -152,6 +148,13 @@ Each is deliberate and explained in the code where it lives.
   a false warning), `recruitment_outcome` on exam results (belongs to hire),
   ranking on training circuits (`not_an_exam_sitting`), the inert cohort
   archive field.
+- **AI practice differs from legacy on purpose in five places:** the exam
+  date has no time (the column is a date); the end screen says "Couldn't be
+  marked" where marking failed (legacy said "Not attempted"); which stations
+  are "ready" is read from attempts on the server, not from jobs this browser
+  started; the station table's transcript and feedback links open the
+  station's own review tabs (there is no per-station transcript list); and
+  legacy's `?preview=` demo modes on the complete page are not ported.
 - **Not ported:** `confetti-check`, `features/[featureId]` (feature requests
   retired), the marketplace leaderboard (already off in legacy),
   `@stripe/stripe-js` (checkout redirects), the LiveKit timer data channel (the

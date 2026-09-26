@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { LuUserCog } from "react-icons/lu";
 import {
   HiOutlineArrowPath,
@@ -9,7 +9,6 @@ import {
   HiOutlineKey,
 } from "react-icons/hi2";
 import {
-  Alert,
   AsyncBoundary,
   B2CPanelCard,
   B2CPanelCardBody,
@@ -21,9 +20,11 @@ import {
   ModalSecondaryButton,
   productTokens,
 } from "@/foundation/ui";
+import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { useSession } from "@/foundation/session";
+import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useCurrentExam } from "@/foundation/session/useCurrentExam";
+import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
@@ -44,20 +45,38 @@ const NAME_MAX = 50;
 /**
  * Who you are, and the two things about it you can change.
  *
- * The name is editable because `PATCH /me` accepts it. The address stays read
- * back: changing the thing you sign in with is a different flow with its own
- * verification, and no `platform-api` route does it. The retiring screen's
- * "Danger zone" closes the account: sign-in stops, the record stays.
+ * The retiring client's Profile tab, card for card: the "Account" card with
+ * Username, Email and Exam, then the "Danger zone". The name is editable
+ * because `PATCH /me` accepts it. The address stays read back: changing the
+ * thing you sign in with is a different flow with its own verification, and no
+ * `platform-api` route does it.
+ *
+ * `onDirtyChange` tells the tab strip an edited username is unsaved, so the
+ * old screen's leave guard can stop a tab switch.
  */
-export default function ProfilePanel() {
+export default function ProfilePanel({
+  onDirtyChange,
+}: {
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const me = useAsync((signal) => readMe(signal), []);
+  const { session } = useSession();
   const { codes } = useCurrentExam();
   const holdsOrtho = codes.includes("ortho");
 
   return (
     <SettingsTabShell>
       <AsyncBoundary state={me}>
-        {(user: Me) => <AccountForm key={user.id} user={user} onSaved={() => me.reload()} />}
+        {(user: Me) => (
+          <AccountForm
+            key={user.id}
+            user={user}
+            // The old screen printed the raw app type ("sca"), not a label.
+            exam={user.exam_code ?? codes[0] ?? "sca"}
+            onSaved={() => me.reload()}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
       </AsyncBoundary>
 
       {/*
@@ -68,7 +87,7 @@ export default function ProfilePanel() {
         exam rather than shown to everybody, which is how the old profile had it.
       */}
       {holdsOrtho ? <CvPanel /> : null}
-      <CloseAccount />
+      <CloseAccount isAdmin={isPlatformAdmin(session)} />
     </SettingsTabShell>
   );
 }
@@ -80,34 +99,51 @@ export default function ProfilePanel() {
  * two arms prints `session.user.name`, so a patch that only re-reads the panel
  * leaves the rail calling you by the name you just retired.
  */
-function AccountForm({ user, onSaved }: { user: Me; onSaved: () => void }) {
+function AccountForm({
+  user,
+  exam,
+  onSaved,
+  onDirtyChange,
+}: {
+  user: Me;
+  exam: string;
+  onSaved: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { refresh } = useSession();
   const [name, setName] = useState(user.name);
+  const [savedName, setSavedName] = useState(user.name);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(name !== savedName);
+    return () => onDirtyChange?.(false);
+  }, [name, savedName, onDirtyChange]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const trimmed = name.trim();
-    setError(null);
-    setSaved(false);
+    setError("");
+    setSuccessMessage("");
     if (trimmed.length < NAME_MIN) {
-      setFieldError(`Name must be at least ${NAME_MIN} characters`);
+      setFieldError(`Username must be at least ${NAME_MIN} characters`);
       return;
     }
     if (trimmed.length > NAME_MAX) {
-      setFieldError(`Name must be less than ${NAME_MAX} characters`);
+      setFieldError(`Username must be less than ${NAME_MAX} characters`);
       return;
     }
     setFieldError(null);
     setSaving(true);
     try {
       await updateMe({ name: trimmed });
+      setSavedName(trimmed);
       await refresh();
-      setSaved(true);
+      setSuccessMessage("Profile updated");
       onSaved();
     } catch (cause) {
       setError(errorMessage(cause));
@@ -124,29 +160,22 @@ function AccountForm({ user, onSaved }: { user: Me; onSaved: () => void }) {
           Account
         </B2CPanelCardHeader>
         <B2CPanelCardBody className="space-y-4">
-          <ModalHelper className="mt-0">
-            Your sign-in details and account actions.
-          </ModalHelper>
+          <ModalHelper className="mt-0">Your sign-in details and account actions.</ModalHelper>
 
-          {error ? <Alert tone="danger">{error}</Alert> : null}
-          {saved ? <Alert tone="success">Profile updated.</Alert> : null}
+          {successMessage ? <Alert message={successMessage} type="success" /> : null}
+          {error ? <Alert message={error} type="error" /> : null}
 
           <div>
-            <label htmlFor="profile-name" className={b2cFieldLabel}>
-              Name
+            <label htmlFor="username" className={b2cFieldLabel}>
+              Username
             </label>
             <input
-              id="profile-name"
               type="text"
+              id="username"
               value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setSaved(false);
-              }}
+              onChange={(event) => setName(event.target.value)}
               aria-invalid={fieldError ? true : undefined}
-              className={`${b2cSettingsFieldInput} mt-1.5${
-                fieldError ? " border-osce-danger" : ""
-              }`}
+              className={`mt-1.5 ${b2cSettingsFieldInput} ${fieldError ? "border-osce-danger" : ""}`}
             />
             {fieldError ? (
               <p className="mt-1 text-osce-meta text-osce-danger">{fieldError}</p>
@@ -154,13 +183,26 @@ function AccountForm({ user, onSaved }: { user: Me; onSaved: () => void }) {
           </div>
 
           <div>
-            <label htmlFor="profile-email" className={b2cFieldLabel}>
+            <label htmlFor="email" className={b2cFieldLabel}>
               Email
             </label>
             <input
-              id="profile-email"
               type="email"
+              id="email"
               value={user.email}
+              disabled
+              className={b2cSettingsFieldInputDisabled}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="exam" className={b2cFieldLabel}>
+              Exam
+            </label>
+            <input
+              type="text"
+              id="exam"
+              value={exam}
               disabled
               className={b2cSettingsFieldInputDisabled}
             />
@@ -194,11 +236,7 @@ function AccountForm({ user, onSaved }: { user: Me; onSaved: () => void }) {
       </B2CPanelCard>
 
       {isPasswordModalOpen ? (
-        <Modal
-          width="400px"
-          title="Update password"
-          onClose={() => setIsPasswordModalOpen(false)}
-        >
+        <Modal width="400px" title="Update password" onClose={() => setIsPasswordModalOpen(false)}>
           <ChangePassword />
         </Modal>
       ) : null}
@@ -206,18 +244,17 @@ function AccountForm({ user, onSaved }: { user: Me; onSaved: () => void }) {
   );
 }
 
-
 /**
- * The workspaces this account reaches.
+ * The workspaces this account reaches — on the institution arms only.
  *
- * Replaces the old screen's disabled "Exam" box. An exam was the only thing a
- * consumer account belonged to; an account now belongs to its own practice and
- * to any organisations that have it, which is the thing worth showing on a
- * screen that renders on all five arms.
+ * An exam was the only thing a consumer account belonged to, and the consumer
+ * screen shows exactly what the old one did. An account on an institution arm
+ * also belongs to the organisations that have it, which is worth a list there.
  */
 function WorkspaceList({ user }: { user: Me }) {
+  const { surface } = useSurface();
   const memberships = user.memberships ?? [];
-  if (memberships.length === 0) return null;
+  if (surface === "train" || memberships.length === 0) return null;
 
   return (
     <div>

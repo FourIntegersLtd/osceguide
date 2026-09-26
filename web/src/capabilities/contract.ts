@@ -56,6 +56,14 @@ export interface CapabilityModule {
    * listing them all over again would be the same knowledge in two places.
    */
   section?: NavSection;
+  /**
+   * The exams whose candidates see it in navigation, by exam code.
+   *
+   * Left out, every exam does. The marketplace is `["sca"]` because only SCA
+   * candidates rehearse with a colleague — the retiring nav's `scaOnly`. It
+   * only hides the nav entry: a direct link still opens the screen, as it did.
+   */
+  exams?: readonly string[];
 }
 
 export interface MountedCapability extends CapabilityModule {

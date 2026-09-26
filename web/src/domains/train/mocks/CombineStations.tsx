@@ -21,15 +21,20 @@ import {
   cn,
   productTokens,
 } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
+import { useCurrentExam } from "@/foundation/session";
 import type { LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
 import { incompleteVersionIds } from "@/domains/train/mocks/model";
-import { examByCode, type MockWorkspace } from "@/domains/train/mocks/useMockWorkspace";
+import {
+  defaultExamCode,
+  examByCode,
+  type MockWorkspace,
+} from "@/domains/train/mocks/useMockWorkspace";
 
 /**
- * Build a focused session out of stations you started and did not finish.
+ * Build a focused session out of stations you started and did not finish, in
+ * the exam you are sitting: the retiring client's `CombineMockStations`.
  *
  * The old client asked the backend which stations those were
  * (`/api/attempted_incomplete_stations`). The set list already carries every
@@ -37,15 +42,11 @@ import { examByCode, type MockWorkspace } from "@/domains/train/mocks/useMockWor
  * already loaded — and it stays right for a station whose attempts ran out in
  * one session but not another, which the endpoint got wrong.
  */
-export function CombineStations({
-  workspace,
-  onCreated,
-}: {
-  workspace: MockWorkspace;
-  onCreated: () => void;
-}) {
+export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
+  const { code: currentExam } = useCurrentExam();
+  const examCode = defaultExamCode(workspace, currentExam);
   const [mockName, setMockName] = useState("");
   const [selected, setSelected] = useState<LibraryStation[]>([]);
   const [stationSearch, setStationSearch] = useState("");
@@ -57,14 +58,12 @@ export function CombineStations({
 
   const availableStations = useMemo(() => {
     const byVersion = new Map(workspace.stations.map((station) => [station.version_id, station]));
-    const limits = new Map(workspace.exams.map((exam) => [exam.code, exam.station_attempt_limit]));
-    const ids = new Set<string>();
-    for (const set of workspace.sets) {
-      const limit = limits.get(set.exam_code) ?? 3;
-      for (const id of incompleteVersionIds([set], limit)) ids.add(id);
-    }
-    return [...ids].map((id) => byVersion.get(id)).filter((item): item is LibraryStation => !!item);
-  }, [workspace]);
+    const limit = examByCode(workspace, examCode)?.station_attempt_limit ?? 3;
+    const examSets = workspace.sets.filter((set) => set.exam_code === examCode);
+    return incompleteVersionIds(examSets, limit)
+      .map((id) => byVersion.get(id))
+      .filter((item): item is LibraryStation => !!item);
+  }, [workspace, examCode]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -76,43 +75,38 @@ export function CombineStations({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // One set is one exam's stations; mixing them would have no clock.
-  const pinnedExamCode = selected[0]?.exam_code ?? null;
-
   const filteredStations = availableStations.filter((station) => {
     const notSelected = !selected.some((item) => item.version_id === station.version_id);
     const matches = station.title.toLowerCase().includes(stationSearch.toLowerCase());
-    const sameExam = pinnedExamCode === null || pinnedExamCode === station.exam_code;
-    return notSelected && matches && sameExam;
+    return notSelected && matches;
   });
 
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (pinnedExamCode === null) {
+    if (selected.length === 0) {
       setErrorText("Select at least one attempted station.");
       return;
     }
     setIsCreating(true);
     setErrorText(null);
     try {
-      const set = await createSet({
+      await createSet({
         name: mockName,
-        examCode: pinnedExamCode,
+        examCode,
         stationVersionIds: selected.map((station) => station.version_id),
       });
       setMockName("");
       setSelected([]);
       setSuccessMessage("Combined session created successfully");
-      onCreated();
-      router.push(hrefFor(`/mocks/${set.id}`));
-    } catch (cause) {
-      setErrorText(errorMessage(cause));
+      window.setTimeout(() => {
+        router.push(hrefFor("/mocks/list"));
+      }, 700);
+    } catch {
+      setErrorText("Error creating mock");
     } finally {
       setIsCreating(false);
     }
   };
-
-  const selectedExam = examByCode(workspace, pinnedExamCode ?? "");
 
   return (
     <ModalContent className="max-w-2xl space-y-3 pb-24">
@@ -186,7 +180,6 @@ export function CombineStations({
               <div className="border-t border-b2c-border">
                 <div className={productTokens.b2cPanelSubheader}>
                   Selected stations ({selected.length})
-                  {selectedExam ? ` · ${selectedExam.name}` : ""}
                 </div>
                 <div className="divide-y divide-b2c-border">
                   {selected.map((station) => (

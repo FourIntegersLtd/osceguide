@@ -119,9 +119,15 @@ export default function Login() {
       rememberExamSelection(authenticated.user.id, examCode);
       await refresh();
       const returnTo = sanitizeReturnTo(searchParams.get("next") ?? searchParams.get("returnTo"));
-      // Keep the button pending; the page is about to change. `/app` decides
-      // which workspace, from where they were last.
-      router.replace(returnTo ?? (examCode ? `/app/${PERSONAL_SLUG}` : "/app"));
+      // Keep the button pending; the page is about to change. Platform staff
+      // land on their console; everyone else goes to `/app`, which decides
+      // which workspace from where they were last.
+      const landing = authenticated.user.is_platform_admin
+        ? "/staff"
+        : examCode
+          ? `/app/${PERSONAL_SLUG}`
+          : "/app";
+      router.replace(returnTo ?? landing);
     } catch (error) {
       const mapped = mapAuthApiError<LoginField>(
         error,

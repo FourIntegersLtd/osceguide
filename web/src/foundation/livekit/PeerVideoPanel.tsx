@@ -15,6 +15,13 @@ export function PeerVideoPanel({ role }: { role: "doctor" | "patient" }) {
   const partnerRole = role === "doctor" ? "patient" : "doctor";
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // A partner who leaves ends the session, and the session screen says so
+  // from the server's push. One who vanishes from the room while the session
+  // still runs dropped their connection: say that instead of "waiting".
+  const partnerHere = participants.some((participant) => !participant.isLocal);
+  const [partnerSeen, setPartnerSeen] = useState(false);
+  if (partnerHere && !partnerSeen) setPartnerSeen(true);
+  const partnerDropped = partnerSeen && !partnerHere;
   const toggle = async (device: "camera" | "microphone") => {
     setBusy(true); setFailure(null);
     try {
@@ -106,7 +113,14 @@ export function PeerVideoPanel({ role }: { role: "doctor" | "patient" }) {
               <div className="text-center text-osce-ink-400" role="status">
                 <div className="animate-pulse">
                   <div className="w-12 h-12 bg-osce-ink-600 rounded-full mx-auto mb-3"></div>
-                  <p className="text-osce-body">Waiting for partner...</p>
+                  {partnerDropped ? (
+                    <>
+                      <p className="text-osce-body font-medium text-white">Your partner&rsquo;s connection dropped</p>
+                      <p className="text-osce-body">Waiting for them to reconnect...</p>
+                    </>
+                  ) : (
+                    <p className="text-osce-body">Waiting for partner...</p>
+                  )}
                 </div>
               </div>
             </div>

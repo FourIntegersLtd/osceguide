@@ -46,15 +46,12 @@ export function sessionState(set: StationSet): SessionState {
 /**
  * "Start" or "Review".
  *
- * Locked sets are review-only. Otherwise finishing the set is what turns the
- * card over — the old client branched on `has_feedback`, a field this backend
- * does not carry, and an attempted-but-unfinished set read as "Start" there
- * too, so the visible behaviour is unchanged for everything but a set whose
- * marking is still running.
+ * Locked sets are review-only. Otherwise feedback is what turns the card
+ * over, as in the old client: `feedback_ready` is true once any station in the
+ * set has been marked. Attempted without feedback still reads "Start".
  */
 export function sessionAction(set: StationSet): "Start" | "Review" {
-  const state = sessionState(set);
-  return state === "locked" || state === "completed" ? "Review" : "Start";
+  return set.locked || set.feedback_ready ? "Review" : "Start";
 }
 
 /**

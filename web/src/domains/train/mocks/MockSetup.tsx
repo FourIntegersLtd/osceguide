@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineCog6Tooth } from "react-icons/hi2";
@@ -10,6 +9,7 @@ import {
   B2CPanelCardBody,
   B2CPanelCardFooter,
   B2CPanelCardHeader,
+  Modal,
   ModalContent,
   ModalPrimaryButton,
   ModalSecondaryButton,
@@ -19,9 +19,11 @@ import {
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
-import { useCurrentExam } from "@/foundation/session";
+import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet } from "@/domains/train/api";
+import { AddExamDate } from "@/domains/train/dashboard/AddExamDate";
+import { UpgradePlans } from "@/domains/train/mocks/SetupPrompts";
 import { attemptedVersionIds, chooseStations } from "@/domains/train/mocks/model";
 import {
   accessState,
@@ -32,59 +34,87 @@ import {
 
 const FREE_STATION_LIMIT = 3;
 
+/** Remembered per session so the exam-date prompt doesn't reopen on every visit. */
+const EXAM_DATE_SKIP_KEY = "exam_date_prompt_skipped";
+
+function examDatePromptSkipped(): boolean {
+  try {
+    return window.sessionStorage.getItem(EXAM_DATE_SKIP_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Session setup: a name, a number of stations, and go.
+ * Session setup: a number of stations, and go.
+ *
+ * The retiring client's `CustomizeMock` and `CustomiseMockForm`, field for
+ * field: the name is shown but not editable (it is renamed afterwards from the
+ * sessions list), a refusal to create opens the upgrade modal, and a missing
+ * exam date is asked for once per browser session.
  *
  * The old backend took the number and picked the stations itself
  * (`customise_mock`). `POST /me/station-sets` takes explicit version ids, so
- * the picking moved here — which is an improvement rather than a workaround:
- * the client already knows which stations this person has attempted, so a new
- * session prefers unseen ones without the backend having to keep a per-user
- * exclusion list.
+ * the picking moved here: the client already knows which stations this person
+ * has attempted, so a new session prefers unseen ones.
  */
 export function MockSetup({
   workspace,
   onCreated,
-  onViewSessions,
 }: {
   workspace: MockWorkspace;
   onCreated: () => void;
-  onViewSessions: () => void;
 }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
-  // The exam is the app's. It used to be a dropdown over every exam this
-  // person had stations for, which in practice meant the whole catalogue.
+  const { session, refresh } = useSession();
   const { code: currentExam } = useCurrentExam();
   const examCode = defaultExamCode(workspace, currentExam);
-  const [name, setName] = useState(`Session ${workspace.sets.length + 1}`);
-  const [stationCount, setStationCount] = useState(1);
+  // The old client counted and scanned this exam's sessions only.
+  const examSets = useMemo(
+    () => workspace.sets.filter((set) => set.exam_code === examCode),
+    [workspace.sets, examCode],
+  );
+  // Kept as typed, so a cleared field stays cleared rather than snapping to 1.
+  const [stationCount, setStationCount] = useState("1");
   const [includePreviouslyAttempted, setIncludePreviouslyAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [needsUpgrade, setNeedsUpgrade] = useState(false);
+  const [error, setError] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [examDateSkipped, setExamDateSkipped] = useState(examDatePromptSkipped);
 
+  const name = `Session ${examSets.length + 1}`;
   const stations = useExamStations(workspace, examCode);
-  const attempted = useMemo(() => attemptedVersionIds(workspace.sets), [workspace.sets]);
-  const hasLockedSets = workspace.sets.some((set) => set.locked);
+  const attempted = useMemo(() => attemptedVersionIds(examSets), [examSets]);
+  const hasLockedSets = examSets.some((set) => set.locked);
   const access = accessState(workspace, examCode);
-  const submit = async () => {
-    const picked = chooseStations(stations, stationCount, {
-      excludeVersionIds: includePreviouslyAttempted ? undefined : attempted,
-    });
-    setSuccessMessage("");
-    if (picked.length === 0) {
-      setError("There are no stations to put in this session yet.");
-      setNeedsUpgrade(false);
-      return;
-    }
-    setIsSubmitting(true);
-    setError(null);
-    setNeedsUpgrade(false);
+  const missingExamDate = session !== null && !session.user.exam_date;
+  const showExamDateModal = missingExamDate && !examDateSkipped;
+
+  const skipExamDate = () => {
     try {
+      window.sessionStorage.setItem(EXAM_DATE_SKIP_KEY, "1");
+    } catch {
+      // A browser that refuses storage just asks again next time.
+    }
+    setExamDateSkipped(true);
+  };
+
+  const submit = async () => {
+    setIsSubmitting(true);
+    setSuccessMessage("");
+    setError("");
+    try {
+      const picked = chooseStations(stations, Number.parseInt(stationCount, 10) || 0, {
+        excludeVersionIds: includePreviouslyAttempted ? undefined : attempted,
+      });
+      if (picked.length === 0) {
+        setError("An error occurred");
+        return;
+      }
       const set = await createSet({
-        name: name.trim() || "Untitled session",
+        name,
         examCode,
         stationVersionIds: picked.map((station) => station.version_id),
       });
@@ -92,22 +122,16 @@ export function MockSetup({
       onCreated();
       router.push(hrefFor(`/mocks/${set.id}`));
     } catch (cause) {
-      // A lapsed or unpurchased plan answers `not_entitled` here, and the
-      // retiring client opened its upgrade modal on exactly this refusal. A
-      // sentence with nowhere to act on it is worse than the modal was.
-      if (hasCode(cause, "not_entitled")) {
-        setNeedsUpgrade(true);
-        setError("Your access to this exam has ended.");
-      } else {
-        setError(errorMessage(cause));
-      }
+      setError(errorMessage(cause));
+      // The old backend flagged this refusal with `show_upgrade_modal`.
+      setShowUpgradeModal(hasCode(cause, "not_entitled"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="w-full max-w-2xl space-y-6 pb-24">
+    <div className="w-full max-w-2xl space-y-6 pb-24 lg:w-3/5">
       <StationCompletionProgressBar
         subscriptionExpired={access.subscriptionExpired}
         completedCount={attempted.size}
@@ -118,23 +142,7 @@ export function MockSetup({
 
       <ModalContent className="max-w-2xl space-y-3">
         {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-        {error ? (
-          <Alert tone="danger">
-            {error}
-            {needsUpgrade ? (
-              <>
-                {" "}
-                <Link
-                  href={`${hrefFor("/settings")}?tab=payments`}
-                  className="font-semibold underline"
-                >
-                  Renew your plan
-                </Link>{" "}
-                to keep practising.
-              </>
-            ) : null}
-          </Alert>
-        ) : null}
+        {error ? <Alert tone="danger">{error}</Alert> : null}
 
         <B2CPanelCard className="mt-0">
           <B2CPanelCardHeader className={productTokens.b2cPanelCardTitle}>
@@ -151,19 +159,20 @@ export function MockSetup({
                 id="name"
                 name="name"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
-                className={cn(productTokens.b2cInputBase, "mt-1.5")}
+                readOnly
+                disabled
+                className={cn(
+                  productTokens.b2cInputBase,
+                  "mt-1.5",
+                  "cursor-not-allowed bg-b2c-surface-muted text-b2c-text-muted",
+                )}
                 placeholder="Enter a descriptive session name"
                 required
               />
             </div>
 
-
             <div>
-              <label
-                htmlFor="requested_station_count"
-                className={productTokens.b2cFieldLabel}
-              >
+              <label htmlFor="requested_station_count" className={productTokens.b2cFieldLabel}>
                 Number of stations
               </label>
               <input
@@ -171,9 +180,9 @@ export function MockSetup({
                 id="requested_station_count"
                 name="requested_station_count"
                 value={stationCount}
-                onChange={(event) => setStationCount(Number.parseInt(event.target.value, 10) || 1)}
+                onChange={(event) => setStationCount(event.target.value)}
                 min={1}
-                max={Math.max(stations.length, 1)}
+                max={stations.length}
                 className={cn(productTokens.b2cInputBase, "mt-1.5")}
                 required
               />
@@ -207,7 +216,7 @@ export function MockSetup({
           <B2CPanelCardFooter>
             <ModalSecondaryButton
               type="button"
-              onClick={onViewSessions}
+              onClick={() => router.push(hrefFor("/mocks/list"))}
               className="w-full sm:w-auto"
             >
               View All Sessions
@@ -215,7 +224,7 @@ export function MockSetup({
             <ModalPrimaryButton
               type="button"
               onClick={submit}
-              disabled={isSubmitting || stations.length === 0}
+              disabled={isSubmitting}
               className="w-full gap-2 sm:w-auto"
             >
               {isSubmitting ? (
@@ -229,7 +238,33 @@ export function MockSetup({
             </ModalPrimaryButton>
           </B2CPanelCardFooter>
         </B2CPanelCard>
+
+        {showUpgradeModal ? (
+          <Modal width="600px" height="fit-content" onClose={() => setShowUpgradeModal(false)}>
+            <UpgradePlans examCode={examCode} />
+          </Modal>
+        ) : null}
       </ModalContent>
+
+      {showExamDateModal ? (
+        <Modal
+          width="400px"
+          height="fit-content"
+          title="Add your exam date"
+          onClose={skipExamDate}
+        >
+          <AddExamDate
+            examDate={null}
+            examTime={null}
+            isOrtho={examCode === "ortho"}
+            onSaved={() => {
+              void refresh();
+              setExamDateSkipped(true);
+            }}
+            onSkip={skipExamDate}
+          />
+        </Modal>
+      ) : null}
     </div>
   );
 }

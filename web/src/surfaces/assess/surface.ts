@@ -95,6 +95,8 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "mockDetail",
   "mockStation",
   "mockComplete",
+  "mockList",
+  "mockUpdate",
   /*
    * A station record, which is an attempt: the transcript and the marking both
    * hang off one. Train answers the same screen — a candidate reading back

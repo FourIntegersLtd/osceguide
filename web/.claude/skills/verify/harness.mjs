@@ -75,7 +75,8 @@ export async function signIn(run, account = ACCOUNT) {
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/app\//, { timeout: 30_000 }).catch(async (cause) => {
+  // A platform admin lands on /staff, everyone else on /app/<workspace>.
+  await page.waitForURL(/\/(app|staff)(\/|$)/, { timeout: 30_000 }).catch(async (cause) => {
     await proof(run, "sign-in-failed");
     throw cause;
   });

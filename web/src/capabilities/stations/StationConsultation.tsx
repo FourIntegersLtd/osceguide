@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { AttemptRunner, createAttempt, useExtraReadingPercent, withExtraReadingTime } from "@/capabilities/attempt-runner";
+import { AttemptRunner, createAttempt, usePracticeTimers } from "@/capabilities/attempt-runner";
 import { listExams, readLibraryStation } from "@/capabilities/stations/api";
 import { StationNotFound } from "@/capabilities/stations/StationNotFound";
 import { stationHref } from "@/capabilities/stations/routes";
@@ -26,11 +26,14 @@ import { stationHref } from "@/capabilities/stations/routes";
 export function StationConsultation({ stationId }: { stationId: string }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
-  const extraReadingPercent = useExtraReadingPercent();
 
   const station = useAsync((signal) => readLibraryStation(stationId, signal), [stationId]);
   const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
   const exam = exams.data?.find((item) => item.code === station.data?.exam_code) ?? null;
+  const timers = usePracticeTimers({
+    readingSeconds: exam?.default_reading_seconds ?? 0,
+    simulationSeconds: exam?.default_simulation_seconds ?? 600,
+  });
 
   const start = useCallback(async () => {
     const found = station.data;
@@ -72,8 +75,8 @@ export function StationConsultation({ stationId }: { stationId: string }) {
               start={start}
               onEnded={onEnded}
               stationTitle={found.title}
-              readingSeconds={withExtraReadingTime(exam?.default_reading_seconds ?? 0, extraReadingPercent)}
-              simulationSeconds={exam?.default_simulation_seconds ?? 600}
+              readingSeconds={timers.readingSeconds}
+              simulationSeconds={timers.simulationSeconds}
             />
           </>
         )}

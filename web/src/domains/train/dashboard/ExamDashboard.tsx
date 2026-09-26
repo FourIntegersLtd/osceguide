@@ -1,6 +1,5 @@
 "use client";
 
-import { PracticeOptions } from "@/capabilities/peer-practice/PracticeOptions";
 
 import { useEffect, useState } from "react";
 import { AsyncBoundary, ButtonLink, Modal } from "@/foundation/ui";
@@ -34,7 +33,7 @@ import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
 import { configFor } from "@/domains/train/dashboard/examConfig";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
-import { examCountdownSubtitle, isExamWeek } from "@/domains/train/dashboard/examDate";
+import { examCountdownSubtitle, examMoment, isExamWeek } from "@/domains/train/dashboard/examDate";
 import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
 
 /**
@@ -76,7 +75,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
     [examCode],
   );
 
-  const examDate = session?.user.exam_date ?? null;
+  const examDate = examMoment(session?.user.exam_date, session?.user.exam_time);
   const userId = session?.user.id ?? null;
 
   /*
@@ -135,7 +134,6 @@ function DashboardBody({ data }: { data: DashboardData }) {
         )}
       </AsyncBoundary>
 
-          <PracticeOptions />
       <OnboardingOffer />
       <AboutModal config={config} active={about} onClose={() => setAbout(null)} />
 

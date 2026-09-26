@@ -3,35 +3,38 @@
 import { memo } from "react";
 import Link from "next/link";
 import { HiArrowRight } from "react-icons/hi";
-import { HiOutlineClock, HiOutlineCreditCard, HiOutlineLockClosed } from "react-icons/hi2";
-import { B2CEmptyState, ModalHelper, cn, productTokens } from "@/foundation/ui";
+import {
+  HiOutlineChatBubbleLeftRight,
+  HiOutlineClock,
+  HiOutlineCreditCard,
+  HiOutlineLockClosed,
+} from "react-icons/hi2";
+import { B2CEmptyState, ButtonLink, ModalHelper, cn, productTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
+import type { Exam } from "@/capabilities/stations";
 import type { StationSet } from "@/domains/train/api";
 import { SessionCardActions } from "@/domains/train/mocks/SessionCardActions";
 import { SessionGroup } from "@/domains/train/mocks/SessionGroup";
 import { groupSets, sessionAction, sessionMinutes, sessionState } from "@/domains/train/mocks/model";
-import { examByCode, type MockWorkspace } from "@/domains/train/mocks/useMockWorkspace";
 
 /**
- * Every session this person has, newest first.
+ * Every session this person has for this exam, newest first: the retiring
+ * `MockList`'s groups and cards.
  *
- * Sorting is the backend's order — sets come back newest first — where the old
- * list re-sorted client-side on a `created_at` string it had to normalise
- * through a UTC helper because two products wrote it two ways.
- *
- * Each card carries the retiring list's two writes: the pencil that renames it
- * and the bin that throws it away. `onChanged` is the same reload the Setup tab
- * uses after creating one, so what appears after a write is what the server
- * says rather than what this screen guessed.
+ * Sorting is the backend's order; sets come back newest first. `onChanged` is
+ * the list's reload, so what appears after a delete is what the server says.
  */
 export function MockSessions({
-  workspace,
+  sets,
+  exams,
   onChanged,
 }: {
-  workspace: MockWorkspace;
+  sets: StationSet[];
+  exams: Exam[];
   onChanged: () => void;
 }) {
-  const groups = groupSets(workspace.sets);
+  const { hrefFor } = useSurface();
+  const groups = groupSets(sets);
   const isEmpty =
     groups.currentSubscription.length === 0 && groups.inactiveSubscriptions.length === 0;
 
@@ -41,6 +44,11 @@ export function MockSessions({
         className="mt-8"
         title="No sessions yet"
         description="Create your first session to practise with an AI patient. It takes about 12 minutes per station."
+        action={
+          <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
+            Create your first session
+          </ButtonLink>
+        }
       />
     );
   }
@@ -48,7 +56,12 @@ export function MockSessions({
   const grid = (items: StationSet[]) => (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {items.map((set) => (
-        <SessionCard key={set.id} set={set} workspace={workspace} onChanged={onChanged} />
+        <SessionCard
+          key={set.id}
+          set={set}
+          exam={exams.find((exam) => exam.code === set.exam_code) ?? null}
+          onChanged={onChanged}
+        />
       ))}
     </div>
   );
@@ -85,15 +98,14 @@ export function MockSessions({
 
 const SessionCard = memo(function SessionCard({
   set,
-  workspace,
+  exam,
   onChanged,
 }: {
   set: StationSet;
-  workspace: MockWorkspace;
+  exam: Exam | null;
   onChanged: () => void;
 }) {
   const { hrefFor } = useSurface();
-  const exam = examByCode(workspace, set.exam_code);
   const state = sessionState(set);
   const minutes = sessionMinutes(
     set.total_entries,
@@ -140,6 +152,15 @@ const SessionCard = memo(function SessionCard({
         </div>
       )}
 
+      {set.feedback_ready && (
+        <div className="absolute top-2 left-24">
+          <span className="inline-flex items-center rounded-full bg-osce-accent-subtle px-2.5 py-0.5 text-osce-caption font-medium text-osce-accent-hover">
+            <HiOutlineChatBubbleLeftRight className="mr-1 h-3 w-3" />
+            Feedback
+          </span>
+        </div>
+      )}
+
       <SessionCardActions set={set} onChanged={onChanged} />
 
       <Link href={hrefFor(`/mocks/${set.id}`)} className="block h-full">
@@ -156,9 +177,7 @@ const SessionCard = memo(function SessionCard({
               set.locked ? "line-clamp-1" : "line-clamp-3",
             )}
           >
-            {exam
-              ? `${exam.name} · practise your consultation skills with these clinical scenarios.`
-              : "Practice your consultation skills with these clinical scenarios."}
+            Practice your consultation skills with these clinical scenarios.
           </p>
           {set.locked && (
             <p className="mb-4 line-clamp-2 text-osce-meta text-b2c-text-muted">
@@ -172,7 +191,7 @@ const SessionCard = memo(function SessionCard({
           <div className="flex items-center gap-1 md:gap-2">
             <span className="flex items-center whitespace-nowrap text-osce-body text-b2c-text-muted">
               <HiOutlineClock className="mr-1 h-4 w-4" />
-              {minutes > 0 ? `${minutes} mins` : "—"}
+              {`${minutes} mins`}
             </span>
             <span className="whitespace-nowrap text-osce-body text-b2c-text-muted">
               {set.total_entries} stations

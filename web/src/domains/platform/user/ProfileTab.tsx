@@ -30,7 +30,11 @@ export function ProfileTab({
   const [name, setName] = useState(user.name);
   const [examCode, setExamCode] = useState(user.exam_code ?? "");
   const [examDate, setExamDate] = useState(user.exam_date ?? "");
-  const [extraReading, setExtraReading] = useState(String(user.extra_reading_percent ?? 0));
+  const [extraTime, setExtraTime] = useState(user.needs_extra_time ?? false);
+  const [readingSeconds, setReadingSeconds] = useState(String(user.custom_reading_seconds ?? ""));
+  const [simulationSeconds, setSimulationSeconds] = useState(
+    String(user.custom_simulation_seconds ?? ""),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,12 +42,13 @@ export function ProfileTab({
     setBusy(true);
     setError(null);
     try {
-      const percent = Number(extraReading);
       const updated = await updateUser(user.id, {
         name: name.trim() || null,
         exam_code: examCode.trim() || null,
         exam_date: examDate || null,
-        extra_reading_percent: Number.isFinite(percent) ? Math.round(percent) : null,
+        needs_extra_time: extraTime,
+        custom_reading_seconds: secondsOrNull(readingSeconds),
+        custom_simulation_seconds: secondsOrNull(simulationSeconds),
       });
       onSaved(updated);
       toast.success("Profile saved");
@@ -52,7 +57,7 @@ export function ProfileTab({
     } finally {
       setBusy(false);
     }
-  }, [user.id, name, examCode, examDate, extraReading, onSaved, toast]);
+  }, [user.id, name, examCode, examDate, extraTime, readingSeconds, simulationSeconds, onSaved, toast]);
 
   const reset = useCallback(async () => {
     setBusy(true);
@@ -104,16 +109,36 @@ export function ProfileTab({
           disabled={busy}
           hint="When they sit the real thing. The dashboard counts down to it."
         />
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={extraTime}
+            onChange={(e) => setExtraTime(e.target.checked)}
+            disabled={busy}
+          />
+          Extra time (uses the custom timers below on their own practice)
+        </label>
         <Input
           type="number"
-          min={0}
-          max={100}
+          min={1}
+          max={3659}
           inputMode="numeric"
-          label="Extra reading time (%)"
-          value={extraReading}
-          onChange={(e) => setExtraReading(e.target.value)}
+          label="Custom reading timer (seconds)"
+          value={readingSeconds}
+          onChange={(e) => setReadingSeconds(e.target.value)}
           disabled={busy}
-          hint="An access arrangement. 25 is what the old client’s bare yes meant; 0 is none."
+          hint="Blank keeps the exam's own reading time."
+        />
+        <Input
+          type="number"
+          min={1}
+          max={3659}
+          inputMode="numeric"
+          label="Custom consultation timer (seconds)"
+          value={simulationSeconds}
+          onChange={(e) => setSimulationSeconds(e.target.value)}
+          disabled={busy}
+          hint="Blank keeps the exam's own consultation time."
         />
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-subtle">
           <dt>Member since</dt>
@@ -138,4 +163,10 @@ export function ProfileTab({
       </div>
     </Card>
   );
+}
+
+/** A typed number of seconds, or `null` for a blank field (the exam's own length). */
+function secondsOrNull(value: string): number | null {
+  const seconds = Number.parseInt(value, 10);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
 }

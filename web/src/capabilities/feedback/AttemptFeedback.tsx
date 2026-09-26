@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HiOutlineArrowPath } from "react-icons/hi2";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { readAttempt } from "@/capabilities/attempt-runner/api";
 import { AsyncBoundary, cn, productTokens } from "@/foundation/ui";
 import { FeedbackView } from "@/capabilities/feedback/FeedbackView";
@@ -34,36 +34,36 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
 
   const [attemptStatus, setAttemptStatus] = useState<string | null>(null);
 
-  // The API does not expose attempt SSE yet. Poll status while marking runs so
-  // this screen updates when the worker finishes (or fails).
+  // The worker publishes `attempt` on this user's own event stream when marking
+  // finishes or fails; this re-reads the attempt's status on that event (and on
+  // a `resync`) rather than polling for it.
   const reReadFor = useRef<string | null>(null);
   const reload = state.reload;
+  const tick = useCallback(async () => {
+    try {
+      const attempt = await readAttempt(attemptId);
+      setAttemptStatus(attempt.status);
+      if (!isTerminal(attempt.status)) return;
+      const key = `${attemptId}:${attempt.status}`;
+      if (reReadFor.current === key) return;
+      reReadFor.current = key;
+      reload();
+    } catch {
+      // Transient network errors should not tear down the wait state.
+    }
+  }, [attemptId, reload]);
   useEffect(() => {
-    if (!pending) return;
-    let live = true;
-
-    const tick = async () => {
-      try {
-        const attempt = await readAttempt(attemptId);
-        if (!live) return;
-        setAttemptStatus(attempt.status);
-        if (!isTerminal(attempt.status)) return;
-        const key = `${attemptId}:${attempt.status}`;
-        if (reReadFor.current === key) return;
-        reReadFor.current = key;
-        reload();
-      } catch {
-        // Transient network errors should not tear down the wait state.
-      }
-    };
-
-    void tick();
-    const interval = window.setInterval(() => void tick(), 3000);
-    return () => {
-      live = false;
-      window.clearInterval(interval);
-    };
-  }, [pending, attemptId, reload]);
+    if (pending) void tick();
+  }, [pending, tick]);
+  useMeEvents(
+    pending ? ["attempt"] : null,
+    useCallback(
+      (event) => {
+        if (event.name === "resync" || event.data.attempt_id === attemptId) void tick();
+      },
+      [attemptId, tick],
+    ),
+  );
 
   if (pending && attemptStatus === "failed") {
     // The attempt reached a terminal state with nothing scored. Saying so is

@@ -45,10 +45,11 @@ export default function Timer({
    * The retiring version fetched the person's accessibility settings from here
    * and extended the clock itself, which made a UI primitive issue a request
    * and meant the timer could disagree with whatever the attempt was actually
-   * scheduled for. This stays dumb on purpose: a person's own extra reading
-   * time (`users.extra_reading_percent`) is applied by whoever derives the
-   * practice attempt's reading seconds — see `capabilities/attempt-runner`'s
-   * `withExtraReadingTime` — and the extended figure arrives here as `duration`.
+   * scheduled for. This stays dumb on purpose: a person's own custom timers
+   * (`users.custom_reading_seconds`, `custom_simulation_seconds`) are applied
+   * by whoever derives the practice attempt's phases — see
+   * `capabilities/attempt-runner`'s `usePracticeTimers` — and the chosen
+   * figure arrives here as `duration`.
    * A circuit's clock is never extended, because one clock serves everybody on
    * it (`docs/BACKLOG.md`, S-2).
    */

@@ -1340,6 +1340,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream My Events
+         * @description One stream, every kind of thing that happens to this person.
+         *
+         *     The one live-update connection a signed-in tab holds. Each frame names
+         *     what happened (`attempt`, `practice.session_updated`, `practice.matched`,
+         *     `practice.accepted`, `cv.read`, `media.updated`, `coverage`, ...) and
+         *     carries just enough of a payload — an id — for a screen to tell whether it
+         *     is the one being talked about; it still re-reads its own resource rather
+         *     than trusting the frame's content as truth. This replaces the polling
+         *     intervals every screen used to run on its own: marking status, a partner's
+         *     answer, a CV finishing, a live coverage panel, media production status.
+         *
+         *     Unlike `/attempts/{id}/stream` or `/sittings/stream`, there is no single
+         *     read model behind this route to snapshot, so it is built on
+         *     `fan_in_stream` rather than `event_stream` — see `app.core.sse` for why.
+         */
+        get: operations["identity_stream_my_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/marketplace/posts": {
         parameters: {
             query?: never;
@@ -1458,6 +1491,40 @@ export interface paths {
         get: operations["peer_practice_read_session"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/practice-sessions/{session_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Match */
+        post: operations["peer_practice_accept_match"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/practice-sessions/{session_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline Match */
+        post: operations["peer_practice_decline_match"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1666,6 +1733,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/referral-payout-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read My Payout Details
+         * @description This person's own bank details for referral payouts, sort code in full, account number masked.
+         */
+        get: operations["growth_read_my_payout_details"];
+        /**
+         * Write My Payout Details
+         * @description Save or update this person's bank details for referral payouts.
+         */
+        put: operations["growth_write_my_payout_details"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/referrals": {
         parameters: {
             query?: never;
@@ -1675,6 +1766,29 @@ export interface paths {
         };
         /** Read My Referrals */
         get: operations["growth_read_my_referrals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/referrals/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read My Referral History
+         * @description This person's own redeemed referrals: who joined, what they bought, and what it earned.
+         *
+         *     No cursor: the frontend pages and searches this list client-side, so one
+         *     call returns up to `limit` rows and there is nothing to page further.
+         */
+        get: operations["growth_read_my_referral_history"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1835,14 +1949,17 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename Set
-         * @description Rename one of your own practice sets.
+         * Update Set
+         * @description Rename one of your own practice sets, and — the legacy "edit session" screen — swap its stations.
          *
          *     Owner-only, and a set that is not yours answers 404 rather than 403: an id
          *     is not something a stranger should be able to confirm exists by the shape
-         *     of the refusal.
+         *     of the refusal. `station_version_ids` left out of the body changes only the
+         *     name; given, it replaces the set's stations first (which can itself refuse:
+         *     the set is locked, a version cannot be used, or an entry being dropped has
+         *     already been attempted) and renames the result.
          */
-        patch: operations["station_sets_rename_set"];
+        patch: operations["station_sets_update_set"];
         trace?: never;
     };
     "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts": {
@@ -7262,12 +7379,19 @@ export interface components {
             /** Debrief Attempts */
             debrief_attempts: number;
             /**
+             * Feedback Ready
+             * @default false
+             */
+            feedback_ready: boolean;
+            /**
              * Id
              * Format: uuid
              */
             id: string;
             /** Last Attempt At */
             last_attempt_at?: string | null;
+            /** Last Attempt Status */
+            last_attempt_status?: string | null;
             /** Position */
             position: number;
             /**
@@ -7282,7 +7406,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_session_ended" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "tag_too_long" | "template_not_published" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_exam_code" | "invalid_input" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -7954,6 +8078,25 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * MeEventEnvelope
+         * @description One frame of the `/me/events` fan-in stream: a named event and its small id payload.
+         *
+         *     Every other stream's frame is the same shape as its `GET`'s response model, named by
+         *     `sse_responses`. `/me/events` multiplexes many differently-shaped events (`attempt`,
+         *     `practice.session_updated`, `cv.read`, `media.updated`, `coverage`, ...) onto one
+         *     connection, so there is no single response model to point at. This envelope documents
+         *     the shape every frame shares instead: the event's name, and a small object of the ids
+         *     naming what changed — never the changed data itself, which the client re-fetches.
+         */
+        MeEventEnvelope: {
+            /** Data */
+            data: {
+                [key: string]: string;
+            };
+            /** Event */
+            event: string;
+        };
+        /**
          * MediaPage
          * @description A page of the catalogue, and how many items matched the filters.
          *
@@ -8432,6 +8575,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** Page[ReferralHistoryRead] */
+        Page_ReferralHistoryRead_: {
+            /** Items */
+            items: components["schemas"]["ReferralHistoryRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[RubricRead] */
         Page_RubricRead_: {
             /** Items */
@@ -8578,6 +8728,71 @@ export interface components {
             persona?: string | null;
             /** Questions */
             questions?: string[];
+        };
+        /**
+         * PayoutDetailsAdminRead
+         * @description A referrer's bank details, decrypted, as platform admin settlement needs them.
+         *
+         *     Never returned to anyone but the person settling the payout — the account
+         *     number is in full here, unlike `PayoutDetailsRead`.
+         */
+        PayoutDetailsAdminRead: {
+            /** Account Holder Name */
+            account_holder_name: string;
+            /** Account Number */
+            account_number: string;
+            /** Bank Name */
+            bank_name: string;
+            /** Sort Code */
+            sort_code: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PayoutDetailsRead
+         * @description A referrer's own bank details, as they see them on reload.
+         *
+         *     The sort code only identifies a branch, not an account, so it is shown in
+         *     full — matching how the retiring client redisplayed it. The account
+         *     number stays masked to its last four digits.
+         */
+        PayoutDetailsRead: {
+            /** Account Holder Name */
+            account_holder_name: string;
+            /** Account Number Last4 */
+            account_number_last4: string;
+            /** Bank Name */
+            bank_name: string;
+            /** Sort Code */
+            sort_code: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PayoutDetailsWrite
+         * @description What a referrer submits to save or update their bank details.
+         *
+         *     `account_number` is optional so someone can change their bank name
+         *     without retyping a number that never left the client the first time
+         *     around; the service keeps the previously stored number when this is
+         *     omitted, and refuses with `payout_account_number_required` if none was
+         *     ever stored.
+         */
+        PayoutDetailsWrite: {
+            /** Account Holder Name */
+            account_holder_name: string;
+            /** Account Number */
+            account_number?: string | null;
+            /** Bank Name */
+            bank_name: string;
+            /** Sort Code */
+            sort_code: string;
         };
         /** PeerSessionRead */
         PeerSessionRead: {
@@ -8964,17 +9179,16 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Custom Reading Seconds */
+            custom_reading_seconds?: number | null;
+            /** Custom Simulation Seconds */
+            custom_simulation_seconds?: number | null;
             /** Email */
             email: string;
             /** Exam Code */
             exam_code?: string | null;
             /** Exam Date */
             exam_date?: string | null;
-            /**
-             * Extra Reading Percent
-             * @default 0
-             */
-            extra_reading_percent: number;
             /**
              * Id
              * Format: uuid
@@ -9000,6 +9214,11 @@ export interface components {
             must_change_password: boolean;
             /** Name */
             name: string;
+            /**
+             * Needs Extra Time
+             * @default false
+             */
+            needs_extra_time: boolean;
             /**
              * Status
              * @default active
@@ -9112,6 +9331,8 @@ export interface components {
         };
         /** PracticeSessionRead */
         PracticeSessionRead: {
+            /** Accept Expires At */
+            accept_expires_at?: string | null;
             /** Current Phase */
             current_phase?: string | null;
             /** Doctor Attempt Id */
@@ -9134,8 +9355,18 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * My Accepted
+             * @default false
+             */
+            my_accepted: boolean;
             /** My Role */
             my_role: string;
+            /**
+             * Partner Accepted
+             * @default false
+             */
+            partner_accepted: boolean;
             /**
              * Partner Joined
              * @default false
@@ -9152,6 +9383,8 @@ export interface components {
             phase_ends_at?: string | null;
             /** Preparation Started At */
             preparation_started_at?: string | null;
+            /** Requeued Entry Id */
+            requeued_entry_id?: string | null;
             /** Room Name */
             room_name: string | null;
             /** Started At */
@@ -9457,6 +9690,7 @@ export interface components {
             id: string;
             /** Paid At */
             paid_at: string | null;
+            payout_details?: components["schemas"]["PayoutDetailsAdminRead"] | null;
             /** Payout Reference */
             payout_reference: string | null;
             /** Payout Status */
@@ -9467,6 +9701,40 @@ export interface components {
             referred_email: string | null;
             /** Referrer Email */
             referrer_email: string;
+        };
+        /**
+         * ReferralHistoryRead
+         * @description One redeemed referral, as the person who issued the code reads their own history.
+         *
+         *     `referee_email` is exposed here (unlike `ReferralAdminRead`'s two-sided
+         *     view being admin-only): this row belongs to the caller, and the retiring
+         *     client's history table names the referee in its "Referee Email" column.
+         */
+        ReferralHistoryRead: {
+            /** Code */
+            code: string;
+            /** Earned Pence */
+            earned_pence: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Paid At */
+            paid_at: string | null;
+            /** Payout Status */
+            payout_status: string;
+            /** Plan Code */
+            plan_code: string | null;
+            /** Plan Label */
+            plan_label: string | null;
+            /**
+             * Redeemed At
+             * Format: date-time
+             */
+            redeemed_at: string;
+            /** Referee Email */
+            referee_email: string;
         };
         /** ReferralRead */
         ReferralRead: {
@@ -9845,14 +10113,23 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** SessionFeedback */
+        /**
+         * SessionFeedback
+         * @description What one participant leaves after a session, matching what the legacy form asked for.
+         *
+         *     `would_practice_again` is the one field the legacy form always required —
+         *     a session either felt worth repeating or it did not, and that answer is
+         *     what a good-match signal is built from. The star rating was always
+         *     optional there, which this keeps: someone declining to rate a partner is
+         *     not the same as having nothing to say about practising with them again.
+         */
         SessionFeedback: {
             /** Comment */
             comment?: string | null;
             /** Rating */
-            rating: number;
+            rating?: number | null;
             /** Would Practice Again */
-            would_practice_again?: boolean | null;
+            would_practice_again: boolean;
         };
         /** SessionRead */
         SessionRead: {
@@ -9901,6 +10178,11 @@ export interface components {
             entries?: components["schemas"]["EntryRead"][];
             /** Exam Code */
             exam_code: string;
+            /**
+             * Feedback Ready
+             * @default false
+             */
+            feedback_ready: boolean;
             /**
              * Id
              * Format: uuid
@@ -11034,14 +11316,20 @@ export interface components {
             ai_training_consent?: boolean | null;
             /** Colleague Waiting Email */
             colleague_waiting_email?: boolean | null;
+            /** Custom Reading Seconds */
+            custom_reading_seconds?: number | null;
+            /** Custom Simulation Seconds */
+            custom_simulation_seconds?: number | null;
             /** Exam Code */
             exam_code?: string | null;
             /** Exam Date */
             exam_date?: string | null;
-            /** Extra Reading Percent */
-            extra_reading_percent?: number | null;
+            /** Exam Time */
+            exam_time?: string | null;
             /** Name */
             name?: string | null;
+            /** Needs Extra Time */
+            needs_extra_time?: boolean | null;
             /** Replay Onboarding */
             replay_onboarding?: boolean | null;
         };
@@ -11077,14 +11365,18 @@ export interface components {
         };
         /** UpdatePlatformUser */
         UpdatePlatformUser: {
+            /** Custom Reading Seconds */
+            custom_reading_seconds?: number | null;
+            /** Custom Simulation Seconds */
+            custom_simulation_seconds?: number | null;
             /** Exam Code */
             exam_code?: string | null;
             /** Exam Date */
             exam_date?: string | null;
-            /** Extra Reading Percent */
-            extra_reading_percent?: number | null;
             /** Name */
             name?: string | null;
+            /** Needs Extra Time */
+            needs_extra_time?: boolean | null;
             /** Status */
             status?: string | null;
         };
@@ -11097,16 +11389,26 @@ export interface components {
          * UpdateSet
          * @description What a learner may still change about a set they have built.
          *
-         *     The name, and only the name. A set carries no description and no timings —
-         *     the length of a session is the sum of its stations' exam timings, which the
+         *     The name, and — since this replaces the legacy "edit session" screen — the
+         *     stations themselves. Swapping the list does not touch an entry that stays
+         *     in it: its counters are what an attempt points at, so `replace_entries`
+         *     matches kept versions back onto their existing entry rather than deleting
+         *     and recreating it. A set carries no description and no timings — the
+         *     length of a session is the sum of its stations' exam timings, which the
          *     exam owns — so there is nothing else to write.
          *
          *     Whitespace strips to nothing, which is then too short: a set called `"   "`
          *     is an unlabelled row in the list the learner has to keep.
+         *
+         *     `station_version_ids` left out (`None`) means "just the name"; an empty
+         *     list is a real request to empty the set, and is rejected only if that
+         *     would mean removing a station that already has an attempt against it.
          */
         UpdateSet: {
             /** Name */
             name: string;
+            /** Station Version Ids */
+            station_version_ids?: string[] | null;
         };
         /**
          * UpdateSitting
@@ -11188,17 +11490,18 @@ export interface components {
              * @default false
              */
             colleague_waiting_email: boolean;
+            /** Custom Reading Seconds */
+            custom_reading_seconds?: number | null;
+            /** Custom Simulation Seconds */
+            custom_simulation_seconds?: number | null;
             /** Email */
             email: string;
             /** Exam Code */
             exam_code?: string | null;
             /** Exam Date */
             exam_date?: string | null;
-            /**
-             * Extra Reading Percent
-             * @default 0
-             */
-            extra_reading_percent: number;
+            /** Exam Time */
+            exam_time?: string | null;
             /**
              * Id
              * Format: uuid
@@ -11214,6 +11517,11 @@ export interface components {
             must_change_password: boolean;
             /** Name */
             name: string;
+            /**
+             * Needs Extra Time
+             * @default false
+             */
+            needs_extra_time: boolean;
             /**
              * Replay Onboarding
              * @default false
@@ -14789,7 +15097,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description post_unavailable, cannot_claim_own_post */
+            /** @description post_unavailable, slot_already_claimed, cannot_claim_own_post */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15249,6 +15557,49 @@ export interface operations {
             };
         };
     };
+    identity_stream_my_events: {
+        parameters: {
+            query?: {
+                /** @description A stream ticket from POST /auth/stream-ticket */
+                ticket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An SSE stream multiplexing this user's own events onto one connection: `connected`, then a named event (`attempt`, `practice.session_updated`, `cv.read`, `media.updated`, `coverage`, ...) each time something changes, whose shape is `MeEventEnvelope`, and `ping` every 25 seconds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["MeEventEnvelope"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     marketplace_list_my_posts: {
         parameters: {
             query?: never;
@@ -15414,7 +15765,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description peer_session_not_open */
+            /** @description peer_session_not_open, too_early_to_join */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15562,6 +15913,122 @@ export interface operations {
             };
         };
     };
+    peer_practice_accept_match: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSessionRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description practice_session_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description partner_unavailable */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    peer_practice_decline_match: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSessionRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description practice_session_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description partner_unavailable, practice_session_ended */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     peer_practice_end_session: {
         parameters: {
             query?: never;
@@ -15604,7 +16071,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description practice_session_ended */
+            /** @description practice_session_ended, practice_session_not_accepted */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15666,6 +16133,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description practice_feedback_not_open */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -15715,7 +16191,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description practice_session_ended */
+            /** @description practice_session_ended, practice_session_not_accepted */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15929,7 +16405,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description practice_session_ended */
+            /** @description practice_session_ended, practice_session_not_accepted */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -16114,6 +16590,86 @@ export interface operations {
             };
         };
     };
+    growth_read_my_payout_details: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDetailsRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description payout_details_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_write_my_payout_details: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayoutDetailsWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDetailsRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_input, payout_account_number_required */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     growth_read_my_referrals: {
         parameters: {
             query?: never;
@@ -16139,6 +16695,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_my_referral_history: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ReferralHistoryRead_"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -16616,7 +17212,7 @@ export interface operations {
             };
         };
     };
-    station_sets_rename_set: {
+    station_sets_update_set: {
         parameters: {
             query?: never;
             header?: never;
@@ -16651,6 +17247,15 @@ export interface operations {
             };
             /** @description set_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description set_locked, station_version_not_usable, set_entry_has_attempts */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -28906,7 +29511,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description attempt_not_ready, station_not_published */
+            /** @description attempt_not_ready, station_not_published, attempt_limit_reached */
             409: {
                 headers: {
                     [name: string]: unknown;

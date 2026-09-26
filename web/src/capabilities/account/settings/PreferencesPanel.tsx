@@ -1,25 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { Alert, AsyncBoundary, Button, cn, productTokens } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
-import { readMe, updateMe } from "@/capabilities/account/api";
+import { useState, type FormEvent } from "react";
+import {
+  HiOutlineAdjustmentsHorizontal,
+  HiOutlineArrowPath,
+  HiOutlineCheckCircle,
+  HiOutlineMicrophone,
+} from "react-icons/hi2";
+import {
+  AsyncBoundary,
+  B2CPanelCard,
+  B2CPanelCardBody,
+  B2CPanelCardFooter,
+  B2CPanelCardHeader,
+  Modal,
+  ModalPrimaryButton,
+  cn,
+  productTokens,
+} from "@/foundation/ui";
+import Alert from "@/foundation/forms/Alert";
+import { useAsync } from "@/foundation/hooks";
+import { useCurrentExam } from "@/foundation/session";
+import { useSurface } from "@/capabilities/SurfaceContext";
+import { OnboardingFlow, rememberOnboardingSeen } from "@/capabilities/onboarding";
+import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
+import TimerSettingsModal from "@/capabilities/account/settings/TimerSettingsModal";
 
-const { b2cFieldLabel, b2cInputBase } = productTokens;
+const {
+  b2cLink,
+  b2cSettingsCardHeaderIcon,
+  b2cSettingsCheckboxHelper,
+  b2cSettingsCheckboxInput,
+  b2cSettingsCheckboxRow,
+  b2cSettingsCheckboxTitle,
+  b2cSettingsIntro,
+  b2cSettingsOptionRow,
+} = productTokens;
 
-/** What a bare "yes, I need extra time" used to mean in the old client. */
-const STANDARD_EXTRA = 25;
+/** What the old modal opened on for somebody with no custom timer: the SCA's own 3 and 12 minutes. */
+const DEFAULT_READING_SECONDS = 3 * 60;
+const DEFAULT_SIMULATION_SECONDS = 12 * 60;
 
 /**
- * Access arrangements and the three choices that used to sit beside them.
+ * Access arrangements, AI consent and the waiting-colleague email.
  *
- * Extra reading time is a percentage. AI-training consent, the waiting-email
- * nudge, and showing the guided tour again are stored on the account.
- *
- * Extra reading time is a percentage rather than the old boolean, because a
- * percentage says what was actually granted; the old client carried a bare
- * flag and applied a fixed amount inside the timer component.
+ * The retiring client's Preferences card, row for row and string for string,
+ * saved with one button. "Configure your reading and simulation timers" opens
+ * the old minutes-and-seconds modal, which saves on its own; the timers only
+ * apply while "Extra reading time" is ticked (`users.needs_extra_time`).
  *
  * It applies to a person's own practice only. An institution's circuit runs on
  * one clock for everybody on it, and stretching it for one candidate would
@@ -32,168 +61,197 @@ export default function PreferencesPanel() {
   return (
     <SettingsTabShell>
       <AsyncBoundary state={state}>
-        {(me) => (
-          <PreferencesForm
-            key={me.id}
-            initial={me.extra_reading_percent ?? 0}
-            consent={me.ai_training_consent ?? false}
-            waitingEmail={me.colleague_waiting_email ?? false}
-            replay={me.replay_onboarding ?? false}
-          />
-        )}
+        {(me) => <PreferencesForm key={me.id} me={me} onTimersSaved={state.reload} />}
       </AsyncBoundary>
     </SettingsTabShell>
   );
 }
 
-function PreferencesForm({
-  initial,
-  consent,
-  waitingEmail,
-  replay,
-}: {
-  initial: number;
-  consent: boolean;
-  waitingEmail: boolean;
-  replay: boolean;
-}) {
-  const [percent, setPercent] = useState(initial);
-  const [flags, setFlags] = useState({ consent, waitingEmail, replay });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => void }) {
+  const { surface } = useSurface();
+  const { code: examCode } = useCurrentExam();
+  // Practice-only rows: peer practice and Athena's tour belong to a person's
+  // own practice, not to an institution's workspace. The waiting-colleague
+  // email was SCA-only in the old client (`appType === "sca"`).
+  const practising = surface === "train";
+  const isSca = practising && (me.exam_code ?? examCode) === "sca";
 
-  const save = async (value: number) => {
+  const [consent, setConsent] = useState(me.ai_training_consent ?? false);
+  const [waitingEmail, setWaitingEmail] = useState(me.colleague_waiting_email ?? false);
+  const [extraTime, setExtraTime] = useState(me.needs_extra_time ?? false);
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [error, setError] = useState("");
+  const [showTimerSettings, setShowTimerSettings] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
     setSaving(true);
-    setError(null);
-    setSaved(false);
+    setError("");
+    setSuccessMessage("");
     try {
-      await updateMe({ extra_reading_percent: value });
-      setPercent(value);
-      setSaved(true);
-    } catch (cause) {
-      setError(errorMessage(cause));
+      await updateMe({
+        ai_training_consent: consent,
+        colleague_waiting_email: waitingEmail,
+        needs_extra_time: extraTime,
+      });
+      setSuccessMessage("Preferences saved successfully");
+    } catch {
+      setError("Failed to save preferences");
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {error && <Alert tone="danger">{error}</Alert>}
-      {saved && <Alert tone="success">Saved.</Alert>}
+  const closeOnboarding = () => {
+    rememberOnboardingSeen();
+    setShowOnboarding(false);
+  };
 
-      <label className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={percent > 0}
-          onChange={(event) => void save(event.target.checked ? STANDARD_EXTRA : 0)}
-          disabled={saving}
-          className="mt-1 h-4 w-4 shrink-0"
+  return (
+    <>
+      <form onSubmit={(event) => void save(event)}>
+        <B2CPanelCard className="mt-0">
+          <B2CPanelCardHeader>
+            <HiOutlineAdjustmentsHorizontal className={b2cSettingsCardHeaderIcon} aria-hidden />
+            Preferences
+          </B2CPanelCardHeader>
+          <B2CPanelCardBody className="space-y-6 p-4 sm:p-6">
+            <p className={b2cSettingsIntro}>
+              Accessibility, AI consent, and notification settings for your account.
+            </p>
+
+            {successMessage ? <Alert message={successMessage} type="success" /> : null}
+            {error ? <Alert message={error} type="error" /> : null}
+
+            <div className="space-y-4">
+              <label className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
+                <input
+                  id="pref-dataConsentAI"
+                  name="dataConsentAI"
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(event) => setConsent(event.target.checked)}
+                  className={b2cSettingsCheckboxInput}
+                />
+                <span className="min-w-0">
+                  <span className={b2cSettingsCheckboxTitle}>AI training consent</span>
+                  <span className={b2cSettingsCheckboxHelper}>
+                    Allow your data to be used for AI training to provide better personalized
+                    recommendations and feedback.
+                  </span>
+                </span>
+              </label>
+
+              <div className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
+                <input
+                  id="pref-needsExtraReadingTime"
+                  name="needsExtraReadingTime"
+                  type="checkbox"
+                  checked={extraTime}
+                  onChange={(event) => setExtraTime(event.target.checked)}
+                  className={b2cSettingsCheckboxInput}
+                />
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="pref-needsExtraReadingTime" className={b2cSettingsCheckboxTitle}>
+                    Extra reading time
+                  </label>
+                  <p className={b2cSettingsCheckboxHelper}>
+                    I need extra time to support my neurodiverse learning needs.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowTimerSettings(true)}
+                    className={cn("mt-3 text-osce-body", b2cLink, "underline")}
+                  >
+                    Configure your reading and simulation timers
+                  </button>
+                </div>
+              </div>
+
+              {isSca ? (
+                <label className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
+                  <input
+                    id="pref-notifyWhenPartnerWaiting"
+                    name="notifyWhenPartnerWaiting"
+                    type="checkbox"
+                    checked={waitingEmail}
+                    onChange={(event) => setWaitingEmail(event.target.checked)}
+                    className={b2cSettingsCheckboxInput}
+                  />
+                  <span className="min-w-0">
+                    <span className={b2cSettingsCheckboxTitle}>Email me when a colleague is waiting</span>
+                    <span className={b2cSettingsCheckboxHelper}>
+                      When a colleague&apos;s partner doesn&apos;t show for a marketplace session,
+                      we&apos;ll email you so you can log in and join Live practice within 10 minutes.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
+
+              {practising ? (
+                <div className={b2cSettingsOptionRow}>
+                  <div className="min-w-0 flex-1">
+                    <p className={b2cSettingsCheckboxTitle}>
+                      <HiOutlineMicrophone
+                        className="h-[18px] w-[18px] shrink-0 text-b2c-text-muted"
+                        aria-hidden
+                      />
+                      Athena onboarding
+                    </p>
+                    <p className={b2cSettingsCheckboxHelper}>
+                      Hear Athena introduce the app and try the voice demo again.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowOnboarding(true)}
+                      className={cn("mt-3 text-osce-body", b2cLink, "underline")}
+                    >
+                      Walk through onboarding again
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </B2CPanelCardBody>
+          <B2CPanelCardFooter className="px-4 pb-4 pt-8 sm:px-6 sm:pb-6">
+            <ModalPrimaryButton type="submit" disabled={saving} className="gap-2">
+              {saving ? (
+                <>
+                  <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
+                  Save preferences
+                </>
+              )}
+            </ModalPrimaryButton>
+          </B2CPanelCardFooter>
+        </B2CPanelCard>
+      </form>
+
+      {showTimerSettings ? (
+        <TimerSettingsModal
+          readingSeconds={me.custom_reading_seconds ?? DEFAULT_READING_SECONDS}
+          simulationSeconds={me.custom_simulation_seconds ?? DEFAULT_SIMULATION_SECONDS}
+          needsExtraTime={extraTime}
+          onError={setError}
+          onSuccess={(message) => {
+            setSuccessMessage(message);
+            onTimersSaved();
+          }}
+          onClose={() => setShowTimerSettings(false)}
         />
-        <span>
-          <span className="block text-osce-body text-osce-ink-900">
-            I am granted extra reading time
-          </span>
-          <span className="block text-osce-meta text-b2c-text-muted">
-            Your reading period is extended by this much in your own practice.
-          </span>
-        </span>
-      </label>
+      ) : null}
 
-      {percent > 0 && (
-        <div>
-          <label htmlFor="extra-reading-percent" className={b2cFieldLabel}>
-            Extra reading time
-          </label>
-          <div className="mt-1.5 flex items-center gap-2">
-            <input
-              id="extra-reading-percent"
-              type="number"
-              min={1}
-              max={100}
-              value={percent}
-              onChange={(event) => setPercent(Number(event.target.value))}
-              className={cn(b2cInputBase, "w-28")}
-            />
-            <span className="text-osce-body text-b2c-text-muted">%</span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              onClick={() => void save(percent)}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <PrefToggle
-        checked={flags.consent}
-        title="Allow my consultations to train OSCE Guide's models"
-        detail="Off unless you turn it on. You can change this whenever you like."
-        onChange={(checked) => void saveFlag("ai_training_consent", "consent", checked)}
-      />
-      <PrefToggle
-        checked={flags.waitingEmail}
-        title="Email me when a colleague is waiting to practise"
-        detail="A note when someone is in the peer-practice queue for your exam."
-        onChange={(checked) => void saveFlag("colleague_waiting_email", "waitingEmail", checked)}
-      />
-      <PrefToggle
-        checked={flags.replay}
-        title="Show the guided tour again"
-        detail="The dashboard will offer the voice introduction the next time you open it."
-        onChange={(checked) => void saveFlag("replay_onboarding", "replay", checked)}
-      />
-    </div>
-  );
-
-  async function saveFlag(
-    field: "ai_training_consent" | "colleague_waiting_email" | "replay_onboarding",
-    key: "consent" | "waitingEmail" | "replay",
-    checked: boolean,
-  ) {
-    setSaving(true);
-    setError(null);
-    setSaved(false);
-    try {
-      await updateMe({ [field]: checked });
-      setFlags((current) => ({ ...current, [key]: checked }));
-      setSaved(true);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setSaving(false);
-    }
-  }
-}
-
-function PrefToggle({
-  checked,
-  title,
-  detail,
-  onChange,
-}: {
-  checked: boolean;
-  title: string;
-  detail: string;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex items-start gap-3">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-1 h-4 w-4 shrink-0"
-      />
-      <span>
-        <span className="block text-osce-body text-osce-ink-900">{title}</span>
-        <span className="block text-osce-meta text-b2c-text-muted">{detail}</span>
-      </span>
-    </label>
+      {showOnboarding ? (
+        <Modal width="min(95vw, 560px)" height="fit-content" title="Athena onboarding" onClose={closeOnboarding}>
+          <OnboardingFlow onComplete={closeOnboarding} onSkip={closeOnboarding} />
+        </Modal>
+      ) : null}
+    </>
   );
 }

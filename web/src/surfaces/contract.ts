@@ -22,6 +22,8 @@ export type ScreenName =
   | "mockDetail"
   | "mockStation"
   | "mockComplete"
+  | "mockList"
+  | "mockUpdate"
   | "practiceStation"
   | "attempt"
   // Institution and employer

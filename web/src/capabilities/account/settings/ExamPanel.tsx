@@ -1,22 +1,49 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineAcademicCap } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, cn, productTokens } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { HiOutlineCalendarDays } from "react-icons/hi2";
+import {
+  AsyncBoundary,
+  B2CPanelCard,
+  B2CPanelCardBody,
+  B2CPanelCardFooter,
+  B2CPanelCardHeader,
+  ModalHelper,
+  ModalPrimaryButton,
+  productTokens,
+} from "@/foundation/ui";
+import Alert from "@/foundation/forms/Alert";
+import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
-import { readMe, updateMe } from "@/capabilities/account/api";
+import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
-const { b2cFieldLabel, b2cInputBase } = productTokens;
+const {
+  b2cFieldLabel,
+  b2cSettingsCardHeaderIcon,
+  b2cSettingsFieldInput,
+  b2cSettingsFieldInputDisabled,
+} = productTokens;
+
+/** The retiring client's names for each exam; anything else is its code in capitals. */
+const EXAM_LABELS: Record<string, string> = {
+  sca: "SCA",
+  plab: "PLAB",
+  ortho: "Orthopaedic interview",
+};
+
+/** How an exam code reads on the settings screen. Empty when there is none. */
+export function examLabel(code: string | null | undefined): string {
+  if (!code) return "";
+  return EXAM_LABELS[code] ?? code.toUpperCase();
+}
 
 /**
  * Which exam this account is for, and when they sit it.
  *
- * The retiring client's Exam tab, with the same two fields and the same shape:
- * the exam is read-only with a line telling you who to ask, and the date is
- * yours to set. It was left out of the port because nothing stored either —
- * `users.exam_code` and `users.exam_date` both exist now.
+ * The retiring client's Exam tab: an "Exam" card with the type read-only, and
+ * an "Exam date" card that is yours to set, with an optional time of day
+ * (`users.exam_time`) beside the date.
  *
  * The exam stays read-only because changing it is not a settings change. It
  * decides which library, which material and which peers a person sees, and
@@ -28,87 +55,132 @@ export default function ExamPanel() {
 
   return (
     <SettingsTabShell>
-      <AsyncBoundary state={state}>{(me) => <ExamForm key={me.id} me={me} />}</AsyncBoundary>
+      <AsyncBoundary state={state}>{(me) => <ExamCards key={me.id} me={me} />}</AsyncBoundary>
     </SettingsTabShell>
   );
 }
 
-function ExamForm({ me }: { me: Awaited<ReturnType<typeof readMe>> }) {
+function ExamCards({ me }: { me: Me }) {
   const { codes } = useCurrentExam();
-  const [examDate, setExamDate] = useState(me.exam_date ?? "");
+  // What they signed up to sit, or — if they have since bought others — what
+  // they hold. The old screen fell back to "sca" when nothing was set.
+  const code = me.exam_code ?? codes[0] ?? "sca";
+  const isOrtho = code === "ortho";
+
+  return (
+    <>
+      <B2CPanelCard className="mt-0">
+        <B2CPanelCardHeader>
+          <HiOutlineCalendarDays className={b2cSettingsCardHeaderIcon} aria-hidden />
+          Exam
+        </B2CPanelCardHeader>
+        <B2CPanelCardBody className="space-y-4">
+          <ModalHelper className="mt-0">
+            Your exam type and date — the same options available from your dashboard.
+          </ModalHelper>
+          <div>
+            <label htmlFor="settings-exam-type" className={b2cFieldLabel}>
+              Exam type
+            </label>
+            <input
+              id="settings-exam-type"
+              type="text"
+              value={examLabel(code)}
+              disabled
+              className={b2cSettingsFieldInputDisabled}
+            />
+            <p className="mt-1.5 text-osce-meta text-b2c-text-muted">
+              Exam type is set when you signed up. Contact support if you need to switch exams.
+            </p>
+          </div>
+        </B2CPanelCardBody>
+      </B2CPanelCard>
+
+      <ExamDateCard
+        initialDate={me.exam_date ?? ""}
+        initialTime={(me.exam_time ?? "").slice(0, 5)}
+        isOrtho={isOrtho}
+      />
+    </>
+  );
+}
+
+/** The old `AddExamDate` card: date required, time optional, toasts on save. */
+function ExamDateCard({
+  initialDate,
+  initialTime,
+  isOrtho,
+}: {
+  initialDate: string;
+  initialTime: string;
+  isOrtho: boolean;
+}) {
+  const [examDate, setExamDate] = useState(initialDate);
+  const [examTime, setExamTime] = useState(initialTime);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [error, setError] = useState("");
 
   const save = async () => {
+    setError("");
+    setSuccessMessage("");
+    if (!examDate) {
+      setError("Please select an exam date");
+      return;
+    }
     setSaving(true);
-    setError(null);
-    setSaved(false);
     try {
-      // Empty clears it: the backend distinguishes "not mentioned" from "set
-      // to nothing", which is what makes removing a date possible at all.
-      await updateMe({ exam_date: examDate || null });
-      setSaved(true);
-    } catch (cause) {
-      setError(errorMessage(cause));
+      await updateMe({ exam_date: examDate, exam_time: examTime ? `${examTime}:00` : null });
+      setSuccessMessage("Exam date updated");
+    } catch {
+      setError("Failed to update exam date");
     } finally {
       setSaving(false);
     }
   };
 
-  // What they signed up to sit, or — if they have since bought others — what
-  // they hold. One line either way; this is not a place to switch.
-  const examLabel = (me.exam_code ?? codes[0] ?? "").toUpperCase();
+  const noun = isOrtho ? "interview" : "exam";
 
   return (
-    <div className="space-y-4">
-      {error && <Alert tone="danger">{error}</Alert>}
-      {saved && <Alert tone="success">Saved.</Alert>}
-
-      <div>
-        <label htmlFor="settings-exam-type" className={b2cFieldLabel}>
-          Exam type
-        </label>
-        <div className="relative mt-1.5">
-          <HiOutlineAcademicCap
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-b2c-text-muted"
-            aria-hidden
-          />
+    <B2CPanelCard className="mt-0">
+      <B2CPanelCardHeader className="text-osce-accent-hover">
+        {isOrtho ? "Interview date" : "Exam date"}
+      </B2CPanelCardHeader>
+      <B2CPanelCardBody className="space-y-4">
+        <ModalHelper className="mt-0">
+          Adding your {noun} date helps us personalize your study plan and track your progress more
+          effectively.
+        </ModalHelper>
+        {successMessage ? <Alert message={successMessage} type="success" /> : null}
+        {error ? <Alert message={error} type="error" /> : null}
+        <div className="flex flex-col gap-2.5 sm:flex-row">
+          <label htmlFor="settings-exam-date" className="sr-only">
+            {isOrtho ? "Interview date" : "Exam date"}
+          </label>
           <input
-            id="settings-exam-type"
-            type="text"
-            value={examLabel || "Not set"}
-            disabled
-            className={cn(b2cInputBase, "pl-9")}
+            id="settings-exam-date"
+            type="date"
+            value={examDate}
+            onChange={(event) => setExamDate(event.target.value)}
+            className={`${b2cSettingsFieldInput} flex-1`}
+          />
+          <label htmlFor="settings-exam-time" className="sr-only">
+            {isOrtho ? "Interview time" : "Exam time"}
+          </label>
+          <input
+            id="settings-exam-time"
+            type="time"
+            value={examTime}
+            onChange={(event) => setExamTime(event.target.value)}
+            className={`${b2cSettingsFieldInput} sm:w-32`}
           />
         </div>
-        <p className="mt-1.5 text-osce-meta text-b2c-text-muted">
-          Exam type is set when you signed up. Contact support if you need to switch exams.
-        </p>
-      </div>
-
-      <div>
-        <label htmlFor="settings-exam-date" className={b2cFieldLabel}>
-          Exam date
-        </label>
-        <input
-          id="settings-exam-date"
-          type="date"
-          value={examDate}
-          onChange={(event) => {
-            setExamDate(event.target.value);
-            setSaved(false);
-          }}
-          className={cn(b2cInputBase, "mt-1.5")}
-        />
-        <p className="mt-1.5 text-osce-meta text-b2c-text-muted">
-          Your dashboard counts down to it, and it appears beside your exam in the menu.
-        </p>
-      </div>
-
-      <Button type="button" variant="primary" size="md" onClick={() => void save()} disabled={saving}>
-        {saving ? "Saving..." : "Save"}
-      </Button>
-    </div>
+      </B2CPanelCardBody>
+      <B2CPanelCardFooter>
+        <ModalPrimaryButton type="button" onClick={() => void save()} disabled={saving}>
+          {saving ? "Saving…" : "Save date"}
+        </ModalPrimaryButton>
+      </B2CPanelCardFooter>
+    </B2CPanelCard>
   );
 }

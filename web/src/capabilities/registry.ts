@@ -55,6 +55,11 @@ export interface MountOptions {
   basePath?: string;
   /** Include capabilities marked `hidden`. Off by default; nav does not want them. */
   includeHidden?: boolean;
+  /**
+   * The person's exam, for capabilities that name the exams they serve.
+   * Left out, no capability is filtered by exam — route guards want that.
+   */
+  examCode?: string | null;
 }
 
 /**
@@ -64,12 +69,15 @@ export interface MountOptions {
  */
 export function capabilitiesFor(
   surface: Surface,
-  { can = {}, basePath = "", includeHidden = false }: MountOptions = {},
+  { can = {}, basePath = "", includeHidden = false, examCode }: MountOptions = {},
 ): MountedCapability[] {
   return CAPABILITIES.filter((capability) => {
     if (!capability.surfaces.includes(surface)) return false;
     if (capability.hidden && !includeHidden) return false;
     if (!permitted(capability.permission, can)) return false;
+    if (examCode !== undefined && capability.exams && !capability.exams.includes(examCode ?? "")) {
+      return false;
+    }
     return true;
   }).map((capability) => ({ ...capability, href: `${basePath}${capability.path}` }));
 }
