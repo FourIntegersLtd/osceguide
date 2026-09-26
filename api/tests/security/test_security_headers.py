@@ -35,14 +35,22 @@ async def test_hsts_is_absent_when_not_deployed(client: AsyncClient) -> None:
 
 
 async def test_openapi_schema_is_withheld_when_deployed(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.core.settings import get_settings
+    import os
+
+    from app.core.settings import REQUIRED_WHEN_DEPLOYED, get_settings
     from app.main import create_app
 
     monkeypatch.setenv("APP_ENV", "production")
-    # A deployed Settings insists on these; supply dummies so we can build the
-    # app and inspect the schema route, which is all this test cares about.
-    monkeypatch.setenv("RESEND_API_KEY", "test-resend")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-openai")
+    # A deployed Settings refuses to start without every name in
+    # REQUIRED_WHEN_DEPLOYED, and wants a JWT secret of 32+ characters. The
+    # dummies come from that list itself: a hand-written subset fell behind it
+    # once and failed only in CI, where no local .env fills the gaps. Only the
+    # schema route matters here, so any non-empty value will do.
+    for required_name in REQUIRED_WHEN_DEPLOYED:
+        # Keep a real database URL where there is one; the rest are dummies.
+        if required_name == "DATABASE_URL" and os.environ.get(required_name):
+            continue
+        monkeypatch.setenv(required_name, f"test-{required_name.lower()}-dummy-value-long-enough")
     get_settings.cache_clear()
     try:
         deployed_app = create_app()
