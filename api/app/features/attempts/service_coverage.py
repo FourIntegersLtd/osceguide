@@ -43,14 +43,17 @@ async def read_coverage(
         return CoverageRead(supported=False)
     provider = FrozenFrameworkProvider(framework)
     definition = provider.get(str(framework["id"]))
-    labels = {item.id: item.label for item in definition.competencies}
+    labels = {competency.id: competency.label for competency in definition.competencies}
     snapshot = await repository.read(session, attempt_id) or {}
     return CoverageRead(
         supported=bool(definition.live_domain_ids),
         last_seq=snapshot.get("last_seq", -1),
         items=[
-            CoverageItemRead(**item, label=labels.get(item["competency_id"], item["competency_id"]))
-            for item in snapshot.get("items", [])
+            CoverageItemRead(
+                **coverage_item,
+                label=labels.get(coverage_item["competency_id"], coverage_item["competency_id"]),
+            )
+            for coverage_item in snapshot.get("items", [])
         ],
     )
 

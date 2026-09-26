@@ -44,6 +44,7 @@ async def bootstrap(attempt_id: uuid.UUID, session: Session, clock: ClockDep) ->
     return await service.bootstrap(session, attempt_id, now=clock.now())
 
 
+# Store one turn as it is spoken. Posted best-effort, so duplicates are expected and ignored.
 @router.post(
     "/attempts/{attempt_id}/transcript-chunks",
     response_model=schemas.WorkerAccepted,
@@ -57,6 +58,7 @@ async def accept_chunk(
     return schemas.WorkerAccepted()
 
 
+# Mark the delivery complete and queue marking, once the whole transcript has arrived.
 @router.post(
     "/attempts/{attempt_id}/transcript",
     response_model=schemas.WorkerAccepted,

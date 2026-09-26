@@ -15,6 +15,7 @@ from enum import StrEnum
 
 
 class Status(StrEnum):
+
     CREATED = "created"
     RUNNING = "running"
     INTERACTION_COMPLETE = "interaction_complete"
@@ -23,6 +24,7 @@ class Status(StrEnum):
 
 
 class Kind(StrEnum):
+
     PRACTICE = "practice"
     SET_STATION = "set_station"
     DEBRIEF = "debrief"
@@ -49,8 +51,6 @@ _ALLOWED: Mapping[Status, frozenset[Status]] = {
 }
 
 
-# Which optional foreign key each kind requires. The table enforces the same
-# thing with a CHECK; this is what the service consults before writing.
 def transition(current: Status, target: Status) -> Status:
     if target not in _ALLOWED[current]:
         raise InvalidTransition(f"An attempt cannot go from {current} to {target}.")

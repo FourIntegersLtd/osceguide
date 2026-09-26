@@ -159,7 +159,7 @@ async def render_debrief(
     messages = await repository_transcript.chunks_for(session, source.id)
     if not messages:
         raise errors.AttemptNotReady("A debrief needs a recorded consultation.")
-    results = await repository_transcript.results_for(session, source.id)
+    source_results = await repository_transcript.results_for(session, source.id)
     frozen_context = ((source.definition or {}).get("scenario") or {}).get("examiner_context")
     try:
         from osce_assessment.prompts.debrief_prompt import DebriefPromptFormatter
@@ -178,8 +178,10 @@ async def render_debrief(
         "instructions": DebriefPromptFormatter.create_prompt(
             transcript=transcript,
             management_plan=frozen_context or examiner_context,
-            sca_feedback=json.dumps([result.payload for result in results], ensure_ascii=False)
-            if results
+            sca_feedback=json.dumps(
+                [source_result.payload for source_result in source_results], ensure_ascii=False
+            )
+            if source_results
             else None,
         ),
         "greeting": DEBRIEF_GREETING,

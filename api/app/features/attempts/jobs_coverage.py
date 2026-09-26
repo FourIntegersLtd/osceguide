@@ -38,6 +38,7 @@ async def enqueue_coverage(session: AsyncSession, attempt: Attempt) -> None:
 
 
 def register() -> None:
+
     @get_jobs_app().task(name=TASK, queue="coverage")
     async def update_attempt_coverage(attempt_id: str) -> None:
         from app.core.db import job_session

@@ -86,13 +86,13 @@ async def read_results(
     )
     return [
         AssessmentResultRead(
-            framework_id=result.framework_id,
-            policy_version=result.policy_version,
-            model_used=result.model_used,
-            payload=dict(result.payload),
-            scored_at=result.scored_at,
+            framework_id=assessment_result.framework_id,
+            policy_version=assessment_result.policy_version,
+            model_used=assessment_result.model_used,
+            payload=dict(assessment_result.payload),
+            scored_at=assessment_result.scored_at,
         )
-        for result in await transcripts.results_for(session, attempt_id)
+        for assessment_result in await transcripts.results_for(session, attempt_id)
     ]
 
 

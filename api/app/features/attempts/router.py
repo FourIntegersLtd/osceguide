@@ -33,6 +33,7 @@ router = APIRouter(tags=["attempts"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Start a new attempt at a station, checking entitlement and that the station is published.
 @router.post(
     "/attempts",
     response_model=schemas.AttemptRead,
@@ -90,6 +91,7 @@ async def abandon_attempt(
     )
 
 
+# Read back one attempt, to the candidate it belongs to or an admin.
 @router.get(
     "/attempts/{attempt_id}",
     response_model=schemas.AttemptRead,
@@ -135,14 +137,14 @@ async def read_results(
     """A page rather than one result: re-scoring under a new policy adds beside
     the old, so a candidate's history stays readable — to the same two people as
     the transcript, which is `service_access.ensure_readable`."""
-    results = await service_reads.read_results(
+    assessment_results = await service_reads.read_results(
         session,
         attempt_id,
         requester_id=principal.user_id,
         is_admin=principal.is_platform_admin,
         memberships=principal.memberships,
     )
-    return Page(items=results, next_cursor=None)
+    return Page(items=assessment_results, next_cursor=None)
 
 
 @router.get(

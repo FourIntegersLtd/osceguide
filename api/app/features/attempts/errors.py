@@ -21,11 +21,13 @@ __all__ = ["NotEntitled", "StationNotFound", "StationNotPublishedError"]
 
 
 class AttemptNotFound(NotFound):
+
     code = "attempt_not_found"
     default_message = "No such attempt"
 
 
 class AttemptNotReady(Conflict):
+
     code = "attempt_not_ready"
     default_message = "This attempt has no rendered definition yet"
 
@@ -54,11 +56,13 @@ class AttemptNotFinished(Conflict):
 
 
 class AttemptNotYours(Forbidden):
+
     code = "attempt_not_yours"
     default_message = "That attempt belongs to someone else"
 
 
 class InvalidAttemptState(Conflict):
+
     code = "invalid_attempt_state"
     default_message = "The attempt is not in a state that allows this"
 

@@ -105,7 +105,7 @@ async def save_result(
     model_used: str | None,
     at: datetime,
 ) -> AssessmentResult:
-    result = AssessmentResult(
+    assessment_result = AssessmentResult(
         attempt_id=attempt_id,
         framework_id=framework_id,
         policy_version=policy_version,
@@ -113,9 +113,9 @@ async def save_result(
         model_used=model_used,
         scored_at=at,
     )
-    session.add(result)
+    session.add(assessment_result)
     await session.flush()
-    return result
+    return assessment_result
 
 
 async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[AssessmentResult]:

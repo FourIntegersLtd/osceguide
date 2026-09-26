@@ -34,6 +34,7 @@ async def read_roleplay(
     return await service_material.read_roleplay(session, attempt_id, requester_id=principal.user_id)
 
 
+# Start a standalone debrief conversation about a finished consultation.
 @router.post(
     "/attempts/{attempt_id}/debriefs",
     response_model=schemas.AttemptRead,

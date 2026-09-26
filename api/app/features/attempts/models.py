@@ -195,6 +195,7 @@ class AssessmentResult(Base, UUIDPrimaryKey, Timestamps):
 
 
 class AttemptLiveCoverage(Base):
+
     __tablename__ = "attempt_live_coverage"
 
     attempt_id: Mapped[uuid.UUID] = mapped_column(

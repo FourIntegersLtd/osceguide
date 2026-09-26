@@ -66,8 +66,8 @@ class EngineProfileRenderer:
         }
 
     def _greeting(self, mode: str) -> str | None:
-        value = self._greetings.get(mode)
-        return str(value) if value else None
+        greeting = self._greetings.get(mode)
+        return str(greeting) if greeting else None
 
 
 def build_renderer() -> ProfileRenderer:
