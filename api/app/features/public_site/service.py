@@ -85,7 +85,7 @@ async def send(
     except domain.InvalidMessage as exc:
         raise_mapped(exc, _REFUSALS)
 
-    row = await repository.add_message(
+    message = await repository.add_message(
         session,
         kind=kind.value,
         name=domain.clean(body.name) or None,
@@ -95,22 +95,22 @@ async def send(
         source=domain.clean(body.source) or None,
         user_id=user_id,
     )
-    return schemas.MessageAccepted(id=row.id, kind=row.kind)
+    return schemas.MessageAccepted(id=message.id, kind=message.kind)
 
 
 async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> list[schemas.MessageRead]:
-    rows = await repository.list_messages(session, kind=kind, limit=limit)
-    return [_read(row) for row in rows]
+    messages = await repository.list_messages(session, kind=kind, limit=limit)
+    return [_read(message) for message in messages]
 
 
 async def mark_handled(
     session: AsyncSession, *, message_id: uuid.UUID, by: uuid.UUID, at: datetime
 ) -> schemas.MessageRead:
-    row = await repository.mark_handled(session, message_id=message_id, by=by, at=at)
-    if row is None:
+    message = await repository.mark_handled(session, message_id=message_id, by=by, at=at)
+    if message is None:
         raise errors.MessageNotFound()
-    return _read(row)
+    return _read(message)
 
 
-def _read(row: object) -> schemas.MessageRead:
-    return schemas.MessageRead.model_validate(row, from_attributes=True)
+def _read(message: object) -> schemas.MessageRead:
+    return schemas.MessageRead.model_validate(message, from_attributes=True)

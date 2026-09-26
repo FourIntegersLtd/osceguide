@@ -30,11 +30,11 @@ class InvalidMessage(Exception):
     pass
 
 
-def normalise_kind(value: str) -> MessageKind:
+def normalise_kind(raw_kind: str) -> MessageKind:
     try:
-        return MessageKind((value or "").strip().lower())
+        return MessageKind((raw_kind or "").strip().lower())
     except ValueError as exc:
-        raise InvalidMessage(f"{value!r} is not something this form sends.") from exc
+        raise InvalidMessage(f"{raw_kind!r} is not something this form sends.") from exc
 
 
 def clean(raw: str | None) -> str:
