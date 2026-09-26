@@ -111,7 +111,7 @@ async def pilot_exam_codes(session: AsyncSession) -> list[str]:
     can never name an institution's private exam.
     """
     stmt = select(Exam.code).where(Exam.partner_pilot.is_(True), Exam.org_id.is_(None)).order_by(Exam.code)
-    return [row for row in (await session.execute(stmt)).scalars()]
+    return [code for code in (await session.execute(stmt)).scalars()]
 
 
 async def exam_by_id(session: AsyncSession, exam_id: uuid.UUID) -> Exam | None:
@@ -126,16 +126,16 @@ async def exam_by_id(session: AsyncSession, exam_id: uuid.UUID) -> Exam | None:
 
 async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | None:
     """Exam code only, without loading the rest of the row."""
-    row = await session.execute(select(Exam.code).where(Exam.id == exam_id))
-    return row.scalar_one_or_none()
+    result = await session.execute(select(Exam.code).where(Exam.id == exam_id))
+    return result.scalar_one_or_none()
 
 
 async def exam_codes_by_id(session: AsyncSession, exam_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
     """Batch lookup for list endpoints that would otherwise N+1 the exams table."""
     if not exam_ids:
         return {}
-    rows = await session.execute(select(Exam.id, Exam.code).where(Exam.id.in_(exam_ids)))
-    return {row[0]: str(row[1]) for row in rows.all()}
+    result = await session.execute(select(Exam.id, Exam.code).where(Exam.id.in_(exam_ids)))
+    return {exam_id: str(code) for exam_id, code in result.all()}
 
 
 async def create_programme(
@@ -175,9 +175,11 @@ async def list_programmes(
         cursor=cursor,
         descending=False,
     )
-    exam_ids = {p.exam_id for p in programmes}
-    exams = {e.id: e for e in (await session.execute(select(Exam).where(Exam.id.in_(exam_ids)))).scalars()}
-    return [(p, exams[p.exam_id]) for p in programmes], next_cursor
+    exam_ids = {programme.exam_id for programme in programmes}
+    exams = {
+        exam.id: exam for exam in (await session.execute(select(Exam).where(Exam.id.in_(exam_ids)))).scalars()
+    }
+    return [(programme, exams[programme.exam_id]) for programme in programmes], next_cursor
 
 
 async def set_programme_status(

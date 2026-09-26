@@ -29,8 +29,8 @@ async def list_exams(principal: CurrentPrincipal, session: Session) -> Page[sche
     The consumer catalogue: platform exams only. See `/orgs/{org_slug}/exams`
     for an institution's own. A platform admin also sees the platform's drafts.
     """
-    items = await service_authoring.list_exams(session, include_unpublished=principal.is_platform_admin)
-    return Page(items=items, next_cursor=None)
+    exams = await service_authoring.list_exams(session, include_unpublished=principal.is_platform_admin)
+    return Page(items=exams, next_cursor=None)
 
 
 @router.post(
@@ -59,6 +59,7 @@ async def create_exam(body: schemas.CreateExam, admin: PlatformAdmin, session: S
     )
 
 
+# Change a platform exam's name, timings or rubric. Its code cannot change.
 @router.patch(
     "/platform/exams/{exam_id}",
     response_model=schemas.ExamRead,
@@ -105,8 +106,8 @@ async def list_org_exams(
     `drafts=true` narrows to the institution's own rows, published or not. The
     platform's own drafts are never included.
     """
-    items = await service_authoring.list_exams(session, org_id=workspace.org_id, include_unpublished=drafts)
-    return Page(items=items, next_cursor=None)
+    exams = await service_authoring.list_exams(session, org_id=workspace.org_id, include_unpublished=drafts)
+    return Page(items=exams, next_cursor=None)
 
 
 @router.post(
@@ -188,6 +189,7 @@ async def delete_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Sess
     await service_authoring.delete_exam(session, exam_id, workspace.org_id)
 
 
+# The institution's own list of exams it runs, newest first.
 @router.get(
     "/orgs/{org_slug}/programmes",
     response_model=Page[schemas.ProgrammeRead],
@@ -196,10 +198,10 @@ async def delete_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Sess
 async def list_programmes(
     workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.ProgrammeRead]:
-    items, next_cursor = await service_programmes.list_programmes(
+    programmes, next_cursor = await service_programmes.list_programmes(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=programmes, next_cursor=next_cursor)
 
 
 @router.post(
@@ -219,6 +221,7 @@ async def add_programme(
     return await service_programmes.add_programme(session, workspace.org_id, exam_code=body.exam_code)
 
 
+# Pause or resume this institution's own programme.
 @router.patch(
     "/orgs/{org_slug}/programmes/{programme_id}",
     response_model=schemas.ProgrammeRead,

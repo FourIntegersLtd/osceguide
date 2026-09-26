@@ -42,9 +42,9 @@ async def list_exams(
     narrows the listing to this caller's own rows rather than widening it.
     """
     if include_unpublished:
-        return [exam_read(e) for e in await repository.list_exams(session, org_id, owned_only=True)]
-    rows = await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])
-    return [exam_read(e) for e in rows]
+        return [exam_read(exam) for exam in await repository.list_exams(session, org_id, owned_only=True)]
+    exams = await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])
+    return [exam_read(exam) for exam in exams]
 
 
 async def create_exam(
@@ -96,7 +96,7 @@ async def update_exam(
     one would silently strand them; a new exam is the honest way to do it.
     """
     exam = await _owned_exam(session, exam_id, org_id)
-    changes = {k: v for k, v in fields.items() if v is not None}
+    changes = {field: value for field, value in fields.items() if value is not None}
     if "rubric_version_id" in changes:
         await _usable_rubric(session, org_id, changes["rubric_version_id"])
     if org_id is not None:

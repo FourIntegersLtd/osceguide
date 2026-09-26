@@ -31,7 +31,7 @@ async def list_programmes(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[ProgrammeRead], str | None]:
     pairs, next_cursor = await repository.list_programmes(session, org_id, limit=limit, cursor=cursor)
-    return [_programme_read(p, e) for p, e in pairs], next_cursor
+    return [_programme_read(programme, exam) for programme, exam in pairs], next_cursor
 
 
 async def set_programme_status(

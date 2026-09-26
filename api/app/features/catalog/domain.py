@@ -65,11 +65,13 @@ class NotOwned(PermissionError):
 
 
 class OwnerKind(StrEnum):
+
     PLATFORM = "platform"
     ORG = "org"
 
 
 class ExamStatus(StrEnum):
+
     DRAFT = "draft"
     PUBLISHED = "published"
     RETIRED = "retired"
@@ -140,6 +142,7 @@ OFFERABLE_PROGRAMME_STATUSES = frozenset({"active"})
 
 @dataclass(frozen=True)
 class ProgrammeRef:
+
     exam_code: str
     status: str
 

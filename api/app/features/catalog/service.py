@@ -96,8 +96,8 @@ async def exam_for_attempt(session: AsyncSession, exam_id: uuid.UUID) -> Exam:
 
 async def exam_codes_by_id(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, str]:
     """Codes for a set of exam ids, in one query rather than one per row."""
-    rows = await repository.exams_by_ids(session, list(exam_ids))
-    return {row.id: row.code for row in rows}
+    exams = await repository.exams_by_ids(session, list(exam_ids))
+    return {exam.id: exam.code for exam in exams}
 
 
 @dataclass(frozen=True)
