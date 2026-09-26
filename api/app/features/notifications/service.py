@@ -92,15 +92,17 @@ def _render(template_key: str, payload: dict[str, Any] | None) -> str:
     and the "template" was the template's own key above a list of its
     variables, which is what a recipient would have received.
     """
-    data = {key: escape(str(value)) for key, value in (payload or {}).items()}
+    escaped_fields = {key: escape(str(raw_value)) for key, raw_value in (payload or {}).items()}
     template = _TEMPLATES.get(template_key)
     if template is None:
         # An unknown key is a programming error, not a reason to send nothing:
         # the message still goes, and the key is visible in it.
         log.warning("no template for message", template_key=template_key)
-        lines = "".join(f"<p>{key}: {value}</p>" for key, value in sorted(data.items()))
+        lines = "".join(
+            f"<p>{key}: {escaped_value}</p>" for key, escaped_value in sorted(escaped_fields.items())
+        )
         return f"{_LAYOUT_OPEN}<p>{escape(template_key)}</p>{lines}{_LAYOUT_CLOSE}"
-    return f"{_LAYOUT_OPEN}{template(data)}{_LAYOUT_CLOSE}"
+    return f"{_LAYOUT_OPEN}{template(escaped_fields)}{_LAYOUT_CLOSE}"
 
 
 _LAYOUT_OPEN = (
@@ -110,8 +112,8 @@ _LAYOUT_OPEN = (
 _LAYOUT_CLOSE = '<p style="margin-top:2rem;color:#666;font-size:.875rem">OSCE Guide</p></div>'
 
 
-def _password_reset(data: dict[str, str]) -> str:
-    link = f"{get_settings().frontend_url.rstrip('/')}/reset-password?token={data.get('token', '')}"
+def _password_reset(escaped_fields: dict[str, str]) -> str:
+    link = f"{get_settings().frontend_url.rstrip('/')}/reset-password?token={escaped_fields.get('token', '')}"
     return (
         "<h1>Reset your password</h1>"
         "<p>Use the link below to choose a new password. It expires in an hour, "
@@ -121,8 +123,8 @@ def _password_reset(data: dict[str, str]) -> str:
     )
 
 
-def _result_released(data: dict[str, str]) -> str:
-    link = f"{get_settings().frontend_url.rstrip('/')}/results/{data.get('sitting_id', '')}"
+def _result_released(escaped_fields: dict[str, str]) -> str:
+    link = f"{get_settings().frontend_url.rstrip('/')}/results/{escaped_fields.get('sitting_id', '')}"
     return (
         "<h1>Your result is available</h1>"
         "<p>Your institution has released the outcome for this sitting.</p>"
@@ -130,10 +132,12 @@ def _result_released(data: dict[str, str]) -> str:
     )
 
 
-def _invitation(data: dict[str, str]) -> str:
-    link = f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={data.get('token', '')}"
+def _invitation(escaped_fields: dict[str, str]) -> str:
+    link = (
+        f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
+    )
     return (
-        f"<h1>You have been invited to {data.get('invited_to', '')}</h1>"
+        f"<h1>You have been invited to {escaped_fields.get('invited_to', '')}</h1>"
         "<p>An account has been created for this address. Choose a password to "
         "start using it. The link expires in seven days.</p>"
         f'<p><a href="{link}">Choose a password</a></p>'
@@ -142,7 +146,7 @@ def _invitation(data: dict[str, str]) -> str:
     )
 
 
-def _payment_receipt(data: dict[str, str]) -> str:
+def _payment_receipt(escaped_fields: dict[str, str]) -> str:
     """The receipt, in the body of the email rather than attached.
 
     An attachment is the thing a mail client hides behind a click and a spam filter
@@ -152,30 +156,32 @@ def _payment_receipt(data: dict[str, str]) -> str:
     `billing` owns what a receipt says and hands this module already-rendered fields;
     every value is still escaped here like any other template.
     """
-    total = data.get("amount_total", "")
+    total = escaped_fields.get("amount_total", "")
     return (
         "<h1>Your receipt</h1>"
         f"<p>Thank you for your payment of {total}.</p>"
-        f"<p>Receipt {data.get('receipt_id', '')} — {data.get('plan_label', '')}, "
-        f"access until {data.get('plan_end_date', '')}.</p>"
+        f"<p>Receipt {escaped_fields.get('receipt_id', '')} — {escaped_fields.get('plan_label', '')}, "
+        f"access until {escaped_fields.get('plan_end_date', '')}.</p>"
         "<p>You can open the full receipt in your account at any time.</p>"
     )
 
 
-def _abuse_report(data: dict[str, str]) -> str:
+def _abuse_report(escaped_fields: dict[str, str]) -> str:
     return (
         "<h1>Peer-practice abuse report</h1>"
-        f"<p>Session {data.get('session_id', '')}, reported by {data.get('reporter', '')} "
-        f"against {data.get('reported', '')}.</p>"
-        f"<p>{data.get('message', '') or '(no message given)'}</p>"
+        f"<p>Session {escaped_fields.get('session_id', '')}, "
+        f"reported by {escaped_fields.get('reporter', '')} "
+        f"against {escaped_fields.get('reported', '')}.</p>"
+        f"<p>{escaped_fields.get('message', '') or '(no message given)'}</p>"
     )
 
 
-def _no_show_report(data: dict[str, str]) -> str:
+def _no_show_report(escaped_fields: dict[str, str]) -> str:
     return (
         "<h1>Peer-practice no-show report</h1>"
-        f"<p>Session {data.get('session_id', '')}, reported by {data.get('reporter', '')}.</p>"
-        f"<p>{data.get('message', '') or '(no message given)'}</p>"
+        f"<p>Session {escaped_fields.get('session_id', '')}, "
+        f"reported by {escaped_fields.get('reporter', '')}.</p>"
+        f"<p>{escaped_fields.get('message', '') or '(no message given)'}</p>"
     )
 
 

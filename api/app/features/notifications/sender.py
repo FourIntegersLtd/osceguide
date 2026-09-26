@@ -11,6 +11,7 @@ from app.core.settings import get_settings
 
 
 class ResendSender:
+
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
         settings = get_settings()
         if not settings.resend_api_key:
@@ -34,10 +35,10 @@ class ResendSender:
         if reply_to:
             params["reply_to"] = reply_to
         try:
-            result = resend.Emails.send(params)
+            send_result = resend.Emails.send(params)
         except Exception as exc:  # noqa: BLE001 - any provider error is a delivery failure
             raise EmailDeliveryFailed(str(exc)) from exc
-        return str(result.get("id", ""))
+        return str(send_result.get("id", ""))
 
 
 def build_email_sender() -> EmailSender:

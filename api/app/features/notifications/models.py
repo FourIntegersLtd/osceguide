@@ -17,6 +17,7 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class OutboundMessage(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "outbound_messages"
     __table_args__ = (
         # Written by the slice that needed it, so the key is that slice's

@@ -30,7 +30,7 @@ async def enqueue(
     existing = await by_idempotency_key(session, idempotency_key)
     if existing is not None:
         return None
-    row = OutboundMessage(
+    message = OutboundMessage(
         recipient=recipient,
         subject=subject,
         template_key=template_key,
@@ -38,10 +38,10 @@ async def enqueue(
         idempotency_key=idempotency_key,
         channel=channel,
     )
-    session.add(row)
+    session.add(message)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(message)
+    return message
 
 
 async def by_idempotency_key(session: AsyncSession, key: str) -> OutboundMessage | None:
@@ -62,14 +62,14 @@ async def claim_due(session: AsyncSession, *, now: datetime, limit: int = 20) ->
         .limit(limit)
         .with_for_update(skip_locked=True)
     )
-    rows = list((await session.execute(stmt)).scalars())
-    if rows:
+    messages = list((await session.execute(stmt)).scalars())
+    if messages:
         await session.execute(
             update(OutboundMessage)
-            .where(OutboundMessage.id.in_([r.id for r in rows]))
+            .where(OutboundMessage.id.in_([message.id for message in messages]))
             .values(status="processing", claimed_at=now)
         )
-    return rows
+    return messages
 
 
 async def reclaim_stale(session: AsyncSession, *, before: datetime) -> int:
