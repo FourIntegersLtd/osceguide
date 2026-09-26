@@ -43,6 +43,11 @@ async def grant_for_attempt(
     tokens: VoiceTokens,
     settings: Settings,
 ) -> VoiceGrant:
+    """A token into this attempt's room, with its patient or tutor dispatched to meet it there.
+
+    Routes to LiveKit Cloud or our own workers according to the configured
+    mode, overflowing to self-hosted when Cloud has no free slot.
+    """
     attempt = await attempts.attempt_ref(session, attempt_id)
     if attempt is None:
         raise AttemptNotFound()

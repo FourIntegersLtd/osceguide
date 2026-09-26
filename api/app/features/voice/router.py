@@ -1,3 +1,5 @@
+"""Browser-facing voice route: get a token to join an attempt's live station room."""
+
 from __future__ import annotations
 
 import uuid

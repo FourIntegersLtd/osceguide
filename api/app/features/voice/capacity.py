@@ -89,6 +89,7 @@ async def _run(script: str, *args: object) -> Any:
 
 @dataclass(frozen=True)
 class Reservation:
+    """Whether a Cloud slot was held, and how many are active if the caller asked."""
 
     reserved: bool
     active_count: int | None

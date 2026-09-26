@@ -17,6 +17,7 @@ class LiveKitRecorder:
     """Records a room to the bucket `media_production` already writes to."""
 
     async def start(self, *, room: str, key: str) -> str:
+        """Start a room's audio-only recording to this storage key, returning its egress id."""
         api = _livekit_api()
         settings = get_settings()
         _require_bucket(settings)
@@ -50,6 +51,7 @@ class LiveKitRecorder:
         return str(egress_id)
 
     async def stop(self, *, egress_id: str) -> None:
+        """Stop this recording, treating one that already ended on its own as success."""
         api = _livekit_api()
         settings = get_settings()
         async with api.LiveKitAPI(
@@ -73,11 +75,13 @@ def _already_finished(exc: Exception) -> bool:
 
 
 def _require_bucket(settings: Settings) -> None:
+    """Raise unless an S3 bucket is configured to record into."""
     if not settings.aws_s3_bucket:
         raise VoiceUnavailable("No S3 bucket is configured, so there is nowhere to record to")
 
 
 def _livekit_api() -> Any:
+    """The `livekit.api` module, or raise `VoiceUnavailable` if it cannot be used."""
     settings = get_settings()
     if not (settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret):
         raise VoiceUnavailable("LiveKit credentials are not configured")
@@ -89,4 +93,5 @@ def _livekit_api() -> Any:
 
 
 def build_room_recorder() -> LiveKitRecorder:
+    """The dependency this slice wires for recording a room to storage."""
     return LiveKitRecorder()

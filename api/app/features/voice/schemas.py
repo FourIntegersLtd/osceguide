@@ -1,3 +1,5 @@
+"""Request and response shapes for the voice routes, including the worker's own contract."""
+
 from __future__ import annotations
 
 import uuid

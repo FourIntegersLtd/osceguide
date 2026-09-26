@@ -12,12 +12,14 @@ from enum import StrEnum
 
 
 class Family(StrEnum):
+    """Which kind of LiveKit worker a session type belongs to."""
 
     ASSESSMENT = "assessment"
     ASSISTANT = "assistant"
 
 
 class Mode(StrEnum):
+    """Where a family's worker runs: our own deployment, or metered LiveKit Cloud."""
 
     SELF_HOSTED = "self-hosted"
     LIVEKIT_CLOUD = "livekit-cloud"
@@ -46,6 +48,7 @@ _MODE_ALIASES = {
 
 
 def family_for(session_type: str) -> Family:
+    """The worker family that serves this session type, or raise if none does."""
     key = (session_type or "").strip().lower()
     if key in ASSESSMENT_TYPES:
         return Family.ASSESSMENT
@@ -89,6 +92,7 @@ def resolve_mode(configured: Mode, *, cloud_slots_free: bool) -> Mode:
 
 
 def agent_name(family: Family, mode: Mode, *, namespace: str = "") -> str:
+    """The dispatch name for this family and mode, namespaced when a namespace is configured."""
     prefix = namespace.strip()
     name = f"{family}-{mode}"
     return f"{prefix}-{name}" if prefix else name

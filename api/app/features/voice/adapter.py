@@ -14,6 +14,7 @@ from app.features.voice.errors import VoiceUnavailable
 
 
 class LiveKitTokens:
+    """Mints LiveKit access tokens, dispatching an agent alongside the candidate when named."""
 
     def issue(
         self,
@@ -26,6 +27,7 @@ class LiveKitTokens:
         can_publish: bool = True,
         ttl_seconds: int = 3600,
     ) -> str:
+        """A signed JWT granting this identity access to the room, with an agent dispatch if named."""
         import json
         from datetime import timedelta
 
@@ -120,6 +122,7 @@ class LiveKitRoomAgents:
         return removed
 
     async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
+        """Create the room if it does not exist yet, then explicitly dispatch this agent into it."""
         import json
 
         api = _livekit_api()
@@ -150,6 +153,7 @@ def _is_room_missing(exc: Exception) -> bool:
 
 
 def _livekit_api() -> Any:
+    """The `livekit.api` module, or raise `VoiceUnavailable` if it cannot be used."""
     settings = get_settings()
     if not (settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret):
         raise VoiceUnavailable("LiveKit credentials are not configured")
@@ -161,4 +165,5 @@ def _livekit_api() -> Any:
 
 
 def build_room_agents() -> LiveKitRoomAgents:
+    """The dependency this slice's router and service wire for explicit agent dispatch."""
     return LiveKitRoomAgents()

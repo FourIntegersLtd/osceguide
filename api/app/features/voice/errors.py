@@ -1,3 +1,5 @@
+"""Errors this slice's router can raise; each one's `code` is what callers branch on."""
+
 from __future__ import annotations
 
 from app.core.errors import AppError, Conflict
@@ -9,6 +11,7 @@ __all__ = ["AttemptNotFound", "AttemptNotYours", "AttemptNotJoinable", "VoiceUna
 
 
 class VoiceUnavailable(AppError):
+    """The voice service (LiveKit or the capacity store) could not be reached."""
 
     status = 503
     code = "voice_unavailable"
@@ -16,6 +19,7 @@ class VoiceUnavailable(AppError):
 
 
 class AttemptNotJoinable(Conflict):
+    """The attempt is not in a status that can be joined right now."""
 
     code = "attempt_not_joinable"
     default_message = "That attempt has already finished"
