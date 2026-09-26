@@ -38,7 +38,7 @@ class VECTOR(UserDefinedType[Any]):
 
 
 @compiles(VECTOR)
-def _compile_vector(type_: VECTOR, compiler: Any, **kw: Any) -> str:
+def _compile_vector(type_: VECTOR, compiler: Any, **_kwargs: Any) -> str:
     return type_.get_col_spec()
 
 

@@ -50,7 +50,7 @@ class PgVectorMediaIndex:
         if not passages:
             await repository_index.forget_source(self._session, corpus=corpus, source_id=doc_id)
             return
-        vectors = await embedder.embed([p.text for p in passages])
+        vectors = await embedder.embed([passage.text for passage in passages])
         await repository_index.replace_source(
             self._session,
             corpus=corpus,
@@ -58,8 +58,13 @@ class PgVectorMediaIndex:
             exam_id=None,
             title=metadata.get("slug", ""),
             chunks=[
-                {"index": p.index, "section": p.section, "text": p.text, "embedding": vector}
-                for p, vector in zip(passages, vectors, strict=True)
+                {
+                    "index": passage.index,
+                    "section": passage.section,
+                    "text": passage.text,
+                    "embedding": vector,
+                }
+                for passage, vector in zip(passages, vectors, strict=True)
             ],
         )
 
@@ -70,7 +75,7 @@ class PgVectorMediaIndex:
             log.info("media search not configured", error=str(exc))
             return []
         vectors = await embedder.embed([query])
-        rows = await repository_index.nearest(
+        matches = await repository_index.nearest(
             self._session,
             embedding=vectors[0],
             # No filter, deliberately, and spelled `None` rather than reached
@@ -80,10 +85,10 @@ class PgVectorMediaIndex:
             limit=limit * _PASSAGE_FACTOR,
         )
         best: dict[str, float] = {}
-        for row, score in rows:
-            # Rows arrive best first, so the first sighting of a source is its
+        for match, score in matches:
+            # Matches arrive best first, so the first sighting of a source is its
             # best passage and later ones are worse.
-            best.setdefault(str(row.source_id), score)
+            best.setdefault(str(match.source_id), score)
         return list(best.items())[:limit]
 
 

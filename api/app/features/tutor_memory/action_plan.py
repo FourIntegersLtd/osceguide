@@ -30,10 +30,10 @@ def mark_action_item_done(plan: Sequence[Any], step: str) -> tuple[list[Any], st
         return list(plan), None
     updated: list[Any] = []
     matched: str | None = None
-    for item in plan:
-        text = item.get("text") if isinstance(item, Mapping) else item
+    for step_entry in plan:
+        text = step_entry.get("text") if isinstance(step_entry, Mapping) else step_entry
         label = " ".join(str(text or "").split())
-        already_done = bool(item.get("done")) if isinstance(item, Mapping) else False
+        already_done = bool(step_entry.get("done")) if isinstance(step_entry, Mapping) else False
         candidate = label.casefold()
         if (
             matched is None
@@ -44,7 +44,7 @@ def mark_action_item_done(plan: Sequence[Any], step: str) -> tuple[list[Any], st
             matched = label
             updated.append({"text": label, "done": True})
             continue
-        updated.append({"text": label, "done": already_done} if label else item)
+        updated.append({"text": label, "done": already_done} if label else step_entry)
     return updated, matched
 
 
@@ -55,16 +55,16 @@ def open_action_items(plans: Sequence[Any]) -> list[str]:
     and a bare string, which is what the model returns when it ignores the
     schema's optional flag.
     """
-    out: list[str] = []
+    open_steps: list[str] = []
     for plan in plans:
-        items = plan if isinstance(plan, Sequence) and not isinstance(plan, str) else []
-        for item in items:
-            if isinstance(item, Mapping):
-                if item.get("done"):
+        step_entries = plan if isinstance(plan, Sequence) and not isinstance(plan, str) else []
+        for step_entry in step_entries:
+            if isinstance(step_entry, Mapping):
+                if step_entry.get("done"):
                     continue
-                text = str(item.get("text") or "").strip()
+                text = str(step_entry.get("text") or "").strip()
             else:
-                text = str(item or "").strip()
+                text = str(step_entry or "").strip()
             if text:
-                out.append(text)
-    return out
+                open_steps.append(text)
+    return open_steps

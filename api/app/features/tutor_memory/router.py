@@ -19,6 +19,7 @@ router = APIRouter(tags=["tutor-memory"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# This person's past debrief summaries, newest first, paged.
 @router.get(
     "/me/debriefs",
     response_model=Page[schemas.DebriefSummaryRead],

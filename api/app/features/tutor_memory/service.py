@@ -92,38 +92,38 @@ async def read_memory(session: AsyncSession, user_id: uuid.UUID) -> TutorMemoryR
     """Everything on file about this person, as they may read it. The tutor speaks from this."""
     notes = await repository.notes_of_kind(session, user_id, kind="session_summary", limit=MAX_NOTES)
     notes += await repository.notes_of_kind(session, user_id, kind="stated_fact", limit=MAX_NOTES)
-    notes.sort(key=lambda n: n.created_at, reverse=True)
+    notes.sort(key=lambda note: note.created_at, reverse=True)
     events = await repository.recent_events(session, user_id, limit=MAX_EVENTS)
     debriefs = await repository.recent_debrief_summaries(session, user_id, limit=MAX_DEBRIEFS)
-    sources = await debrief_sources(session, user_id, [d.attempt_id for d in debriefs])
+    sources = await debrief_sources(session, user_id, [debrief.attempt_id for debrief in debriefs])
 
     return TutorMemoryRead(
         notes=[
-            NoteRead(id=n.id, kind=n.kind, body=dict(n.body or {}), created_at=n.created_at)
-            for n in notes[:MAX_NOTES]
+            NoteRead(id=note.id, kind=note.kind, body=dict(note.body or {}), created_at=note.created_at)
+            for note in notes[:MAX_NOTES]
         ],
         events=[
             EventRead(
-                id=e.id,
-                kind=e.kind,
-                ref_kind=e.ref_kind,
-                ref_id=e.ref_id,
-                title=e.title,
-                occurred_at=e.occurred_at,
+                id=event.id,
+                kind=event.kind,
+                ref_kind=event.ref_kind,
+                ref_id=event.ref_id,
+                title=event.title,
+                occurred_at=event.occurred_at,
             )
-            for e in events
+            for event in events
         ],
         debrief_summaries=[
             DebriefSummaryRead(
-                id=d.id,
-                attempt_id=d.attempt_id,
-                source_attempt_id=sources.get(d.attempt_id),
-                key_insights=list(d.key_insights or []),
-                action_plan=list(d.action_plan or []),
-                narrative=d.narrative,
-                created_at=d.created_at,
+                id=debrief.id,
+                attempt_id=debrief.attempt_id,
+                source_attempt_id=sources.get(debrief.attempt_id),
+                key_insights=list(debrief.key_insights or []),
+                action_plan=list(debrief.action_plan or []),
+                narrative=debrief.narrative,
+                created_at=debrief.created_at,
             )
-            for d in debriefs
+            for debrief in debriefs
         ],
     )
 
@@ -163,20 +163,20 @@ async def _exam_id(session: AsyncSession, exam_code: str | None) -> uuid.UUID | 
 async def list_debriefs(
     session: AsyncSession, user_id: uuid.UUID, params: CursorParams
 ) -> Page[DebriefSummaryRead]:
-    rows, cursor = await repository.page_debrief_summaries(session, user_id, params)
-    sources = await debrief_sources(session, user_id, [row.attempt_id for row in rows])
+    debriefs, cursor = await repository.page_debrief_summaries(session, user_id, params)
+    sources = await debrief_sources(session, user_id, [debrief.attempt_id for debrief in debriefs])
     return Page(
         items=[
             DebriefSummaryRead(
-                id=row.id,
-                attempt_id=row.attempt_id,
-                source_attempt_id=sources.get(row.attempt_id),
-                key_insights=list(row.key_insights or []),
-                action_plan=list(row.action_plan or []),
-                narrative=row.narrative,
-                created_at=row.created_at,
+                id=debrief.id,
+                attempt_id=debrief.attempt_id,
+                source_attempt_id=sources.get(debrief.attempt_id),
+                key_insights=list(debrief.key_insights or []),
+                action_plan=list(debrief.action_plan or []),
+                narrative=debrief.narrative,
+                created_at=debrief.created_at,
             )
-            for row in rows
+            for debrief in debriefs
         ],
         next_cursor=cursor,
     )

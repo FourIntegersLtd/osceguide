@@ -46,7 +46,7 @@ async def compose(session: AsyncSession, *, user_id: uuid.UUID, now: datetime) -
 
 
 async def _titles(session: AsyncSession, refs: list[attempts.AttemptRef]) -> dict[uuid.UUID, str]:
-    version_ids = [r.station_version_id for r in refs if r.station_version_id]
+    version_ids = [ref.station_version_id for ref in refs if ref.station_version_id]
     summaries = await stations.summaries_by_version_id(session, None, version_ids)
     return {version_id: summary.title for version_id, summary in summaries.items()}
 
@@ -69,20 +69,20 @@ async def _consultations(
     tutor knows nothing about beyond that it happened, and saying "how did that
     go?" about it invites an answer the tutor cannot check.
     """
-    out: list[dict[str, Any]] = []
+    observations: list[dict[str, Any]] = []
     for ref in refs:
         if ref.kind == "debrief" or not ref.has_result:
             continue
         results = await attempts.read_results(session, ref.id, requester_id=user_id, is_admin=False)
         if not results:
             continue
-        item = domain.observations_from_result(results[0].payload)
-        item["title"] = _title_of(ref, titles)
-        item["days_ago"] = domain.days_ago(ref.completed_at or ref.created_at, now)
-        out.append(item)
-        if len(out) == MAX_CONSULTATIONS:
+        observation = domain.observations_from_result(results[0].payload)
+        observation["title"] = _title_of(ref, titles)
+        observation["days_ago"] = domain.days_ago(ref.completed_at or ref.created_at, now)
+        observations.append(observation)
+        if len(observations) == MAX_CONSULTATIONS:
             break
-    return out
+    return observations
 
 
 async def _debriefs(
@@ -93,19 +93,19 @@ async def _debriefs(
     *,
     now: datetime,
 ) -> list[dict[str, Any]]:
-    by_id = {r.id: r for r in refs}
-    out: list[dict[str, Any]] = []
-    for row in await repository.recent_debrief_summaries(session, user_id, limit=MAX_DEBRIEFS):
-        ref = by_id.get(row.attempt_id)
-        out.append(
+    attempts_by_id = {ref.id: ref for ref in refs}
+    briefs: list[dict[str, Any]] = []
+    for summary in await repository.recent_debrief_summaries(session, user_id, limit=MAX_DEBRIEFS):
+        ref = attempts_by_id.get(summary.attempt_id)
+        briefs.append(
             {
                 "title": _title_of(ref, titles) if ref else "a consultation",
-                "days_ago": domain.days_ago(row.created_at, now),
-                "insights": list(row.key_insights or []),
-                "agreed_steps": list(row.action_plan or []),
+                "days_ago": domain.days_ago(summary.created_at, now),
+                "insights": list(summary.key_insights or []),
+                "agreed_steps": list(summary.action_plan or []),
             }
         )
-    return out
+    return briefs
 
 
 async def _last_conversation(
@@ -124,12 +124,12 @@ async def _last_conversation(
 
 async def _facts(session: AsyncSession, user_id: uuid.UUID) -> list[str]:
     notes = await repository.notes_of_kind(session, user_id, kind="stated_fact", limit=MAX_FACTS)
-    return [str((n.body or {}).get("fact") or "") for n in notes if (n.body or {}).get("fact")]
+    return [str((note.body or {}).get("fact") or "") for note in notes if (note.body or {}).get("fact")]
 
 
 async def _activity(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[dict[str, Any]]:
-    rows = await repository.recent_events(session, user_id, limit=MAX_ACTIVITY)
+    events = await repository.recent_events(session, user_id, limit=MAX_ACTIVITY)
     return [
-        {"kind": row.kind, "title": row.title, "days_ago": domain.days_ago(row.occurred_at, now)}
-        for row in rows
+        {"kind": event.kind, "title": event.title, "days_ago": domain.days_ago(event.occurred_at, now)}
+        for event in events
     ]

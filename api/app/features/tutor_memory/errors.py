@@ -16,15 +16,18 @@ __all__ = [
 
 
 class UnknownTool(NotFound):
+
     code = "unknown_tool"
     default_message = "No such tool"
 
 
 class ToolArgumentsInvalid(InvalidInput):
+
     code = "tool_arguments_invalid"
     default_message = "That tool was called with arguments it does not accept"
 
 
 class NoteNotFound(NotFound):
+
     code = "tutor_note_not_found"
     default_message = "No such note"

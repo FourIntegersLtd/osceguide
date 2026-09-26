@@ -89,7 +89,7 @@ async def summarise_assistant_session(
     if not turns:
         return False
     try:
-        payload = await summariser.summarise(
+        summary = await summariser.summarise(
             kind="session_summary",
             transcript=turns,
             schema=SESSION_SUMMARY_SCHEMA,
@@ -107,12 +107,12 @@ async def summarise_assistant_session(
         session_id=session_id,
         kind="session_summary",
         body={
-            "summary": str(payload.get("summary") or ""),
+            "summary": str(summary.get("summary") or ""),
             "agreed_next_steps": [
                 {"text": step, "done": False}
-                for step in domain.open_action_items([payload.get("agreed_next_steps") or []])
+                for step in domain.open_action_items([summary.get("agreed_next_steps") or []])
             ],
-            "topics": [str(t) for t in _items(payload.get("topics"))],
+            "topics": [str(topic) for topic in _items(summary.get("topics"))],
         },
     )
     # Only once the note is written: the summary is what replaces the
@@ -140,9 +140,12 @@ async def summarise_debrief(
     if not transcript.messages:
         return False
 
-    payload = await summariser.summarise(
+    summary = await summariser.summarise(
         kind="debrief",
-        transcript=[{"role": m.role, "message": m.message, "seq": m.seq} for m in transcript.messages],
+        transcript=[
+            {"role": message.role, "message": message.message, "seq": message.seq}
+            for message in transcript.messages
+        ],
         schema=DEBRIEF_SUMMARY_SCHEMA,
         instructions=DEBRIEF_SUMMARY_INSTRUCTIONS,
     )
@@ -151,10 +154,10 @@ async def summarise_debrief(
         attempt_id=attempt_id,
         user_id=ref.user_id,
         exam_id=ref.exam_id,
-        key_insights=[str(i) for i in _items(payload.get("key_insights"))],
-        action_plan=[{"text": str(step), "done": False} for step in _items(payload.get("action_plan"))],
-        narrative=str(payload.get("narrative_summary") or "") or None,
-        model_used=str(payload.get("model_used") or "") or None,
+        key_insights=[str(insight) for insight in _items(summary.get("key_insights"))],
+        action_plan=[{"text": str(step), "done": False} for step in _items(summary.get("action_plan"))],
+        narrative=str(summary.get("narrative_summary") or "") or None,
+        model_used=str(summary.get("model_used") or "") or None,
     )
     return True
 

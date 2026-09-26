@@ -181,7 +181,7 @@ async def _may_open(
         library, _ = await library_reads.browse_library(
             session, exam_code=code, limit=LIBRARY_PAGE, cursor=None
         )
-        if any(row.version_id == version_id for row in library):
+        if any(station.version_id == version_id for station in library):
             return True
     return False
 

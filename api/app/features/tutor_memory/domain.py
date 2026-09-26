@@ -102,34 +102,40 @@ def entitled_exam_ids(grants: Sequence[Any]) -> frozenset[Any]:
     it is live is excluded, so an unrecognised row loses access rather than gains it.
     """
     return frozenset(
-        getattr(g, "exam_id", None)
-        for g in grants
-        if getattr(g, "exam_id", None) and getattr(g, "live", False)
+        getattr(grant, "exam_id", None)
+        for grant in grants
+        if getattr(grant, "exam_id", None) and getattr(grant, "live", False)
     )
 
 
-def observations_from_result(payload: Mapping[str, Any]) -> dict[str, Any]:
+def observations_from_result(marking_result: Mapping[str, Any]) -> dict[str, Any]:
     """What a marking says about a consultation, in the brief's own vocabulary.
 
     Extracts domains, strengths, improvements and phrases only — no scores,
     percentages or identifiers, since the tutor prompt forbids saying those aloud.
     """
     domains: dict[str, str] = {}
-    for entry in _sequence(payload.get("domains")):
+    for entry in _sequence(marking_result.get("domains")):
         if not isinstance(entry, Mapping):
             continue
         name = str(entry.get("name") or entry.get("domain") or "").strip()
         rating = str(entry.get("rating") or entry.get("grade") or "").strip()
         if name and rating:
             domains[name] = rating
-    if not domains and isinstance(payload.get("domains"), Mapping):
-        domains = {str(k): str(v) for k, v in payload["domains"].items() if str(v or "").strip()}
+    if not domains and isinstance(marking_result.get("domains"), Mapping):
+        domains = {
+            str(domain_name): str(rating)
+            for domain_name, rating in marking_result["domains"].items()
+            if str(rating or "").strip()
+        }
 
     return {
         "domains": domains,
-        "strengths": _texts(payload.get("strengths") or payload.get("what_went_well")),
-        "improvements": _texts(payload.get("improvements") or payload.get("areas_for_improvement")),
-        "phrases": _texts(payload.get("phrases") or payload.get("quotes")),
+        "strengths": _texts(marking_result.get("strengths") or marking_result.get("what_went_well")),
+        "improvements": _texts(
+            marking_result.get("improvements") or marking_result.get("areas_for_improvement")
+        ),
+        "phrases": _texts(marking_result.get("phrases") or marking_result.get("quotes")),
     }
 
 
@@ -171,7 +177,7 @@ def _coerce(name: str, value: Any, spec: Mapping[str, Any]) -> Any:
     text = " ".join(str(value or "").split())
     allowed = spec.get("enum")
     if allowed and text not in allowed:
-        raise InvalidToolArguments(f"{name} must be one of: {', '.join(str(a) for a in allowed)}")
+        raise InvalidToolArguments(f"{name} must be one of: {', '.join(str(choice) for choice in allowed)}")
     limit = spec.get("maxLength")
     if limit is not None and len(text) > int(limit):
         text = text[: int(limit) - 1].rstrip() + "…"
@@ -185,9 +191,9 @@ def _sequence(value: Any) -> list[Any]:
 
 
 def _texts(value: Any) -> list[str]:
-    out: list[str] = []
-    for item in _sequence(value):
-        text = str(item.get("text") if isinstance(item, Mapping) else item or "").strip()
+    texts: list[str] = []
+    for entry in _sequence(value):
+        text = str(entry.get("text") if isinstance(entry, Mapping) else entry or "").strip()
         if text:
-            out.append(text)
-    return out
+            texts.append(text)
+    return texts

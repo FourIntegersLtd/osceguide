@@ -57,9 +57,9 @@ class OpenAIEmbedder:
             # Sorted by index rather than trusted to arrive in order: the
             # response carries one, and a silently reordered batch would
             # attach every passage's vector to the passage next to it.
-            return [item.embedding for item in sorted(response.data, key=lambda d: d.index)]
+            return [record.embedding for record in sorted(response.data, key=lambda entry: entry.index)]
 
-        out: list[list[float]] = []
+        vectors_by_text: list[list[float]] = []
         for start in range(0, len(wanted), EMBED_BATCH):
             batch = wanted[start : start + EMBED_BATCH]
             try:
@@ -68,15 +68,15 @@ class OpenAIEmbedder:
                 raise EmbeddingFailed(f"the text could not be embedded: {exc}") from exc
             if len(vectors) != len(batch):
                 raise EmbeddingFailed("the embedder returned a different number of vectors")
-            out.extend(vectors)
+            vectors_by_text.extend(vectors)
 
-        for vector in out:
+        for vector in vectors_by_text:
             if len(vector) != EMBEDDING_DIMENSIONS:
                 raise EmbeddingFailed(
                     f"the embedder returned {len(vector)} dimensions, and the column holds "
                     f"{EMBEDDING_DIMENSIONS}"
                 )
-        return out
+        return vectors_by_text
 
 
 def build_embedder() -> Embedder:

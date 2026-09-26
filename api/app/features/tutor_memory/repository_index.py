@@ -79,7 +79,7 @@ async def forget_source(session: AsyncSession, *, corpus: str, source_id: str) -
 async def indexed_source_ids(session: AsyncSession, *, corpus: str) -> set[str]:
     """Which sources of a corpus have passages, so a re-index can retire the rest."""
     stmt = select(MaterialChunk.source_id).where(MaterialChunk.corpus == corpus).distinct()
-    return {str(row) for row in (await session.execute(stmt)).scalars().all()}
+    return {str(source_id) for source_id in (await session.execute(stmt)).scalars().all()}
 
 
 async def nearest(
@@ -121,5 +121,5 @@ async def nearest(
     if corpus is not None:
         stmt = stmt.where(MaterialChunk.corpus == corpus)
 
-    rows = (await session.execute(stmt)).all()
-    return [(row[0], 1.0 - float(row[1])) for row in rows]
+    matches = (await session.execute(stmt)).all()
+    return [(match[0], 1.0 - float(match[1])) for match in matches]

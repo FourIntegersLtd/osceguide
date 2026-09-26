@@ -88,17 +88,17 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
         )
         sources += 1
 
-    for item, exam_id in await _published_media(session):
-        if item.kind not in MEDIA_CORPORA:
+    for media_item, exam_id in await _published_media(session):
+        if media_item.kind not in MEDIA_CORPORA:
             continue
-        seen[item.kind].add(str(item.id))
+        seen[media_item.kind].add(str(media_item.id))
         passages += await _index_one(
             index,
-            corpus=item.kind,
-            source_id=str(item.id),
+            corpus=media_item.kind,
+            source_id=str(media_item.id),
             exam_id=exam_id,
-            title=item.title,
-            text=" ".join(part for part in (item.summary, _content_text(item.content)) if part),
+            title=media_item.title,
+            text=" ".join(part for part in (media_item.summary, _content_text(media_item.content)) if part),
         )
         sources += 1
 
@@ -116,7 +116,7 @@ async def _index_one(
         source_id=source_id,
         exam_id=exam_id,
         title=title,
-        chunks=[{"index": c.index, "section": c.section, "text": c.text} for c in chunks],
+        chunks=[{"index": chunk.index, "section": chunk.section, "text": chunk.text} for chunk in chunks],
     )
 
 
@@ -140,20 +140,24 @@ async def _published_media(session: AsyncSession) -> list[tuple[MediaRead, str |
     """Every published media item, with the exam it belongs to, in one walk."""
     from app.features.catalog import service as catalog  # noqa: PLC0415 - avoids an import cycle
 
-    out: list[tuple[MediaRead, str | None]] = []
+    media_with_exam: list[tuple[MediaRead, str | None]] = []
     codes: dict[str, uuid.UUID] = {}
     cursor: dict[str, Any] | None = None
     while True:
-        items, next_cursor = await media.list_published(session, kind=None, limit=MEDIA_PAGE, cursor=cursor)
-        for item in items:
+        published_items, next_cursor = await media.list_published(
+            session, kind=None, limit=MEDIA_PAGE, cursor=cursor
+        )
+        for media_item in published_items:
             exam_id: str | None = None
-            if item.exam_code:
-                if item.exam_code not in codes:
-                    codes[item.exam_code] = (await catalog.resolve_exam(session, item.exam_code)).id
-                exam_id = str(codes[item.exam_code])
-            out.append((item, exam_id))
+            if media_item.exam_code:
+                if media_item.exam_code not in codes:
+                    codes[media_item.exam_code] = (
+                        await catalog.resolve_exam(session, media_item.exam_code)
+                    ).id
+                exam_id = str(codes[media_item.exam_code])
+            media_with_exam.append((media_item, exam_id))
         if not next_cursor:
-            return out
+            return media_with_exam
         # The service takes a decoded cursor; the encoded one is the router's
         # currency, and this caller is not a router.
         cursor = decode_cursor(next_cursor)
@@ -164,7 +168,7 @@ def _content_text(content: object) -> str:
     if isinstance(content, str):
         return content.strip()
     if isinstance(content, dict):
-        return " ".join(_content_text(v) for v in content.values()).strip()
+        return " ".join(_content_text(entry) for entry in content.values()).strip()
     if isinstance(content, list):
-        return " ".join(_content_text(v) for v in content).strip()
+        return " ".join(_content_text(entry) for entry in content).strip()
     return ""

@@ -36,16 +36,16 @@ async def recall(
                 lines.append(f"They told you: {fact}")
 
     if kind in {"debrief", "consultation", "any"}:
-        for row in await repository.recent_debrief_summaries(session, user_id, limit=20):
+        for summary in await repository.recent_debrief_summaries(session, user_id, limit=20):
             haystack = " ".join(
-                [str(row.narrative or ""), *[str(i) for i in (row.key_insights or [])]]
+                [str(summary.narrative or ""), *[str(insight) for insight in (summary.key_insights or [])]]
             ).lower()
             if needle not in haystack:
                 continue
-            steps = domain.open_action_items([row.action_plan or []])
-            when = domain.days_ago(row.created_at, now)
+            steps = domain.open_action_items([summary.action_plan or []])
+            when = domain.days_ago(summary.created_at, now)
             agreed = f" You agreed they would: {'; '.join(steps)}." if steps else ""
-            lines.append(f"A debrief {when} days ago: {row.narrative or 'no narrative'}.{agreed}")
+            lines.append(f"A debrief {when} days ago: {summary.narrative or 'no narrative'}.{agreed}")
 
     if kind in {"activity", "any"}:
         for event in await repository.recent_events(session, user_id, limit=40):

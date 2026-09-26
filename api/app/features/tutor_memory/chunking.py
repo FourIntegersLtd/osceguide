@@ -55,7 +55,7 @@ def chunk(text: str) -> list[Chunk]:
     if not text:
         return []
 
-    out: list[Chunk] = []
+    chunks: list[Chunk] = []
     position, section = 0, OVERVIEW
     while position < len(text):
         match = _SECTIONS.search(text, position)
@@ -63,15 +63,15 @@ def chunk(text: str) -> list[Chunk]:
             break
         body = text[position : match.start()].strip()
         if len(body) > MIN_SECTION_CHARS:
-            out.append(Chunk(index=len(out), section=section, text=body))
+            chunks.append(Chunk(index=len(chunks), section=section, text=body))
         section = _section_name(match.group(1))
         position = match.end()
 
     remainder = text[position:].strip() if position < len(text) else text
     if not remainder:
-        return out
-    out.extend(_by_size(remainder, first_index=len(out)))
-    return out
+        return chunks
+    chunks.extend(_by_size(remainder, first_index=len(chunks)))
+    return chunks
 
 
 def _section_name(heading: str) -> str:
@@ -85,7 +85,7 @@ def _by_size(text: str, *, first_index: int) -> list[Chunk]:
     retrievable from neither: each window carries the tail of the one before
     it, so a thought that straddles a boundary is whole in the second.
     """
-    out: list[Chunk] = []
+    chunks: list[Chunk] = []
     start = 0
     while start < len(text):
         end = start + MAX_CHUNK_CHARS
@@ -93,9 +93,9 @@ def _by_size(text: str, *, first_index: int) -> list[Chunk]:
             end = _break_before(text, start, end)
         body = text[start:end].strip()
         if body:
-            out.append(Chunk(index=first_index + len(out), section=REMAINDER, text=body))
+            chunks.append(Chunk(index=first_index + len(chunks), section=REMAINDER, text=body))
         start = end - OVERLAP_CHARS if end < len(text) else len(text)
-    return out
+    return chunks
 
 
 def _break_before(text: str, start: int, end: int) -> int:

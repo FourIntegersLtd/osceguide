@@ -99,7 +99,7 @@ def _readable(passages: Sequence[Passage]) -> str:
     Numbered markers rather than titles inline, since a title read aloud mid-sentence is a
     mouthful; the card carries the titles for the screen instead.
     """
-    body = "\n\n".join(f"[{n}] {p.text}" for n, p in enumerate(passages, start=1))
+    body = "\n\n".join(f"[{number}] {passage.text}" for number, passage in enumerate(passages, start=1))
     return (
         "Here is what the material says. Answer from this and nothing else, in two or three "
         "spoken sentences. Refer to a source as 'the first one' or by its title, never by its "
@@ -119,12 +119,12 @@ def _citations(passages: Sequence[Passage]) -> dict[str, Any]:
         "card": "citations",
         "citations": [
             {
-                "n": n,
-                "title": p.title,
-                "section": p.section,
-                "ref": {"kind": p.corpus, "id": p.source_id, "slug": None},
+                "n": number,
+                "title": passage.title,
+                "section": passage.section,
+                "ref": {"kind": passage.corpus, "id": passage.source_id, "slug": None},
             }
-            for n, p in enumerate(passages, start=1)
+            for number, passage in enumerate(passages, start=1)
         ],
     }
 

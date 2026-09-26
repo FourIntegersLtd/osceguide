@@ -76,7 +76,7 @@ class PgVectorMaterialIndex:
         if not vectors:
             return []
 
-        rows = await repository_index.nearest(
+        matches = await repository_index.nearest(
             self._session,
             embedding=vectors[0],
             exam_ids=[uuid.UUID(exam_id) for exam_id in exam_ids],
@@ -85,14 +85,14 @@ class PgVectorMaterialIndex:
         )
         return [
             Passage(
-                corpus=row.corpus,
-                source_id=row.source_id,
-                title=row.title,
-                text=row.text,
-                section=row.section,
+                corpus=chunk.corpus,
+                source_id=chunk.source_id,
+                title=chunk.title,
+                text=chunk.text,
+                section=chunk.section,
                 score=score,
             )
-            for row, score in rows
+            for chunk, score in matches
         ]
 
 

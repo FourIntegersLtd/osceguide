@@ -51,7 +51,7 @@ async def add_event(
     occurred_at: datetime,
     meta: dict[str, Any] | None,
 ) -> LearningEvent:
-    row = LearningEvent(
+    learning_event = LearningEvent(
         user_id=user_id,
         exam_id=exam_id,
         kind=kind,
@@ -61,9 +61,9 @@ async def add_event(
         occurred_at=occurred_at,
         meta=meta,
     )
-    session.add(row)
+    session.add(learning_event)
     await session.flush()
-    return row
+    return learning_event
 
 
 async def recent_events(session: AsyncSession, user_id: uuid.UUID, *, limit: int) -> list[LearningEvent]:
@@ -85,10 +85,10 @@ async def add_note(
     kind: str,
     body: dict[str, Any],
 ) -> TutorNote:
-    row = TutorNote(user_id=user_id, exam_id=exam_id, session_id=session_id, kind=kind, body=body)
-    session.add(row)
+    note = TutorNote(user_id=user_id, exam_id=exam_id, session_id=session_id, kind=kind, body=body)
+    session.add(note)
     await session.flush()
-    return row
+    return note
 
 
 async def notes_of_kind(
@@ -146,7 +146,7 @@ async def add_debrief_summary(
     narrative: str | None,
     model_used: str | None,
 ) -> DebriefSummary:
-    row = DebriefSummary(
+    summary = DebriefSummary(
         attempt_id=attempt_id,
         user_id=user_id,
         exam_id=exam_id,
@@ -155,9 +155,9 @@ async def add_debrief_summary(
         narrative=narrative,
         model_used=model_used,
     )
-    session.add(row)
+    session.add(summary)
     await session.flush()
-    return row
+    return summary
 
 
 async def debrief_summary_for_attempt(session: AsyncSession, attempt_id: uuid.UUID) -> DebriefSummary | None:
