@@ -120,7 +120,36 @@ async def archive_version(
     await repository.set_version_status(
         session, org_id, station_version.id, status=str(new_status), at=now, by=actor_id
     )
+    await _repoint_after_archiving(session, org_id, station_id, archived_version_id=station_version.id)
     return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def _repoint_after_archiving(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, archived_version_id: uuid.UUID
+) -> None:
+    """Keep the station's own status in step with the version just archived.
+
+    The library and circuits list a station by its own `status` and hand out its
+    `current_version_id`. Left alone, archiving the current version kept the
+    station listed as published and pointing at the archived version, so every
+    attempt started from it was refused `station_not_published`. The station
+    falls back to its newest remaining published version, or is archived itself
+    when none is left.
+    """
+    station = await repository.station_by_id(session, org_id, station_id)
+    if station is None or station.current_version_id != archived_version_id:
+        # An older version was archived; the one in use is untouched.
+        return
+    still_published = [
+        station_version
+        for station_version in await repository.versions_for_station(session, org_id, station_id)
+        if station_version.status == str(domain.Status.PUBLISHED)
+    ]
+    if still_published:
+        # `versions_for_station` is oldest first, so the last is the newest.
+        await repository.set_current_version(session, org_id, station_id, version_id=still_published[-1].id)
+    else:
+        await repository.retire_station(session, org_id, station_id)
 
 
 async def _version(

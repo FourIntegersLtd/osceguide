@@ -146,6 +146,15 @@ async def set_current_version(
     )
 
 
+async def retire_station(session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID) -> None:
+    """Take a station with no published version left out of use: archived, pointing at nothing."""
+    await session.execute(
+        update(Station)
+        .where(owned_by(Station, org_id), Station.id == station_id)
+        .values(current_version_id=None, status="archived")
+    )
+
+
 async def list_for_org(
     session: AsyncSession,
     org_id: uuid.UUID | None,

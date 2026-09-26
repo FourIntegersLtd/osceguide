@@ -149,6 +149,53 @@ async def test_a_draft_library_station_is_not_in_the_library(client: AsyncClient
     assert [s["title"] for s in mine.json()["items"]] == ["Half written"], "its author still sees it"
 
 
+async def a_published_library_station(client: AsyncClient, admin: str) -> str:
+    """A platform station with version 1 published, returning the station's path."""
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "COPD exacerbation", "exam_code": "sca", "content": CONTENT},
+        headers=bearer(admin),
+    )
+    station_path = f"/api/v1/platform/stations/{created.json()['id']}"
+    published = await client.post(f"{station_path}/versions/1/publish", headers=bearer(admin))
+    assert published.status_code == 200, published.text
+    return station_path
+
+
+async def test_archiving_the_only_published_version_takes_a_station_out_of_the_library(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    # It used to stay listed, pointing at the archived version, so every
+    # attempt a candidate started from the library was refused
+    # `station_not_published`.
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+
+    archived = await client.post(f"{station_path}/versions/1/archive", headers=bearer(admin))
+    assert archived.status_code == 200, archived.text
+
+    library = await client.get("/api/v1/stations", headers=bearer(admin))
+    assert library.json()["items"] == []
+
+
+async def test_archiving_the_current_version_puts_the_previous_one_back_in_the_library(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+    await client.post(f"{station_path}/versions", headers=bearer(admin))
+    await client.post(f"{station_path}/versions/2/publish", headers=bearer(admin))
+
+    await client.post(f"{station_path}/versions/2/archive", headers=bearer(admin))
+
+    library = await client.get("/api/v1/stations", headers=bearer(admin))
+    assert [(listed["title"], listed["version"]) for listed in library.json()["items"]] == [
+        ("COPD exacerbation", 1)
+    ]
+
+
 async def test_an_org_admin_cannot_write_the_library(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await an_org(client, make_actor)
     response = await client.post(
