@@ -1,3 +1,5 @@
+"""Hands an AV production job to procrastinate, the background job queue every worker polls."""
+
 from __future__ import annotations
 
 import json
@@ -16,6 +18,7 @@ async def defer_job(
     args: dict[str, Any],
     queueing_lock: str,
 ) -> None:
+    """Enqueues a background task, refusing a second one under the same lock while one is running."""
     await session.execute(
         text(
             "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("
@@ -33,4 +36,5 @@ async def defer_job(
 
 
 def lock_for_media(media_id: uuid.UUID, operation: str) -> str:
+    """The queueing lock key that stops the same item's same production operation running twice at once."""
     return f"media_av:{media_id}:{operation}"

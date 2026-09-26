@@ -1,3 +1,8 @@
+"""The Pydantic shapes an AI slide-generation call fills in and `slide_renderer.py` reads
+back: a deck's slides, each slide's bullets and layout, and the timing data audio rendering
+attaches to them.
+"""
+
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator

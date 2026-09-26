@@ -38,6 +38,9 @@ SLIDE_GENERATION_PROMPT = ""
 
 
 def set_nested_value(document: dict, key: str, new_value) -> None:
+    """Sets a dotted key such as `"slides.0.title"` on a nested dict, creating any
+    intermediate dicts that do not exist yet.
+    """
     parts = key.split(".")
     target = document
     for part in parts[:-1]:
@@ -53,6 +56,10 @@ openai_client = None
 
 
 class SlideService:
+    """Renders a slide deck's narration audio and teaching video with MoviePy, ported from the
+    B2C slide service. `firestore_service` is always `None` in the platform AV jobs that call
+    this today; it is kept so this class still works unmodified against the legacy store too.
+    """
 
     def __init__(self, firestore_service=None, settings: Settings | None = None):
         from app.core.settings import get_settings

@@ -1,3 +1,7 @@
+"""Enqueues AV production jobs against a media item, and runs each job's actual work: narrating
+a summary as a podcast, re-rendering a slide deck's video, or voicing a podcast episode.
+"""
+
 from __future__ import annotations
 
 import tempfile
@@ -20,15 +24,18 @@ from app.features.media_production.schemas import MediaRead
 async def _set_status(
     session: AsyncSession, item_id: uuid.UUID, content: dict[str, Any], status: str
 ) -> None:
+    """Rewrites an item's stored content with a new production status, leaving the rest as it was."""
     await replace_content(session, item_id, {**content, "status": status})
 
 
 async def _read(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+    """Re-reads an item as the production schema's own `MediaRead`, after a status change."""
     item = await media_service.read_by_id(session, item_id, viewer_is_admin=True)
     return MediaRead.model_validate(item.model_dump())
 
 
 async def enqueue_summary_podcast(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+    """Starts turning a summary into a podcast, refusing the wrong kind of item or a job already running."""
     item = await production_item(session, item_id)
     if item.kind != "summary":
         raise WrongMediaKind()
@@ -46,6 +53,7 @@ async def enqueue_summary_podcast(session: AsyncSession, item_id: uuid.UUID) -> 
 
 
 async def enqueue_slide_regenerate(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+    """Starts re-rendering a slide deck's narrated video, refusing the wrong kind or a job already running."""
     item = await production_item(session, item_id)
     if item.kind != "slide_deck":
         raise WrongMediaKind()
@@ -63,6 +71,7 @@ async def enqueue_slide_regenerate(session: AsyncSession, item_id: uuid.UUID) ->
 
 
 async def enqueue_podcast_audio(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+    """Starts voicing a podcast episode's script, refusing the wrong kind of item or a job already running."""
     item = await production_item(session, item_id)
     if item.kind != "podcast":
         raise WrongMediaKind()
@@ -80,10 +89,12 @@ async def enqueue_podcast_audio(session: AsyncSession, item_id: uuid.UUID) -> Me
 
 
 def work_dir(media_id: str) -> Path:
+    """The scratch directory a production job renders its files into before they are uploaded."""
     return Path(tempfile.gettempdir()) / "media_av" / media_id
 
 
 async def run_summary_podcast_job(session: AsyncSession, media_id: uuid.UUID) -> None:
+    """Renders a summary item's podcast audio and stores it, marking the item failed if that throws."""
     from app.features.media_production.podcast_tts import produce_summary_podcast
 
     item = await production_item(session, media_id)
@@ -105,6 +116,7 @@ async def run_summary_podcast_job(session: AsyncSession, media_id: uuid.UUID) ->
 
 
 async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID) -> None:
+    """Re-renders a slide deck's narrated video and stores it, marking the item failed if that throws."""
     from app.features.media_production.slide_av import regenerate_slide_av
 
     item = await production_item(session, media_id)
@@ -131,6 +143,7 @@ async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID) -> None:
 
 
 async def run_podcast_audio_job(session: AsyncSession, media_id: uuid.UUID) -> None:
+    """Renders a podcast episode's audio and stores it, marking the item failed if that throws."""
     from app.features.media_production.podcast_tts import produce_podcast_episode_audio
 
     item = await production_item(session, media_id)

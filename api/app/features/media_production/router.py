@@ -1,3 +1,7 @@
+"""The three routes a platform admin uses to kick off AV production: narrating a summary as
+a podcast, re-rendering a slide deck's video, and voicing a podcast episode.
+"""
+
 from __future__ import annotations
 
 import uuid

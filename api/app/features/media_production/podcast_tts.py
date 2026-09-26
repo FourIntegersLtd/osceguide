@@ -16,6 +16,9 @@ from app.features.media_production.summary_text import format_summary_for_podcas
 
 
 def _require_av_settings(settings: Settings) -> None:
+    """Refuses up front if the API keys or bucket a podcast job needs are not configured,
+    rather than failing partway through with a less useful error.
+    """
     if not settings.openai_api_key.strip() or not settings.cartesia_api_key.strip():
         raise AvUnavailable()
     if not settings.aws_s3_bucket.strip():
@@ -23,6 +26,7 @@ def _require_av_settings(settings: Settings) -> None:
 
 
 def generate_script(settings: Settings, source_text: str) -> str:
+    """Asks the model to turn `source_text` into a two-host Ben-and-Michelle dialogue script."""
     from openai import OpenAI  # noqa: PLC0415 - optional dependency
 
     client = OpenAI(api_key=settings.openai_api_key)
@@ -44,6 +48,7 @@ def generate_script(settings: Settings, source_text: str) -> str:
 
 
 def _split_script(script: str) -> list[tuple[str, str]]:
+    """Breaks a `Ben: "..."` / `Michelle: "..."` script into (speaker, line) pairs, one per turn."""
     text = re.sub(r"\bben:", "Ben:", script, flags=re.IGNORECASE)
     text = re.sub(r"\bmichelle:", "Michelle:", text, flags=re.IGNORECASE)
     parts = re.split(r"\n*(Ben|Michelle):\s*", text)
@@ -61,6 +66,7 @@ def _split_script(script: str) -> list[tuple[str, str]]:
 
 
 def synthesize_podcast_mp3(settings: Settings, script: str, work_dir: Path, basename: str) -> Path:
+    """Voices each speaker's turn with Cartesia and stitches the results into one mp3 file."""
     from cartesia import Cartesia
 
     client = Cartesia(api_key=settings.cartesia_api_key)
@@ -107,6 +113,9 @@ def produce_summary_podcast(
     work_dir: Path,
     media_id: str,
 ) -> dict[str, Any]:
+    """Scripts and voices a summary item as a Ben-and-Michelle podcast, uploads the mp3, and
+    returns the item's content updated with the script, its audio URL, and a completed status.
+    """
     _require_av_settings(settings)
     work_dir.mkdir(parents=True, exist_ok=True)
     formatted = format_summary_for_podcast(title, content)
@@ -128,6 +137,9 @@ def produce_podcast_episode_audio(
     work_dir: Path,
     media_id: str,
 ) -> dict[str, Any]:
+    """Scripts and voices a standalone podcast episode, uploads the mp3, and returns the
+    item's content updated with the script, its audio URL, and a completed status.
+    """
     _require_av_settings(settings)
     work_dir.mkdir(parents=True, exist_ok=True)
     script = content.get("script")

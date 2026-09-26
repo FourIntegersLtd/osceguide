@@ -17,6 +17,9 @@ def _prepare_slide_payload(
     media_id: str,
     exam_code: str | None,
 ) -> dict[str, Any]:
+    """Fills in the fields `SlideService` needs but a stored item may not carry yet: a slide
+    id, an exam-derived app type, and a fallback topic taken from the title.
+    """
     slide_payload = dict(content)
     slide_payload["slide_id"] = str(slide_payload.get("slide_id") or media_id)
     app_type = slide_payload.get("app_type") or exam_code or "sca"
@@ -33,6 +36,12 @@ def regenerate_slide_av(
     media_id: str,
     exam_code: str | None = None,
 ) -> dict[str, Any]:
+    """Re-renders a slide deck's narration audio and video, returning its updated content.
+
+    Delegates the actual rendering to the ported B2C `SlideService`, giving it a clean
+    scratch directory each time so a previous, possibly-failed run cannot leave stale files
+    behind for the next one to pick up by accident.
+    """
     # Start from a clean scratch directory: a previous, possibly-failed run
     # must not leave stale files behind for this one to pick up by accident.
     if work_dir.exists():

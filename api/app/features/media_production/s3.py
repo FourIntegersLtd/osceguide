@@ -1,3 +1,7 @@
+"""The raw S3 adapter behind AV production's storage: a thin wrapper over boto3 that
+`service_storage.py` is the rest of the codebase's way of reaching.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,6 +14,7 @@ from app.core.settings import Settings
 
 
 def s3_client(settings: Settings) -> Any:
+    """A boto3 S3 client built from the configured AWS credentials and region."""
     return boto3.client(
         "s3",
         region_name=settings.aws_region,
@@ -19,6 +24,7 @@ def s3_client(settings: Settings) -> Any:
 
 
 def upload_file(settings: Settings, local_path: Path, key: str) -> str:
+    """Uploads a file already on disk and answers its public object URL."""
     client = s3_client(settings)
     with local_path.open("rb") as handle:
         client.upload_fileobj(handle, settings.aws_s3_bucket, key)
