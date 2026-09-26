@@ -11,8 +11,10 @@ from app.core.settings import get_settings
 
 
 class ResendSender:
+    """`EmailSender` backed by the Resend API."""
 
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
+        """Send one email and return the provider's message id, or raise `EmailDeliveryFailed`."""
         settings = get_settings()
         if not settings.resend_api_key:
             raise EmailDeliveryFailed("No Resend API key is configured.")

@@ -113,6 +113,7 @@ _LAYOUT_CLOSE = '<p style="margin-top:2rem;color:#666;font-size:.875rem">OSCE Gu
 
 
 def _password_reset(escaped_fields: dict[str, str]) -> str:
+    """The body for a password-reset email, linking to the reset form with its token."""
     link = f"{get_settings().frontend_url.rstrip('/')}/reset-password?token={escaped_fields.get('token', '')}"
     return (
         "<h1>Reset your password</h1>"
@@ -124,6 +125,7 @@ def _password_reset(escaped_fields: dict[str, str]) -> str:
 
 
 def _result_released(escaped_fields: dict[str, str]) -> str:
+    """The body telling a candidate their sitting's outcome is ready to read."""
     link = f"{get_settings().frontend_url.rstrip('/')}/results/{escaped_fields.get('sitting_id', '')}"
     return (
         "<h1>Your result is available</h1>"
@@ -133,6 +135,7 @@ def _result_released(escaped_fields: dict[str, str]) -> str:
 
 
 def _invitation(escaped_fields: dict[str, str]) -> str:
+    """The body inviting a new account holder to set a password and sign in."""
     link = (
         f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
     )
@@ -167,6 +170,7 @@ def _payment_receipt(escaped_fields: dict[str, str]) -> str:
 
 
 def _abuse_report(escaped_fields: dict[str, str]) -> str:
+    """The body alerting support to a peer-practice abuse report."""
     return (
         "<h1>Peer-practice abuse report</h1>"
         f"<p>Session {escaped_fields.get('session_id', '')}, "
@@ -177,6 +181,7 @@ def _abuse_report(escaped_fields: dict[str, str]) -> str:
 
 
 def _no_show_report(escaped_fields: dict[str, str]) -> str:
+    """The body alerting support to a peer-practice no-show report."""
     return (
         "<h1>Peer-practice no-show report</h1>"
         f"<p>Session {escaped_fields.get('session_id', '')}, "

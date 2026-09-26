@@ -17,6 +17,7 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class OutboundMessage(Base, UUIDPrimaryKey, Timestamps):
+    """One queued send, in any channel, from any slice, at any stage of delivery."""
 
     __tablename__ = "outbound_messages"
     __table_args__ = (

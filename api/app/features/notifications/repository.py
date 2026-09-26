@@ -45,6 +45,7 @@ async def enqueue(
 
 
 async def by_idempotency_key(session: AsyncSession, key: str) -> OutboundMessage | None:
+    """The message already queued under this key, or nothing if none was."""
     stmt = select(OutboundMessage).where(OutboundMessage.idempotency_key == key)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -94,6 +95,7 @@ async def reclaim_stale(session: AsyncSession, *, before: datetime) -> int:
 
 
 async def mark_sent(session: AsyncSession, message_id: uuid.UUID, *, at: datetime) -> None:
+    """Record a successful delivery and release the claim."""
     await session.execute(
         update(OutboundMessage)
         .where(OutboundMessage.id == message_id)
@@ -109,6 +111,7 @@ async def mark_retry(
     available_at: datetime,
     error: str,
 ) -> None:
+    """Release the claim and set a later `available_at`, so another worker retries it."""
     await session.execute(
         update(OutboundMessage)
         .where(OutboundMessage.id == message_id)
@@ -123,6 +126,7 @@ async def mark_retry(
 
 
 async def mark_failed(session: AsyncSession, message_id: uuid.UUID, *, attempts: int, error: str) -> None:
+    """Give up on this message: it stays `failed` and is never retried again."""
     await session.execute(
         update(OutboundMessage)
         .where(OutboundMessage.id == message_id)
