@@ -12,6 +12,7 @@ class ClientContextError(ValueError):
 
 
 def _text(value: Any, *, field: str, limit: int) -> str:
+    """This field as a trimmed, length-capped string, or raise if it is not a string."""
     if value is None:
         return ""
     if not isinstance(value, str):

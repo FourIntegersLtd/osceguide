@@ -10,6 +10,7 @@ from .models import ContentPack, FaqEntry, OnboardingScene, Persona
 
 @dataclass(frozen=True)
 class Overlay:
+    """Changes one exam or surface layers onto the base pack."""
 
     add: tuple[FaqEntry, ...] = ()
     replace: tuple[FaqEntry, ...] = ()
@@ -28,6 +29,7 @@ class OverlayError(ValueError):
 
 
 def apply(base: ContentPack, overlay: Overlay) -> ContentPack:
+    """The base pack with the overlay's additions, replacements and removals applied."""
     base_ids = set(base.entry_ids())
     replacements = {entry.id: entry for entry in overlay.replace}
     unknown = sorted((set(replacements) | set(overlay.remove)) - base_ids)

@@ -13,6 +13,7 @@ from enum import StrEnum
 
 
 class AssistantType(StrEnum):
+    """The four kinds of assistant session the worker knows how to run."""
 
     HELP = "help"
     ONBOARDING = "onboarding"
@@ -21,11 +22,11 @@ class AssistantType(StrEnum):
 
 
 class UnknownAssistantType(ValueError):
-    pass
+    """A session names a `session_type` no worker recognises, even after alias translation."""
 
 
 class UnrenderableSession(Exception):
-    pass
+    """A session has no instructions to dispatch a worker with."""
 
 
 # Legacy spellings that existing records carry.
@@ -35,6 +36,7 @@ JOINABLE_STATUSES = frozenset({"active"})
 
 
 def worker_type_for(session_type: str) -> str:
+    """The worker type for this session, translating any legacy spelling first."""
     key = (session_type or "").strip().lower()
     if key in _ALIASES:
         return str(_ALIASES[key])
@@ -45,6 +47,7 @@ def worker_type_for(session_type: str) -> str:
 
 
 def ensure_dispatchable(*, instructions: str) -> None:
+    """Raise unless the session has rendered instructions for the worker to speak."""
     if not (instructions or "").strip():
         raise UnrenderableSession(
             "The assistant worker refuses a session with no instructions; render them first."

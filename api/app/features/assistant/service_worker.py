@@ -91,6 +91,7 @@ async def scene_instructions(
 def _matching_scene(
     scenes: list[dict[str, Any]], *, question: str | None, patient_line: str | None
 ) -> dict[str, Any] | None:
+    """The frozen scene whose question or patient line the worker named, if any."""
     wanted = (question or "").strip()
     line = (patient_line or "").strip()
     for scene in scenes:
@@ -102,6 +103,7 @@ def _matching_scene(
 
 
 async def _user_name(session: AsyncSession, user_id: uuid.UUID) -> str:
+    """This user's display name, or an empty string if the account no longer exists."""
     from app.features.identity import service_platform as identity
 
     user = await identity.user_by_id(session, user_id)
@@ -146,5 +148,6 @@ async def complete_session(
     usage: dict[str, Any],
     now: datetime,
 ) -> None:
+    """Mark a session completed, with when it ended, why, and any usage the worker reported."""
     await require_session(session, session_id)
     await repository.complete(session, session_id, at=now, end_reason=end_reason, usage=usage or None)

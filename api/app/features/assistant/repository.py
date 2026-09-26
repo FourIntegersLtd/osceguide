@@ -22,6 +22,7 @@ async def create_session(
     extras: dict[str, Any] | None,
     room_name: str | None,
 ) -> AssistantSession:
+    """Insert a new assistant session and return it with its generated id loaded."""
     assistant_session = AssistantSession(
         user_id=user_id,
         session_type=session_type,
@@ -37,12 +38,14 @@ async def create_session(
 
 
 async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: str) -> None:
+    """Record the LiveKit room name a session was started in."""
     await session.execute(
         update(AssistantSession).where(AssistantSession.id == session_id).values(room_name=room_name)
     )
 
 
 async def by_id(session: AsyncSession, session_id: uuid.UUID) -> AssistantSession | None:
+    """The session with this id, or `None` if there is none."""
     stmt = select(AssistantSession).where(AssistantSession.id == session_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -55,6 +58,7 @@ async def complete(
     end_reason: str | None,
     usage: dict[str, Any] | None,
 ) -> None:
+    """Mark a session completed, with when it ended, why, and any usage it reported."""
     await session.execute(
         update(AssistantSession)
         .where(AssistantSession.id == session_id)
@@ -63,6 +67,7 @@ async def complete(
 
 
 async def seen_message_ids(session: AsyncSession, session_id: uuid.UUID) -> set[str]:
+    """The message ids already stored for this session, so a transcript can skip repeats."""
     stmt = select(AssistantTranscriptMessage.message_id).where(
         AssistantTranscriptMessage.session_id == session_id
     )
@@ -79,6 +84,7 @@ async def add_message(
     message: str,
     spoken_at: datetime,
 ) -> None:
+    """Store one turn of a session's transcript."""
     session.add(
         AssistantTranscriptMessage(
             session_id=session_id,
@@ -93,6 +99,7 @@ async def add_message(
 
 
 async def messages_for(session: AsyncSession, session_id: uuid.UUID) -> list[AssistantTranscriptMessage]:
+    """A session's transcript, in the order it was spoken."""
     stmt = (
         select(AssistantTranscriptMessage)
         .where(AssistantTranscriptMessage.session_id == session_id)

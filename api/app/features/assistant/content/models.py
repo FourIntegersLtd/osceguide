@@ -34,6 +34,7 @@ class NavItem:
 
 @dataclass(frozen=True)
 class ClientProfile:
+    """Who is asking and what the client currently shows them."""
 
     surface: str
     exam: str
@@ -48,6 +49,7 @@ class ClientProfile:
 
 @dataclass(frozen=True)
 class Persona:
+    """The name the assistant answers as, and the product it speaks for."""
 
     assistant_name: str = "Athena"
     product_name: str = "OSCE Guide"
@@ -70,6 +72,7 @@ class FaqEntry:
 
 @dataclass(frozen=True)
 class OnboardingScene:
+    """One demo turn: the line the simulated patient says and the question it answers."""
 
     patient_line: str
     question: str
@@ -77,6 +80,7 @@ class OnboardingScene:
 
 @dataclass(frozen=True)
 class ContentPack:
+    """The resolved content for one profile: persona, greetings, FAQ and onboarding scenes."""
 
     persona: Persona = Persona()
     greetings: Mapping[str, str] = field(default_factory=dict)

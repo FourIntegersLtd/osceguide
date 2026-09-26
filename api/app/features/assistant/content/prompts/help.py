@@ -19,6 +19,7 @@ class HelpInstructions:
     """
 
     def __init__(self, pack: ContentPack, profile: ClientProfile) -> None:
+        """Render the parts of the prompt that come from the pack and the client profile."""
         self.product_name = pack.persona.product_name
         labels = {**pack.default_labels, **profile.nav_labels}
         self.contact_label = labels.get("messages", "Contact Us")
@@ -26,6 +27,7 @@ class HelpInstructions:
         self.faq_block = render_faq_block(pack)
 
     def get_help_instructions(self, screen_ui_guidance: bool = False) -> str:
+        """The full session prompt: FAQ-only voice, or FAQ plus on-screen guidance."""
         header = instruction_header(screen_ui_guidance=screen_ui_guidance)
         if not screen_ui_guidance:
             return f"""

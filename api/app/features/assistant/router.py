@@ -1,3 +1,5 @@
+"""Browser-facing assistant routes: start a session, join its room, read onboarding scenes."""
+
 from __future__ import annotations
 
 import uuid

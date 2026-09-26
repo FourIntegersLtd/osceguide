@@ -4,6 +4,12 @@ from typing import Any
 
 
 def consulting_doctor_instructions(extras: dict[str, Any]) -> str | None:
+    """The prompt for a demonstration consultation, built from the station's own content.
+
+    Returns ``None`` when the session carries no station, so the caller can
+    fall back to a generic prompt instead of dispatching a doctor with nothing
+    to demonstrate.
+    """
     station = extras.get("station")
     if not isinstance(station, dict):
         return None
@@ -61,6 +67,7 @@ def _text(value: Any) -> str | None:
 
 
 def _lines(value: Any) -> list[str]:
+    """This field as a flat list of non-empty lines, from a list, a string, or a nested dict."""
     if isinstance(value, list):
         return [str(entry).strip() for entry in value if str(entry).strip()]
     if isinstance(value, str):

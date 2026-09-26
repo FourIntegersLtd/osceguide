@@ -11,6 +11,7 @@ from app.features.assistant.schemas import HelpArticle, HelpCategory
 
 @lru_cache(maxsize=1)
 def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
+    """The help catalogue, parsed once and cached: categories and articles, published only."""
     catalogue_json = json.loads(Path(__file__).with_name("help_content.json").read_text())
     categories = [
         HelpCategory.model_validate(raw_category)
@@ -32,6 +33,7 @@ def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
 
 
 def list_articles(exam_code: str, category: str | None = None) -> list[HelpArticle]:
+    """This exam's published articles, in this category if one is given."""
     return sorted(
         (
             article
@@ -44,6 +46,7 @@ def list_articles(exam_code: str, category: str | None = None) -> list[HelpArtic
 
 
 def list_categories(exam_code: str) -> list[HelpCategory]:
+    """This exam's categories, each carrying how many of its articles apply."""
     counts = Counter(article.category_slug for article in list_articles(exam_code))
     return sorted(
         (
@@ -56,6 +59,7 @@ def list_categories(exam_code: str) -> list[HelpCategory]:
 
 
 def read_article(slug: str, exam_code: str) -> HelpArticle:
+    """One article by slug, with any related link this exam cannot see removed."""
     candidate = next((article for article in list_articles(exam_code) if article.slug == slug), None)
     if candidate is None:
         raise NotFound("Help article not found")

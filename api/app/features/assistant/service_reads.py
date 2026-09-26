@@ -22,6 +22,7 @@ class SessionRef:
 
 
 async def session_ref(session: AsyncSession, session_id: uuid.UUID) -> SessionRef | None:
+    """This session as another slice may see it, or `None` if it does not exist."""
     assistant_session = await repository.by_id(session, session_id)
     if assistant_session is None:
         return None

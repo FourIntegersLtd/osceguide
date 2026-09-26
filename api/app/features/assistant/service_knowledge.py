@@ -24,6 +24,7 @@ _MAX_QUERY = 2_000
 
 
 class KnowledgeUnavailable(AppError):
+    """Athena could not answer: no OpenAI key configured, the call failed, or it gave an empty reply."""
 
     status = 503
     code = "knowledge_unavailable"
@@ -46,6 +47,7 @@ async def answer(
     index: VectorIndex,
     settings: Settings,
 ) -> KnowledgeReply:
+    """Answer the learner's question, grounded only in summaries their exam entitles them to."""
     if body.messages[-1].role != "user" or not body.messages[-1].content.strip():
         raise InvalidInput("Finish with a question for Athena.")
     unlocked = await service_search.unlocked_exam_ids(session, user_id, now=now)

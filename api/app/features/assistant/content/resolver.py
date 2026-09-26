@@ -63,6 +63,7 @@ def resolve_client_profile(record: Mapping[str, Any]) -> ClientProfile:
 
 
 def _layered_pack(profile: ClientProfile) -> ContentPack:
+    """The base pack with this profile's exam and surface overlays applied, in that order."""
     pack = packs.BASE
     exam_overlay = packs.EXAM_OVERLAYS.get(profile.exam)
     if exam_overlay is not None:

@@ -6,6 +6,7 @@ from ..models import Persona
 
 
 class OnboardingInstructions:
+    """The onboarding demo's prompt, built fresh for whichever phase and scene are current."""
 
     def __init__(
         self,
@@ -16,6 +17,7 @@ class OnboardingInstructions:
         screen_ui_guidance: bool = False,
         persona: Persona | None = None,
     ):
+        """Freeze the scene's question and patient line, and the learner's display name."""
         self.assistant_name = (persona or Persona()).assistant_name
         self.question = question
         self.patient_line = patient_line
@@ -27,11 +29,13 @@ class OnboardingInstructions:
         self.user_name = name.capitalize() if name else "Doctor"
 
     def get_onboarding_instructions(self) -> str:
+        """The prompt for this phase: the fixed introduction, or the current demo scene."""
         if self.phase == "intro":
             return self._intro_instructions()
         return self._demo_instructions()
 
     def _intro_instructions(self) -> str:
+        """The fixed introduction script, spoken once before any demo scene."""
         return f"""
 You are {self.assistant_name}, an AI clinical communication tutor. Your tone is warm, confident, and encouraging.
 
@@ -53,6 +57,7 @@ Then STOP.
 """
 
     def _demo_instructions(self) -> str:
+        """The current scene's script: present the scenario, then critique the learner's reply."""
         return f"""
 You are {self.assistant_name}, an AI clinical communication tutor. Your tone is supportive, insightful, and encouraging.
 

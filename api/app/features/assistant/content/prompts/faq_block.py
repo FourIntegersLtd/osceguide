@@ -12,6 +12,7 @@ FAQ_BLOCK_HEADER = "FAQ ANSWERS — the ONLY source for questions about using th
 
 
 def render_faq_block(pack: ContentPack) -> str:
+    """The pack's FAQ entries as a single block of text, ready to paste into a prompt."""
     lines = [FAQ_BLOCK_HEADER, f"If no entry fits the question: {pack.no_match_message}".rstrip(": "), ""]
     for entry in pack.faq:
         lines += [f"[{entry.section}]", f"QUESTION: {entry.question}", f"ANSWER: {entry.answer}", ""]

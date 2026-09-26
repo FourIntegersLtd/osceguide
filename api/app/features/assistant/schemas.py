@@ -1,3 +1,5 @@
+"""Request and response shapes for the assistant routes."""
+
 from __future__ import annotations
 
 import uuid

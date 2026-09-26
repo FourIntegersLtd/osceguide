@@ -32,6 +32,7 @@ SCENES_KEY = "onboarding_scenes"
 
 @dataclass(frozen=True)
 class Rendered:
+    """A worker type's rendered instructions, greeting, and any extras to freeze onto the session."""
 
     instructions: str
     greeting: str | None

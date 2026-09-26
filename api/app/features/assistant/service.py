@@ -87,6 +87,11 @@ async def start_session(
     station_version_id: uuid.UUID | None,
     now: datetime,
 ) -> SessionRead:
+    """Start a session of this type, rendered from `tutor_memory`, a content pack, or a station.
+
+    Falls back to a generic instruction for the worker type when none of
+    those sources has anything to say, so a session always dispatches.
+    """
     try:
         worker_type = domain.worker_type_for(session_type)
     except domain.UnknownAssistantType as exc:
@@ -201,10 +206,12 @@ TOOLS_KEY = "tools"
 
 
 def _tool_extras(rendered: dict[str, Any]) -> dict[str, Any]:
+    """`tutor_memory`'s rendered extras, plus the tools it rendered for under `TOOLS_KEY`."""
     return {**(rendered.get("extras") or {}), TOOLS_KEY: rendered.get("tools") or []}
 
 
 async def require_session(session: AsyncSession, session_id: uuid.UUID) -> AssistantSession:
+    """The session with this id, or raise `SessionNotFound`."""
     assistant_session = await repository.by_id(session, session_id)
     if assistant_session is None:
         raise errors.SessionNotFound()
@@ -212,6 +219,7 @@ async def require_session(session: AsyncSession, session_id: uuid.UUID) -> Assis
 
 
 def _read(assistant_session: AssistantSession) -> SessionRead:
+    """The session's public read shape."""
     return SessionRead(
         id=assistant_session.id,
         session_type=assistant_session.session_type,
