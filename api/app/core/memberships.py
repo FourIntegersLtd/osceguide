@@ -23,11 +23,13 @@ _lookup: MembershipLookup | None = None
 
 
 def bind_membership_lookup(lookup: MembershipLookup) -> None:
+    """Wire the real implementation in, once, at start-up."""
     global _lookup
     _lookup = lookup
 
 
 def get_membership_lookup() -> MembershipLookup:
+    """The bound lookup, or a loud failure if `main.py` never bound one."""
     if _lookup is None:
         raise RuntimeError(
             "No membership lookup bound. app.main.create_app must call "

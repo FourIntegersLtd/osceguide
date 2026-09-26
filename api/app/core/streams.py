@@ -43,6 +43,7 @@ _REPLAY_PREFIX = "stream-ticket-used"
 
 
 def issue_stream_ticket(principal: Principal, *, settings: Settings, now: datetime | None = None) -> str:
+    """Mint a one-minute, single-use ticket that opens a stream for this principal."""
     issued_at = now or datetime.now(UTC)
     claims: dict[str, Any] = {
         "iss": settings.jwt_issuer,
@@ -70,6 +71,7 @@ def issue_stream_ticket(principal: Principal, *, settings: Settings, now: dateti
 
 
 def _verified_claims(ticket: str, *, settings: Settings) -> dict[str, Any]:
+    """Decode and verify a ticket's signature and type, or raise `Unauthenticated`."""
     try:
         claims = jwt.decode(
             ticket,
@@ -86,6 +88,7 @@ def _verified_claims(ticket: str, *, settings: Settings) -> dict[str, Any]:
 
 
 def _principal_from_claims(claims: dict[str, Any]) -> Principal:
+    """Rebuild the principal a ticket's claims describe, or raise `Unauthenticated`."""
     try:
         return Principal(
             user_id=UUID(claims["sub"]),

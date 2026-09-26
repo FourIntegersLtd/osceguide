@@ -73,6 +73,7 @@ def bind_org_lookup(lookup: OrgLookup) -> None:
 
 
 def _bound_org_lookup() -> OrgLookup:
+    """The bound lookup, or a loud failure if `main.py` never bound one."""
     if _org_lookup is None:
         raise RuntimeError("No org lookup bound. app.main.create_app must call bind_org_lookup.")
     return _org_lookup
@@ -153,6 +154,7 @@ def require_org(
         principal: CurrentPrincipal,
         session: Annotated[AsyncSession, Depends(get_session)],
     ) -> Workspace:
+        """Resolve the path's org slug against this predicate for the current request."""
         return await resolve_workspace(
             session,
             principal,
@@ -176,6 +178,7 @@ def admin_org_ids(principal: Principal) -> frozenset[uuid.UUID]:
 
 
 async def require_platform_admin(principal: CurrentPrincipal) -> Principal:
+    """Refuse anybody who is not a platform admin."""
     if not principal.is_platform_admin:
         raise Forbidden()
     return principal

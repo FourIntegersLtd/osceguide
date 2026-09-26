@@ -47,6 +47,7 @@ def discover_task_modules() -> list[str]:
 
 
 def _register_slice_tasks() -> None:
+    """Call every slice's `jobs.register()`, refusing to start if one is missing."""
     for name in discover_task_modules():
         module = importlib.import_module(name)
         register = getattr(module, "register", None)

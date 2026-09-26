@@ -17,6 +17,7 @@ _policies: dict[str, RolePredicate] = {}
 
 
 def bind_role_policy(**predicates: RolePredicate) -> None:
+    """Wire a slice's named role predicates in, once, at start-up."""
     _policies.update(predicates)
 
 
@@ -29,6 +30,7 @@ def policy(name: str) -> RolePredicate:
     """
 
     def predicate(role: str | None) -> bool:
+        """Look the bound rule up now, so a late binding still takes effect."""
         try:
             return _policies[name](role)
         except KeyError as exc:
@@ -46,11 +48,13 @@ _access_policy: list[Callable[[str | None], bool]] = []
 
 
 def bind_org_access_policy(predicate: Callable[[str | None], bool]) -> None:
+    """Wire the slice's org-status rule in, once, at start-up."""
     _access_policy.clear()
     _access_policy.append(predicate)
 
 
 def org_permits_access(status: str | None) -> bool:
+    """Whether an org with this status still permits its members to act."""
     if not _access_policy:
         raise RuntimeError(
             "No org access policy bound. app.main.create_app must call bind_org_access_policy."

@@ -22,12 +22,15 @@ from fastapi import Depends
 
 @runtime_checkable
 class Clock(Protocol):
+    """The current time, as a seam a test can freeze."""
 
     def now(self) -> datetime:
+        """The current instant."""
         ...
 
 
 class SystemClock:
+    """The real clock: wall time, in UTC."""
 
     def now(self) -> datetime:
         return datetime.now(UTC)
@@ -62,6 +65,7 @@ class CheckoutUnavailable(Exception):
 
 @runtime_checkable
 class EmailSender(Protocol):
+    """Sending one transactional email, whatever the provider behind it."""
 
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
         """Send one email and return the provider's message id. Raises EmailDeliveryFailed."""
@@ -84,6 +88,7 @@ class VectorIndex(Protocol):
     """
 
     async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None:
+        """Add or replace this document's vector."""
         ...
 
     async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:

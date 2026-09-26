@@ -34,6 +34,7 @@ class Page(BaseModel, Generic[T]):
 
 
 class CursorParams:
+    """The `cursor`/`limit` query parameters, decoded, for a route to depend on."""
 
     def __init__(
         self,
@@ -45,11 +46,13 @@ class CursorParams:
 
 
 def encode_cursor(cursor_fields: dict[str, Any]) -> str:
+    """Pack cursor fields into the opaque string a client sends back unchanged."""
     raw = json.dumps(cursor_fields, separators=(",", ":"), default=str).encode()
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 
 def decode_cursor(cursor: str) -> dict[str, Any]:
+    """Unpack a cursor, or refuse it as `InvalidInput` if it has been tampered with."""
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
         decoded = json.loads(base64.urlsafe_b64decode(padded))

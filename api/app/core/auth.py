@@ -36,6 +36,7 @@ ACCESS_TOKEN_TYPE = "access"  # noqa: S105 — the token's type claim, not a sec
 
 @dataclass(frozen=True)
 class Membership:
+    """One organisation a principal belongs to, and the role they hold there."""
 
     org_id: UUID
     org_slug: str
@@ -55,6 +56,7 @@ class Membership:
 
 @dataclass(frozen=True)
 class Principal:
+    """The signed-in user a verified token stands for, and what it says they may do."""
 
     user_id: UUID
     email: str
@@ -75,6 +77,7 @@ class Principal:
 
 
 def issue_access_token(principal: Principal, *, settings: Settings, now: datetime | None = None) -> str:
+    """Sign a JWT carrying this principal's identity and memberships, good until it expires."""
     issued_at = now or datetime.now(UTC)
     claims: dict[str, Any] = {
         "iss": settings.jwt_issuer,
@@ -100,6 +103,7 @@ def issue_access_token(principal: Principal, *, settings: Settings, now: datetim
 
 
 def decode_access_token(token: str, *, settings: Settings) -> Principal:
+    """Verify the token's signature, issuer and type, and rebuild the principal it names."""
     try:
         claims = jwt.decode(
             token,
@@ -144,6 +148,7 @@ _password_gate: list[Callable[[str], bool]] = []
 
 
 def bind_password_gate(may_call: Callable[[str], bool]) -> None:
+    """Bound by `main.py` to `identity`'s rule for which routes a temporary password may still reach."""
     _password_gate.clear()
     _password_gate.append(may_call)
 
@@ -165,6 +170,7 @@ async def get_principal(
     settings: Annotated[Settings, Depends(get_settings)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Principal:
+    """The FastAPI dependency behind `CurrentPrincipal`: decode the bearer token and refuse a dead account."""
     if credentials is None or not credentials.credentials:
         raise Unauthenticated()
     principal = decode_access_token(credentials.credentials, settings=settings)

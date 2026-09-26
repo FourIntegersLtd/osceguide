@@ -36,6 +36,7 @@ __all__ = [
 
 
 class Status(StrEnum):
+    """Where a version sits in its publishing life: draft, published or archived."""
 
     DRAFT = "draft"
     PUBLISHED = "published"
@@ -47,29 +48,31 @@ class LifecycleError(Exception):
 
 
 class NotEditable(LifecycleError):
-    pass
+    """Raised when something is changed that is not a draft."""
 
 
 class NotDeletable(LifecycleError):
-    pass
+    """Raised when something is deleted that is not a draft."""
 
 
 class AlreadyPublished(LifecycleError):
-    pass
+    """Raised when a version already published is published again."""
 
 
 class NotArchivable(LifecycleError):
-    pass
+    """Raised when something is archived that is not published."""
 
 
 @dataclass(frozen=True)
 class VersionRef:
+    """The parts of a versioned thing the lifecycle rules need: its number and status."""
 
     number: int
     status: Status
 
 
 def ensure_editable(version: VersionRef) -> None:
+    """Refuse to edit anything but a draft."""
     if version.status is not Status.DRAFT:
         raise NotEditable(
             "Only a draft can be edited. Published content is what past attempts were "
@@ -78,6 +81,7 @@ def ensure_editable(version: VersionRef) -> None:
 
 
 def ensure_deletable(version: VersionRef) -> None:
+    """Refuse to delete anything but a draft."""
     if version.status is not Status.DRAFT:
         raise NotDeletable("Only a draft can be deleted. Archive a published version instead.")
 
@@ -94,6 +98,7 @@ def ensure_brief_editable(version: VersionRef) -> None:
 
 
 def publish(version: VersionRef) -> Status:
+    """Move a draft to published. Refuses a version already published or archived."""
     if version.status is Status.PUBLISHED:
         raise AlreadyPublished("That version is already published.")
     if version.status is Status.ARCHIVED:
@@ -102,6 +107,7 @@ def publish(version: VersionRef) -> Status:
 
 
 def archive(version: VersionRef) -> Status:
+    """Retire a published version. Refuses anything not published."""
     if version.status is not Status.PUBLISHED:
         raise NotArchivable(
             "Only a published version can be archived. A draft that is not wanted is deleted."

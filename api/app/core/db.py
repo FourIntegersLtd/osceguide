@@ -34,16 +34,19 @@ NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
+    """The declarative base every slice's `models.py` extends."""
 
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 class UUIDPrimaryKey:
+    """Mixin giving a table a random UUID primary key."""
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
 
 
 class Timestamps:
+    """Mixin giving a table `created_at`/`updated_at`, both set by Postgres."""
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -98,6 +101,7 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def get_engine() -> AsyncEngine:
+    """The process-wide engine, created on first use."""
     global _engine, _session_factory
     if _engine is None:
         settings = get_settings()
@@ -112,12 +116,14 @@ def get_engine() -> AsyncEngine:
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """The session factory bound to the process-wide engine, creating the engine if needed."""
     get_engine()
     assert _session_factory is not None
     return _session_factory
 
 
 async def dispose_engine() -> None:
+    """Close the process-wide engine's connection pool, called on shutdown."""
     global _engine, _session_factory
     if _engine is not None:
         await _engine.dispose()

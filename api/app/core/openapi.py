@@ -131,6 +131,7 @@ def install_error_catalogue(app: FastAPI) -> None:
     build = app.openapi
 
     def openapi() -> dict[str, Any]:
+        """Build the document as FastAPI would, then patch in the error-code enum."""
         spec = build()
         schema = spec.get("components", {}).get("schemas", {}).get("ErrorResponse")
         if schema is not None:

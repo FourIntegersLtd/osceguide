@@ -22,6 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class AppEnv(StrEnum):
+    """Which environment this process is running as."""
 
     local = "local"
     test = "test"
@@ -60,6 +61,7 @@ REQUIRED_WHEN_DEPLOYED: Final[tuple[str, ...]] = (
 
 
 class Settings(BaseSettings):
+    """Everything the process reads from the environment, in one typed object."""
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
@@ -215,6 +217,7 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, raw_origins: object) -> object:
+        """Accept `CORS_ORIGINS` as a comma-separated string, as `.env` writes it."""
         # Allow CORS_ORIGINS="https://a.com,https://b.com" in the environment.
         if isinstance(raw_origins, str):
             return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
@@ -222,6 +225,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_secrets_when_deployed(self) -> Settings:
+        """Fill in local/test defaults, or refuse to start a deployed process missing a secret."""
         if self.app_env == AppEnv.local or self.app_env == AppEnv.test:
             self.jwt_secret = self.jwt_secret or _LOCAL_JWT_SECRET
             self.database_url = self.database_url or _LOCAL_DATABASE_URL

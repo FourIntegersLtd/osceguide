@@ -34,6 +34,7 @@ _lookup: list[AccountStatusLookup] = []
 
 
 def bind_account_status(lookup: AccountStatusLookup) -> None:
+    """Bound by `composition.bind_seams` to `identity`'s status lookup."""
     _lookup.clear()
     _lookup.append(lookup)
 

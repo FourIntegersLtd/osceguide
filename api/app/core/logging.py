@@ -22,6 +22,7 @@ REQUEST_ID_HEADER = "X-Request-ID"
 
 
 def configure_logging(settings: Settings) -> None:
+    """Set up structlog and stdlib logging: JSON lines when deployed, coloured console locally."""
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -61,10 +62,12 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
+    """Binds a request id (and the method and path) into every log line the request emits."""
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        """Stamp a request id onto the request and its response, and bind it for structlog."""
         request_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
         request.state.request_id = request_id
         structlog.contextvars.clear_contextvars()

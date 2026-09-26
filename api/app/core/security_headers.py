@@ -32,12 +32,14 @@ _HSTS = "max-age=63072000; includeSubDomains; preload"
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Adds the baseline headers to every response, and HSTS once deployed."""
 
     def __init__(self, app: ASGIApp, *, deployed: bool) -> None:
         super().__init__(app)
         self._deployed = deployed
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Run the request, then stamp the headers onto whatever it answered."""
         response = await call_next(request)
         for header_name, header_value in _BASE_HEADERS.items():
             response.headers.setdefault(header_name, header_value)

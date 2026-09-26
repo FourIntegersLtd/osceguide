@@ -75,6 +75,7 @@ async def flush_pending(session: AsyncSession, bus: EventBus | None = None) -> N
 
 
 async def _drain(queue: asyncio.Queue[str]) -> AsyncIterator[str]:
+    """Yield whatever this subscriber's queue receives, forever."""
     while True:
         yield await queue.get()
 
@@ -102,11 +103,13 @@ class InProcessEventBus:
         self._subscribers: dict[str, set[asyncio.Queue[str]]] = {}
 
     async def publish(self, topic: str, name: str) -> None:
+        """Wake every current subscriber to `topic` with `name`."""
         for queue in set(self._subscribers.get(topic, ())):
             queue.put_nowait(name)
 
     @contextlib.asynccontextmanager
     async def subscription(self, topics: Sequence[str]) -> AsyncIterator[AsyncIterator[str]]:
+        """Register a queue against these topics for as long as the caller holds it open."""
         queue: asyncio.Queue[str] = asyncio.Queue()
         for topic in topics:
             self._subscribers.setdefault(topic, set()).add(queue)
@@ -132,6 +135,7 @@ class RedisEventBus:
 
     @contextlib.asynccontextmanager
     async def subscription(self, topics: Sequence[str]) -> AsyncIterator[AsyncIterator[str]]:
+        """Subscribe to these topics on Redis for as long as the caller holds the subscription open."""
         pubsub = self._redis.pubsub()  # type: ignore[attr-defined]
         await pubsub.subscribe(*topics)
         try:

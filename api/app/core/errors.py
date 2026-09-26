@@ -31,6 +31,7 @@ class ErrorResponse(BaseModel):
 
 
 class AppError(Exception):
+    """Base for every application error. Its `status`, `code` and `message` become the response."""
 
     status: int = 500
     code: str = "internal_error"
@@ -63,6 +64,7 @@ def raise_mapped(exc: Exception, mapping: Mapping[type[Exception], type[AppError
 
 
 class InvalidInput(AppError):
+    """The request itself was malformed or failed a business rule (422)."""
 
     status = 422
     code = "invalid_input"
@@ -70,6 +72,7 @@ class InvalidInput(AppError):
 
 
 class Unauthenticated(AppError):
+    """No valid credentials were presented (401)."""
 
     status = 401
     code = "unauthenticated"
@@ -77,6 +80,7 @@ class Unauthenticated(AppError):
 
 
 class Forbidden(AppError):
+    """The caller is known but may not do this (403)."""
 
     status = 403
     code = "forbidden"
@@ -84,6 +88,7 @@ class Forbidden(AppError):
 
 
 class NotFound(AppError):
+    """Nothing exists at the id or path given, or it is hidden from this caller (404)."""
 
     status = 404
     code = "not_found"
@@ -91,6 +96,7 @@ class NotFound(AppError):
 
 
 class Conflict(AppError):
+    """The request is valid but clashes with the current state of the thing it acts on (409)."""
 
     status = 409
     code = "conflict"
@@ -98,6 +104,7 @@ class Conflict(AppError):
 
 
 class Gone(AppError):
+    """The resource existed but has been permanently withdrawn (410)."""
 
     status = 410
     code = "gone"
@@ -105,6 +112,7 @@ class Gone(AppError):
 
 
 class Unavailable(AppError):
+    """A dependency this request needed could not be reached (503)."""
 
     status = 503
     code = "unavailable"
@@ -125,6 +133,7 @@ def error_codes() -> list[str]:
     found: set[str] = set()
 
     def walk(cls: type[AppError]) -> None:
+        """Add every subclass's code, recursing through the whole tree below `cls`."""
         for sub in cls.__subclasses__():
             found.add(sub.code)
             walk(sub)
@@ -164,20 +173,24 @@ def _request_id(request: Request) -> str | None:
 
 
 def _error_response(request: Request, status: int, body: ErrorResponse) -> JSONResponse:
+    """Stamp the request id onto the error body and turn it into a JSON response."""
     body.request_id = _request_id(request)
     return JSONResponse(status_code=status, content=body.model_dump())
 
 
 def register_error_handlers(app: FastAPI) -> None:
+    """Wire every `AppError`, FastAPI's own validation error and anything unhandled to `ErrorResponse`."""
 
     @app.exception_handler(AppError)
     async def app_error(request: Request, exc: AppError) -> JSONResponse:
+        """Turn a raised `AppError` into its declared status and code."""
         return _error_response(
             request, exc.status, ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
         )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        """A request that failed FastAPI's own schema validation, as `invalid_input`."""
         details = {"errors": [dict(error, ctx=None) for error in exc.errors()]}
         return _error_response(
             request,
@@ -187,6 +200,7 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:
+        """Log the full traceback and answer 500 without leaking it to the caller."""
         log.exception("unhandled error", extra={"request_id": _request_id(request)})
         return _error_response(
             request, 500, ErrorResponse(code="internal_error", message="Something went wrong")

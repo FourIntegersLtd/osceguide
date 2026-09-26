@@ -39,6 +39,7 @@ class Visibility(StrEnum):
 
 
 class InvalidAudience(InvalidInput):
+    """The visibility and the org/group ids given do not make a coherent audience."""
 
     code = "invalid_audience"
     default_message = "That audience is not a coherent one"
@@ -191,6 +192,7 @@ class AudienceOut(BaseModel):
 
     @classmethod
     def of(cls, row: Any) -> AudienceOut:
+        """Build the outbound shape from a stored row carrying the three audience columns."""
         audience = audience_of(row)
         return cls(visibility=audience.visibility, org_id=audience.org_id, group_id=audience.group_id)
 
@@ -224,6 +226,7 @@ def bind_viewer_audiences(lookup: ViewerLookup) -> None:
 
 
 async def audiences_for(session: AsyncSession, user_id: uuid.UUID) -> ViewerAudiences:
+    """The organisations and groups one person belongs to, via the bound lookup."""
     if not _lookup:
         raise RuntimeError(
             "No viewer-audience lookup bound. app.main.create_app must call bind_viewer_audiences."

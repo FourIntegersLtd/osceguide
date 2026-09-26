@@ -16,6 +16,7 @@ _client: Redis | None = None
 
 
 def get_redis() -> Redis | None:
+    """The shared client, or `None` when Redis is disabled or unconfigured."""
     global _client
     settings = get_settings()
     if settings.redis_disabled or not settings.redis_url:
@@ -31,6 +32,7 @@ def get_redis() -> Redis | None:
 
 
 async def close_redis() -> None:
+    """Close the shared client, if one was ever opened. Called at shutdown."""
     global _client
     if _client is not None:
         await _client.aclose()
