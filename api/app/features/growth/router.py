@@ -1,3 +1,5 @@
+"""HTTP routes for partner attribution and referrals. Each hands straight to `service`."""
+
 from __future__ import annotations
 
 import uuid

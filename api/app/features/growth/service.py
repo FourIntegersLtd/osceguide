@@ -115,6 +115,7 @@ async def _purchases_for(session: AsyncSession, partner: str) -> int:
 
 
 async def read_funnel(session: AsyncSession, *, partner: str) -> FunnelRead:
+    """This partner's arrivals, signups and purchases, with the two conversion rates."""
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
@@ -147,6 +148,7 @@ async def issue_code(session: AsyncSession, *, user_id: uuid.UUID) -> ReferralRe
 
 
 async def read_my_referrals(session: AsyncSession, user_id: uuid.UUID) -> ReferralRead:
+    """This person's own referral code and what it has earned so far."""
     referrals = await repository.referrals_for(session, user_id)
     code = next((referral.code for referral in referrals if referral.redeemed_at is None), "")
     return _referral_read(code, referrals)
@@ -160,6 +162,11 @@ async def redeem_code(
     now: datetime,
     earned_pence: int = REFERRAL_REWARD_PENCE,
 ) -> ReferralRead:
+    """Redeem a code for the person who was referred, crediting the referrer.
+
+    Refused if the code does not exist, names the person redeeming it, or has
+    already been used.
+    """
     referral = await repository.referral_by_code(session, code)
     if referral is None:
         raise errors.ReferralNotFound()
@@ -176,6 +183,7 @@ async def redeem_code(
 
 
 def _referral_read(code: str, referrals: list) -> ReferralRead:  # type: ignore[type-arg]
+    """Shape one person's live code plus their totals across all their referrals."""
     redeemed = [referral for referral in referrals if referral.redeemed_at is not None]
     return ReferralRead(
         code=code,

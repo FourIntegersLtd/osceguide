@@ -1,3 +1,5 @@
+"""What the growth routes accept and return."""
+
 from __future__ import annotations
 
 import uuid

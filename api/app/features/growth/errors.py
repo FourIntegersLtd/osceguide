@@ -1,15 +1,19 @@
+"""The refusals a growth route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
 
 
 class UnknownPartnerError(NotFound):
+    """The partner named in the path or body is not one of the pilot partners."""
 
     code = "unknown_partner"
     default_message = "No such partner"
 
 
 class ExamNotInPilotError(InvalidInput):
+    """The exam named is not one of the exams the pilot covers."""
 
     code = "exam_not_in_pilot"
     default_message = "That exam is not part of the pilot"
@@ -27,18 +31,21 @@ class NotAReporter(Forbidden):
 
 
 class ReferralCodeTaken(Conflict):
+    """The randomly generated referral code collided with one already in use."""
 
     code = "referral_code_taken"
     default_message = "That referral code is already in use"
 
 
 class ReferralNotFound(NotFound):
+    """No referral matches that code, or the code belongs to the person redeeming it."""
 
     code = "referral_not_found"
     default_message = "No such referral code"
 
 
 class ReferralAlreadyRedeemed(Conflict):
+    """The code has already been used by somebody else and cannot be used again."""
 
     code = "referral_already_redeemed"
     default_message = "That referral code has already been used"

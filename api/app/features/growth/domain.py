@@ -24,16 +24,23 @@ _LANDING_PREFIX = "/exams/"
 
 
 class UnknownPartner(ValueError):
+    """Raised when a partner code names nobody in `PILOT_PARTNERS`."""
 
     pass
 
 
 class ExamNotInPilot(ValueError):
+    """Raised when an exam is not one of the exams a partner pilot covers."""
 
     pass
 
 
 def format_ref_id(partner: str, exam: str, *, pilot_exams: Collection[str]) -> str:
+    """Build the reference a partner should put in its link for one exam.
+
+    The inverse of `parse_ref_id`. Refuses an unknown partner or an exam outside
+    the pilot rather than producing a reference nothing can attribute later.
+    """
     partner_key = (partner or "").strip().lower()
     exam_key = (exam or "").strip().lower()
     if partner_key not in PILOT_PARTNERS:
@@ -55,6 +62,10 @@ def parse_ref_id(ref_id: str, *, pilot_exams: Collection[str]) -> tuple[str, str
 
 
 def exam_from_landing_path(path: str, *, pilot_exams: Collection[str]) -> str | None:
+    """The pilot exam a landing path names, or nothing if it names none.
+
+    The inverse of `landing_path_for`, so the two cannot drift apart.
+    """
     cleaned = (path or "").strip().lower()
     if not cleaned.startswith(_LANDING_PREFIX):
         return None
@@ -83,6 +94,7 @@ def attributes(*, arrived_at: datetime, signed_up_at: datetime) -> bool:
 
 @dataclass(frozen=True)
 class Funnel:
+    """One partner's conversion so far: how many arrived, signed up and paid."""
 
     arrivals: int
     signups: int
@@ -112,6 +124,7 @@ PAYOUT_STATUSES = ("unpaid", "paid")
 
 
 def normalise_payout_status(payout_status: str) -> str:
+    """Lower-cased, validated payout status, or a `ValueError` if it is neither."""
     key = (payout_status or "").strip().lower()
     if key not in PAYOUT_STATUSES:
         raise ValueError(f"A payout is {' or '.join(PAYOUT_STATUSES)}, not {payout_status!r}.")

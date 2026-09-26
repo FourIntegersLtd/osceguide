@@ -23,6 +23,7 @@ async def record_arrival(
     landing_path: str | None,
     utm: dict[str, Any] | None,
 ) -> PartnerArrival:
+    """Log one visit from a partner's link, before the visitor has an account."""
     arrival = PartnerArrival(
         partner=partner,
         exam_code=exam_code,
@@ -38,6 +39,7 @@ async def record_arrival(
 
 
 async def latest_arrival_for_visitor(session: AsyncSession, visitor_key: str) -> PartnerArrival | None:
+    """The most recent arrival logged under this anonymous visitor key, if any."""
     stmt = (
         select(PartnerArrival)
         .where(PartnerArrival.visitor_key == visitor_key)
@@ -48,6 +50,7 @@ async def latest_arrival_for_visitor(session: AsyncSession, visitor_key: str) ->
 
 
 async def acquisition_for(session: AsyncSession, user_id: uuid.UUID) -> Acquisition | None:
+    """The partner this user was attributed to, if one was ever recorded."""
     stmt = select(Acquisition).where(Acquisition.user_id == user_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -92,11 +95,13 @@ async def counts_for_partner(
 
 
 async def acquired_user_ids(session: AsyncSession, partner: str) -> list[uuid.UUID]:
+    """Every user id this partner has ever been credited with acquiring."""
     stmt = select(Acquisition.user_id).where(Acquisition.partner == partner)
     return list((await session.execute(stmt)).scalars())
 
 
 async def is_reporter(session: AsyncSession, *, partner: str, email: str) -> bool:
+    """Whether this email may read this one partner's numbers."""
     stmt = select(PartnerReporter.id).where(
         PartnerReporter.partner == partner,
         PartnerReporter.email == email,
@@ -106,6 +111,7 @@ async def is_reporter(session: AsyncSession, *, partner: str, email: str) -> boo
 
 
 async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> PartnerReporter:
+    """Grant this email reporting access to this one partner's numbers."""
     reporter = PartnerReporter(partner=partner, email=email)
     session.add(reporter)
     await session.flush()
@@ -117,11 +123,13 @@ async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> Pa
 
 
 async def referral_by_code(session: AsyncSession, code: str) -> Referral | None:
+    """The referral a code names, matched case-insensitively."""
     stmt = select(Referral).where(Referral.code == code.strip().upper())
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def create_referral(session: AsyncSession, *, referrer_user_id: uuid.UUID, code: str) -> Referral:
+    """Store a fresh, unredeemed referral code for this person to share."""
     referral = Referral(referrer_user_id=referrer_user_id, code=code.strip().upper())
     session.add(referral)
     await session.flush()
@@ -130,6 +138,7 @@ async def create_referral(session: AsyncSession, *, referrer_user_id: uuid.UUID,
 
 
 async def referrals_for(session: AsyncSession, user_id: uuid.UUID) -> list[Referral]:
+    """Every referral this person has issued, redeemed or not."""
     stmt = select(Referral).where(Referral.referrer_user_id == user_id)
     return list((await session.execute(stmt)).scalars())
 
@@ -142,6 +151,11 @@ async def redeem(
     earned_pence: int,
     at: datetime,
 ) -> None:
+    """Mark a referral redeemed, but only if it has not already been.
+
+    The `redeemed_at IS NULL` guard in the WHERE clause is what stops two
+    concurrent redemptions of the same code both succeeding.
+    """
     await session.execute(
         update(Referral)
         .where(Referral.id == referral_id, Referral.redeemed_at.is_(None))
@@ -175,6 +189,7 @@ async def redeemed_referrals_page(
 
 
 async def referral_by_id(session: AsyncSession, referral_id: uuid.UUID) -> Referral | None:
+    """One referral by its id, or nothing if it does not exist."""
     stmt = select(Referral).where(Referral.id == referral_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -188,6 +203,7 @@ async def set_payout(
     paid_at: datetime | None,
     paid_by_user_id: uuid.UUID | None,
 ) -> None:
+    """Record whether a redeemed referral has been settled, and by whom."""
     await session.execute(
         update(Referral)
         .where(Referral.id == referral_id)

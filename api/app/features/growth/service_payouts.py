@@ -94,6 +94,7 @@ async def set_referral_payout(
 
 
 async def _referral_admin_read(session: AsyncSession, referral) -> ReferralAdminRead:  # type: ignore[no-untyped-def]
+    """Shape one referral for the settlement queue, resolving both people's emails."""
     ids = [referral.referrer_user_id] + ([referral.referred_user_id] if referral.referred_user_id else [])
     people = await identity.user_refs_by_ids(session, ids)
     referrer = people.get(referral.referrer_user_id)
