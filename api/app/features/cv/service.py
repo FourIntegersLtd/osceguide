@@ -79,6 +79,7 @@ async def run_extraction_job(
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID) -> schemas.CvList:
+    """This person's own CVs, most recently uploaded first."""
     cvs_stored = await repository.list_for_user(session, user_id, limit=domain.RECENT_LIMIT)
     cvs = [_read(cv) for cv in cvs_stored]
     return schemas.CvList(cvs=cvs, total=len(cvs))
@@ -105,6 +106,7 @@ async def delete(session: AsyncSession, cv_id: uuid.UUID, *, user_id: uuid.UUID)
 
 
 def _read(cv: Cv) -> schemas.CvRead:
+    """Turn one stored CV row into the shape the API returns."""
     structured = schemas.StructuredCv.model_validate(cv.structured) if cv.structured else None
     return schemas.CvRead(
         id=cv.id,

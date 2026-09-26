@@ -1,3 +1,5 @@
+"""The refusals a CV route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import InvalidInput, NotFound

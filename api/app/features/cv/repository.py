@@ -54,6 +54,7 @@ async def delete_cv(session: AsyncSession, cv_id: uuid.UUID, user_id: uuid.UUID)
 async def mark_completed(
     session: AsyncSession, cv_id: uuid.UUID, *, structured: dict[str, Any], at: datetime
 ) -> None:
+    """Record a CV's read-out sections and clear any earlier error."""
     await session.execute(
         update(Cv)
         .where(Cv.id == cv_id)
@@ -62,6 +63,7 @@ async def mark_completed(
 
 
 async def mark_failed(session: AsyncSession, cv_id: uuid.UUID, *, error: str, at: datetime) -> None:
+    """Record why a CV's reading job failed, so the person sees the reason instead of a stuck row."""
     await session.execute(
         update(Cv).where(Cv.id == cv_id).values(status=Status.FAILED.value, error=error, completed_at=at)
     )

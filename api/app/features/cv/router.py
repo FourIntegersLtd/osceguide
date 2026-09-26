@@ -1,3 +1,5 @@
+"""HTTP routes for uploading, listing, reading and deleting a person's own CVs."""
+
 from __future__ import annotations
 
 import uuid

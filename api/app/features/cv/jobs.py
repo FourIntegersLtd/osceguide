@@ -31,10 +31,12 @@ async def enqueue_extraction(session: AsyncSession, *, cv_id: uuid.UUID) -> None
 
 
 def register() -> None:
+    """Attach the CV-reading task to the jobs app, so the worker picks it up."""
     app = get_jobs_app()
 
     @app.task(name=TASK, queue=QUEUE)
     async def extract_cv(cv_id: str) -> None:
+        """Run the reading job for one queued CV and log that it finished."""
         from app.core.db import job_session
         from app.features.cv.service import run_extraction_job
 
