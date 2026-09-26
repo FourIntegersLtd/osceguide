@@ -62,6 +62,7 @@ async def generate_station(
     ortho_station_type: str | None = None,
     settings: Settings,
 ) -> dict[str, Any]:
+    """Drafts a new station for a platform admin to review, as raw JSON matching the station schema."""
     system = exam_prompts.station_system_prompt(exam_code, ortho_station_type) + _STATION_JSON_APPENDIX
     return await _json_completion(
         settings=settings,
@@ -71,6 +72,7 @@ async def generate_station(
 
 
 async def generate_summary(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+    """Drafts a condition summary, normalised to the platform's summary draft keys."""
     exam = exam_code or "sca"
     system = exam_prompts.summary_system_prompt(exam) + _SUMMARY_JSON_APPENDIX
     raw = await _json_completion(
@@ -82,6 +84,7 @@ async def generate_summary(*, prompt: str, exam_code: str | None, settings: Sett
 
 
 async def generate_blog(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+    """Drafts a blog post, normalised to the platform's blog draft keys."""
     exam = exam_code or "sca"
     system = exam_prompts.blog_system_prompt(exam) + _BLOG_JSON_APPENDIX
     raw = await _json_completion(
@@ -93,6 +96,7 @@ async def generate_blog(*, prompt: str, exam_code: str | None, settings: Setting
 
 
 async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+    """Drafts a slide deck, normalised to the platform's slide deck draft keys."""
     exam = exam_code or "sca"
     system = exam_prompts.slide_system_prompt(exam) + _SLIDE_JSON_APPENDIX
     raw = await _json_completion(
@@ -104,6 +108,7 @@ async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: S
 
 
 async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+    """Drafts a two-host podcast script from source material, normalised to the platform's `script` key."""
     exam = exam_code or "sca"
     system = exam_prompts.podcast_system_prompt(prompt) + _PODCAST_JSON_APPENDIX
     raw = await _json_completion(
@@ -115,6 +120,11 @@ async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Sett
 
 
 async def _json_completion(*, settings: Settings, system: str, user: str) -> dict[str, Any]:
+    """Calls the LLM with the given system and user messages and parses its reply as a JSON object.
+
+    Refuses before calling out if no API key is configured, and refuses again if the model's
+    reply is not itself a JSON object, so callers never have to guard against a malformed shape.
+    """
     if not settings.openai_api_key.strip():
         raise GenerationUnavailable()
     from openai import AsyncOpenAI

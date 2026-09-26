@@ -1,3 +1,5 @@
+"""The request and response shapes for the platform-admin content generation endpoints."""
+
 from __future__ import annotations
 
 from typing import Any

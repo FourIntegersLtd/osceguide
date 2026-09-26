@@ -1,3 +1,7 @@
+"""The platform-admin routes that call an LLM to draft a station, summary, blog post, slide
+deck or podcast script for the content team to review before publishing.
+"""
+
 from __future__ import annotations
 
 from typing import Annotated

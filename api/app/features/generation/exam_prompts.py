@@ -22,6 +22,7 @@ ORTHO_PORTFOLIO_STATION_GENERATION_PROMPT = '\nYou are creating UK Orthopaedic S
 
 
 def _normalize_exam(exam_code: str | None) -> str:
+    """The exam code lower-cased and trimmed, defaulting to `sca` when none was given."""
     if not exam_code or not str(exam_code).strip():
         return "sca"
     return str(exam_code).strip().lower()

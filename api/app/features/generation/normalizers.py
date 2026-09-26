@@ -1,4 +1,6 @@
-"""Map B2C-shaped LLM JSON to platform media / authoring-friendly keys."""
+"""Turns the JSON an LLM returns, still shaped like the old B2C service's models, into the
+keys the platform's media and authoring code expects.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +8,7 @@ from typing import Any
 
 
 def _as_str_list(raw_value: Any) -> list[str]:
+    """The blank and non-string entries stripped out, or an empty list if raw_value is not a list at all."""
     if not isinstance(raw_value, list):
         return []
     return [str(item) for item in raw_value if item is not None and str(item).strip()]
@@ -46,6 +49,7 @@ def normalize_summary_response(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def _first_paragraph(markdown: str) -> str:
+    """The first non-heading paragraph of a Markdown body, trimmed to 500 characters, for use as a summary."""
     for block in markdown.split("\n\n"):
         line = block.strip()
         if line and not line.startswith("#"):
@@ -55,6 +59,7 @@ def _first_paragraph(markdown: str) -> str:
 
 
 def normalize_blog_response(raw: dict[str, Any]) -> dict[str, Any]:
+    """B2C blog fields to platform blog draft keys, deriving a summary from the body when none was given."""
     if "body_md" in raw and "content" not in raw:
         return raw
     title = str(raw.get("title") or "Untitled")
@@ -72,6 +77,9 @@ def normalize_blog_response(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_slide_deck_response(raw: dict[str, Any]) -> dict[str, Any]:
+    """B2C slide fields to platform slide deck draft keys. Passes raw through unchanged if it isn't shaped
+    like either a platform deck or a B2C one.
+    """
     if "topic" in raw and "slides" in raw:
         return raw
     title = str(raw.get("title") or "Untitled")
@@ -82,6 +90,9 @@ def normalize_slide_deck_response(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_podcast_response(raw: dict[str, Any]) -> dict[str, Any]:
+    """B2C podcast fields to a platform podcast draft's `script` key, falling back to dumping the whole
+    response as JSON if neither a script nor a content field is present.
+    """
     if "script" in raw:
         return raw
     if "content" in raw:
@@ -90,6 +101,7 @@ def normalize_podcast_response(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def json_dumps_safe(value: Any) -> str:
+    """Any JSON-serialisable value, dumped without escaping non-ASCII characters."""
     import json
 
     return json.dumps(value, ensure_ascii=False)
