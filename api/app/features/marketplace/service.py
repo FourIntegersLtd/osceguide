@@ -213,6 +213,7 @@ async def list_my_sessions(
 async def join_session(
     session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PeerSessionRead:
+    """Forwards to `service_sessions.join_session`; see there for the join rules."""
     from app.features.marketplace.service_sessions import join_session as _impl
 
     return await _impl(session, peer_session_id, user_id=user_id, now=now)
@@ -221,6 +222,7 @@ async def join_session(
 async def cancel_peer_session(
     session: AsyncSession, peer_session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> None:
+    """Forwards to `service_sessions.cancel_peer_session`; see there for the cancel rules."""
     from app.features.marketplace.service_sessions import cancel_peer_session as _impl
 
     return await _impl(session, peer_session_id, user_id=user_id, now=now)

@@ -29,15 +29,15 @@ class PostUnavailable(Exception):
 
 
 class CannotClaimOwnPost(Exception):
-    pass
+    """Raised when the person offering a slot tries to claim it themselves."""
 
 
 class NotYours(Exception):
-    pass
+    """Raised when someone other than the person who offered a slot tries to withdraw it."""
 
 
 class SessionNotJoinable(Exception):
-    pass
+    """Raised when a booked session is cancelled, not yet open, or past its join window."""
 
 
 @dataclass(frozen=True)
@@ -60,6 +60,7 @@ class SessionState:
 
 
 def ensure_claimable(post: PostState, *, claimer_id: str, now: datetime) -> None:
+    """Refuse to claim a slot that is gone, already started, or the caller's own."""
     if post.status not in CLAIMABLE_STATUSES:
         raise PostUnavailable(f"That slot is no longer available ({post.status}).")
     if post.owner_id == claimer_id:
@@ -70,6 +71,7 @@ def ensure_claimable(post: PostState, *, claimer_id: str, now: datetime) -> None
 
 
 def ensure_cancellable(post: PostState, *, actor_id: str) -> None:
+    """Refuse to withdraw a slot that is not the caller's own or is no longer open."""
     if post.owner_id != actor_id:
         raise NotYours("Only the person who offered a slot can withdraw it.")
     if post.status not in CANCELLABLE_STATUSES:
@@ -81,6 +83,7 @@ def may_join(peer_session: SessionState, *, user_id: str) -> bool:
 
 
 def ensure_joinable(peer_session: SessionState, *, now: datetime) -> None:
+    """Refuse to join a session that is not scheduled or active, or is outside its join window."""
     if peer_session.status not in JOINABLE_STATUSES:
         raise SessionNotJoinable(f"That session is {peer_session.status} and can no longer be joined.")
     if now < peer_session.starts_at - OPENS_BEFORE_START:

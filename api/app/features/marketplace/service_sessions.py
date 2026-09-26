@@ -17,6 +17,7 @@ from app.features.marketplace.service import _exam_codes
 
 
 def _partner_id(peer_session: PeerSession, user_id: uuid.UUID) -> uuid.UUID:
+    """The other person in this session, whichever role the viewer plays."""
     if peer_session.owner_user_id == user_id:
         return peer_session.claimer_user_id
     return peer_session.owner_user_id
@@ -29,6 +30,7 @@ async def list_my_sessions(
     limit: int,
     cursor: dict[str, Any] | None = None,
 ) -> tuple[list[PeerSessionRead], str | None]:
+    """Every session this person has offered or claimed, latest start time first."""
     peer_sessions, next_cursor = await repository.sessions_for_user(
         session, user_id, limit=limit, cursor=cursor
     )

@@ -6,6 +6,7 @@ from app.core.errors import Conflict, Forbidden, NotFound
 
 
 class PostNotFound(NotFound):
+    """No slot exists with the given id."""
 
     code = "post_not_found"
     default_message = "No such slot"
@@ -23,24 +24,28 @@ class PostUnavailableError(Conflict):
 
 
 class CannotClaimOwnPostError(Conflict):
+    """The caller tried to claim the slot they offered themselves."""
 
     code = "cannot_claim_own_post"
     default_message = "You cannot claim your own slot"
 
 
 class NotYoursError(Forbidden):
+    """Someone other than the person who offered a slot tried to withdraw it."""
 
     code = "not_your_post"
     default_message = "Only the person who offered a slot can withdraw it"
 
 
 class SessionNotFound(NotFound):
+    """No booked session exists with the given id."""
 
     code = "peer_session_not_found"
     default_message = "No such session"
 
 
 class SessionNotOpen(Conflict):
+    """The session is cancelled, not yet open, or past its join window."""
 
     code = "peer_session_not_open"
     default_message = "That session has not opened yet"

@@ -35,6 +35,7 @@ def post_read(
     owner_username: str,
     claimed_by_username: str | None = None,
 ) -> PostRead:
+    """One offered slot, as the viewer sees it."""
     return PostRead(
         id=post.id,
         owner_user_id=post.owner_user_id,

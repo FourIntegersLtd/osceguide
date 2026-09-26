@@ -24,6 +24,7 @@ async def create_post(
     duration_minutes: int,
     note: str | None,
 ) -> AvailabilityPost:
+    """Offer a new slot, available to whoever the audience addresses."""
     post = AvailabilityPost(
         visibility=str(audience.visibility),
         audience_org_id=audience.org_id,
@@ -41,6 +42,7 @@ async def create_post(
 
 
 async def post_by_id(session: AsyncSession, post_id: uuid.UUID) -> AvailabilityPost | None:
+    """One offered slot, or `None` if no such slot exists."""
     stmt = select(AvailabilityPost).where(AvailabilityPost.id == post_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -59,6 +61,7 @@ async def lock_post(session: AsyncSession, post_id: uuid.UUID) -> AvailabilityPo
 async def mark_claimed(
     session: AsyncSession, post_id: uuid.UUID, *, claimer_user_id: uuid.UUID, at: datetime
 ) -> None:
+    """Record who claimed a slot and when. Call this only while the post is locked."""
     await session.execute(
         update(AvailabilityPost)
         .where(AvailabilityPost.id == post_id)
@@ -67,6 +70,7 @@ async def mark_claimed(
 
 
 async def mark_cancelled(session: AsyncSession, post_id: uuid.UUID, *, at: datetime) -> None:
+    """Withdraw a slot: mark it cancelled as of `at`."""
     await session.execute(
         update(AvailabilityPost)
         .where(AvailabilityPost.id == post_id)
@@ -138,6 +142,7 @@ async def create_peer_session(
     exam_id: uuid.UUID,
     starts_at: datetime,
 ) -> PeerSession:
+    """Book the session created when a slot is claimed."""
     peer_session = PeerSession(
         post_id=post_id,
         owner_user_id=owner_user_id,
@@ -153,6 +158,7 @@ async def create_peer_session(
 
 
 async def set_room(session: AsyncSession, peer_session_id: uuid.UUID, *, room_name: str) -> None:
+    """Record the LiveKit room the two people will join at the appointed time."""
     await session.execute(
         update(PeerSession).where(PeerSession.id == peer_session_id).values(room_name=room_name)
     )
@@ -166,6 +172,7 @@ async def link_practice_session(
     doctor_user_id: uuid.UUID,
     patient_user_id: uuid.UUID,
 ) -> None:
+    """Link the live practice session the first joiner created, and mark the session active."""
     await session.execute(
         update(PeerSession)
         .where(PeerSession.id == peer_session_id)
@@ -190,6 +197,7 @@ async def mark_peer_cancelled(session: AsyncSession, peer_session_id: uuid.UUID,
 
 
 async def peer_session_by_id(session: AsyncSession, peer_session_id: uuid.UUID) -> PeerSession | None:
+    """One booked session, or `None` if no such session exists."""
     stmt = select(PeerSession).where(PeerSession.id == peer_session_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -201,6 +209,7 @@ async def sessions_for_user(
     limit: int,
     cursor: dict[str, Any] | None = None,
 ) -> tuple[list[PeerSession], str | None]:
+    """Every session this person offered or claimed, latest start time first."""
     stmt = select(PeerSession).where(
         or_(
             PeerSession.owner_user_id == user_id,
