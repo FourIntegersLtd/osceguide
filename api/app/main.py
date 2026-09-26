@@ -95,6 +95,7 @@ WORKER_PREFIX = "/api/worker"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Log the app's start, then close Redis and the database engine on shutdown."""
     settings = get_settings()
     get_logger(__name__).info("starting", env=settings.app_env.value, version=__version__)
     yield
@@ -173,6 +174,7 @@ def worker_router() -> APIRouter:
 
 
 def create_app() -> FastAPI:
+    """Build the FastAPI app: settings, logging, middleware, every slice's router and its error catalogue."""
     settings = get_settings()
     configure_logging(settings)
     if configure_sentry(settings):
