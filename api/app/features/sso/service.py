@@ -45,6 +45,10 @@ async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSig
 async def _sign_in(
     session: AsyncSession, *, kind: domain.BindingKind, binding_value: str
 ) -> schemas.SsoSignIn:
+    """Look a binding up and answer what its sign-in page should show, or
+    refuse `sso_not_configured` — for no such binding, a disabled
+    configuration, and an organisation that no longer exists alike, since
+    none of those is something to explain to an anonymous caller."""
     config = await repository.find_by_binding(session, kind=kind.value, binding_value=binding_value)
     if config is None:
         raise errors.SsoNotConfigured()
@@ -69,6 +73,8 @@ async def _sign_in(
 
 
 async def read_config(session: AsyncSession, org_slug: str) -> schemas.SsoConfigRead:
+    """The whole arrangement for the platform console, or refuse
+    `sso_not_configured` for an unknown org or one with no arrangement yet."""
     org = await tenancy.org_ref_by_slug(session, org_slug)
     if org is None:
         raise errors.SsoNotConfigured()
@@ -81,6 +87,13 @@ async def read_config(session: AsyncSession, org_slug: str) -> schemas.SsoConfig
 async def save_config(
     session: AsyncSession, org_slug: str, body: schemas.SaveSsoConfig
 ) -> schemas.SsoConfigRead:
+    """Replace this organisation's arrangement wholesale.
+
+    Refuses before writing anything for a provider nobody knows, a setting
+    combination `domain.ensure_configurable` calls unsafe, or a host or email
+    domain another organisation already claims — the last checked binding by
+    binding, so the refusal names the one to go and sort out.
+    """
     org = await tenancy.org_ref_by_slug(session, org_slug)
     if org is None:
         raise errors.SsoNotConfigured()
@@ -133,6 +146,8 @@ def _bindings(body: schemas.SaveSsoConfig) -> list[tuple[str, str]]:
 
 
 async def _read(session: AsyncSession, config: OrganizationSso, *, org_slug: str) -> schemas.SsoConfigRead:
+    """Build the console's read shape for one arrangement, its bindings
+    loaded alongside it."""
     bindings = await repository.bindings_for(session, config.id)
     provider = domain.normalise_provider(config.provider)
     return schemas.SsoConfigRead(

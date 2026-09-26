@@ -38,6 +38,8 @@ class SsoBrokers:
         self._settings = settings
 
     def for_provider(self, provider: domain.Provider) -> SsoBroker:
+        """The adapter for this provider, or refuse `sso_login_unavailable`
+        if its secret is not configured on this deployment."""
         # Imported here, not at module load: a deployment with neither
         # provider configured must still be able to import this module.
         from app.features.sso.clerk import build_clerk_broker  # noqa: PLC0415

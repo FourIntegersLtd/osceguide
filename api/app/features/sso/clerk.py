@@ -48,6 +48,9 @@ def _decode_payload(token: str) -> dict[str, Any] | None:
 
 
 def _primary_email(clerk_user: dict[str, Any]) -> str | None:
+    """The address Clerk marks primary, or the first one it has, or None for
+    an account with none — which this slice treats as unusable rather than
+    guessing."""
     addresses = clerk_user.get("email_addresses") or []
     primary_id = str(clerk_user.get("primary_email_address_id") or "").strip()
     if primary_id:
@@ -61,6 +64,8 @@ def _primary_email(clerk_user: dict[str, Any]) -> str | None:
 
 
 def _full_name(clerk_user: dict[str, Any]) -> str:
+    """First and last name joined, falling back to the username, or an
+    empty string for an account with none of the three."""
     first = str(clerk_user.get("first_name") or "").strip()
     last = str(clerk_user.get("last_name") or "").strip()
     return f"{first} {last}".strip() or str(clerk_user.get("username") or "")
@@ -93,6 +98,16 @@ class ClerkBroker:
     async def verify(
         self, *, token: str, issuer: str | None = None, expected_nonce: str | None = None
     ) -> SsoIdentity | None:
+        """Ask Clerk whether this session token is real, and fetch who it
+        belongs to.
+
+        Refuses (returns None) rather than raises for anything Clerk itself
+        calls a bad token or session: an expired, revoked or forged token, or
+        one for a user Clerk cannot then find, all look identical to the
+        caller — "this token does not prove anyone signed in". A network or
+        server failure talking to Clerk raises `SsoBrokerUnavailable`
+        instead, since that is not a verdict on the token at all.
+        """
         # One secret key verifies every partner's session; `issuer` (a
         # Clerk frontend domain) is only needed to build the sign-in URL, and
         # `expected_nonce` belongs to the OIDC flow Clerk does not run.

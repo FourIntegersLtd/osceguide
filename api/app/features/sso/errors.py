@@ -1,9 +1,14 @@
+"""The refusals an sso route can return. Clients branch on each one's `code`,
+never on `message`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, InvalidInput, NotFound, Unavailable
 
 
 class SsoNotConfigured(NotFound):
+    """No arrangement for this organisation, or one that exists but is
+    switched off — the two look identical to an anonymous caller."""
 
     code = "sso_not_configured"
     default_message = "That organisation does not sign in through an identity provider"
@@ -45,24 +50,33 @@ class SsoVerificationFailed(InvalidInput):
 
 
 class InvalidSsoBinding(InvalidInput):
+    """A host or email domain that fails `domain._ensure_name`, or a
+    sign-in request with neither a host nor an email given."""
 
     code = "invalid_sso_binding"
     default_message = "That is not a usable hostname or email domain"
 
 
 class UnknownSsoProvider(InvalidInput):
+    """A provider string nothing in `domain.Provider` names, submitted when
+    saving a configuration."""
 
     code = "unknown_sso_provider"
     default_message = "That is not an identity provider this platform knows"
 
 
 class SsoNotConfigurableError(InvalidInput):
+    """A save that would turn SSO-only on while SSO is off, or SSO on with
+    no issuer — refused before it can lock an institution out."""
 
     code = "sso_not_configurable"
     default_message = "That combination of settings would leave nobody a way in"
 
 
 class SsoBindingTaken(Conflict):
+    """A host or email domain another organisation already claims. Bindings
+    are unique platform-wide, so this is checked before writing, not caught
+    as a constraint violation after."""
 
     code = "sso_binding_taken"
     default_message = "Another organisation already claims that host or email domain"

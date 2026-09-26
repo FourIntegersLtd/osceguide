@@ -1,3 +1,5 @@
+"""Sign-in discovery, the SSO login flow, and the platform-admin config screen."""
+
 from __future__ import annotations
 
 from typing import Annotated

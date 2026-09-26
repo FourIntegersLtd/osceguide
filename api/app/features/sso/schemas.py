@@ -1,3 +1,6 @@
+"""The request and response bodies for sign-in discovery, the login flow,
+and reading or saving an organisation's SSO configuration."""
+
 from __future__ import annotations
 
 import uuid

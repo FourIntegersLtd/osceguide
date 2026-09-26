@@ -38,21 +38,30 @@ class BindingKind(StrEnum):
 
 
 class InvalidBinding(Exception):
-    pass
+    """A host or email domain that fails `_ensure_name`: empty, too long,
+    containing a space, or not a dotted name (`localhost` excepted)."""
 
 
 class InvalidProvider(Exception):
-    pass
+    """A stored or submitted provider string that is not one `Provider`
+    knows, at the point something tries to write or trust it."""
 
 
 class SsoNotConfigurable(Exception):
-    pass
+    """A configuration `ensure_configurable` refuses: SSO-only with SSO
+    switched off, or turned on with no issuer."""
 
 
 MAX_BINDING = 253  # A DNS name's limit, which bounds both kinds.
 
 
 def normalise_provider(raw_provider: str) -> Provider:
+    """The known `Provider` this string names, or refuse.
+
+    Refuses rather than defaulting to a provider, because guessing here would
+    mean a typo in a stored value silently pointed sign-in at the wrong
+    identity service.
+    """
     try:
         return Provider((raw_provider or "").strip().lower())
     except ValueError as exc:
@@ -90,6 +99,8 @@ def normalise_email_domain(raw_email_domain: str) -> str:
 
 
 def _ensure_name(text: str, what: str) -> None:
+    """Refuse a binding that is empty, too long, contains a space, or is not
+    a dotted name — the shape rule every host and email domain shares."""
     if not text:
         raise InvalidBinding(f"{what} cannot be empty.")
     if len(text) > MAX_BINDING:

@@ -1,3 +1,6 @@
+"""Storage for an organisation's sso arrangement and its host/email
+bindings."""
+
 from __future__ import annotations
 
 import uuid
@@ -10,11 +13,13 @@ from app.features.sso.models import OrganizationSso, OrganizationSsoBinding
 
 
 async def config_for_org(session: AsyncSession, org_id: uuid.UUID) -> OrganizationSso | None:
+    """This organisation's arrangement, or None if it has never configured one."""
     config_result = await session.execute(select(OrganizationSso).where(OrganizationSso.org_id == org_id))
     return config_result.scalar_one_or_none()
 
 
 async def bindings_for(session: AsyncSession, sso_id: uuid.UUID) -> Sequence[OrganizationSsoBinding]:
+    """Every host and email domain this configuration claims, in a stable order."""
     bindings_result = await session.execute(
         select(OrganizationSsoBinding)
         .where(OrganizationSsoBinding.sso_id == sso_id)
@@ -62,6 +67,9 @@ async def upsert_config(
     sign_in_label: str | None,
     default_exam_code: str | None,
 ) -> OrganizationSso:
+    """Create this organisation's arrangement if it has none, or overwrite
+    every field of the one it already has — a save is always a full
+    replace, never a partial patch."""
     config = await config_for_org(session, org_id)
     if config is None:
         config = OrganizationSso(org_id=org_id)
