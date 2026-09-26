@@ -39,10 +39,22 @@ class LiveKitRecorder:
                 )
             ],
         )
+        from livekit.protocol.room import CreateRoomRequest
+
         async with api.LiveKitAPI(
             settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
         ) as client:
-            started = await client.egress.start_room_composite_egress(request)
+            try:
+                # Created first: recording starts on the server's clock, as the
+                # consultation opens, before either person has joined, and
+                # LiveKit refuses to record a room that does not exist yet.
+                # Creating an existing room is a no-op.
+                await client.room.create_room(CreateRoomRequest(name=room))
+                started = await client.egress.start_room_composite_egress(request)
+            except Exception as exc:  # noqa: BLE001 - one transport error type for every condition
+                # Surfaced as the port's own error, so the caller records the
+                # session as unrecorded rather than failing the request.
+                raise VoiceUnavailable(f"LiveKit refused the recording: {exc}") from exc
         egress_id = getattr(started, "egress_id", "")
         if not egress_id:
             # Without an id there is no way to stop it later, and a recording
