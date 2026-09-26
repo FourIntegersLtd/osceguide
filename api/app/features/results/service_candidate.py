@@ -37,14 +37,14 @@ async def read_my_result(
 
     Moderation notes and the evidence snapshot stay internal.
     """
-    row = await _released_for(session, sitting_id, user_id)
+    revision_row = await _released_for(session, sitting_id, user_id)
     return TraineeResultRead(
-        sitting_id=row.sitting_id,
-        assessment_outcome=row.assessment_outcome,
-        rationale=row.rationale,
-        released_at=row.released_at,
-        acknowledged_at=await _acknowledged_at(session, row.id, user_id),
-        assessment_score=await _assessment_score(session, row, user_id),
+        sitting_id=revision_row.sitting_id,
+        assessment_outcome=revision_row.assessment_outcome,
+        rationale=revision_row.rationale,
+        released_at=revision_row.released_at,
+        acknowledged_at=await _acknowledged_at(session, revision_row.id, user_id),
+        assessment_score=await _assessment_score(session, revision_row, user_id),
     )
 
 
@@ -75,7 +75,7 @@ async def acknowledge_my_result(
 
 
 async def _assessment_score(
-    session: AsyncSession, row: CandidateResultRevision, user_id: uuid.UUID
+    session: AsyncSession, revision_row: CandidateResultRevision, user_id: uuid.UUID
 ) -> float | None:
     """This person's mean station score, on the scale the cohort ranking uses.
 
@@ -83,11 +83,11 @@ async def _assessment_score(
     a course lead cannot be shown two different numbers for the same marking.
     Returns None, not zero, when nothing of theirs has been marked.
     """
-    slots = await sittings.slots_for_sitting(session, row.org_id, row.sitting_id)
+    slots = await sittings.slots_for_sitting(session, revision_row.org_id, revision_row.sitting_id)
     mine = [slot.id for slot in slots if slot.trainee_id == user_id]
     if not mine:
         return None
-    scores = await reviews.scores_for_slots(session, row.org_id, mine)
+    scores = await reviews.scores_for_slots(session, revision_row.org_id, mine)
     marked = [score for score in scores.values() if score is not None]
     if not marked:
         return None
@@ -102,10 +102,10 @@ async def _released_for(
     A result is keyed by `trainees.id`, but the token carries a `users.id`.
     """
     trainee_ids = await roster.trainee_ids_for_user(session, user_id)
-    row = await repository.released_revision(session, sitting_id, trainee_ids)
-    if row is None:
+    revision_row = await repository.released_revision(session, sitting_id, trainee_ids)
+    if revision_row is None:
         raise errors.NotReleased()
-    return row
+    return revision_row
 
 
 async def _acknowledged_at(

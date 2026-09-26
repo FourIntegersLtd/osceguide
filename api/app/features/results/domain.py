@@ -16,6 +16,7 @@ MAX_RATIONALE = 4000
 
 
 class Assessment(StrEnum):
+
     PASS = "pass"  # noqa: S105 - an exam outcome, not a credential
     FAIL = "fail"
     INCONCLUSIVE = "inconclusive"
@@ -23,6 +24,7 @@ class Assessment(StrEnum):
 
 
 class Recruitment(StrEnum):
+
     HIRED = "hired"
     RESERVE = "reserve"
     NOT_HIRED = "not_hired"
@@ -31,6 +33,7 @@ class Recruitment(StrEnum):
 
 
 class Workflow(StrEnum):
+
     DRAFT = "draft"
     SIGNED_OFF = "signed_off"
     RELEASED = "released"

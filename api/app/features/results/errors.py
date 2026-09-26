@@ -9,21 +9,25 @@ from app.features.roster.errors import TraineeNotFound as TraineeNotFound
 
 
 class ResultNotFound(NotFound):
+
     code = "result_not_found"
     default_message = "No decision has been recorded for that candidate"
 
 
 class IncompatibleOutcomesError(InvalidInput):
+
     code = "incompatible_outcomes"
     default_message = "Those assessment and recruitment outcomes cannot go together"
 
 
 class NotSignableError(InvalidInput):
+
     code = "not_signable"
     default_message = "This decision is not complete enough to sign off"
 
 
 class InvalidWorkflowError(Conflict):
+
     code = "invalid_workflow"
     default_message = "That is not a step this decision can take"
 
@@ -50,5 +54,6 @@ class DecisionRevisedError(Conflict):
 
 
 class NotReleased(NotFound):
+
     code = "result_not_released"
     default_message = "Your result has not been released yet"

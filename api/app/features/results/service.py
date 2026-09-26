@@ -65,7 +65,7 @@ async def save_draft(
         except domain.IncompatibleOutcomes as exc:
             raise_mapped(exc, _REFUSALS)
 
-    row = await repository.append_revision(
+    revision_row = await repository.append_revision(
         session,
         org_id,
         sitting_id=sitting_id,
@@ -81,7 +81,7 @@ async def save_draft(
         evidence_fingerprint=domain.fingerprint(evidence),
         created_by=actor_id,
     )
-    return _read(row)
+    return _read(revision_row)
 
 
 async def sign_off(
@@ -101,7 +101,7 @@ async def sign_off(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    row = await repository.append_revision(
+    revision_row = await repository.append_revision(
         session,
         org_id,
         sitting_id=sitting_id,
@@ -121,12 +121,12 @@ async def sign_off(
     )
     await repository.append_event(
         session,
-        revision_id=row.id,
+        revision_id=revision_row.id,
         event_type="signed_off",
         actor_user_id=actor_id,
-        idempotency_key=f"signoff:{sitting_id}:{trainee_id}:{row.revision}",
+        idempotency_key=f"signoff:{sitting_id}:{trainee_id}:{revision_row.revision}",
     )
-    return _read(row)
+    return _read(revision_row)
 
 
 async def release(
@@ -157,7 +157,7 @@ async def release(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    row = await repository.append_revision(
+    revision_row = await repository.append_revision(
         session,
         org_id,
         sitting_id=sitting_id,
@@ -179,7 +179,7 @@ async def release(
     )
     await repository.append_event(
         session,
-        revision_id=row.id,
+        revision_id=revision_row.id,
         event_type="released",
         actor_user_id=actor_id,
         idempotency_key=f"release:{sitting_id}:{trainee_id}",
@@ -195,7 +195,7 @@ async def release(
         payload={"sitting_id": str(sitting_id)},
         idempotency_key=f"result_released:{sitting_id}:{trainee_id}",
     )
-    return _read(row)
+    return _read(revision_row)
 
 
 async def read_decision(
@@ -207,21 +207,21 @@ async def read_decision(
 async def _require(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
 ) -> CandidateResultRevision:
-    row = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
-    if row is None:
+    revision_row = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
+    if revision_row is None:
         raise errors.ResultNotFound()
-    return row
+    return revision_row
 
 
-def _read(row: CandidateResultRevision) -> DecisionRead:
+def _read(revision_row: CandidateResultRevision) -> DecisionRead:
     return DecisionRead(
-        revision=row.revision,
-        workflow_state=row.workflow_state,
-        assessment_outcome=row.assessment_outcome,
-        recruitment_outcome=row.recruitment_outcome,
-        rationale=row.rationale,
-        signed_off_at=row.signed_off_at,
-        released_at=row.released_at,
+        revision=revision_row.revision,
+        workflow_state=revision_row.workflow_state,
+        assessment_outcome=revision_row.assessment_outcome,
+        recruitment_outcome=revision_row.recruitment_outcome,
+        rationale=revision_row.rationale,
+        signed_off_at=revision_row.signed_off_at,
+        released_at=revision_row.released_at,
     )
 
 
@@ -229,5 +229,5 @@ async def decisions_for_sitting(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> dict[uuid.UUID, DecisionRead]:
     """Every candidate's current decision, keyed by `trainees.id`. For the sitting report."""
-    rows = await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
-    return {row.trainee_id: _read(row) for row in rows}
+    revisions = await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
+    return {revision_row.trainee_id: _read(revision_row) for revision_row in revisions}

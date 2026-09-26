@@ -70,6 +70,7 @@ async def save_decision(
     )
 
 
+# Put a name to the current draft decision. Refused if it has no outcome or rationale yet.
 @router.post(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/sign-off",
     response_model=schemas.DecisionRead,

@@ -65,7 +65,7 @@ async def append_revision(
     released_by: uuid.UUID | None = None,
     released_at: datetime | None = None,
 ) -> CandidateResultRevision:
-    row = CandidateResultRevision(
+    revision_row = CandidateResultRevision(
         org_id=org_id,
         sitting_id=sitting_id,
         trainee_id=trainee_id,
@@ -84,10 +84,10 @@ async def append_revision(
         released_by=released_by,
         released_at=released_at,
     )
-    session.add(row)
+    session.add(revision_row)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(revision_row)
+    return revision_row
 
 
 async def append_event(
@@ -98,18 +98,18 @@ async def append_event(
     actor_user_id: uuid.UUID | None,
     idempotency_key: str,
 ) -> CandidateResultEvent:
-    row = CandidateResultEvent(
+    event = CandidateResultEvent(
         revision_id=revision_id,
         event_type=event_type,
         actor_user_id=actor_user_id,
         idempotency_key=idempotency_key,
     )
-    session.add(row)
+    session.add(event)
     await session.flush()
     # `at` is a server default, so without this the caller holds None and
     # cannot tell anybody when the event happened.
-    await session.refresh(row)
-    return row
+    await session.refresh(event)
+    return event
 
 
 async def released_revision(
