@@ -51,6 +51,8 @@ the engine must never import `compat` itself.
 - Changing a port signature that a worker package already implements.
 - Anything that changes scoring behaviour for an existing consumer.
 - Database migrations in the backends.
+- Running **Promote to production**, or anything else that changes the
+  `assessment-platform` namespace.
 
 ## Never do
 
@@ -124,13 +126,43 @@ add a worker to `hosting/workers.py` when it lands.
 The LiveKit pins must match `livekit/pyproject.toml` exactly, including the
 documented `anthropic >=0.41,<1.0.0` httpx constraint.
 
+## Environments and deploys
+
+Two environments on one K3s cluster, built from `k8s/base` plus an overlay
+(`k8s/README.md` has the whole flow):
+
+- **staging**: namespace `assessment-platform-staging`, LiveKit project
+  `new-test-agent`, backend `staging-api.osceguide.com`. Every green `main` rolls
+  here by itself (`publish-ghcr.yml`).
+- **production**: namespace `assessment-platform` (never rename it). Changes only
+  via the **Promote to production** workflow, and only to an image staging runs.
+
+Rules:
+
+- A setting that differs per environment goes in `k8s/overlays/<env>`, never in
+  `k8s/base`. `tests/test_k8s_config.py` holds the overlays, the rollout script's
+  namespace map and the lines the deploy rewrites in step.
+- Staging uses test data and test accounts only. Never put a production key, URL
+  or worker secret in the staging namespace's secret.
+- "Deployed" in a verify recipe now means **staging**. Prove a voice change there
+  before anyone promotes it.
+
+Trap: **a worker on your laptop can steal staging's sessions.** `new-test-agent`
+is also handy for local runs, and LiveKit dispatches by agent name to whichever
+registered worker answers first. A local worker left on the default names
+(`assessment-self-hosted`, `assistant-self-hosted`) competes with the staging pods.
+It takes staging's rooms and posts to your local API, while staging's workers take
+yours. Locally, set platform-api's `LIVEKIT_AGENT_NAMESPACE=dev-<you>` and the
+matching worker names `LIVEKIT_ASSESSMENT_AGENT_NAME=dev-<you>-assessment-self-hosted`
+and `LIVEKIT_ASSISTANT_AGENT_NAME=dev-<you>-assistant-self-hosted`.
+
 ## Cutover discipline
 
 New workers register new agent names and take traffic through the backend
 routing resolvers. That traffic is **unconditional** — there is no allow-list,
 no per-user or per-org gate, and no route back to `livekit/`, so a bad release
-is recovered by a redeploy or a K3s rollback rather than an environment change
-(see `README.md`). Because nothing gates a widening, the parity harness and a
+is recovered by a production rollback rather than an environment change
+(see `k8s/README.md`). Because nothing gates a widening, the parity harness and a
 manual smoke of the affected session type belong before the merge, not before a
 rollout.
 

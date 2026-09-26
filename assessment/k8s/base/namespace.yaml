@@ -1,0 +1,8 @@
+# The namespace name here is a placeholder: each overlay's `namespace:` field
+# renames this object and moves every other resource into it (assessment-platform
+# for production, assessment-platform-staging for staging). The other base
+# manifests carry no namespace of their own for the same reason.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: assessment-platform

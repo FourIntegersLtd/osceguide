@@ -4,6 +4,9 @@
 .env.*
 !.env.sample
 *.secrets
+*.pem
+serviceAccountKey.json
+KMS
 k8s/secret.yaml
 __pycache__
 *.pyc
@@ -11,3 +14,7 @@ __pycache__
 .mypy_cache
 .ruff_cache
 logs
+# SEC-010: build artefacts and recorded runs are not part of the image. They
+# bloat the build context and can carry captured session data into the layer.
+runs
+dist

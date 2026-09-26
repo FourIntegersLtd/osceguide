@@ -1,8 +1,15 @@
 name: Publish GHCR
 
 # Builds the single worker image (OSCE_LIVEKIT_WORKER selects assessment or
-# assistant at run time) after CI passes on main, then optionally rolls both
-# deployments out on the K3s control plane. Ported from livekit/.github/workflows.
+# assistant at run time) after CI passes on main, tags it with its commit sha,
+# and rolls it out to STAGING on the K3s control plane.
+#
+# This workflow never touches production. Production only changes when someone
+# runs "Promote to production" (promote-production.yml), which ships an image
+# this workflow built and staging already ran.
+#
+# Repository variable K8S_AUTO_DEPLOY=true turns the staging rollout on; with any
+# other value the image is built and tagged but not deployed anywhere.
 
 on:
   workflow_run:
@@ -69,74 +76,51 @@ jobs:
           context: .
           file: Dockerfile
           push: true
+          # Only the commit sha. The moving `:staging` and `:production` tags are set
+          # by the roll-out-workers action after a rollout succeeds, so each always
+          # names what that environment is actually running.
           tags: |
             ${{ env.IMAGE_NAME }}:${{ steps.publish.outputs.sha }}
-            ${{ env.IMAGE_NAME }}:production
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-k8s:
-    name: deploy-k8s
+  deploy-staging:
+    name: deploy-staging
     runs-on: ubuntu-latest
-    # Draining pods can hold a rollout for many minutes; see ROLLOUT_TIMEOUT_SECS below.
+    # Draining pods can hold a rollout for many minutes; see rollout-timeout-seconds.
     timeout-minutes: 45
     needs: publish
     if: >-
       needs.publish.result == 'success' &&
       vars.K8S_AUTO_DEPLOY == 'true'
-    env:
-      IMAGE: ghcr.io/fourintegersltd/osceguide-assessment-platform
+    # GitHub Environment "staging": shows the deploy history under the repo's
+    # Environments tab and can hold staging-only secrets later.
+    environment: staging
+    # One staging rollout at a time; a newer push waits rather than cancelling a
+    # rollout halfway through draining.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
     steps:
+      # Deploy the manifests from the same commit the image was built from.
       - name: Checkout published commit
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ needs.publish.outputs.sha }}
 
-      - name: Validate deploy secrets
-        run: |
-          if [[ -z "${{ secrets.K8S_CONTROL_PLANE_HOST }}" || "${{ secrets.K8S_CONTROL_PLANE_HOST }}" != *"@"* ]]; then
-            echo "Set repository secret K8S_CONTROL_PLANE_HOST as user@host." >&2
-            exit 1
-          fi
-          if [[ "${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}" != *"BEGIN"* ]]; then
-            echo "Set repository secret K8S_CONTROL_PLANE_SSH_KEY to an OpenSSH private key." >&2
-            exit 1
-          fi
-
-      - name: Pin image digest in both deployments
-        env:
-          DIGEST: ${{ needs.publish.outputs.digest }}
-        run: |
-          if [[ -z "${DIGEST}" ]]; then
-            echo "Build did not produce an image digest." >&2
-            exit 1
-          fi
-          for DEPLOYMENT in k8s/deployment.yaml k8s/deployment-assistant.yaml; do
-            sed -i -E "s|image: ${IMAGE}(:[A-Za-z0-9._-]+\|@sha256:[a-f0-9]+)|image: ${IMAGE}@${DIGEST}|" "$DEPLOYMENT"
-            grep "image: ${IMAGE}@${DIGEST}" "$DEPLOYMENT"
-          done
-
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@b504c19775343714e11b8c754e4fe1f02dc7b8e7 # v0.9.0
+      - name: Connect to the control plane
+        uses: ./.github/actions/connect-to-control-plane
         with:
-          ssh-private-key: ${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}
+          control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+          control-plane-ssh-key: ${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}
 
-      - name: Roll out on control plane
-        env:
-          SSH_HOST: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
-          K8S_MANIFEST_DIR: ${{ vars.K8S_MANIFEST_DIR || '/root/k8s/assessment-platform' }}
-          # A pod being replaced keeps serving its consultations until they end
-          # (terminationGracePeriodSeconds: 900), and `kubectl rollout status` waits
-          # for old pods to terminate. The 600s default would report failure on a
-          # rollout that is merely draining correctly.
-          ROLLOUT_TIMEOUT_SECS: ${{ vars.ROLLOUT_TIMEOUT_SECS || '1800' }}
-        run: |
-          HOST="${SSH_HOST#*@}"
-          ssh-keyscan -H "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
-          ssh -o StrictHostKeyChecking=yes "${SSH_HOST}" "mkdir -p '${K8S_MANIFEST_DIR}'"
-          scp -o StrictHostKeyChecking=yes k8s/namespace.yaml k8s/configmap.yaml k8s/configmap-assistant.yaml \
-            k8s/deployment.yaml k8s/deployment-assistant.yaml "${SSH_HOST}:${K8S_MANIFEST_DIR}/"
-          # Keepalives: the rollout wait can exceed the SSH idle timeout and drop with "Broken pipe".
-          ssh -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "${SSH_HOST}" \
-            "K8S_MANIFEST_DIR='${K8S_MANIFEST_DIR}' ROLLOUT_TIMEOUT_SECS='${ROLLOUT_TIMEOUT_SECS}' bash -s" \
-            < scripts/k8s_rollout_on_control_plane.sh
+      - name: Roll out to staging
+        uses: ./.github/actions/roll-out-workers
+        with:
+          environment: staging
+          image-digest: ${{ needs.publish.outputs.digest }}
+          commit-sha: ${{ needs.publish.outputs.sha }}
+          control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+          manifest-root: ${{ vars.K8S_MANIFEST_DIR || '/root/k8s/assessment-platform' }}
+          rollout-timeout-seconds: ${{ vars.ROLLOUT_TIMEOUT_SECS || '1800' }}

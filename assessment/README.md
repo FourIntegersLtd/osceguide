@@ -37,8 +37,8 @@ tests/                        engine tests; tests/e2e/ needs a real LiveKit serv
 packages/voice_infra/         config-driven LiveKit plumbing: backends by label, speech by role, slots, sentry
 packages/livekit_assessment_worker/  the assessment worker (see below)
 packages/livekit_assistant_worker/   the assistant worker: help, onboarding, dashboard, consulting doctor
-hosting/                      container entry, LiveKit Cloud host, gunicorn supervisor for Railway / K8s
-k8s/ Dockerfile railway.toml livekit.*.toml  deployment (one process per worker)
+hosting/                      container entry, LiveKit Cloud host, gunicorn supervisor for K8s
+k8s/ Dockerfile livekit.*.toml               deployment (one process per worker)
 ```
 
 ## The assistant worker
@@ -331,20 +331,13 @@ an on/off switch). An earlier version of this README described staged
 allow-lists that the backends never implemented; the variables it named do not
 exist.
 
-So if a worker release misbehaves under load, recovery is a **redeploy or a K3s
-rollback**, not an environment change:
-
-```sh
-kubectl -n assessment-platform rollout undo deployment/assessment-worker
-kubectl -n assessment-platform rollout status deployment/assessment-worker
-# ...and deployment/assistant-worker for the assistant side.
-```
-
-Roll the image back to the previous digest in `k8s/deployment*.yaml` if the
-rollout history has already been pruned. Because there is no gate, treat the
-parity harness and a manual smoke of the affected session type as a
-**pre-merge** step rather than a pre-widening one — there is no smaller
-blast radius to widen from.
+So if a worker release misbehaves under load, recovery is a **production
+rollback**, not an environment change: run **Promote to production** with
+`rollback` ticked and the previous commit (see `k8s/README.md`, "Rolling
+production back"), or `kubectl -n assessment-platform rollout undo` if GitHub
+is down. Because there is no gate inside production, the staging environment is
+the smaller blast radius: run the parity harness before merging and a manual
+smoke of the affected session type on staging before promoting.
 
 Retiring the legacy tree is tracked in `livekit/README.md`.
 
@@ -372,9 +365,11 @@ Differences from the legacy workers to keep in mind:
   rather than ported.
 
 Deployment: `.github/workflows/publish-ghcr.yml` builds
-`ghcr.io/fourintegersltd/osceguide-assessment-platform` after CI on `main` and,
-with the `K8S_AUTO_DEPLOY` repository variable set, pins the digest into both
-`k8s/deployment*.yaml` and rolls them out through
-`scripts/k8s_rollout_on_control_plane.sh`. Both backends must vendor an engine
-that carries `AIInteractionProfile.tool_context` (refresh with `make
-engine-sync` in the consumer).
+`ghcr.io/fourintegersltd/osceguide-assessment-platform:<sha>` after CI on `main`
+and, with the `K8S_AUTO_DEPLOY` repository variable set, rolls it out to
+**staging** (`k8s/overlays/staging`). Production changes only through the
+**Promote to production** workflow, which ships the image staging already runs.
+The whole flow, and how to set up an environment, is in `k8s/README.md`.
+Both backends must vendor an engine that carries
+`AIInteractionProfile.tool_context` (refresh with `make engine-sync` in the
+consumer).

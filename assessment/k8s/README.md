@@ -1,13 +1,130 @@
 # Self-hosted deployment
 
-One Deployment per worker. `configmap.yaml` selects the worker and declares the
-backends it may serve (`VOICE_BACKENDS_JSON`); `secret.yaml` (copied from
-`secret.example.yaml`) carries the URLs, worker secrets and provider keys.
+One Deployment per worker, in two environments on the same K3s cluster:
+
+| Environment | Namespace | LiveKit Cloud project | Backend | Changes when |
+|---|---|---|---|---|
+| staging | `assessment-platform-staging` | `new-test-agent` | `staging-api.osceguide.com` | CI passes on `main` (automatic) |
+| production | `assessment-platform` | the live project | the live backends | someone runs **Promote to production** |
+
+## Layout
+
+```
+k8s/
+  base/                  what every environment shares
+    namespace.yaml         (renamed by each overlay)
+    networkpolicy.yaml
+    configmap.yaml         assessment worker settings + VOICE_BACKENDS_JSON
+    configmap-assistant.yaml
+    deployment.yaml        assessment worker
+    deployment-assistant.yaml
+  overlays/
+    staging/             namespace, 1 replica each, small session caps, Sentry "staging"
+    production/          namespace, base capacity, Sentry "production"
+  secret.example.yaml    template for each namespace's secret, applied by hand
+```
+
+The configmaps select the worker and declare the backends it may serve
+(`VOICE_BACKENDS_JSON`); each namespace's `assessment-worker-secrets` carries the
+URLs, worker secrets and provider keys. Secrets are never in an overlay: they hold
+real keys and are created by hand once per namespace (below).
+
+To see exactly what an environment receives, or to apply it by hand:
 
 ```sh
-kubectl apply -f namespace.yaml -f configmap.yaml -f secret.yaml -f deployment.yaml
-kubectl -n assessment-platform rollout status deployment/assessment-worker
+kubectl kustomize k8s/overlays/staging          # render only, touches nothing
+kubectl apply -k k8s/overlays/staging           # apply (the workflows do this for you)
+kubectl -n assessment-platform-staging rollout status deployment/assessment-worker
 ```
+
+A hand-run apply uses the moving `:staging` / `:production` image tag, which always
+points at what that environment last ran successfully. The workflows instead pin the
+exact image digest and stamp the commit (`osceguide.io/commit` annotation), so
+
+```sh
+kubectl -n assessment-platform get deploy -o jsonpath='{range .items[*]}{.metadata.name} {.metadata.annotations.osceguide\.io/commit}{"\n"}{end}'
+```
+
+answers "which commit is production running?".
+
+## How a change reaches production
+
+1. Merge to `main`. CI runs, then `publish-ghcr.yml` builds
+   `ghcr.io/fourintegersltd/osceguide-assessment-platform:<sha>` and rolls it out
+   to **staging** (when the repository variable `K8S_AUTO_DEPLOY` is `true`).
+2. Test on staging: the staging site and API dispatch into `new-test-agent`, which
+   only the staging workers serve.
+3. GitHub → Actions → **Promote to production** → Run workflow (from `main`). Leave
+   the commit empty to ship what staging runs. The `check` job refuses unless the
+   commit is on `main`, CI passed on it, and both staging workers run that exact
+   image and are available. The `deploy` job then waits for approval, rolls the same
+   image out to production, re-points `:production`, and moves the `production`
+   branch forward to the commit.
+
+Promote order when a change spans repos: platform-api, then assessment-platform,
+then platform-web.
+
+## Rolling production back
+
+Run **Promote to production** with `rollback` ticked and `commit_sha` set to the
+commit production ran before (any commit on the `production` branch). Its image
+already exists, so nothing is rebuilt; the staging check and branch move are skipped.
+Live consultations drain first, so allow up to ~15 minutes per worker.
+
+If GitHub itself is unavailable, on the control plane:
+
+```sh
+kubectl -n assessment-platform rollout undo deployment/assessment-worker
+kubectl -n assessment-platform rollout undo deployment/assistant-worker
+```
+
+## Setting up an environment
+
+Done once per namespace, on the control plane. The deploy refuses to run until both
+secrets exist (`scripts/k8s_rollout_on_control_plane.sh` checks first).
+
+```sh
+NAMESPACE=assessment-platform-staging
+
+# 1. The namespace (the first deploy would create it too; the secrets need it now).
+kubectl create namespace "$NAMESPACE"
+
+# 2. The registry pull secret: the same GHCR credentials production uses, copied across.
+kubectl -n assessment-platform get secret ghcr-pull-credentials -o json \
+  | jq 'del(.metadata.namespace, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp, .metadata.ownerReferences, .metadata.annotations)' \
+  | kubectl -n "$NAMESPACE" apply -f -
+
+# 3. The worker secrets, from the template, with this environment's values.
+#    Copy the template up first: scp k8s/secret.example.yaml <control-plane>:secret.staging.yaml
+#    then fill it in there (never in the repo checkout).
+kubectl -n "$NAMESPACE" apply -f secret.staging.yaml
+shred -u secret.staging.yaml                   # don't leave keys lying on disk
+```
+
+Staging's values, and nothing else:
+
+| Key | Staging value |
+|---|---|
+| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | the **`new-test-agent`** project's |
+| `PLATFORM_API_URL` | `https://staging-api.osceguide.com` |
+| `PLATFORM_WORKER_SECRET` | a fresh value, equal to staging platform-api's `WORKER_SECRET`. Never production's |
+| `PRACTICE_API_URL`, `INSTITUTION_API_URL` and their secrets | **empty**. The legacy backends have no staging; an empty URL only fails if that backend is dispatched, which staging never does |
+| provider keys (`OPENAI_API_KEY`, ...) | may be the same accounts as production, or separate keys to see staging spend apart |
+| `SENTRY_DSN` | same project is fine: the overlay labels errors `staging` |
+
+Never put a production LiveKit key or a production backend URL in the staging
+secret: staging would then take real candidates' dispatches or write into real data.
+
+### One-time GitHub setup (repository settings)
+
+- **Environments** → `staging` (no rules) and `production` (required reviewer: the
+  owner). The promote `deploy` job waits on `production`.
+- **Branches** → protect `production`: no force pushes, no deletions, and allow
+  GitHub Actions to push (the promote workflow moves it; nobody else should).
+- Repository secrets `K8S_CONTROL_PLANE_HOST` and `K8S_CONTROL_PLANE_SSH_KEY` are
+  shared by both environments. Optional variables: `K8S_MANIFEST_DIR` (control-plane
+  folder holding one sub-folder per environment, default
+  `/root/k8s/assessment-platform`) and `ROLLOUT_TIMEOUT_SECS`.
 
 The container runs `make start`: gunicorn serves `/health` and supervises one
 `python -m livekit_assessment_worker.entrypoint start` subprocess.
@@ -38,6 +155,11 @@ assistant pod, so the two budgets add up on the same hardware: a CX33 measured a
 Note the load function counts jobs, not CPU, so a saturated node does not shed
 dispatch on its own — the cap is the only backpressure. Re-measure after any
 change to the pipeline; see `livekit/k8s/INFRASTRUCTURE.md`.
+
+The one-pod-per-node rule only counts pods in the same namespace, so a staging pod
+shares a node with a production pod. That is why staging runs 1 replica with caps of
+2 + 1: a busy staging test takes at most 3 sessions' worth of a node from production.
+Check headroom before raising them.
 
 ## Rollouts drain rather than cut
 

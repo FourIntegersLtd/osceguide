@@ -1,0 +1,52 @@
+# Opens an SSH connection path to the K3s control plane for the rest of the job.
+#
+# Used by the staging deploy (publish-ghcr.yml) and by "Promote to production"
+# (promote-production.yml). After this step, later steps can run
+# `ssh "$CONTROL_PLANE_HOST" ...` without handling keys themselves.
+name: Connect to the K3s control plane
+description: Check the deploy secrets, load the SSH key into an agent and trust the host.
+
+inputs:
+  control-plane-host:
+    description: The control plane as user@host (repository secret K8S_CONTROL_PLANE_HOST).
+    required: true
+  control-plane-ssh-key:
+    description: An OpenSSH private key allowed to log in there (secret K8S_CONTROL_PLANE_SSH_KEY).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Fail with a readable message when a secret is missing or malformed, instead
+    # of a confusing SSH error several steps later.
+    - name: Check deploy secrets
+      shell: bash
+      env:
+        CONTROL_PLANE_HOST: ${{ inputs.control-plane-host }}
+        CONTROL_PLANE_SSH_KEY: ${{ inputs.control-plane-ssh-key }}
+      run: |
+        if [[ -z "$CONTROL_PLANE_HOST" || "$CONTROL_PLANE_HOST" != *"@"* ]]; then
+          echo "Set repository secret K8S_CONTROL_PLANE_HOST as user@host." >&2
+          exit 1
+        fi
+        if [[ "$CONTROL_PLANE_SSH_KEY" != *"BEGIN"* ]]; then
+          echo "Set repository secret K8S_CONTROL_PLANE_SSH_KEY to an OpenSSH private key." >&2
+          exit 1
+        fi
+
+    # Hold the private key in memory for this job only; it is never written to disk.
+    - name: Start SSH agent
+      uses: webfactory/ssh-agent@b504c19775343714e11b8c754e4fe1f02dc7b8e7 # v0.9.0
+      with:
+        ssh-private-key: ${{ inputs.control-plane-ssh-key }}
+
+    # Record the host's key so later ssh/scp calls can insist on it
+    # (StrictHostKeyChecking=yes) rather than trusting whatever answers.
+    - name: Trust the control plane host key
+      shell: bash
+      env:
+        CONTROL_PLANE_HOST: ${{ inputs.control-plane-host }}
+      run: |
+        host_name="${CONTROL_PLANE_HOST#*@}"
+        mkdir -p ~/.ssh
+        ssh-keyscan -H "$host_name" >> ~/.ssh/known_hosts 2>/dev/null || true

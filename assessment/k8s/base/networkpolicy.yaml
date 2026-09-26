@@ -1,0 +1,31 @@
+# SEC-010: lock inbound traffic to the two worker pods down to the ports the
+# kubelet probes and in-cluster callers actually use. Everything else inbound
+# is denied.
+#
+# Egress is left unrestricted on purpose: a worker dials out to LiveKit Cloud's
+# SFU, the dispatching backends and the speech/LLM providers, all outside the
+# cluster and none on a fixed address, so a useful egress allow-list would have
+# to enumerate the whole internet. The inbound lockdown is the win here; a later
+# pass can pin egress to a known CIDR set if the providers ever publish one.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-ingress
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - assessment-worker
+          - assistant-worker
+  policyTypes:
+    - Ingress
+  ingress:
+    # 8080 is the supervisor's /health (kubelet probes); 8087/8088 are the two
+    # workers' agent ports. No source selector: probes come from the node, whose
+    # address varies, but the port allow-list already denies everything else.
+    - ports:
+        - port: 8080
+        - port: 8087
+        - port: 8088
