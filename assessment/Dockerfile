@@ -38,7 +38,7 @@ ENV PATH=/app/.venv/bin:$PATH \
     TORCH_HOME=/app/.cache/torch
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates make \
+    && apt-get install --yes --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && adduser --disabled-password --gecos "" --home /home/appuser \
         --shell /usr/sbin/nologin --uid "${UID}" appuser
@@ -46,8 +46,11 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app /app
 
-RUN chmod +x hosting/container_entry.sh
-
 USER appuser
 
-CMD ["hosting/container_entry.sh"]
+# The worker is the container's main process (PID 1), started in exec form with
+# no shell, make or supervisor in front of it. The platform's stop signal must
+# reach the LiveKit SDK directly: on SIGTERM it stops taking new sessions, lets
+# the running ones finish (drain_timeout, under the pod's grace period), then
+# exits. OSCE_LIVEKIT_WORKER picks which worker; K8s and LiveKit Cloud share it.
+CMD ["python", "-m", "hosting.run_worker", "start"]

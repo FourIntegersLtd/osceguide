@@ -37,7 +37,7 @@ tests/                        engine tests; tests/e2e/ needs a real LiveKit serv
 packages/voice_infra/         config-driven LiveKit plumbing: backends by label, speech by role, slots, sentry
 packages/livekit_assessment_worker/  the assessment worker (see below)
 packages/livekit_assistant_worker/   the assistant worker: help, onboarding, dashboard, consulting doctor
-hosting/                      container entry, LiveKit Cloud host, gunicorn supervisor for K8s
+hosting/                      the container's entry: runs the selected worker as its main process
 k8s/ Dockerfile livekit.*.toml               deployment (one process per worker)
 ```
 
@@ -81,8 +81,8 @@ them); everything else runs on the pipeline. Run it with
 
 Local practice needs both worker families: run `make dev-assessment` and
 `make dev-assistant` in separate terminals. For supervised processes, use
-`make start-assessment` and `PORT=8081 make start-assistant`. Each supervisor
-starts its agent on boot, without waiting for a request to `/health`.
+`make start-assessment` and `make start-assistant`, which run each worker
+exactly as the container does.
 
 When development shares a LiveKit project with deployed workers, use distinct
 agent names. For example, set the local platform API's `LIVEKIT_AGENT_NAMESPACE`
@@ -212,10 +212,9 @@ observers, candidates waiting their turn) are neither listened to nor
 transcribed. Session types, exams and consumers are the backend's business:
 the worker sees only an attempt id, a backend label and a candidate.
 
-Run it: `make dev-assessment` locally against `.env`; `make start` in a
-container (gunicorn `/health` supervising the worker, `OSCE_LIVEKIT_WORKER`
-selects which); LiveKit Cloud via `hosting/livekit_cloud_host.py` and
-`livekit.assessment.toml`.
+Run it: `make dev-assessment` locally against `.env`. Containers, on K8s and
+on LiveKit Cloud (`livekit.assessment.toml`), run `python -m hosting.run_worker
+start` as their main process, and `OSCE_LIVEKIT_WORKER` selects which worker.
 
 ## The three-layer model
 

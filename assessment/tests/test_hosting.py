@@ -1,20 +1,26 @@
-"""Hosting glue: worker selection, health semantics, restart loop."""
+"""Hosting glue: which worker a container runs, and that it runs as the container's own process."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+import json
+import re
+import sys
+import types
+from pathlib import Path
 
 import pytest
 
-from hosting import supervisor
+from hosting import run_worker
 from hosting.workers import WORKER_ENV, selected_worker
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_worker_is_selected_by_env(monkeypatch) -> None:
     monkeypatch.setenv(WORKER_ENV, "assessment")
-    spec = selected_worker()
-    assert spec.module == "livekit_assessment_worker.entrypoint"
-    assert spec.default_port == 8087
+    assert selected_worker().module == "livekit_assessment_worker.entrypoint"
+    monkeypatch.setenv(WORKER_ENV, "assistant")
+    assert selected_worker().module == "livekit_assistant_worker.entrypoint"
 
 
 @pytest.mark.parametrize("value", ["", "patient", "both"])
@@ -24,27 +30,29 @@ def test_unknown_worker_fails_at_boot(monkeypatch, value) -> None:
         selected_worker()
 
 
-def test_health_is_200_while_starting_or_running_and_503_after_a_crash(monkeypatch) -> None:
-    monkeypatch.setenv(WORKER_ENV, "assessment")
-    state = supervisor.WorkerState(selected_worker())
-    assert supervisor.health_http_status(state.health(0)) == 200
-    state.ever_started = True
-    state.running = True
-    assert state.health(0)["status"] == "running"
-    state.running = False
-    assert supervisor.health_http_status(state.health(0)) == 503
+def test_run_worker_runs_the_selected_worker_in_this_process(monkeypatch) -> None:
+    """No subprocess: the selected entrypoint's CLI runs right here, so a stop
+    signal sent to this process is the one the LiveKit SDK drains on."""
+    calls_to_the_worker_cli: list[str] = []
+    stand_in_entrypoint = types.ModuleType("livekit_assistant_worker.entrypoint")
+    stand_in_entrypoint.cli_main = lambda: calls_to_the_worker_cli.append("assistant")
+    monkeypatch.setitem(sys.modules, "livekit_assistant_worker.entrypoint", stand_in_entrypoint)
+    monkeypatch.setenv(WORKER_ENV, "assistant")
+
+    run_worker.cli_main()
+
+    assert calls_to_the_worker_cli == ["assistant"]
 
 
-def test_restart_loop_relaunches_the_worker_module(monkeypatch) -> None:
-    monkeypatch.setenv(WORKER_ENV, "assessment")
-    state = supervisor.WorkerState(selected_worker())
-    commands, sleeps = [], []
+def test_the_container_starts_the_worker_as_its_main_process() -> None:
+    """The exec-form CMD makes Python PID 1, the process the kubelet sends SIGTERM to.
 
-    def run(cmd, **_):
-        commands.append(cmd)
-        return SimpleNamespace(returncode=1)
-
-    supervisor.run_worker_forever(state, run=run, sleep=sleeps.append, max_runs=2)
-    assert [c[1:] for c in commands] == [["-m", "livekit_assessment_worker.entrypoint", "start"]] * 2
-    assert sleeps == [5, 5]
-    assert state.ever_started and not state.running
+    A shell, make or gunicorn in between swallowed that signal: the worker never
+    drained and kept taking new sessions until it was killed 15 minutes later.
+    """
+    dockerfile_text = (REPO_ROOT / "Dockerfile").read_text()
+    command_lines = re.findall(r"^CMD (.+)$", dockerfile_text, flags=re.MULTILINE)
+    assert [json.loads(command_line) for command_line in command_lines] == [
+        ["python", "-m", "hosting.run_worker", "start"]
+    ]
+    assert "ENTRYPOINT" not in dockerfile_text

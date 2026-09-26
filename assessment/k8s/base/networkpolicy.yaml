@@ -22,10 +22,9 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # 8080 is the supervisor's /health (kubelet probes); 8087/8088 are the two
-    # workers' agent ports. No source selector: probes come from the node, whose
-    # address varies, but the port allow-list already denies everything else.
+    # 8087/8088 are the two workers' own HTTP ports: the kubelet probes "/" there.
+    # No source selector: probes come from the node, whose address varies, but
+    # the port allow-list already denies everything else.
     - ports:
-        - port: 8080
         - port: 8087
         - port: 8088

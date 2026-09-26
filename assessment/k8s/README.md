@@ -129,8 +129,11 @@ secret: staging would then take real candidates' dispatches or write into real d
   folder holding one sub-folder per environment, default
   `/root/k8s/assessment-platform`) and `ROLLOUT_TIMEOUT_SECS`.
 
-The container runs `make start`: gunicorn serves `/health` and supervises one
-`python -m livekit_assessment_worker.entrypoint start` subprocess.
+The container's only process is the worker (`python -m hosting.run_worker start`,
+PID 1). The LiveKit SDK inside it serves the probes on the worker's own port
+(`/` on 8087 for assessment, 8088 for assistant), and it receives the kubelet's
+SIGTERM directly: it stops taking new sessions at once, lets the running ones
+finish, and exits, so a pod leaves as soon as its last session ends.
 
 ## Node labels are a prerequisite
 
@@ -170,9 +173,12 @@ Check headroom before raising them.
 a pod before removing one, and an evicted pod keeps serving its consultations until
 they end. The worker's own `drain_timeout` (840s, `LIVEKIT_*_DRAIN_TIMEOUT`) must
 stay under the grace period or the kubelet SIGKILLs mid-session. The longest station
-is 12 min (`osce_assessment/prompts/consultation_pacing.py`), so expect a pod to sit
-`Terminating` for that long — this is correct, not a stuck rollout.
+is 12 min (`osce_assessment/prompts/consultation_pacing.py`), so a pod with a session
+in progress can sit `Terminating` for up to that long. That is correct, not a stuck
+rollout. A draining pod takes no new sessions, and an idle pod exits within seconds.
+If an idle pod sits `Terminating` for the full 15 minutes, the stop signal is not
+reaching the worker: check that the container's main process is the worker itself.
 
 Liveness probes are intentionally omitted: a restart would cut every session on the
-pod, and the supervisor's `/health` reports gunicorn rather than whether the agent is
-still registered with LiveKit, so it cannot detect the failure it would be there for.
+pod. A worker that exits on its own is restarted by the kubelet anyway, because it is
+the container's main process.

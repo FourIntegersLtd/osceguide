@@ -10,29 +10,20 @@ test:
 lint-leakage:
 	poetry run pytest -q tests/test_no_consumer_leakage.py
 
-# --- Running the workers -----------------------------------------------------
-# K8s container: gunicorn on PATH, deps baked in. Local: poetry run.
-PORT ?= 8080
+# --- Running the workers locally ----------------------------------------------
+# Containers do not use make: the Dockerfile starts the worker directly, so the
+# platform's stop signal reaches it (see hosting/run_worker.py).
 export OSCE_LIVEKIT_WORKER ?= assessment
-IS_CONTAINER_HOST := $(filter $(OSCE_LIVEKIT_HOSTING),self-hosted)
-ifneq ($(IS_CONTAINER_HOST),)
-RUN :=
-START_PREREQS :=
-else
-RUN := poetry run
-START_PREREQS := install download-files
-endif
 export PYTHONPATH := $(CURDIR):$(CURDIR)/packages$(if $(PYTHONPATH),:$(PYTHONPATH),)
 
 .PHONY: download-files start start-assessment start-assistant dev-assessment dev-assistant stop
 
 download-files:
-	$(RUN) python -m livekit.agents download-files
+	poetry run python -m livekit.agents download-files
 
-## gunicorn /health + one supervised worker subprocess (OSCE_LIVEKIT_WORKER)
-start: $(START_PREREQS)
-	$(RUN) gunicorn hosting.supervisor:application --config hosting/gunicorn_config.py --bind 0.0.0.0:$(PORT) \
-		--workers 1 --threads 2 --worker-class gthread --timeout 300 --keep-alive 5 --graceful-timeout 30
+## the worker named by OSCE_LIVEKIT_WORKER, exactly as the container runs it
+start: install download-files
+	poetry run python -m hosting.run_worker start
 
 start-assessment:
 	OSCE_LIVEKIT_WORKER=assessment $(MAKE) start
@@ -40,14 +31,15 @@ start-assessment:
 start-assistant:
 	OSCE_LIVEKIT_WORKER=assistant $(MAKE) start
 
-## one worker alone, in dev mode (no supervisor)
+## one worker in dev mode (reloads on code changes)
 dev-assessment: install
 	poetry run python -m livekit_assessment_worker.entrypoint dev
 
 dev-assistant: install
 	poetry run python -m livekit_assistant_worker.entrypoint dev
 
+## SIGTERM, so each worker drains its sessions before it exits
 stop:
-	@pkill -f "gunicorn.*hosting.supervisor:application" 2>/dev/null || true
+	@pkill -f "hosting.run_worker" 2>/dev/null || true
 	@pkill -f "livekit_assessment_worker.entrypoint" 2>/dev/null || true
 	@pkill -f "livekit_assistant_worker.entrypoint" 2>/dev/null || true

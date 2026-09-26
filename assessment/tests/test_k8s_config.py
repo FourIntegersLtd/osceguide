@@ -103,8 +103,25 @@ def test_a_network_policy_confines_inbound_traffic_to_the_worker_ports() -> None
     assert "- Ingress" in text
     for app in ("assessment-worker", "assistant-worker"):
         assert app in text, app
-    for port in ("8080", "8087", "8088"):
+    for port in ("8087", "8088"):
         assert f"port: {port}" in text, port
+    # 8080 was the old gunicorn supervisor's; nothing listens there any more.
+    assert "8080" not in text
+
+
+@pytest.mark.parametrize(
+    ("deployment", "worker_port"), (("deployment.yaml", "8087"), ("deployment-assistant.yaml", "8088"))
+)
+def test_probes_ask_the_worker_process_itself(deployment, worker_port) -> None:
+    """Both probes hit the LiveKit SDK's "/" on the worker's own port, the port its
+    entrypoint serves (voice_infra.worker_config.worker_port defaults), not a wrapper."""
+    text = (K8S / deployment).read_text()
+    assert re.search(rf"- containerPort: {worker_port}\s*\n\s*name: worker\b", text), deployment
+    for probe in ("startupProbe", "readinessProbe"):
+        probe_block = re.search(rf"{probe}:\s*\n\s*httpGet:\s*\n\s*path: (\S+)\s*\n\s*port: (\S+)", text)
+        assert probe_block is not None, probe
+        assert probe_block.groups() == ("/", "worker"), probe
+    assert "8080" not in text
 
 
 def test_the_platform_backend_serves_the_workers_default_attempt_routes() -> None:

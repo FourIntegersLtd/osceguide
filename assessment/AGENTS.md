@@ -121,7 +121,10 @@ nothing on the simulated patient and made the consulting doctor measurably
 worse. Do not reintroduce it without running `scripts/model_bench.py` first.
 
 `hosting/` runs one worker per process, selected by `OSCE_LIVEKIT_WORKER`;
-add a worker to `hosting/workers.py` when it lands.
+add a worker to `hosting/workers.py` when it lands. The container starts it
+directly (`python -m hosting.run_worker start`, PID 1). Never put a shell, make
+or a supervisor in front of it: the stop signal must reach the LiveKit SDK, or a
+terminating pod keeps taking new sessions until it is killed mid-consultation.
 
 The LiveKit pins must match `livekit/pyproject.toml` exactly, including the
 documented `anthropic >=0.41,<1.0.0` httpx constraint.

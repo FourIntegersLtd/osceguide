@@ -10,20 +10,25 @@ WORKER_ENV = "OSCE_LIVEKIT_WORKER"
 
 @dataclass(frozen=True)
 class WorkerSpec:
+    """One worker: its name and the module whose ``cli_main`` runs it.
+
+    Each module owns its own HTTP port (``PORT_ENV`` in the entrypoint), where
+    the LiveKit SDK serves ``/`` for the K8s probes.
+    """
+
     name: str
-    module: str          # ``python -m <module> start``
-    port_env: str
-    default_port: int
+    module: str
 
 
 WORKERS: dict[str, WorkerSpec] = {
-    "assessment": WorkerSpec("assessment", "livekit_assessment_worker.entrypoint", "LIVEKIT_ASSESSMENT_WORKER_PORT", 8087),
-    "assistant": WorkerSpec("assistant", "livekit_assistant_worker.entrypoint", "LIVEKIT_ASSISTANT_WORKER_PORT", 8088),
+    "assessment": WorkerSpec("assessment", "livekit_assessment_worker.entrypoint"),
+    "assistant": WorkerSpec("assistant", "livekit_assistant_worker.entrypoint"),
 }
 
 
 def selected_worker() -> WorkerSpec:
-    name = (os.environ.get(WORKER_ENV) or "").strip()
-    if name not in WORKERS:
-        raise RuntimeError(f"{WORKER_ENV} must be one of {sorted(WORKERS)} (got {name!r})")
-    return WORKERS[name]
+    """The worker named by ``OSCE_LIVEKIT_WORKER``; refuses to boot on any other value."""
+    worker_name = (os.environ.get(WORKER_ENV) or "").strip()
+    if worker_name not in WORKERS:
+        raise RuntimeError(f"{WORKER_ENV} must be one of {sorted(WORKERS)} (got {worker_name!r})")
+    return WORKERS[worker_name]
