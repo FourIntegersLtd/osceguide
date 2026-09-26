@@ -23,7 +23,7 @@ async def record_arrival(
     landing_path: str | None,
     utm: dict[str, Any] | None,
 ) -> PartnerArrival:
-    row = PartnerArrival(
+    arrival = PartnerArrival(
         partner=partner,
         exam_code=exam_code,
         visitor_key=visitor_key,
@@ -31,10 +31,10 @@ async def record_arrival(
         landing_path=landing_path,
         utm=utm,
     )
-    session.add(row)
+    session.add(arrival)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(arrival)
+    return arrival
 
 
 async def latest_arrival_for_visitor(session: AsyncSession, visitor_key: str) -> PartnerArrival | None:
@@ -64,17 +64,17 @@ async def record_acquisition(
     """Written once; a user already attributed is left alone."""
     if await acquisition_for(session, user_id) is not None:
         return None
-    row = Acquisition(
+    acquisition = Acquisition(
         user_id=user_id,
         partner=partner,
         exam_code=exam_code,
         arrival_id=arrival_id,
         acquired_at=at,
     )
-    session.add(row)
+    session.add(acquisition)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(acquisition)
+    return acquisition
 
 
 async def counts_for_partner(
@@ -106,11 +106,11 @@ async def is_reporter(session: AsyncSession, *, partner: str, email: str) -> boo
 
 
 async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> PartnerReporter:
-    row = PartnerReporter(partner=partner, email=email)
-    session.add(row)
+    reporter = PartnerReporter(partner=partner, email=email)
+    session.add(reporter)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(reporter)
+    return reporter
 
 
 # --- referrals -------------------------------------------------------------
@@ -122,11 +122,11 @@ async def referral_by_code(session: AsyncSession, code: str) -> Referral | None:
 
 
 async def create_referral(session: AsyncSession, *, referrer_user_id: uuid.UUID, code: str) -> Referral:
-    row = Referral(referrer_user_id=referrer_user_id, code=code.strip().upper())
-    session.add(row)
+    referral = Referral(referrer_user_id=referrer_user_id, code=code.strip().upper())
+    session.add(referral)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(referral)
+    return referral
 
 
 async def referrals_for(session: AsyncSession, user_id: uuid.UUID) -> list[Referral]:

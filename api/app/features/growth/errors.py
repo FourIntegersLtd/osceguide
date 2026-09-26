@@ -4,11 +4,13 @@ from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
 
 
 class UnknownPartnerError(NotFound):
+
     code = "unknown_partner"
     default_message = "No such partner"
 
 
 class ExamNotInPilotError(InvalidInput):
+
     code = "exam_not_in_pilot"
     default_message = "That exam is not part of the pilot"
 
@@ -25,16 +27,19 @@ class NotAReporter(Forbidden):
 
 
 class ReferralCodeTaken(Conflict):
+
     code = "referral_code_taken"
     default_message = "That referral code is already in use"
 
 
 class ReferralNotFound(NotFound):
+
     code = "referral_not_found"
     default_message = "No such referral code"
 
 
 class ReferralAlreadyRedeemed(Conflict):
+
     code = "referral_already_redeemed"
     default_message = "That referral code has already been used"
 

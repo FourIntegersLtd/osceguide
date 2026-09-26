@@ -24,10 +24,12 @@ _LANDING_PREFIX = "/exams/"
 
 
 class UnknownPartner(ValueError):
+
     pass
 
 
 class ExamNotInPilot(ValueError):
+
     pass
 
 
@@ -81,6 +83,7 @@ def attributes(*, arrived_at: datetime, signed_up_at: datetime) -> bool:
 
 @dataclass(frozen=True)
 class Funnel:
+
     arrivals: int
     signups: int
     purchases: int
@@ -108,8 +111,8 @@ def funnel(*, arrivals: int, signups: int, purchases: int) -> Funnel:
 PAYOUT_STATUSES = ("unpaid", "paid")
 
 
-def normalise_payout_status(value: str) -> str:
-    key = (value or "").strip().lower()
+def normalise_payout_status(payout_status: str) -> str:
+    key = (payout_status or "").strip().lower()
     if key not in PAYOUT_STATUSES:
-        raise ValueError(f"A payout is {' or '.join(PAYOUT_STATUSES)}, not {value!r}.")
+        raise ValueError(f"A payout is {' or '.join(PAYOUT_STATUSES)}, not {payout_status!r}.")
     return key

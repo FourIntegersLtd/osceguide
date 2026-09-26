@@ -82,13 +82,13 @@ async def read_tracking_references(
 
     Reporter-gated like the funnel.
     """
-    items = await service.tracking_references(
+    references = await service.tracking_references(
         session,
         partner=partner,
         email=principal.email,
         is_platform_admin=principal.is_platform_admin,
     )
-    return Page(items=items, next_cursor=None)
+    return Page(items=references, next_cursor=None)
 
 
 @router.post(
@@ -154,10 +154,10 @@ async def list_referrals(
     Platform admin only — it names both sides of every referral and what is owed.
     """
     _ = admin
-    items, next_cursor = await service_payouts.list_redeemed_referrals(
+    referrals, next_cursor = await service_payouts.list_redeemed_referrals(
         session, limit=page.limit, cursor=page.cursor, payout_status=payout_status
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=referrals, next_cursor=next_cursor)
 
 
 @router.post(

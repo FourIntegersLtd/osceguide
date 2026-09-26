@@ -54,7 +54,7 @@ async def record_arrival(
     elif landing_path:
         exam_code = domain.exam_from_landing_path(landing_path, pilot_exams=pilot_exams)
 
-    row = await repository.record_arrival(
+    arrival = await repository.record_arrival(
         session,
         partner=partner_key,
         exam_code=exam_code,
@@ -63,7 +63,7 @@ async def record_arrival(
         landing_path=landing_path,
         utm=utm or None,
     )
-    return ArrivalRecorded(id=row.id, partner=row.partner, exam_code=row.exam_code)
+    return ArrivalRecorded(id=arrival.id, partner=arrival.partner, exam_code=arrival.exam_code)
 
 
 async def attribute_signup(
@@ -82,7 +82,7 @@ async def attribute_signup(
     if not domain.attributes(arrived_at=arrival.landed_at, signed_up_at=now):
         return None
 
-    row = await repository.record_acquisition(
+    acquisition = await repository.record_acquisition(
         session,
         user_id=user_id,
         partner=arrival.partner,
@@ -90,9 +90,11 @@ async def attribute_signup(
         arrival_id=arrival.id,
         at=now,
     )
-    if row is None:
+    if acquisition is None:
         return None
-    return AcquisitionRead(partner=row.partner, exam_code=row.exam_code, acquired_at=row.acquired_at)
+    return AcquisitionRead(
+        partner=acquisition.partner, exam_code=acquisition.exam_code, acquired_at=acquisition.acquired_at
+    )
 
 
 async def ensure_reporter(
@@ -135,19 +137,19 @@ async def read_funnel(session: AsyncSession, *, partner: str) -> FunnelRead:
 async def issue_code(session: AsyncSession, *, user_id: uuid.UUID) -> ReferralRead:
     """One code per person, reused if they already have one."""
     existing = await repository.referrals_for(session, user_id)
-    unredeemed = next((r for r in existing if r.redeemed_at is None), None)
+    unredeemed = next((referral for referral in existing if referral.redeemed_at is None), None)
     if unredeemed is not None:
         return _referral_read(unredeemed.code, existing)
 
     code = secrets.token_hex(REFERRAL_CODE_BYTES).upper()
-    row = await repository.create_referral(session, referrer_user_id=user_id, code=code)
-    return _referral_read(row.code, [*existing, row])
+    referral = await repository.create_referral(session, referrer_user_id=user_id, code=code)
+    return _referral_read(referral.code, [*existing, referral])
 
 
 async def read_my_referrals(session: AsyncSession, user_id: uuid.UUID) -> ReferralRead:
-    rows = await repository.referrals_for(session, user_id)
-    code = next((r.code for r in rows if r.redeemed_at is None), "")
-    return _referral_read(code, rows)
+    referrals = await repository.referrals_for(session, user_id)
+    code = next((referral.code for referral in referrals if referral.redeemed_at is None), "")
+    return _referral_read(code, referrals)
 
 
 async def redeem_code(
@@ -158,27 +160,27 @@ async def redeem_code(
     now: datetime,
     earned_pence: int = REFERRAL_REWARD_PENCE,
 ) -> ReferralRead:
-    row = await repository.referral_by_code(session, code)
-    if row is None:
+    referral = await repository.referral_by_code(session, code)
+    if referral is None:
         raise errors.ReferralNotFound()
-    if row.referrer_user_id == referred_user_id:
+    if referral.referrer_user_id == referred_user_id:
         # Referring yourself is not a referral.
         raise errors.ReferralNotFound()
-    if row.redeemed_at is not None:
+    if referral.redeemed_at is not None:
         raise errors.ReferralAlreadyRedeemed()
     await repository.redeem(
-        session, row.id, referred_user_id=referred_user_id, earned_pence=earned_pence, at=now
+        session, referral.id, referred_user_id=referred_user_id, earned_pence=earned_pence, at=now
     )
-    rows = await repository.referrals_for(session, row.referrer_user_id)
-    return _referral_read("", rows)
+    referrals = await repository.referrals_for(session, referral.referrer_user_id)
+    return _referral_read("", referrals)
 
 
-def _referral_read(code: str, rows: list) -> ReferralRead:  # type: ignore[type-arg]
-    redeemed = [r for r in rows if r.redeemed_at is not None]
+def _referral_read(code: str, referrals: list) -> ReferralRead:  # type: ignore[type-arg]
+    redeemed = [referral for referral in referrals if referral.redeemed_at is not None]
     return ReferralRead(
         code=code,
         redeemed_count=len(redeemed),
-        earned_pence=sum(r.earned_pence for r in redeemed),
+        earned_pence=sum(referral.earned_pence for referral in redeemed),
     )
 
 
