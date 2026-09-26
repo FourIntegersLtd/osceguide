@@ -34,6 +34,7 @@ class NavItem:
 
 @dataclass(frozen=True)
 class ClientProfile:
+
     surface: str
     exam: str
     role: str = ""
@@ -42,11 +43,12 @@ class ClientProfile:
 
     @property
     def nav_labels(self) -> dict[str, str]:
-        return {item.key: item.label for item in self.navigation}
+        return {entry.key: entry.label for entry in self.navigation}
 
 
 @dataclass(frozen=True)
 class Persona:
+
     assistant_name: str = "Athena"
     product_name: str = "OSCE Guide"
 
@@ -68,12 +70,14 @@ class FaqEntry:
 
 @dataclass(frozen=True)
 class OnboardingScene:
+
     patient_line: str
     question: str
 
 
 @dataclass(frozen=True)
 class ContentPack:
+
     persona: Persona = Persona()
     greetings: Mapping[str, str] = field(default_factory=dict)
     """Opening line per worker type; a missing type lets the model open by itself."""

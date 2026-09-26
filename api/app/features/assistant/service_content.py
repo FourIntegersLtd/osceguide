@@ -32,6 +32,7 @@ SCENES_KEY = "onboarding_scenes"
 
 @dataclass(frozen=True)
 class Rendered:
+
     instructions: str
     greeting: str | None
     extras: dict[str, Any]

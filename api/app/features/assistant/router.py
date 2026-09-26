@@ -18,6 +18,7 @@ router = APIRouter(tags=["assistant"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Start an assistant session of the given type, rendered for the caller.
 @router.post(
     "/assistant/sessions",
     response_model=schemas.SessionRead,

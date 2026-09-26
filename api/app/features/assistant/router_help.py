@@ -49,6 +49,7 @@ async def article(
     return schemas.HelpArticleDetail(article=service_help.read_article(slug, exam_code))
 
 
+# Answer a study question grounded in the summaries this learner can access.
 @router.post(
     "/help/knowledge-chat",
     response_model=schemas.KnowledgeReply,

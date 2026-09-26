@@ -34,17 +34,18 @@ def parse_client_context(raw: Any) -> dict[str, Any] | None:
     if not isinstance(navigation_raw, list):
         raise ClientContextError("client.navigation must be a list")
     navigation = []
-    for item in navigation_raw[:MAX_NAV_ITEMS]:
-        if not isinstance(item, dict):
+    for entry in navigation_raw[:MAX_NAV_ITEMS]:
+        if not isinstance(entry, dict):
             raise ClientContextError("client.navigation items must be objects")
-        key = _text(item.get("key"), field="navigation.key", limit=MAX_NAV_FIELD_CHARS)
+        key = _text(entry.get("key"), field="navigation.key", limit=MAX_NAV_FIELD_CHARS)
         if not key:
             continue
         navigation.append(
             {
                 "key": key,
-                "label": _text(item.get("label"), field="navigation.label", limit=MAX_NAV_FIELD_CHARS) or key,
-                "path": _text(item.get("path"), field="navigation.path", limit=MAX_ROUTE_CHARS),
+                "label": _text(entry.get("label"), field="navigation.label", limit=MAX_NAV_FIELD_CHARS)
+                or key,
+                "path": _text(entry.get("path"), field="navigation.path", limit=MAX_ROUTE_CHARS),
             }
         )
     return {

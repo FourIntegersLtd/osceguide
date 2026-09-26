@@ -12,7 +12,7 @@ TROUBLESHOOTING = "Technical troubleshooting"
 ACCOUNT = "Achievements and account"
 OTHER = "Questions not in the FAQ"
 
-_S = ("settings",)
+_SETTINGS_NAV = ("settings",)
 
 ENTRIES: tuple[FaqEntry, ...] = (
     FaqEntry(
@@ -20,35 +20,35 @@ ENTRIES: tuple[FaqEntry, ...] = (
         BILLING,
         "Where do I manage my subscription?",
         "Open {nav.settings}, then the Payments tab. Profile is separate for name, email, and password.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "subscribe",
         BILLING,
         "How do I subscribe or pay?",
         "Open {nav.settings}, then the Payments tab, choose a plan, and complete checkout. You may also see an upgrade prompt when Create Session needs a paid plan. After paying, refresh or log out and log in again, then go to {nav.mocks} to create a session.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "upgrade-plan",
         BILLING,
         "How do I upgrade my plan?",
         "If the API returns an upgrade prompt, a modal may open from the practice flow. Otherwise open {nav.settings} and use the Payments tab.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "paid-no-access",
         BILLING,
         "I paid but I still cannot access sessions or cases",
         "Log out, log back in, then open {nav.settings}, Payments to confirm the plan shows as active. Next go to {nav.mocks}, Setup, and Create Session. If Payments still looks unpaid or Create Session is blocked, use {nav.messages} and include the email you paid with and the approximate payment time.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "payment-activation",
         BILLING,
         "How long does payment take to activate?",
         "Access is usually immediate after a successful checkout. If nothing changes within a few minutes, refresh, log out and in again, then check {nav.settings} Payments. If it still fails, use {nav.messages}.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "wrong-email",
@@ -67,14 +67,14 @@ ENTRIES: tuple[FaqEntry, ...] = (
         BILLING,
         "When does my subscription end?",
         "Open {nav.settings}, Payments. Your current plan and timing details appear there. Use Download receipt for a payment confirmation (also emailed when you subscribed).",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "invoice",
         BILLING,
         "Can I get an invoice for tax?",
         "Open {nav.settings}, Payments and tap Download receipt for your payment confirmation (emailed at purchase). For a full VAT tax invoice, contact hello@fourintegers.com with the email on your account.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "promo-code",
@@ -202,7 +202,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         ACCOUNT,
         "How do I change my profile or email?",
         "Open {nav.settings}, Profile tab. You can update your username and save. The email field is read only in the app; to change email, use {nav.messages} so support can help. Password updates use the change password control on the same Profile screen.",
-        _S,
+        _SETTINGS_NAV,
     ),
     FaqEntry(
         "not-listed",

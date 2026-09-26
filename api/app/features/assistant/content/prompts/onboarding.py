@@ -6,6 +6,7 @@ from ..models import Persona
 
 
 class OnboardingInstructions:
+
     def __init__(
         self,
         question: str,

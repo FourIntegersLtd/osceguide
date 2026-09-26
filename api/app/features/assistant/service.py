@@ -42,14 +42,14 @@ async def run_tool(
     not read one person's history on another's session, and a finished session
     has nobody left to answer.
     """
-    row = await require_session(session, session_id)
-    if not domain.can_join(status=row.status):
+    assistant_session = await require_session(session, session_id)
+    if not domain.can_join(status=assistant_session.status):
         raise errors.SessionNotJoinable()
     return await service_tools.tool_hook(
         session,
         tool=tool,
         arguments=arguments,
-        user_id=row.user_id,
+        user_id=assistant_session.user_id,
         session_id=session_id,
         now=now,
     )
@@ -129,7 +129,7 @@ async def start_session(
     except domain.UnrenderableSession as exc:
         raise errors.SessionNotReady(str(exc)) from exc
 
-    row = await repository.create_session(
+    assistant_session = await repository.create_session(
         session,
         user_id=user_id,
         session_type=worker_type,
@@ -142,8 +142,8 @@ async def start_session(
     )
     # The room is derived from the session id, so a stray room says which
     # session it belongs to.
-    await repository.set_room(session, row.id, room_name=f"assistant_{row.id}")
-    refreshed = await repository.by_id(session, row.id)
+    await repository.set_room(session, assistant_session.id, room_name=f"assistant_{assistant_session.id}")
+    refreshed = await repository.by_id(session, assistant_session.id)
     return _read(refreshed)  # type: ignore[arg-type]
 
 
@@ -176,20 +176,20 @@ async def voice_grant(
     """
     from app.features.voice import service as voice
 
-    row = await require_session(session, session_id)
-    if row.user_id != requester_id:
+    assistant_session = await require_session(session, session_id)
+    if assistant_session.user_id != requester_id:
         raise errors.SessionNotYours()
-    if not domain.can_join(status=row.status):
+    if not domain.can_join(status=assistant_session.status):
         raise errors.SessionNotJoinable()
 
     grant = await voice.grant_for_agent_room(
-        room=row.room_name or f"assistant_{row.id}",
-        session_type=row.session_type,
-        identity=str(row.user_id),
+        room=assistant_session.room_name or f"assistant_{assistant_session.id}",
+        session_type=assistant_session.session_type,
+        identity=str(assistant_session.user_id),
         dispatch_metadata={
-            "session_id": str(row.id),
+            "session_id": str(assistant_session.id),
             "backend": settings.voice_backend_label,
-            "candidate_ref": str(row.user_id),
+            "candidate_ref": str(assistant_session.user_id),
         },
         tokens=tokens,
         settings=settings,
@@ -205,17 +205,17 @@ def _tool_extras(rendered: dict[str, Any]) -> dict[str, Any]:
 
 
 async def require_session(session: AsyncSession, session_id: uuid.UUID) -> AssistantSession:
-    row = await repository.by_id(session, session_id)
-    if row is None:
+    assistant_session = await repository.by_id(session, session_id)
+    if assistant_session is None:
         raise errors.SessionNotFound()
-    return row
+    return assistant_session
 
 
-def _read(row: AssistantSession) -> SessionRead:
+def _read(assistant_session: AssistantSession) -> SessionRead:
     return SessionRead(
-        id=row.id,
-        session_type=row.session_type,
-        status=row.status,
-        room_name=row.room_name,
-        created_at=row.created_at,
+        id=assistant_session.id,
+        session_type=assistant_session.session_type,
+        status=assistant_session.status,
+        room_name=assistant_session.room_name,
+        created_at=assistant_session.created_at,
     )

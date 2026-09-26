@@ -10,6 +10,7 @@ from .models import ContentPack, FaqEntry, OnboardingScene, Persona
 
 @dataclass(frozen=True)
 class Overlay:
+
     add: tuple[FaqEntry, ...] = ()
     replace: tuple[FaqEntry, ...] = ()
     """Entries whose ``id`` already exists in the base; swapped in place."""

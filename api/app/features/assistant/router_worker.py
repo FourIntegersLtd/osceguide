@@ -36,6 +36,7 @@ async def bootstrap_assistant_session(
     return await service_worker.bootstrap(session, session_id)
 
 
+# The onboarding demo's next scene instructions, matched to the worker's own script.
 @router.post(
     "/assistant-sessions/{session_id}/scene",
     response_model=schemas.SceneInstructions,
@@ -55,6 +56,7 @@ async def assistant_scene(
     )
 
 
+# Store the worker's transcript turns, or discard them, according to the session's kind.
 @router.post(
     "/assistant-sessions/{session_id}/transcript",
     response_model=schemas.Accepted,

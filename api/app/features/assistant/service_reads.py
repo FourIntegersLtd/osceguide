@@ -22,10 +22,15 @@ class SessionRef:
 
 
 async def session_ref(session: AsyncSession, session_id: uuid.UUID) -> SessionRef | None:
-    row = await repository.by_id(session, session_id)
-    if row is None:
+    assistant_session = await repository.by_id(session, session_id)
+    if assistant_session is None:
         return None
-    return SessionRef(id=row.id, user_id=row.user_id, session_type=row.session_type, status=row.status)
+    return SessionRef(
+        id=assistant_session.id,
+        user_id=assistant_session.user_id,
+        session_type=assistant_session.session_type,
+        status=assistant_session.status,
+    )
 
 
 async def transcript_messages(session: AsyncSession, session_id: uuid.UUID) -> list[dict[str, Any]]:
@@ -35,8 +40,8 @@ async def transcript_messages(session: AsyncSession, session_id: uuid.UUID) -> l
     lazy relationship along with it, which is why a guard forbids it.
     """
     return [
-        {"role": row.role, "message": row.message, "seq": row.seq}
-        for row in await repository.messages_for(session, session_id)
+        {"role": message.role, "message": message.message, "seq": message.seq}
+        for message in await repository.messages_for(session, session_id)
     ]
 
 

@@ -24,6 +24,7 @@ _MAX_QUERY = 2_000
 
 
 class KnowledgeUnavailable(AppError):
+
     status = 503
     code = "knowledge_unavailable"
     default_message = "Athena is temporarily unavailable. Please try again."
@@ -60,14 +61,16 @@ async def answer(
     )
     passages: list[str] = []
     for hit in hits:
-        item = await media.read_by_slug(session, hit.slug, viewer_is_admin=False, unlocked=scoped)
+        media_item = await media.read_by_slug(session, hit.slug, viewer_is_admin=False, unlocked=scoped)
         if (
-            not item.locked
-            and item.content
-            and item.kind == "summary"
-            and item.exam_code in (None, body.exam_code)
+            not media_item.locked
+            and media_item.content
+            and media_item.kind == "summary"
+            and media_item.exam_code in (None, body.exam_code)
         ):
-            passages.append(f"{item.title}\n{json.dumps(item.content, ensure_ascii=False)[:12000]}")
+            passages.append(
+                f"{media_item.title}\n{json.dumps(media_item.content, ensure_ascii=False)[:12000]}"
+            )
     if not passages:
         return KnowledgeReply(
             reply=(
@@ -92,7 +95,7 @@ async def answer(
     )
     try:
         async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=45, max_retries=1) as client:
-            result = await client.chat.completions.create(
+            completion = await client.chat.completions.create(
                 model="gpt-5-nano",
                 max_completion_tokens=4000,
                 messages=[
@@ -103,7 +106,7 @@ async def answer(
                     *[cast("ChatCompletionMessageParam", message.model_dump()) for message in body.messages],
                 ],
             )
-        reply = (result.choices[0].message.content or "").strip()
+        reply = (completion.choices[0].message.content or "").strip()
         if not reply:
             raise KnowledgeUnavailable()
         return KnowledgeReply(reply=reply)

@@ -11,12 +11,18 @@ from app.features.assistant.schemas import HelpArticle, HelpCategory
 
 @lru_cache(maxsize=1)
 def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
-    data = json.loads(Path(__file__).with_name("help_content.json").read_text())
+    catalogue_json = json.loads(Path(__file__).with_name("help_content.json").read_text())
     categories = [
-        HelpCategory.model_validate(row) for row in data["categories"] if row.get("published", True)
+        HelpCategory.model_validate(raw_category)
+        for raw_category in catalogue_json["categories"]
+        if raw_category.get("published", True)
     ]
-    titles = {row.slug: row.title for row in categories}
-    articles = [HelpArticle.model_validate(row) for row in data["articles"] if row.get("published", True)]
+    titles = {category.slug: category.title for category in categories}
+    articles = [
+        HelpArticle.model_validate(raw_article)
+        for raw_article in catalogue_json["articles"]
+        if raw_article.get("published", True)
+    ]
     for article in articles:
         article.id = article.slug
         article.category_title = titles.get(article.category_slug, "")
@@ -28,32 +34,32 @@ def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
 def list_articles(exam_code: str, category: str | None = None) -> list[HelpArticle]:
     return sorted(
         (
-            row
-            for row in _catalogue()[1]
-            if ("all" in row.exam_codes or exam_code in row.exam_codes)
-            and (category is None or row.category_slug == category)
+            article
+            for article in _catalogue()[1]
+            if ("all" in article.exam_codes or exam_code in article.exam_codes)
+            and (category is None or article.category_slug == category)
         ),
-        key=lambda row: (row.sort_order, row.title),
+        key=lambda article: (article.sort_order, article.title),
     )
 
 
 def list_categories(exam_code: str) -> list[HelpCategory]:
-    counts = Counter(row.category_slug for row in list_articles(exam_code))
+    counts = Counter(article.category_slug for article in list_articles(exam_code))
     return sorted(
         (
-            row.model_copy(update={"article_count": counts[row.slug]})
-            for row in _catalogue()[0]
-            if "all" in row.exam_codes or exam_code in row.exam_codes
+            category.model_copy(update={"article_count": counts[category.slug]})
+            for category in _catalogue()[0]
+            if "all" in category.exam_codes or exam_code in category.exam_codes
         ),
-        key=lambda row: (row.sort_order, row.title),
+        key=lambda category: (category.sort_order, category.title),
     )
 
 
 def read_article(slug: str, exam_code: str) -> HelpArticle:
-    article = next((row for row in list_articles(exam_code) if row.slug == slug), None)
-    if article is None:
+    candidate = next((article for article in list_articles(exam_code) if article.slug == slug), None)
+    if candidate is None:
         raise NotFound("Help article not found")
-    visible = {row.slug for row in list_articles(exam_code)}
-    return article.model_copy(
-        update={"related_slugs": [slug for slug in article.related_slugs if slug in visible]}
+    visible = {article.slug for article in list_articles(exam_code)}
+    return candidate.model_copy(
+        update={"related_slugs": [related for related in candidate.related_slugs if related in visible]}
     )

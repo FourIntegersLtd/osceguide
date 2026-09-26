@@ -13,6 +13,7 @@ from enum import StrEnum
 
 
 class AssistantType(StrEnum):
+
     HELP = "help"
     ONBOARDING = "onboarding"
     DASHBOARD = "dashboard"

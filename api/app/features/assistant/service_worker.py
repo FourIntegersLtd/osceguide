@@ -26,23 +26,23 @@ async def bootstrap(session: AsyncSession, session_id: uuid.UUID) -> WorkerSessi
     arrives rendered, and `extras` carries the two facts the worker decides for
     itself.
     """
-    row = await require_session(session, session_id)
-    if not domain.can_join(status=row.status):
+    assistant_session = await require_session(session, session_id)
+    if not domain.can_join(status=assistant_session.status):
         raise errors.SessionNotJoinable()
     try:
-        domain.ensure_dispatchable(instructions=row.instructions)
+        domain.ensure_dispatchable(instructions=assistant_session.instructions)
     except domain.UnrenderableSession as exc:
         raise errors.SessionNotReady(str(exc)) from exc
 
-    stored = dict(row.extras or {})
+    stored = dict(assistant_session.extras or {})
     tools = stored.pop(TOOLS_KEY, [])
     return WorkerSessionPayload(
         session={
-            "session_id": str(row.id),
-            "worker_type": row.session_type,
-            "candidate_ref": str(row.user_id),
-            "instructions": row.instructions,
-            "greeting": row.greeting,
+            "session_id": str(assistant_session.id),
+            "worker_type": assistant_session.session_type,
+            "candidate_ref": str(assistant_session.user_id),
+            "instructions": assistant_session.instructions,
+            "greeting": assistant_session.greeting,
             "extras": stored,
             # `livekit_assistant_worker.bootstrap.AssistantSession.tools`.
             "tools": tools,
@@ -66,8 +66,12 @@ async def scene_instructions(
     actually given — otherwise a request could hand the model any script it
     liked.
     """
-    row = await require_session(session, session_id)
-    scenes = [s for s in (row.extras or {}).get(SCENES_KEY, []) if isinstance(s, dict)]
+    assistant_session = await require_session(session, session_id)
+    scenes = [
+        scene_data
+        for scene_data in (assistant_session.extras or {}).get(SCENES_KEY, [])
+        if isinstance(scene_data, dict)
+    ]
     scene = _matching_scene(scenes, question=question, patient_line=patient_line)
     if scene is None and phase != "intro":
         scene = scenes[0] if scenes else None
@@ -75,12 +79,12 @@ async def scene_instructions(
         # Nothing to demonstrate: the pack resolved to no scenes, so the
         # session keeps the instructions it opened with rather than being
         # handed an empty scenario to improvise around.
-        return row.instructions
+        return assistant_session.instructions
     return OnboardingInstructions(
         question=str(scene.get("question", "")) if scene else "",
         patient_line=str(scene.get("patientLine", "")) if scene else "",
         phase=phase or "demo",
-        user_name=await _user_name(session, row.user_id),
+        user_name=await _user_name(session, assistant_session.user_id),
     ).get_onboarding_instructions()
 
 
@@ -113,8 +117,8 @@ async def accept_transcript(
     session is retained *and* queued for summarising so the job can replace
     it, and the rest are discarded unread. `tutor_memory` owns the rule.
     """
-    row = await require_session(session, session_id)
-    if not await tutor_jobs.on_transcript(session, session_id, row.session_type):
+    assistant_session = await require_session(session, session_id)
+    if not await tutor_jobs.on_transcript(session, session_id, assistant_session.session_type):
         return
 
     seen = await repository.seen_message_ids(session, session_id)

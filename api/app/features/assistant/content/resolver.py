@@ -49,9 +49,9 @@ def resolve_client_profile(record: Mapping[str, Any]) -> ClientProfile:
     if surface not in SURFACES or (surface == SURFACE_ADMIN and role != ADMIN_ROLE):
         surface = SURFACE_EXAM
     navigation = tuple(
-        NavItem(key=_str(item.get("key")), label=_str(item.get("label")), path=_str(item.get("path")))
-        for item in (client.get("navigation") or [])
-        if isinstance(item, dict) and _str(item.get("key"))
+        NavItem(key=_str(entry.get("key")), label=_str(entry.get("label")), path=_str(entry.get("path")))
+        for entry in (client.get("navigation") or [])
+        if isinstance(entry, dict) and _str(entry.get("key"))
     )
     return ClientProfile(
         surface=surface,
@@ -74,7 +74,7 @@ def _layered_pack(profile: ClientProfile) -> ContentPack:
 
 
 def _render(text: str, labels: Mapping[str, str]) -> str:
-    return NAV_PLACEHOLDER.sub(lambda m: labels.get(m.group(1), m.group(1)), text)
+    return NAV_PLACEHOLDER.sub(lambda match: labels.get(match.group(1), match.group(1)), text)
 
 
 def resolve_content_pack(profile: ClientProfile) -> ContentPack:
@@ -99,5 +99,5 @@ def resolve_content_pack(profile: ClientProfile) -> ContentPack:
         pack,
         faq=faq,
         no_match_message=_render(pack.no_match_message, labels),
-        greetings={k: _render(v, labels) for k, v in pack.greetings.items()},
+        greetings={kind: _render(text, labels) for kind, text in pack.greetings.items()},
     )

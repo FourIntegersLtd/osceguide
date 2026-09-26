@@ -43,9 +43,9 @@ MANUAL_SCROLL_PROMPTS: tuple[str, ...] = (
 
 def format_phrase_lists_for_prompt() -> str:
     """Single block appended to system instructions (plain text for the LLM)."""
-    guided = "\n        ".join(f"- {p}" for p in GUIDED_CLOSING_PATTERNS)
+    guided = "\n        ".join(f"- {phrase}" for phrase in GUIDED_CLOSING_PATTERNS)
     hands = " | ".join(HANDS_OFF_ACKS)
-    manual = "\n        ".join(f"- {p}" for p in MANUAL_SCROLL_PROMPTS)
+    manual = "\n        ".join(f"- {phrase}" for phrase in MANUAL_SCROLL_PROMPTS)
 
     return f"""
         VARIED WORDING — rotate; do not repeat the same phrase twice in a row during one help session.
@@ -105,8 +105,8 @@ def navigation_block(profile: ClientProfile) -> str:
     if not profile.navigation and not profile.route:
         return ""
     lines = [
-        f"        - {item.label} ({item.path})" if item.path else f"        - {item.label}"
-        for item in profile.navigation
+        f"        - {entry.label} ({entry.path})" if entry.path else f"        - {entry.label}"
+        for entry in profile.navigation
     ]
     current = f"        Current page: {profile.route}\n" if profile.route else ""
     listing = "\n".join(lines) + "\n" if lines else ""

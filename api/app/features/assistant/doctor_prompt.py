@@ -62,17 +62,17 @@ def _text(value: Any) -> str | None:
 
 def _lines(value: Any) -> list[str]:
     if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
+        return [str(entry).strip() for entry in value if str(entry).strip()]
     if isinstance(value, str):
         return [line.strip(" -•\t") for line in value.splitlines() if line.strip(" -•\t")]
     if isinstance(value, dict):
-        out: list[str] = []
-        for key, item in value.items():
-            if isinstance(item, list):
-                out.extend(f"{key}: {line}" for line in _lines(item))
-            elif _text(item):
-                out.append(f"{key}: {_text(item)}")
-        return out
+        lines: list[str] = []
+        for key, entry in value.items():
+            if isinstance(entry, list):
+                lines.extend(f"{key}: {line}" for line in _lines(entry))
+            elif _text(entry):
+                lines.append(f"{key}: {_text(entry)}")
+        return lines
     return []
 
 

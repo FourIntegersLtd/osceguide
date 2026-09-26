@@ -6,7 +6,7 @@ from ..models import FaqEntry
 
 STATION = "Station page — Simulation, Management, Feedback"
 
-_M = ("mocks",)
+_MOCKS_NAV = ("mocks",)
 
 ENTRIES: tuple[FaqEntry, ...] = (
     FaqEntry(
@@ -14,7 +14,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         STATION,
         "Where can I find my management plan for a station?",
         "Click {nav.mocks}, View All Sessions, open your session, click Review Last Attempt, then open the Management tab at the top.",
-        _M,
+        _MOCKS_NAV,
     ),
     FaqEntry(
         "management-plan",
@@ -27,7 +27,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         STATION,
         "How do I see my feedback?",
         "Click {nav.mocks}, View All Sessions, open your session, click Review Last Attempt, then open the Feedback tab at the top.",
-        _M,
+        _MOCKS_NAV,
     ),
     FaqEntry(
         "athena-feedback",
@@ -40,7 +40,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         STATION,
         "Where is the consultation transcript?",
         "Click {nav.mocks}, View All Sessions, open your session, click Review Last Attempt, then open the Simulation tab. The Simulation screen shows the consultation area and a Transcription panel: on large screens the transcription is beside the consultation; on small screens it stacks below.",
-        _M,
+        _MOCKS_NAV,
     ),
     FaqEntry(
         "what-i-said",
@@ -95,7 +95,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         STATION,
         "How do I debrief with Athena?",
         "Click {nav.mocks}, View All Sessions, open your session, Review Last Attempt, Feedback tab, then click Start Debrief to talk with Athena about your performance.",
-        _M,
+        _MOCKS_NAV,
     ),
     FaqEntry(
         "debrief-stuck",
@@ -138,7 +138,7 @@ ENTRIES: tuple[FaqEntry, ...] = (
         STATION,
         "I finished a station but there is no feedback or transcript",
         "Open {nav.mocks}, View All Sessions, open the session, then Review Last Attempt. Check Feedback for scores and Simulation for the transcript. Wait a few minutes if generation is still running. If Review Last Attempt is missing or says page not found, use {nav.messages} with the session and station names.",
-        _M,
+        _MOCKS_NAV,
     ),
     FaqEntry(
         "attempt-not-saved",

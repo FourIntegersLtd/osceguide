@@ -22,7 +22,7 @@ async def create_session(
     extras: dict[str, Any] | None,
     room_name: str | None,
 ) -> AssistantSession:
-    row = AssistantSession(
+    assistant_session = AssistantSession(
         user_id=user_id,
         session_type=session_type,
         instructions=instructions,
@@ -30,10 +30,10 @@ async def create_session(
         extras=extras,
         room_name=room_name,
     )
-    session.add(row)
+    session.add(assistant_session)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(assistant_session)
+    return assistant_session
 
 
 async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: str) -> None:
@@ -103,7 +103,7 @@ async def messages_for(session: AsyncSession, session_id: uuid.UUID) -> list[Ass
 
 async def delete_messages(session: AsyncSession, session_id: uuid.UUID) -> int:
     """Delete a session's turns. Returns how many went."""
-    result = await session.execute(
+    deleted = await session.execute(
         delete(AssistantTranscriptMessage).where(AssistantTranscriptMessage.session_id == session_id)
     )
-    return int(getattr(result, "rowcount", 0) or 0)
+    return int(getattr(deleted, "rowcount", 0) or 0)
