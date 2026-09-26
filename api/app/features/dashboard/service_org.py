@@ -28,11 +28,10 @@ RECENT_SITTINGS = 10
 
 
 async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDashboard:
-    """The admin home screen, which currently makes five requests.
+    """Build an org admin's home screen in one request: counts, setup checklist, recent sittings.
 
-    Four of those exist only to call `.length` on a list, which also means an
-    organisation with a thousand trainees downloads a thousand trainees to show
-    the number 1000.
+    Each number is counted in the database, so an organisation with a thousand trainees never downloads
+    them just to show the number.
     """
     org = await tenancy.read_organization(session, org_id)
     # The library an org may draw on is the library of the exams it offers, so

@@ -60,6 +60,7 @@ async def build_console(
     lock = await service_circuit.read_edit_lock(session, org_id, circuit_id)
 
     def person(user_id: uuid.UUID) -> ConsolePerson:
+        """One person's name, email and trainee id, from the batches already fetched above."""
         ref = people.get(user_id)
         trainee = trainees.get(user_id)
         return ConsolePerson(
@@ -175,6 +176,7 @@ def _active_attempt_status(
 
 
 def _station(version_id: uuid.UUID, summaries: dict[uuid.UUID, stations.StationSummary]) -> ConsoleStation:
+    """A slot's station, by its title if it is still there, by its id alone if it is not."""
     found = summaries.get(version_id)
     if found is None:
         return ConsoleStation(version_id=version_id)

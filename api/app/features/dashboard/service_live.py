@@ -36,6 +36,7 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
     titles = await stations.summaries_by_version_id(session, org_id, version_ids)
 
     def person(user_id: uuid.UUID) -> LivePerson:
+        """One person's name and email, from the batch already fetched above."""
         ref = people.get(user_id)
         return LivePerson(
             user_id=user_id,

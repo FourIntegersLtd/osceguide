@@ -22,6 +22,7 @@ MAX_ATTEMPTS = 5000
 
 
 async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> AchievementsRead:
+    """This person's practice record: stations touched, and the streak it adds up to."""
     attempts = await attempts_reads.evaluated_for_user(session, user_id, limit=MAX_ATTEMPTS)
     stations = {attempt.station_version_id for attempt in attempts if attempt.station_version_id is not None}
     days = sorted({attempt.created_at.date() for attempt in attempts})
@@ -35,6 +36,7 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
 
 
 def _longest_run(days: list[date]) -> StreakRead | None:
+    """The longest run of consecutive practice days, or `None` if there is none yet."""
     best: StreakRead | None = None
     start = 0
     for index in range(1, len(days) + 1):

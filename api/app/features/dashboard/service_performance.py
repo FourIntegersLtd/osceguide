@@ -78,6 +78,7 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, exam_code: str | N
 
 @dataclass(frozen=True)
 class _Scored:
+    """One marked attempt's score, its per-domain breakdown and its critical count."""
 
     at: datetime
     score: float
@@ -159,6 +160,7 @@ async def _score(
 
 
 def _summary(marked: Sequence[_Scored]) -> PerformanceSummary:
+    """The pass, fail and critical rates across every marked attempt."""
     total = len(marked)
     passes = sum(1 for scored in marked if scored.score >= PASS_SCORE)
     criticals = sum(1 for scored in marked if scored.criticals)
@@ -191,6 +193,7 @@ def _domains(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> 
 
 
 def _band(score: float) -> str:
+    """Which of the three traffic-light bands a domain's average score falls in."""
     if score >= 83:
         return "green"
     if score >= 50:
@@ -199,6 +202,7 @@ def _band(score: float) -> str:
 
 
 def _composition(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> list[DomainComposition]:
+    """Each domain's attempts, split into how many were red, amber or green."""
     labels = performance.domain_labels(structure)
     compositions: list[DomainComposition] = []
     for domain_id in performance.scored_domain_ids(structure):

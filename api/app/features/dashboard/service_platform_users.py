@@ -110,6 +110,7 @@ async def read_directory_user_by_id(
 async def _enrich(
     session: AsyncSession, support_users: list[SupportUser], *, now: datetime
 ) -> list[DirectoryUser]:
+    """One directory row per account, with the other slices' facts folded in."""
     ids = [support_user.id for support_user in support_users]
     payments = await billing.latest_payment_by_user(session, ids)
     counts = await attempts.attempt_counts(session, ids)
@@ -186,6 +187,7 @@ async def _count(
     only_ids: set[uuid.UUID] | None = None,
     except_ids: set[uuid.UUID] | None = None,
 ) -> int:
+    """How many accounts match this exam and facet, out of everyone holding a live grant for it."""
     return await accounts.count_users_matching(
         session, exam_code=exam_code, exam_user_ids=live, only_ids=only_ids, except_ids=except_ids
     )

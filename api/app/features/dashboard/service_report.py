@@ -27,6 +27,7 @@ from app.features.stations import service_reads as stations
 async def build_sitting_report(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> SittingReport:
+    """The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision status."""
     detail = await sittings.sitting_detail(session, org_id, sitting_id)
     if detail is None:
         raise SittingNotFound()

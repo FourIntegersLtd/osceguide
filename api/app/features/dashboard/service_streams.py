@@ -36,6 +36,7 @@ def console_stream(
     """
 
     async def snapshot() -> Snapshot:
+        """One frame: the console as it stands right now, in its own short transaction."""
         async with open_session() as session:
             try:
                 console = await service_console.build_console(session, org_id, circuit_id, now=clock.now())
@@ -62,6 +63,7 @@ def my_sittings_stream(
     }
 
     async def snapshot() -> Snapshot:
+        """One frame: this trainee's whole portal, as it stands right now."""
         async with open_session() as session:
             mine = await service_trainee.my_sittings(
                 session, principal.user_id, org_slugs=org_slugs, now=clock.now()
@@ -82,6 +84,7 @@ def live_board_stream(
     """
 
     async def snapshot() -> Snapshot:
+        """One frame: every circuit this organisation has running, as it stands right now."""
         async with open_session() as session:
             board = await service_live.build_live_board(session, org_id, now=clock.now())
         return Snapshot(board.model_dump_json())

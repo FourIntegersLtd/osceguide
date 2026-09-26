@@ -1,3 +1,5 @@
+"""Routes for the trainee's own dashboard and an organisation's read models on top of it."""
+
 from __future__ import annotations
 
 import uuid

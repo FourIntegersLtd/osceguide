@@ -31,6 +31,7 @@ COMPLETED_SLOT_STATUSES = frozenset({"completed", "abandoned", "expired"})
 async def build_cohort_summary(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> CohortSummary:
+    """This sitting's candidates, ranked by completion first and then score."""
     sitting = await sittings.sitting_ref(session, org_id, sitting_id)
     if sitting is None:
         raise SittingNotFound()

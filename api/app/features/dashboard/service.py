@@ -28,6 +28,7 @@ RECENT_LIMIT = 10
 
 
 async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> Dashboard:
+    """This person's home screen: what they may open, recent attempts and progress per exam."""
     grants = await entitlements.list_for_user(session, user_id, now=now)
     sets, _ = await station_sets.list_sets(session, user_id, limit=RECENT_LIMIT, cursor=None)
     attempts = await attempts_reads.recent_for_user(session, user_id, limit=RECENT_LIMIT)
