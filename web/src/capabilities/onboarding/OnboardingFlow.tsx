@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi2";
 import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
@@ -38,7 +38,12 @@ export function OnboardingFlow({
   const scene: OnboardingScene | undefined = voice.scenes[sceneIndex];
 
   const { start, announce } = voice;
+  // Once per visit. `start` changes identity when the microphone status does,
+  // and each call opens a billed voice session; retrying is the button's job.
+  const started = useRef(false);
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     void start();
   }, [start]);
 

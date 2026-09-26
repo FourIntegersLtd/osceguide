@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type MicStatus = "checking" | "ready" | "denied" | "missing" | "insecure";
 
@@ -72,7 +72,10 @@ export function useMicPreflight(enabled = true): MicPreflight {
     if (enabled) void evaluate();
   }, [enabled, evaluate]);
 
-  return { status, request, message: MESSAGES[status] };
+  // Stable between renders: callers list `mic` as a dependency, and a fresh
+  // object each render made the onboarding flow start a new voice session on
+  // every re-render — thousands in seconds.
+  return useMemo(() => ({ status, request, message: MESSAGES[status] }), [status, request]);
 }
 
 const MESSAGES: Record<MicStatus, string | null> = {
