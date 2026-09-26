@@ -41,6 +41,7 @@ ENDING_SOON = timedelta(days=30)
 async def list_organizations(
     session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None, status: str | None = None
 ) -> tuple[list[OrganizationRead], str | None]:
+    """A page of every organisation on the platform, optionally filtered by status."""
     organizations, next_cursor = await repository_platform.list_organizations(
         session, limit=limit, cursor=cursor, status=status
     )
@@ -115,6 +116,7 @@ async def overview(session: AsyncSession, *, now: datetime) -> PlatformOverview:
 
 
 async def _at_risk(session: AsyncSession, *, now: datetime) -> list[OrgAtRisk]:
+    """Organisations the console should flag: suspended, or ending soon."""
     statuses = sorted(domain.ACTIVE_ORG_STATUSES | {"suspended"})
     at_risk_orgs: list[OrgAtRisk] = []
     for org in await repository_platform.organizations_in_statuses(session, statuses=statuses):
@@ -228,6 +230,7 @@ async def list_audit(
 
 
 def platform_audit_read(entry: AuditEntry) -> PlatformAuditRead:
+    """Shape an audit entry into what a platform console route may return."""
     return PlatformAuditRead(
         id=entry.id,
         actor_email=entry.actor_email,

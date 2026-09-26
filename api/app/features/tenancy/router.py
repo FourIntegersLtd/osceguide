@@ -1,3 +1,8 @@
+"""Routes for organisations and who belongs to them: provisioning and
+suspending an organisation, its memberships and audit log, and switching
+which workspace a signed-in person is acting in.
+"""
+
 from __future__ import annotations
 
 import uuid

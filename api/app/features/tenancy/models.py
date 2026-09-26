@@ -14,6 +14,7 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class Organization(Base, UUIDPrimaryKey, Timestamps):
+    """An institution or employer using the platform, identified by its slug."""
 
     __tablename__ = "organizations"
 

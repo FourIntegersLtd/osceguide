@@ -38,6 +38,7 @@ def _guard_role_grant(actor: Principal, org_id: uuid.UUID, role: str) -> None:
 async def list_memberships(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[MembershipRead], str | None]:
+    """A page of an organisation's memberships, with each person's email attached."""
     memberships, next_cursor = await repository.list_memberships(session, org_id, limit=limit, cursor=cursor)
     # The addresses are read for the page instead of being left null. A team
     # list without an email can only show the front of a user id, which is a
@@ -96,6 +97,7 @@ async def add_membership(
 async def change_membership_role(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID, *, role: str, actor: Principal
 ) -> MembershipRead:
+    """Change what role a membership holds, refusing a role the actor may not grant."""
     _guard_role_grant(actor, org_id, role)
     membership = await _require_membership(session, org_id, membership_id)
     await repository.set_membership_role(session, org_id, membership_id, role=role)
@@ -153,6 +155,7 @@ async def set_membership_revoked(
 
 
 async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID) -> Any:
+    """Fetch a membership, or refuse if this organisation has none by that id."""
     membership = await repository.membership_by_id(session, org_id, membership_id)
     if membership is None:
         raise MembershipNotFound()
@@ -160,6 +163,7 @@ async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membersh
 
 
 def _membership_read(membership: Any, *, email: str | None = None, invited: bool = False) -> MembershipRead:
+    """Shape a membership row into what a route may return."""
     return MembershipRead(
         id=membership.id,
         user_id=membership.user_id,

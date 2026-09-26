@@ -92,6 +92,7 @@ async def switch_workspace(
 
 
 def capabilities_for(principal: Principal) -> Capabilities:
+    """What the signed-in person may do in their active workspace, for the frontend to gate on."""
     active = principal.active_membership
     role = active.role if active else None
     return Capabilities(

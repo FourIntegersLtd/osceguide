@@ -37,6 +37,7 @@ _STAFF_CONSOLE_LABEL = "the OSCE Guide staff console"
 
 
 def _user_summary(user: accounts.SupportUser) -> UserSummary:
+    """Shape an account into the summary a support search result shows."""
     return UserSummary(
         id=user.id,
         email=user.email,
@@ -110,6 +111,7 @@ async def set_platform_admin(
 
 
 async def _require(session: AsyncSession, user_id: uuid.UUID) -> accounts.SupportUser:
+    """Fetch an account, or refuse if no account exists with that id."""
     user = await accounts.user_by_id(session, user_id)
     if user is None:
         raise UserNotFound()
@@ -117,6 +119,7 @@ async def _require(session: AsyncSession, user_id: uuid.UUID) -> accounts.Suppor
 
 
 async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDetail:
+    """The full account detail the platform console shows, memberships included."""
     user = await _require(session, user_id)
     memberships = [
         MembershipRead(
@@ -190,6 +193,7 @@ async def update_user(
 async def trigger_password_reset(
     session: AsyncSession, user_id: uuid.UUID, *, actor: Principal, now: datetime
 ) -> None:
+    """Send this account a password reset email, on the console's behalf."""
     user = await _require(session, user_id)
     await service_passwords.begin_password_reset(session, email=user.email, now=now)
     await repository.write_audit(

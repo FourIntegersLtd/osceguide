@@ -23,6 +23,7 @@ from app.features.tenancy.models import AuditEntry, Membership, Organization
 async def create_organization(
     session: AsyncSession, *, slug: str, name: str, org_type: str = "institution", status: str = "trial"
 ) -> Organization:
+    """Provision a new organisation."""
     org = Organization(slug=slug.strip(), name=name, org_type=org_type, status=status)
     session.add(org)
     # Flushed and refreshed so the caller gets the generated id and the
@@ -33,6 +34,7 @@ async def create_organization(
 
 
 async def organization_by_slug(session: AsyncSession, slug: str) -> Organization | None:
+    """Find an organisation by its slug."""
     stmt = select(Organization).where(Organization.slug == slug.strip())
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -49,6 +51,7 @@ async def set_organization_status(
     suspended_at: datetime | None = None,
     suspended_by: uuid.UUID | None = None,
 ) -> None:
+    """Change an organisation's status, e.g. suspending or restoring it."""
     await session.execute(
         update(Organization)
         .where(Organization.id == org_id)
@@ -67,6 +70,7 @@ async def add_membership(
     role: str,
     product_surface: str | None = None,
 ) -> Membership:
+    """Grant a person a role at an organisation."""
     membership = Membership(org_id=org_id, user_id=user_id, role=role, product_surface=product_surface)
     session.add(membership)
     # Flushed so the caller gets the id and the server-side status: returned
@@ -113,6 +117,7 @@ async def live_memberships_with_orgs(
 async def membership_for_user_in_org(
     session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, role: str
 ) -> Membership | None:
+    """Find this person's membership at this organisation with this specific role."""
     stmt = select(Membership).where(
         Membership.org_id == org_id, Membership.user_id == user_id, Membership.role == role
     )
@@ -122,6 +127,7 @@ async def membership_for_user_in_org(
 async def membership_by_id(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID
 ) -> Membership | None:
+    """Find a membership at this organisation by its id."""
     stmt = select(Membership).where(Membership.org_id == org_id, Membership.id == membership_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -129,6 +135,7 @@ async def membership_by_id(
 async def list_memberships(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Membership], str | None]:
+    """A page of an organisation's memberships, oldest first."""
     stmt = select(Membership).where(Membership.org_id == org_id)
     return await keyset_page(
         session,
@@ -144,6 +151,7 @@ async def list_memberships(
 async def set_membership_role(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID, *, role: str
 ) -> None:
+    """Change what role a membership holds."""
     await session.execute(
         update(Membership)
         .where(Membership.org_id == org_id, Membership.id == membership_id)
@@ -154,6 +162,7 @@ async def set_membership_role(
 async def set_membership_revoked(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID, *, at: datetime | None
 ) -> None:
+    """Revoke a membership (a timestamp) or restore it (`None`)."""
     await session.execute(
         update(Membership)
         .where(Membership.org_id == org_id, Membership.id == membership_id)
@@ -177,6 +186,7 @@ async def write_audit(
     summary: str | None = None,
     meta: dict[str, Any] | None = None,
 ) -> AuditEntry:
+    """Record an entry in the audit log. `org_id=None` means a platform-level act."""
     entry = AuditEntry(
         org_id=org_id,
         actor_user_id=actor_user_id,
@@ -195,6 +205,7 @@ async def write_audit(
 async def list_audit(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[AuditEntry], str | None]:
+    """A page of one organisation's audit log, oldest first."""
     stmt = select(AuditEntry).where(AuditEntry.org_id == org_id)
     return await keyset_page(
         session, stmt, sort_col=AuditEntry.at, id_col=AuditEntry.id, limit=limit, cursor=cursor

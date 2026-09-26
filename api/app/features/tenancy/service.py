@@ -27,6 +27,7 @@ org_permits_access = domain.org_permits_access
 
 
 async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgRef | None:
+    """The minimal organisation reference other slices use, by slug."""
     org = await repository.organization_by_slug(session, slug)
     return None if org is None else OrgRef(id=org.id, slug=org.slug, status=org.status)
 
@@ -42,6 +43,7 @@ class OrgSummary:
 
 
 async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary | None:
+    """An organisation's name and status, for another slice to display."""
     org = await repository.organization_by_id(session, org_id)
     return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, status=org.status)
 
@@ -87,6 +89,7 @@ def default_workspace_for(memberships: list[TokenMembership]) -> str | None:
 async def provision_organization(
     session: AsyncSession, *, slug: str, name: str, org_type: str, actor: Principal
 ) -> OrganizationRead:
+    """Create a new organisation, refusing a slug that is already taken."""
     if await repository.organization_by_slug(session, slug) is not None:
         raise OrgSlugTaken()
     org = await repository.create_organization(session, slug=slug, name=name, org_type=org_type)
@@ -104,6 +107,7 @@ async def provision_organization(
 
 
 async def read_organization(session: AsyncSession, org_id: uuid.UUID) -> OrganizationRead:
+    """Fetch an organisation, or refuse if it does not exist."""
     org = await repository.organization_by_id(session, org_id)
     if org is None:
         raise OrgNotFound()
@@ -113,6 +117,7 @@ async def read_organization(session: AsyncSession, org_id: uuid.UUID) -> Organiz
 async def suspend_organization(
     session: AsyncSession, *, org_id: uuid.UUID, actor: Principal, now: datetime
 ) -> OrganizationRead:
+    """Suspend an organisation, blocking its members' access until it is restored."""
     org = await repository.organization_by_id(session, org_id)
     if org is None:
         raise OrgNotFound()
@@ -135,6 +140,7 @@ async def suspend_organization(
 async def list_audit(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[AuditRead], str | None]:
+    """A page of one organisation's audit log."""
     entries, next_cursor = await repository.list_audit(session, org_id, limit=limit, cursor=cursor)
     return [
         AuditRead(
@@ -159,6 +165,7 @@ async def list_audit(
 
 
 def _org_read(org: Any) -> OrganizationRead:
+    """Shape an organisation row into what a route may return."""
     return OrganizationRead(
         id=org.id,
         slug=org.slug,

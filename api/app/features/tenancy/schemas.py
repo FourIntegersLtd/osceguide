@@ -1,3 +1,7 @@
+"""What tenancy's routes read and return: organisations, memberships, the
+platform console's accounts and its audit log.
+"""
+
 from __future__ import annotations
 
 import uuid

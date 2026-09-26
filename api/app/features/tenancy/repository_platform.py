@@ -51,6 +51,7 @@ async def organizations_in_statuses(session: AsyncSession, *, statuses: Sequence
 
 
 async def count_organizations_by_status(session: AsyncSession) -> dict[str, int]:
+    """How many organisations are in each status, for the console's overview."""
     stmt = select(Organization.status, func.count()).group_by(Organization.status)
     return {str(status): int(count) for status, count in (await session.execute(stmt)).all()}
 

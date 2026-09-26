@@ -11,6 +11,7 @@ log = get_logger(__name__)
 
 
 def register() -> None:
+    """Wire up tenancy's background jobs on the shared jobs app."""
     app = get_jobs_app()
 
     @app.periodic(cron="0 * * * *")
