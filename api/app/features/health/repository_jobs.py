@@ -29,6 +29,7 @@ _COLUMNS = "id, queue_name, task_name, status, attempts, scheduled_at, args, loc
 
 @dataclass(frozen=True)
 class JobRef:
+    """One row of `procrastinate_jobs`, typed rather than read as a raw database row."""
 
     id: int
     queue_name: str
@@ -42,6 +43,7 @@ class JobRef:
 
 
 def _ref(job_row: Any) -> JobRef:
+    """Turn one raw row from `procrastinate_jobs` into a typed `JobRef`."""
     return JobRef(
         id=int(job_row.id),
         queue_name=job_row.queue_name,
@@ -58,7 +60,7 @@ def _ref(job_row: Any) -> JobRef:
 async def jobs_for_arg(
     session: AsyncSession, *, task_name: str, key: str, matching_values: Sequence[str]
 ) -> list[JobRef]:
-    """Every job of one task whose `args[key]` is one of `values`, newest first.
+    """Every job of one task whose `args[key]` is one of `matching_values`, newest first.
 
     This is how a job is found from the thing it is about: the scoring job
     carries `attempt_id` in its arguments and nowhere else.
@@ -103,6 +105,7 @@ async def list_jobs(
 
 
 async def counts_by_status(session: AsyncSession) -> dict[str, int]:
+    """How many jobs sit in each status, including the statuses that currently have none."""
     status_rows = await session.execute(
         text("SELECT status, count(*) AS n FROM procrastinate_jobs GROUP BY status")
     )

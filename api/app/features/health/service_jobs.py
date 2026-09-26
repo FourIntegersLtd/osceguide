@@ -37,6 +37,7 @@ async def list_jobs(
     before_id: int | None = None,
     limit: int = 50,
 ) -> list[JobRef]:
+    """A page of the queue, for another feature that wants to know what is queued."""
     return await repository_jobs.list_jobs(
         session, status=status, task_name=task_name, before_id=before_id, limit=limit
     )

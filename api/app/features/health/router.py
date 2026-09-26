@@ -1,3 +1,5 @@
+"""The public `/health` route: is the platform up, in one word and two checks."""
+
 from __future__ import annotations
 
 from typing import Annotated
