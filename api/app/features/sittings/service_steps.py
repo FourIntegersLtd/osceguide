@@ -78,6 +78,7 @@ async def begin_reading(
     seq: int,
     now: datetime,
 ) -> None:
+    """Put one station into its reading minute, and start the circuit's clock on it."""
     slot = slot_at(slots, index)
     await repository.update_slot(
         session,
@@ -106,6 +107,7 @@ async def begin_consultation(
     settings: Settings | None,
     now: datetime,
 ) -> None:
+    """Dispatch the patient into the room and start the consultation's clock."""
     slot = slot_at(slots, index)
     if agents is None or settings is None:
         raise RuntimeError("A consultation cannot start without a way to put the patient in the room.")
@@ -192,6 +194,7 @@ async def _close_sitting_if_over(session: AsyncSession, org_id: uuid.UUID, circu
 
 
 def slot_at(slots: list[Slot], index: int) -> Slot:
+    """The slot at this station index, or raise `SlotNotFound` if the circuit has none there."""
     found = next((slot for slot in slots if slot.slot_index == index), None)
     if found is None:
         raise errors.SlotNotFound()

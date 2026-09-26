@@ -49,6 +49,7 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
 
 
 class Circuit(Base, UUIDPrimaryKey, Timestamps):
+    """A group or a single candidate running through a set of stations, with its own clock."""
 
     __tablename__ = "circuits"
     __table_args__ = (

@@ -31,6 +31,7 @@ class SittingRef:
 
 @dataclass(frozen=True)
 class CircuitRef:
+    """A circuit as another slice's screen would show it."""
 
     id: uuid.UUID
     sitting_id: uuid.UUID
@@ -56,6 +57,7 @@ class CircuitRef:
 
 @dataclass(frozen=True)
 class SlotRef:
+    """A slot as another slice's screen would show it."""
 
     id: uuid.UUID
     circuit_id: uuid.UUID

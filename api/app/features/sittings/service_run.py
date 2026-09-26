@@ -154,6 +154,7 @@ async def _step_forward(
     settings: Settings,
     now: datetime,
 ) -> None:
+    """Work out the next step from where the circuit is now, and put it there."""
     slots = await repository.slots_for_circuit(session, org_id, circuit.id)
     step = domain_run.next_step(
         position_of(circuit, slots), slot_count=len(slots), timing=timing_domain(circuit.timing)

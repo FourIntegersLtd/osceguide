@@ -47,6 +47,7 @@ async def create_sitting(
     scheduled_for: datetime | None,
     programme_id: uuid.UUID,
 ) -> SittingRead:
+    """Schedule a new sitting, marked against its programme's published rubric."""
     rubric_version_id = await rubric_version_for_programme(session, org_id, programme_id)
 
     sitting = await repository.create_sitting(
@@ -63,6 +64,7 @@ async def create_sitting(
 
 
 async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRead:
+    """A sitting with every circuit and slot it has, for a console screen."""
     sitting = await _require_sitting(session, org_id, sitting_id)
     circuits = []
     for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
@@ -74,6 +76,7 @@ async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uui
 async def list_sittings(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[SittingRead], str | None]:
+    """A page of this organisation's sittings, newest first."""
     sittings, next_cursor = await repository.list_sittings(session, org_id, limit=limit, cursor=cursor)
     return [sitting_read(sitting, []) for sitting in sittings], next_cursor
 
@@ -89,6 +92,7 @@ async def add_circuit(
     supervisor_user_id: uuid.UUID | None,
     timing: TimingIn,
 ) -> CircuitRead:
+    """Build a new circuit inside a sitting: check the roster, build its slots, write it."""
     sitting = await _require_sitting(session, org_id, sitting_id)
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
@@ -138,12 +142,14 @@ async def add_circuit(
 
 
 async def read_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> CircuitRead:
+    """A circuit and its slots as the API shape a console screen reads."""
     circuit = await _require_circuit(session, org_id, circuit_id)
     slots = await repository.slots_for_circuit(session, org_id, circuit_id)
     return circuit_read(circuit, slots)
 
 
 async def _require_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting:
+    """The sitting, or raise `SittingNotFound` if it does not belong to this organisation."""
     sitting = await repository.sitting_by_id(session, org_id, sitting_id)
     if sitting is None:
         raise errors.SittingNotFound()

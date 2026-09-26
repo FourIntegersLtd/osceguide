@@ -16,6 +16,7 @@ from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee
 
 
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """How many sittings this organisation has scheduled."""
     stmt = select(func.count()).select_from(Sitting).where(Sitting.org_id == org_id)
     return int((await session.execute(stmt)).scalar_one())
 
@@ -36,6 +37,7 @@ async def circuits_for_supervisor(
 async def slot_counts_for_circuits(
     session: AsyncSession, org_id: uuid.UUID, circuit_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, int]:
+    """How many slots each of these circuits has, keyed by circuit id."""
     if not circuit_ids:
         return {}
     stmt = (
@@ -76,6 +78,7 @@ async def delete_circuit_structure(session: AsyncSession, org_id: uuid.UUID, cir
 
 
 async def slots_for_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> list[Slot]:
+    """Every slot across every circuit this sitting has, in station order."""
     stmt = (
         select(Slot)
         .join(Circuit, Circuit.id == Slot.circuit_id)

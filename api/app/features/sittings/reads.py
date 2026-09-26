@@ -10,6 +10,7 @@ from app.features.sittings.schemas import CircuitRead, SittingRead, SlotRead, Ti
 
 
 def state(circuit: Circuit, *, has_feedback: bool) -> domain.CircuitState:
+    """The circuit as the domain rules see it: what is running, and whether it can still be edited."""
     return domain.CircuitState(
         active_slot_id=str(circuit.active_slot_id) if circuit.active_slot_id else None,
         has_feedback=has_feedback,
@@ -48,6 +49,7 @@ def slot_phase(circuit: Circuit, slot: Slot) -> str | None:
 
 
 def timing_json(timing: domain.Timing) -> dict[str, Any]:
+    """`timing` as the plain dict stored on the circuit row."""
     return {
         "reading_minutes": timing.reading_minutes,
         "simulation_minutes": timing.simulation_minutes,
@@ -57,6 +59,7 @@ def timing_json(timing: domain.Timing) -> dict[str, Any]:
 
 
 def timing_read(raw: dict[str, Any] | None) -> TimingRead:
+    """The stored timing blob as the API shape, defaulting any field an old row lacks."""
     timing = raw or {}
     return TimingRead(
         reading_minutes=int(timing.get("reading_minutes", domain.DEFAULT_READING_MINUTES)),
@@ -82,6 +85,7 @@ def timing_domain(raw: dict[str, Any] | None) -> domain.Timing:
 
 
 def slot_read(slot: Slot, circuit: Circuit) -> SlotRead:
+    """One slot as the API shape, with its phase and deadline filled in only if it is the active one."""
     return SlotRead(
         id=slot.id,
         slot_index=slot.slot_index,
@@ -98,6 +102,7 @@ def slot_read(slot: Slot, circuit: Circuit) -> SlotRead:
 
 
 def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
+    """A circuit and its slots as the API shape a console screen reads."""
     return CircuitRead(
         id=circuit.id,
         sitting_id=circuit.sitting_id,
@@ -120,6 +125,7 @@ def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
 
 
 def sitting_read(sitting: Sitting, circuits: list[CircuitRead]) -> SittingRead:
+    """A sitting and its circuits as the API shape a console screen reads."""
     return SittingRead(
         id=sitting.id,
         name=sitting.name,

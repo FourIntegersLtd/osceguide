@@ -28,6 +28,7 @@ BREAK_BOUNDS = (1, 60)
 
 
 class Mode(StrEnum):
+    """Which shape of circuit this is: a group rotating together, or one candidate alone."""
 
     TRAINING = "training"
     EXAM = "exam"
@@ -53,23 +54,24 @@ FINISHED_SLOT_STATUSES = frozenset({SlotStatus.COMPLETED, SlotStatus.SKIPPED})
 
 
 class InvalidCircuit(Exception):
-    pass
+    """A circuit was asked to be built, or its timing set, in a way the rules refuse."""
 
 
 class CircuitLocked(Exception):
-    pass
+    """A structural edit was refused because the circuit's slots already mean something."""
 
 
 class CircuitAlreadyEnded(Exception):
-    pass
+    """An action needs a circuit that is still open, and this one has finished."""
 
 
 class NotPermittedInMode(Exception):
-    pass
+    """An action was tried against the wrong kind of circuit (training or exam)."""
 
 
 @dataclass(frozen=True)
 class PlannedSlot:
+    """One slot a circuit will start with, before it is written to the database."""
 
     index: int
     # A `users.id`, not a `trainees.id` — see the trainee_id trap in AGENTS.md.
@@ -79,6 +81,7 @@ class PlannedSlot:
 
 @dataclass(frozen=True)
 class CircuitState:
+    """The facts about a circuit that the edit and start rules need, gathered in one place."""
 
     active_slot_id: str | None
     has_feedback: bool
@@ -87,12 +90,14 @@ class CircuitState:
 
 @dataclass(frozen=True)
 class Break:
+    """One scheduled rest, named by the station it follows (1-based, as an examiner writes it)."""
 
     after_station: int
 
 
 @dataclass(frozen=True)
 class Timing:
+    """How long each phase lasts, and where the breaks fall, once defaults and limits are applied."""
 
     reading_minutes: int
     simulation_minutes: int
@@ -163,6 +168,7 @@ def edit_block(state: CircuitState) -> str | None:
 
 
 def ensure_startable(state: CircuitState) -> None:
+    """Refuse to start a circuit that has already finished."""
     if state.ended:
         raise CircuitAlreadyEnded("That circuit has already finished.")
 
@@ -194,6 +200,7 @@ def ensure_can_append_trainees(mode: Mode) -> None:
 
 
 def _clamp(value: int, bounds: tuple[int, int]) -> int:
+    """Restrict `value` to sit within `bounds` (inclusive)."""
     low, high = bounds
     return max(low, min(high, value))
 

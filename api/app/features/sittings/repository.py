@@ -24,6 +24,7 @@ async def create_sitting(
     scheduled_for: datetime | None,
     programme_id: uuid.UUID | None,
 ) -> Sitting:
+    """Write a new sitting row and return it, refreshed with its defaults."""
     sitting = Sitting(
         org_id=org_id,
         name=name,
@@ -40,6 +41,7 @@ async def create_sitting(
 
 
 async def sitting_by_id(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> Sitting | None:
+    """The sitting with this id, or None if it does not belong to this organisation."""
     stmt = select(Sitting).where(Sitting.org_id == org_id, Sitting.id == sitting_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -47,6 +49,7 @@ async def sitting_by_id(session: AsyncSession, org_id: uuid.UUID, sitting_id: uu
 async def list_sittings(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Sitting], str | None]:
+    """A page of this organisation's sittings, newest first."""
     stmt = select(Sitting).where(Sitting.org_id == org_id)
     return await keyset_page(
         session, stmt, sort_col=Sitting.created_at, id_col=Sitting.id, limit=limit, cursor=cursor
@@ -56,6 +59,7 @@ async def list_sittings(
 async def set_sitting_status(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, *, status: str
 ) -> None:
+    """Write the sitting's status directly, without touching anything else."""
     await session.execute(
         update(Sitting).where(Sitting.org_id == org_id, Sitting.id == sitting_id).values(status=status)
     )
@@ -87,6 +91,7 @@ async def create_circuit(
     supervisor_user_id: uuid.UUID | None,
     timing: dict[str, Any],
 ) -> Circuit:
+    """Write a new circuit row and return it, refreshed with its defaults."""
     circuit = Circuit(
         org_id=org_id,
         sitting_id=sitting_id,
@@ -101,6 +106,7 @@ async def create_circuit(
 
 
 async def circuit_by_id(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> Circuit | None:
+    """The circuit with this id, or None if it does not belong to this organisation."""
     stmt = select(Circuit).where(Circuit.org_id == org_id, Circuit.id == circuit_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -123,6 +129,7 @@ async def circuit_for_update(
 async def circuits_for_sitting(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> list[Circuit]:
+    """Every circuit this sitting has, oldest first."""
     stmt = (
         select(Circuit)
         .where(Circuit.org_id == org_id, Circuit.sitting_id == sitting_id)
@@ -134,6 +141,7 @@ async def circuits_for_sitting(
 async def update_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, **values: Any
 ) -> None:
+    """Write the given fields onto the circuit row; which ones is the caller's rule."""
     await session.execute(
         update(Circuit).where(Circuit.org_id == org_id, Circuit.id == circuit_id).values(**values)
     )
@@ -146,6 +154,7 @@ async def add_circuit_members(
     trainee_ids: list[uuid.UUID],
     station_version_ids: list[uuid.UUID],
 ) -> None:
+    """Record who is rostered on this circuit and which stations it runs, in order."""
     for position, trainee_id in enumerate(trainee_ids):
         session.add(CircuitTrainee(circuit_id=circuit_id, trainee_id=trainee_id, position=position))
     for position, station_version_id in enumerate(station_version_ids):
@@ -188,11 +197,13 @@ async def create_slots(
 
 
 async def slots_for_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> list[Slot]:
+    """Every slot on this circuit, in station order."""
     stmt = select(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id).order_by(Slot.slot_index)
     return list((await session.execute(stmt)).scalars())
 
 
 async def slot_by_id(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> Slot | None:
+    """The slot with this id, or None if it does not belong to this organisation."""
     stmt = select(Slot).where(Slot.org_id == org_id, Slot.id == slot_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -200,12 +211,14 @@ async def slot_by_id(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUI
 async def update_slots_for_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, **values: Any
 ) -> None:
+    """Write the given fields onto every slot of this circuit at once."""
     await session.execute(
         update(Slot).where(Slot.org_id == org_id, Slot.circuit_id == circuit_id).values(**values)
     )
 
 
 async def update_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, **values: Any) -> None:
+    """Write the given fields onto one slot."""
     await session.execute(update(Slot).where(Slot.org_id == org_id, Slot.id == slot_id).values(**values))
 
 

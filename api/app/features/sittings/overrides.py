@@ -42,6 +42,7 @@ class Actor:
 
     @classmethod
     def for_user(cls, user_id: uuid.UUID | None, reason: str | None = None) -> Actor:
+        """Built here rather than in the router, so a handler stays one call deep."""
         return cls(user_id=user_id, reason=reason)
 
 
@@ -112,6 +113,7 @@ async def record_change(
     now: datetime,
     event: str,
 ) -> CircuitRead:
+    """Record an override, tell everyone watching, and hand back the circuit as it now reads."""
     await write_intervention(session, org_id, circuit, action=action, actor=actor, before=before, now=now)
     await announcements.circuit_changed(session, org_id, circuit.id, name=event)
     return await read_circuit(session, org_id, circuit.id)
@@ -120,6 +122,7 @@ async def record_change(
 async def list_interventions(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
 ) -> Interventions:
+    """Everything a human has done to this circuit, and why, in order."""
     await _require_circuit(session, org_id, circuit_id)
     interventions = await repository_run.interventions_for_circuit(session, org_id, circuit_id)
     return Interventions(

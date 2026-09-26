@@ -33,15 +33,15 @@ class SittingEditState:
 
 
 class SittingLocked(Exception):
-    pass
+    """An assessment-bearing field was asked to change after the sitting had begun."""
 
 
 class TraineeAlreadyOnCircuit(Exception):
-    pass
+    """Somebody was about to be added to a circuit they are already rostered on."""
 
 
 class StationNotOnCircuit(Exception):
-    pass
+    """A station was named that this circuit does not run."""
 
 
 def ensure_sitting_editable(state: SittingEditState, *, changing: set[str]) -> None:

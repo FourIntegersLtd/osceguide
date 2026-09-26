@@ -170,6 +170,7 @@ async def record_intervention(
     phase_seq_after: int,
     at: datetime,
 ) -> CircuitIntervention:
+    """Write one intervention row and return it, refreshed with its defaults."""
     intervention = CircuitIntervention(
         org_id=org_id,
         circuit_id=circuit_id,
@@ -190,6 +191,7 @@ async def record_intervention(
 async def interventions_for_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
 ) -> list[CircuitIntervention]:
+    """Everything recorded against this circuit, newest first."""
     stmt = (
         select(CircuitIntervention)
         .where(CircuitIntervention.org_id == org_id, CircuitIntervention.circuit_id == circuit_id)

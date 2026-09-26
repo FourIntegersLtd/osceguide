@@ -130,6 +130,7 @@ def step_window(step: Step, *, timing: Timing, now: datetime) -> tuple[datetime,
 
 
 def _minutes_for(step: Step, timing: Timing) -> int:
+    """How long `step` lasts, from the circuit's timing."""
     match step:
         case Reading():
             return timing.reading_minutes
@@ -142,6 +143,7 @@ def _minutes_for(step: Step, timing: Timing) -> int:
 
 
 def phase_of(step: Step) -> RunPhase | None:
+    """Which phase `step` counts as, or None for `Finished`."""
     match step:
         case Reading():
             return RunPhase.READING
@@ -191,16 +193,19 @@ def elapsed_seconds(
 
 
 def ensure_not_paused(paused_at: datetime | None) -> None:
+    """Refuse to pause a clock that is already stopped."""
     if paused_at is not None:
         raise CircuitPaused("The clock is already stopped.")
 
 
 def ensure_paused(paused_at: datetime | None) -> None:
+    """Refuse to resume a clock that is running."""
     if paused_at is None:
         raise CircuitNotPaused("The clock is running; there is nothing to resume.")
 
 
 def ensure_jump_target(slot_index: int, *, slot_count: int) -> None:
+    """Refuse to jump to a station that is not on this circuit."""
     if not 0 <= slot_index < slot_count:
         raise InvalidCircuit("That station is not on this circuit.")
 

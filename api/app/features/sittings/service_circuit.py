@@ -19,6 +19,7 @@ from app.features.sittings.service import _require_circuit
 
 
 async def _any_slot_reviewed(session: AsyncSession, slot_ids: list[uuid.UUID]) -> bool:
+    """Whether any of these slots already has a review recorded against it."""
     for slot_id in slot_ids:
         if await reviews.slot_has_review(session, slot_id):
             return True

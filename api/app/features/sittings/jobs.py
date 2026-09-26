@@ -125,6 +125,7 @@ def register() -> None:
 
     @app.task(name=service_clock.ADVANCE_TASK, queue=service_clock.ADVANCE_QUEUE)
     async def advance_circuit(org_id: str, circuit_id: str, expected_seq: int) -> None:
+        """The scheduled job for one phase ending: move the circuit on if `expected_seq` still matches."""
         from app.core.db import job_session
         from app.features.voice.service import get_room_agents
 
@@ -142,6 +143,7 @@ def register() -> None:
     @app.periodic(cron="* * * * *")
     @app.task(name=SWEEP_TASK, queue=SWEEP_QUEUE)
     async def sweep_circuits(timestamp: int = 0) -> None:
+        """The minute-by-minute safety net that runs `sweep_now`."""
         from app.features.voice.service import get_room_agents
 
         await sweep_now(agents=get_room_agents(), settings=get_settings(), now=datetime.now(UTC))

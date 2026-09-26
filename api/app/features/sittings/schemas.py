@@ -1,3 +1,9 @@
+"""The request and response shapes this slice's routes speak in.
+
+Plain data, not domain rules: what a client sends to build or edit a circuit,
+and what it reads back about a sitting, a circuit or a slot.
+"""
+
 from __future__ import annotations
 
 import uuid

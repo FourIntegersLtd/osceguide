@@ -33,6 +33,7 @@ from app.features.sittings.reads_types import TraineeSlot as TraineeSlot
 
 
 def _sitting_ref(sitting: Sitting) -> SittingRef:
+    """A sitting row, mapped to the shape another slice reads."""
     return SittingRef(
         id=sitting.id,
         org_id=sitting.org_id,
@@ -47,6 +48,7 @@ def _sitting_ref(sitting: Sitting) -> SittingRef:
 
 
 def _circuit_ref(circuit: Circuit) -> CircuitRef:
+    """A circuit row, mapped to the shape another slice reads."""
     return CircuitRef(
         id=circuit.id,
         sitting_id=circuit.sitting_id,
@@ -69,6 +71,7 @@ def _circuit_ref(circuit: Circuit) -> CircuitRef:
 
 
 def _slot_ref(slot: Slot) -> SlotRef:
+    """A slot row, mapped to the shape another slice reads."""
     return SlotRef(
         id=slot.id,
         circuit_id=slot.circuit_id,
@@ -88,6 +91,7 @@ async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
 
 
 async def recent_sittings(session: AsyncSession, org_id: uuid.UUID, *, limit: int) -> list[SittingRef]:
+    """This organisation's most recently created sittings."""
     sittings, _ = await repository.list_sittings(session, org_id, limit=limit, cursor=None)
     return [_sitting_ref(sitting) for sitting in sittings]
 
@@ -95,6 +99,7 @@ async def recent_sittings(session: AsyncSession, org_id: uuid.UUID, *, limit: in
 async def supervisor_circuits(
     session: AsyncSession, org_id: uuid.UUID, supervisor_user_id: uuid.UUID
 ) -> list[SupervisorCircuit]:
+    """The circuits this person supervises, with each one's sitting and slot count."""
     pairs = await repository_reads.circuits_for_supervisor(session, org_id, supervisor_user_id)
     counts = await repository_reads.slot_counts_for_circuits(
         session, org_id, [circuit.id for circuit, _ in pairs]
@@ -139,6 +144,7 @@ async def slots_for_trainee(session: AsyncSession, trainee_user_id: uuid.UUID) -
 async def sitting_detail(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
 ) -> SittingDetail | None:
+    """A sitting with every circuit and slot it has, or None if it is not this org's."""
     sitting = await repository.sitting_by_id(session, org_id, sitting_id)
     if sitting is None:
         return None
@@ -156,6 +162,7 @@ async def sitting_detail(
 
 
 async def sitting_ref(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRef | None:
+    """A sitting as another slice's screen would show it, or None if it is not this org's."""
     sitting = await repository.sitting_by_id(session, org_id, sitting_id)
     return None if sitting is None else _sitting_ref(sitting)
 

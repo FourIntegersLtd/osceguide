@@ -1,3 +1,10 @@
+"""Scheduling a sitting and shaping the circuits inside it.
+
+The routes here are the desk work: create a sitting, build or rebuild a
+circuit, add latecomers, edit what has not started yet. Running a live
+circuit is `router_run.py`; overriding one is `router_overrides.py`.
+"""
+
 from __future__ import annotations
 
 import uuid
