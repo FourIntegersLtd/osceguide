@@ -107,11 +107,13 @@ async def build_feedback(
 
 
 async def _failed(session: AsyncSession, session_id: uuid.UUID, *, reason: str) -> None:
+    """Record that marking failed, and log why, so support can see it without a stack trace."""
     log.warning("peer session not marked", session_id=str(session_id), reason=reason)
     await repository_sessions.set_recording_state(session, session_id, state="failed", error=reason[:200])
 
 
 def _transcriber() -> Transcriber:
+    """The real transcriber, built on demand so tests can pass a fake instead."""
     from app.features.peer_practice.transcriber import build_transcriber  # noqa: PLC0415
 
     return build_transcriber()

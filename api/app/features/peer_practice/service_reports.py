@@ -53,6 +53,7 @@ async def report_abuse(
 async def report_no_show(
     session: AsyncSession, session_id: uuid.UUID, *, reporter_id: uuid.UUID, message: str | None
 ) -> None:
+    """A report that the other participant never turned up, emailed to support."""
     practice_session = await repository_sessions.session_by_id(session, session_id)
     if practice_session is None or reporter_id not in {
         practice_session.doctor_user_id,

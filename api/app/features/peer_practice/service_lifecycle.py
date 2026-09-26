@@ -48,6 +48,11 @@ async def create_runtime_for_peer_booking(
     owner_user_id: uuid.UUID,
     claimer_user_id: uuid.UUID,
 ) -> PracticeSession:
+    """Start a practice session for a marketplace-booked pair, assigning doctor and patient roles.
+
+    Called from the marketplace slice once a booking is claimed. Its name and
+    parameters are a contract with that caller and must not change here.
+    """
     doctor_id, patient_id = await roles_for_peer_participants(session, owner_user_id, claimer_user_id)
     station_id = await pick_station_version_id(session, exam_id=exam_id, doctor_user_id=doctor_id)
     practice = await repository_sessions.create_session(
@@ -138,6 +143,11 @@ async def record_presence(
     now: datetime,
     recorder: RoomRecorder | None = None,
 ) -> PracticeSession:
+    """Mark one participant present, starting preparation once both have joined.
+
+    Also advances the phase clock if it is already due, so a heartbeat that
+    arrives late does double duty rather than waiting for the next one.
+    """
     exam_code = await catalog.exam_code_by_id(session, practice_session.exam_id) or ""
     updates: dict[str, datetime] = {}
     if user_id == practice_session.doctor_user_id and practice_session.doctor_joined_at is None:

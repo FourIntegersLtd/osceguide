@@ -1,3 +1,5 @@
+"""The shapes peer practice sends and receives: the queue, the session, its station and feedback."""
+
 from __future__ import annotations
 
 import uuid

@@ -7,7 +7,7 @@ client can decide — by never calling, or calling twice — whether somebody's
 practice gets marked.
 
 **A failed recording never fails a session.** Every path here swallows what it
-cannot do, records why on the row, and lets the consultation carry on.
+cannot do, records why on the session, and lets the consultation carry on.
 """
 
 from __future__ import annotations

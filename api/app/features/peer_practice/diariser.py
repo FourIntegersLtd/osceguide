@@ -38,6 +38,7 @@ async def to_turns(raw_transcript: str) -> list[dict[str, str]]:
     client = _client()
 
     def call() -> str:
+        """The model's answer to one diarisation request, run in a thread below."""
         response = client.chat.completions.create(
             model=DIARISATION_MODEL,
             messages=[
@@ -60,6 +61,7 @@ async def to_turns(raw_transcript: str) -> list[dict[str, str]]:
 
 
 def _clean(parsed: Any) -> list[dict[str, str]]:
+    """Keep only the turns the model attributed to a doctor or a patient, with real text."""
     messages = parsed.get("messages") if isinstance(parsed, dict) else None
     if not isinstance(messages, list):
         raise TranscriptionFailed("The diarised transcript was not a list of turns")
@@ -79,6 +81,7 @@ def _clean(parsed: Any) -> list[dict[str, str]]:
 
 
 def _client() -> Any:
+    """The OpenAI client used to split raw speech into turns, or refuse if unavailable."""
     settings = get_settings()
     if not settings.openai_api_key:
         raise TranscriptionFailed("No OpenAI key is configured, so turns cannot be recovered")

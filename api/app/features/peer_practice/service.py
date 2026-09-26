@@ -73,6 +73,7 @@ async def join_queue(
 
 
 async def read_status(session: AsyncSession, entry_id: uuid.UUID, *, user_id: uuid.UUID) -> QueueStatus:
+    """One caller's own queue entry, refused for anyone else's."""
     entry = await repository.entry_by_id(session, entry_id)
     if entry is None or entry.user_id != user_id:
         raise errors.QueueEntryNotFound()
@@ -82,6 +83,7 @@ async def read_status(session: AsyncSession, entry_id: uuid.UUID, *, user_id: uu
 async def leave_queue(
     session: AsyncSession, entry_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> None:
+    """Give up a queue place. Refused if it was already matched or already left."""
     entry = await repository.entry_by_id(session, entry_id)
     if entry is None or entry.user_id != user_id:
         raise errors.QueueEntryNotFound()
@@ -155,6 +157,7 @@ async def match_waiting(
 async def read_session(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime | None = None
 ) -> PracticeSessionRead:
+    """One practice session as its doctor or patient sees it, advancing its phase if due."""
     practice_session = await repository_sessions.session_by_id(session, session_id)
     if practice_session is None or user_id not in {
         practice_session.doctor_user_id,
@@ -172,6 +175,7 @@ async def read_session(
 async def touch_presence(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PracticeSessionRead:
+    """Mark this caller present and drive the session's phase forward if due."""
     practice_session = await repository_sessions.session_by_id(session, session_id)
     if practice_session is None or user_id not in {
         practice_session.doctor_user_id,
@@ -193,6 +197,7 @@ async def submit_feedback(
     comment: str | None,
     would_practice_again: bool | None = None,
 ) -> PracticeSessionRead:
+    """Record one participant's rating and comment on a session they were part of."""
     practice_session = await repository_sessions.session_by_id(session, session_id)
     if practice_session is None or user_id not in {
         practice_session.doctor_user_id,
@@ -214,6 +219,7 @@ async def end_session(
     reason: str | None,
     now: datetime,
 ) -> PracticeSessionRead:
+    """End a session early, recording why, and stop and queue its recording."""
     practice_session = await repository_sessions.session_by_id(session, session_id)
     if practice_session is None or user_id not in {
         practice_session.doctor_user_id,
@@ -233,6 +239,7 @@ async def end_session(
 
 
 async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PracticeSessionRead]:
+    """Every session this person has been matched into, as doctor or patient."""
     return [
         await _session_read(session, practice_session, viewer_id=user_id)
         for practice_session in await repository_sessions.sessions_for_user(session, user_id)
@@ -240,6 +247,7 @@ async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[Pr
 
 
 async def _status(session: AsyncSession, entry: QueueEntry) -> QueueStatus:
+    """Build the wire status for one queue entry: position, room size, and where it landed."""
     return QueueStatus(
         entry_id=entry.id,
         status=entry.status,

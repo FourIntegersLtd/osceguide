@@ -1,15 +1,19 @@
+"""The refusals a peer-practice route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
 
 
 class QueueEntryNotFound(NotFound):
+    """This queue place is not this caller's, or has already gone."""
 
     code = "queue_entry_not_found"
     default_message = "You are not in the queue"
 
 
 class SessionNotFound(NotFound):
+    """No such practice session, or the caller was not one of its pair."""
 
     code = "practice_session_not_found"
     default_message = "No such practice session"
@@ -26,6 +30,7 @@ class AlreadyQueued(Conflict):
 
 
 class SessionAlreadyEnded(Conflict):
+    """The session this call would act on has already finished."""
 
     code = "practice_session_ended"
     default_message = "That session has already finished"

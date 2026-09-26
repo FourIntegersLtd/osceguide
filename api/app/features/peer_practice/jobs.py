@@ -33,6 +33,7 @@ MAX_LOOKS = 20
 
 
 def audience_lock_key(exam_id: uuid.UUID, audience: Audience) -> str:
+    """A queueing-lock key naming one exam room, so only one matcher nudge runs for it at a time."""
     org = str(audience.org_id) if audience.org_id else ""
     group = str(audience.group_id) if audience.group_id else ""
     return f"match:{exam_id}:{audience.visibility}:{org}:{group}"
@@ -91,6 +92,7 @@ async def drain_waiting_room(session: AsyncSession, exam_id: uuid.UUID, *, audie
 
 
 def register() -> None:
+    """Wire up this slice's background jobs: matching nudges and the periodic sweeps."""
     app = get_jobs_app()
 
     @app.task(name=TRY_MATCH_TASK, queue=MATCHING_QUEUE)

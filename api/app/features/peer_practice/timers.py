@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PhaseDurations:
+    """How long, in seconds, each phase of a practice session runs for one exam."""
 
     preparation: int
     consultation: int
@@ -24,4 +25,5 @@ _BY_EXAM: dict[str, PhaseDurations] = {
 
 
 def durations_for(exam_code: str) -> PhaseDurations:
+    """This exam's phase durations, or the default set for an exam with none of its own."""
     return _BY_EXAM.get(exam_code.lower(), _DEFAULT)

@@ -52,6 +52,7 @@ _TEACHING_KEYS = (
 
 
 def _block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
+    """The first of these keys whose value is itself a nested object, or empty."""
     for key in keys:
         candidate = content.get(key)
         if isinstance(candidate, Mapping):
@@ -60,6 +61,7 @@ def _block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
 
 
 def _text(value: Any) -> str | None:
+    """The value as trimmed text, or `None` for nothing worth showing."""
     if value is None:
         return None
     stripped = str(value).strip()
@@ -67,6 +69,7 @@ def _text(value: Any) -> str | None:
 
 
 def _lines(value: Any) -> list[str]:
+    """The value as a list of non-empty lines, whatever shape it was authored in."""
     if value is None:
         return []
     if isinstance(value, str):
@@ -121,7 +124,7 @@ def _feedback_state(practice_session: PracticeSession) -> str:
     """What the doctor can be told about their marking, in one word.
 
     Derived from the recording rather than stored: the states are already
-    written on the row by the recorder and the job, and a second field saying
+    written on the session by the recorder and the job, and a second field saying
     the same thing is a second field to get wrong.
     """
     if practice_session.doctor_attempt_id is not None:
@@ -140,6 +143,10 @@ async def station_read_for_version(
     is_doctor: bool,
     reveal_review: bool,
 ) -> PracticeStationRead | None:
+    """The station material for one version, shaped for this viewer's role and phase.
+
+    `None` when there is no version set, or it has no material.
+    """
     if station_version_id is None:
         return None
     mat = await stations.version_material(session, None, station_version_id)
@@ -151,6 +158,10 @@ async def station_read_for_version(
 def _station_payload(
     mat: stations.VersionMaterial, *, is_doctor: bool, reveal_review: bool
 ) -> PracticeStationRead:
+    """Shape one station's raw content into the wire read model.
+
+    Hides what this role and phase should not see yet.
+    """
     content: dict[str, Any] = mat.content or {}
     patient = _block(content, _PATIENT_KEYS)
     doctor = _block(content, ("doctor_information",))

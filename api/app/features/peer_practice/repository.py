@@ -19,6 +19,7 @@ from app.features.peer_practice.models import QueueEntry
 
 
 async def live_entry(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID) -> QueueEntry | None:
+    """This person's current waiting place in this exam's queue, if they have one."""
     stmt = select(QueueEntry).where(
         QueueEntry.user_id == user_id,
         QueueEntry.exam_id == exam_id,
@@ -28,6 +29,7 @@ async def live_entry(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UU
 
 
 async def entry_by_id(session: AsyncSession, entry_id: uuid.UUID) -> QueueEntry | None:
+    """One queue entry, whatever its status."""
     stmt = select(QueueEntry).where(QueueEntry.id == entry_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -147,6 +149,7 @@ async def position_of(session: AsyncSession, entry: QueueEntry) -> int:
 
 
 async def mark_matched(session: AsyncSession, entry_ids: list[uuid.UUID], *, session_id: uuid.UUID) -> None:
+    """Mark both queue entries as paired, pointing at the practice session they were matched into."""
     await session.execute(
         update(QueueEntry)
         .where(QueueEntry.id.in_(entry_ids))

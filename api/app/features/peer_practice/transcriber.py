@@ -26,12 +26,15 @@ TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 
 
 class OpenAITranscriber:
+    """A `Transcriber` that fetches the recording and sends it to OpenAI's transcription model."""
 
     async def transcribe(self, *, audio_url: str) -> str:
+        """Fetch the recording at this URL and return its speech as text."""
         audio = await _fetch(audio_url)
         client = _client()
 
         def call() -> Any:
+            """Run the (synchronous) OpenAI transcription call."""
             return client.audio.transcriptions.create(
                 model=TRANSCRIPTION_MODEL,
                 # The name is what the API reads the container format from,
@@ -58,6 +61,7 @@ class OpenAITranscriber:
 
 
 async def _fetch(audio_url: str) -> bytes:
+    """Download the recording's bytes from its URL."""
     try:
         async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT) as client:
             response = await client.get(audio_url)
@@ -68,6 +72,7 @@ async def _fetch(audio_url: str) -> bytes:
 
 
 def _client() -> Any:
+    """Build the OpenAI client, refusing early if there is no key or SDK to use it with."""
     settings = get_settings()
     if not settings.openai_api_key:
         raise TranscriptionFailed("No OpenAI key is configured, so nothing can be transcribed")
@@ -79,4 +84,5 @@ def _client() -> Any:
 
 
 def build_transcriber() -> OpenAITranscriber:
+    """The production `Transcriber` implementation."""
     return OpenAITranscriber()

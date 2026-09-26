@@ -28,6 +28,7 @@ def queue_stream(
     """
 
     async def snapshot() -> Snapshot:
+        """This queue entry's current status, or close the stream if it is gone."""
         async with open_session() as session:
             try:
                 status = await service.read_status(session, entry_id, user_id=user_id)
@@ -51,6 +52,7 @@ def session_stream(
     """Push session state until it ends."""
 
     async def snapshot() -> Snapshot:
+        """This session's current read model, closing the stream once it ends."""
         from datetime import UTC, datetime
 
         async with open_session() as session:

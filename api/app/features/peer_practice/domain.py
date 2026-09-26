@@ -18,11 +18,12 @@ class Role(StrEnum):
 
 
 class CannotPair(Exception):
-    pass
+    """Raised when two people in the queue cannot be put together."""
 
 
 @dataclass(frozen=True)
 class Waiting:
+    """One person's place in the queue, and what the fairness rules need to know about them."""
 
     user_id: str
     last_role: Role | None = None
@@ -34,6 +35,7 @@ class Waiting:
 
 @dataclass(frozen=True)
 class Pair:
+    """Who has been matched, and which part each of them plays."""
 
     doctor: str
     patient: str
