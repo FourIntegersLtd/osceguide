@@ -15,8 +15,8 @@ name: Promote to production
 #      commit is on main, it moves production forward, CI passed on it, staging
 #      serves exactly that commit, and staging's sign-in page loads.
 #   2. deploy pushes the commit to the `production` branch (a plain fast-forward,
-#      never a force push), then waits until Vercel reports the production build
-#      of that commit as successful.
+#      never a force push), then waits until production's /version answers with
+#      that commit, which only happens once Vercel's build of it is live.
 #
 # Rollback is not done here. Vercel keeps every production build, so the fast way
 # back is Vercel → platform-web → Deployments → the previous production build →
@@ -50,6 +50,9 @@ concurrency:
 # "Protection Bypass for Automation" holds the same value.
 env:
   STAGING_SITE_URL: https://staging.osceguide.com
+  # Production's own address on Vercel. osceguide.com still belongs to the legacy
+  # project; at the cutover, when the domain moves here, change this to it.
+  PRODUCTION_SITE_URL: https://platform-web-beta-nine.vercel.app
 
 jobs:
   check:
@@ -149,7 +152,6 @@ jobs:
     environment: production
     permissions:
       contents: write # move the production branch
-      deployments: read # read Vercel's deployment status for the commit
     steps:
       - name: Checkout main with history
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -166,31 +168,23 @@ jobs:
           git push origin "${COMMIT_SHA}:refs/heads/production"
           echo "production → ${COMMIT_SHA}" >> "$GITHUB_STEP_SUMMARY"
 
-      # Vercel records each build as a GitHub deployment on the commit, in an
-      # environment named like "Production – platform-web". Wait for that one to
-      # succeed, so a green run means production is actually serving the commit.
-      - name: Wait for Vercel's production build
+      # Ask production itself which commit it serves. GitHub's deployment records
+      # are not used: this repo's `production` environment is shared by this job
+      # and Vercel, so the records mix both and cannot say whether the build is
+      # live. /version answers {"commit": "<sha>"} from whichever build Vercel is
+      # serving, so a match means the new build is live, not just built.
+      - name: Wait until production serves the commit
         env:
-          GH_TOKEN: ${{ github.token }}
           COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
         run: |
           for poll_attempt in $(seq 1 60); do
-            production_deployment_id="$(gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${COMMIT_SHA}" \
-              --jq '[.[] | select(.environment | startswith("Production"))][0].id // empty')"
-            if [[ -n "$production_deployment_id" ]]; then
-              build_state="$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${production_deployment_id}/statuses" \
-                --jq '.[0].state // "pending"')"
-              case "$build_state" in
-                success)
-                  echo "Vercel's production build of ${COMMIT_SHA} succeeded."
-                  echo "Vercel production build: success" >> "$GITHUB_STEP_SUMMARY"
-                  exit 0 ;;
-                failure|error)
-                  echo "Vercel's production build of ${COMMIT_SHA} ended in '${build_state}'. Production still serves the previous build; see Vercel's build log." >&2
-                  exit 1 ;;
-              esac
+            production_commit="$(curl --silent --max-time 20 "${PRODUCTION_SITE_URL}/version" | jq -r '.commit // empty' 2>/dev/null || true)"
+            if [[ "$production_commit" == "$COMMIT_SHA" ]]; then
+              echo "Production serves ${COMMIT_SHA}."
+              echo "Production serves the commit: yes" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
             fi
             sleep 15
           done
-          echo "Vercel had not finished building ${COMMIT_SHA} after 15 minutes; check the Vercel dashboard." >&2
+          echo "Production still serves ${production_commit:-nothing} after 15 minutes, not ${COMMIT_SHA}. Check the build in Vercel → platform-web → Deployments; if it failed, production kept the previous build." >&2
           exit 1
