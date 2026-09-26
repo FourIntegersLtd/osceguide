@@ -6,14 +6,12 @@ export const SITE_URL = "https://osceguide.com";
  * The document head, for every page that does not override it.
  *
  * This is the retiring client's `app/metadata.ts`, ported rather than rewritten.
- * Two things were deliberately *not* carried across:
+ * One line was deliberately *not* carried across: `manifest: "/manifest.json"`,
+ * because `frontend/public/manifest.json` has never existed. The web manifest
+ * comes from `app/manifest.ts`, which Next links on its own; it gives a saved
+ * home-screen shortcut its icon.
  *
- * - `manifest: "/manifest.json"`, because `frontend/public/manifest.json` has
- *   never existed. The old head emitted a link to a 404, and copying a broken
- *   line is not parity.
- * - `appleWebApp.capable`, which only means something next to a manifest.
- *
- * The service worker went the same way for the same reason: `frontend/public/
+ * The service worker was not carried across either: `frontend/public/
  * sw.js` registers `install` and `activate` handlers that log, with every line
  * of push handling commented out, and `web-push` was never adopted here. There
  * is no PWA in the old product to port — there is a `console.log` — and push
@@ -100,5 +98,10 @@ export const metadata: Metadata = {
     description:
       "OSCE Guide's AI platform simulates real patient interactions, helping doctors sharpen their clinical skills and enhance communication.",
     images: ["/twitter-image.png"],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "OSCE Guide",
+    statusBarStyle: "black-translucent",
   },
 };
