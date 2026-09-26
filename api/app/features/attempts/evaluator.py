@@ -127,7 +127,11 @@ class EngineEvaluator:
             attempt_id=attempt.attempt_id,
             messages=tuple(
                 TranscriptMessage(
-                    role=MessageRole(str(turn.get("role", "user"))),
+                    # Stored roles name the speaker (`doctor` in a peer session,
+                    # `user` from the voice worker); the engine knows only its two.
+                    role=MessageRole.USER
+                    if str(turn.get("role", "user")) in {"user", "doctor", "candidate"}
+                    else MessageRole.ASSISTANT,
                     message=str(turn.get("message", "")),
                     timestamp=datetime.now(UTC),
                     message_id=str(turn.get("message_id", index)),
