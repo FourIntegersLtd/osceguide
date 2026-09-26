@@ -43,10 +43,11 @@ concurrency:
   group: promote-production
   cancel-in-progress: false
 
-# Staging sits behind Vercel's login (only the owner may open it). Each call to it
-# below sends the repo secret VERCEL_AUTOMATION_BYPASS_SECRET as the
-# x-vercel-protection-bypass header; Vercel → platform-web → Settings →
-# Deployment Protection → "Protection Bypass for Automation" holds the same value.
+# Staging is open today (Vercel Deployment Protection is off). Each call to it
+# below still sends the repo secret VERCEL_AUTOMATION_BYPASS_SECRET as the
+# x-vercel-protection-bypass header, so the gate keeps working if protection is
+# turned back on; Vercel → platform-web → Settings → Deployment Protection →
+# "Protection Bypass for Automation" holds the same value.
 env:
   STAGING_SITE_URL: https://staging.osceguide.com
 

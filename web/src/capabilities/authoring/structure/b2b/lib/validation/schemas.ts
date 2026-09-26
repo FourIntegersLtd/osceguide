@@ -24,11 +24,7 @@ export const b2bTraineeManualFormSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
   cohort: z.string().trim().max(120),
 });
-export const b2bStaffCreateFormSchema = z.object({
-  email: z.string().trim().email("Enter a valid email."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  role: z.enum(["supervisor", "admin"]),
-}); /** CSV upload. staff/trainee imports are CSV-only on the API today */
+/** CSV upload. staff/trainee imports are CSV-only on the API today */
 export const b2bTraineeUploadFilenameSchema = z
   .string()
   .min(1, "Choose a file.")

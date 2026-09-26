@@ -1,7 +1,11 @@
 import { z } from "zod";
 
-/** Single source of truth; register and reset previously disagreed (6 vs 8). */
-export const PASSWORD_MIN_LENGTH = 8;
+/**
+ * Single source of truth for register, reset and change password. It must equal
+ * platform-api's MIN_PASSWORD_LENGTH (features/identity/domain.py); when it said 8,
+ * the form accepted passwords the server then refused as `weak_password`.
+ */
+export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters.`;
 
 export const emailSchema = z

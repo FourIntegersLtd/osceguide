@@ -96,6 +96,7 @@ Protocol and schema work in `peer_practice`, none of it started:
 |---|---|---|
 | W-1 | Enforcing the CSP blocks every script | Found on staging 2026-09-26 with `PLATFORM_WEB_CSP_ENFORCE=true`: pages are prerendered, so their `<script>` tags carry no nonce, and the enforced policy (`'nonce-…' 'strict-dynamic'`, where `'self'` no longer counts) blocks them all. The page never hydrates and loads forever. Staging and production stay on Report-Only until pages render per request (the nonce needs that) or the policy stops relying on a nonce. Prove it on staging before setting the variable again |
 | W-2 | The analytics consent prompt shows where no analytics can load | Staging and previews resolve no GA id (`foundation/analytics/gaMeasurementId.ts`), yet the "Allow analytics" prompt still covers the page. Skip it when there is no id |
+| W-3 | The dashboard asks for `/me/dashboard` about seven times per load | Seen on staging 2026-09-26 after sign-in. Each extra call is a full backend round trip. Find which components each fetch it and share one load |
 
 ## Open: needs a product decision
 
