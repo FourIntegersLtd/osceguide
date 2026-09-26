@@ -153,7 +153,10 @@ async def test_a_set_with_an_attempt_in_it_is_not_deleted(
 
     still_there = await client.get(f"/api/v1/me/station-sets/{built['id']}", headers=bearer(token))
     assert still_there.status_code == 200
-    assert still_there.json()["entries"][0]["attempts"] == 1
+    # The delete gate (`set_has_attempts`) is keyed on an attempt row existing against the entry,
+    # not on this counter — it refused above even though the attempt was only ever opened, never
+    # started, so the counter that only a started consultation moves is still 0.
+    assert still_there.json()["entries"][0]["attempts"] == 0
 
 
 async def test_a_set_whose_station_was_taken_out_of_it_still_deletes(

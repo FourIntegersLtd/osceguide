@@ -10,6 +10,7 @@ from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import get_settings
 from app.features.entitlements import repository as ent_repo
 from app.features.entitlements.models import Entitlement
 from app.features.identity import repository as identity_repo
@@ -18,6 +19,23 @@ from tests.support.finished_consultation import finish_consultation
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
+
+
+def worker_headers() -> dict[str, str]:
+    """Auth for `/api/worker/*`, the route the LiveKit worker calls to fetch its attempt.
+
+    A worker fetching this is the one signal that a consultation actually started (see
+    `attempts.service_worker.bootstrap`), so it is what these tests call to "start" an attempt
+    rather than reaching into the repository to fake the transition.
+    """
+    settings = get_settings()
+    return {settings.worker_secret_header: settings.worker_secret}
+
+
+async def start(client: AsyncClient, attempt_id: str) -> None:
+    """Simulate the worker beginning the consultation, the way a real one does."""
+    response = await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+    assert response.status_code == 200, response.text
 
 
 async def a_learner(client: AsyncClient, db_session: AsyncSession, make_actor, email: str) -> str:  # type: ignore[no-untyped-def]
@@ -69,9 +87,16 @@ async def test_a_set_is_created_with_its_entries(
     assert response.json()["attempted_entries"] == 0
 
 
-async def test_attempting_an_entry_creates_an_attempt_and_counts_it(
+async def test_opening_an_entry_does_not_count_until_the_consultation_starts(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
+    """Opening a station creates the attempt the brief is read through, but does not spend a go.
+
+    A candidate who opens the page and leaves — never pressing "start consultation" — must not use
+    up an attempt they never had. The regression this guards: `station_sets` used to count the
+    entry the moment the attempt was created, so a `created` row that never became `running` still
+    used up a go against `exam.station_attempt_limit`.
+    """
     token = await a_learner(client, db_session, make_actor, "s2@example.com")
     version = await a_station_version(db_session)
     created = (
@@ -89,19 +114,33 @@ async def test_attempting_an_entry_creates_an_attempt_and_counts_it(
     )
     assert attempt.status_code == 201
     assert attempt.json()["kind"] == "set_station"
-    assert attempt.json()["attempts_used"] == 1
+    # Opened, never started: nothing counted yet.
+    assert attempt.json()["attempts_used"] == 0
 
-    refreshed = await client.get(f"/api/v1/me/station-sets/{created['id']}", headers=bearer(token))
-    assert refreshed.json()["entries"][0]["attempts"] == 1
-    assert refreshed.json()["attempted_entries"] == 1
-    assert refreshed.json()["completed_at"] is not None
+    opened_only = await client.get(f"/api/v1/me/station-sets/{created['id']}", headers=bearer(token))
+    assert opened_only.json()["entries"][0]["attempts"] == 0
+    assert opened_only.json()["attempted_entries"] == 0
+    assert opened_only.json()["completed_at"] is None
+
+    # The candidate comes back and actually starts the consultation this time.
+    await start(client, attempt.json()["attempt_id"])
+
+    started = await client.get(f"/api/v1/me/station-sets/{created['id']}", headers=bearer(token))
+    assert started.json()["entries"][0]["attempts"] == 1
+    assert started.json()["attempted_entries"] == 1
+    assert started.json()["completed_at"] is not None
 
 
 async def test_the_attempt_limit_is_enforced(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     """Three per station, from the exam. b2c enforces this by mutating an array
-    on the user document without a transaction."""
+    on the user document without a transaction.
+
+    Each of the three has to actually start, not just be created: only a started attempt counts
+    (see `test_opening_an_entry_does_not_count_until_the_consultation_starts`), so creating and
+    abandoning four in a row would wrongly stay under the limit forever.
+    """
     token = await a_learner(client, db_session, make_actor, "s3@example.com")
     version = await a_station_version(db_session)
     created = (
@@ -114,7 +153,9 @@ async def test_the_attempt_limit_is_enforced(
     url = f"/api/v1/me/station-sets/{created['id']}/entries/{created['entries'][0]['id']}/attempts"
 
     for _ in range(3):
-        assert (await client.post(url, headers=bearer(token))).status_code == 201
+        opened = await client.post(url, headers=bearer(token))
+        assert opened.status_code == 201, opened.text
+        await start(client, opened.json()["attempt_id"])
     refused = await client.post(url, headers=bearer(token))
     assert refused.status_code == 409
     assert refused.json()["code"] == "attempt_limit_reached"
@@ -255,6 +296,10 @@ async def test_a_debrief_can_be_started_from_an_entry(
         f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
     )
     assert attempt.status_code == 201, attempt.text
+    # Started, not merely opened: `ensure_debriefable` now refuses on `entry.attempts`, which only
+    # counts a consultation that actually began (see
+    # `test_opening_an_entry_does_not_count_until_the_consultation_starts`).
+    await start(client, attempt.json()["attempt_id"])
     await finish_consultation(db_session, uuid.UUID(attempt.json()["attempt_id"]))
 
     debrief = await client.post(
@@ -284,6 +329,7 @@ async def test_a_debrief_does_not_recheck_exam_access_after_the_source_attempt(
         f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
     )
     assert attempt.status_code == 201, attempt.text
+    await start(client, attempt.json()["attempt_id"])
     await finish_consultation(db_session, uuid.UUID(attempt.json()["attempt_id"]))
 
     await db_session.execute(

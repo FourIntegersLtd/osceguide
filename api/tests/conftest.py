@@ -328,6 +328,7 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
         platform_admin: bool = False,
         memberships: tuple[Membership, ...] = (),
         active_org_slug: str | None = None,
+        exam_code: str | None = None,
     ) -> str:
         user = await repository.create_user(
             db_session,
@@ -335,6 +336,7 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
             name=email,
             password_hash=None,
             is_platform_admin=platform_admin,
+            exam_code=exam_code,
         )
         # The membership rows are written, not just claimed. A token asserting
         # a membership no table held was fine while every check read the

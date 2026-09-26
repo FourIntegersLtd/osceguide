@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -206,13 +208,17 @@ async def test_an_impossible_reading_arrangement_is_refused(
         assert refused.status_code == 422, refused.text
 
 
-async def test_registering_records_the_exam_the_account_is_for(client: AsyncClient) -> None:
+async def test_registering_records_the_exam_the_account_is_for(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """The per-exam landing pages carry it into the form.
 
     This is what replaces the retiring client's per-exam subdomains: on one
     domain there is nothing in the request to say which exam somebody came to
     sit, and a trial account holds no entitlement to infer it from.
     """
+    await ensure_exam(db_session, "plab")
+
     response = await register(client, exam_code="plab")
 
     assert response.status_code == 201
@@ -220,40 +226,64 @@ async def test_registering_records_the_exam_the_account_is_for(client: AsyncClie
 
 
 async def test_registering_without_an_exam_is_allowed(client: AsyncClient) -> None:
-    """An institution's member gets their exams from the organisation."""
+    """Somebody who arrives at the site root, and an institution's member, sign up
+    without one. The web asks the first time the account opens the app."""
     response = await register(client)
 
     assert response.status_code == 201
     assert response.json()["user"]["exam_code"] is None
 
 
-async def test_an_unknown_exam_at_sign_up_is_not_a_refusal(client: AsyncClient) -> None:
-    """Stored as given: this slice sits below `catalog` and may not resolve one.
-
-    It grants nothing either — `GET /me/dashboard` filters it through the
-    published catalogue, so a code naming no exam yields no current exam rather
-    than a dead option. Tested here so the layering is a decision rather than
-    an oversight.
-    """
+async def test_an_unknown_exam_at_sign_up_is_dropped_not_refused(client: AsyncClient) -> None:
+    """A stale landing-page link must not cost somebody their sign-up. Stored, the
+    code would open the account on nothing and skip the step that asks for an
+    exam, so it is dropped and they are asked instead."""
     response = await register(client, exam_code="mrcp")
 
     assert response.status_code == 201
-    assert response.json()["user"]["exam_code"] == "mrcp"
+    assert response.json()["user"]["exam_code"] is None
 
 
-async def test_a_person_may_change_the_exam_their_account_is_for(client: AsyncClient) -> None:
-    created = await register(client, exam_code="sca")
-    token = created.json()["access_token"]
+async def test_an_account_without_an_exam_chooses_one_once(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An SCA account could move itself to PLAB with one PATCH, while the Exam tab
+    told it that only support could. Choosing is allowed once, from nothing."""
+    await ensure_exam(db_session, "sca")
+    await ensure_exam(db_session, "plab")
+    token = (await register(client)).json()["access_token"]
 
-    response = await client.patch("/api/v1/me", json={"exam_code": "casc"}, headers=bearer(token))
+    chosen = await client.patch("/api/v1/me", json={"exam_code": "sca"}, headers=bearer(token))
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["exam_code"] == "sca"
 
-    assert response.status_code == 200
-    assert response.json()["exam_code"] == "casc"
+    # Re-sending the exam they have is not a change, so a whole-profile save still works.
+    unchanged = await client.patch("/api/v1/me", json={"exam_code": "sca"}, headers=bearer(token))
+    assert unchanged.status_code == 200, unchanged.text
+
+    switched = await client.patch("/api/v1/me", json={"exam_code": "plab"}, headers=bearer(token))
+    assert switched.status_code == 409
+    assert switched.json()["code"] == "exam_already_chosen"
+
+    me = await client.get("/api/v1/me", headers=bearer(token))
+    assert me.json()["exam_code"] == "sca"
 
 
-async def test_changing_one_field_leaves_the_exam_alone(client: AsyncClient) -> None:
+async def test_an_exam_nobody_publishes_cannot_be_chosen(client: AsyncClient) -> None:
+    token = (await register(client)).json()["access_token"]
+
+    response = await client.patch("/api/v1/me", json={"exam_code": "mrcp"}, headers=bearer(token))
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "unknown_exam"
+
+
+async def test_changing_one_field_leaves_the_exam_alone(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """`model_fields_set`, not the whole body: a screen that edits a name must
     not silently clear which exam somebody is sitting."""
+    await ensure_exam(db_session, "sca")
     created = await register(client, exam_code="sca")
     token = created.json()["access_token"]
 

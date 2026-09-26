@@ -9,12 +9,26 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import get_settings
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
+
+
+async def start(client: AsyncClient, attempt_id: str) -> None:
+    """Simulate a worker actually starting a consultation — see
+    `tests.http.test_station_sets_routes.start`. A practice-set entry only
+    counts as attempted once this happens, not merely once the attempt exists.
+    """
+    settings = get_settings()
+    response = await client.get(
+        f"/api/worker/attempts/{attempt_id}",
+        headers={settings.worker_secret_header: settings.worker_secret},
+    )
+    assert response.status_code == 200, response.text
 
 
 async def a_learner(db_session: AsyncSession, make_actor, email: str) -> str:  # type: ignore[no-untyped-def]
@@ -72,10 +86,13 @@ async def test_the_dashboard_shows_access_progress_and_sets(
             headers=bearer(token),
         )
     ).json()
-    await client.post(
+    opened = await client.post(
         f"/api/v1/me/station-sets/{created['id']}/entries/{created['entries'][0]['id']}/attempts",
         headers=bearer(token),
     )
+    # The set entry's counter only moves once the consultation actually starts, not merely once
+    # the attempt row exists — see `station_sets.service.start_entry_attempt`.
+    await start(client, opened.json()["attempt_id"])
 
     response = await client.get("/api/v1/me/dashboard", headers=bearer(token))
     body = response.json()

@@ -429,6 +429,45 @@ async def test_a_plan_that_is_not_for_sale_is_refused(
     assert not fake.calls
 
 
+async def test_a_plan_is_sold_only_for_the_buyers_exam(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """An SCA account was offered PLAB and ORTHO beside SCA, and could pay for a
+    library every other screen hides from it."""
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    await ensure_exam(db_session, "plab")
+    await billing_repo.create_plan(
+        db_session,
+        code="plab_one_month",
+        stripe_price_id="price_plab_one_month",
+        amount_pence=2499,
+        duration_days=30,
+        exam_code="plab",
+    )
+    await db_session.flush()
+    token = await make_actor("sca-candidate@example.com", exam_code="sca")
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    allowed = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token)
+    )
+    assert allowed.status_code == 201, allowed.text
+
+    # Last, because a refusal rolls back the test's transaction and the plans with it.
+    refused = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "plab_one_month"}, headers=bearer(token)
+    )
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "plan_not_available"
+    assert refused.json()["details"] == {"reason": "not_your_exam"}
+    # Stripe was asked for the SCA plan only.
+    assert [call["price_id"] for call in fake.calls] == ["price_one_month"]
+
+
 async def test_a_processor_that_is_down_says_try_again(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

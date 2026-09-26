@@ -38,6 +38,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
         errors.AttemptNotFound,
         errors.AttemptNotReady,
         errors.StationNotPublishedError,
+        errors.SetEntryAttemptLimitReached,
     ),
 )
 async def bootstrap(attempt_id: uuid.UUID, session: Session, clock: ClockDep) -> schemas.WorkerBootstrap:

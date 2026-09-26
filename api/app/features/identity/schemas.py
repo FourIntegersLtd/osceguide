@@ -52,6 +52,7 @@ class UpdateMe(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     exam_date: date | None = None
     extra_reading_percent: int | None = Field(default=None, ge=0, le=100)
+    # Settable once, by an account with no exam; refused as `exam_already_chosen` after that.
     exam_code: str | None = Field(default=None, min_length=1, max_length=32)
     ai_training_consent: bool | None = None
     colleague_waiting_email: bool | None = None

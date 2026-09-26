@@ -71,6 +71,25 @@ class PasswordLoginDisabled(Unauthenticated):
     )
 
 
+class ExamAlreadyChosen(Conflict):
+    """The account already has an exam, and it cannot be changed from the account itself.
+
+    The exam decides which library, material and peers a person sees, and moving somebody is a
+    support action against what they have bought (the platform console's user profile).
+    """
+
+    code = "exam_already_chosen"
+    default_message = "Your exam is already set. Contact support to switch exams."
+
+
+class UnknownExamError(NotFound):
+    """Mirrors `catalog.errors.UnknownExamError`, and shares its code: no published exam has
+    this code, so choosing it would open an account on nothing."""
+
+    code = "unknown_exam"
+    default_message = "No such exam"
+
+
 class UserNotFound(NotFound):
     """No such account.
 

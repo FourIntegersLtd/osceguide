@@ -13,7 +13,7 @@ from app.core.errors import Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.ports import ClockDep
 from app.features.identity import schemas, service, service_close_account
-from app.features.identity.errors import InvalidCredentials
+from app.features.identity.errors import ExamAlreadyChosen, InvalidCredentials, UnknownExamError
 
 router = APIRouter(tags=["identity"])
 
@@ -23,7 +23,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.patch(
     "/me",
     response_model=schemas.UserRead,
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(Unauthenticated, ExamAlreadyChosen, UnknownExamError),
 )
 async def update_me(
     body: schemas.UpdateMe,
@@ -32,7 +32,7 @@ async def update_me(
     memberships_for: MembershipsFor,
 ) -> schemas.UserRead:
     """Change a person's own profile: their name, their exam date, their
-    reading-time arrangement.
+    reading-time arrangement, and their exam once if they have none.
 
     Only what was sent is written — `model_fields_set` rather than the whole
     body, so a screen that edits one field does not silently clear the others.

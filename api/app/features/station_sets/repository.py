@@ -77,20 +77,32 @@ async def entry_by_id(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def record_attempt(
-    session: AsyncSession, entry_id: uuid.UUID, *, at: datetime, debrief: bool = False
-) -> None:
-    """Increment in the database rather than read-modify-write.
+async def try_record_started_attempt(
+    session: AsyncSession, entry_id: uuid.UUID, *, at: datetime, limit: int, debrief: bool = False
+) -> uuid.UUID | None:
+    """Count one *started* attempt against an entry's limit, or refuse if it is already spent.
 
-    b2c mutates an array on the user document without a transaction, so two
-    sessions finishing at once lose one of the counts.
+    A single conditional `UPDATE ... WHERE <column> < limit`, not a `SELECT` followed by an
+    `UPDATE`: two callers both crediting the last allowed attempt for the same entry at once must
+    not both succeed, and there is no lock to hold in between two separate statements. Postgres
+    serialises concurrent updates to the same row itself, so the second caller's `WHERE` re-reads
+    the first caller's write rather than a stale count.
+
+    Zero means unlimited (an org-granted set), so the guard is skipped and the write always applies.
+    Returns the entry's `set_id` if the count was applied, so the caller can re-check whether the
+    whole set just became complete without a second round trip; `None` means the limit was already
+    used up and nothing was written.
     """
     column = StationSetEntry.debrief_attempts if debrief else StationSetEntry.attempts
-    await session.execute(
+    statement = (
         update(StationSetEntry)
         .where(StationSetEntry.id == entry_id)
         .values({column: column + 1, StationSetEntry.last_attempt_at: at})
+        .returning(StationSetEntry.set_id)
     )
+    if limit:
+        statement = statement.where(column < limit)
+    return (await session.execute(statement)).scalar_one_or_none()
 
 
 async def mark_complete(session: AsyncSession, set_id: uuid.UUID, *, at: datetime) -> None:

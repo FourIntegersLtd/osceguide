@@ -110,10 +110,15 @@ async def start_entry_attempt(
     now: datetime,
     debrief: bool = False,
 ) -> StartedAttempt:
-    """Start an attempt at one station in a set.
+    """Open a station in a set, creating the attempt the candidate brief is read through.
 
-    The counter moves in the same transaction as the attempt is created, so a limit cannot be
-    exceeded by two requests arriving together.
+    This only creates the attempt row, at status `created`. It does *not* count against the
+    entry's limit: `record_started_attempt` does that, once the candidate actually starts the
+    consultation. A candidate who opens the station and leaves — never pressing "start" — must not
+    spend a go they never had; the limit check below is only a fast, best-effort refusal so an
+    exhausted entry says no immediately rather than opening a room the candidate cannot use, and the
+    counter it reads (`entry.attempts`) already counts only started attempts, never merely-opened
+    ones.
     """
     station_set = await _require(session, owner_user_id, set_id)
     entry = await repository.entry_by_id(session, set_id, entry_id)
@@ -158,25 +163,47 @@ async def start_entry_attempt(
             station_version_id=entry.station_version_id,
             set_entry_id=entry.id,
         )
-    await repository.record_attempt(session, entry.id, at=now, debrief=debrief)
-
-    entries = await repository.entries_for(session, set_id)
-    if domain.set_complete(
-        [
-            domain.EntryState(attempts=set_entry.attempts, debrief_attempts=set_entry.debrief_attempts)
-            for set_entry in entries
-        ]
-    ):
-        await repository.mark_complete(session, set_id, at=now)
-
-    used = next((set_entry.attempts for set_entry in entries if set_entry.id == entry.id), entry.attempts + 1)
+    # Not counted here: the attempt exists but has not been sat, so the entry's counter — and
+    # therefore whether the set is complete — is unchanged until `record_started_attempt` runs.
     return StartedAttempt(
         attempt_id=attempt.id,
         kind=attempt.kind,
         status=attempt.status,
         entry_id=entry.id,
-        attempts_used=used,
+        attempts_used=entry.attempts if not debrief else entry.debrief_attempts,
     )
+
+
+async def record_started_attempt(
+    session: AsyncSession, *, set_entry_id: uuid.UUID, debrief: bool, limit: int, at: datetime
+) -> bool:
+    """Count one attempt against its entry's limit, now that it has actually started.
+
+    Called from `attempts.service_worker.bootstrap` at the moment a worker first fetches the
+    attempt — the earliest point anything tells us the candidate began the consultation rather than
+    merely opening the page that created the attempt row (see `start_entry_attempt`). Returns
+    whether the count applied; `False` means the limit was already spent, which only happens if a
+    race let two attempts against the same entry both reach this point at once — the same guarantee
+    `start_entry_attempt` used to keep by incrementing in its own transaction, kept here instead
+    because this is now the point that is actually true.
+    """
+    set_id = await repository.try_record_started_attempt(
+        session, set_entry_id, at=at, limit=limit, debrief=debrief
+    )
+    if set_id is None:
+        return False
+    if not debrief:
+        # A debrief does not move a station from unattempted to attempted, so only a real
+        # consultation starting is worth re-checking the whole set's completion for.
+        entries = await repository.entries_for(session, set_id)
+        if domain.set_complete(
+            [
+                domain.EntryState(attempts=set_entry.attempts, debrief_attempts=set_entry.debrief_attempts)
+                for set_entry in entries
+            ]
+        ):
+            await repository.mark_complete(session, set_id, at=at)
+    return True
 
 
 async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:

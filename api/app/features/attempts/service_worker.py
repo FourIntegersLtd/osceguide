@@ -15,6 +15,8 @@ from app.features.attempts.jobs_coverage import enqueue_coverage
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
 from app.features.attempts.service_render import render_definition
+from app.features.catalog import service as catalog
+from app.features.station_sets import service as station_sets
 from app.features.tutor_memory import jobs as tutor_jobs
 
 log = get_logger(__name__)
@@ -77,6 +79,7 @@ async def bootstrap(
 
     if now is not None and domain.Status(attempt.status) is domain.Status.CREATED:
         await repository.set_status(session, attempt_id, status=domain.Status.RUNNING, at=now)
+        await _credit_practice_set_entry(session, attempt, at=now)
 
     return WorkerBootstrap(
         attempt={
@@ -90,6 +93,62 @@ async def bootstrap(
         },
         scenario=domain_definition.worker_scenario(frozen_definition),
     )
+
+
+async def _entry_this_attempt_counts_against(
+    session: AsyncSession, attempt: Attempt
+) -> tuple[uuid.UUID, bool] | None:
+    """Which practice-set entry, if any, this attempt is sat inside — and whether it is a debrief.
+
+    A `set_station` attempt names its entry directly. A `debrief` attempt never does — the CHECK on
+    `attempts` only lets it name the consultation it discusses — so its entry is found by following
+    `source_attempt_id` back to that consultation. Anything else (`practice`, `self_practice`,
+    `exam_slot`, `peer`) is not sat inside a practice set at all, and `None` says so.
+    """
+    if attempt.set_entry_id is not None:
+        return attempt.set_entry_id, False
+    if attempt.kind == "debrief" and attempt.source_attempt_id is not None:
+        source = await repository.attempt_by_id(session, attempt.source_attempt_id)
+        if source is not None and source.set_entry_id is not None:
+            return source.set_entry_id, True
+    return None
+
+
+async def _credit_practice_set_entry(session: AsyncSession, attempt: Attempt, *, at: datetime) -> None:
+    """Count this attempt against its practice-set entry's limit, now that it has started.
+
+    `station_sets.start_entry_attempt` used to count an attempt the moment it was created — before
+    the candidate had done anything but open the page — so a consultation nobody ever joined still
+    used up a go. This is the point that is actually true: a worker fetching its attempt is the
+    session beginning (see `bootstrap`'s docstring), so this is where the count belongs.
+
+    Nothing to do for an attempt outside a practice set (`practice`, `exam_slot`, `peer`, and a
+    debrief of one of those): the limit this slice enforces is `station_sets`' own, not a rule of
+    every attempt.
+    """
+    target = await _entry_this_attempt_counts_against(session, attempt)
+    if target is None:
+        return
+    set_entry_id, is_debrief = target
+    exam = await catalog.exam_ref_by_id(session, attempt.exam_id)
+    if exam is None:
+        # The exam an attempt was created against cannot vanish — `exam_id` is a `RESTRICT` foreign
+        # key — but nothing here is worth crashing the session over if it somehow did.
+        log.warning("bootstrap.exam_missing", attempt_id=str(attempt.id), exam_id=str(attempt.exam_id))
+        return
+    counted = await station_sets.record_started_attempt(
+        session,
+        set_entry_id=set_entry_id,
+        debrief=is_debrief,
+        limit=exam.station_attempt_limit,
+        at=at,
+    )
+    if not counted:
+        # A race let two attempts against the same entry both reach this point before either had
+        # counted, and the limit was already spent by the other one. `station_sets`' own route
+        # refuses this far earlier in the common case; this is the same refusal, just discovered
+        # later because nothing knew the limit was spent until now.
+        raise errors.SetEntryAttemptLimitReached()
 
 
 async def accept_chunk(

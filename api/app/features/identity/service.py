@@ -12,11 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership, Principal
 from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
+from app.features.catalog import service as catalog
 from app.features.identity import repository, repository_platform
 from app.features.identity.domain import WeakPassword, may_call, validate_password
 from app.features.identity.errors import (
     EmailTaken,
+    ExamAlreadyChosen,
     InvalidCredentials,
+    UnknownExamError,
     UserNotFound,
     WeakPasswordError,
 )
@@ -95,9 +98,13 @@ async def register(
 ) -> AuthResult:
     """Open an account, optionally saying which exam it is for.
 
-    The exam code is stored as given, not checked against the catalogue, and grants nothing
-    — it only says which exam the screens should open on.
+    The exam code grants nothing — it only says which exam the screens should open on. A code
+    naming no published exam is dropped rather than refused: a stale landing-page link should
+    not cost somebody their sign-up, and an account without an exam is asked for one the first
+    time it opens the app (`update_me`).
     """
+    if exam_code is not None and exam_code not in await catalog.exam_codes(session):
+        exam_code = None
     try:
         validate_password(password)
     except WeakPassword as exc:
@@ -138,6 +145,9 @@ async def update_me(
     `extra_reading_percent` is **not** applied to an institution's examination: a circuit's
     clock is one clock for everybody on it. An accommodation there is granted on the
     circuit's timing instead. See `platform-web/docs/BACKLOG.md`, S-2.
+
+    The exam is set here once, by an account that has none, and never changed: see
+    `_exam_to_set`.
     """
     user = await repository.update_profile(
         session,
@@ -145,7 +155,7 @@ async def update_me(
         name=body.name,
         exam_date=body.exam_date,
         extra_reading_percent=body.extra_reading_percent,
-        exam_code=body.exam_code,
+        exam_code=await _exam_to_set(session, principal.user_id, body.exam_code),
         ai_training_consent=body.ai_training_consent if "ai_training_consent" in fields_sent else None,
         colleague_waiting_email=(
             body.colleague_waiting_email if "colleague_waiting_email" in fields_sent else None
@@ -159,6 +169,28 @@ async def update_me(
         raise InvalidCredentials()
     memberships = await memberships_for(session, principal.user_id)
     return user_read(user, memberships)
+
+
+async def _exam_to_set(session: AsyncSession, user_id: uuid.UUID, requested: str | None) -> str | None:
+    """The exam to write for this request, or `None` to leave it alone.
+
+    An account without an exam may choose one, from the published catalogue. One that has an
+    exam may not change it: which exam somebody is on decides what every screen shows them, and
+    switching is a support action against what they have bought. Sending the exam they already
+    have is not a change, so a form that re-sends the whole profile still saves.
+    """
+    if requested is None:
+        return None
+    user = await repository.user_by_id(session, user_id)
+    if user is None:
+        raise InvalidCredentials()
+    if user.exam_code == requested:
+        return None
+    if user.exam_code is not None:
+        raise ExamAlreadyChosen()
+    if requested not in await catalog.exam_codes(session):
+        raise UnknownExamError()
+    return requested
 
 
 def may_call_with_temporary_password(route: str) -> bool:

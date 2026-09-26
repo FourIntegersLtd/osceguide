@@ -18,14 +18,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.attempts import repository as attempts_repo
 from app.features.identity import repository as identity_repo
 from tests.contract.test_worker_routes import worker_headers
-from tests.http.test_station_sets_routes import a_learner, a_station_version
+from tests.http.test_station_sets_routes import a_learner, a_station_version, start
+from tests.support.finished_consultation import finish_consultation
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
 
 async def a_learner_with_a_sat_station(client: AsyncClient, db_session: AsyncSession, make_actor, email: str):  # type: ignore[no-untyped-def]
-    """A person, their set, its entry and two attempts at one station."""
+    """A person, their set, its entry and two attempts at one station.
+
+    Each one is actually started, not merely opened — the practice-set entry's own counter
+    (`entry_attempts` below) only moves once a worker fetches the attempt, and this fixture's name
+    says these two were sat, not just begun and abandoned.
+    """
     token = await a_learner(client, db_session, make_actor, email)
     user = await identity_repo.user_by_email(db_session, email)
     assert user is not None
@@ -40,9 +46,10 @@ async def a_learner_with_a_sat_station(client: AsyncClient, db_session: AsyncSes
     url = f"/api/v1/me/station-sets/{created['id']}/entries/{created['entries'][0]['id']}/attempts"
     attempt_ids = []
     for _ in range(2):
-        started = await client.post(url, headers=bearer(token))
-        assert started.status_code == 201, started.text
-        attempt_ids.append(started.json()["attempt_id"])
+        opened = await client.post(url, headers=bearer(token))
+        assert opened.status_code == 201, opened.text
+        await start(client, opened.json()["attempt_id"])
+        attempt_ids.append(opened.json()["attempt_id"])
     return token, user.id, created, url, attempt_ids
 
 
@@ -77,7 +84,7 @@ async def test_progress_is_one_row_per_station_with_both_counts(
     # share a `created_at` and "newest" falls to the documented tie-break —
     # greater id wins (`attempts.repository_platform.progress_by_version`).
     assert row["last_attempt_id"] == max(attempt_ids)
-    assert row["last_status"] == "created"
+    assert row["last_status"] == "running"
     assert row["last_attempt_at"] is not None
 
     nobody = await client.get(f"/api/v1/platform/users/{uuid.uuid4()}/stations", headers=bearer(root))
@@ -93,7 +100,11 @@ async def test_reset_zeroes_the_counters_and_keeps_the_attempts(
     token, user_id, created, url, attempt_ids = await a_learner_with_a_sat_station(
         client, db_session, make_actor, "r@example.com"
     )
-    assert (await client.post(url, headers=bearer(token))).status_code == 201
+    third = await client.post(url, headers=bearer(token))
+    assert third.status_code == 201, third.text
+    # The third has to actually start too, or the entry's counter never reaches the limit and the
+    # next request would wrongly be allowed through.
+    await start(client, third.json()["attempt_id"])
     assert (await client.post(url, headers=bearer(token))).json()["code"] == "attempt_limit_reached"
     station_id = await station_id_of(db_session, attempt_ids[0])
 
@@ -130,6 +141,11 @@ async def test_delete_removes_the_attempts_and_the_entries_and_is_audited(
     token, user_id, created, _, attempt_ids = await a_learner_with_a_sat_station(
         client, db_session, make_actor, "d@example.com"
     )
+    # Both attempts are actually running (see `a_learner_with_a_sat_station`), and a delete refuses
+    # while one is: the room would be pulled out from under the worker mid-consultation. Take each
+    # to a finished state first, the way a real one would end before anyone asks to delete it.
+    for attempt_id in attempt_ids:
+        await finish_consultation(db_session, uuid.UUID(attempt_id))
     station_id = await station_id_of(db_session, attempt_ids[0])
 
     deleted = await client.post(

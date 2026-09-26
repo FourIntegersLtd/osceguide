@@ -93,3 +93,18 @@ class UserNotFound(NotFound):
 
     code = "user_not_found"
     default_message = "No such account"
+
+
+class SetEntryAttemptLimitReached(Conflict):
+    """Mirrors `station_sets.errors.AttemptLimitReachedError` and shares its code.
+
+    Bootstrap only answers this when a race let two attempts against the same practice-set entry
+    both reach the worker at once and the entry's limit was already spent by the first — the
+    `station_sets` route that creates an attempt refuses this far earlier, using a count that is
+    already stale by the time either attempt starts. Its own class rather than a re-export:
+    `station_sets.errors` already imports from this module, and this module importing its class
+    back would be a circular import between the two.
+    """
+
+    code = "attempt_limit_reached"
+    default_message = "You have used every attempt at this station"

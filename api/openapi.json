@@ -4126,6 +4126,7 @@
               "empty_query",
               "entitlement_not_found",
               "evidence_changed",
+              "exam_already_chosen",
               "exam_code_taken",
               "exam_in_use",
               "exam_not_in_pilot",
@@ -20826,7 +20827,7 @@
         ]
       },
       "patch": {
-        "description": "Change a person's own profile: their name, their exam date, their\nreading-time arrangement.\n\nOnly what was sent is written \u2014 `model_fields_set` rather than the whole\nbody, so a screen that edits one field does not silently clear the others.",
+        "description": "Change a person's own profile: their name, their exam date, their\nreading-time arrangement, and their exam once if they have none.\n\nOnly what was sent is written \u2014 `model_fields_set` rather than the whole\nbody, so a screen that edits one field does not silently clear the others.",
         "operationId": "identity_update_me",
         "requestBody": {
           "content": {
@@ -20861,6 +20862,32 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_already_chosen",
+            "x-codes": [
+              "exam_already_chosen"
             ]
           },
           "422": {

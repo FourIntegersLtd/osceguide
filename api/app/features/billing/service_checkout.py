@@ -7,6 +7,7 @@ have opposite risks: this one must grant nothing, and that one must grant exactl
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,7 @@ from app.core.logging import get_logger
 from app.core.ports import CheckoutSessions, CheckoutUnavailable
 from app.core.settings import Settings, SettingsDep
 from app.features.billing import domain, errors, repository
+from app.features.entitlements import service_access
 from app.features.growth import service as growth
 
 log = get_logger(__name__)
@@ -42,6 +44,7 @@ async def start_checkout(
     referral_code: str | None,
     checkout: CheckoutSessions,
     settings: Settings,
+    now: datetime,
 ) -> str:
     """Send this person to pay for a plan, and return where to send them.
 
@@ -53,6 +56,11 @@ async def start_checkout(
     credit its owner once the money arrives. A code that is unknown or the buyer's own is
     refused before Stripe is called.
 
+    A plan is sold only for an exam this person is on: the one they signed up for, or one they
+    hold. Their exam is chosen at sign-up and moving them is a support action, so an SCA account
+    buying PLAB would pay for a library its every screen hides. Somebody with no exam at all may
+    buy any plan, and what they buy becomes their exam.
+
     Nothing is granted here and no payment is recorded. Access arrives when the webhook says the
     money did: a customer who abandons the Stripe page has started a checkout and bought nothing.
     """
@@ -61,6 +69,10 @@ async def start_checkout(
     # would be 10% off for anyone who read the plan list.
     if plan is None or domain.is_referral_plan(plan.code):
         raise errors.PlanNotAvailable()
+
+    access = await service_access.exam_access_for(session, user_id, now=now)
+    if access.codes and plan.exam_code not in access.codes:
+        raise errors.PlanNotAvailable(details={"reason": "not_your_exam"})
 
     checked_referral_code: str | None = None
     if referral_code and referral_code.strip():

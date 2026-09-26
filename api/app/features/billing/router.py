@@ -121,6 +121,7 @@ async def start_checkout(
     principal: CurrentPrincipal,
     session: Session,
     settings: SettingsDep,
+    clock: ClockDep,
     checkout: Annotated[CheckoutSessions, Depends(service_checkout.get_checkout)],
 ) -> schemas.CheckoutStarted:
     """Begin paying for a plan, at 10% off with somebody's referral code. The client names a plan
@@ -133,5 +134,6 @@ async def start_checkout(
         referral_code=body.referral_code,
         checkout=checkout,
         settings=settings,
+        now=clock.now(),
     )
     return schemas.CheckoutStarted(checkout_url=url)

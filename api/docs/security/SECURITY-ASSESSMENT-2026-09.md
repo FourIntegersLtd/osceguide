@@ -715,7 +715,7 @@ CWE-540; CWE-312.
 | **CWE** | CWE-250: Execution with Unnecessary Privileges; CWE-522: Insufficiently Protected Credentials |
 | **Reference standard** | CIS Docker Benchmark 4.1, 4.10 |
 | **Affected component** | `backend/platform-api/Dockerfile`; absence of `.dockerignore` |
-| **Status** | Resolved (deployment verified 26 September 2026, revision `67aeddd`) |
+| **Status** | Resolved (deployment verified 26 September 2026, revision `67aeddd`; build-log regression fixed in `f7ab241`) |
 
 **CVSS rationale.** Exploitation requires access to a built image or the
 running container (AV:L, PR:L) and further conditions (AC:H). The exposed token
@@ -773,6 +773,16 @@ the same revision, built locally with a real token, produced a history of 19
 steps containing no occurrence of `ENGINE_REPO_TOKEN`, `x-access-token` or any
 GitHub token prefix (`gho_`, `ghp_`, `github_pat_`); the only step taken from
 the build stage is the copy of the installed packages. Resolved.
+
+**Regression and fix (26 September 2026, revision `f7ab241`).** The image was
+clean, but the hosting provider's build log was not: it prints each build step
+with every build-argument reference replaced by its value, so the install step,
+which spelled the argument by name, wrote the token into the log of every build
+since `67aeddd`. The install step now reads the token with `printenv` inside the
+command, which the log cannot expand, and never enables shell tracing. A staging
+build of `f7ab241` with the token set installed the engine (0.7.0), and its build
+log contained no GitHub token prefix. Resolved for new builds. The token already
+written to earlier build logs must still be rotated (SEC-012).
 
 **References.** CIS Docker Benchmark; Docker BuildKit secrets documentation;
 CWE-250; CWE-522.
