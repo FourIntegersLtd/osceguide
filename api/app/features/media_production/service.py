@@ -109,18 +109,20 @@ async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID) -> None:
 
     item = await production_item(session, media_id)
     settings = get_settings()
-    wd = work_dir(str(media_id))
+    job_work_dir = work_dir(str(media_id))
     exam_code = await catalog.exam_code_by_id(session, item.exam_id) if item.exam_id else None
     try:
         content = regenerate_slide_av(
             settings,
             item.content,
-            wd,
+            job_work_dir,
             str(media_id),
             exam_code=exam_code,
         )
         await replace_content(session, media_id, content)
     except Exception:
+        # Re-read the item: the render may have already written partial content
+        # we still want preserved alongside the failed status.
         current = await production_item(session, media_id)
         failed = dict(current.content)
         failed["status"] = domain.FAILED

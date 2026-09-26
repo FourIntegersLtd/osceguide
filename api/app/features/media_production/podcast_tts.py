@@ -50,11 +50,11 @@ def _split_script(script: str) -> list[tuple[str, str]]:
     if parts and not parts[0].strip():
         parts = parts[1:]
     segments: list[tuple[str, str]] = []
-    for i in range(0, len(parts), 2):
-        if i + 1 >= len(parts):
+    for index in range(0, len(parts), 2):
+        if index + 1 >= len(parts):
             break
-        speaker = parts[i]
-        line = parts[i + 1].strip().strip('"')
+        speaker = parts[index]
+        line = parts[index + 1].strip().strip('"')
         if speaker in ("Ben", "Michelle") and line:
             segments.append((speaker, line))
     return segments
@@ -75,18 +75,22 @@ def synthesize_podcast_mp3(settings: Settings, script: str, work_dir: Path, base
     if not segments:
         raise AvUnavailable("Script did not contain Ben/Michelle dialogue")
 
+    # Voice each turn as its own short wav file first, in speaker order, so a
+    # failure partway through only loses the remaining turns, not the ones
+    # already synthesised.
     wavs: list[Path] = []
-    for i, (speaker, line) in enumerate(segments):
-        wav = audio_dir / f"seg_{i}.wav"
-        data = client.tts.bytes(
+    for index, (speaker, line) in enumerate(segments):
+        wav = audio_dir / f"seg_{index}.wav"
+        audio_bytes = client.tts.bytes(
             model_id="sonic-2",
             transcript=line,
             voice_id=voices[speaker],
             output_format=out_fmt,
         )
-        wav.write_bytes(data)
+        wav.write_bytes(audio_bytes)
         wavs.append(wav)
 
+    # Concatenate the per-turn wavs in order and export as one mp3.
     combined = AudioSegment.empty()
     for wav in wavs:
         combined += AudioSegment.from_wav(wav)

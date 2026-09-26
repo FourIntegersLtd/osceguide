@@ -6,10 +6,11 @@ from typing import Any
 def _lines(items: Any) -> list[str]:
     if not isinstance(items, list):
         return []
-    return [str(x) for x in items if x is not None and str(x).strip()]
+    return [str(value) for value in items if value is not None and str(value).strip()]
 
 
 def format_summary_for_podcast(title: str, content: dict[str, Any]) -> str:
+
     def block(heading: str, items: list[str]) -> str:
         body = "\n".join(f"  - {line}" for line in items) if items else "  None provided"
         return f"\n{heading}\n{body}"

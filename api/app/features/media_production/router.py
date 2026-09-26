@@ -15,14 +15,21 @@ router = APIRouter(tags=["media-production"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 
-_AV = (errors.ItemNotFound, errors.WrongMediaKind, errors.AvAlreadyRunning, errors.AvUnavailable)
+# The refusals any AV production route can return, alongside the shared Forbidden.
+_PRODUCTION_ERRORS = (
+    errors.ItemNotFound,
+    errors.WrongMediaKind,
+    errors.AvAlreadyRunning,
+    errors.AvUnavailable,
+)
 
 
+# Starts narrating a summary item's text as a two-host podcast episode.
 @router.post(
     "/media/{item_id}/generate-podcast",
     response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Forbidden, *_AV),
+    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
 )
 async def generate_summary_podcast(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
@@ -31,11 +38,12 @@ async def generate_summary_podcast(
     return await service.enqueue_summary_podcast(session, item_id)
 
 
+# Starts re-rendering a slide deck's narrated video after its slides have changed.
 @router.post(
     "/media/{item_id}/regenerate-av",
     response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Forbidden, *_AV),
+    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
 )
 async def regenerate_slide_av(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
@@ -44,11 +52,12 @@ async def regenerate_slide_av(
     return await service.enqueue_slide_regenerate(session, item_id)
 
 
+# Starts voicing a podcast episode's script into an audio file.
 @router.post(
     "/media/{item_id}/generate-audio",
     response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Forbidden, *_AV),
+    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
 )
 async def generate_podcast_audio(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session

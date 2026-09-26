@@ -37,12 +37,12 @@ COLLECTION_MAPPING: dict = {}
 SLIDE_GENERATION_PROMPT = ""
 
 
-def set_nested_value(data: dict, key: str, value) -> None:
+def set_nested_value(document: dict, key: str, new_value) -> None:
     parts = key.split(".")
-    cur = data
+    target = document
     for part in parts[:-1]:
-        cur = cur.setdefault(part, {})
-    cur[parts[-1]] = value
+        target = target.setdefault(part, {})
+    target[parts[-1]] = new_value
 
 
 def utc_now_iso_z() -> str:
@@ -53,6 +53,7 @@ openai_client = None
 
 
 class SlideService:
+
     def __init__(self, firestore_service=None, settings: Settings | None = None):
         from app.core.settings import get_settings
 
@@ -108,7 +109,9 @@ class SlideService:
             Path: Path to the topic folder
         """
         # Sanitize topic for folder name
-        safe_topic = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in topic)
+        safe_topic = "".join(
+            character if character.isalnum() or character in (" ", "-", "_") else "_" for character in topic
+        )
         safe_topic = safe_topic.replace(" ", "_").lower()[:50]  # Limit length
 
         # Create folder structure: slides/<topic>_<slide_id>/
@@ -134,10 +137,10 @@ class SlideService:
             if isinstance(slides_field, dict) and not isinstance(slides_field, list):
                 # Check if it's a dict with numeric string keys
                 keys = list(slides_field.keys())
-                if keys and all(k.isdigit() for k in keys):
+                if keys and all(field_key.isdigit() for field_key in keys):
                     log.debug("[SLIDE_SERVICE] Normalizing slides field from dict to list")
                     sorted_keys = sorted(keys, key=int)
-                    slide_data["slides"] = [slides_field[k] for k in sorted_keys]
+                    slide_data["slides"] = [slides_field[field_key] for field_key in sorted_keys]
                     log.debug(f"[SLIDE_SERVICE] Converted to list with {len(slide_data['slides'])} items")
 
     def _save_slides_json(self, slide_data: dict, topic_folder: Path, slide_id: str) -> Path:
@@ -154,8 +157,8 @@ class SlideService:
         """
         json_path = topic_folder / f"slides_{slide_id}.json"
 
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(slide_data, f, indent=2, ensure_ascii=False)
+        with open(json_path, "w", encoding="utf-8") as handle:
+            json.dump(slide_data, handle, indent=2, ensure_ascii=False)
 
         log.debug(f"Saved slides JSON: {json_path}")
         return json_path
@@ -436,8 +439,8 @@ class SlideService:
                 json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
                 if json_files:
                     json_path = json_files[0]
-                    with open(json_path, "w", encoding="utf-8") as f:
-                        json.dump(slide_data, f, indent=2, ensure_ascii=False)
+                    with open(json_path, "w", encoding="utf-8") as handle:
+                        json.dump(slide_data, handle, indent=2, ensure_ascii=False)
                     log.debug(f"[SLIDE_UPDATE] Also updated JSON file: {json_path}")
                 else:
                     log.debug(f"[SLIDE_UPDATE] No JSON file found for {slide_id}, skipping JSON update")
@@ -486,11 +489,11 @@ class SlideService:
                     continue  # Skip if specific app_type was provided
 
                 collection_name = COLLECTION_MAPPING[current_app_type]["slide"]
-                success, result = self.firestore_service.get_documents(
+                success, documents_result = self.firestore_service.get_documents(
                     collection_name=collection_name, filters={"slide_id": slide_id}
                 )
-                if success and result:
-                    firestore_doc_id = result.get("id")
+                if success and documents_result:
+                    firestore_doc_id = documents_result.get("id")
                     detected_app_type = current_app_type
                     log.debug(
                         f"[SLIDE_GENERATION] Found slide in {collection_name}, doc_id: {firestore_doc_id}"
@@ -551,11 +554,11 @@ class SlideService:
         if self.firestore_service:
             for current_app_type in ["sca", "plab", "casc"]:
                 collection_name = COLLECTION_MAPPING[current_app_type]["slide"]
-                success, result = self.firestore_service.get_documents(
+                success, documents_result = self.firestore_service.get_documents(
                     collection_name=collection_name, filters={"slide_id": slide_id}
                 )
-                if success and result:
-                    slide_data = result
+                if success and documents_result:
+                    slide_data = documents_result
                     app_type = current_app_type
                     log.debug(
                         "[SLIDE_DATA] Found and loaded slide data from Firestore "
@@ -570,8 +573,8 @@ class SlideService:
             )
             json_path_obj = Path(json_path)
             if json_path_obj.exists():
-                with open(json_path_obj, encoding="utf-8") as f:
-                    slide_data = json.load(f)
+                with open(json_path_obj, encoding="utf-8") as handle:
+                    slide_data = json.load(handle)
                     app_type = slide_data.get("app_type", "sca")  # Get app_type from data or default
                 log.debug("[SLIDE_DATA] Successfully loaded slide data from JSON file.")
 
@@ -712,7 +715,7 @@ class SlideService:
             audio_paths = []
             total_duration = 0.0
 
-            for i, slide in enumerate(slides):
+            for slide_index, slide in enumerate(slides):
                 slide_position = slide.get(
                     "position",
                 )
@@ -740,7 +743,7 @@ class SlideService:
                     )
 
                 # Update the slide in the main data structure
-                slides[i] = updated_slide
+                slides[slide_index] = updated_slide
                 total_duration += slide_duration
                 audio_paths.extend(new_audio_paths)
 
@@ -749,8 +752,8 @@ class SlideService:
             slide_data["status"] = "audio_generated"
             slide_data["updated_at"] = utc_now_iso_z()
 
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(slide_data, f, indent=2, ensure_ascii=False)
+            with open(json_path, "w", encoding="utf-8") as handle:
+                json.dump(slide_data, handle, indent=2, ensure_ascii=False)
 
             log.debug(
                 "[AUDIO_GENERATION] Audio generation completed: "
@@ -825,8 +828,8 @@ class SlideService:
                 output_format=self.output_format,
             )
 
-            with open(audio_file, "wb") as f:
-                f.write(audio_data)
+            with open(audio_file, "wb") as handle:
+                handle.write(audio_data)
 
             audio_clip = AudioFileClip(str(audio_file))
             audio_duration = audio_clip.duration
@@ -859,7 +862,7 @@ class SlideService:
         slide_total_duration = 0.0
 
         # Check if bullets have sub-bullets
-        has_subbullets = any(isinstance(b, dict) and b.get("sub_bullets") for b in bullets)
+        has_subbullets = any(isinstance(bullet, dict) and bullet.get("sub_bullets") for bullet in bullets)
 
         if has_subbullets:
             log.debug(
@@ -903,8 +906,8 @@ class SlideService:
                     )
                     continue
 
-                with open(audio_file, "wb") as f:
-                    f.write(audio_data)
+                with open(audio_file, "wb") as handle:
+                    handle.write(audio_data)
 
                 audio_clip = AudioFileClip(str(audio_file))
                 segment_duration = audio_clip.duration
@@ -962,8 +965,8 @@ class SlideService:
                 output_format=self.output_format,
             )
 
-            with open(audio_file, "wb") as f:
-                f.write(audio_data)
+            with open(audio_file, "wb") as handle:
+                handle.write(audio_data)
 
             audio_clip = AudioFileClip(str(audio_file))
             audio_duration = audio_clip.duration
@@ -1054,7 +1057,7 @@ class SlideService:
         sentences = re.split(r"(?<=[.!?])\s+", speaker_notes.strip())
 
         # Filter out empty sentences
-        sentences = [s.strip() for s in sentences if s.strip()]
+        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
 
         # If we don't have enough sentences, return None to indicate single audio should be used
         # Use 50% threshold - only fall back to single audio if we have less than half the bullets
@@ -1075,14 +1078,14 @@ class SlideService:
             current_segment = []
             target_sentences = sentences_per_bullet
 
-            for i, sentence in enumerate(sentences):
+            for sentence_index, sentence in enumerate(sentences):
                 current_segment.append(sentence)
 
                 # Check if we should close this segment
                 if len(current_segment) >= target_sentences and len(segments) < num_bullets - 1:
                     segments.append(" ".join(current_segment))
                     current_segment = []
-                    target_sentences = (len(sentences) - i - 1) / (num_bullets - len(segments))
+                    target_sentences = (len(sentences) - sentence_index - 1) / (num_bullets - len(segments))
 
             # Add remaining sentences to last segment
             if current_segment:
@@ -1154,14 +1157,14 @@ class SlideService:
             img_width = int(width * 0.3)
             spacing = (width - (3 * img_width)) / 4
             positions = [spacing, spacing * 2 + img_width, spacing * 3 + img_width * 2]
-            for i, url in enumerate(image_urls):
+            for image_index, url in enumerate(image_urls):
                 image_path = self._resolve_image_path(url, topic_folder)
                 if image_path.exists():
                     elements.append(
                         ImageClip(str(image_path))
                         .with_duration(total_duration)
                         .resized(width=img_width)
-                        .with_position((positions[i], "center"))
+                        .with_position((positions[image_index], "center"))
                     )
         else:
             image_path = self._resolve_image_path(image_urls[0], topic_folder)
@@ -1288,23 +1291,21 @@ class SlideService:
             if not audio_folder.exists():
                 return {"error": "Audio files not found. Generate audio first."}, 400
 
-            # Generate all slides
-            test_slides = slides
             log.debug(f"[VIDEO_GENERATION] Creating video for all {len(slides)} slides")
 
             # Generate video clips for each slide
             video_clips = []
             total_duration = 0.0
 
-            for i, slide in enumerate(test_slides, 1):
-                log.debug(f"[VIDEO_GENERATION] Creating video for slide {i}/{len(test_slides)}")
+            for slide_number, slide in enumerate(slides, 1):
+                log.debug(f"[VIDEO_GENERATION] Creating video for slide {slide_number}/{len(slides)}")
 
                 clip = self._create_slide_clip(slide, topic_folder)
                 if clip:
                     video_clips.append(clip)
                     total_duration += clip.duration
                 else:
-                    log.warning(f"[VIDEO_GENERATION] Failed to create clip for slide {i}")
+                    log.warning(f"[VIDEO_GENERATION] Failed to create clip for slide {slide_number}")
 
             if not video_clips:
                 return {"error": "Failed to create any video clips"}, 500
@@ -1362,8 +1363,8 @@ class SlideService:
             slide_data["status"] = "completed"
             slide_data["updated_at"] = utc_now_iso_z()
 
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(slide_data, f, indent=2, ensure_ascii=False)
+            with open(json_path, "w", encoding="utf-8") as handle:
+                json.dump(slide_data, handle, indent=2, ensure_ascii=False)
 
             # Update Firestore status with S3 URL
             if self.firestore_service:
@@ -1384,7 +1385,7 @@ class SlideService:
                 "video_path": str(video_path),
                 "video_url": video_url,
                 "total_duration": total_duration,
-                "slides_count": len(test_slides),
+                "slides_count": len(slides),
             }, 200
 
         except Exception as e:
@@ -1586,12 +1587,16 @@ class SlideService:
                 end_y = bullet_y  # End at normal position
 
                 def make_bullet_slide_position(start_y_val, end_y_val, x_val, slide_dur):
-                    def bullet_slide_in(t):
-                        """Slide in from top over 0.4 seconds, starting immediately when bullet appears
-                        Note: t is relative to clip start (0 when clip appears)"""
-                        if t < slide_dur:
+                    """Builds the per-frame position function MoviePy calls to animate one bullet
+                    sliding in from above its final resting place.
+                    """
+
+                    def bullet_slide_in(elapsed_seconds):
+                        """Slide in from top over 0.4 seconds, starting immediately when bullet appears.
+                        `elapsed_seconds` is relative to clip start (0 when clip appears)."""
+                        if elapsed_seconds < slide_dur:
                             # Slide from top to final position smoothly
-                            progress = t / slide_dur
+                            progress = elapsed_seconds / slide_dur
                             # Use ease-out for smoother animation
                             eased_progress = 1 - (1 - progress) ** 2
                             current_y = start_y_val + (end_y_val - start_y_val) * eased_progress
@@ -1827,12 +1832,16 @@ class SlideService:
                 end_y = current_y  # End at normal position
 
                 def make_bullet_slide_position(start_y_val, end_y_val, x_val, slide_dur):
-                    def bullet_slide_in(t):
-                        """Slide in from top over 0.4 seconds, starting immediately when bullet appears
-                        Note: t is relative to clip start (0 when clip appears)"""
-                        if t < slide_dur:
+                    """Builds the per-frame position function MoviePy calls to animate one bullet
+                    sliding in from above its final resting place.
+                    """
+
+                    def bullet_slide_in(elapsed_seconds):
+                        """Slide in from top over 0.4 seconds, starting immediately when bullet appears.
+                        `elapsed_seconds` is relative to clip start (0 when clip appears)."""
+                        if elapsed_seconds < slide_dur:
                             # Slide from top to final position smoothly
-                            progress = t / slide_dur
+                            progress = elapsed_seconds / slide_dur
                             # Use ease-out for smoother animation
                             eased_progress = 1 - (1 - progress) ** 2
                             current_y_pos = start_y_val + (end_y_val - start_y_val) * eased_progress
@@ -2003,7 +2012,7 @@ class SlideService:
 
         # Split by sentences
         sentences = re.split(r"(?<=[.!?])\s+", speaker_notes.strip())
-        sentences = [s.strip() for s in sentences if s.strip()]
+        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
 
         # Check if we have enough content
         if len(sentences) < total_items * 0.5:
@@ -2020,13 +2029,13 @@ class SlideService:
         current_segment = []
         target_sentences = sentences_per_item
 
-        for i, sentence in enumerate(sentences):
+        for sentence_index, sentence in enumerate(sentences):
             current_segment.append(sentence)
 
             if len(current_segment) >= target_sentences and len(segments) < total_items - 1:
                 segments.append(" ".join(current_segment))
                 current_segment = []
-                target_sentences = (len(sentences) - i - 1) / (total_items - len(segments))
+                target_sentences = (len(sentences) - sentence_index - 1) / (total_items - len(segments))
 
         # Add remaining sentences
         if current_segment:
@@ -2067,7 +2076,9 @@ class SlideService:
             if has_bullet_timing and bullets:
                 # Check if any bullets have sub-bullets
                 bullets = slide.get("bullets", [])
-                has_subbullets = any(isinstance(b, dict) and b.get("sub_bullets") for b in bullets)
+                has_subbullets = any(
+                    isinstance(bullet, dict) and bullet.get("sub_bullets") for bullet in bullets
+                )
 
                 if has_subbullets:
                     # Use enhanced sub-bullet function
