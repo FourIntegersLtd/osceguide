@@ -38,6 +38,7 @@ async def summaries_for_slots(
 
 
 def _rag_summary(slot_id: uuid.UUID, completed: list[dict[str, Any]]) -> SlotRagSummary:
+    """What a slot's completed reviews add up to, one rating per domain."""
     ratings_by_domain: dict[str, list[str]] = {}
     for field_values in completed:
         for path, rating in field_values.items():

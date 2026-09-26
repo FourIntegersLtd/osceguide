@@ -1,3 +1,6 @@
+"""HTTP routes for a slot's reviews: a reviewer's own review, the GP-lead
+review, and a circuit's finalised review."""
+
 from __future__ import annotations
 
 import uuid

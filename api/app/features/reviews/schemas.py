@@ -1,3 +1,6 @@
+"""What the reviews routes accept and return: slot reviews, the GP-lead review,
+and a circuit's finalised review."""
+
 from __future__ import annotations
 
 import uuid

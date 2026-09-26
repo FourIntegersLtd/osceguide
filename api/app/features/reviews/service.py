@@ -68,6 +68,7 @@ async def submit_slot_review(
     observer_trainee_id: uuid.UUID | None,
     now: datetime,
 ) -> SlotReviewRead:
+    """Submit or update one reviewer's own review of a slot."""
     await _require_slot(session, org_id, slot_id)
     required_domains = await _required_domains(session, org_id, slot_id)
     try:
@@ -108,6 +109,7 @@ async def save_gp_lead_review(
     reviewed_by: uuid.UUID,
     now: datetime,
 ) -> GpLeadReviewRead:
+    """Save the GP-lead review for a slot, refusing a save against a stale revision."""
     await _require_slot(session, org_id, slot_id)
     required_domains = await _required_domains(session, org_id, slot_id)
     existing = await repository.gp_lead_review(session, org_id, slot_id)
@@ -139,6 +141,7 @@ async def save_gp_lead_review(
 async def read_gp_lead_review(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> GpLeadReviewRead:
+    """The GP-lead review for this slot, or a refusal if none has been started."""
     review = await repository.gp_lead_review(session, org_id, slot_id)
     if review is None:
         raise errors.ReviewNotFound()
@@ -154,6 +157,7 @@ async def finalize_circuit(
     finalized_by: uuid.UUID,
     now: datetime,
 ) -> CircuitReviewRead:
+    """Finalise a supervisor's merged review for a whole circuit."""
     review = await repository.finalize_circuit_review(
         session,
         org_id,
@@ -176,6 +180,7 @@ async def slot_has_review(session: AsyncSession, slot_id: uuid.UUID) -> bool:
 
 
 def _slot_read(slot_review: SlotReview) -> SlotReviewRead:
+    """Map a stored slot review onto what a route returns."""
     return SlotReviewRead(
         id=slot_review.id,
         slot_id=slot_review.slot_id,
@@ -189,6 +194,7 @@ def _slot_read(slot_review: SlotReview) -> SlotReviewRead:
 
 
 def _gp_read(review: GpLeadReview) -> GpLeadReviewRead:
+    """Map a stored GP-lead review onto what a route returns."""
     return GpLeadReviewRead(
         id=review.id,
         slot_id=review.slot_id,

@@ -16,6 +16,7 @@ from app.features.reviews.models import CircuitReview, GpLeadReview, SlotReview
 async def slot_review_for(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, submitted_by: uuid.UUID
 ) -> SlotReview | None:
+    """This reviewer's own review of this slot, or None if they have not submitted one."""
     stmt = select(SlotReview).where(
         SlotReview.org_id == org_id,
         SlotReview.slot_id == slot_id,
@@ -25,6 +26,7 @@ async def slot_review_for(
 
 
 async def slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> list[SlotReview]:
+    """Every review of this slot, oldest first."""
     stmt = (
         select(SlotReview)
         .where(SlotReview.org_id == org_id, SlotReview.slot_id == slot_id)
@@ -62,6 +64,7 @@ async def upsert_slot_review(
     status: str,
     completed_at: datetime | None,
 ) -> SlotReview:
+    """Create this reviewer's review of this slot, or update it if they already have one."""
     existing = await slot_review_for(session, org_id, slot_id, submitted_by)
     if existing is None:
         slot_review = SlotReview(
@@ -95,6 +98,7 @@ async def upsert_slot_review(
 
 
 async def gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> GpLeadReview | None:
+    """The GP-lead review for this slot, or None if none has been started."""
     stmt = select(GpLeadReview).where(GpLeadReview.org_id == org_id, GpLeadReview.slot_id == slot_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -102,6 +106,7 @@ async def gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid
 async def gp_lead_reviews_for_slots(
     session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, GpLeadReview]:
+    """The GP-lead review of each of these slots that has one, in one query."""
     if not slot_ids:
         return {}
     stmt = select(GpLeadReview).where(GpLeadReview.org_id == org_id, GpLeadReview.slot_id.in_(list(slot_ids)))
@@ -121,6 +126,7 @@ async def save_gp_lead_review(
     reviewed_by: uuid.UUID,
     completed_at: datetime | None,
 ) -> GpLeadReview:
+    """Create the GP-lead review for this slot, or update it if one already exists."""
     existing = await gp_lead_review(session, org_id, slot_id)
     if existing is None:
         review = GpLeadReview(
@@ -158,6 +164,7 @@ async def save_gp_lead_review(
 async def circuit_review(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
 ) -> CircuitReview | None:
+    """The finalised review for this circuit, or None if it has not been finalised."""
     stmt = select(CircuitReview).where(CircuitReview.org_id == org_id, CircuitReview.circuit_id == circuit_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -172,6 +179,7 @@ async def finalize_circuit_review(
     finalized_by: uuid.UUID,
     at: datetime,
 ) -> CircuitReview:
+    """Create the finalised review for this circuit, or update it if it already exists."""
     existing = await circuit_review(session, org_id, circuit_id)
     if existing is None:
         review = CircuitReview(

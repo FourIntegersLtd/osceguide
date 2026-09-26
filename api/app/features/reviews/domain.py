@@ -19,26 +19,27 @@ _RAG_SEVERITY = {"R": 0, "A": 1, "G": 2}
 
 
 class InvalidRag(ValueError):
-    pass
+    """Raised when a rating is not R, A or G."""
 
 
 class InvalidStatus(ValueError):
-    pass
+    """Raised when a review status is not draft or completed."""
 
 
 class ReviewIncomplete(Exception):
-    pass
+    """Raised when a review is marked completed without scoring every required domain."""
 
 
 class NothingToReview(Exception):
-    pass
+    """Raised when a station has no reviewable feedback domains at all."""
 
 
 class ReviewConflict(Exception):
-    pass
+    """Raised when a GP-lead review is saved against a stale revision."""
 
 
 def normalize_rag(rating: str) -> str:
+    """A rating as R, A or G, whatever case or spacing it arrived in."""
     key = (rating or "").strip().upper()
     if key not in RAG_VALUES:
         raise InvalidRag(f"{rating!r} is not one of {', '.join(RAG_VALUES)}.")
@@ -46,6 +47,7 @@ def normalize_rag(rating: str) -> str:
 
 
 def normalize_status(status: str) -> str:
+    """A review status as draft or completed, whatever case it arrived in."""
     key = (status or "").strip().lower()
     if key not in REVIEW_STATUSES:
         raise InvalidStatus(f"A review is {' or '.join(REVIEW_STATUSES)}, not {status!r}.")

@@ -1,33 +1,40 @@
+"""The refusals a reviews route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, InvalidInput, NotFound
 
 
 class ReviewNotFound(NotFound):
+    """No slot or GP-lead review recorded yet for what was asked for."""
 
     code = "review_not_found"
     default_message = "No such review"
 
 
 class InvalidRagError(InvalidInput):
+    """A rating field was not R, A or G."""
 
     code = "invalid_rag"
     default_message = "A rating must be R, A or G"
 
 
 class InvalidStatusError(InvalidInput):
+    """A review's status was neither draft nor completed."""
 
     code = "invalid_review_status"
     default_message = "A review is either a draft or completed"
 
 
 class ReviewIncompleteError(Conflict):
+    """A review was marked completed without scoring every required domain."""
 
     code = "review_incomplete"
     default_message = "Score every domain before completing the review"
 
 
 class NothingToReviewError(Conflict):
+    """The station has no reviewable feedback domains, so there is nothing to complete."""
 
     code = "nothing_to_review"
     default_message = "This station has no reviewable feedback domains yet"
