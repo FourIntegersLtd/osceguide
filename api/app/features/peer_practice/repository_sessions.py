@@ -26,17 +26,17 @@ async def create_session(
     station_version_id: uuid.UUID | None = None,
     peer_session_id: uuid.UUID | None = None,
 ) -> PracticeSession:
-    row = PracticeSession(
+    practice_session = PracticeSession(
         exam_id=exam_id,
         doctor_user_id=doctor_user_id,
         patient_user_id=patient_user_id,
         station_version_id=station_version_id,
         peer_session_id=peer_session_id,
     )
-    session.add(row)
+    session.add(practice_session)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(practice_session)
+    return practice_session
 
 
 async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: str) -> None:

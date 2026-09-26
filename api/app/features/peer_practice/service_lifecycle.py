@@ -66,7 +66,7 @@ async def create_runtime_for_peer_booking(
 
 async def advance_phases_if_due(
     session: AsyncSession,
-    row: PracticeSession,
+    practice_session: PracticeSession,
     *,
     exam_code: str,
     now: datetime,
@@ -78,30 +78,34 @@ async def advance_phases_if_due(
     test can wire a fake the way every other port is wired here. Production
     passes nothing and the real Egress adapter is built on demand.
     """
-    if row.status == "ended" or row.current_phase is None or row.phase_ends_at is None:
-        return row
-    if now < row.phase_ends_at:
-        return row
+    if (
+        practice_session.status == "ended"
+        or practice_session.current_phase is None
+        or practice_session.phase_ends_at is None
+    ):
+        return practice_session
+    if now < practice_session.phase_ends_at:
+        return practice_session
     durs = durations_for(exam_code)
     next_phase: str | None = None
     next_end: datetime | None = None
     started_at: datetime | None = None
-    if row.current_phase == "preparation":
+    if practice_session.current_phase == "preparation":
         next_phase = "consultation"
         next_end = now + timedelta(seconds=durs.consultation)
         started_at = now
-    elif row.current_phase == "consultation":
+    elif practice_session.current_phase == "consultation":
         next_phase = "debrief"
         next_end = now + timedelta(seconds=durs.debrief)
-        started_at = row.started_at
-    elif row.current_phase == "debrief":
+        started_at = practice_session.started_at
+    elif practice_session.current_phase == "debrief":
         next_phase = "completed"
         next_end = None
-        started_at = row.started_at
+        started_at = practice_session.started_at
     else:
-        return row
+        return practice_session
     values: dict[str, object] = {"current_phase": next_phase, "phase_ends_at": next_end}
-    if row.current_phase == "preparation":
+    if practice_session.current_phase == "preparation":
         values["started_at"] = started_at
     if next_phase == "completed":
         values["status"] = "ended"
@@ -111,11 +115,15 @@ async def advance_phases_if_due(
         # Recording starts here rather than when the pair were matched: the
         # preparation phase is somebody reading a brief alone, and there is
         # nothing in it to mark.
-        await service_recording.start_recording(session, row, exam_code=exam_code, recorder=recorder)
-    elif row.current_phase == "consultation":
-        await service_recording.stop_recording_and_queue(session, row, now=now, recorder=recorder)
-    await repository_sessions.advance_phase(session, row.id, values=values)
-    refreshed = await repository_sessions.session_by_id(session, row.id)
+        await service_recording.start_recording(
+            session, practice_session, exam_code=exam_code, recorder=recorder
+        )
+    elif practice_session.current_phase == "consultation":
+        await service_recording.stop_recording_and_queue(
+            session, practice_session, now=now, recorder=recorder
+        )
+    await repository_sessions.advance_phase(session, practice_session.id, values=values)
+    refreshed = await repository_sessions.session_by_id(session, practice_session.id)
     assert refreshed is not None
     for user_id in (refreshed.doctor_user_id, refreshed.patient_user_id):
         publish_after_commit(session, user_topic(user_id), SESSION_UPDATED)
@@ -124,31 +132,32 @@ async def advance_phases_if_due(
 
 async def record_presence(
     session: AsyncSession,
-    row: PracticeSession,
+    practice_session: PracticeSession,
     *,
     user_id: uuid.UUID,
     now: datetime,
     recorder: RoomRecorder | None = None,
 ) -> PracticeSession:
-    exam_code = await catalog.exam_code_by_id(session, row.exam_id) or ""
+    exam_code = await catalog.exam_code_by_id(session, practice_session.exam_id) or ""
     updates: dict[str, datetime] = {}
-    if user_id == row.doctor_user_id and row.doctor_joined_at is None:
+    if user_id == practice_session.doctor_user_id and practice_session.doctor_joined_at is None:
         updates["doctor_joined_at"] = now
-    if user_id == row.patient_user_id and row.patient_joined_at is None:
+    if user_id == practice_session.patient_user_id and practice_session.patient_joined_at is None:
         updates["patient_joined_at"] = now
     if updates:
-        await repository_sessions.advance_phase(session, row.id, values=updates)
-        row = await repository_sessions.session_by_id(session, row.id)  # type: ignore[assignment]
-        assert row is not None
+        await repository_sessions.advance_phase(session, practice_session.id, values=updates)
+        refreshed = await repository_sessions.session_by_id(session, practice_session.id)
+        assert refreshed is not None
+        practice_session = refreshed
 
-    doctor_in = row.doctor_joined_at is not None
-    patient_in = row.patient_joined_at is not None
-    if doctor_in and patient_in and row.preparation_started_at is None:
+    doctor_in = practice_session.doctor_joined_at is not None
+    patient_in = practice_session.patient_joined_at is not None
+    if doctor_in and patient_in and practice_session.preparation_started_at is None:
         durs = durations_for(exam_code)
         prep_end = now + timedelta(seconds=durs.preparation)
         await repository_sessions.advance_phase(
             session,
-            row.id,
+            practice_session.id,
             values={
                 "preparation_started_at": now,
                 "current_phase": "preparation",
@@ -156,9 +165,12 @@ async def record_presence(
                 "status": "active",
             },
         )
-        row = await repository_sessions.session_by_id(session, row.id)  # type: ignore[assignment]
-        assert row is not None
-        for participant in (row.doctor_user_id, row.patient_user_id):
+        refreshed = await repository_sessions.session_by_id(session, practice_session.id)
+        assert refreshed is not None
+        practice_session = refreshed
+        for participant in (practice_session.doctor_user_id, practice_session.patient_user_id):
             publish_after_commit(session, user_topic(participant), SESSION_UPDATED)
 
-    return await advance_phases_if_due(session, row, exam_code=exam_code, now=now, recorder=recorder)
+    return await advance_phases_if_due(
+        session, practice_session, exam_code=exam_code, now=now, recorder=recorder
+    )

@@ -130,8 +130,8 @@ async def waiting_audiences(session: AsyncSession, exam_id: uuid.UUID) -> list[A
         .distinct()
     )
     return [
-        Audience(visibility=Visibility(row[0]), org_id=row[1], group_id=row[2])
-        for row in (await session.execute(stmt)).all()
+        Audience(visibility=Visibility(audience_row[0]), org_id=audience_row[1], group_id=audience_row[2])
+        for audience_row in (await session.execute(stmt)).all()
     ]
 
 

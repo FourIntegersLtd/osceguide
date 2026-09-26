@@ -4,11 +4,13 @@ from app.core.errors import Conflict, NotFound
 
 
 class QueueEntryNotFound(NotFound):
+
     code = "queue_entry_not_found"
     default_message = "You are not in the queue"
 
 
 class SessionNotFound(NotFound):
+
     code = "practice_session_not_found"
     default_message = "No such practice session"
 
@@ -24,6 +26,7 @@ class AlreadyQueued(Conflict):
 
 
 class SessionAlreadyEnded(Conflict):
+
     code = "practice_session_ended"
     default_message = "That session has already finished"
 

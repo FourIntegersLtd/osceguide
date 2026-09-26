@@ -45,6 +45,7 @@ async def join_queue(
     )
 
 
+# One queue entry's current status.
 @router.get(
     "/peer-practice/queue/{entry_id}",
     response_model=schemas.QueueStatus,
@@ -56,6 +57,7 @@ async def read_status(
     return await service.read_status(session, entry_id, user_id=principal.user_id)
 
 
+# Pushes this caller's own queue status until it stops being "waiting".
 @router.get(
     "/peer-practice/queue/{entry_id}/stream",
     responses=sse_responses(schemas.QueueStatus, Unauthenticated, errors.QueueEntryNotFound),
@@ -74,6 +76,7 @@ async def stream_status(
     )
 
 
+# Give up a queue place. Refused if it was already matched or already left.
 @router.delete(
     "/peer-practice/queue/{entry_id}",
     status_code=status.HTTP_204_NO_CONTENT,

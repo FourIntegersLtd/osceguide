@@ -53,17 +53,17 @@ _TEACHING_KEYS = (
 
 def _block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
     for key in keys:
-        value = content.get(key)
-        if isinstance(value, Mapping):
-            return dict(value)
+        candidate = content.get(key)
+        if isinstance(candidate, Mapping):
+            return dict(candidate)
     return {}
 
 
 def _text(value: Any) -> str | None:
     if value is None:
         return None
-    t = str(value).strip()
-    return t or None
+    stripped = str(value).strip()
+    return stripped or None
 
 
 def _lines(value: Any) -> list[str]:
@@ -72,62 +72,63 @@ def _lines(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value.strip()] if value.strip() else []
     if isinstance(value, Mapping):
-        return [str(item).strip() for item in value.values() if str(item).strip()]
+        return [str(entry).strip() for entry in value.values() if str(entry).strip()]
     if isinstance(value, (list, tuple)):
-        return [str(item).strip() for item in value if str(item).strip()]
+        return [str(entry).strip() for entry in value if str(entry).strip()]
     return [str(value).strip()]
 
 
 async def session_read(
-    session: AsyncSession, row: PracticeSession, *, viewer_id: uuid.UUID
+    session: AsyncSession, practice_session: PracticeSession, *, viewer_id: uuid.UUID
 ) -> PracticeSessionRead:
     """Build the full session read payload, delegating station resolution here."""
     from app.features.catalog import service as catalog
     from app.features.peer_practice import domain
 
-    code = await catalog.exam_code_by_id(session, row.exam_id)
-    is_doctor = row.doctor_user_id == viewer_id
-    partner_joined = bool(row.preparation_started_at)
+    code = await catalog.exam_code_by_id(session, practice_session.exam_id)
+    is_doctor = practice_session.doctor_user_id == viewer_id
+    partner_joined = bool(practice_session.preparation_started_at)
     station = await station_read_for_version(
         session,
-        row.station_version_id,
+        practice_session.station_version_id,
         is_doctor=is_doctor,
-        reveal_review=row.current_phase in {"debrief", "completed"} or row.status == "ended",
+        reveal_review=practice_session.current_phase in {"debrief", "completed"}
+        or practice_session.status == "ended",
     )
     return PracticeSessionRead(
-        id=row.id,
+        id=practice_session.id,
         exam_code=code or "",
         my_role=str(domain.Role.DOCTOR if is_doctor else domain.Role.PATIENT),
-        partner_user_id=row.patient_user_id if is_doctor else row.doctor_user_id,
-        room_name=row.room_name,
-        status=row.status,
-        current_phase=row.current_phase,
-        phase_ends_at=row.phase_ends_at,
-        preparation_started_at=row.preparation_started_at,
-        doctor_joined_at=row.doctor_joined_at,
-        patient_joined_at=row.patient_joined_at,
-        started_at=row.started_at,
-        ended_at=row.ended_at,
-        end_reason=row.end_reason,
+        partner_user_id=practice_session.patient_user_id if is_doctor else practice_session.doctor_user_id,
+        room_name=practice_session.room_name,
+        status=practice_session.status,
+        current_phase=practice_session.current_phase,
+        phase_ends_at=practice_session.phase_ends_at,
+        preparation_started_at=practice_session.preparation_started_at,
+        doctor_joined_at=practice_session.doctor_joined_at,
+        patient_joined_at=practice_session.patient_joined_at,
+        started_at=practice_session.started_at,
+        ended_at=practice_session.ended_at,
+        end_reason=practice_session.end_reason,
         station=station,
         partner_joined=partner_joined,
-        doctor_attempt_id=row.doctor_attempt_id if is_doctor else None,
-        feedback_state=_feedback_state(row) if is_doctor else "none",
+        doctor_attempt_id=practice_session.doctor_attempt_id if is_doctor else None,
+        feedback_state=_feedback_state(practice_session) if is_doctor else "none",
     )
 
 
-def _feedback_state(row: PracticeSession) -> str:
+def _feedback_state(practice_session: PracticeSession) -> str:
     """What the doctor can be told about their marking, in one word.
 
     Derived from the recording rather than stored: the states are already
     written on the row by the recorder and the job, and a second field saying
     the same thing is a second field to get wrong.
     """
-    if row.doctor_attempt_id is not None:
+    if practice_session.doctor_attempt_id is not None:
         return "ready"
-    if row.recording_state == "failed":
+    if practice_session.recording_state == "failed":
         return "failed"
-    if row.recording_state == "none":
+    if practice_session.recording_state == "none":
         return "none"
     return "pending"
 

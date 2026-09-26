@@ -40,7 +40,7 @@ def is_configured(settings: Settings | None = None) -> bool:
 
 async def start_recording(
     session: AsyncSession,
-    row: PracticeSession,
+    practice_session: PracticeSession,
     *,
     exam_code: str,
     recorder: RoomRecorder | None = None,
@@ -51,26 +51,30 @@ async def start_recording(
     matched, because the preparation phase is somebody reading a brief alone
     and there is nothing to mark in it.
     """
-    if row.recording_state != "none" or not row.room_name:
+    if practice_session.recording_state != "none" or not practice_session.room_name:
         return
     settings = get_settings()
     if not is_configured(settings):
-        # Not an error worth recording on the row: a deployment without a
+        # Not an error worth recording on the session: a deployment without a
         # bucket is not a session that went wrong.
         return
-    key = recording_key(row.id, exam_code)
+    key = recording_key(practice_session.id, exam_code)
     try:
-        egress_id = await (recorder or _recorder()).start(room=row.room_name, key=key)
+        egress_id = await (recorder or _recorder()).start(room=practice_session.room_name, key=key)
     except VoiceUnavailable as exc:
-        log.warning("peer session not recorded", session_id=str(row.id), error=str(exc))
-        await repository_sessions.set_recording_state(session, row.id, state="failed", error=str(exc)[:200])
+        log.warning("peer session not recorded", session_id=str(practice_session.id), error=str(exc))
+        await repository_sessions.set_recording_state(
+            session, practice_session.id, state="failed", error=str(exc)[:200]
+        )
         return
-    await repository_sessions.set_recording_started(session, row.id, egress_id=egress_id, key=key)
+    await repository_sessions.set_recording_started(
+        session, practice_session.id, egress_id=egress_id, key=key
+    )
 
 
 async def stop_recording_and_queue(
     session: AsyncSession,
-    row: PracticeSession,
+    practice_session: PracticeSession,
     *,
     now: datetime,
     recorder: RoomRecorder | None = None,
@@ -85,16 +89,16 @@ async def stop_recording_and_queue(
     """
     from app.features.peer_practice.jobs import enqueue_transcription  # noqa: PLC0415
 
-    if row.recording_state != "recording" or not row.egress_id:
+    if practice_session.recording_state != "recording" or not practice_session.egress_id:
         return
     try:
-        await (recorder or _recorder()).stop(egress_id=row.egress_id)
+        await (recorder or _recorder()).stop(egress_id=practice_session.egress_id)
     except VoiceUnavailable as exc:
         # The audio may still have been written — egress uploads what it has —
         # so this is worth transcribing anyway rather than abandoning.
-        log.warning("peer recording not stopped cleanly", session_id=str(row.id), error=str(exc))
-    await repository_sessions.set_recording_state(session, row.id, state="stopped")
-    await enqueue_transcription(session, session_id=row.id, now=now)
+        log.warning("peer recording not stopped cleanly", session_id=str(practice_session.id), error=str(exc))
+    await repository_sessions.set_recording_state(session, practice_session.id, state="stopped")
+    await enqueue_transcription(session, session_id=practice_session.id, now=now)
 
 
 def _recorder() -> RoomRecorder:

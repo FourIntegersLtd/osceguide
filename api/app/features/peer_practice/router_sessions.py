@@ -38,6 +38,7 @@ router = APIRouter(tags=["peer-practice"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Every practice session this caller has been matched into, as doctor or patient.
 @router.get(
     "/me/practice-sessions",
     response_model=Page[schemas.PracticeSessionRead],
@@ -46,10 +47,11 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def list_my_sessions(
     principal: CurrentPrincipal, session: Session
 ) -> Page[schemas.PracticeSessionRead]:
-    items = await service.list_my_sessions(session, principal.user_id)
-    return Page(items=items, next_cursor=None)
+    sessions = await service.list_my_sessions(session, principal.user_id)
+    return Page(items=sessions, next_cursor=None)
 
 
+# One practice session this caller is part of.
 @router.get(
     "/me/practice-sessions/{session_id}",
     response_model=schemas.PracticeSessionRead,
@@ -61,6 +63,7 @@ async def read_session(
     return await service.read_session(session, session_id, user_id=principal.user_id, now=clock.now())
 
 
+# Mark this caller as present, driving the session's phase forward if it is due.
 @router.post(
     "/me/practice-sessions/{session_id}/presence",
     response_model=schemas.PracticeSessionRead,
@@ -72,6 +75,7 @@ async def record_presence(
     return await service.touch_presence(session, session_id, user_id=principal.user_id, now=clock.now())
 
 
+# Pushes this session's phase and presence until it ends.
 @router.get(
     "/me/practice-sessions/{session_id}/stream",
     responses=sse_responses(schemas.PracticeSessionRead, Unauthenticated, errors.SessionNotFound),
@@ -90,6 +94,7 @@ async def stream_session(
     )
 
 
+# One participant's rating and comment on a session they were part of.
 @router.post(
     "/me/practice-sessions/{session_id}/feedback",
     response_model=schemas.PracticeSessionRead,
@@ -111,6 +116,7 @@ async def session_feedback(
     )
 
 
+# Flag the other participant's conduct in a session, emailed to support.
 @router.post(
     "/me/practice-sessions/{session_id}/report-abuse",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -134,6 +140,7 @@ async def report_abuse(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# Flag that the other participant never turned up, emailed to support.
 @router.post(
     "/me/practice-sessions/{session_id}/report-no-show",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -157,6 +164,7 @@ async def report_no_show(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# End a session early, recording why.
 @router.post(
     "/me/practice-sessions/{session_id}/end",
     response_model=schemas.PracticeSessionRead,

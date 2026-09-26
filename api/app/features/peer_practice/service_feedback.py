@@ -51,21 +51,21 @@ async def build_feedback(
     into a reschedule rather than a failure — egress upload lags the stop by
     seconds and occasionally by more.
     """
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or row.recording_state not in {"stopped", "transcribing"}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or practice_session.recording_state not in {"stopped", "transcribing"}:
         return None
-    if row.doctor_attempt_id is not None or not row.recording_key:
+    if practice_session.doctor_attempt_id is not None or not practice_session.recording_key:
         return None
 
     settings = get_settings()
-    if not storage.object_exists(settings, row.recording_key):
-        raise RecordingNotReady(row.recording_key)
+    if not storage.object_exists(settings, practice_session.recording_key):
+        raise RecordingNotReady(practice_session.recording_key)
 
     await repository_sessions.set_recording_state(session, session_id, state="transcribing")
-    exam_code = await catalog.exam_code_by_id(session, row.exam_id) or ""
+    exam_code = await catalog.exam_code_by_id(session, practice_session.exam_id) or ""
 
     try:
-        audio_url = storage.readable_url(settings, row.recording_key)
+        audio_url = storage.readable_url(settings, practice_session.recording_key)
         raw = await (transcriber or _transcriber()).transcribe(audio_url=audio_url)
         turns = await (diarise or diariser.to_turns)(raw)
     except TranscriptionFailed as exc:
@@ -75,13 +75,13 @@ async def build_feedback(
     try:
         attempt_read = await attempts.start_attempt(
             session,
-            user_id=row.doctor_user_id,
+            user_id=practice_session.doctor_user_id,
             kind="peer",
             exam_code=exam_code,
             now=now,
-            station_version_id=row.station_version_id,
-            peer_session_id=row.id,
-            room_name=row.room_name,
+            station_version_id=practice_session.station_version_id,
+            peer_session_id=practice_session.id,
+            room_name=practice_session.room_name,
         )
     except NotEntitled as exc:
         # The practice already happened. Refusing it after the fact helps
@@ -99,7 +99,7 @@ async def build_feedback(
     )
 
     await repository_sessions.set_doctor_attempt(session, session_id, attempt_id=attempt_read.id)
-    publish_after_commit(session, user_topic(row.doctor_user_id), SESSION_UPDATED)
+    publish_after_commit(session, user_topic(practice_session.doctor_user_id), SESSION_UPDATED)
     log.info(
         "peer session marked", session_id=str(session_id), attempt_id=str(attempt_read.id), turns=len(turns)
     )

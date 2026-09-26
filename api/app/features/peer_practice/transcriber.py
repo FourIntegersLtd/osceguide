@@ -26,6 +26,7 @@ TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 
 
 class OpenAITranscriber:
+
     async def transcribe(self, *, audio_url: str) -> str:
         audio = await _fetch(audio_url)
         client = _client()
@@ -43,11 +44,11 @@ class OpenAITranscriber:
             # The OpenAI client is synchronous and this runs inside the job
             # worker's loop, so it goes to a thread rather than blocking every
             # other job on the same worker for the length of a consultation.
-            result = await asyncio.to_thread(call)
+            transcription = await asyncio.to_thread(call)
         except Exception as exc:  # noqa: BLE001 - the SDK raises several unrelated types
             raise TranscriptionFailed(f"The transcription service refused the recording: {exc}") from exc
 
-        text = result if isinstance(result, str) else getattr(result, "text", "")
+        text = transcription if isinstance(transcription, str) else getattr(transcription, "text", "")
         if not text.strip():
             # Silence is a real outcome — a pair who never spoke — but it is
             # not something to mark, and saying so here means the caller does

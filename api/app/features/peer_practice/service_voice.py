@@ -39,13 +39,16 @@ async def voice_grant(
     stranger gets `practice_session_not_found` rather than a refusal, since
     whether a session exists is not something to confirm to somebody not in it.
     """
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or user_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         raise errors.SessionNotFound()
-    if row.status == "ended" or not row.room_name:
+    if practice_session.status == "ended" or not practice_session.room_name:
         raise errors.SessionAlreadyEnded()
     granted = voice.grant_for_room(
-        room=row.room_name,
+        room=practice_session.room_name,
         identity=str(user_id),
         can_publish=True,
         tokens=tokens,

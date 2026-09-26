@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PhaseDurations:
+
     preparation: int
     consultation: int
     debrief: int

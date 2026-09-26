@@ -21,10 +21,17 @@ async def report_abuse(
     somebody goes looking, which is not what "report" means to the person
     who filed it.
     """
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or reporter_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or reporter_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         raise errors.SessionNotFound()
-    reported_id = row.patient_user_id if reporter_id == row.doctor_user_id else row.doctor_user_id
+    reported_id = (
+        practice_session.patient_user_id
+        if reporter_id == practice_session.doctor_user_id
+        else practice_session.doctor_user_id
+    )
     refs = await identity.user_refs_by_ids(session, [reporter_id, reported_id])
     reporter_ref = refs.get(reporter_id)
     reported_ref = refs.get(reported_id)
@@ -46,8 +53,11 @@ async def report_abuse(
 async def report_no_show(
     session: AsyncSession, session_id: uuid.UUID, *, reporter_id: uuid.UUID, message: str | None
 ) -> None:
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or reporter_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or reporter_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         raise errors.SessionNotFound()
     refs = await identity.user_refs_by_ids(session, [reporter_id])
     reporter_ref = refs.get(reporter_id)

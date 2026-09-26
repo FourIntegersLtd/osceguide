@@ -23,6 +23,7 @@ class CannotPair(Exception):
 
 @dataclass(frozen=True)
 class Waiting:
+
     user_id: str
     last_role: Role | None = None
     session_count: int = 0
@@ -33,6 +34,7 @@ class Waiting:
 
 @dataclass(frozen=True)
 class Pair:
+
     doctor: str
     patient: str
 
@@ -81,8 +83,8 @@ def next_pair(queue: Sequence[Waiting]) -> Pair | None:
     A pair that cannot be formed — two people who must both be patient — is
     skipped rather than left blocking everyone behind it.
     """
-    for i, first in enumerate(queue):
-        for second in queue[i + 1 :]:
+    for position, first in enumerate(queue):
+        for second in queue[position + 1 :]:
             try:
                 return assign_roles(first, second)
             except CannotPair:

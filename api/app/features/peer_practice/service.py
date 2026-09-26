@@ -155,27 +155,33 @@ async def match_waiting(
 async def read_session(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime | None = None
 ) -> PracticeSessionRead:
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or user_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         # 404 rather than 403: a session id is not something a stranger should
         # be able to confirm exists.
         raise errors.SessionNotFound()
     if now is not None:
-        code = await catalog.exam_code_by_id(session, row.exam_id) or ""
-        row = await advance_phases_if_due(session, row, exam_code=code, now=now)
-    return await _session_read(session, row, viewer_id=user_id)
+        code = await catalog.exam_code_by_id(session, practice_session.exam_id) or ""
+        practice_session = await advance_phases_if_due(session, practice_session, exam_code=code, now=now)
+    return await _session_read(session, practice_session, viewer_id=user_id)
 
 
 async def touch_presence(
     session: AsyncSession, session_id: uuid.UUID, *, user_id: uuid.UUID, now: datetime
 ) -> PracticeSessionRead:
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or user_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         raise errors.SessionNotFound()
-    if row.status == "ended":
+    if practice_session.status == "ended":
         raise errors.SessionAlreadyEnded()
-    row = await record_presence(session, row, user_id=user_id, now=now)
-    return await _session_read(session, row, viewer_id=user_id)
+    practice_session = await record_presence(session, practice_session, user_id=user_id, now=now)
+    return await _session_read(session, practice_session, viewer_id=user_id)
 
 
 async def submit_feedback(
@@ -187,8 +193,11 @@ async def submit_feedback(
     comment: str | None,
     would_practice_again: bool | None = None,
 ) -> PracticeSessionRead:
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or user_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         raise errors.SessionNotFound()
     await repository_sessions.record_feedback(
         session, session_id, rating=rating, comment=comment, would_practice_again=would_practice_again
@@ -205,16 +214,19 @@ async def end_session(
     reason: str | None,
     now: datetime,
 ) -> PracticeSessionRead:
-    row = await repository_sessions.session_by_id(session, session_id)
-    if row is None or user_id not in {row.doctor_user_id, row.patient_user_id}:
+    practice_session = await repository_sessions.session_by_id(session, session_id)
+    if practice_session is None or user_id not in {
+        practice_session.doctor_user_id,
+        practice_session.patient_user_id,
+    }:
         raise errors.SessionNotFound()
-    if row.status == "ended":
+    if practice_session.status == "ended":
         raise errors.SessionAlreadyEnded()
     # Ending early is the common way a consultation finishes — one of the pair
     # presses the button rather than letting the clock run out — so the
     # recording has to be stopped and queued here too, not only on the
     # `consultation -> debrief` transition.
-    await service_recording.stop_recording_and_queue(session, row, now=now)
+    await service_recording.stop_recording_and_queue(session, practice_session, now=now)
     await repository_sessions.end_session(session, session_id, at=now, reason=reason)
     refreshed = await repository_sessions.session_by_id(session, session_id)
     return await _session_read(session, refreshed, viewer_id=user_id)  # type: ignore[arg-type]
@@ -222,8 +234,8 @@ async def end_session(
 
 async def list_my_sessions(session: AsyncSession, user_id: uuid.UUID) -> list[PracticeSessionRead]:
     return [
-        await _session_read(session, row, viewer_id=user_id)
-        for row in await repository_sessions.sessions_for_user(session, user_id)
+        await _session_read(session, practice_session, viewer_id=user_id)
+        for practice_session in await repository_sessions.sessions_for_user(session, user_id)
     ]
 
 

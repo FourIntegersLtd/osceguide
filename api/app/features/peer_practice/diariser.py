@@ -64,11 +64,11 @@ def _clean(parsed: Any) -> list[dict[str, str]]:
     if not isinstance(messages, list):
         raise TranscriptionFailed("The diarised transcript was not a list of turns")
     turns: list[dict[str, str]] = []
-    for item in messages:
-        if not isinstance(item, dict):
+    for raw_turn in messages:
+        if not isinstance(raw_turn, dict):
             continue
-        role = str(item.get("role") or "").strip().lower()
-        message = str(item.get("message") or "").strip()
+        role = str(raw_turn.get("role") or "").strip().lower()
+        message = str(raw_turn.get("message") or "").strip()
         # An unknown role is dropped rather than guessed: a patient's words
         # attributed to the doctor would be marked as the doctor's.
         if role in {"doctor", "patient"} and message:
