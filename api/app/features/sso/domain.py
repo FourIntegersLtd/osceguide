@@ -52,23 +52,23 @@ class SsoNotConfigurable(Exception):
 MAX_BINDING = 253  # A DNS name's limit, which bounds both kinds.
 
 
-def normalise_provider(value: str) -> Provider:
+def normalise_provider(raw_provider: str) -> Provider:
     try:
-        return Provider((value or "").strip().lower())
+        return Provider((raw_provider or "").strip().lower())
     except ValueError as exc:
         raise InvalidProvider(
-            f"{value!r} is not a provider this platform knows: {', '.join(Provider)}."
+            f"{raw_provider!r} is not a provider this platform knows: {', '.join(Provider)}."
         ) from exc
 
 
-def normalise_host(value: str) -> str:
+def normalise_host(raw_host: str) -> str:
     """A bare hostname, however it was typed.
 
     People paste URLs into configuration fields. Storing `https://bmj.osceguide.com/`
     would mean a lookup by `Host:` header never matches it, and the failure is
     invisible: the partner's site silently shows the ordinary sign-in page.
     """
-    text = (value or "").strip().lower()
+    text = (raw_host or "").strip().lower()
     for prefix in ("https://", "http://"):
         if text.startswith(prefix):
             text = text[len(prefix) :]
@@ -79,9 +79,9 @@ def normalise_host(value: str) -> str:
     return text
 
 
-def normalise_email_domain(value: str) -> str:
+def normalise_email_domain(raw_email_domain: str) -> str:
     """The domain half, whether they typed a domain or a whole address."""
-    text = (value or "").strip().lower()
+    text = (raw_email_domain or "").strip().lower()
     if "@" in text:
         text = text.rsplit("@", 1)[1]
     text = text.strip(".")
@@ -101,8 +101,8 @@ def _ensure_name(text: str, what: str) -> None:
         raise InvalidBinding(f"{what} must be a dotted name, not {text!r}.")
 
 
-def normalise_binding(kind: BindingKind, value: str) -> str:
-    return normalise_host(value) if kind is BindingKind.HOST else normalise_email_domain(value)
+def normalise_binding(kind: BindingKind, raw_value: str) -> str:
+    return normalise_host(raw_value) if kind is BindingKind.HOST else normalise_email_domain(raw_value)
 
 
 def domain_of(email: str) -> str | None:

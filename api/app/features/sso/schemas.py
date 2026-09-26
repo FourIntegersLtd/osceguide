@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class SsoBinding(BaseModel):
+    # One host or email domain a configuration claims.
     kind: str
     value: str
 

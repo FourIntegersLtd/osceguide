@@ -23,10 +23,10 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
 async def sign_in_for_host(session: AsyncSession, host: str) -> schemas.SsoSignIn:
     """What the sign-in page on a white-label host should show."""
     try:
-        value = domain.normalise_host(host)
+        binding_value = domain.normalise_host(host)
     except domain.InvalidBinding as exc:
         raise_mapped(exc, _REFUSALS)
-    return await _sign_in(session, kind=domain.BindingKind.HOST, value=value)
+    return await _sign_in(session, kind=domain.BindingKind.HOST, binding_value=binding_value)
 
 
 async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSignIn:
@@ -36,14 +36,16 @@ async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSig
     "no SSO here" and "that is not an address" are different things and the page
     behaves differently for each.
     """
-    value = domain.domain_of(email)
-    if not value:
+    binding_value = domain.domain_of(email)
+    if not binding_value:
         raise errors.InvalidSsoBinding("That is not an email address.")
-    return await _sign_in(session, kind=domain.BindingKind.EMAIL_DOMAIN, value=value)
+    return await _sign_in(session, kind=domain.BindingKind.EMAIL_DOMAIN, binding_value=binding_value)
 
 
-async def _sign_in(session: AsyncSession, *, kind: domain.BindingKind, value: str) -> schemas.SsoSignIn:
-    config = await repository.find_by_binding(session, kind=kind.value, value=value)
+async def _sign_in(
+    session: AsyncSession, *, kind: domain.BindingKind, binding_value: str
+) -> schemas.SsoSignIn:
+    config = await repository.find_by_binding(session, kind=kind.value, binding_value=binding_value)
     if config is None:
         raise errors.SsoNotConfigured()
     # A configuration that exists but is switched off is not something to tell
@@ -104,10 +106,10 @@ async def save_config(
 
     # Checked before writing rather than caught as a constraint violation, so
     # the refusal names the host somebody has to go and sort out.
-    for kind, value in bindings:
-        owner = await repository.binding_owner(session, kind=kind, value=value)
+    for kind, binding_value in bindings:
+        owner = await repository.binding_owner(session, kind=kind, binding_value=binding_value)
         if owner is not None and owner != config.id:
-            raise errors.SsoBindingTaken(f"{value} is already claimed by another organisation.")
+            raise errors.SsoBindingTaken(f"{binding_value} is already claimed by another organisation.")
 
     await repository.replace_bindings(session, sso_id=config.id, bindings=bindings)
     return await _read(session, config, org_slug=org.slug)
@@ -116,7 +118,7 @@ async def save_config(
 def _bindings(body: schemas.SaveSsoConfig) -> list[tuple[str, str]]:
     """Every host and domain, normalised, in a stable order, without repeats."""
     seen: set[tuple[str, str]] = set()
-    out: list[tuple[str, str]] = []
+    pairs: list[tuple[str, str]] = []
     for kind, raw_values in (
         (domain.BindingKind.HOST, body.hosts),
         (domain.BindingKind.EMAIL_DOMAIN, body.email_domains),
@@ -126,12 +128,12 @@ def _bindings(body: schemas.SaveSsoConfig) -> list[tuple[str, str]]:
             if pair in seen:
                 continue
             seen.add(pair)
-            out.append(pair)
-    return out
+            pairs.append(pair)
+    return pairs
 
 
 async def _read(session: AsyncSession, config: OrganizationSso, *, org_slug: str) -> schemas.SsoConfigRead:
-    rows = await repository.bindings_for(session, config.id)
+    bindings = await repository.bindings_for(session, config.id)
     provider = domain.normalise_provider(config.provider)
     return schemas.SsoConfigRead(
         org_id=config.org_id,
@@ -142,5 +144,5 @@ async def _read(session: AsyncSession, config: OrganizationSso, *, org_slug: str
         sso_only=config.sso_only,
         sign_in_label=domain.sign_in_label(config.sign_in_label, provider),
         default_exam_code=config.default_exam_code,
-        bindings=[schemas.SsoBinding(kind=row.kind, value=row.value) for row in rows],
+        bindings=[schemas.SsoBinding(kind=binding.kind, value=binding.value) for binding in bindings],
     )

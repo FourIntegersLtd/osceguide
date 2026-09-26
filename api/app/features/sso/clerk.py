@@ -97,10 +97,10 @@ class ClerkBroker:
         # Clerk frontend domain) is only needed to build the sign-in URL, and
         # `expected_nonce` belongs to the OIDC flow Clerk does not run.
         del issuer, expected_nonce
-        payload = _decode_payload(token)
-        if payload is None:
+        token_claims = _decode_payload(token)
+        if token_claims is None:
             return None
-        session_id = str(payload.get("sid") or "").strip()
+        session_id = str(token_claims.get("sid") or "").strip()
         if not session_id:
             return None
         # SEC-019: `sid` comes from a JWT whose signature is not verified until
@@ -116,7 +116,7 @@ class ClerkBroker:
                 if verified.status_code >= 400:
                     log.warning("clerk refused a session", status=verified.status_code)
                     return None
-                user_id = str(verified.json().get("user_id") or payload.get("sub") or "").strip()
+                user_id = str(verified.json().get("user_id") or token_claims.get("sub") or "").strip()
                 if not user_id:
                     return None
                 user_url = f"{CLERK_API_BASE}/users/{quote(user_id, safe='')}"
