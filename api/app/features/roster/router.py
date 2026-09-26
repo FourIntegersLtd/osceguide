@@ -1,3 +1,7 @@
+"""Routes for an organisation's roster: listing and adding trainees, setting
+their access, and the cohorts and groups they can be sorted into.
+"""
+
 from __future__ import annotations
 
 import uuid

@@ -29,6 +29,7 @@ _COHORT_FIELDS = ("name", "academic_year")
 async def add_cohort(
     session: AsyncSession, org_id: uuid.UUID, *, name: str, academic_year: str | None
 ) -> CohortRead:
+    """Create a new intake at an organisation."""
     if await repository_groups.cohort_by_name(session, org_id, name) is not None:
         raise errors.CohortExists()
     cohort = await repository_groups.create_cohort(session, org_id, name=name, academic_year=academic_year)
@@ -84,6 +85,7 @@ async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uui
 
 
 async def add_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) -> GroupRead:
+    """Create a new, empty group at an organisation."""
     if await repository_groups.group_by_label(session, org_id, label) is not None:
         raise errors.GroupExists()
     group = await repository_groups.create_group(session, org_id, label=label)
@@ -91,6 +93,7 @@ async def add_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) -> 
 
 
 async def list_groups(session: AsyncSession, org_id: uuid.UUID) -> list[GroupRead]:
+    """Every group at an organisation, with how many trainees are in each."""
     return [
         GroupRead(id=group.id, label=group.label, member_count=member_count)
         for group, member_count in await repository_groups.list_groups(session, org_id)
@@ -125,6 +128,7 @@ async def delete_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.
 async def set_group_members(
     session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID, *, trainee_ids: list[uuid.UUID]
 ) -> GroupRead:
+    """Replace a group's membership wholesale with this list of trainees."""
     group = await _require_group(session, org_id, group_id)
     for trainee_id in trainee_ids:
         # Checked against this org, so a trainee id from elsewhere cannot be
@@ -170,6 +174,7 @@ async def _member_count(session: AsyncSession, group_id: uuid.UUID) -> int:
 
 
 async def _require_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> TraineeGroup:
+    """Fetch a group, or refuse if this organisation has none by that id."""
     group = await repository_groups.group_by_id(session, org_id, group_id)
     if group is None:
         raise errors.GroupNotFound()
@@ -177,6 +182,7 @@ async def _require_group(session: AsyncSession, org_id: uuid.UUID, group_id: uui
 
 
 async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> Cohort:
+    """Fetch a cohort, or refuse if this organisation has none by that id."""
     cohort = await repository_groups.cohort_by_id(session, org_id, cohort_id)
     if cohort is None:
         raise errors.CohortNotFound()
@@ -184,6 +190,7 @@ async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: u
 
 
 def _cohort_read(cohort: Cohort) -> CohortRead:
+    """Shape a cohort row into what a route may return."""
     return CohortRead(
         id=cohort.id, name=cohort.name, academic_year=cohort.academic_year, status=cohort.status
     )

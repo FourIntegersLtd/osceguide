@@ -1,3 +1,7 @@
+"""What the roster's routes read and return: trainees, their cohorts and
+groups, and the result of adding a spreadsheet's worth of people at once.
+"""
+
 from __future__ import annotations
 
 import uuid

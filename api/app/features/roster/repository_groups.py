@@ -18,6 +18,7 @@ from app.features.roster.models import Cohort, Trainee, TraineeGroup, TraineeGro
 async def create_cohort(
     session: AsyncSession, org_id: uuid.UUID, *, name: str, academic_year: str | None
 ) -> Cohort:
+    """Create a new intake for an organisation."""
     cohort = Cohort(org_id=org_id, name=name, academic_year=academic_year, status="active")
     session.add(cohort)
     await session.flush()
@@ -26,11 +27,13 @@ async def create_cohort(
 
 
 async def list_cohorts(session: AsyncSession, org_id: uuid.UUID) -> list[Cohort]:
+    """Every cohort at an organisation, alphabetically."""
     stmt = select(Cohort).where(Cohort.org_id == org_id).order_by(Cohort.name)
     return list((await session.execute(stmt)).scalars())
 
 
 async def cohort_by_id(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> Cohort | None:
+    """Find a cohort at this organisation by id."""
     stmt = select(Cohort).where(Cohort.org_id == org_id, Cohort.id == cohort_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -71,6 +74,7 @@ async def update_cohort(
 
 
 async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
+    """Remove a cohort. Its trainees' `cohort_id` is set to null by the database."""
     await session.execute(delete(Cohort).where(Cohort.org_id == org_id, Cohort.id == cohort_id))
 
 
@@ -93,6 +97,7 @@ async def count_trainees_in_cohort(session: AsyncSession, org_id: uuid.UUID, coh
 
 
 async def create_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) -> TraineeGroup:
+    """Create a new, empty group at an organisation."""
     group = TraineeGroup(org_id=org_id, label=label, label_normalized=normalize_label(label))
     session.add(group)
     await session.flush()
@@ -101,11 +106,13 @@ async def create_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) 
 
 
 async def group_by_id(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> TraineeGroup | None:
+    """Find a group at this organisation by id."""
     stmt = select(TraineeGroup).where(TraineeGroup.org_id == org_id, TraineeGroup.id == group_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def group_by_label(session: AsyncSession, org_id: uuid.UUID, label: str) -> TraineeGroup | None:
+    """Find a group at this organisation by its label, ignoring case and spacing."""
     stmt = select(TraineeGroup).where(
         TraineeGroup.org_id == org_id, TraineeGroup.label_normalized == normalize_label(label)
     )
@@ -142,6 +149,7 @@ async def update_group_label(
 
 
 async def delete_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> None:
+    """Remove a group. Callers check it is empty first (`GroupNotEmpty`)."""
     await session.execute(
         delete(TraineeGroup).where(TraineeGroup.org_id == org_id, TraineeGroup.id == group_id)
     )
@@ -166,6 +174,7 @@ async def set_group_members(
 
 
 async def group_member_ids(session: AsyncSession, group_id: uuid.UUID) -> list[uuid.UUID]:
+    """The trainees in a group, oldest member first."""
     stmt = (
         select(TraineeGroupMember.trainee_id)
         .join(Trainee, Trainee.id == TraineeGroupMember.trainee_id)

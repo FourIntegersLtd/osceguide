@@ -13,17 +13,19 @@ from dataclasses import dataclass
 
 
 class TraineeRevoked(Exception):
-    pass
+    """Raised when a rule refuses to roster a trainee whose access is revoked."""
 
 
 @dataclass(frozen=True)
 class TraineeState:
+    """Just enough of a trainee to decide whether they may be rostered."""
 
     access_revoked: bool
 
 
 @dataclass(frozen=True)
 class GroupRef:
+    """A group as the roster resolves it: its id and the trainees in it."""
 
     group_id: str
     members: Sequence[str]
@@ -31,12 +33,14 @@ class GroupRef:
 
 @dataclass(frozen=True)
 class RosterWarning:
+    """A problem found while resolving a roster, e.g. a group with nobody in it."""
 
     code: str
     group_id: str
 
 
 def normalize_email(raw: str) -> str:
+    """Trim and lower-case an email so the same address always matches."""
     return raw.strip().lower()
 
 
@@ -46,6 +50,7 @@ def normalize_label(raw: str) -> str:
 
 
 def ensure_rosterable(trainee: TraineeState) -> None:
+    """Refuse to add a trainee whose access has been revoked to a circuit."""
     if trainee.access_revoked:
         raise TraineeRevoked("That trainee's access has been revoked; restore it before rostering them.")
 

@@ -1,4 +1,7 @@
-"""Roster use cases."""
+"""Use cases for the people an organisation teaches: adding a trainee, listing
+them, revoking or restoring access, and answering which organisations and
+teaching groups a signed-in person belongs to.
+"""
 
 from __future__ import annotations
 
@@ -33,6 +36,11 @@ async def add_trainee(
     cohort_id: uuid.UUID | None,
     now: datetime,
 ) -> TraineeRead:
+    """Add a trainee to an organisation's roster and invite them, if needed.
+
+    Every trainee ends up linked to an account: a slot names a `users.id`, so an
+    unlinked trainee could be rostered and never scheduled.
+    """
     if await repository.trainee_by_email(session, org_id, email) is not None:
         raise errors.TraineeExists()
     trainee = await repository.create_trainee(
@@ -67,6 +75,7 @@ def _display_name(first: str | None, last: str | None, email: str) -> str:
 async def list_trainees(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[TraineeRead], str | None]:
+    """A page of an organisation's roster."""
     trainees, next_cursor = await repository.list_trainees(session, org_id, limit=limit, cursor=cursor)
     return [_trainee_read(trainee) for trainee in trainees], next_cursor
 
@@ -79,6 +88,7 @@ async def set_access(
     revoked: bool,
     now: datetime,
 ) -> TraineeRead:
+    """Revoke or restore a trainee's access to their organisation."""
     await _require_trainee(session, org_id, trainee_id)
     await repository.set_trainee_access(session, org_id, trainee_id, revoked_at=now if revoked else None)
     refreshed = await repository.trainee_by_id(session, org_id, trainee_id)
@@ -86,6 +96,7 @@ async def set_access(
 
 
 async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> Trainee:
+    """Fetch a trainee, or refuse the request if this organisation has none by that id."""
     trainee = await repository.trainee_by_id(session, org_id, trainee_id)
     if trainee is None:
         raise errors.TraineeNotFound()
@@ -93,6 +104,7 @@ async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id:
 
 
 def _trainee_read(trainee: Trainee) -> TraineeRead:
+    """Shape a trainee row into what a route may return."""
     return TraineeRead(
         id=trainee.id,
         email=trainee.email,

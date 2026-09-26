@@ -26,6 +26,7 @@ async def create_trainee(
     last_name: str | None,
     cohort_id: uuid.UUID | None,
 ) -> Trainee:
+    """Add a trainee to an organisation's roster."""
     trainee = Trainee(
         org_id=org_id,
         email=normalize_email(email),
@@ -40,6 +41,7 @@ async def create_trainee(
 
 
 async def trainee_by_id(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> Trainee | None:
+    """Find a trainee at this organisation by their roster id."""
     stmt = select(Trainee).where(Trainee.org_id == org_id, Trainee.id == trainee_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -55,6 +57,7 @@ async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
 
 
 async def trainee_by_email(session: AsyncSession, org_id: uuid.UUID, email: str) -> Trainee | None:
+    """Find a trainee at this organisation by their email address."""
     stmt = select(Trainee).where(Trainee.org_id == org_id, Trainee.email == normalize_email(email))
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -62,6 +65,7 @@ async def trainee_by_email(session: AsyncSession, org_id: uuid.UUID, email: str)
 async def list_trainees(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[Trainee], str | None]:
+    """A page of an organisation's roster, oldest trainee first."""
     stmt = select(Trainee).where(Trainee.org_id == org_id)
     return await keyset_page(
         session,
@@ -77,6 +81,7 @@ async def list_trainees(
 async def set_trainee_access(
     session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, revoked_at: datetime | None
 ) -> None:
+    """Revoke a trainee's access (a timestamp) or restore it (`None`)."""
     await session.execute(
         update(Trainee)
         .where(Trainee.org_id == org_id, Trainee.id == trainee_id)
@@ -146,12 +151,14 @@ async def anonymise_trainee(
 async def link_trainee_to_user(
     session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, user_id: uuid.UUID
 ) -> None:
+    """Connect a roster entry to the account that just registered for it."""
     await session.execute(
         update(Trainee).where(Trainee.org_id == org_id, Trainee.id == trainee_id).values(user_id=user_id)
     )
 
 
 async def count_trainees(session: AsyncSession, org_id: uuid.UUID) -> int:
+    """How many trainees are on this organisation's roster."""
     stmt = select(func.count()).select_from(Trainee).where(Trainee.org_id == org_id)
     return int((await session.execute(stmt)).scalar_one())
 
