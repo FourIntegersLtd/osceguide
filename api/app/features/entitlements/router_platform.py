@@ -36,8 +36,8 @@ async def list_user_entitlements_for_support(
     """Every grant this person has held — purchase, institution, trial, admin — with `live`
     computed now and revoked ones kept."""
     _ = admin
-    items = await service_platform.list_for_user(session, user_id, now=clock.now())
-    return Page(items=items, next_cursor=None)
+    entitlements = await service_platform.list_for_user(session, user_id, now=clock.now())
+    return Page(items=entitlements, next_cursor=None)
 
 
 @router.post(

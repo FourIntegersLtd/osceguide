@@ -33,10 +33,10 @@ async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> None:
 
 
 async def _require(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement:
-    row = await repository.by_id(session, entitlement_id)
-    if row is None:
+    entitlement = await repository.by_id(session, entitlement_id)
+    if entitlement is None:
         raise errors.EntitlementNotFound("No such entitlement")
-    return row
+    return entitlement
 
 
 async def list_for_user(
@@ -44,7 +44,10 @@ async def list_for_user(
 ) -> list[PlatformEntitlementRead]:
     """Every grant this person has held, newest last, revoked ones included."""
     await _require_user(session, user_id)
-    return [await _read(session, row, now=now) for row in await repository.for_user(session, user_id)]
+    return [
+        await _read(session, entitlement, now=now)
+        for entitlement in await repository.for_user(session, user_id)
+    ]
 
 
 async def grant(
@@ -67,9 +70,13 @@ async def grant(
         exam = await catalog.resolve_exam(session, exam_code, org_id=None)
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
-    for row in await repository.for_user_and_exam(session, user_id, exam.id):
-        if row.source == "admin" and row.ends_at == ends_at and service._to_grant(row).live_at(now):
-            return await _read(session, row, now=now)
+    for entitlement in await repository.for_user_and_exam(session, user_id, exam.id):
+        if (
+            entitlement.source == "admin"
+            and entitlement.ends_at == ends_at
+            and service._to_grant(entitlement).live_at(now)
+        ):
+            return await _read(session, entitlement, now=now)
     created = await service.grant(
         session,
         user_id=user_id,
@@ -101,9 +108,9 @@ async def extend(
     now: datetime,
 ) -> PlatformEntitlementRead:
     """Move a grant's end. A renewal is this, not a second row."""
-    row = await _require(session, entitlement_id)
-    if row.ends_at != ends_at:
-        previous = row.ends_at
+    entitlement = await _require(session, entitlement_id)
+    if entitlement.ends_at != ends_at:
+        previous = entitlement.ends_at
         await repository.set_ends_at(session, entitlement_id, ends_at=ends_at)
         await service_audit.record(
             session,
@@ -112,7 +119,12 @@ async def extend(
             target_type="entitlement",
             target_id=str(entitlement_id),
             summary=f"{_iso(previous)} -> {_iso(ends_at)}" + (f": {note}" if note else ""),
-            meta={"user_id": str(row.user_id), "from": _iso(previous), "to": _iso(ends_at), "note": note},
+            meta={
+                "user_id": str(entitlement.user_id),
+                "from": _iso(previous),
+                "to": _iso(ends_at),
+                "note": note,
+            },
         )
     return await _read(session, await _require(session, entitlement_id), now=now)
 
@@ -121,8 +133,8 @@ async def revoke(
     session: AsyncSession, entitlement_id: uuid.UUID, *, reason: str, actor: Principal, now: datetime
 ) -> PlatformEntitlementRead:
     """Withdraw a grant. The row stays, with `revoked_at`; twice is once."""
-    row = await _require(session, entitlement_id)
-    if row.revoked_at is None:
+    entitlement = await _require(session, entitlement_id)
+    if entitlement.revoked_at is None:
         await repository.revoke(session, entitlement_id, at=now)
         await service_audit.record(
             session,
@@ -131,20 +143,23 @@ async def revoke(
             target_type="entitlement",
             target_id=str(entitlement_id),
             summary=reason,
-            meta={"user_id": str(row.user_id), "reason": reason},
+            meta={"user_id": str(entitlement.user_id), "reason": reason},
         )
     return await _read(session, await _require(session, entitlement_id), now=now)
 
 
-def _iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
+def _iso(moment: datetime | None) -> str | None:
+    return moment.isoformat() if moment else None
 
 
-async def _read(session: AsyncSession, row: Entitlement, *, now: datetime) -> PlatformEntitlementRead:
-    code = await catalog.exam_code_by_id(session, row.exam_id)
-    base = service._read(row, code or "", now=now)
+async def _read(session: AsyncSession, entitlement: Entitlement, *, now: datetime) -> PlatformEntitlementRead:
+    code = await catalog.exam_code_by_id(session, entitlement.exam_id)
+    base = service._read(entitlement, code or "", now=now)
     return PlatformEntitlementRead(
-        **base.model_dump(), source_ref=row.source_ref, org_id=row.org_id, granted_by=row.granted_by
+        **base.model_dump(),
+        source_ref=entitlement.source_ref,
+        org_id=entitlement.org_id,
+        granted_by=entitlement.granted_by,
     )
 
 
@@ -156,6 +171,7 @@ _ = domain  # the live rule is `Grant.live_at`, reached through `service._to_gra
 
 @dataclass(frozen=True)
 class LiveGrant:
+
     exam_code: str
     source: str
     ends_at: datetime | None
@@ -163,7 +179,7 @@ class LiveGrant:
 
 async def live_user_ids_for_exam(session: AsyncSession, exam_code: str, *, now: datetime) -> set[uuid.UUID]:
     """Everyone entitled to this exam right now. An unknown code is nobody."""
-    exam = next((e for e in await catalog.exam_refs(session) if e.code == exam_code), None)
+    exam = next((ref for ref in await catalog.exam_refs(session) if ref.code == exam_code), None)
     if exam is None:
         return set()
     return await repository.live_user_ids_for_exam(session, exam.id, now=now)
@@ -172,11 +188,17 @@ async def live_user_ids_for_exam(session: AsyncSession, exam_code: str, *, now: 
 async def live_grants_by_user(
     session: AsyncSession, user_ids: Collection[uuid.UUID], *, now: datetime
 ) -> dict[uuid.UUID, list[LiveGrant]]:
-    rows = await repository.live_for_users(session, user_ids, now=now)
-    codes = await catalog.exam_codes_by_id(session, list({row.exam_id for row in rows}))
-    out: dict[uuid.UUID, list[LiveGrant]] = {}
-    for row in rows:
-        out.setdefault(row.user_id, []).append(
-            LiveGrant(exam_code=codes.get(row.exam_id, ""), source=row.source, ends_at=row.ends_at)
+    entitlements = await repository.live_for_users(session, user_ids, now=now)
+    codes = await catalog.exam_codes_by_id(
+        session, list({entitlement.exam_id for entitlement in entitlements})
+    )
+    grants_by_user: dict[uuid.UUID, list[LiveGrant]] = {}
+    for entitlement in entitlements:
+        grants_by_user.setdefault(entitlement.user_id, []).append(
+            LiveGrant(
+                exam_code=codes.get(entitlement.exam_id, ""),
+                source=entitlement.source,
+                ends_at=entitlement.ends_at,
+            )
         )
-    return out
+    return grants_by_user

@@ -52,22 +52,22 @@ async def grant_for_org(
 
 
 async def list_for_org(session: AsyncSession, org_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
-    out = []
-    for row in await repository.for_org(session, org_id):
-        code = await catalog.exam_code_by_id(session, row.exam_id)
-        out.append(service._read(row, code or "", now=now))
-    return out
+    reads = []
+    for entitlement in await repository.for_org(session, org_id):
+        code = await catalog.exam_code_by_id(session, entitlement.exam_id)
+        reads.append(service._read(entitlement, code or "", now=now))
+    return reads
 
 
 async def revoke_for_org(
     session: AsyncSession, org_id: uuid.UUID, entitlement_id: uuid.UUID, *, now: datetime
 ) -> EntitlementRead:
     """Withdraw a grant. The row stays, with `revoked_at`, so the history holds."""
-    row = await repository.by_id_for_org(session, org_id, entitlement_id)
-    if row is None:
+    entitlement = await repository.by_id_for_org(session, org_id, entitlement_id)
+    if entitlement is None:
         raise errors.EntitlementNotFound()
-    if row.revoked_at is None:
+    if entitlement.revoked_at is None:
         await repository.revoke(session, entitlement_id, at=now)
-        await session.refresh(row)
-    code = await catalog.exam_code_by_id(session, row.exam_id)
-    return service._read(row, code or "", now=now)
+        await session.refresh(entitlement)
+    code = await catalog.exam_code_by_id(session, entitlement.exam_id)
+    return service._read(entitlement, code or "", now=now)

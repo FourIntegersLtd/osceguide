@@ -27,5 +27,6 @@ class UnknownExamError(NotFound):
 
 
 class EntitlementNotFound(NotFound):
+
     code = "entitlement_not_found"
     default_message = "No such entitlement in this organisation"

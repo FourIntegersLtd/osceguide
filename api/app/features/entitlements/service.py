@@ -19,9 +19,12 @@ from app.features.entitlements.schemas import EntitlementRead
 TrialState = domain.TrialState
 
 
-def _to_grant(row: Entitlement) -> domain.Grant:
+def _to_grant(entitlement: Entitlement) -> domain.Grant:
     return domain.Grant(
-        source=row.source, starts_at=row.starts_at, ends_at=row.ends_at, revoked_at=row.revoked_at
+        source=entitlement.source,
+        starts_at=entitlement.starts_at,
+        ends_at=entitlement.ends_at,
+        revoked_at=entitlement.revoked_at,
     )
 
 
@@ -33,8 +36,8 @@ async def decide(
     now: datetime,
     trial: domain.TrialState | None = None,
 ) -> domain.Decision:
-    rows = await repository.for_user_and_exam(session, user_id, exam_id)
-    return domain.decide([_to_grant(r) for r in rows], now=now, trial=trial)
+    entitlements = await repository.for_user_and_exam(session, user_id, exam_id)
+    return domain.decide([_to_grant(entitlement) for entitlement in entitlements], now=now, trial=trial)
 
 
 async def require(
@@ -64,7 +67,7 @@ async def grant(
     granted_by: uuid.UUID | None = None,
 ) -> EntitlementRead:
     exam = await resolve_exam(session, exam_code, org_id=org_id)
-    row = await repository.grant(
+    entitlement = await repository.grant(
         session,
         user_id=user_id,
         exam_id=exam.id,
@@ -74,26 +77,26 @@ async def grant(
         ends_at=ends_at,
         granted_by=granted_by,
     )
-    return _read(row, exam.code, now=row.starts_at)
+    return _read(entitlement, exam.code, now=entitlement.starts_at)
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
-    out = []
-    for row in await repository.for_user(session, user_id):
-        code = await catalog.exam_code_by_id(session, row.exam_id)
-        out.append(_read(row, code or "", now=now))
-    return out
+    reads = []
+    for entitlement in await repository.for_user(session, user_id):
+        code = await catalog.exam_code_by_id(session, entitlement.exam_id)
+        reads.append(_read(entitlement, code or "", now=now))
+    return reads
 
 
-def _read(row: Entitlement, exam_code: str, *, now: datetime) -> EntitlementRead:
+def _read(entitlement: Entitlement, exam_code: str, *, now: datetime) -> EntitlementRead:
     return EntitlementRead(
-        id=row.id,
-        user_id=row.user_id,
-        exam_id=row.exam_id,
+        id=entitlement.id,
+        user_id=entitlement.user_id,
+        exam_id=entitlement.exam_id,
         exam_code=exam_code,
-        source=row.source,
-        starts_at=row.starts_at,
-        ends_at=row.ends_at,
-        revoked_at=row.revoked_at,
-        live=_to_grant(row).live_at(now),
+        source=entitlement.source,
+        starts_at=entitlement.starts_at,
+        ends_at=entitlement.ends_at,
+        revoked_at=entitlement.revoked_at,
+        live=_to_grant(entitlement).live_at(now),
     )

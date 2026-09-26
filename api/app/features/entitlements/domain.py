@@ -21,6 +21,7 @@ SOURCES = frozenset({"purchase", "org_grant", "trial", "sso_tenant", "admin"})
 
 @dataclass(frozen=True)
 class Grant:
+
     source: str
     starts_at: datetime
     ends_at: datetime | None = None
@@ -36,6 +37,7 @@ class Grant:
 
 @dataclass(frozen=True)
 class TrialState:
+
     set_station_count: int
     completed_attempt_count: int
     account_created_at: datetime
@@ -43,6 +45,7 @@ class TrialState:
 
 @dataclass(frozen=True)
 class Decision:
+
     allowed: bool
     source: str | None = None
     reason: str | None = None
@@ -67,7 +70,7 @@ def decide(
     exam_code: str | None = None,
 ) -> Decision:
     """The one question every attempt-creating path asks."""
-    live = [g for g in grants if g.live_at(now)]
+    live = [grant for grant in grants if grant.live_at(now)]
     if live:
         return Decision(allowed=True, source=live[0].source)
 

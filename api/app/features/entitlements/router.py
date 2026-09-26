@@ -29,8 +29,8 @@ async def list_my_entitlements(
 ) -> Page[schemas.EntitlementRead]:
     """Expired grants are included with `live` computed, because "your access
     ended on the 3rd" is a more useful answer than an empty list."""
-    items = await service.list_for_user(session, principal.user_id, now=clock.now())
-    return Page(items=items, next_cursor=None)
+    entitlements = await service.list_for_user(session, principal.user_id, now=clock.now())
+    return Page(items=entitlements, next_cursor=None)
 
 
 @router.get(
@@ -42,8 +42,8 @@ async def list_org_entitlements(
     workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> Page[schemas.EntitlementRead]:
     """What this institution has granted, revoked ones included."""
-    items = await service_org.list_for_org(session, workspace.org_id, now=clock.now())
-    return Page(items=items, next_cursor=None)
+    entitlements = await service_org.list_for_org(session, workspace.org_id, now=clock.now())
+    return Page(items=entitlements, next_cursor=None)
 
 
 @router.post(

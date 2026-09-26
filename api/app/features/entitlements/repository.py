@@ -25,7 +25,7 @@ async def grant(
     ends_at: datetime | None = None,
     granted_by: uuid.UUID | None = None,
 ) -> Entitlement:
-    row = Entitlement(
+    entitlement = Entitlement(
         user_id=user_id,
         exam_id=exam_id,
         source=source,
@@ -35,10 +35,10 @@ async def grant(
         granted_by=granted_by,
         **({"starts_at": starts_at} if starts_at is not None else {}),
     )
-    session.add(row)
+    session.add(entitlement)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(entitlement)
+    return entitlement
 
 
 async def for_user_and_exam(

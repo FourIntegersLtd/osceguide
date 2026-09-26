@@ -29,7 +29,7 @@ async def exam_access_for(session: AsyncSession, user_id: uuid.UUID, *, now: dat
     grants = await service.list_for_user(session, user_id, now=now)
     user = await identity.user_ref_by_id(session, user_id)
     return exam_access(
-        live_entitlement_codes=[g.exam_code for g in grants if g.live],
+        live_entitlement_codes=[grant.exam_code for grant in grants if grant.live],
         account_exam_code=user.exam_code if user else None,
         published_codes=await catalog.exam_codes(session),
     )
