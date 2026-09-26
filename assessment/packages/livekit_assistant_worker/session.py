@@ -24,6 +24,7 @@ from .gpt_live_policy import register_gpt_live_session_policy
 from .metadata import MetadataError, parse_dispatch_metadata
 from .pacing import ConsultationClock
 from .runtime_policy import VoiceRuntime, select_voice_runtime
+from .session_cap import SessionCap, register_session_cap
 from .speech import build_assistant_llm, build_assistant_tts
 from .tools.check_time import build_check_time_tool
 from .tools.navigation_mode import build_offer_navigation_modes_tool
@@ -52,6 +53,7 @@ class AssistantVoiceSession:
         self._agent: Any = None
         self._endpoints: BackendEndpoints | None = None
         self.clock: ConsultationClock | None = None
+        self.session_cap: SessionCap | None = None
 
     # -- lifecycle ---------------------------------------------------------------
 
@@ -98,6 +100,10 @@ class AssistantVoiceSession:
             register_gpt_live_session_policy(ctx=ctx, agent=build.session, session_id=session.session_id, worker_type=session.worker_type.value, endpoints=endpoints)
 
         self._wire_handlers(ctx, build.session, session)
+        # SEC-008: a hard wall-clock cap, so no runtime runs up unbounded spend.
+        # The GPT-Live runtime's own policy ends its sessions far sooner; this is
+        # the backstop for the pipeline runtime, which otherwise never ends.
+        self.session_cap = register_session_cap(ctx)
         if self.clock is not None:
             self.clock.start(build.session)
             ctx.add_shutdown_callback(self.clock.cancel)
