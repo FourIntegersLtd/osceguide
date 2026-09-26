@@ -44,6 +44,7 @@ async def ask(
     audience: Audience = PUBLIC,
     tags: list[str] | None = None,
 ) -> PostRead:
+    """Ask a new question, in the given room and tagged for the feed filter."""
     try:
         domain.ensure_postable(body)
         # A question is what tags describe: they are how the feed is narrowed.
@@ -72,6 +73,7 @@ async def ask(
 
 
 async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.UUID, body: str) -> PostRead:
+    """Answer a question, in the same room as the question itself."""
     parent = await repository.post_by_id(session, parent_id)
     if parent is None:
         raise errors.PostNotFound()
@@ -107,6 +109,7 @@ async def comment_on_station(
     body: str,
     audience: Audience = PUBLIC,
 ) -> PostRead:
+    """Leave a comment on a station, in the given room."""
     # Asked before the insert rather than mapped off its failure: the foreign
     # key would refuse a station that does not exist, and an unmapped
     # IntegrityError answers `internal_error` (S3).
@@ -138,6 +141,7 @@ async def remove(
     moderates_org_ids: frozenset[uuid.UUID],
     now: datetime,
 ) -> None:
+    """Soft-remove a post: your own, any platform moderator's, or one inside a room you administer."""
     post = await repository.post_by_id(session, post_id)
     if post is None:
         raise errors.PostNotFound()
@@ -156,6 +160,7 @@ async def remove(
 
 
 async def set_like(session: AsyncSession, post_id: uuid.UUID, *, user_id: uuid.UUID, liked: bool) -> PostRead:
+    """Like or unlike a post. Idempotent both ways: liking twice is still one like."""
     post = await repository.post_by_id(session, post_id)
     if post is None:
         raise errors.PostNotFound()
@@ -178,6 +183,7 @@ async def list_questions(
     mine: bool = False,
     tag: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
+    """Questions this viewer may see, newest first, narrowed by room, author or tag."""
     viewer = await audiences_for(session, viewer_id)
     questions, next_cursor = await repository.list_questions(
         session,
@@ -217,6 +223,7 @@ async def list_my_answers(
     limit: int,
     cursor: dict[str, Any] | None,
 ) -> tuple[list[PostRead], str | None]:
+    """This person's own replies, across every question they have answered."""
     viewer = await audiences_for(session, viewer_id)
     replies, next_cursor = await repository.list_answers(
         session, viewer=viewer, author_id=viewer_id, limit=limit, cursor=cursor
@@ -227,6 +234,7 @@ async def list_my_answers(
 async def list_replies(
     session: AsyncSession, parent_id: uuid.UUID, *, viewer_id: uuid.UUID
 ) -> list[PostRead]:
+    """Every reply under one question, if the viewer may see the question at all."""
     parent = await repository.post_by_id(session, parent_id)
     if parent is None:
         raise errors.PostNotFound()
@@ -241,6 +249,7 @@ async def list_replies(
 async def list_station_comments(
     session: AsyncSession, station_id: uuid.UUID, *, viewer_id: uuid.UUID
 ) -> list[PostRead]:
+    """Comments on one station that this viewer may see."""
     viewer = await audiences_for(session, viewer_id)
     comments = await repository.list_station_comments(session, station_id, viewer=viewer)
     return await read_many(session, comments, viewer_id=viewer_id)
@@ -249,6 +258,7 @@ async def list_station_comments(
 async def list_moderation_queue(
     session: AsyncSession, *, viewer_id: uuid.UUID, days: int = 7, limit: int = 100
 ) -> list[PostRead]:
+    """Every post from the last few days, newest first, for a moderator to review."""
     since = datetime.now(tz=UTC) - timedelta(days=days)
     posts = await repository.list_recent_for_moderation(session, since=since, limit=limit)
     return await read_many(session, posts, viewer_id=viewer_id)
@@ -262,7 +272,7 @@ async def read_one(session: AsyncSession, post: Post, *, viewer_id: uuid.UUID) -
 
 
 async def read_many(session: AsyncSession, posts: list[Post], *, viewer_id: uuid.UUID) -> list[PostRead]:
-    """Counts and names fetched for the whole page at once rather than per row."""
+    """Counts and names fetched for the whole page at once rather than per post."""
     ids = [post.id for post in posts]
     counts, mine = await repository.like_counts(session, ids, viewer_id)
     reply_counts = await repository.reply_counts(session, ids)

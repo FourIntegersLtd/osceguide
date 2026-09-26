@@ -17,26 +17,31 @@ MAX_TAG_LENGTH = 32
 
 
 class NotYours(Exception):
+    """Raised when someone tries to remove a post they may not moderate."""
 
     pass
 
 
 class EmptyContent(Exception):
+    """Raised when a post has nothing left in it once trimmed."""
 
     pass
 
 
 class ContentTooLong(Exception):
+    """Raised when a post's body is longer than `MAX_CONTENT` allows."""
 
     pass
 
 
 class TagTooLong(Exception):
+    """Raised when one of a question's tags is longer than `MAX_TAG_LENGTH`."""
 
     pass
 
 
 class TooManyTags(Exception):
+    """Raised when a question carries more tags than `MAX_TAGS` allows."""
 
     pass
 
@@ -81,6 +86,7 @@ def clean_tags(raw: Iterable[str]) -> list[str]:
 
 
 def ensure_postable(raw: str) -> None:
+    """Refuse a post that is empty once trimmed, or longer than `MAX_CONTENT`."""
     text = clean(raw)
     if not text:
         raise EmptyContent("There is nothing to post.")

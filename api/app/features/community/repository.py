@@ -27,6 +27,7 @@ async def create_post(
     station_id: uuid.UUID | None = None,
     tags: list[str] | None = None,
 ) -> Post:
+    """Store a question, reply or station comment as one `Post` row."""
     post = Post(
         kind=kind,
         author_id=author_id,
@@ -49,6 +50,7 @@ async def create_post(
 
 
 async def post_by_id(session: AsyncSession, post_id: uuid.UUID) -> Post | None:
+    """One post by id, or nothing if it does not exist or has been removed."""
     stmt = select(Post).where(Post.id == post_id, Post.removed_at.is_(None))
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -122,6 +124,7 @@ async def list_answers(
 
 
 async def list_children(session: AsyncSession, parent_id: uuid.UUID) -> list[Post]:
+    """Every reply under one question, oldest first."""
     stmt = (
         select(Post).where(Post.parent_id == parent_id, Post.removed_at.is_(None)).order_by(Post.created_at)
     )
@@ -131,6 +134,7 @@ async def list_children(session: AsyncSession, parent_id: uuid.UUID) -> list[Pos
 async def list_station_comments(
     session: AsyncSession, station_id: uuid.UUID, *, viewer: ViewerAudiences
 ) -> list[Post]:
+    """Comments on one station that this viewer may see, oldest first."""
     stmt = (
         select(Post)
         .where(Post.station_id == station_id, Post.removed_at.is_(None), visible_to(Post, viewer))
@@ -179,6 +183,7 @@ async def like_counts(
 
 
 async def reply_counts(session: AsyncSession, post_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """How many replies each of these questions has, in one grouped query."""
     if not post_ids:
         return {}
     count_rows = (
@@ -192,6 +197,7 @@ async def reply_counts(session: AsyncSession, post_ids: list[uuid.UUID]) -> dict
 
 
 async def list_recent_for_moderation(session: AsyncSession, *, since: datetime, limit: int) -> list[Post]:
+    """The newest posts since a cutoff, for a moderator's review queue."""
     stmt = (
         select(Post)
         .where(Post.removed_at.is_(None), Post.created_at >= since)

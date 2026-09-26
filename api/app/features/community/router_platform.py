@@ -1,3 +1,5 @@
+"""The platform-admin route over community posts: the moderation queue."""
+
 from __future__ import annotations
 
 from typing import Annotated

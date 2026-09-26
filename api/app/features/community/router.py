@@ -1,3 +1,5 @@
+"""HTTP routes for questions, replies, likes and station comments. Each hands straight to `service`."""
+
 from __future__ import annotations
 
 import uuid

@@ -18,6 +18,7 @@ from app.core.db import AUDIENCE_CHECK, Addressed, Base, Timestamps, UUIDPrimary
 
 
 class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
+    """One question, reply or station comment. The `kind` column says which."""
 
     __tablename__ = "posts"
     __table_args__ = (

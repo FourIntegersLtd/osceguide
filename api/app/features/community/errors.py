@@ -1,21 +1,26 @@
+"""The refusals a community route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Forbidden, InvalidInput, NotFound
 
 
 class PostNotFound(NotFound):
+    """No post matches that id, or the viewer may not see it."""
 
     code = "post_not_found"
     default_message = "No such post"
 
 
 class NotYoursError(Forbidden):
+    """The caller may not remove this post: it is not theirs and they moderate nothing it is addressed to."""
 
     code = "post_not_yours"
     default_message = "You can only remove your own posts"
 
 
 class EmptyContentError(InvalidInput):
+    """The post's body was empty once trimmed."""
 
     code = "empty_content"
     default_message = "There is nothing to post"
@@ -34,18 +39,21 @@ class InvalidAuthorFilter(InvalidInput):
 
 
 class ContentTooLongError(InvalidInput):
+    """The post's body is over `domain.MAX_CONTENT` characters."""
 
     code = "content_too_long"
     default_message = "That post is too long"
 
 
 class TagTooLongError(InvalidInput):
+    """One of the tags is over `domain.MAX_TAG_LENGTH` characters."""
 
     code = "tag_too_long"
     default_message = "That tag is too long"
 
 
 class TooManyTagsError(InvalidInput):
+    """The question carries more than `domain.MAX_TAGS` tags, once de-duplicated."""
 
     code = "too_many_tags"
     default_message = "That question has too many tags"
