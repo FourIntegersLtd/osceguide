@@ -62,6 +62,27 @@ Write repository tests first: constraints that must hold, the lock that prevents
 - `app/core` never imports `app/features`.
 - New external dependency: add a Protocol to `app/core/ports.py` and a fake to `tests/support/fakes.py` in the same commit. Never `patch("module.attribute")`.
 
+## Comments
+
+Write for an engineer who knows Python but not this product. `tests/guards/test_code_is_documented.py` enforces the first two rules.
+
+- Every file starts with a docstring of one to three plain sentences: what it is for and who it serves ("Starting, reading and finishing a candidate's attempt at a station.").
+- Every function, method and class gets a docstring whose first line says what it does for a person or the system ("Lets a trainee see only the stations published to their org."). Add a second paragraph only for a why, a refusal, a side effect or an ordering constraint. Exempt: dunder methods, classes in `schemas*.py`, and one-line functions whose name says everything.
+- **Route handlers, Pydantic models and enums get a `#` line above them, never a new docstring.** Their docstrings are published in `openapi.json`, so changing one changes the API document platform-web is generated from.
+- Inline `#` comments only for a non-obvious why: a race, an ordering constraint, a workaround. A long function may carry a short comment before each step. Never narrate the next line.
+- Describe people and outcomes ("the candidate can't restart a marked attempt"), not mechanics ("status transitions are guarded"). Use the words in `docs/GLOSSARY.md` exactly. History only in one clause, and only when it explains a constraint that still holds.
+- British spelling. Delete comments that are stale, restate the code, or are TODOs with no owner.
+
+## Naming
+
+`tests/guards/test_names_are_descriptive.py` enforces the first rule.
+
+- No single letters, loops and comprehensions included: `for station in stations`, `except ValueError as error`, `[membership.org_id for membership in memberships]`. Only `_` (a value thrown away) and `T` (a type variable) are allowed. Placeholders such as `data`, `obj`, `tmp`, `val` and `res` are refused too.
+- Name a thing for what it is in product terms (`attempt`, `trainee_ids`, `score_percent`), not `row`, `result` or `item`. `row` is fine only in a helper that takes any table's row.
+- No home-made abbreviations (`block_type`, not `btype`; `minimum`, not `mn`). Established ones stay: `org`, `id`, `db`, `url`, `stmt`.
+- Functions are verbs that say the outcome (`claim_post`, `ensure_readable`); booleans read as yes or no (`is_live`, `has_rubric`); collections are plural; units go in the name (`duration_minutes`).
+- **Never rename a contract:** route handler names (they become openapi operation ids and platform-web's client method names), query and path parameters, schema fields, table columns, JSON keys, env vars, error codes. Renaming a service function is fine when every caller moves in the same commit, with no alias left behind.
+
 ## Tests
 
 | Folder | What | Needs DB |
