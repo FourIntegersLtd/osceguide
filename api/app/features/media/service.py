@@ -1,4 +1,6 @@
-"""Authoring, publishing and searching study material."""
+"""Runs the media library's rules against the database: authoring, publishing and listing
+study material, and mapping the domain's plain exceptions onto the API's error codes.
+"""
 
 from __future__ import annotations
 
@@ -38,6 +40,7 @@ async def create(
     exam_code: str | None,
     author_id: uuid.UUID,
 ) -> MediaRead:
+    """Creates a new draft, refusing an unknown kind, an unusable title, or a slug already taken."""
     try:
         media_kind = domain.normalize_kind(kind)
         slug = domain.slugify(title)
@@ -69,6 +72,7 @@ async def update(
     summary: str | None,
     content: dict[str, Any] | None,
 ) -> MediaRead:
+    """Replaces the given fields on a draft, leaving the others as they were. Refuses once published."""
     item = await _require(session, item_id)
     try:
         domain.ensure_editable(status=item.status)
@@ -111,6 +115,7 @@ async def publish(
 
 
 async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_admin: bool) -> MediaRead:
+    """One item by its primary key, refusing a draft to anyone but a platform admin."""
     item = await _require(session, item_id)
     if not domain.is_public(status=item.status) and not viewer_is_admin:
         raise errors.ItemNotFound()
@@ -125,6 +130,7 @@ async def read_by_slug(
     viewer_is_admin: bool,
     unlocked: frozenset[uuid.UUID] = frozenset(),
 ) -> MediaRead:
+    """One item by its URL slug, refusing a draft to anyone but a platform admin."""
     item = await repository.by_slug(session, slug)
     if item is None or (not domain.is_public(status=item.status) and not viewer_is_admin):
         # 404 for an unpublished draft: its existence is not public either.
@@ -204,6 +210,7 @@ async def list_published(
 
 
 async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
+    """Deletes a draft outright, refusing once the item has been published."""
     item = await _require(session, item_id)
     try:
         domain.ensure_deletable(status=item.status)
@@ -213,6 +220,7 @@ async def delete_draft(session: AsyncSession, item_id: uuid.UUID) -> None:
 
 
 async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
+    """The stored item, refusing with `ItemNotFound` if the id matches nothing."""
     item = await repository.by_id(session, item_id)
     if item is None:
         raise errors.ItemNotFound()
@@ -224,6 +232,7 @@ async def _require(session: AsyncSession, item_id: uuid.UUID) -> MediaItem:
 
 @dataclass(frozen=True)
 class ProductionItem:
+    """The subset of a media item's fields the AV production jobs need, decoupled from the ORM row."""
 
     id: uuid.UUID
     kind: str
@@ -233,6 +242,7 @@ class ProductionItem:
 
 
 async def production_item(session: AsyncSession, item_id: uuid.UUID) -> ProductionItem:
+    """One item's production-relevant fields, refusing with `ItemNotFound` if the id matches nothing."""
     item = await repository.by_id(session, item_id)
     if item is None:
         raise errors.ItemNotFound()
@@ -246,4 +256,5 @@ async def production_item(session: AsyncSession, item_id: uuid.UUID) -> Producti
 
 
 async def replace_content(session: AsyncSession, item_id: uuid.UUID, content: dict[str, Any]) -> None:
+    """Overwrites an item's stored body, used by the AV production jobs to attach rendered media."""
     await repository.update_item(session, item_id, content=content)

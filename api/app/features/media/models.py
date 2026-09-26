@@ -1,4 +1,6 @@
-"""Tables owned by `media`."""
+"""The one table that stores every media item a candidate can browse: slide decks, summaries,
+blog posts and podcast episodes.
+"""
 
 from __future__ import annotations
 

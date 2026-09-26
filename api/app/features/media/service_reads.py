@@ -23,6 +23,7 @@ from app.features.media.schemas import MediaRead
 async def read_one(
     session: AsyncSession, item: MediaItem, *, unlocked_exam_ids: frozenset[uuid.UUID] | None = None
 ) -> MediaRead:
+    """One stored item, shaped into what a route returns."""
     return (await read_many(session, [item], unlocked_exam_ids=unlocked_exam_ids))[0]
 
 
@@ -41,7 +42,7 @@ async def read_many(
     locked. Material with no exam at all is free and never locked.
 
     Exam codes are fetched for the whole page at once, avoiding one query per
-    row.
+    item.
 
     `specialty` is derived whether or not the body is withheld — it is a
     public catalogue facet like `kind` and `title`, so a locked item still
@@ -77,7 +78,7 @@ def updated_at(item: MediaItem, content: dict[str, Any]) -> datetime:
 
     The document's own `updated_at` first, so a migrated item keeps its
     original edit date rather than the day it was imported. Otherwise the
-    row's own `updated_at`, which is `created_at` for a row nobody has edited.
+    item's own `updated_at`, which is `created_at` for an item nobody has edited.
     """
     return domain.content_updated_at(content) or item.updated_at
 

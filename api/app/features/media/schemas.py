@@ -1,3 +1,5 @@
+"""The request and response shapes the media routes accept and return."""
+
 from __future__ import annotations
 
 import uuid

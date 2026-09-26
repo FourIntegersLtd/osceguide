@@ -1,6 +1,7 @@
-"""Study material that is not a station: slides, summaries, blogs, podcasts.
+"""The rules for study material that is not a station: slides, summaries, blogs, podcasts.
 
-One kind field rather than a table each.
+Framework-free so a test or another slice can check a rule without a database. One kind
+field carries what would otherwise be a separate table per product.
 """
 
 from __future__ import annotations
@@ -26,38 +27,39 @@ class MediaKind(StrEnum):
 
 
 class UnknownMediaKind(ValueError):
-    pass
+    """Raised when a string does not name one of the four media kinds."""
 
 
 class NotEditable(Exception):
-    pass
+    """Raised when someone tries to edit a published item in place, rather than replacing it."""
 
 
 class AlreadyPublished(Exception):
-    pass
+    """Raised when someone tries to publish an item that is already published."""
 
 
 class UnusableTitle(ValueError):
-    pass
+    """Raised when a title has no characters a URL slug can be built from."""
 
 
 class EmptyQuery(ValueError):
-    pass
+    """Raised when a search request carries no search text."""
 
 
 class QueryTooLong(ValueError):
-    pass
+    """Raised when a search request's text is longer than `MAX_QUERY` characters."""
 
 
 class InvalidListStatus(ValueError):
-    pass
+    """Raised when a list request's status filter is not draft, published, or all."""
 
 
 class NotDeletable(Exception):
-    pass
+    """Raised when someone tries to delete an item that has already been published."""
 
 
 def normalize_kind(kind: str) -> str:
+    """The canonical spelling of a media kind, case- and whitespace-insensitive."""
     try:
         return str(MediaKind((kind or "").strip().lower()))
     except ValueError as exc:
@@ -65,15 +67,18 @@ def normalize_kind(kind: str) -> str:
 
 
 def is_public(*, status: str) -> bool:
+    """Whether an item in this status is visible to a candidate browsing the library."""
     return status == "published"
 
 
 def ensure_editable(*, status: str) -> None:
+    """Refuses to let a published item be edited in place; it must be replaced instead."""
     if status != "draft":
         raise NotEditable("Published material is edited by replacing it, not in place.")
 
 
 def ensure_deletable(*, status: str) -> None:
+    """Refuses to let a published item be deleted."""
     if status != "draft":
         raise NotDeletable("Only drafts can be deleted.")
 
@@ -91,6 +96,7 @@ def parse_authoring_status(raw: str | None) -> tuple[str, ...] | None:
 
 
 def publish(*, status: str) -> str:
+    """The `published` status, refusing to publish an item that already carries it."""
     if status == "published":
         raise AlreadyPublished("That is already published.")
     return "published"
@@ -113,6 +119,7 @@ def slugify(title: str) -> str:
 
 
 def clean_query(raw: str) -> str:
+    """The search text trimmed, refusing one that is empty or longer than `MAX_QUERY` characters."""
     query = (raw or "").strip()
     if not query:
         # Searching for nothing would match everything, expensively.

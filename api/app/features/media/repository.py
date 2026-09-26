@@ -1,4 +1,6 @@
-"""Storage for study material."""
+"""Reads and writes `media_items` directly: the SQL for the library, with no rules about
+who may see or change what.
+"""
 
 from __future__ import annotations
 
@@ -23,6 +25,7 @@ async def create(
     exam_id: uuid.UUID | None,
     author_id: uuid.UUID | None,
 ) -> MediaItem:
+    """Inserts a new draft and returns it with its generated id and timestamps."""
     item = MediaItem(
         kind=kind,
         slug=slug,
@@ -39,14 +42,17 @@ async def create(
 
 
 async def by_id(session: AsyncSession, item_id: uuid.UUID) -> MediaItem | None:
+    """One item by its primary key, draft or published, or `None` if it does not exist."""
     return (await session.execute(select(MediaItem).where(MediaItem.id == item_id))).scalar_one_or_none()
 
 
 async def by_slug(session: AsyncSession, slug: str) -> MediaItem | None:
+    """One item by its URL slug, draft or published, or `None` if it does not exist."""
     return (await session.execute(select(MediaItem).where(MediaItem.slug == slug))).scalar_one_or_none()
 
 
 async def by_ids(session: AsyncSession, item_ids: list[uuid.UUID]) -> list[MediaItem]:
+    """The items among the given ids that exist, in no particular order."""
     if not item_ids:
         return []
     stmt = select(MediaItem).where(MediaItem.id.in_(item_ids))
@@ -54,6 +60,7 @@ async def by_ids(session: AsyncSession, item_ids: list[uuid.UUID]) -> list[Media
 
 
 async def update_item(session: AsyncSession, item_id: uuid.UUID, **values: Any) -> None:
+    """Sets the given columns on one item. The caller decides which columns may be changed."""
     await session.execute(update(MediaItem).where(MediaItem.id == item_id).values(**values))
 
 
@@ -142,10 +149,12 @@ async def list_published(
     limit: int,
     cursor: dict[str, Any] | None = None,
 ) -> tuple[list[MediaItem], str | None]:
+    """A page of only published items, for the consumer catalogue."""
     return await list_catalog(session, kind=kind, statuses=None, limit=limit, cursor=cursor)
 
 
 async def delete_item(session: AsyncSession, item_id: uuid.UUID) -> None:
+    """Deletes one item outright if it exists; does nothing if it does not."""
     item = await by_id(session, item_id)
     if item is not None:
         await session.delete(item)

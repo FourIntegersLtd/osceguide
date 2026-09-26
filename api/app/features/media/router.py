@@ -1,3 +1,7 @@
+"""The routes a candidate browses the media library through, and a platform admin authors
+study material with: slide decks, summaries, blog posts and podcasts.
+"""
+
 from __future__ import annotations
 
 import uuid
