@@ -45,6 +45,7 @@ def derive_result_schema(structure: RubricStructure) -> dict[str, Any]:
 
 
 def _scored_property(competency: CompetencySpec, scale: Sequence[str]) -> dict[str, Any]:
+    """The JSON Schema for one competency: a score plus the phrase and reasoning behind it."""
     described = "\n".join(
         f"{scale_value}: {competency.descriptors[scale_value]}"
         for scale_value in scale
@@ -65,6 +66,7 @@ def _scored_property(competency: CompetencySpec, scale: Sequence[str]) -> dict[s
 
 
 def _section_property(section: SectionSpec) -> dict[str, Any]:
+    """The JSON Schema for one written (non-scored) section, by its kind."""
     if section.kind == "list":
         return {"type": "array", "title": section.label, "items": {"type": "string"}}
     if section.kind == "object":

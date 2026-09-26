@@ -22,6 +22,7 @@ from app.features.rubrics.models import Rubric, RubricVersion
 
 
 async def create_rubric(session: AsyncSession, org_id: uuid.UUID | None, *, title: str) -> Rubric:
+    """Insert a new, versionless rubric row. The first version is added separately."""
     rubric = Rubric(owner_kind=owner_kind_for(org_id), org_id=org_id, title=title)
     session.add(rubric)
     await session.flush()
@@ -60,6 +61,7 @@ async def list_rubrics(
 async def _rubric_page(
     session: AsyncSession, stmt: Select[Any], *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[Rubric], str | None]:
+    """Shared paging for any already-filtered rubric query."""
     return await keyset_page(
         session,
         stmt,
@@ -83,6 +85,7 @@ async def add_version(
     result_schema_override: dict[str, Any] | None = None,
     marking_layout: dict[str, Any] | None = None,
 ) -> RubricVersion:
+    """Insert a new version row, as a draft, under an existing rubric."""
     version_row = RubricVersion(
         rubric_id=rubric_id,
         org_id=org_id,
@@ -102,6 +105,7 @@ async def add_version(
 async def versions_for_rubric(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID
 ) -> Sequence[RubricVersion]:
+    """Every version of this rubric the caller may read, oldest first."""
     stmt = (
         select(RubricVersion)
         .where(visible_to(RubricVersion, org_id), RubricVersion.rubric_id == rubric_id)
@@ -113,6 +117,7 @@ async def versions_for_rubric(
 async def version_by_number(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, version: int
 ) -> RubricVersion | None:
+    """One version by its number, only for the owner writing it."""
     stmt = select(RubricVersion).where(
         owned_by(RubricVersion, org_id),
         RubricVersion.rubric_id == rubric_id,
@@ -154,6 +159,7 @@ async def set_version_body(
     result_schema_override: dict[str, Any] | None,
     marking_layout: dict[str, Any] | None,
 ) -> None:
+    """Overwrite a draft version's whole body in place."""
     await session.execute(
         update(RubricVersion)
         .where(owned_by(RubricVersion, org_id), RubricVersion.id == version_id)
@@ -176,6 +182,7 @@ async def set_version_status(
     at: datetime,
     by: uuid.UUID | None,
 ) -> None:
+    """Move a version to a new lifecycle status, stamping who did it and when."""
     column_values: dict[str, Any] = {"status": status}
     if status == "published":
         column_values |= {"published_at": at, "published_by": by}
@@ -191,6 +198,7 @@ async def set_version_status(
 async def set_current_version(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, *, version_id: uuid.UUID
 ) -> None:
+    """Point the rubric at the version new attempts should be marked against."""
     await session.execute(
         update(Rubric)
         .where(owned_by(Rubric, org_id), Rubric.id == rubric_id)

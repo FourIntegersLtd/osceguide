@@ -1,3 +1,5 @@
+"""What the rubrics routes accept and return: rubrics and their versions."""
+
 from __future__ import annotations
 
 import uuid

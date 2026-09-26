@@ -20,6 +20,7 @@ class InvalidRubric(ValueError):
 
 @dataclass(frozen=True)
 class CompetencySpec:
+    """One skill a candidate is scored on, within a domain."""
 
     id: str
     label: str
@@ -30,6 +31,7 @@ class CompetencySpec:
 
 @dataclass(frozen=True)
 class DomainSpec:
+    """One area of a rubric, grouping the competencies scored within it."""
 
     id: str
     label: str
@@ -51,6 +53,7 @@ class SectionSpec:
 
 @dataclass(frozen=True)
 class RubricStructure:
+    """A whole authored rubric: its scale, scored domains and written sections."""
 
     scale: tuple[str, ...]
     domains: tuple[DomainSpec, ...]
@@ -58,4 +61,5 @@ class RubricStructure:
 
     @property
     def competencies(self) -> tuple[CompetencySpec, ...]:
+        """Every competency across every domain, flattened."""
         return tuple(competency for domain in self.domains for competency in domain.competencies)

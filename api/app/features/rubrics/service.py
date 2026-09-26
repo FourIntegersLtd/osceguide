@@ -63,6 +63,7 @@ async def create_rubric(
 async def list_rubrics(
     session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[RubricRead], str | None]:
+    """This owner's rubrics, each with all of its versions, one page at a time."""
     rubrics, next_cursor = await repository.list_rubrics(session, org_id, limit=limit, cursor=cursor)
     rubric_reads = []
     for rubric in rubrics:
@@ -72,6 +73,7 @@ async def list_rubrics(
 
 
 async def read_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> RubricRead:
+    """One rubric and all of its versions, or the refusal if it is unknown."""
     rubric = await repository.readable_rubric(session, org_id, rubric_id)
     if rubric is None:
         raise errors.RubricNotFound()
@@ -125,6 +127,7 @@ async def edit_version(
     result_schema_override: dict[str, Any] | None,
     marking_layout: dict[str, Any] | None,
 ) -> RubricVersionRead:
+    """Rewrite a draft's body. Refused as `not_editable` once it has been published."""
     version_row = await _version(session, org_id, rubric_id, version)
     try:
         lifecycle.ensure_editable(
@@ -157,6 +160,11 @@ async def publish_version(
     actor_id: uuid.UUID | None,
     now: datetime,
 ) -> RubricVersionRead:
+    """Make this version the one new attempts are marked against.
+
+    Refuses a structure that cannot be parsed, pacing that cannot be run, an
+    empty system prompt, and a platform rubric with no examiner marking layout.
+    """
     version_row = await _version(session, org_id, rubric_id, version)
     try:
         status = lifecycle.publish(
@@ -190,6 +198,7 @@ async def archive_version(
     actor_id: uuid.UUID | None,
     now: datetime,
 ) -> RubricVersionRead:
+    """Retire a published version from use. Refused unless it is published."""
     version_row = await _version(session, org_id, rubric_id, version)
     try:
         status = lifecycle.archive(
@@ -203,6 +212,7 @@ async def archive_version(
 
 
 async def _own_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> Rubric:
+    """This owner's own rubric row, or the refusal if it does not belong to them."""
     rubric = await repository.rubric_by_id(session, org_id, rubric_id)
     if rubric is None:
         raise errors.RubricNotFound()
@@ -212,6 +222,7 @@ async def _own_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id
 async def _version(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, version: int
 ) -> RubricVersion:
+    """This owner's own version by number, or the refusal if either is unknown."""
     await _own_rubric(session, org_id, rubric_id)
     version_row = await repository.version_by_number(session, org_id, rubric_id, version)
     if version_row is None:
@@ -225,6 +236,7 @@ async def _version(
 def validated(
     structure: dict[str, Any], pacing: dict[str, Any]
 ) -> tuple[domain.RubricStructure, dict[str, int]]:
+    """Parse a structure and pacing together, mapping either's refusal to the same error."""
     try:
         return domain.parse_structure(structure), domain.validate_pacing(pacing)
     except domain.InvalidRubric as exc:
@@ -232,6 +244,7 @@ def validated(
 
 
 def validate_marking_layout(marking_layout: dict[str, Any] | None) -> None:
+    """An examiner marking layout, if given, must actually describe some sections."""
     if marking_layout is None:
         return
     if not isinstance(marking_layout, dict) or not marking_layout.get("sections"):
@@ -239,6 +252,7 @@ def validate_marking_layout(marking_layout: dict[str, Any] | None) -> None:
 
 
 def rubric_read(rubric: Rubric, versions: list[RubricVersion]) -> RubricRead:
+    """Map a stored rubric and its versions onto what a route returns."""
     return RubricRead(
         id=rubric.id,
         owner_kind=rubric.owner_kind,
@@ -250,6 +264,7 @@ def rubric_read(rubric: Rubric, versions: list[RubricVersion]) -> RubricRead:
 
 
 def version_read(version: RubricVersion) -> RubricVersionRead:
+    """Map a stored version onto what a route returns, deriving its result schema."""
     try:
         schema = domain.result_schema_for(
             domain.parse_structure(version.structure), version.result_schema_override

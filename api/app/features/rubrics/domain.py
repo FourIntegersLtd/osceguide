@@ -150,6 +150,7 @@ def parse_structure(raw: Mapping[str, Any] | None) -> RubricStructure:
 
 
 def _identifier(raw: Any, what: str) -> str:
+    """Pull and validate the `id` field of a domain, competency or section."""
     if not isinstance(raw, Mapping):
         raise InvalidRubric(f"Each {what} must be an object.")
     identifier = str(raw.get("id") or "").strip()
