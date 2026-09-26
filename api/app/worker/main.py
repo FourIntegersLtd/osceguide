@@ -35,6 +35,7 @@ def build_worker_app() -> procrastinate.App:
 
 
 def main() -> None:
+    """Start the worker: take jobs from the queue and run them until the process is stopped."""
     settings = get_settings()
     configure_logging(settings)
     app = build_worker_app()
