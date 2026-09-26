@@ -35,6 +35,7 @@ async def create_attempt(
     source_attempt_id: uuid.UUID | None = None,
     room_name: str | None = None,
 ) -> Attempt:
+    """Insert one new attempt row and return it, id and timestamps filled in."""
     attempt = Attempt(
         kind=kind,
         user_id=user_id,
@@ -108,6 +109,7 @@ async def latest_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -
 
 
 async def set_entries_with_attempts(session: AsyncSession, entry_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these practice-set entries has at least one attempt against it."""
     if not entry_ids:
         return set()
     stmt = select(Attempt.set_entry_id).where(Attempt.set_entry_id.in_(list(entry_ids))).distinct()
@@ -214,11 +216,13 @@ async def count_evaluated(session: AsyncSession) -> int:
 
 
 async def read(session: AsyncSession, attempt_id: uuid.UUID) -> dict[str, Any] | None:
+    """This attempt's live coverage snapshot, or `None` if nothing has been computed yet."""
     coverage = await session.get(AttemptLiveCoverage, attempt_id)
     return coverage.snapshot if coverage else None
 
 
 async def save(session: AsyncSession, attempt_id: uuid.UUID, snapshot: dict[str, Any]) -> None:
+    """Overwrite this attempt's coverage snapshot, creating the row on the first write."""
     stmt = insert(AttemptLiveCoverage).values(attempt_id=attempt_id, snapshot=snapshot)
     await session.execute(
         stmt.on_conflict_do_update(
@@ -236,6 +240,7 @@ async def sources_for(
     user_id: uuid.UUID,
     attempt_ids: list[uuid.UUID],
 ) -> dict[uuid.UUID, uuid.UUID]:
+    """Map each of these debrief attempts to the id of the consultation it is about."""
     debrief_sources = await session.execute(
         select(Attempt.id, Attempt.source_attempt_id).where(
             Attempt.user_id == user_id,
@@ -259,6 +264,7 @@ async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid
 
 
 async def live_attempt_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> Attempt | None:
+    """The one unfailed attempt currently on this slot, if any."""
     stmt = select(Attempt).where(Attempt.slot_id == slot_id, Attempt.status != "failed")
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -292,6 +298,7 @@ async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uu
 
 
 async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these exam slots has at least one attempt against it."""
     if not slot_ids:
         return set()
     stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()

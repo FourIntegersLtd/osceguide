@@ -23,6 +23,7 @@ async def add_chunk(
     message: str,
     spoken_at: datetime,
 ) -> TranscriptMessage:
+    """Store one spoken turn. The worker posts these best-effort, so duplicates are expected upstream."""
     chunk = TranscriptMessage(
         attempt_id=attempt_id,
         message_id=message_id,
@@ -37,6 +38,7 @@ async def add_chunk(
 
 
 async def chunks_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[TranscriptMessage]:
+    """Every turn recorded so far, in the order they were spoken."""
     stmt = (
         select(TranscriptMessage)
         .where(TranscriptMessage.attempt_id == attempt_id)
@@ -46,11 +48,13 @@ async def chunks_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[Trans
 
 
 async def seen_message_ids(session: AsyncSession, attempt_id: uuid.UUID) -> set[str]:
+    """Every message id already stored, so `domain.should_store_chunk` can spot a repeat."""
     stmt = select(TranscriptMessage.message_id).where(TranscriptMessage.attempt_id == attempt_id)
     return set((await session.execute(stmt)).scalars())
 
 
 async def transcript_for(session: AsyncSession, attempt_id: uuid.UUID) -> Transcript | None:
+    """This attempt's delivery record, or `None` if the worker never finished delivering one."""
     stmt = select(Transcript).where(Transcript.attempt_id == attempt_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -66,6 +70,7 @@ async def transcripts_for(
 
 
 async def chunk_count(session: AsyncSession, attempt_id: uuid.UUID) -> int:
+    """How many turns have been stored for this attempt."""
     stmt = (
         select(func.count()).select_from(TranscriptMessage).where(TranscriptMessage.attempt_id == attempt_id)
     )
@@ -75,6 +80,7 @@ async def chunk_count(session: AsyncSession, attempt_id: uuid.UUID) -> int:
 async def mark_transcript_complete(
     session: AsyncSession, attempt_id: uuid.UUID, *, runtime_label: str | None, at: datetime
 ) -> Transcript:
+    """Mark the delivery record complete, creating it on the first call and updating it after."""
     existing = await transcript_for(session, attempt_id)
     if existing is None:
         transcript = Transcript(
@@ -105,6 +111,7 @@ async def save_result(
     model_used: str | None,
     at: datetime,
 ) -> AssessmentResult:
+    """Store one scored result. Beside any earlier result under a different policy, never over it."""
     assessment_result = AssessmentResult(
         attempt_id=attempt_id,
         framework_id=framework_id,
@@ -119,6 +126,7 @@ async def save_result(
 
 
 async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[AssessmentResult]:
+    """Every result this attempt has, oldest first, one per policy version it was scored under."""
     stmt = (
         select(AssessmentResult)
         .where(AssessmentResult.attempt_id == attempt_id)
@@ -128,6 +136,7 @@ async def results_for(session: AsyncSession, attempt_id: uuid.UUID) -> list[Asse
 
 
 async def scored_policy_versions(session: AsyncSession, attempt_id: uuid.UUID) -> set[str]:
+    """Every policy version this attempt has already been marked under, for `domain.should_score`."""
     stmt = select(AssessmentResult.policy_version).where(AssessmentResult.attempt_id == attempt_id)
     return set((await session.execute(stmt)).scalars())
 

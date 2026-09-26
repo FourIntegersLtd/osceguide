@@ -26,6 +26,7 @@ async def attempted_user_ids(session: AsyncSession) -> set[uuid.UUID]:
 
 
 async def count_by_user(session: AsyncSession, user_ids: Collection[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """How many attempts each of these people has made, for the directory's own count column."""
     if not user_ids:
         return {}
     stmt = (

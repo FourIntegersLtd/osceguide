@@ -67,6 +67,7 @@ async def list_for_user(
 
 
 async def read_detail(session: AsyncSession, attempt_id: uuid.UUID) -> PlatformAttemptDetail:
+    """One attempt in full, for the console: its state, its jobs, and whether it froze a definition."""
     attempt = await repository.attempt_by_id(session, attempt_id)
     if attempt is None:
         raise errors.AttemptNotFound()
@@ -89,6 +90,7 @@ async def read_detail(session: AsyncSession, attempt_id: uuid.UUID) -> PlatformA
 async def _jobs_by_attempt(
     session: AsyncSession, attempt_ids: list[uuid.UUID]
 ) -> dict[uuid.UUID, list[ScoringJobRead]]:
+    """Every scoring job queued for these attempts, in one query, keyed by attempt."""
     found = await service_jobs.jobs_for_arg(
         session,
         task_name=SCORING_TASK,
@@ -120,6 +122,7 @@ def _read(
     versions: list[str],
     latest_job: ScoringJobRead | None,
 ) -> PlatformAttemptRead:
+    """Map one attempt row onto the console's schema, alongside its delivery and marking state."""
     return PlatformAttemptRead(
         id=attempt.id,
         kind=attempt.kind,

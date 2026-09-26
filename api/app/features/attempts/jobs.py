@@ -175,6 +175,7 @@ def register() -> None:
 
     @app.task(name=SCORING_TASK, queue=SCORING_QUEUE)
     async def score_attempt(attempt_id: str, policy_version: str, framework_id: str) -> None:
+        """The queued job: build a fresh evaluator and score this attempt now."""
         from datetime import UTC
 
         from app.core.db import job_session

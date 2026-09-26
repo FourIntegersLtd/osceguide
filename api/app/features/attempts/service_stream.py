@@ -59,6 +59,7 @@ def attempt_stream(
     """
 
     async def snapshot() -> Snapshot:
+        """The current frame: the whole attempt, and whether this is the last one."""
         async with open_session() as session:
             attempt = await service_reads.read_attempt(
                 session,

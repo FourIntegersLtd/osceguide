@@ -21,12 +21,14 @@ __all__ = ["NotEntitled", "StationNotFound", "StationNotPublishedError"]
 
 
 class AttemptNotFound(NotFound):
+    """No attempt with that id, or it belongs to another organisation."""
 
     code = "attempt_not_found"
     default_message = "No such attempt"
 
 
 class AttemptNotReady(Conflict):
+    """The worker or the review asked for a definition that has not been rendered yet."""
 
     code = "attempt_not_ready"
     default_message = "This attempt has no rendered definition yet"
@@ -56,12 +58,14 @@ class AttemptNotFinished(Conflict):
 
 
 class AttemptNotYours(Forbidden):
+    """The caller is neither the candidate nor an admin allowed to see this attempt."""
 
     code = "attempt_not_yours"
     default_message = "That attempt belongs to someone else"
 
 
 class InvalidAttemptState(Conflict):
+    """The lifecycle refused the requested move; see `domain.transition`."""
 
     code = "invalid_attempt_state"
     default_message = "The attempt is not in a state that allows this"

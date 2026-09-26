@@ -62,11 +62,13 @@ def block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
 
 
 def scenario(content: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Ortho's candidate-facing material that sits flat on the document, or `None` if there is none."""
     present = {key: content[key] for key in SCENARIO_KEYS if key in content}
     return present or None
 
 
 def text(value: Any) -> str | None:
+    """A block's value as trimmed text, or `None` if it holds nothing."""
     if value is None:
         return None
     text = str(value).strip()

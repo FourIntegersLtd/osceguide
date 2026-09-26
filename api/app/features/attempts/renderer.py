@@ -40,6 +40,11 @@ class EngineProfileRenderer:
         greeting: str | None = None,
         mode: str,
     ) -> dict[str, object]:
+        """Turn a station's document into the instructions and greeting a worker is handed.
+
+        Raises `RenderFailed` if the engine's formatter itself fails or produces no instructions;
+        neither is served to a worker.
+        """
         document = {
             "title": str(station.get("title") or ""),
             "content": station.get("content") if isinstance(station.get("content"), dict) else {},
@@ -66,6 +71,7 @@ class EngineProfileRenderer:
         }
 
     def _greeting(self, mode: str) -> str | None:
+        """The opening line for this mode, if the engine defines one."""
         greeting = self._greetings.get(mode)
         return str(greeting) if greeting else None
 
@@ -94,6 +100,7 @@ def build_renderer() -> ProfileRenderer:
 
 
 def _first(greetings: object) -> str | None:
+    """One sample greeting out of the engine's collection, whether it is a dict or a sequence."""
     if isinstance(greetings, dict):
         greetings = list(greetings.values())
     if isinstance(greetings, (list, tuple)) and greetings:

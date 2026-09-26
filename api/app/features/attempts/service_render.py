@@ -149,6 +149,11 @@ async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) 
 async def render_debrief(
     session: AsyncSession, attempt: Attempt, *, examiner_context: str | None
 ) -> dict[str, Any]:
+    """Render the tutor's prompt from the source consultation's transcript and results.
+
+    Never the patient's own prompt: a debrief talks *about* the consultation, so it is built from
+    what was said and how it was scored, not from the persona that said it.
+    """
     source = (
         await repository.attempt_by_id(session, attempt.source_attempt_id)
         if attempt.source_attempt_id

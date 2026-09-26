@@ -195,6 +195,11 @@ class AssessmentResult(Base, UUIDPrimaryKey, Timestamps):
 
 
 class AttemptLiveCoverage(Base):
+    """The competencies a practice attempt's consultation has touched so far.
+
+    Provisional evidence for the live panel, not a stored result: it is overwritten as the
+    conversation goes on and carries no weight once the attempt is actually marked.
+    """
 
     __tablename__ = "attempt_live_coverage"
 

@@ -79,6 +79,7 @@ _GENDER_KEYS = ("patient_gender", "gender", "sex")
 
 
 def _patient_block(content: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    """The station's patient block, whichever of the legacy key names it was written under."""
     for key in _PATIENT_KEYS:
         block = (content or {}).get(key)
         if isinstance(block, Mapping):

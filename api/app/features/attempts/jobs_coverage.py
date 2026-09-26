@@ -38,9 +38,11 @@ async def enqueue_coverage(session: AsyncSession, attempt: Attempt) -> None:
 
 
 def register() -> None:
+    """Declare the coverage task with procrastinate."""
 
     @get_jobs_app().task(name=TASK, queue="coverage")
     async def update_attempt_coverage(attempt_id: str) -> None:
+        """The queued job: recompute this attempt's competency coverage from its transcript so far."""
         from app.core.db import job_session
         from app.features.attempts.service_coverage import update_coverage
 

@@ -165,6 +165,7 @@ async def list_history(
 async def _material_for(
     session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
 ) -> tuple[Attempt, stations.VersionMaterial, str]:
+    """The attempt, its station's material and its exam code, once the requester may see it."""
     attempt = await _require(session, attempt_id)
     _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
     if attempt.station_version_id is None:
@@ -181,6 +182,7 @@ async def _material_for(
 
 
 def _scenario_read(content: Mapping[str, Any]) -> CandidateScenarioRead | None:
+    """The candidate-facing scenario block, if the station carries one."""
     present = domain_material.scenario(content)
     return CandidateScenarioRead(**present) if present else None
 
@@ -191,6 +193,7 @@ def _scenario_read(content: Mapping[str, Any]) -> CandidateScenarioRead | None:
 async def read_roleplay(
     session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID
 ) -> PatientRoleplayRead:
+    """The patient's script, for the candidate to play back once their own attempt has finished."""
     attempt, material, _ = await _material_for(session, attempt_id, requester_id=requester_id, is_admin=False)
     if not domain.is_reviewable(domain.Status(attempt.status)):
         raise errors.AttemptNotFinished()

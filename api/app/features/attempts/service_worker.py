@@ -25,6 +25,7 @@ _MODE_FOR_KIND = {"debrief": "tutor"}
 
 
 async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
+    """Fetch the attempt a worker call names, or refuse if it does not exist."""
     attempt = await repository.attempt_by_id(session, attempt_id)
     if attempt is None:
         raise errors.AttemptNotFound()
@@ -94,6 +95,7 @@ async def bootstrap(
 async def accept_chunk(
     session: AsyncSession, attempt_id: uuid.UUID, *, body_attempt_id: str, message: TranscriptMessageIn
 ) -> None:
+    """Store one turn as it is spoken, and nudge live coverage if it was the candidate's."""
     _same_attempt(attempt_id, body_attempt_id)
     attempt = await _require(session, attempt_id)
     seen = await transcripts.seen_message_ids(session, attempt_id)

@@ -18,6 +18,7 @@ PRACTICE_KINDS = frozenset({"practice", "set_station", "self_practice"})
 
 
 def framework_for(attempt: Attempt) -> dict[str, Any] | None:
+    """The competency framework this attempt's live panel should track, if it can support one."""
     if attempt.kind not in PRACTICE_KINDS:
         return None
     rubric = domain_definition.rubric_for(attempt.definition)

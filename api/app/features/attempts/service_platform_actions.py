@@ -25,6 +25,7 @@ from app.features.tenancy import service_audit
 
 
 async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
+    """Fetch the attempt these actions act on, or refuse if it does not exist."""
     attempt = await repository.attempt_by_id(session, attempt_id)
     if attempt is None:
         raise errors.AttemptNotFound()
@@ -142,6 +143,7 @@ async def fail(
 
 
 async def _scoring_jobs(session: AsyncSession, attempt_id: uuid.UUID) -> list[service_jobs.JobRef]:
+    """Every scoring job queued for this attempt, so `rescore` can tell a wait from a no-op."""
     return await service_jobs.jobs_for_arg(
         session, task_name=jobs.SCORING_TASK, key="attempt_id", values=[str(attempt_id)]
     )

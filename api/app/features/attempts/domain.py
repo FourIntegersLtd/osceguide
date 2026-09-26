@@ -15,6 +15,7 @@ from enum import StrEnum
 
 
 class Status(StrEnum):
+    """Where one attempt is in its life, from creation to a stored score."""
 
     CREATED = "created"
     RUNNING = "running"
@@ -24,6 +25,7 @@ class Status(StrEnum):
 
 
 class Kind(StrEnum):
+    """Why this attempt exists, which decides the one reference it may carry (see the glossary)."""
 
     PRACTICE = "practice"
     SET_STATION = "set_station"
@@ -34,7 +36,7 @@ class Kind(StrEnum):
 
 
 class InvalidTransition(Exception):
-    pass
+    """Raised when the service tries to move an attempt to a status it cannot reach from here."""
 
 
 class UnrenderableDefinition(Exception):
@@ -52,6 +54,7 @@ _ALLOWED: Mapping[Status, frozenset[Status]] = {
 
 
 def transition(current: Status, target: Status) -> Status:
+    """Move an attempt from `current` to `target`, or refuse a move the lifecycle forbids."""
     if target not in _ALLOWED[current]:
         raise InvalidTransition(f"An attempt cannot go from {current} to {target}.")
     return target
@@ -79,6 +82,7 @@ ABANDONABLE = frozenset({Status.CREATED, Status.RUNNING})
 
 
 def ensure_abandonable(current: Status) -> None:
+    """Refuse to abandon an attempt whose interaction is already over."""
     if current not in ABANDONABLE:
         raise InvalidTransition(f"An attempt that is {current} cannot be abandoned.")
 

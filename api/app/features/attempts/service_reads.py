@@ -26,6 +26,7 @@ from app.features.attempts.schemas import (
 
 
 async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
+    """Fetch the attempt, or refuse if it does not exist."""
     attempt = await repository.attempt_by_id(session, attempt_id)
     if attempt is None:
         raise errors.AttemptNotFound()
@@ -35,6 +36,7 @@ async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
 async def read_attempt(
     session: AsyncSession, attempt_id: uuid.UUID, *, requester_id: uuid.UUID, is_admin: bool
 ) -> AttemptRead:
+    """One attempt, to the candidate it belongs to or an admin. See `docs/ATTEMPT-LIFECYCLE.md`."""
     attempt = await _require(session, attempt_id)
     _ensure_visible(attempt, requester_id=requester_id, is_admin=is_admin)
     return _attempt_read(attempt)
@@ -80,6 +82,7 @@ async def read_results(
     is_admin: bool,
     memberships: Sequence[Membership] = (),
 ) -> list[AssessmentResultRead]:
+    """Every result this attempt has been scored to, oldest first — see `results_for`."""
     attempt = await _require(session, attempt_id)
     await service_access.ensure_readable(
         session, attempt, requester_id=requester_id, is_admin=is_admin, memberships=memberships
@@ -97,11 +100,13 @@ async def read_results(
 
 
 def _ensure_visible(attempt: Attempt, *, requester_id: uuid.UUID, is_admin: bool) -> None:
+    """Refuse a read of somebody else's attempt, unless the requester is an admin."""
     if attempt.user_id != requester_id and not is_admin:
         raise errors.AttemptNotYours()
 
 
 def _attempt_read(attempt: Attempt) -> AttemptRead:
+    """Map one attempt row onto its public schema."""
     return AttemptRead(
         id=attempt.id,
         kind=attempt.kind,
@@ -137,6 +142,7 @@ class AttemptRef:
 
 
 async def attempt_ref(session: AsyncSession, attempt_id: uuid.UUID) -> AttemptRef | None:
+    """This attempt as another feature may see it, or `None` if it does not exist."""
     attempt = await repository.attempt_by_id(session, attempt_id)
     return None if attempt is None else _ref(attempt)
 
@@ -161,6 +167,7 @@ async def evaluated_for_user(
 
 
 def _ref(attempt: Attempt, *, has_result: bool = False) -> AttemptRef:
+    """Map one attempt row onto the cross-feature `AttemptRef`."""
     return AttemptRef(
         id=attempt.id,
         kind=attempt.kind,

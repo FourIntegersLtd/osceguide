@@ -14,6 +14,7 @@ from app.core.settings import get_settings
 
 
 def primary_client() -> Any | None:
+    """The OpenAI client the engine marks with first, or `None` if it is not configured."""
     settings = get_settings()
     if not settings.openai_api_key:
         return None

@@ -66,6 +66,12 @@ class EngineEvaluator:
         policy_version: str,
         transcript: list[dict[str, object]],
     ) -> dict[str, object]:
+        """Mark a finished transcript against the frozen rubric and return the scored payload.
+
+        Builds the engine's own contract objects from the plain dicts the port speaks, calls the
+        engine, and translates its result back. Raises `EvaluationFailed` if the rubric carries no
+        framework or the engine itself fails.
+        """
         from osce_assessment.contracts.models import (  # noqa: PLC0415
             AIInteractionProfile,
             AssessmentAttempt,
@@ -160,6 +166,7 @@ class FrozenFrameworkProvider:
         self._framework = CompetencyFramework.model_validate(framework)
 
     def get(self, framework_id: str) -> Any:
+        """The frozen framework, if `framework_id` is the one this attempt was marked against."""
         if framework_id != self._framework.id:
             raise LookupError(
                 f"This attempt was frozen against framework {self._framework.id!r}, not {framework_id!r}."
@@ -184,6 +191,7 @@ def build_evaluator() -> Evaluator:
     )
 
     def build(framework: dict[str, Any]) -> Any:
+        """A fresh `LLMEvaluator` scoped to one attempt's frozen framework."""
         return LLMEvaluator(
             framework_provider=FrozenFrameworkProvider(framework),
             primary_client=primary_client,
