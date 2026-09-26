@@ -1,3 +1,6 @@
+"""HTTP routes for recording, signing off and releasing a candidate's decision,
+plus the candidate's own routes for reading and acknowledging it."""
+
 from __future__ import annotations
 
 import uuid

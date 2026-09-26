@@ -111,5 +111,6 @@ async def _released_for(
 async def _acknowledged_at(
     session: AsyncSession, revision_id: uuid.UUID, user_id: uuid.UUID
 ) -> datetime | None:
+    """When this person acknowledged this revision, or `None` if they have not yet."""
     event = await repository.event_by_idempotency_key(session, _acknowledgement_key(revision_id, user_id))
     return None if event is None else event.at

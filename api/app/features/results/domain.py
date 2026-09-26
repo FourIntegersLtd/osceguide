@@ -16,6 +16,7 @@ MAX_RATIONALE = 4000
 
 
 class Assessment(StrEnum):
+    """Whether a candidate met the standard on the exam itself."""
 
     PASS = "pass"  # noqa: S105 - an exam outcome, not a credential
     FAIL = "fail"
@@ -24,6 +25,7 @@ class Assessment(StrEnum):
 
 
 class Recruitment(StrEnum):
+    """Whether an employer is taking this candidate on. Set only in hire mode."""
 
     HIRED = "hired"
     RESERVE = "reserve"
@@ -33,6 +35,7 @@ class Recruitment(StrEnum):
 
 
 class Workflow(StrEnum):
+    """Where a decision is: being written, signed off, or sent to the candidate."""
 
     DRAFT = "draft"
     SIGNED_OFF = "signed_off"
@@ -40,23 +43,23 @@ class Workflow(StrEnum):
 
 
 class IncompatibleOutcomes(Exception):
-    pass
+    """An assessment and recruitment outcome that cannot go together."""
 
 
 class NotSignable(Exception):
-    pass
+    """A decision that is missing what sign-off requires."""
 
 
 class InvalidWorkflow(Exception):
-    pass
+    """A workflow step this decision cannot take from where it is."""
 
 
 class EvidenceChanged(Exception):
-    pass
+    """The scores a decision was signed off against have since moved."""
 
 
 class StaleDecision(Exception):
-    pass
+    """A save that named a revision older than the one now on record."""
 
 
 # Oracle: `_OUTCOME_MATRIX`. A failed candidate cannot be hired or held in
@@ -76,6 +79,7 @@ _ALLOWED_TRANSITIONS: Mapping[Workflow, frozenset[Workflow]] = {
 
 
 def ensure_compatible(assessment: Assessment, recruitment: Recruitment | None) -> None:
+    """A failed candidate cannot be hired, and an unresolved assessment cannot resolve recruitment."""
     if recruitment is None:
         return
     if recruitment not in _COMPATIBLE[assessment]:
@@ -97,12 +101,14 @@ def ensure_signable(*, assessment: Assessment | None, rationale: str | None) -> 
 
 
 def transition(current: Workflow, target: Workflow) -> Workflow:
+    """Move the workflow forward (or back to draft), refusing any other step."""
     if target not in _ALLOWED_TRANSITIONS[current]:
         raise InvalidWorkflow(f"A result cannot go from {current} to {target}.")
     return target
 
 
 def next_revision(stored: int | None) -> int:
+    """The revision number a new save gets. `None` means nothing is recorded yet."""
     return (stored or 0) + 1
 
 

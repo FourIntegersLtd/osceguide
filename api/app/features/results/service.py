@@ -93,6 +93,7 @@ async def sign_off(
     actor_id: uuid.UUID,
     now: datetime,
 ) -> DecisionRead:
+    """Put a name to the current draft. Refused if it has no outcome or rationale yet."""
     latest = await _require(session, org_id, sitting_id, trainee_id)
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.SIGNED_OFF)
@@ -207,6 +208,7 @@ async def read_decision(
 async def _require(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
 ) -> CandidateResultRevision:
+    """The current revision for this candidate, or the refusal if nothing has been recorded."""
     revision_row = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if revision_row is None:
         raise errors.ResultNotFound()
@@ -214,6 +216,7 @@ async def _require(
 
 
 def _read(revision_row: CandidateResultRevision) -> DecisionRead:
+    """Map a stored revision onto what a route returns."""
     return DecisionRead(
         revision=revision_row.revision,
         workflow_state=revision_row.workflow_state,

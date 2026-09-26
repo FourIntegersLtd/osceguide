@@ -1,3 +1,5 @@
+"""What the results routes accept and return: a candidate's decision and their own view of it."""
+
 from __future__ import annotations
 
 import uuid

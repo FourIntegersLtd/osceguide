@@ -1,3 +1,5 @@
+"""The refusals a results route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, InvalidInput, NotFound
@@ -9,24 +11,28 @@ from app.features.roster.errors import TraineeNotFound as TraineeNotFound
 
 
 class ResultNotFound(NotFound):
+    """No decision has been recorded yet for this candidate on this sitting."""
 
     code = "result_not_found"
     default_message = "No decision has been recorded for that candidate"
 
 
 class IncompatibleOutcomesError(InvalidInput):
+    """The assessment and recruitment outcome given cannot both be true."""
 
     code = "incompatible_outcomes"
     default_message = "Those assessment and recruitment outcomes cannot go together"
 
 
 class NotSignableError(InvalidInput):
+    """The decision is missing an outcome or a rationale, so it cannot be signed off."""
 
     code = "not_signable"
     default_message = "This decision is not complete enough to sign off"
 
 
 class InvalidWorkflowError(Conflict):
+    """The requested step is not reachable from where this decision is now."""
 
     code = "invalid_workflow"
     default_message = "That is not a step this decision can take"
@@ -54,6 +60,7 @@ class DecisionRevisedError(Conflict):
 
 
 class NotReleased(NotFound):
+    """The candidate asked for a result that has not been sent to them yet."""
 
     code = "result_not_released"
     default_message = "Your result has not been released yet"

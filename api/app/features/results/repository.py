@@ -18,6 +18,7 @@ from app.features.results.models import (
 async def latest_revision(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
 ) -> CandidateResultRevision | None:
+    """The most recent revision recorded for this candidate, whatever its workflow state."""
     stmt = (
         select(CandidateResultRevision)
         .where(
@@ -65,6 +66,7 @@ async def append_revision(
     released_by: uuid.UUID | None = None,
     released_at: datetime | None = None,
 ) -> CandidateResultRevision:
+    """Insert a new, append-only revision row: never edits one that already exists."""
     revision_row = CandidateResultRevision(
         org_id=org_id,
         sitting_id=sitting_id,
@@ -98,6 +100,7 @@ async def append_event(
     actor_user_id: uuid.UUID | None,
     idempotency_key: str,
 ) -> CandidateResultEvent:
+    """Insert a record of something that happened to a decision, such as a sign-off."""
     event = CandidateResultEvent(
         revision_id=revision_id,
         event_type=event_type,
