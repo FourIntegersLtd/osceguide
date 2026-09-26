@@ -68,10 +68,12 @@ chasing a red suite.
 the only thing it does is let `poetry install` read the private repository the
 marking engine lives in. Pass it to `docker build --build-arg`, and set the
 same value as the `ENGINE_REPO_TOKEN` secret in GitHub Actions. Make it
-read-only, scoped to `OSCEGuide-assessment-platform`, and give it an expiry:
-a build argument is recorded in the image metadata and `docker history` will
-show it. A builder that supports BuildKit secrets should use
-`--mount=type=secret` instead, which records nothing.
+read-only, scoped to `OSCEGuide-assessment-platform`, and give it an expiry.
+On Railway it is simply a service variable: Railway passes service variables
+to the build as build arguments. The Dockerfile declares it only in its
+throwaway `dependencies` stage, so the shipped image's `docker history` never
+shows it. Railway's builder does not support BuildKit secret mounts
+(`--mount=type=secret`); every build failed while the Dockerfile used one.
 
 The build ends with `python -c "import osce_assessment"`. That line is not
 decoration. `poetry install` prints "Installing osce-assessment" and exits

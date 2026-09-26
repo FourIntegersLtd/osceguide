@@ -1,7 +1,13 @@
-# syntax=docker/dockerfile:1.7
 # One image, two Railway services: `web` (default CMD) and `worker`
 # (start command overridden to `python -m app.worker.main`).
-FROM python:3.11-slim AS base
+#
+# Two stages. `dependencies` holds the build tools and the private-repo token
+# and installs every package into /opt/venv. The final stage starts again from
+# a clean base and copies only /opt/venv, so neither the token nor the build
+# tools reach the image that ships.
+
+# ---- Stage 1: install the dependencies (throwaway) ------------------------
+FROM python:3.11-slim AS dependencies
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -12,59 +18,74 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # `git` is here because the marking engine is a git dependency, not a
 # published package: without it `poetry install` fails with "git executable
 # not found", which reads like a poetry bug rather than a missing tool.
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev curl git \
+# Poetry goes into the system Python so it stays out of /opt/venv.
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev git \
     && pip install --no-cache-dir "poetry==${POETRY_VERSION}" \
-    && apt-get purge -y --auto-remove build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# The virtualenv the final stage copies. Poetry installs into whichever
+# environment `VIRTUAL_ENV` names when it is told not to create its own.
+RUN python -m venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}"
 
 WORKDIR /srv
 
 # SEC-009: read access to the private repository holding `osce_assessment`.
-# The token now arrives as a BuildKit secret, so it is never written to the
-# image or shown by `docker history`. Supply it at build time with:
-#   DOCKER_BUILDKIT=1 docker build --secret id=engine_token,env=ENGINE_REPO_TOKEN .
-# On Railway, add ENGINE_REPO_TOKEN as a build-time secret of that id.
-#
-# The ARG remains only as a migration fallback for a builder that cannot mount
-# secrets: passing it with `--build-arg` reintroduces the `docker history`
-# exposure this fix removes, so use the secret. Make the token read-only,
-# single-repository and expiring in every case.
+# Railway hands every service variable to the build as a build argument, so
+# ENGINE_REPO_TOKEN on the service is all it needs. Locally:
+#   docker build --build-arg ENGINE_REPO_TOKEN="$ENGINE_REPO_TOKEN" .
+# A build argument is recorded in the history of the stage that declares it,
+# which is why it is declared only here: the final stage is built from a fresh
+# base and its `docker history` never mentions it. Railway's builder does not
+# support BuildKit secret mounts (`--mount=type=secret`), which is what this
+# file used before; every build failed on it. Keep the token read-only,
+# single-repository and expiring.
 ARG ENGINE_REPO_TOKEN=""
 
 COPY pyproject.toml poetry.lock* ./
 
-# The credential is read from the secret mount (or the fallback ARG), used, and
-# left behind in nothing: `git config` writes to /root/.gitconfig, so the same
-# layer removes the URL rewrite and deletes the file. All of it is one layer,
-# so the token never lands in a layer of its own.
+# The credential is written, used and removed inside one command.
 #
 # Each step is its own command rather than one `&&` chain ending in `|| true`.
 # That is how the first version of this file shipped an image with no marking
 # engine in it and reported success: the `|| true` was swallowing the install's
 # exit code, not just the cleanup's.
-RUN --mount=type=secret,id=engine_token,required=false set -eux; \
-    TOKEN="$(cat /run/secrets/engine_token 2>/dev/null || true)"; \
-    TOKEN="${TOKEN:-$ENGINE_REPO_TOKEN}"; \
-    if [ -n "$TOKEN" ]; then \
-        git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"; \
+RUN set -eux; \
+    if [ -n "$ENGINE_REPO_TOKEN" ]; then \
+        git config --global url."https://x-access-token:${ENGINE_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"; \
     fi; \
     poetry install --only main --no-root; \
-    git config --global --unset-all url."https://x-access-token:${TOKEN}@github.com/".insteadOf 2>/dev/null || true; \
     rm -f /root/.gitconfig
+
+# ---- Stage 2: the image that ships ----------------------------------------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}"
+
+# Every Python package, the marking engine included. Nothing else crosses over:
+# psycopg ships its own libpq (the `binary` extra) and MoviePy its own ffmpeg,
+# so the runtime needs no system packages beyond the base image.
+COPY --from=dependencies /opt/venv /opt/venv
 
 # The build fails here rather than at the first candidate's session.
 #
 # `poetry install` prints "Installing osce-assessment" and exits zero even when
 # the clone produced nothing, so its own exit code is not evidence the engine
 # is present. Without the engine this image starts, answers its health check,
-# serves every page, and refuses the one thing it exists to do.
+# serves every page, and refuses the one thing it exists to do. It runs in this
+# stage so it proves the engine is in the image that ships.
 RUN python -c "import osce_assessment; print('engine', osce_assessment.__version__)"
 
+WORKDIR /srv
 COPY . .
 
-# SEC-009: run as an unprivileged user, not root. Dependencies live in the
-# system site-packages (POETRY_VIRTUALENVS_CREATE=false) and are read-only at
-# runtime; the app logs to stdout and writes nothing under /srv.
+# SEC-009: run as an unprivileged user, not root. Dependencies in /opt/venv
+# stay root-owned and read-only at runtime; the app logs to stdout and writes
+# nothing under /srv.
 RUN useradd --system --uid 10001 --shell /usr/sbin/nologin appuser \
     && chown -R appuser:appuser /srv
 USER appuser

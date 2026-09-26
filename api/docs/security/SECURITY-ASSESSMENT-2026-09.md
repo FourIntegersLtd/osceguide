@@ -746,15 +746,16 @@ precondition, plus a hardening gap that matters only after another
 compromise.
 
 **Remediation.**
-- *Applied:* the token is read from a BuildKit secret
-  (`RUN --mount=type=secret,id=engine_token`), so it never enters a layer or the
-  image history. The application runs as a dedicated unprivileged user
-  (`appuser`, UID 10001). A `.dockerignore` now excludes `.git`, `.env*`, key
-  material, `serviceAccountKey.json`, tests and documentation.
-- *Outstanding:* the hosting provider must supply the token as a build secret
-  with the ID `engine_token`, and the first build must be verified. The build
-  argument remains as a migration fallback and should be removed once the
-  secret path is confirmed. The token must be rotated (SEC-012).
+- *Applied:* the token is used only in a throwaway `dependencies` build stage;
+  the shipped image starts from a fresh base and copies in only the installed
+  packages, so the token is in neither its layers nor its history. (A BuildKit
+  secret mount was tried first, but the hosting provider's builder rejects
+  secret mounts and every build failed.) The application runs as a dedicated
+  unprivileged user (`appuser`, UID 10001). A `.dockerignore` now excludes
+  `.git`, `.env*`, key material, `serviceAccountKey.json`, tests and
+  documentation.
+- *Outstanding:* the first production build must be verified with the retest
+  below. The token must be rotated (SEC-012).
 
 **Remediation priority.** Short term (deployment verification).
 
