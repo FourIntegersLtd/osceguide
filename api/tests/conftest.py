@@ -3,6 +3,8 @@
 Principles (CONTRIBUTING.md):
 - No in-memory store. Repository and HTTP tests run against a real Postgres.
 - One database per test session, migrated once with Alembic.
+- One app per test session. Building it registers 659 routes and costs most
+  of a second, which rebuilt per test was 17 of the suite's 18 minutes.
 - One transaction per test, rolled back at the end, so tests never see each
   other's rows and never need cleanup code.
 - External services are fakes implementing `core.ports` protocols.
@@ -183,12 +185,28 @@ async def db_session(_engine: None) -> AsyncIterator[AsyncSession]:
             await outer.rollback()
 
 
-@pytest_asyncio.fixture
-async def app(db_session: AsyncSession):  # type: ignore[no-untyped-def]
-    """The real app, wired to the test's transaction.
+# The transaction of the test now running. The shared app's session overrides
+# read it on every request, which is what lets one app serve every test while
+# each test keeps a transaction of its own. Set by the `app` fixture.
+_current_test_session: AsyncSession | None = None
 
-    A fixture of its own because two clients need it: the in-process one below
-    for ordinary requests, and a real server for streams.
+
+def _test_session() -> AsyncSession:
+    """The running test's transaction; a request outside a test is a wiring bug, not a database."""
+    if _current_test_session is None:
+        raise RuntimeError("a request was made outside a test's `app` fixture")
+    return _current_test_session
+
+
+@pytest.fixture(scope="session")
+def built_app():  # type: ignore[no-untyped-def]
+    """The real app, built once per session and wired to whichever test is running.
+
+    `create_app()` registers every route and builds each one's pydantic
+    schemas, most of a second of CPU. The suite's ~2,500 database tests used to
+    do that each, which was 17 of its 18 minutes and the reason running it in
+    parallel on a four-core runner gained nothing. The overrides below are the
+    app's base state; `app` restores them after each test.
     """
     from app.main import create_app
 
@@ -202,6 +220,7 @@ async def app(db_session: AsyncSession):  # type: ignore[no-untyped-def]
         from app.core.errors import AppError
         from app.core.events import flush_pending
 
+        db_session = _test_session()
         try:
             yield db_session
         except AppError as exc:
@@ -227,11 +246,31 @@ async def app(db_session: AsyncSession):  # type: ignore[no-untyped-def]
         back at the end. Overridden rather than patched, which is why
         `get_session_opener` is a dependency at all.
         """
-        yield db_session
+        yield _test_session()
 
     built.dependency_overrides[get_session] = override_get_session
     built.dependency_overrides[get_session_opener] = lambda: override_stream_session
     return built
+
+
+@pytest_asyncio.fixture
+async def app(built_app, db_session: AsyncSession):  # type: ignore[no-untyped-def]
+    """The shared app, pointed at this test's transaction for the test's duration.
+
+    A fixture of its own because two clients need it: the in-process one below
+    for ordinary requests, and a real server for streams. Tests add overrides
+    of their own (a fake room agent, a fake checkout); those are dropped on the
+    way out so no test inherits another's fakes.
+    """
+    global _current_test_session
+    base_overrides = dict(built_app.dependency_overrides)
+    _current_test_session = db_session
+    try:
+        yield built_app
+    finally:
+        _current_test_session = None
+        built_app.dependency_overrides.clear()
+        built_app.dependency_overrides.update(base_overrides)
 
 
 @pytest_asyncio.fixture
