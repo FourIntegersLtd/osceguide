@@ -1,3 +1,5 @@
+"""The ways a request for exam access can be refused."""
+
 from __future__ import annotations
 
 from app.core.errors import Forbidden, NotFound
@@ -27,6 +29,8 @@ class UnknownExamError(NotFound):
 
 
 class EntitlementNotFound(NotFound):
+    """No entitlement row with this id, for a platform or org admin acting on
+    one that was never granted or has since gone."""
 
     code = "entitlement_not_found"
     default_message = "No such entitlement in this organisation"

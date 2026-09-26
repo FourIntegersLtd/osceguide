@@ -52,6 +52,7 @@ async def grant_for_org(
 
 
 async def list_for_org(session: AsyncSession, org_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
+    """Every grant this institution has made, revoked ones included."""
     reads = []
     for entitlement in await repository.for_org(session, org_id):
         code = await catalog.exam_code_by_id(session, entitlement.exam_id)

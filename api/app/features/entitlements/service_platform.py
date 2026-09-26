@@ -28,11 +28,15 @@ from app.features.tenancy import service_audit
 
 
 async def _require_user(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Refuse before granting or listing anything for an account that does
+    not exist."""
     if await identity.user_ref_by_id(session, user_id) is None:
         raise errors.GranteeNotFound()
 
 
 async def _require(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement:
+    """The entitlement, or refuse: every write path needs one of these
+    before it can act on it."""
     entitlement = await repository.by_id(session, entitlement_id)
     if entitlement is None:
         raise errors.EntitlementNotFound("No such entitlement")
@@ -149,10 +153,13 @@ async def revoke(
 
 
 def _iso(moment: datetime | None) -> str | None:
+    """An audit-log-friendly rendering of a possibly-absent instant."""
     return moment.isoformat() if moment else None
 
 
 async def _read(session: AsyncSession, entitlement: Entitlement, *, now: datetime) -> PlatformEntitlementRead:
+    """Build the support-console response shape, adding the source and
+    admin fields `service._read`'s ordinary shape leaves out."""
     code = await catalog.exam_code_by_id(session, entitlement.exam_id)
     base = service._read(entitlement, code or "", now=now)
     return PlatformEntitlementRead(
@@ -171,6 +178,8 @@ _ = domain  # the live rule is `Grant.live_at`, reached through `service._to_gra
 
 @dataclass(frozen=True)
 class LiveGrant:
+    """One live grant, shaped for the account directory rather than for a
+    support screen: an exam code and a source, nothing about how it was made."""
 
     exam_code: str
     source: str
@@ -188,6 +197,8 @@ async def live_user_ids_for_exam(session: AsyncSession, exam_code: str, *, now: 
 async def live_grants_by_user(
     session: AsyncSession, user_ids: Collection[uuid.UUID], *, now: datetime
 ) -> dict[uuid.UUID, list[LiveGrant]]:
+    """Every live grant among these users, grouped by user id, for a
+    directory listing many people at once rather than gating one attempt."""
     entitlements = await repository.live_for_users(session, user_ids, now=now)
     codes = await catalog.exam_codes_by_id(
         session, list({entitlement.exam_id for entitlement in entitlements})

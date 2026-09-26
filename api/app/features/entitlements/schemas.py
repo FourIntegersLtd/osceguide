@@ -1,3 +1,5 @@
+"""The shapes entitlement routes send and receive: grants, and requests to give, extend or revoke one."""
+
 from __future__ import annotations
 
 import uuid

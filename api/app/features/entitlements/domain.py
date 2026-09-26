@@ -21,6 +21,8 @@ SOURCES = frozenset({"purchase", "org_grant", "trial", "sso_tenant", "admin"})
 
 @dataclass(frozen=True)
 class Grant:
+    """One grant to attempt an exam, as stored: a source and a window, not yet
+    weighed against any particular moment."""
 
     source: str
     starts_at: datetime
@@ -28,6 +30,8 @@ class Grant:
     revoked_at: datetime | None = None
 
     def live_at(self, now: datetime) -> bool:
+        """Whether this grant covers `now`: not revoked, already started, and
+        not yet ended. A grant that fails this is history, not access."""
         if self.revoked_at is not None:
             return False
         if self.starts_at > now:
@@ -37,6 +41,9 @@ class Grant:
 
 @dataclass(frozen=True)
 class TrialState:
+    """The free-trial counters `trial_available` weighs. Gathered by the
+    caller from wherever they actually live (station sets, attempts) since
+    this module has no business reading either table."""
 
     set_station_count: int
     completed_attempt_count: int
@@ -45,6 +52,8 @@ class TrialState:
 
 @dataclass(frozen=True)
 class Decision:
+    """The allowed/refused verdict `decide` returns, with enough in `source`
+    or `reason` that a caller can explain "why" without re-deriving it."""
 
     allowed: bool
     source: str | None = None

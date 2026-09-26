@@ -25,6 +25,8 @@ async def grant(
     ends_at: datetime | None = None,
     granted_by: uuid.UUID | None = None,
 ) -> Entitlement:
+    """Insert one grant row and hand back the fresh entitlement, `starts_at`
+    defaulting to the database's own `now()` if the caller does not name one."""
     entitlement = Entitlement(
         user_id=user_id,
         exam_id=exam_id,
@@ -44,6 +46,8 @@ async def grant(
 async def for_user_and_exam(
     session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID
 ) -> list[Entitlement]:
+    """Every grant this user has ever held for this exam, oldest first — the
+    raw material `domain.decide` weighs against `now`."""
     stmt = (
         select(Entitlement)
         .where(Entitlement.user_id == user_id, Entitlement.exam_id == exam_id)
@@ -53,6 +57,8 @@ async def for_user_and_exam(
 
 
 async def for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Entitlement]:
+    """Every grant this user has ever held, oldest first, revoked and lapsed
+    ones included."""
     stmt = select(Entitlement).where(Entitlement.user_id == user_id).order_by(Entitlement.created_at)
     return list((await session.execute(stmt)).scalars())
 
@@ -66,6 +72,8 @@ async def for_org(session: AsyncSession, org_id: uuid.UUID) -> list[Entitlement]
 async def by_id_for_org(
     session: AsyncSession, org_id: uuid.UUID, entitlement_id: uuid.UUID
 ) -> Entitlement | None:
+    """One entitlement, scoped to the organisation that owns it: never
+    returns another org's row even given its id."""
     stmt = select(Entitlement).where(Entitlement.org_id == org_id, Entitlement.id == entitlement_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -101,6 +109,8 @@ async def live_user_ids_for_exam(
 async def live_for_users(
     session: AsyncSession, user_ids: Collection[uuid.UUID], *, now: datetime
 ) -> list[Entitlement]:
+    """Every live grant among these users, in one query rather than one per
+    person."""
     if not user_ids:
         return []
     stmt = select(Entitlement).where(Entitlement.user_id.in_(list(user_ids)), *_live(now))
@@ -108,6 +118,9 @@ async def live_for_users(
 
 
 def _live(now: datetime) -> tuple[Any, ...]:
+    """The liveness rule as SQL predicates, so a caller can filter a whole
+    directory at once rather than loading rows to ask `Grant.live_at` of
+    each. A change here must be made to `domain.Grant.live_at` as well."""
     return (
         Entitlement.revoked_at.is_(None),
         Entitlement.starts_at <= now,

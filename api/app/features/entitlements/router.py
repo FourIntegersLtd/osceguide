@@ -1,3 +1,5 @@
+"""Routes for exam access: a person's own grants, and an org admin granting or revoking them for trainees."""
+
 from __future__ import annotations
 
 import uuid
