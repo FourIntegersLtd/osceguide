@@ -8,13 +8,17 @@ name: Promote to production
 #     commit's image already exists, so nothing is rebuilt.
 #
 # What happens:
-#   1. check  (no approval needed) works out which commit and image to ship and
+#   1. check works out which commit and image to ship and
 #      refuses unless it is safe: the commit is on main, CI passed on it, and staging
 #      is running exactly that image, healthily. The result is written to the run
-#      summary so the reviewer can see what they are approving.
-#   2. deploy (waits for approval in the GitHub Environment "production") rolls that
-#      exact image out to the production namespace, re-points the `:production` tag,
-#      then moves the `production` branch forward to the commit.
+#      summary, so the run records what shipped and why it was allowed.
+#   2. deploy rolls that exact image out to the production namespace, re-points the
+#      `:production` tag, then moves the `production` branch forward to the commit.
+#
+# Who may promote: anyone who can run workflows here, which today is only the owner,
+# so pressing "Run workflow" is the approval. A required reviewer on the GitHub
+# Environment "production" would make deploy pause for a second click, but GitHub
+# offers that on private repositories only on paid plans.
 #
 # The `production` branch therefore always says which commit production runs, and
 # only ever moves forward (a plain push, never a force push). A rollback leaves the
@@ -194,8 +198,8 @@ jobs:
             echo "Staging ${deployment_name}: runs ${COMMIT_SHA}, available."
           done
 
-      # What the reviewer approves on the next job.
-      - name: Summarise for the reviewer
+      # What the deploy job is about to ship, for anyone reading the run later.
+      - name: Summarise what will ship
         env:
           COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
           IMAGE_DIGEST: ${{ steps.image.outputs.image_digest }}
@@ -216,7 +220,7 @@ jobs:
               echo "- Production branch: not created yet (this run creates it)"
             fi
             echo ""
-            echo "Approve the **deploy** job to roll this out. Live consultations drain first, so it can take up to ~15 minutes per worker."
+            echo "The **deploy** job rolls this out next. Live consultations drain first, so it can take up to ~15 minutes per worker."
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
@@ -225,7 +229,8 @@ jobs:
     runs-on: ubuntu-latest
     # Draining pods can hold a rollout for many minutes; see rollout-timeout-seconds.
     timeout-minutes: 75
-    # Waits here for the required reviewer set on the GitHub Environment "production".
+    # Records the deploy under the repo's Environments tab. If the GitHub Environment
+    # "production" ever gets a required reviewer, this job pauses for approval here.
     environment: production
     permissions:
       contents: write # move the production branch
@@ -265,8 +270,7 @@ jobs:
           rollout-timeout-seconds: ${{ vars.ROLLOUT_TIMEOUT_SECS || '1800' }}
 
       # Only after production is running it. A plain (non-force) push, so GitHub
-      # itself refuses if the branch would move backwards. The branch protection on
-      # `production` must let GitHub Actions push (k8s/README.md, "Promoting").
+      # itself refuses if the branch would move backwards.
       - name: Move the production branch to the commit
         if: ${{ !inputs.rollback }}
         env:

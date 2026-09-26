@@ -57,9 +57,9 @@ answers "which commit is production running?".
 3. GitHub → Actions → **Promote to production** → Run workflow (from `main`). Leave
    the commit empty to ship what staging runs. The `check` job refuses unless the
    commit is on `main`, CI passed on it, and both staging workers run that exact
-   image and are available. The `deploy` job then waits for approval, rolls the same
-   image out to production, re-points `:production`, and moves the `production`
-   branch forward to the commit.
+   image and are available. The `deploy` job then rolls the same image out to
+   production, re-points `:production`, and moves the `production` branch forward
+   to the commit.
 
 Promote order when a change spans repos: platform-api, then assessment-platform,
 then platform-web.
@@ -117,10 +117,13 @@ secret: staging would then take real candidates' dispatches or write into real d
 
 ### One-time GitHub setup (repository settings)
 
-- **Environments** → `staging` (no rules) and `production` (required reviewer: the
-  owner). The promote `deploy` job waits on `production`.
-- **Branches** → protect `production`: no force pushes, no deletions, and allow
-  GitHub Actions to push (the promote workflow moves it; nobody else should).
+- **Environments** `staging` and `production` exist (created 2026-09-26) and record
+  each deploy. They have no rules: this is a private repository on a free plan,
+  where GitHub offers neither required reviewers nor branch protection. Today only
+  the owner can run workflows, so running **Promote to production** is the
+  approval. If someone else gets write access, upgrade the plan and add the owner as
+  a required reviewer on `production`, plus a rule on the `production` branch
+  blocking force pushes and deletion.
 - Repository secrets `K8S_CONTROL_PLANE_HOST` and `K8S_CONTROL_PLANE_SSH_KEY` are
   shared by both environments. Optional variables: `K8S_MANIFEST_DIR` (control-plane
   folder holding one sub-folder per environment, default
