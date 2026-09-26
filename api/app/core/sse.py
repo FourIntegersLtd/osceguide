@@ -104,6 +104,7 @@ async def event_stream(
         queued: asyncio.Queue[str] = asyncio.Queue()
 
         async def pump() -> None:
+            """Move every event off the subscription and onto the queue this loop reads."""
             async for name in events:
                 await queued.put(name)
 

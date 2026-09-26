@@ -22,6 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class AppEnv(StrEnum):
+
     local = "local"
     test = "test"
     staging = "staging"
@@ -59,6 +60,7 @@ REQUIRED_WHEN_DEPLOYED: Final[tuple[str, ...]] = (
 
 
 class Settings(BaseSettings):
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
@@ -212,11 +214,11 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def _split_origins(cls, value: object) -> object:
+    def _split_origins(cls, raw_origins: object) -> object:
         # Allow CORS_ORIGINS="https://a.com,https://b.com" in the environment.
-        if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
+        if isinstance(raw_origins, str):
+            return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+        return raw_origins
 
     @model_validator(mode="after")
     def _require_secrets_when_deployed(self) -> Settings:

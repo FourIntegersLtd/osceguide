@@ -27,12 +27,14 @@ DEFAULT_LIMIT = 25
 MAX_LIMIT = 100
 
 
+# A page of items plus the opaque cursor for the next one, or none if this was the last.
 class Page(BaseModel, Generic[T]):
     items: list[T]
     next_cursor: str | None = None
 
 
 class CursorParams:
+
     def __init__(
         self,
         cursor: Annotated[str | None, Query(description="Opaque cursor from a previous page")] = None,
@@ -42,8 +44,8 @@ class CursorParams:
         self.limit = limit
 
 
-def encode_cursor(payload: dict[str, Any]) -> str:
-    raw = json.dumps(payload, separators=(",", ":"), default=str).encode()
+def encode_cursor(cursor_fields: dict[str, Any]) -> str:
+    raw = json.dumps(cursor_fields, separators=(",", ":"), default=str).encode()
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 

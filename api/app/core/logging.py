@@ -61,6 +61,7 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
+
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:

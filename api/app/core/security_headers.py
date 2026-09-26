@@ -32,14 +32,15 @@ _HSTS = "max-age=63072000; includeSubDomains; preload"
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+
     def __init__(self, app: ASGIApp, *, deployed: bool) -> None:
         super().__init__(app)
         self._deployed = deployed
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
-        for name, value in _BASE_HEADERS.items():
-            response.headers.setdefault(name, value)
+        for header_name, header_value in _BASE_HEADERS.items():
+            response.headers.setdefault(header_name, header_value)
         if self._deployed:
             response.headers.setdefault("Strict-Transport-Security", _HSTS)
         return response

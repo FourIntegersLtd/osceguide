@@ -72,7 +72,7 @@ def bind_org_lookup(lookup: OrgLookup) -> None:
     _org_lookup = lookup
 
 
-def _lookup() -> OrgLookup:
+def _bound_org_lookup() -> OrgLookup:
     if _org_lookup is None:
         raise RuntimeError("No org lookup bound. app.main.create_app must call bind_org_lookup.")
     return _org_lookup
@@ -117,7 +117,7 @@ async def resolve_workspace(
             # 403 rather than 404: the caller did authenticate, and a 404
             # here would let membership be probed by response code.
             raise Forbidden()
-        org = await _lookup()(session, org_slug)
+        org = await _bound_org_lookup()(session, org_slug)
         if org is None:
             raise OrgNotFound()
         return Workspace(org_id=org.id, org_slug=org.slug, role=None, principal=principal)
@@ -129,7 +129,7 @@ async def resolve_workspace(
     # lives 15 minutes, and a suspension that takes a quarter of an hour to
     # bite is not a suspension. One indexed read per org-scoped request is
     # the price of it taking effect now.
-    org = await _lookup()(session, org_slug)
+    org = await _bound_org_lookup()(session, org_slug)
     if org is None:
         raise OrgNotFound()
     if not org_permits_access(org.status) and not principal.is_platform_admin:

@@ -34,14 +34,17 @@ NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
+
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
 class UUIDPrimaryKey:
+
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
 
 
 class Timestamps:
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -22,10 +22,13 @@ from fastapi import Depends
 
 @runtime_checkable
 class Clock(Protocol):
-    def now(self) -> datetime: ...
+
+    def now(self) -> datetime:
+        ...
 
 
 class SystemClock:
+
     def now(self) -> datetime:
         return datetime.now(UTC)
 
@@ -59,6 +62,7 @@ class CheckoutUnavailable(Exception):
 
 @runtime_checkable
 class EmailSender(Protocol):
+
     async def send(self, *, to: str, subject: str, html: str, reply_to: str | None = None) -> str:
         """Send one email and return the provider's message id. Raises EmailDeliveryFailed."""
         ...
@@ -79,7 +83,8 @@ class VectorIndex(Protocol):
     material, filtered by exam, for the tutor. Both are backed by pgvector (ADR 0019).
     """
 
-    async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None: ...
+    async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None:
+        ...
 
     async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
         """Return `(doc_id, score)` pairs, best first."""

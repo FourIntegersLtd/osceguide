@@ -36,6 +36,7 @@ ACCESS_TOKEN_TYPE = "access"  # noqa: S105 — the token's type claim, not a sec
 
 @dataclass(frozen=True)
 class Membership:
+
     org_id: UUID
     org_slug: str
     role: str
@@ -54,6 +55,7 @@ class Membership:
 
 @dataclass(frozen=True)
 class Principal:
+
     user_id: UUID
     email: str
     memberships: tuple[Membership, ...] = field(default_factory=tuple)

@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import Forbidden, InvalidInput
 
 
+# Who an audience reaches: everyone, one organisation, or one group inside it.
 class Visibility(StrEnum):
     PUBLIC = "public"
     ORGANISATION = "organisation"
@@ -38,6 +39,7 @@ class Visibility(StrEnum):
 
 
 class InvalidAudience(InvalidInput):
+
     code = "invalid_audience"
     default_message = "That audience is not a coherent one"
 

@@ -22,6 +22,7 @@ from pydantic import BaseModel
 log = logging.getLogger(__name__)
 
 
+# The shape of every AppError response; clients switch on `code`, never `message`.
 class ErrorResponse(BaseModel):
     code: str
     message: str
@@ -30,6 +31,7 @@ class ErrorResponse(BaseModel):
 
 
 class AppError(Exception):
+
     status: int = 500
     code: str = "internal_error"
     default_message: str = "Something went wrong"
@@ -61,42 +63,49 @@ def raise_mapped(exc: Exception, mapping: Mapping[type[Exception], type[AppError
 
 
 class InvalidInput(AppError):
+
     status = 422
     code = "invalid_input"
     default_message = "The request was not valid"
 
 
 class Unauthenticated(AppError):
+
     status = 401
     code = "unauthenticated"
     default_message = "Authentication required"
 
 
 class Forbidden(AppError):
+
     status = 403
     code = "forbidden"
     default_message = "You do not have access to this resource"
 
 
 class NotFound(AppError):
+
     status = 404
     code = "not_found"
     default_message = "Resource not found"
 
 
 class Conflict(AppError):
+
     status = 409
     code = "conflict"
     default_message = "The request conflicts with the current state"
 
 
 class Gone(AppError):
+
     status = 410
     code = "gone"
     default_message = "This resource is no longer available"
 
 
 class Unavailable(AppError):
+
     status = 503
     code = "unavailable"
     default_message = "A dependency is unavailable"
@@ -154,22 +163,23 @@ def _request_id(request: Request) -> str | None:
     return getattr(request.state, "request_id", None)
 
 
-def _json(request: Request, status: int, body: ErrorResponse) -> JSONResponse:
+def _error_response(request: Request, status: int, body: ErrorResponse) -> JSONResponse:
     body.request_id = _request_id(request)
     return JSONResponse(status_code=status, content=body.model_dump())
 
 
 def register_error_handlers(app: FastAPI) -> None:
+
     @app.exception_handler(AppError)
     async def app_error(request: Request, exc: AppError) -> JSONResponse:
-        return _json(
+        return _error_response(
             request, exc.status, ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
         )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
         details = {"errors": [dict(error, ctx=None) for error in exc.errors()]}
-        return _json(
+        return _error_response(
             request,
             422,
             ErrorResponse(code="invalid_input", message="The request was not valid", details=details),
@@ -178,4 +188,6 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:
         log.exception("unhandled error", extra={"request_id": _request_id(request)})
-        return _json(request, 500, ErrorResponse(code="internal_error", message="Something went wrong"))
+        return _error_response(
+            request, 500, ErrorResponse(code="internal_error", message="Something went wrong")
+        )

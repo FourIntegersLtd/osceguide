@@ -36,6 +36,7 @@ __all__ = [
 
 
 class Status(StrEnum):
+
     DRAFT = "draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
@@ -63,6 +64,7 @@ class NotArchivable(LifecycleError):
 
 @dataclass(frozen=True)
 class VersionRef:
+
     number: int
     status: Status
 
