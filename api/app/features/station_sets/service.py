@@ -49,6 +49,7 @@ async def create_set(
 
 
 async def read_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> SetRead:
+    """One of this person's own practice sets, with its stations and progress."""
     station_set = await _require(session, owner_user_id, set_id)
     entries = await repository.entries_for(session, set_id)
     code = await catalog.exam_code_by_id(session, station_set.exam_id)
@@ -88,6 +89,7 @@ async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uu
 async def list_sets(
     session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[SetRead], str | None]:
+    """This person's practice sets, each with its own stations and progress."""
     station_sets, next_cursor = await repository.list_for_owner(
         session, owner_user_id, limit=limit, cursor=cursor
     )
@@ -178,6 +180,7 @@ async def start_entry_attempt(
 
 
 async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:
+    """Load a set this owner may act on, or refuse `set_not_found` if it is not theirs."""
     station_set = await repository.set_by_id(session, owner_user_id, set_id)
     if station_set is None:
         raise errors.SetNotFound()
@@ -185,6 +188,7 @@ async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid
 
 
 def _set_read(station_set: StationSet, exam_code: str, entries: list[StationSetEntry]) -> SetRead:
+    """Turn a stored set and its entries into the shape a client reads."""
     states = [
         domain.EntryState(attempts=entry.attempts, debrief_attempts=entry.debrief_attempts)
         for entry in entries

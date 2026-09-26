@@ -1,3 +1,5 @@
+"""The refusals a station-sets route can return. Clients branch on each one's `code`."""
+
 from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
@@ -15,24 +17,28 @@ __all__ = ["AttemptInProgress", "NotEntitled", "UserNotFound"]
 
 
 class SetNotFound(NotFound):
+    """A practice set that does not exist, or does not belong to the caller."""
 
     code = "set_not_found"
     default_message = "No such practice set"
 
 
 class EntryNotFound(NotFound):
+    """A station id that is not one of this set's entries."""
 
     code = "set_entry_not_found"
     default_message = "No such station in this set"
 
 
 class AttemptLimitReachedError(Conflict):
+    """Every attempt (or debrief) the exam allows at this station has already been used."""
 
     code = "attempt_limit_reached"
     default_message = "You have used every attempt at this station"
 
 
 class SetLockedError(Conflict):
+    """The set is locked because the learner's access to it has lapsed."""
 
     code = "set_locked"
     default_message = "This set is locked because your access has lapsed"
@@ -55,6 +61,7 @@ class SetHasAttemptsError(Conflict):
 
 
 class NothingToDebriefError(Conflict):
+    """Asked to debrief a station that has never been attempted."""
 
     code = "nothing_to_debrief"
     default_message = "Run the station before asking for a debrief"

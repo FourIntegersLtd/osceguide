@@ -1,3 +1,5 @@
+"""The shapes station set routes send and receive: sets, entries and a candidate's progress."""
+
 from __future__ import annotations
 
 import uuid

@@ -65,6 +65,7 @@ async def station_progress(session: AsyncSession, user_id: uuid.UUID) -> list[St
 
 
 async def _target(session: AsyncSession, user_id: uuid.UUID, station_id: uuid.UUID) -> StationVersions:
+    """Check the person and the station both exist before a support action touches either."""
     if await identity.user_ref_by_id(session, user_id) is None:
         raise errors.UserNotFound()
     station = await stations.station_versions(session, station_id)

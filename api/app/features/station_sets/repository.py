@@ -17,6 +17,7 @@ from app.features.station_sets.models import StationSet, StationSetEntry
 async def create_set(
     session: AsyncSession, owner_user_id: uuid.UUID, *, exam_id: uuid.UUID, name: str
 ) -> StationSet:
+    """Start a new, empty practice set for this person. `add_entries` fills it in."""
     station_set = StationSet(owner_user_id=owner_user_id, exam_id=exam_id, name=name)
     session.add(station_set)
     await session.flush()
@@ -27,6 +28,7 @@ async def create_set(
 async def add_entries(
     session: AsyncSession, set_id: uuid.UUID, *, station_version_ids: list[uuid.UUID]
 ) -> list[StationSetEntry]:
+    """Add stations to a set in the given order, starting at position 0."""
     entries = [
         StationSetEntry(set_id=set_id, position=position, station_version_id=station_version_id)
         for position, station_version_id in enumerate(station_version_ids)
@@ -39,12 +41,13 @@ async def add_entries(
 
 
 async def set_by_id(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet | None:
+    """One set, only if it belongs to this owner. `None` for someone else's set or a bad id."""
     stmt = select(StationSet).where(StationSet.owner_user_id == owner_user_id, StationSet.id == set_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def rename_set(session: AsyncSession, station_set: StationSet, *, name: str) -> None:
-    """Write the name. The owner was checked by whoever loaded the row."""
+    """Write the name. The owner was checked by whoever loaded the record."""
     station_set.name = name
     await session.flush()
 
@@ -61,6 +64,7 @@ async def delete_set(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uu
 
 
 async def entries_for(session: AsyncSession, set_id: uuid.UUID) -> list[StationSetEntry]:
+    """A set's stations in the order they were added."""
     stmt = select(StationSetEntry).where(StationSetEntry.set_id == set_id).order_by(StationSetEntry.position)
     return list((await session.execute(stmt)).scalars())
 
@@ -68,6 +72,7 @@ async def entries_for(session: AsyncSession, set_id: uuid.UUID) -> list[StationS
 async def entry_by_id(
     session: AsyncSession, set_id: uuid.UUID, entry_id: uuid.UUID
 ) -> StationSetEntry | None:
+    """One station inside a set, only if it belongs to that set."""
     stmt = select(StationSetEntry).where(StationSetEntry.set_id == set_id, StationSetEntry.id == entry_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -93,6 +98,7 @@ async def mark_complete(session: AsyncSession, set_id: uuid.UUID, *, at: datetim
 
 
 async def set_locked(session: AsyncSession, owner_user_id: uuid.UUID, *, locked: bool) -> None:
+    """Lock or unlock every set this person owns, as their access lapses or renews."""
     await session.execute(
         update(StationSet).where(StationSet.owner_user_id == owner_user_id).values(locked=locked)
     )
@@ -101,6 +107,7 @@ async def set_locked(session: AsyncSession, owner_user_id: uuid.UUID, *, locked:
 async def list_for_owner(
     session: AsyncSession, owner_user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[StationSet], str | None]:
+    """This person's practice sets, newest first."""
     stmt = select(StationSet).where(StationSet.owner_user_id == owner_user_id)
     return await keyset_page(
         session, stmt, sort_col=StationSet.created_at, id_col=StationSet.id, limit=limit, cursor=cursor
@@ -125,6 +132,11 @@ async def entries_for_owner_by_versions(
 
 
 def _owned_entry_ids(owner_user_id: uuid.UUID, version_ids: Collection[uuid.UUID]) -> Any:
+    """A subquery of this owner's set-entry ids that point at any of these station versions.
+
+    Shared by `reset_counters` and `remove_entries`, which both need to touch every
+    matching entry across every set this person owns without loading the rows first.
+    """
     return (
         select(StationSetEntry.id)
         .join(StationSet, StationSet.id == StationSetEntry.set_id)

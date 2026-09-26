@@ -16,25 +16,27 @@ from dataclasses import dataclass
 
 
 class AttemptLimitReached(Exception):
-    pass
+    """Raised when a candidate has already used every attempt an exam allows at a station."""
 
 
 class SetLocked(Exception):
-    pass
+    """Raised when a learner tries to attempt a station in a set whose access has lapsed."""
 
 
 class NothingToDebrief(Exception):
-    pass
+    """Raised when a debrief is asked for on a station nobody has attempted yet."""
 
 
 @dataclass(frozen=True)
 class EntryState:
+    """The parts of a set entry the attempt and debrief rules look at."""
 
     attempts: int = 0
     debrief_attempts: int = 0
 
 
 def ensure_attemptable(entry: EntryState, *, limit: int, locked: bool) -> None:
+    """Refuse to start an attempt if the set is locked or this station's limit is used up."""
     if locked:
         raise SetLocked("This set is locked because your access has lapsed.")
     # Zero means unlimited, which is what an org-granted set uses.
@@ -43,6 +45,7 @@ def ensure_attemptable(entry: EntryState, *, limit: int, locked: bool) -> None:
 
 
 def ensure_debriefable(entry: EntryState, *, limit: int) -> None:
+    """Refuse a debrief if the station has never been attempted or its debrief limit is used up."""
     if entry.attempts < 1:
         raise NothingToDebrief("Run the station before asking for a debrief about it.")
     if limit and entry.debrief_attempts >= limit:
