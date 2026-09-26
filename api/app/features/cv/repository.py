@@ -18,16 +18,16 @@ async def create(
     session: AsyncSession, *, user_id: uuid.UUID, original_filename: str, extracted_text: str
 ) -> Cv:
     """A row in `processing`, written before the model is asked anything."""
-    row = Cv(
+    cv = Cv(
         user_id=user_id,
         original_filename=original_filename,
         extracted_text=extracted_text,
         status=Status.PROCESSING.value,
     )
-    session.add(row)
+    session.add(cv)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(cv)
+    return cv
 
 
 async def get(session: AsyncSession, cv_id: uuid.UUID) -> Cv | None:
@@ -47,8 +47,8 @@ async def delete_cv(session: AsyncSession, cv_id: uuid.UUID, user_id: uuid.UUID)
     cannot reach somebody else's row and "not yours" and "not there" come back
     as the same zero — which is what lets the service answer both alike.
     """
-    result = await session.execute(delete(Cv).where(Cv.id == cv_id, Cv.user_id == user_id))
-    return int(getattr(result, "rowcount", 0) or 0)
+    deletion = await session.execute(delete(Cv).where(Cv.id == cv_id, Cv.user_id == user_id))
+    return int(getattr(deletion, "rowcount", 0) or 0)
 
 
 async def mark_completed(

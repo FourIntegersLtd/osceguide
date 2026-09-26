@@ -55,9 +55,9 @@ async def upload(
     except domain.InvalidCv as exc:
         raise errors.InvalidCvFile(str(exc)) from exc
 
-    row = await repository.create(session, user_id=user_id, original_filename=filename, extracted_text=text)
-    await enqueue_extraction(session, cv_id=row.id)
-    return schemas.CvUploadResult(id=row.id, status=row.status, message=UPLOAD_MESSAGE)
+    cv = await repository.create(session, user_id=user_id, original_filename=filename, extracted_text=text)
+    await enqueue_extraction(session, cv_id=cv.id)
+    return schemas.CvUploadResult(id=cv.id, status=cv.status, message=UPLOAD_MESSAGE)
 
 
 async def run_extraction_job(
@@ -68,10 +68,10 @@ async def run_extraction_job(
     Idempotent: a row that is no longer `processing` has already been read, so
     a redelivery does nothing rather than overwriting a finished result.
     """
-    row = await repository.get(session, cv_id)
-    if row is None or row.status != domain.Status.PROCESSING.value:
+    cv = await repository.get(session, cv_id)
+    if cv is None or cv.status != domain.Status.PROCESSING.value:
         return
-    parsed, error = await llm.extract_structured(row.extracted_text or "", settings=settings)
+    parsed, error = await llm.extract_structured(cv.extracted_text or "", settings=settings)
     if parsed is None:
         await repository.mark_failed(session, cv_id, error=error or "extraction failed", at=now)
         return
@@ -79,17 +79,17 @@ async def run_extraction_job(
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID) -> schemas.CvList:
-    rows = await repository.list_for_user(session, user_id, limit=domain.RECENT_LIMIT)
-    cvs = [_read(row) for row in rows]
+    cvs_stored = await repository.list_for_user(session, user_id, limit=domain.RECENT_LIMIT)
+    cvs = [_read(cv) for cv in cvs_stored]
     return schemas.CvList(cvs=cvs, total=len(cvs))
 
 
 async def read(session: AsyncSession, cv_id: uuid.UUID, *, user_id: uuid.UUID) -> schemas.CvRead:
     """One CV, if it is yours. Somebody else's is `not found`, not `forbidden`."""
-    row = await repository.get(session, cv_id)
-    if row is None or row.user_id != user_id:
+    cv = await repository.get(session, cv_id)
+    if cv is None or cv.user_id != user_id:
         raise errors.CvNotFound()
-    return _read(row)
+    return _read(cv)
 
 
 async def delete(session: AsyncSession, cv_id: uuid.UUID, *, user_id: uuid.UUID) -> None:
@@ -104,14 +104,14 @@ async def delete(session: AsyncSession, cv_id: uuid.UUID, *, user_id: uuid.UUID)
         raise errors.CvNotFound()
 
 
-def _read(row: Cv) -> schemas.CvRead:
-    structured = schemas.StructuredCv.model_validate(row.structured) if row.structured else None
+def _read(cv: Cv) -> schemas.CvRead:
+    structured = schemas.StructuredCv.model_validate(cv.structured) if cv.structured else None
     return schemas.CvRead(
-        id=row.id,
-        status=row.status,
-        original_filename=row.original_filename,
-        uploaded_at=row.created_at,
-        completed_at=row.completed_at,
+        id=cv.id,
+        status=cv.status,
+        original_filename=cv.original_filename,
+        uploaded_at=cv.created_at,
+        completed_at=cv.completed_at,
         structured=structured,
-        error=row.error,
+        error=cv.error,
     )
