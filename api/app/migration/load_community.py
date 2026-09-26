@@ -23,6 +23,7 @@ from app.migration.resolve_legacy_users import legacy_consumer_user_ids
 
 
 async def _station_id_by_exam_and_legacy(session: AsyncSession) -> dict[tuple[str, str], uuid.UUID]:
+    """Every imported station's id, keyed by (exam code, legacy station id), for comments to attach to."""
     station_rows = await session.execute(
         select(
             Exam.code,
@@ -46,6 +47,7 @@ def _resolve_user(
     legacy_user_id: str,
     context: str,
 ) -> uuid.UUID | None:
+    """The platform user for a legacy community author or liker id, or None (reported) if unresolved."""
     uid = users.get(legacy_user_id)
     if uid is None:
         report.problem(f"{context}: no platform user for legacy user_id {legacy_user_id!r}")
@@ -58,6 +60,13 @@ async def load_community(
     *,
     now: datetime | None = None,
 ) -> LoadReport:
+    """Load community questions, replies and comments (with their likes) into `posts` and `post_likes`.
+
+    Safe to re-run: each post's id is a deterministic hash of its legacy
+    reference, so an existing row is skipped rather than duplicated. Posts are
+    loaded in question-then-reply-then-comment order so a reply's parent
+    already exists when the reply is inserted.
+    """
     report = LoadReport()
     at = now or datetime.now(UTC)
 

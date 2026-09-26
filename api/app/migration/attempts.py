@@ -30,6 +30,7 @@ __all__ = [
 
 @dataclass(frozen=True)
 class MigratedMessage:
+    """One transcript turn, ready for `TranscriptMessage`."""
 
     message_id: str
     seq: int
@@ -40,6 +41,7 @@ class MigratedMessage:
 
 @dataclass(frozen=True)
 class MigratedResult:
+    """The legacy feedback for an attempt, tagged so it is never mistaken for engine output."""
 
     framework_id: str
     policy_version: str
@@ -48,6 +50,7 @@ class MigratedResult:
 
 @dataclass
 class MigratedAttempt:
+    """One consumer practice attempt, its turns and its legacy feedback, ready for `load_attempts`."""
 
     legacy_ids: dict[str, str]
     exam_code: str

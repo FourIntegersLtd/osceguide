@@ -19,6 +19,7 @@ from app.migration.report import LoadReport
 
 
 async def _existing_by_legacy_ref(session: AsyncSession) -> dict[str, uuid.UUID]:
+    """Every already-loaded media row's `legacy_ref`, mapped to its `media_items.id`."""
     existing_rows = await session.execute(
         select(MediaItem.content["legacy_ref"].astext, MediaItem.id).where(
             MediaItem.content["legacy_ref"].astext.isnot(None)

@@ -31,6 +31,12 @@ LEGACY_SOURCE_REF = "legacy-import"
 
 
 def _apply_profile(user: User, merged: MergedUser, *, creating: bool) -> None:
+    """Copy a merged user's profile fields onto a User row, in place.
+
+    On creation everything wins; on a second run only blanks are filled and
+    values that improve on what is already there (a later login, more extra
+    reading time) are taken, so a person's own edits since import are kept.
+    """
     if creating or not user.name.strip():
         user.name = merged.name or user.name
     if merged.last_login_at and (user.last_login_at is None or merged.last_login_at > user.last_login_at):
@@ -48,6 +54,7 @@ def _apply_profile(user: User, merged: MergedUser, *, creating: bool) -> None:
 
 
 async def _link_consumer_ids(session: AsyncSession, user_id: uuid.UUID, merged: MergedUser) -> None:
+    """Link every legacy Firestore document id that turned out to be this user, so re-runs recognize them."""
     linked: set[str] = set()
     for product, subject in merged.legacy_ids_by_product.items():
         if not subject or subject in linked:
@@ -77,6 +84,7 @@ async def _link_consumer_ids(session: AsyncSession, user_id: uuid.UUID, merged: 
 
 
 async def exams_by_code(session: AsyncSession) -> dict[str, uuid.UUID]:
+    """Every seeded exam's id, keyed by its lowercased code."""
     exam_rows = await session.execute(select(Exam.code, Exam.id))
     return {str(code).lower(): exam_id for code, exam_id in exam_rows.all()}
 

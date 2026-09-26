@@ -43,6 +43,7 @@ def configure_credentials_from_env() -> None:
 
 
 def client() -> Any:
+    """A Firestore client, credentialed from the environment. Read-only by convention."""
     try:
         from google.cloud import firestore  # type: ignore[import-untyped]
     except ImportError as exc:
@@ -71,6 +72,7 @@ def serialize(value: Any) -> Any:
 
 
 def is_seed(document: dict[str, Any]) -> bool:
+    """Whether a document is partner-dashboard demo data rather than a real record."""
     if document.get("_seed_tag"):
         return True
     return any(str(document.get(key) or "").startswith("seed_") for key in ("created_by", "user_id"))
@@ -92,6 +94,7 @@ def deleted_user_ids(db: Any) -> set[str]:
 
 
 def root_collection_names(db: Any) -> list[str]:
+    """Every top-level collection name that actually exists in this Firestore project."""
     return sorted(collection.id for collection in db.collections())
 
 

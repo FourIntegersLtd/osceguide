@@ -22,6 +22,11 @@ async def load_legacy_payments(
     *,
     user_ids: dict[str, uuid.UUID],
 ) -> LoadReport:
+    """Load legacy Stripe payments, matched to platform users by email.
+
+    Skips a payment already recorded by its `stripe_payment_intent_id`. A payment for
+    an email not in `user_ids` (the user step's output) is reported, not guessed at.
+    """
     report = LoadReport()
     plans = {
         str(code).lower(): plan_id
@@ -65,6 +70,10 @@ async def load_legacy_referrals(
     *,
     user_ids: dict[str, uuid.UUID],
 ) -> LoadReport:
+    """Load legacy referral codes and earnings, matched to platform users by email.
+
+    Skips a code already present. A referral for an email not in `user_ids` is reported.
+    """
     report = LoadReport()
     for merged in referrals:
         email = merged.email.strip().lower()

@@ -52,12 +52,14 @@ def _script(name: str) -> ModuleType:
 
 
 class Run:
+    """One `import_b2c_all.py` invocation's shared state: the Firestore client and attempts read so far."""
 
     def __init__(self, db: Any) -> None:
         self.db = db
         self.pairs: list[Any] = []  # attempts, for the steps that hang off them
 
     def read(self, step: str) -> list[dict[str, Any]]:
+        """Every document from every collection this step owns, seed rows dropped, with progress printed."""
         docs: list[dict[str, Any]] = []
         for collection, exam in b2c_inventory.COPIED[step].items():
             documents, seeded = b2c_firestore.stream(self.db, collection, app_type=exam or None)
@@ -68,6 +70,7 @@ class Run:
         return docs
 
     def matching(self, docs: list[dict], collections: dict[str, str]) -> list[dict]:
+        """The subset of `docs` that came from one of `collections` (e.g. only the transcript collections)."""
         return [document for document in docs if document.get("_collection") in collections.values()]
 
 
@@ -82,6 +85,7 @@ def _legacy(report: Any, extra: list[str]) -> StepReport:
 
 
 async def _users(session: AsyncSession, run: Run) -> StepReport:
+    """The `users` step: reuses `import_b2c_users`'s transform, then loads people, payments and referrals."""
     merged, grants, payments, referrals, problems = _script("import_b2c_users").prepare_import(
         stream_b2c_user_documents()
     )
@@ -93,21 +97,25 @@ async def _users(session: AsyncSession, run: Run) -> StepReport:
 
 
 async def _stations(session: AsyncSession, run: Run) -> StepReport:
+    """The `stations` step: reuses `import_b2c_stations`'s transform, then loads the library."""
     migrated, problems = _script("import_b2c_stations").transform_documents(stream_b2c_station_documents())
     return _legacy((await load_stations(session, migrated))[0], problems)
 
 
 async def _media(session: AsyncSession, run: Run) -> StepReport:
+    """The `media` step: reuses `import_b2c_media`'s transform, then loads study material."""
     migrated, problems = _script("import_b2c_media").transform_documents(stream_b2c_media_documents())
     return _legacy(await load_media(session, migrated), problems)
 
 
 async def _community(session: AsyncSession, run: Run) -> StepReport:
+    """The `community` step: reuses `import_b2c_community`'s transform, then loads posts and likes."""
     migrated, problems = _script("import_b2c_community").transform_documents(stream_b2c_community_documents())
     return _legacy(await load_community(session, migrated), problems)
 
 
 async def _marketplace(session: AsyncSession, run: Run) -> StepReport:
+    """The `marketplace` step: reuses `import_b2c_marketplace`'s transform, then loads posts and sessions."""
     posts, sessions, problems = _script("import_b2c_marketplace").transform_documents(
         stream_b2c_marketplace_documents()
     )
@@ -118,6 +126,7 @@ async def _marketplace(session: AsyncSession, run: Run) -> StepReport:
 
 
 async def _attempts(session: AsyncSession, run: Run) -> StepReport:
+    """The `attempts` step: transcripts of deleted accounts are dropped, the rest loaded with feedback."""
     docs = run.read("attempts")
     deleted = b2c_firestore.deleted_user_ids(run.db)
     kept = [document for document in docs if str(document.get("user_id") or "") not in deleted]
@@ -141,11 +150,13 @@ async def _needs_attempts(run: Run) -> None:
 
 
 async def _live_coverage(session: AsyncSession, run: Run) -> StepReport:
+    """The `live_coverage` step: attaches saved live-marking snapshots to their already-copied attempts."""
     await _needs_attempts(run)
     return await extras.load_live_coverage(session, run.read("live_coverage"), run.pairs)
 
 
 async def _debriefs(session: AsyncSession, run: Run) -> StepReport:
+    """The `debriefs` step: attaches tutor debrief summaries to their already-copied attempts."""
     await _needs_attempts(run)
     return await extras.load_debriefs(
         session, run.read("debriefs"), run.pairs, await b2c_lookups.build(session)
@@ -155,10 +166,12 @@ async def _debriefs(session: AsyncSession, run: Run) -> StepReport:
 async def _with_lookups(
     session: AsyncSession, run: Run, step: str, handler: Callable[..., Awaitable[StepReport]]
 ) -> StepReport:
+    """Run a step's handler with the documents it owns plus a freshly built `Lookups`."""
     return await handler(session, run.read(step), await b2c_lookups.build(session))
 
 
 async def _partners(session: AsyncSession, run: Run) -> StepReport:
+    """The `partners` step: loads partner arrivals and reporters, split from one read by collection."""
     docs = run.read("partners")
     return await load_b2c_billing.load_partners(
         session,
@@ -168,6 +181,7 @@ async def _partners(session: AsyncSession, run: Run) -> StepReport:
 
 
 async def _peer_practice(session: AsyncSession, run: Run) -> StepReport:
+    """The `peer_practice` step: loads human peer-practice sessions with their matched feedback."""
     docs = run.read("peer_practice")
     return await load_b2c_misc.load_peer_practice(
         session,

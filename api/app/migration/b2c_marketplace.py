@@ -12,10 +12,11 @@ from app.migration.users import UnknownLegacyProduct, exam_for_product, parse_ti
 
 
 class MarketplaceTransformError(Exception):
-    pass
+    """A document that cannot become a marketplace post or session. Reported, never guessed at."""
 
 
 def _starts_at(document: dict[str, Any]) -> datetime:
+    """A post or session's start time, from `scheduled_at` or from a local date/time plus timezone."""
     at = parse_timestamp(document.get("scheduled_at"))
     if at is not None:
         return at
@@ -31,6 +32,7 @@ def _starts_at(document: dict[str, Any]) -> datetime:
 
 @dataclass
 class MigratedAvailabilityPost:
+    """One legacy availability post, ready for `load_marketplace_posts`."""
 
     legacy_ref: str
     exam_code: str
@@ -48,11 +50,13 @@ class MigratedAvailabilityPost:
 
     @property
     def row_id(self):
+        """This post's deterministic primary key, derived from its legacy reference."""
         return legacy_row_id(self.legacy_ref)
 
 
 @dataclass
 class MigratedPeerSession:
+    """One legacy peer practice session, ready for `load_peer_sessions`."""
 
     legacy_ref: str
     exam_code: str
@@ -69,16 +73,19 @@ class MigratedPeerSession:
 
     @property
     def row_id(self):
+        """This session's deterministic primary key, derived from its legacy reference."""
         return legacy_row_id(self.legacy_ref)
 
     @property
     def post_row_id(self):
+        """The availability post this session was booked from, or None if it was not booked from one."""
         if self.post_legacy_ref is None:
             return None
         return legacy_row_id(self.post_legacy_ref)
 
 
 def _exam(document: dict[str, Any]) -> str:
+    """The exam a marketplace document belongs to, from its `app_type`."""
     product = str(document.get("app_type") or "").strip().lower()
     if not product:
         raise MarketplaceTransformError("document has no app_type")
@@ -86,6 +93,7 @@ def _exam(document: dict[str, Any]) -> str:
 
 
 def _map_post_status(raw: str | None) -> tuple[str, datetime | None]:
+    """A legacy post status, mapped onto the platform's status set, plus a cancelled-at time if applicable."""
     status = str(raw or "available").strip().lower()
     if status in {"available", "claimed"}:
         return status, None
@@ -95,6 +103,7 @@ def _map_post_status(raw: str | None) -> tuple[str, datetime | None]:
 
 
 def _map_session_status(raw: str | None) -> tuple[str, datetime | None]:
+    """A legacy session status, mapped onto the platform's status set, plus an ended-at time if applicable."""
     status = str(raw or "scheduled").strip().lower()
     if status == "completed":
         return "completed", datetime.now(UTC)
@@ -108,6 +117,7 @@ def _map_session_status(raw: str | None) -> tuple[str, datetime | None]:
 
 
 def post_from_document(document: dict[str, Any]) -> MigratedAvailabilityPost:
+    """Transform a `*_marketplace_posts` document into a `MigratedAvailabilityPost`."""
     try:
         exam_code = _exam(document)
     except UnknownLegacyProduct as exc:
@@ -159,6 +169,7 @@ def post_from_document(document: dict[str, Any]) -> MigratedAvailabilityPost:
 
 
 def session_from_document(document: dict[str, Any]) -> MigratedPeerSession:
+    """Transform a `*_marketplace_sessions` document into a `MigratedPeerSession`."""
     try:
         exam_code = _exam(document)
     except UnknownLegacyProduct as exc:
@@ -203,6 +214,7 @@ def session_from_document(document: dict[str, Any]) -> MigratedPeerSession:
 
 
 def marketplace_from_document(document: dict[str, Any]) -> MigratedAvailabilityPost | MigratedPeerSession:
+    """Dispatch to the right transform by the document's `_social_kind` tag."""
     kind = str(document.get("_social_kind") or "").strip().lower()
     if kind == "post":
         return post_from_document(document)

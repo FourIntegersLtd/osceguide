@@ -11,6 +11,11 @@ def scheduled_local_to_utc(
     scheduled_time: str,
     tz_name: str | None,
 ) -> datetime:
+    """A marketplace slot's local wall-clock date and time, converted to UTC.
+
+    Falls back to UTC if `tz_name` names no known zone, rather than raising: a slot
+    with a slightly wrong timezone is still better recorded than dropped.
+    """
     if not scheduled_date or not scheduled_time:
         raise ValueError("scheduled_date and scheduled_time are required")
 

@@ -37,6 +37,7 @@ _DROP = {"search_chunks", "_collection"}
 
 
 def practice_key(document: dict[str, Any]) -> tuple[str, str, str, str]:
+    """The (exam, user, mock, station) fallback key for feedback rows that predate the attempt id."""
     return (
         str(document.get("app_type") or ""),
         str(document.get("user_id") or ""),
@@ -46,12 +47,14 @@ def practice_key(document: dict[str, Any]) -> tuple[str, str, str, str]:
 
 
 def _newest_first(documents: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Documents ordered newest `created_at` first, so a `setdefault` index keeps the latest duplicate."""
     return sorted(documents, key=lambda document: str(document.get("created_at") or ""), reverse=True)
 
 
 def feedback_index(
     feedbacks: Sequence[dict[str, Any]],
 ) -> tuple[dict[tuple[str, str], dict], dict[tuple, dict]]:
+    """Feedback documents indexed two ways: by (exam, attempt id) when present, else by `practice_key`."""
     by_attempt: dict[tuple[str, str], dict[str, Any]] = {}
     by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for doc in _newest_first(feedbacks):
@@ -70,6 +73,12 @@ def migrate_transcripts(
     feedbacks: Sequence[dict[str, Any]],
     report: StepReport,
 ) -> list[tuple[MigratedAttempt, dict[str, Any]]]:
+    """Transform every transcript into a `MigratedAttempt`, matched to its feedback, then run cleanup.
+
+    A transcript with an unmapped `app_type` is reported and dropped rather
+    than guessed at. Feedback documents that match no transcript are counted
+    so the run's totals still add up.
+    """
     by_attempt, by_key = feedback_index(feedbacks)
     used: set[int] = set()
     transformed_pairs: list[tuple[MigratedAttempt, dict[str, Any]]] = []
@@ -92,6 +101,7 @@ def migrate_transcripts(
 
 
 async def attempt_ids_by_ref(session: AsyncSession, refs: Sequence[str]) -> dict[str, uuid.UUID]:
+    """Every already-loaded attempt's id, keyed by its legacy reference, read in chunks of 1000."""
     ids_by_ref: dict[str, uuid.UUID] = {}
     wanted = [ref for ref in refs if ref]
     for start in range(0, len(wanted), 1000):
@@ -106,6 +116,11 @@ async def attempt_ids_by_ref(session: AsyncSession, refs: Sequence[str]) -> dict
 async def _finish(
     session: AsyncSession, pairs: Sequence[tuple[MigratedAttempt, dict]], lookups: Lookups, report: StepReport
 ) -> None:
+    """Fill in what `load_attempts` alone cannot: the station link and a completed `transcripts` row.
+
+    Only ever fills gaps on an existing attempt (its station, its completion
+    time); it never overwrites a value the attempt already has.
+    """
     ids = await attempt_ids_by_ref(session, [legacy_ref_for(migrated) for migrated, _ in pairs])
     have_transcript = (
         set(
@@ -153,6 +168,11 @@ async def _finish(
 async def load(
     session: AsyncSession, transcripts: Sequence[dict], feedbacks: Sequence[dict], lookups: Lookups
 ) -> tuple[StepReport, list[tuple[MigratedAttempt, dict]]]:
+    """Load every legacy transcript and its feedback into `attempts`, chunked so memory stays bounded.
+
+    Safe to re-run: `load_attempts` keys attempts by their deterministic
+    `legacy_ref`, so a second run only fills in what the first left blank.
+    """
     report = StepReport()
     pairs = migrate_transcripts(transcripts, feedbacks, report)
     # In chunks, clearing the identity map after each: ten thousand attempts and

@@ -130,6 +130,7 @@ SKIPPED_PREFIXES: dict[str, str] = {"b2b_": "legacy B2B Firestore arm; B2B data 
 
 
 def step_for(collection: str) -> str | None:
+    """Which copy step reads this collection, or None if no step claims it."""
     for step, collections in COPIED.items():
         if collection in collections:
             return step
@@ -137,6 +138,7 @@ def step_for(collection: str) -> str | None:
 
 
 def skip_reason(collection: str) -> str | None:
+    """Why this collection is deliberately not copied, or None if it is (or is unaccounted for)."""
     if collection in SKIPPED:
         return SKIPPED[collection]
     for prefix, reason in SKIPPED_PREFIXES.items():
@@ -146,6 +148,7 @@ def skip_reason(collection: str) -> str | None:
 
 
 def unaccounted(live_collections: list[str]) -> list[str]:
+    """Live collections this file neither copies nor explains skipping. Should always be empty."""
     return [
         collection
         for collection in live_collections

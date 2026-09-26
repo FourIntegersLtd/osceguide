@@ -39,6 +39,7 @@ _FILL = (
 
 
 def _payment_values(doc: dict[str, Any]) -> dict[str, Any]:
+    """The receipt/checkout/plan-window fields a payment document carries, for insert or backfill."""
     return {
         "checkout_session_id": (doc.get("checkout_session_id") or None),
         "receipt_url": (doc.get("stripe_receipt_url") or None),
@@ -52,6 +53,12 @@ def _payment_values(doc: dict[str, Any]) -> dict[str, Any]:
 async def load_payments(
     session: AsyncSession, documents: Sequence[dict[str, Any]], lookups: Lookups
 ) -> StepReport:
+    """Load legacy `*_payments` documents into `payments`.
+
+    A payment `import_b2c_users` already created (matched on Stripe payment
+    intent) only has its empty receipt/checkout/plan-window columns filled in;
+    a payment seen for the first time here is inserted in full.
+    """
     report = StepReport()
     plans = {
         str(plan_code).lower(): plan_id
@@ -116,6 +123,12 @@ async def load_payments(
 async def load_referrals(
     session: AsyncSession, documents: Sequence[dict[str, Any]], lookups: Lookups
 ) -> StepReport:
+    """Load legacy referral redemptions into `referrals`, one row per redemption of a reusable code.
+
+    The platform's `referrals` table is single-use per row, so each redemption
+    becomes `<CODE>-<first six of the redemption id>`: readable, and never
+    collides with a code someone might type themselves.
+    """
     report = StepReport()
     for doc in documents:
         redemption = str(doc.get("referral_id") or doc.get("id") or "")
@@ -153,6 +166,7 @@ async def load_referrals(
 
 
 def _arrival(doc: dict[str, Any]) -> PartnerArrival:
+    """Transform a legacy partner-arrival document into a `PartnerArrival` row, UTM tags from its path."""
     path = str(doc.get("landing_path") or "")
     query = {
         query_key: query_values[0]
@@ -179,6 +193,7 @@ def _arrival(doc: dict[str, Any]) -> PartnerArrival:
 async def load_partners(
     session: AsyncSession, arrivals: Sequence[dict], reporters: Sequence[dict]
 ) -> StepReport:
+    """Load legacy partner arrivals and reporters as they are; demo rows are already dropped upstream."""
     report = StepReport()
     for doc in arrivals:
         arrival = _arrival(doc)

@@ -34,6 +34,7 @@ def _when(raw: object) -> dict[str, Any]:
 
 
 def _refs_by_key(pairs: Sequence[tuple[MigratedAttempt, dict[str, Any]]]) -> dict[tuple, str]:
+    """Each `practice_key` mapped to its newest attempt's legacy reference; a retried station has several."""
     newest = sorted(pairs, key=lambda pair: pair[0].created_at, reverse=True)
     refs_by_practice_key: dict[tuple, str] = {}
     for migrated, raw in newest:
@@ -47,6 +48,7 @@ async def load_debriefs(
     pairs: Sequence[tuple[MigratedAttempt, dict]],
     lookups: Lookups,
 ) -> StepReport:
+    """Load legacy tutor debrief summaries onto their already-copied attempts (at most one per attempt)."""
     report = StepReport()
     refs = _refs_by_key(pairs)
     ids = await attempt_ids_by_ref(session, list(refs.values()))
@@ -91,6 +93,7 @@ async def load_debriefs(
 async def load_live_coverage(
     session: AsyncSession, documents: Sequence[dict[str, Any]], pairs: Sequence[tuple[MigratedAttempt, dict]]
 ) -> StepReport:
+    """Load saved live-marking snapshots onto their attempts, matched by `<user>_<mock>_<station>`."""
     report = StepReport()
     by_doc_id = {"_".join(key[1:]): ref for key, ref in _refs_by_key(pairs).items()}
     ids = await attempt_ids_by_ref(session, list(by_doc_id.values()))

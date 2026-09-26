@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class LoadReport:
+    """Counters and problems from one load step. `merge` combines two into one total."""
 
     users_created: int = 0
     users_matched: int = 0
@@ -38,13 +39,16 @@ class LoadReport:
     problems: list[str] = field(default_factory=list)
 
     def problem(self, message: str) -> None:
+        """Record one record that could not be loaded, and why."""
         self.problems.append(message)
 
     @property
     def has_no_problems(self) -> bool:
+        """Whether the run hit no problems at all."""
         return not self.problems
 
     def merge(self, other: LoadReport) -> LoadReport:
+        """Add this report's counts and problems to another's, returning a new combined report."""
         return LoadReport(
             users_created=self.users_created + other.users_created,
             users_matched=self.users_matched + other.users_matched,
@@ -76,6 +80,7 @@ class LoadReport:
         )
 
     def summary(self) -> str:
+        """One human-readable line covering every counter and the problem count."""
         return (
             f"users {self.users_created} created / {self.users_matched} matched; "
             f"entitlements {self.entitlements_created} created / "

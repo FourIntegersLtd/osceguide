@@ -28,18 +28,22 @@ class StepReport:
     notes: list[str] = field(default_factory=list)  # pre-formatted lines from the legacy `LoadReport`
 
     def count(self, label: str, amount: int = 1) -> None:
+        """Add `amount` (default 1) to the running total under `label`."""
         self.counts[label] += amount
 
     def problem(self, message: str) -> None:
+        """Record one record that could not be loaded, and why."""
         self.problems.append(message)
 
     def summary(self) -> str:
+        """One human-readable line: the legacy notes, then every non-zero counter."""
         parts = [*self.notes, *(f"{label} {amount}" for label, amount in sorted(self.counts.items()))]
         return "; ".join(parts) or "nothing to do"
 
 
 @dataclass
 class Lookups:
+    """Legacy id -> platform id, for everything a copy step needs to resolve a reference against."""
 
     users: dict[str, uuid.UUID]
     users_by_email: dict[str, uuid.UUID]
@@ -47,16 +51,20 @@ class Lookups:
     station_versions: dict[tuple[str, str], uuid.UUID]
 
     def user(self, legacy_id: object) -> uuid.UUID | None:
+        """The platform user for a legacy Firestore document id, or None if unresolved."""
         return self.users.get(str(legacy_id or "").strip())
 
     def user_by_email(self, email: object) -> uuid.UUID | None:
+        """The platform user for an email address, or None if unresolved."""
         return self.users_by_email.get(str(email or "").strip().lower())
 
     def station_version(self, exam_code: str, legacy_station_id: object) -> uuid.UUID | None:
+        """The latest imported station version for a legacy station id under one exam, or None."""
         return self.station_versions.get((exam_code, str(legacy_station_id or "").strip()))
 
 
 async def _latest_station_versions(session: AsyncSession) -> dict[tuple[str, str], uuid.UUID]:
+    """Every imported station's most recent version id, keyed by (exam code, legacy station id)."""
     legacy_id = StationVersion.content["station_id"].astext
     ranked = (
         select(
@@ -79,6 +87,7 @@ async def _latest_station_versions(session: AsyncSession) -> dict[tuple[str, str
 
 
 async def build(session: AsyncSession) -> Lookups:
+    """Assemble a fresh `Lookups` from the database's current state (users, exams, station versions)."""
     exams = {
         str(code).lower(): exam_id
         for code, exam_id in (await session.execute(select(Exam.code, Exam.id))).all()

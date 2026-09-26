@@ -21,6 +21,7 @@ B2C_STATION_COLLECTIONS: dict[str, str] = {
 
 
 def _serialize_value(value: Any) -> Any:
+    """Recursively turn a Firestore value (including nested dicts/lists) into a JSON-safe one."""
     if hasattr(value, "isoformat"):
         try:
             return value.isoformat()
@@ -34,6 +35,7 @@ def _serialize_value(value: Any) -> Any:
 
 
 def _doc_to_dict(doc_id: str, document_data: dict[str, Any], *, app_type: str) -> dict[str, Any]:
+    """A Firestore station snapshot as a plain dict, with its id and product tagged on."""
     document = _serialize_value(dict(document_data))
     document["id"] = doc_id
     document.setdefault("app_type", app_type)
@@ -49,6 +51,7 @@ def read_stations_json(path: Path) -> list[dict[str, Any]]:
 
 
 def read_stations_from_export_dir(export_dir: Path) -> list[dict[str, Any]]:
+    """Read `stations.json` from a directory produced by an earlier export run."""
     return read_stations_json(export_dir / "stations.json")
 
 
@@ -80,9 +83,11 @@ def stream_b2c_station_documents(
 
 
 def write_stations_json(path: Path, documents: list[dict[str, Any]]) -> None:
+    """Write an export of station documents to `path` as a JSON array, creating parent folders."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(documents, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def export_timestamp() -> str:
+    """The current UTC time as a Zulu-suffixed ISO string, for naming an export."""
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")

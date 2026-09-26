@@ -73,6 +73,7 @@ class MigratedStation:
 
 
 def _title(document: dict[str, Any], legacy_id: str) -> str:
+    """The station's title from whichever legacy field carries it, or a placeholder naming its id."""
     for key in ("station_name", "title", "name"):
         candidate_title = document.get(key)
         if isinstance(candidate_title, str) and candidate_title.strip():

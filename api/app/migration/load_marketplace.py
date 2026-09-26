@@ -45,6 +45,7 @@ def _resolve_user(
     legacy_user_id: str,
     context: str,
 ) -> uuid.UUID | None:
+    """The platform user for a legacy id, or a recorded problem naming `context` if there is none."""
     uid = users.get(legacy_user_id)
     if uid is None:
         report.problem(f"{context}: no platform user for legacy user_id {legacy_user_id!r}")
@@ -57,6 +58,7 @@ async def load_marketplace_posts(
     *,
     now: datetime | None = None,
 ) -> LoadReport:
+    """Load marketplace availability posts. Skips a post already present by its deterministic row id."""
     report = LoadReport()
     at = now or datetime.now(UTC)
 
@@ -112,6 +114,11 @@ async def load_peer_sessions(
     *,
     now: datetime | None = None,
 ) -> LoadReport:
+    """Load peer practice sessions. Skips a session already present by its deterministic row id.
+
+    Links back to its availability post when the transform recorded one; a session whose post is
+    missing is reported rather than loaded with a dangling reference.
+    """
     report = LoadReport()
     at = now or datetime.now(UTC)
 

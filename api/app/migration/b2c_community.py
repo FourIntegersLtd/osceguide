@@ -11,11 +11,12 @@ from app.migration.users import UnknownLegacyProduct, exam_for_product, parse_ti
 
 
 class CommunityTransformError(Exception):
-    pass
+    """A document that cannot become a community post. Reported, never guessed at."""
 
 
 @dataclass(frozen=True)
 class MigratedLike:
+    """One legacy like on a community post, ready to become a `PostLike` row."""
 
     legacy_ref: str
     post_legacy_ref: str
@@ -24,6 +25,7 @@ class MigratedLike:
 
 @dataclass
 class MigratedCommunityPost:
+    """One question, reply or comment, ready for `load_community`."""
 
     legacy_ref: str
     kind: str
@@ -40,16 +42,19 @@ class MigratedCommunityPost:
 
     @property
     def row_id(self):
+        """This post's deterministic primary key, derived from its legacy reference."""
         return legacy_row_id(self.legacy_ref)
 
     @property
     def parent_row_id(self):
+        """The parent post's row id (a reply's question, say), or None for a top-level post."""
         if self.parent_legacy_ref is None:
             return None
         return legacy_row_id(self.parent_legacy_ref)
 
 
 def _exam(document: dict[str, Any]) -> str:
+    """The exam a community document belongs to, from its `app_type`."""
     product = str(document.get("app_type") or "").strip().lower()
     if not product:
         raise CommunityTransformError("document has no app_type")
@@ -57,6 +62,7 @@ def _exam(document: dict[str, Any]) -> str:
 
 
 def _body_text(raw: Any) -> str:
+    """A post's body text, stripped, or a transform error if it is empty."""
     text = str(raw or "").strip()
     if not text:
         raise CommunityTransformError("empty body")
@@ -69,6 +75,7 @@ def _likes_for_post(
     post_legacy_ref: str,
     liked_by: Any,
 ) -> list[MigratedLike]:
+    """The likes on one post, from its Firestore `liked_by` array of legacy user ids."""
     if not isinstance(liked_by, list):
         return []
     likes: list[MigratedLike] = []
@@ -88,6 +95,7 @@ def _likes_for_post(
 
 
 def question_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
+    """Transform a `*_community_questions` document into a top-level `MigratedCommunityPost`."""
     try:
         exam_code = _exam(document)
     except UnknownLegacyProduct as exc:
@@ -124,6 +132,7 @@ def question_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
 
 
 def reply_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
+    """Transform a `*_community_replies` document into a `MigratedCommunityPost` under its question."""
     try:
         exam_code = _exam(document)
     except UnknownLegacyProduct as exc:
@@ -164,6 +173,7 @@ def reply_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
 
 
 def comment_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
+    """Transform a `*_comments` document (a station comment) into a `MigratedCommunityPost`."""
     try:
         exam_code = _exam(document)
     except UnknownLegacyProduct as exc:
@@ -209,6 +219,7 @@ def comment_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
 
 
 def community_from_document(document: dict[str, Any]) -> MigratedCommunityPost:
+    """Dispatch to the right transform by the document's `_social_kind` tag."""
     kind = str(document.get("_social_kind") or "").strip().lower()
     if kind == "question":
         return question_from_document(document)

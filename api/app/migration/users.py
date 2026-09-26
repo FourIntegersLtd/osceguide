@@ -41,6 +41,7 @@ class UnusableRecord(ValueError):
 
 @dataclass
 class MergedUser:
+    """One person, folded together from every legacy document that mentions them."""
 
     email: str
     name: str = ""
@@ -67,6 +68,7 @@ class MergedUser:
 
 @dataclass(frozen=True)
 class MergedLegacyPayment:
+    """One legacy purchase, ready for `load_legacy_payments`."""
 
     email: str
     exam_code: str
@@ -78,6 +80,7 @@ class MergedLegacyPayment:
 
 @dataclass(frozen=True)
 class MergedReferral:
+    """One legacy referral code and its earnings, ready for `load_legacy_referrals`."""
 
     email: str
     code: str
@@ -86,6 +89,7 @@ class MergedReferral:
 
 @dataclass(frozen=True)
 class MergedEntitlement:
+    """One legacy grant of access to an exam, ready to become an `entitlements` row."""
 
     email: str
     exam_code: str
@@ -95,10 +99,12 @@ class MergedEntitlement:
 
 
 def normalize_email(raw: Any) -> str:
+    """An email address, stripped and lowercased so it matches the `citext` merge key."""
     return str(raw or "").strip().lower()
 
 
 def parse_timestamp(raw: Any) -> datetime | None:
+    """A legacy ISO timestamp as a UTC-aware `datetime`, or None if it is missing or unparseable."""
     text = str(raw or "").strip()
     if not text:
         return None
@@ -110,6 +116,7 @@ def parse_timestamp(raw: Any) -> datetime | None:
 
 
 def parse_date(raw: Any) -> date | None:
+    """A legacy date, from a full timestamp or a bare `YYYY-MM-DD` string, or None if neither parses."""
     at = parse_timestamp(raw)
     if at is not None:
         return at.date()
@@ -123,6 +130,7 @@ def parse_date(raw: Any) -> date | None:
 
 
 def extra_reading_from_record(record: dict[str, Any]) -> int:
+    """The extra reading time percentage a legacy accessibility flag implies, or 0 if none applies."""
     accessibility = record.get("accessibility")
     if not isinstance(accessibility, dict):
         return 0
@@ -132,6 +140,7 @@ def extra_reading_from_record(record: dict[str, Any]) -> int:
 
 
 def exam_for_product(app_type: Any) -> str:
+    """The exam code for a legacy `app_type`, or `UnknownLegacyProduct` if none is mapped."""
     key = str(app_type or "").strip().lower()
     try:
         return LEGACY_PRODUCT_TO_EXAM[key]
@@ -235,6 +244,7 @@ def entitlements_for(record: dict[str, Any]) -> list[MergedEntitlement]:
 
 
 def legacy_payment_for(record: dict[str, Any]) -> MergedLegacyPayment | None:
+    """The legacy payment a paid user record implies, or None if the record shows no payment."""
     if not record.get("has_paid"):
         return None
     email = normalize_email(record.get("email"))
@@ -262,6 +272,7 @@ def legacy_payment_for(record: dict[str, Any]) -> MergedLegacyPayment | None:
 
 
 def referral_for(record: dict[str, Any]) -> MergedReferral | None:
+    """The referral code and earnings a legacy user record carries, or None if it has none."""
     email = normalize_email(record.get("email"))
     if not email:
         return None

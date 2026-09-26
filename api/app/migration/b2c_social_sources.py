@@ -50,6 +50,7 @@ ALL_EXAMS: tuple[str, ...] = ("sca", "plab", "casc", "ortho")
 
 
 def _serialize_value(value: Any) -> Any:
+    """Recursively turn a Firestore value (including nested dicts/lists) into a JSON-safe one."""
     if hasattr(value, "isoformat"):
         try:
             return value.isoformat()
@@ -69,6 +70,7 @@ def _doc_to_dict(
     app_type: str,
     social_kind: str,
 ) -> dict[str, Any]:
+    """A Firestore community/marketplace snapshot as a plain dict, with its id, product and kind tagged on."""
     document = _serialize_value(dict(document_data))
     document["id"] = doc_id
     document.setdefault("app_type", app_type)
@@ -77,6 +79,7 @@ def _doc_to_dict(
 
 
 def read_community_json(path: Path) -> list[dict[str, Any]]:
+    """Read a community export file — array of question/reply/comment documents."""
     documents = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(documents, list):
         raise ValueError(f"{path} should hold a JSON array of documents.")
@@ -84,6 +87,7 @@ def read_community_json(path: Path) -> list[dict[str, Any]]:
 
 
 def read_marketplace_json(path: Path) -> list[dict[str, Any]]:
+    """Read a marketplace export file — array of post/session documents."""
     documents = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(documents, list):
         raise ValueError(f"{path} should hold a JSON array of documents.")
@@ -91,10 +95,12 @@ def read_marketplace_json(path: Path) -> list[dict[str, Any]]:
 
 
 def read_community_from_export_dir(export_dir: Path) -> list[dict[str, Any]]:
+    """Read `community.json` from a directory produced by an earlier export run."""
     return read_community_json(export_dir / "community.json")
 
 
 def read_marketplace_from_export_dir(export_dir: Path) -> list[dict[str, Any]]:
+    """Read `marketplace.json` from a directory produced by an earlier export run."""
     return read_marketplace_json(export_dir / "marketplace.json")
 
 
@@ -105,6 +111,7 @@ def _stream_collection(
     app_type: str,
     social_kind: str,
 ) -> list[dict[str, Any]]:
+    """Every document in one Firestore collection, tagged with its product and social kind."""
     documents: list[dict[str, Any]] = []
     for snapshot in db.collection(collection).stream():
         document_data = snapshot.to_dict() or {}
@@ -117,6 +124,7 @@ def stream_b2c_community_documents(
     kinds: Iterable[CommunityDocKind] | None = None,
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
+    """Stream community question/reply/comment documents from consumer Firestore (read-only)."""
     try:
         from google.cloud import firestore  # type: ignore[import-untyped]
     except ImportError as exc:
@@ -168,6 +176,7 @@ def stream_b2c_marketplace_documents(
     kinds: Iterable[MarketplaceDocKind] | None = None,
     products: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
+    """Stream marketplace post/session documents from consumer Firestore (read-only)."""
     try:
         from google.cloud import firestore  # type: ignore[import-untyped]
     except ImportError as exc:
@@ -206,14 +215,17 @@ def stream_b2c_marketplace_documents(
 
 
 def write_community_json(path: Path, documents: list[dict[str, Any]]) -> None:
+    """Write an export of community documents to `path` as a JSON array, creating parent folders."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(documents, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def write_marketplace_json(path: Path, documents: list[dict[str, Any]]) -> None:
+    """Write an export of marketplace documents to `path` as a JSON array, creating parent folders."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(documents, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def export_timestamp() -> str:
+    """The current UTC time as a Zulu-suffixed ISO string, for naming an export."""
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")

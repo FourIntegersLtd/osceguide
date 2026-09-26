@@ -29,12 +29,17 @@ Pair = tuple[MigratedAttempt, dict[str, Any]]
 
 
 def message_key(message_id: str) -> str:
+    """The id to dedupe a turn on: the legacy id itself, or a stable hash if it is too long to store."""
     if len(message_id) <= 64:
         return message_id
     return f"legacy-{hashlib.sha256(message_id.encode()).hexdigest()[:16]}"
 
 
 def _richest(pairs: Sequence[Pair]) -> Pair:
+    """Of several double-saved copies of the same attempt, the one worth keeping.
+
+    Preferred in order: has feedback, then has the most turns, then was saved latest.
+    """
     return max(
         pairs,
         key=lambda pair: (pair[0].result is not None, len(pair[0].messages), pair[0].created_at),
@@ -42,6 +47,7 @@ def _richest(pairs: Sequence[Pair]) -> Pair:
 
 
 def _merge_saves(pairs: Sequence[Pair], report: StepReport) -> list[Pair]:
+    """Collapse attempts saved as two Firestore transcripts (a reconnect) into one, turns merged in order."""
     groups: dict[str, list[Pair]] = {}
     for pair in pairs:
         groups.setdefault(legacy_ref_for(pair[0]) or f"unkeyed:{id(pair)}", []).append(pair)
@@ -60,6 +66,7 @@ def _merge_saves(pairs: Sequence[Pair], report: StepReport) -> list[Pair]:
 
 
 def _clean_turns(migrated: MigratedAttempt, report: StepReport) -> None:
+    """Keep one turn per re-sent `message_id` (the later text), and renumber `seq` to stay contiguous."""
     latest: dict[str, MigratedMessage] = {}
     for message in migrated.messages:
         latest[message_key(message.message_id)] = message
@@ -70,6 +77,7 @@ def _clean_turns(migrated: MigratedAttempt, report: StepReport) -> None:
 
 
 def clean(pairs: Sequence[Pair], report: StepReport) -> list[Pair]:
+    """Merge double-saved transcripts and dedupe re-sent turns, in that order."""
     merged = _merge_saves(pairs, report)
     for migrated, _raw in merged:
         _clean_turns(migrated, report)

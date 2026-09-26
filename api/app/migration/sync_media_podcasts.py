@@ -29,6 +29,7 @@ from app.migration.media import (
 
 @dataclass
 class PodcastSyncReport:
+    """Counts from one podcast-URL backfill run, plus the summaries or podcasts it could not update."""
 
     firestore_with_url: int = 0
     firestore_no_url: int = 0
@@ -41,13 +42,16 @@ class PodcastSyncReport:
     problems: list[str] = field(default_factory=list)
 
     def problem(self, message: str) -> None:
+        """Record one summary or podcast that could not be updated, and why."""
         self.problems.append(message)
 
     @property
     def has_no_problems(self) -> bool:
+        """Whether this run recorded zero problems."""
         return not self.problems
 
     def summary(self) -> str:
+        """One human-readable line covering every counter in this report."""
         return (
             f"firestore {self.firestore_with_url} with podcast_url / "
             f"{self.firestore_no_url} without; "
@@ -71,6 +75,7 @@ def podcast_url_from_document(document: dict[str, Any]) -> str | None:
 
 
 async def _media_by_legacy_ref(session: AsyncSession) -> dict[str, MediaItem]:
+    """Every already-imported media row that carries a `legacy_ref`, keyed by that reference."""
     media_rows = await session.execute(
         select(MediaItem).where(MediaItem.content["legacy_ref"].astext.isnot(None))
     )
@@ -83,6 +88,7 @@ async def _media_by_legacy_ref(session: AsyncSession) -> dict[str, MediaItem]:
 
 
 def _content_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    """Whether applying a podcast URL actually changed a media row's `content`."""
     return before != after
 
 

@@ -61,6 +61,7 @@ class MigratedMedia:
 
 
 def _slug_part(raw: str) -> str:
+    """One slug segment: lowercased, non-alphanumerics collapsed to hyphens, never empty."""
     cleaned = _NON_SLUG.sub("-", (raw or "").strip().lower()).strip("-")
     return cleaned or "item"
 
@@ -78,6 +79,7 @@ def _bounded_slug(*parts: str) -> str:
 
 
 def _product(document: dict[str, Any], *, product: str | None) -> str:
+    """The exam a media document belongs to: the override if given, else its own `app_type`."""
     raw = product or document.get("app_type")
     if not raw:
         raise MediaTransformError("document names no product")
@@ -85,10 +87,12 @@ def _product(document: dict[str, Any], *, product: str | None) -> str:
 
 
 def _legacy_content(document: dict[str, Any]) -> dict[str, Any]:
+    """The document's own fields, with row-bookkeeping keys (id, app_type, timestamps) stripped out."""
     return {key: value for key, value in document.items() if key not in _NOT_CONTENT}
 
 
 def _normalize_slides_array(slide_data: dict[str, Any]) -> None:
+    """Turn a slide deck's `slides` dict of numeric string keys into an ordered list, in place."""
     slides_field = slide_data.get("slides")
     if not isinstance(slides_field, dict):
         return
@@ -100,6 +104,7 @@ def _normalize_slides_array(slide_data: dict[str, Any]) -> None:
 
 
 def summary_from_document(document: dict[str, Any], *, product: str | None = None) -> MigratedMedia:
+    """Transform a legacy summary document (`summaries`, `plab_summaries`, …) into a `MigratedMedia` row."""
     legacy_id = str(document.get("summary_id") or document.get("id") or "").strip()
     if not legacy_id:
         raise MediaTransformError("summary document has no summary_id")
@@ -134,6 +139,7 @@ def summary_from_document(document: dict[str, Any], *, product: str | None = Non
 
 
 def podcast_from_summary(summary: MigratedMedia) -> MigratedMedia | None:
+    """The derived podcast row for a summary that carries an audio URL, or None if it has none."""
     url = summary.content.get("podcast_url") or summary.content.get("audio_url")
     if not isinstance(url, str) or not url.strip():
         return None
@@ -166,6 +172,7 @@ def podcast_from_summary(summary: MigratedMedia) -> MigratedMedia | None:
 
 
 def blog_from_document(document: dict[str, Any], *, product: str | None = None) -> MigratedMedia:
+    """Transform a legacy blog document (`blogs`, `plab_blogs`, …) into a `MigratedMedia` row."""
     legacy_id = str(document.get("blog_id") or document.get("id") or "").strip()
     if not legacy_id:
         raise MediaTransformError("blog document has no blog_id")
@@ -210,6 +217,7 @@ def blog_from_document(document: dict[str, Any], *, product: str | None = None) 
 
 
 def slide_deck_from_document(document: dict[str, Any], *, product: str | None = None) -> MigratedMedia:
+    """Transform a legacy slide deck document (`slides`, `plab_slides`, …) into a `MigratedMedia` row."""
     legacy_id = str(document.get("slide_id") or document.get("id") or "").strip()
     if not legacy_id:
         raise MediaTransformError("slide document has no slide_id")

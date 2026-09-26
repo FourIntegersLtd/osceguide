@@ -32,11 +32,17 @@ _FEATURE_COLLECTIONS = set(FEATURE_REQUEST_COLLECTIONS.values())
 
 
 def _at(field: str, raw: object) -> dict[str, Any]:
+    """A one-key kwargs dict for `field`, present only when `raw` parses to a timestamp.
+
+    Lets a model constructor take `**_at("created_at", doc.get("created_at"))` and
+    fall back to the column's own default when the legacy document has nothing.
+    """
     at = parse_timestamp(raw)
     return {field: at} if at else {}
 
 
 async def _add_once(session: AsyncSession, report: StepReport, row: Any, noun: str) -> None:
+    """Add `row` unless a row with the same id is already there; either way, count it under `noun`."""
     if await session.get(type(row), row.id) is not None:
         report.count(f"{noun} already there")
         return
@@ -47,6 +53,7 @@ async def _add_once(session: AsyncSession, report: StepReport, row: Any, noun: s
 async def load_cvs(
     session: AsyncSession, documents: Sequence[dict[str, Any]], lookups: Lookups
 ) -> StepReport:
+    """Load legacy CV uploads (`ortho_cvs` etc.) into `cvs`, skipping any whose owner is unresolved."""
     report = StepReport()
     for doc in documents:
         user_id = lookups.user(doc.get("user_id"))
@@ -72,6 +79,7 @@ async def load_cvs(
 async def load_site_messages(
     session: AsyncSession, documents: Sequence[dict[str, Any]], lookups: Lookups
 ) -> StepReport:
+    """Load legacy contact-form and feature-request documents into `site_messages`."""
     report = StepReport()
     for doc in documents:
         collection = str(doc.get("_collection") or "")
@@ -96,6 +104,7 @@ async def load_site_messages(
 
 
 def _recording_key(doc: dict[str, Any]) -> str | None:
+    """A peer-practice session's audio object key, stripped of its `s3://bucket/` prefix, or None."""
     path = str(doc.get("audio_s3_path") or "")
     if path.startswith("s3://"):
         return path.split("/", 3)[-1][:512] or None
@@ -103,6 +112,7 @@ def _recording_key(doc: dict[str, Any]) -> str | None:
 
 
 def _feedback_for(session_doc: dict[str, Any], feedback: dict[str, list[dict]]) -> dict[str, Any]:
+    """The doctor's own feedback for a peer-practice session if there is one, else the patient's, else {}."""
     feedback_rows = feedback.get(str(session_doc.get("session_id") or session_doc.get("id")), [])
     doctor = str(session_doc.get("doctor_user_id") or "")
     return next(
@@ -114,6 +124,13 @@ def _feedback_for(session_doc: dict[str, Any], feedback: dict[str, list[dict]]) 
 async def load_peer_practice(
     session: AsyncSession, sessions: Sequence[dict], feedbacks: Sequence[dict], lookups: Lookups
 ) -> StepReport:
+    """Load legacy human peer-practice sessions into `practice_sessions`, all landing `ended`.
+
+    The platform never scored these, so they get `recording_state="none"` rather
+    than `stopped`, which would show a doctor "marking pending" for a mark that
+    is never coming. Firestore's free-text `consultation_transcript` has no
+    column on this model and is not copied.
+    """
     report = StepReport()
     by_session: dict[str, list[dict]] = {}
     for feedback in feedbacks:

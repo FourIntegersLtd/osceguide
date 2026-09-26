@@ -92,6 +92,7 @@ async def load_exams(session: AsyncSession, spec: Mapping[str, Any], *, now: dat
 async def _publish_rubric(
     session: AsyncSession, entry: Mapping[str, Any], *, code: str, now: datetime
 ) -> uuid.UUID:
+    """Create and publish version 1 of one exam's rubric from its entry in the file."""
     rubric = entry.get("rubric")
     if not isinstance(rubric, Mapping):
         raise InvalidExamsFile(
@@ -114,6 +115,7 @@ async def _publish_rubric(
 
 
 def _seconds(entry: Mapping[str, Any], key: str, code: str) -> int:
+    """A positive whole number of seconds from the entry, or a message naming which exam and field."""
     try:
         value = int(entry[key])
     except (KeyError, TypeError, ValueError) as exc:

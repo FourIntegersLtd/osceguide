@@ -47,6 +47,7 @@ class ExpectedCounts:
 
 
 async def _count(session: AsyncSession, model: type) -> int:
+    """The total number of rows currently in one ORM model's table."""
     return int(await session.scalar(select(func.count()).select_from(model)) or 0)
 
 
@@ -86,6 +87,7 @@ async def imported_counts(session: AsyncSession) -> ExpectedCounts:
 
 
 async def compare_counts(session: AsyncSession, expected: ExpectedCounts) -> list[str]:
+    """Every field where the database's actual imported counts differ from what the export expected."""
     actual = await imported_counts(session)
     problems: list[str] = []
     for field_name in ("users", "entitlements", "attempts", "messages", "results"):
