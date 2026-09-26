@@ -23,8 +23,8 @@ MAX_ATTEMPTS = 5000
 
 async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> AchievementsRead:
     attempts = await attempts_reads.evaluated_for_user(session, user_id, limit=MAX_ATTEMPTS)
-    stations = {a.station_version_id for a in attempts if a.station_version_id is not None}
-    days = sorted({a.created_at.date() for a in attempts})
+    stations = {attempt.station_version_id for attempt in attempts if attempt.station_version_id is not None}
+    days = sorted({attempt.created_at.date() for attempt in attempts})
     longest = _longest_run(days)
     return AchievementsRead(
         station_count=len(stations),

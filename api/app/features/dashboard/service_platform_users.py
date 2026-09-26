@@ -73,7 +73,7 @@ async def list_directory(
         exam_code = None
         except_ = (except_ or set()) | await _covered(session, now=now)
     exam_ids = await entitlements.live_user_ids_for_exam(session, exam_code, now=now) if exam_code else None
-    rows, next_cursor = await accounts.search_users(
+    support_users, next_cursor = await accounts.search_users(
         session,
         query=query,
         limit=limit,
@@ -85,7 +85,7 @@ async def list_directory(
         except_ids=except_,
         no_exam=unassigned,
     )
-    return await _enrich(session, rows, now=now), next_cursor
+    return await _enrich(session, support_users, now=now), next_cursor
 
 
 async def _covered(session: AsyncSession, *, now: datetime) -> set[uuid.UUID]:
@@ -103,41 +103,45 @@ async def read_directory_user_by_id(
     user = await accounts.user_by_id(session, user_id)
     if user is None:
         raise errors.UserNotFound()
-    [row] = await _enrich(session, [user], now=now)
-    return row
+    [directory_user] = await _enrich(session, [user], now=now)
+    return directory_user
 
 
-async def _enrich(session: AsyncSession, rows: list[SupportUser], *, now: datetime) -> list[DirectoryUser]:
-    ids = [row.id for row in rows]
+async def _enrich(
+    session: AsyncSession, support_users: list[SupportUser], *, now: datetime
+) -> list[DirectoryUser]:
+    ids = [support_user.id for support_user in support_users]
     payments = await billing.latest_payment_by_user(session, ids)
     counts = await attempts.attempt_counts(session, ids)
     grants = await entitlements.live_grants_by_user(session, ids, now=now)
     signed_in = await accounts.signed_in_user_ids(session, ids, now=now)
-    out = []
-    for row in rows:
-        live = grants.get(row.id, [])
+    directory_users = []
+    for support_user in support_users:
+        live = grants.get(support_user.id, [])
         ends = [grant.ends_at for grant in live]
-        payment = payments.get(row.id)
-        out.append(
+        payment = payments.get(support_user.id)
+        directory_users.append(
             DirectoryUser(
-                id=row.id,
-                email=row.email,
-                name=row.name,
-                created_at=row.created_at,
-                status=row.status,
-                is_platform_admin=row.is_platform_admin,
-                exam_code=row.exam_code,
-                last_login_at=row.last_login_at,
-                signed_in=row.id in signed_in,
+                id=support_user.id,
+                email=support_user.email,
+                name=support_user.name,
+                created_at=support_user.created_at,
+                status=support_user.status,
+                is_platform_admin=support_user.is_platform_admin,
+                exam_code=support_user.exam_code,
+                last_login_at=support_user.last_login_at,
+                signed_in=support_user.id in signed_in,
                 has_paid=payment is not None,
                 plan_code=payment.plan_code if payment else None,
                 last_paid_at=payment.paid_at if payment else None,
-                access_ends_at=None if not ends or any(end is None for end in ends) else max(ends),  # type: ignore[type-var]
+                access_ends_at=(
+                    None if not ends or any(end is None for end in ends) else max(ends)  # type: ignore[type-var]
+                ),
                 live_exam_codes=sorted({grant.exam_code for grant in live if grant.exam_code}),
-                attempt_count=counts.get(row.id, 0),
+                attempt_count=counts.get(support_user.id, 0),
             )
         )
-    return out
+    return directory_users
 
 
 async def summarise_directory(session: AsyncSession, *, now: datetime) -> DirectorySummary:

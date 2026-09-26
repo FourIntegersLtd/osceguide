@@ -39,64 +39,66 @@ async def my_sittings(
     `org_slugs` comes from the caller's token rather than another query — the
     memberships are already in the JWT, and a slug is display, not access.
     """
-    rows = await sittings.slots_for_trainee(session, user_id)
-    titles = await _titles_per_org(session, rows)
-    live = await attempts.live_attempts_for_slots(session, [row.slot.id for row in rows])
+    trainee_slots = await sittings.slots_for_trainee(session, user_id)
+    titles = await _titles_per_org(session, trainee_slots)
+    live = await attempts.live_attempts_for_slots(
+        session, [trainee_slot.slot.id for trainee_slot in trainee_slots]
+    )
 
     grouped: dict[uuid.UUID, MySitting] = {}
-    for row in rows:
-        entry = grouped.get(row.circuit.id)
+    for trainee_slot in trainee_slots:
+        entry = grouped.get(trainee_slot.circuit.id)
         if entry is None:
             entry = MySitting(
-                id=row.sitting.id,
-                name=row.sitting.name,
-                mode=row.sitting.mode,
-                status=row.sitting.status,
-                scheduled_for=row.sitting.scheduled_for,
-                org_id=row.sitting.org_id,
-                org_slug=org_slugs.get(row.sitting.org_id),
-                circuit_id=row.circuit.id,
-                circuit_name=row.circuit.name,
-                live=_circuit_live(row.circuit),
-                can_join=_circuit_live(row.circuit) and bool(row.circuit.room_name),
-                phase=row.circuit.phase,
-                phase_started_at=row.circuit.phase_started_at,
-                phase_ends_at=row.circuit.phase_ends_at,
-                paused=row.circuit.paused_at is not None,
+                id=trainee_slot.sitting.id,
+                name=trainee_slot.sitting.name,
+                mode=trainee_slot.sitting.mode,
+                status=trainee_slot.sitting.status,
+                scheduled_for=trainee_slot.sitting.scheduled_for,
+                org_id=trainee_slot.sitting.org_id,
+                org_slug=org_slugs.get(trainee_slot.sitting.org_id),
+                circuit_id=trainee_slot.circuit.id,
+                circuit_name=trainee_slot.circuit.name,
+                live=_circuit_live(trainee_slot.circuit),
+                can_join=_circuit_live(trainee_slot.circuit) and bool(trainee_slot.circuit.room_name),
+                phase=trainee_slot.circuit.phase,
+                phase_started_at=trainee_slot.circuit.phase_started_at,
+                phase_ends_at=trainee_slot.circuit.phase_ends_at,
+                paused=trainee_slot.circuit.paused_at is not None,
                 remaining_seconds=sittings.remaining_seconds(
-                    row.circuit.phase_ends_at, paused_at=row.circuit.paused_at, now=now
+                    trainee_slot.circuit.phase_ends_at, paused_at=trainee_slot.circuit.paused_at, now=now
                 ),
-                active_slot_id=row.circuit.active_slot_id,
+                active_slot_id=trainee_slot.circuit.active_slot_id,
                 slots=[],
             )
-            grouped[row.circuit.id] = entry
+            grouped[trainee_slot.circuit.id] = entry
 
-        circuit_live = _circuit_live(row.circuit)
-        is_active = row.circuit.active_slot_id == row.slot.id
-        summary = titles.get(row.slot.station_version_id)
+        circuit_live = _circuit_live(trainee_slot.circuit)
+        is_active = trainee_slot.circuit.active_slot_id == trainee_slot.slot.id
+        summary = titles.get(trainee_slot.slot.station_version_id)
         entry.slots.append(
             MySlot(
-                id=row.slot.id,
-                slot_index=row.slot.slot_index,
-                status=row.slot.status,
-                room_name=row.slot.room_name,
+                id=trainee_slot.slot.id,
+                slot_index=trainee_slot.slot.slot_index,
+                status=trainee_slot.slot.status,
+                room_name=trainee_slot.slot.room_name,
                 station_title=summary.title if summary else None,
                 station_id=summary.station_id if summary else None,
-                station_version_id=row.slot.station_version_id,
-                started_at=row.slot.started_at,
-                ended_at=row.slot.ended_at,
-                exam_completed_at=row.slot.exam_completed_at,
+                station_version_id=trainee_slot.slot.station_version_id,
+                started_at=trainee_slot.slot.started_at,
+                ended_at=trainee_slot.slot.ended_at,
+                exam_completed_at=trainee_slot.slot.exam_completed_at,
                 joinable=_joinable(
-                    row.slot.status,
-                    row.slot.room_name,
-                    row.slot.exam_completed_at is not None,
+                    trainee_slot.slot.status,
+                    trainee_slot.slot.room_name,
+                    trainee_slot.slot.exam_completed_at is not None,
                     circuit_live,
                 ),
-                attempt_id=live[row.slot.id].id if row.slot.id in live else None,
+                attempt_id=live[trainee_slot.slot.id].id if trainee_slot.slot.id in live else None,
                 is_active=is_active,
-                phase=row.circuit.phase if is_active else None,
-                phase_started_at=row.circuit.phase_started_at if is_active else None,
-                phase_ends_at=row.circuit.phase_ends_at if is_active else None,
+                phase=trainee_slot.circuit.phase if is_active else None,
+                phase_started_at=trainee_slot.circuit.phase_started_at if is_active else None,
+                phase_ends_at=trainee_slot.circuit.phase_ends_at if is_active else None,
             )
         )
     return MySittings(items=list(grouped.values()))
@@ -107,7 +109,7 @@ def _circuit_live(circuit: sittings.CircuitRef) -> bool:
 
 
 async def _titles_per_org(
-    session: AsyncSession, rows: list[sittings.TraineeSlot]
+    session: AsyncSession, trainee_slots: list[sittings.TraineeSlot]
 ) -> dict[uuid.UUID, stations.StationSummary]:
     """Station titles, asked for once per organisation.
 
@@ -116,8 +118,8 @@ async def _titles_per_org(
     that owns it. One query per organisation, not one per slot.
     """
     by_org: dict[uuid.UUID, list[uuid.UUID]] = {}
-    for row in rows:
-        by_org.setdefault(row.sitting.org_id, []).append(row.slot.station_version_id)
+    for trainee_slot in trainee_slots:
+        by_org.setdefault(trainee_slot.sitting.org_id, []).append(trainee_slot.slot.station_version_id)
 
     found: dict[uuid.UUID, stations.StationSummary] = {}
     for org_id, version_ids in by_org.items():

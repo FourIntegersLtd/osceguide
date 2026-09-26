@@ -48,7 +48,7 @@ async def build_cohort_summary(
     for slot in slots:
         by_candidate.setdefault(slot.trainee_id, []).append(slot.id)
 
-    rows: list[CohortCandidate] = []
+    candidates: list[CohortCandidate] = []
     for user_id, slot_ids in by_candidate.items():
         finished = [
             slot.id
@@ -62,7 +62,7 @@ async def build_cohort_summary(
 
         ref = people.get(user_id)
         trainee = trainees.get(user_id)
-        rows.append(
+        candidates.append(
             CohortCandidate(
                 trainee=ConsolePerson(
                     user_id=user_id,
@@ -81,12 +81,14 @@ async def build_cohort_summary(
             )
         )
 
-    ranked = sorted(rows, key=_ranking)
+    ranked = sorted(candidates, key=_ranking)
     return CohortSummary(
         sitting_id=sitting_id,
         sitting_name=sitting.name,
         cohort_size=len(ranked),
-        candidates=[row.model_copy(update={"rank": index + 1}) for index, row in enumerate(ranked)],
+        candidates=[
+            candidate.model_copy(update={"rank": index + 1}) for index, candidate in enumerate(ranked)
+        ],
     )
 
 

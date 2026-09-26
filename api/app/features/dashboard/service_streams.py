@@ -57,7 +57,9 @@ def my_sittings_stream(
     Subscribed by user rather than by circuit: a trainee may be rostered onto several at
     once, and every circuit change tells the people on it as well as the console.
     """
-    org_slugs: Mapping[uuid.UUID, str] = {m.org_id: m.org_slug for m in principal.memberships}
+    org_slugs: Mapping[uuid.UUID, str] = {
+        membership.org_id: membership.org_slug for membership in principal.memberships
+    }
 
     async def snapshot() -> Snapshot:
         async with open_session() as session:

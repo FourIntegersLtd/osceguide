@@ -71,13 +71,14 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, exam_code: str | N
         exam_code=exam.code,
         summary=_summary(marked),
         domains=_domains(marked, structure),
-        trend=[TrendPoint(date=m.at, score=round(m.score, 1)) for m in marked],
+        trend=[TrendPoint(date=scored.at, score=round(scored.score, 1)) for scored in marked],
         composition=_composition(marked, structure),
     )
 
 
 @dataclass(frozen=True)
 class _Scored:
+
     at: datetime
     score: float
     domains: Mapping[str, float]
@@ -92,8 +93,13 @@ async def _exam(session: AsyncSession, user_id: uuid.UUID, exam_code: str | None
     is refused by `catalog` as `unknown_exam`.
     """
     if exam_code is not None:
-        row = await catalog.resolve_exam(session, exam_code)
-        return _Exam(id=row.id, code=row.code, rubric_version_id=row.rubric_version_id, org_id=row.org_id)
+        exam_row = await catalog.resolve_exam(session, exam_code)
+        return _Exam(
+            id=exam_row.id,
+            code=exam_row.code,
+            rubric_version_id=exam_row.rubric_version_id,
+            org_id=exam_row.org_id,
+        )
 
     recent = await attempts_reads.recent_for_user(session, user_id, limit=1)
     if not recent:
@@ -137,8 +143,8 @@ async def _score(
     results = await attempts_reads.read_results(session, attempt.id, requester_id=user_id, is_admin=False)
     if not results:
         return None
-    payload = results[-1].payload
-    domains = performance.domain_scores(payload, structure)
+    marking_result = results[-1].payload
+    domains = performance.domain_scores(marking_result, structure)
     score = performance.attempt_score(domains)
     if score is None:
         return None
@@ -148,14 +154,14 @@ async def _score(
         at=attempt.completed_at or attempt.created_at,
         score=score,
         domains=domains,
-        criticals=performance.critical_count(payload, structure),
+        criticals=performance.critical_count(marking_result, structure),
     )
 
 
 def _summary(marked: Sequence[_Scored]) -> PerformanceSummary:
     total = len(marked)
-    passes = sum(1 for m in marked if m.score >= PASS_SCORE)
-    criticals = sum(1 for m in marked if m.criticals)
+    passes = sum(1 for scored in marked if scored.score >= PASS_SCORE)
+    criticals = sum(1 for scored in marked if scored.criticals)
     return PerformanceSummary(
         pass_rate=round(passes / total, 4),
         fail_rate=round((total - passes) / total, 4),
@@ -169,19 +175,19 @@ def _domains(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> 
     A domain no attempt scored is left out rather than shown as a zero — unmarked is not bad.
     """
     labels = performance.domain_labels(structure)
-    out: list[DomainScore] = []
+    domain_scores: list[DomainScore] = []
     for domain_id in performance.scored_domain_ids(structure):
-        scores = [m.domains[domain_id] for m in marked if domain_id in m.domains]
+        scores = [scored.domains[domain_id] for scored in marked if domain_id in scored.domains]
         if not scores:
             continue
-        out.append(
+        domain_scores.append(
             DomainScore(
                 id=domain_id,
                 label=labels.get(domain_id, domain_id),
                 score=round(sum(scores) / len(scores), 1),
             )
         )
-    return out
+    return domain_scores
 
 
 def _band(score: float) -> str:
@@ -194,17 +200,17 @@ def _band(score: float) -> str:
 
 def _composition(marked: Sequence[_Scored], structure: Mapping[str, Any] | None) -> list[DomainComposition]:
     labels = performance.domain_labels(structure)
-    rows: list[DomainComposition] = []
+    compositions: list[DomainComposition] = []
     for domain_id in performance.scored_domain_ids(structure):
         counts = {"red": 0, "amber": 0, "green": 0}
-        for item in marked:
-            score = item.domains.get(domain_id)
+        for scored in marked:
+            score = scored.domains.get(domain_id)
             if score is None:
                 continue
             counts[_band(score)] += 1
         if not any(counts.values()):
             continue
-        rows.append(
+        compositions.append(
             DomainComposition(
                 id=domain_id,
                 label=labels.get(domain_id, domain_id),
@@ -213,7 +219,7 @@ def _composition(marked: Sequence[_Scored], structure: Mapping[str, Any] | None)
                 green=counts["green"],
             )
         )
-    return rows
+    return compositions
 
 
 def _empty(exam_code: str | None) -> Performance:

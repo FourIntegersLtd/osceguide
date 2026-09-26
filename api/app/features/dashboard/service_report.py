@@ -35,21 +35,23 @@ async def build_sitting_report(
     user_ids = sorted({slot.trainee_id for _, slot in slots}, key=str)
     people = await identity.user_refs_by_ids(session, user_ids)
     trainees = await roster.trainees_by_user_id(session, org_id, user_ids)
-    titles = await stations.summaries_by_version_id(session, org_id, [s.station_version_id for _, s in slots])
-    live = await attempts.live_attempts_for_slots(session, [s.id for _, s in slots])
+    titles = await stations.summaries_by_version_id(
+        session, org_id, [slot.station_version_id for _, slot in slots]
+    )
+    live = await attempts.live_attempts_for_slots(session, [slot.id for _, slot in slots])
     decisions = await results.decisions_for_sitting(session, org_id, sitting_id)
-    summaries = await reviews.summaries_for_slots(session, org_id, [s.id for _, s in slots])
+    summaries = await reviews.summaries_for_slots(session, org_id, [slot.id for _, slot in slots])
 
     candidates: list[CandidateReport] = []
     for user_id in user_ids:
-        rows: list[StationReport] = []
+        station_reports: list[StationReport] = []
         for circuit, slot in slots:
             if slot.trainee_id != user_id:
                 continue
             summary = summaries[slot.id]
             attempt = live.get(slot.id)
             title = titles.get(slot.station_version_id)
-            rows.append(
+            station_reports.append(
                 StationReport(
                     slot_id=slot.id,
                     circuit_id=circuit.circuit.id,
@@ -73,9 +75,11 @@ async def build_sitting_report(
                 trainee_id=trainee.id if trainee else None,
                 name=person.name if person else None,
                 email=person.email if person else None,
-                stations=rows,
-                stations_marked=sum(1 for r in rows if r.marked),
-                overall_rag=reviews.combine_ratings([r.overall_rag for r in rows]),
+                stations=station_reports,
+                stations_marked=sum(1 for station_report in station_reports if station_report.marked),
+                overall_rag=reviews.combine_ratings(
+                    [station_report.overall_rag for station_report in station_reports]
+                ),
                 decision=DecisionSummary(
                     workflow_state=decision.workflow_state,
                     assessment_outcome=decision.assessment_outcome,
@@ -101,8 +105,10 @@ async def build_sitting_report(
         totals=ReportTotals(
             candidates=len(candidates),
             stations=len(slots),
-            stations_marked=sum(c.stations_marked for c in candidates),
-            decisions_released=sum(1 for c in candidates if c.decision and c.decision.released_at),
+            stations_marked=sum(candidate.stations_marked for candidate in candidates),
+            decisions_released=sum(
+                1 for candidate in candidates if candidate.decision and candidate.decision.released_at
+            ),
         ),
         candidates=candidates,
     )

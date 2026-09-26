@@ -28,7 +28,7 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
 
     slot_ids = [slot.id for detail in details for slot in detail.slots]
     user_ids = {slot.trainee_id for detail in details for slot in detail.slots}
-    user_ids |= {d.circuit.supervisor_user_id for d in details if d.circuit.supervisor_user_id}
+    user_ids |= {detail.circuit.supervisor_user_id for detail in details if detail.circuit.supervisor_user_id}
     version_ids = [slot.station_version_id for detail in details for slot in detail.slots]
 
     people = await identity.user_refs_by_ids(session, list(user_ids))
@@ -43,14 +43,14 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
             email=ref.email if ref else None,
         )
 
-    rows = []
+    circuits = []
     for detail in details:
         circuit = detail.circuit
-        active = next((s for s in detail.slots if s.id == circuit.active_slot_id), None)
+        active = next((slot for slot in detail.slots if slot.id == circuit.active_slot_id), None)
         attempt = live.get(active.id) if active else None
         summary = titles.get(active.station_version_id) if active else None
 
-        rows.append(
+        circuits.append(
             LiveCircuit(
                 circuit_id=circuit.id,
                 circuit_name=circuit.name,
@@ -61,7 +61,7 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
                 supervisor=(person(circuit.supervisor_user_id) if circuit.supervisor_user_id else None),
                 # Deduplicated in slot order: an exam circuit is one candidate
                 # at every station, so the raw list would name them twelve times.
-                candidates=[person(u) for u in _candidates(detail)],
+                candidates=[person(user_id) for user_id in _candidates(detail)],
                 current_station=(
                     LiveStation(
                         slot_id=active.id,
@@ -87,7 +87,7 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
                 ),
                 stations_total=len(detail.slots),
                 stations_completed=sum(
-                    1 for s in detail.slots if s.status in sittings.FINISHED_SLOT_STATUSES
+                    1 for slot in detail.slots if slot.status in sittings.FINISHED_SLOT_STATUSES
                 ),
                 attempt_id=attempt.id if attempt else None,
                 attempt_status=attempt.status if attempt else None,
@@ -101,7 +101,7 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
                 ),
             )
         )
-    return LiveBoard(as_of=now, circuits=rows)
+    return LiveBoard(as_of=now, circuits=circuits)
 
 
 def _candidates(detail: sittings.CircuitDetail) -> list[uuid.UUID]:

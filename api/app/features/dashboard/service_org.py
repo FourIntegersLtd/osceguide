@@ -72,13 +72,13 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
         setup=setup,
         recent_sittings=[
             OrgSittingRow(
-                id=row.id,
-                name=row.name,
-                mode=row.mode,
-                status=row.status,
-                scheduled_for=row.scheduled_for,
+                id=sitting.id,
+                name=sitting.name,
+                mode=sitting.mode,
+                status=sitting.status,
+                scheduled_for=sitting.scheduled_for,
             )
-            for row in recent
+            for sitting in recent
         ],
     )
 
@@ -87,21 +87,21 @@ async def supervisor_circuits(
     session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID
 ) -> SupervisorCircuits:
     """The circuits assigned to the caller: "your sessions", in one request."""
-    rows = await sittings.supervisor_circuits(session, org_id, user_id)
+    circuits = await sittings.supervisor_circuits(session, org_id, user_id)
     return SupervisorCircuits(
         items=[
             SupervisorCircuitRow(
-                circuit_id=row.circuit.id,
-                circuit_name=row.circuit.name,
-                sitting_id=row.sitting.id,
-                sitting_name=row.sitting.name,
-                mode=row.sitting.mode,
-                status=row.sitting.status,
-                scheduled_for=row.sitting.scheduled_for,
-                slot_count=row.slot_count,
-                in_progress=row.circuit.started_at is not None and row.circuit.ended_at is None,
-                ended=row.circuit.ended_at is not None,
+                circuit_id=circuit.circuit.id,
+                circuit_name=circuit.circuit.name,
+                sitting_id=circuit.sitting.id,
+                sitting_name=circuit.sitting.name,
+                mode=circuit.sitting.mode,
+                status=circuit.sitting.status,
+                scheduled_for=circuit.sitting.scheduled_for,
+                slot_count=circuit.slot_count,
+                in_progress=circuit.circuit.started_at is not None and circuit.circuit.ended_at is None,
+                ended=circuit.circuit.ended_at is not None,
             )
-            for row in rows
+            for circuit in circuits
         ]
     )

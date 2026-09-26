@@ -81,7 +81,7 @@ async def build_readout(
             sitting_id=str(sitting_id),
             name=summary.sitting_name if sitting is None else sitting.name,
             scheduled_for=None if sitting is None else sitting.scheduled_for,
-            required_station_count=max((c.stations_total for c in candidates), default=0),
+            required_station_count=max((candidate.stations_total for candidate in candidates), default=0),
         ),
         summary=readout_summary,
         recommendations=_recommendations(

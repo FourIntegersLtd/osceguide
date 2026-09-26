@@ -73,20 +73,22 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
         exam_codes=list(access.codes),
         current_exam_code=access.current,
         entitlements=[
-            EntitlementSummary(exam_code=g.exam_code, source=g.source, ends_at=g.ends_at, live=g.live)
-            for g in grants
+            EntitlementSummary(
+                exam_code=grant.exam_code, source=grant.source, ends_at=grant.ends_at, live=grant.live
+            )
+            for grant in grants
         ],
-        progress=sorted(progress.values(), key=lambda p: p.exam_code),
+        progress=sorted(progress.values(), key=lambda exam_progress: exam_progress.exam_code),
         recent_attempts=recent,
         sets=[
             SetSummary(
-                id=s.id,
-                name=s.name,
-                exam_code=s.exam_code,
-                attempted_entries=s.attempted_entries,
-                total_entries=s.total_entries,
-                locked=s.locked,
+                id=station_set.id,
+                name=station_set.name,
+                exam_code=station_set.exam_code,
+                attempted_entries=station_set.attempted_entries,
+                total_entries=station_set.total_entries,
+                locked=station_set.locked,
             )
-            for s in sets
+            for station_set in sets
         ],
     )

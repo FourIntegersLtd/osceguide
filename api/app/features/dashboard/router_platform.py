@@ -60,7 +60,7 @@ async def list_directory(
     """Every account, newest first, with the facts beside each: payment, activity,
     entitlements and sign-in status."""
     _ = admin
-    items, next_cursor = await service_platform_users.list_directory(
+    directory_users, next_cursor = await service_platform_users.list_directory(
         session,
         query=q,
         exam_code=exam_code,
@@ -72,7 +72,7 @@ async def list_directory(
         cursor=page.cursor,
         now=clock.now(),
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=directory_users, next_cursor=next_cursor)
 
 
 @router.get(

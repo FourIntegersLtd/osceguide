@@ -21,7 +21,11 @@ def scored_domain_ids(structure: Mapping[str, Any] | None) -> list[str]:
     domains = (structure or {}).get("domains")
     if not isinstance(domains, list):
         return []
-    return [d["id"] for d in domains if isinstance(d, Mapping) and isinstance(d.get("id"), str)]
+    return [
+        domain["id"]
+        for domain in domains
+        if isinstance(domain, Mapping) and isinstance(domain.get("id"), str)
+    ]
 
 
 def domain_labels(structure: Mapping[str, Any] | None) -> dict[str, str]:
@@ -29,26 +33,26 @@ def domain_labels(structure: Mapping[str, Any] | None) -> dict[str, str]:
     domains = (structure or {}).get("domains")
     if not isinstance(domains, list):
         return {}
-    out: dict[str, str] = {}
-    for d in domains:
-        if not isinstance(d, Mapping):
+    labels: dict[str, str] = {}
+    for domain in domains:
+        if not isinstance(domain, Mapping):
             continue
-        domain_id = d.get("id")
+        domain_id = domain.get("id")
         if isinstance(domain_id, str):
-            label = d.get("label")
-            out[domain_id] = label if isinstance(label, str) and label else domain_id
-    return out
+            label = domain.get("label")
+            labels[domain_id] = label if isinstance(label, str) and label else domain_id
+    return labels
 
 
 def ratings_by_domain(
-    payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None
+    marking_result: Mapping[str, Any] | None, structure: Mapping[str, Any] | None
 ) -> dict[str, list[str]]:
     """Every competency rating in this result, grouped by its domain."""
-    if not isinstance(payload, Mapping):
+    if not isinstance(marking_result, Mapping):
         return {}
-    out: dict[str, list[str]] = {}
+    ratings_by_domain_id: dict[str, list[str]] = {}
     for domain_id in scored_domain_ids(structure):
-        block = payload.get(domain_id)
+        block = marking_result.get(domain_id)
         if not isinstance(block, Mapping):
             continue
         ratings = [
@@ -57,24 +61,26 @@ def ratings_by_domain(
             if isinstance(competency, Mapping) and isinstance(competency.get(SCORE_KEY), str)
         ]
         if ratings:
-            out[domain_id] = ratings
-    return out
+            ratings_by_domain_id[domain_id] = ratings
+    return ratings_by_domain_id
 
 
-def domain_scores(payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None) -> dict[str, float]:
+def domain_scores(
+    marking_result: Mapping[str, Any] | None, structure: Mapping[str, Any] | None
+) -> dict[str, float]:
     """One 0–100 score per domain, from the competency ratings inside it.
 
     The majority rating rather than the mean, per `reviews/scoring.py`: three greens and a
     red is a green domain with a red competency in it, not an amber domain.
     """
-    out: dict[str, float] = {}
-    for domain_id, ratings in ratings_by_domain(payload, structure).items():
+    scores: dict[str, float] = {}
+    for domain_id, ratings in ratings_by_domain(marking_result, structure).items():
         # A rating outside the vocabulary leaves the domain unscored rather
         # than raising: that is a migration artefact, not a reader's problem.
         score = reviews.score_for_ratings(ratings)
         if score is not None:
-            out[domain_id] = score
-    return out
+            scores[domain_id] = score
+    return scores
 
 
 def attempt_score(scores: Mapping[str, float]) -> float | None:
@@ -86,7 +92,7 @@ def attempt_score(scores: Mapping[str, float]) -> float | None:
     return reviews.mean_score(list(scores.values()))
 
 
-def critical_count(payload: Mapping[str, Any] | None, structure: Mapping[str, Any] | None) -> int:
+def critical_count(marking_result: Mapping[str, Any] | None, structure: Mapping[str, Any] | None) -> int:
     """How many competencies were rated red.
 
     Counted across every domain rather than per domain, because that is what
@@ -94,7 +100,7 @@ def critical_count(payload: Mapping[str, Any] | None, structure: Mapping[str, An
     """
     return sum(
         1
-        for ratings in ratings_by_domain(payload, structure).values()
+        for ratings in ratings_by_domain(marking_result, structure).values()
         for rating in ratings
         if rating.strip().upper() == "R"
     )
