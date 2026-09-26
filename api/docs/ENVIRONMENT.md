@@ -109,8 +109,8 @@ previous deployment → Redeploy (about two minutes). Do the same for
 platform-worker. A rollback puts old code back but never undoes a migration.
 
 **Migrations only add.** Every deploy runs `alembic upgrade head` before traffic
-moves (`preDeployCommand` in `railway.toml`; the worker's `railway.worker.toml`
-does not, so two migrators never race). Because a rollback keeps the new schema,
+moves (platform-api's pre-deploy command; the worker has none, so two migrators
+never race). Because a rollback keeps the new schema,
 old code must still run on it: add columns and tables freely, and drop or rename
 one only in a later release, after no deployed code uses it.
 
@@ -118,3 +118,24 @@ one only in a later release, after no deployed code uses it.
 and that package refuses to load under `APP_ENV=staging`. Staging's database is
 reachable only from inside Railway's staging environment, where `APP_ENV` is
 always `staging`.
+
+### Railway service settings
+
+These live in the Railway dashboard (service → Settings), not in a file. Railway
+ignores `railway.toml` for services that never used Config as Code, and Config as
+Code ends on 2026-12-01. Set them the same way in both environments; only the
+branch differs.
+
+| Setting | platform-api | platform-worker |
+|---|---|---|
+| Source → Branch | `main` on staging, `production` on production | same |
+| Source → Root directory | `/platform-api` | `/platform-api` |
+| Build → Builder / Dockerfile path | Dockerfile, `/platform-api/Dockerfile` | same |
+| Build → Watch paths | `/platform-api/**` | `/platform-api/**` |
+| Deploy → Custom start command | empty (the Dockerfile's `uvicorn`) | `python -m app.worker.main` |
+| Deploy → Pre-deploy command | `alembic upgrade head` | empty, so two migrators never race |
+| Deploy → Healthcheck path | `/health` | empty (the worker serves no HTTP) |
+
+Railway runs the pre-deploy command in its own step, and its output is not in the
+deploy log. After a deploy with a migration, check that the worker's jobs succeed
+and `/health` reports the new commit.

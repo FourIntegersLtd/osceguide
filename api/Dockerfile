@@ -1,6 +1,7 @@
-# One image, two Railway services: `platform-api` (the default CMD below,
-# configured by railway.toml) and `platform-worker` (railway.worker.toml starts
-# it as `python -m app.worker.main`).
+# One image, two Railway services: `platform-api` (the default CMD below) and
+# `platform-worker` (its start command is `python -m app.worker.main`). Their
+# Railway settings live in the dashboard: docs/ENVIRONMENT.md, "Railway service
+# settings".
 #
 # Two stages. `dependencies` holds the build tools and the private-repo token
 # and installs every package into /opt/venv. The final stage starts again from
@@ -52,9 +53,16 @@ COPY pyproject.toml poetry.lock* ./
 # That is how the first version of this file shipped an image with no marking
 # engine in it and reported success: the `|| true` was swallowing the install's
 # exit code, not just the cleanup's.
-RUN set -eux; \
-    if [ -n "$ENGINE_REPO_TOKEN" ]; then \
-        git config --global url."https://x-access-token:${ENGINE_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"; \
+#
+# The token must never be spelled `$ENGINE_REPO_TOKEN` in this command, and the
+# shell must not trace (`set -x`). Railway prints each build step with every
+# `$NAME` of a build argument replaced by its value, and `-x` prints each command
+# after expansion, so either one writes the token into the build log. `printenv`
+# reads it at run time instead, which neither of them can see.
+RUN set -eu; \
+    engine_repo_token="$(printenv ENGINE_REPO_TOKEN || true)"; \
+    if [ -n "$engine_repo_token" ]; then \
+        git config --global url."https://x-access-token:${engine_repo_token}@github.com/".insteadOf "https://github.com/"; \
     fi; \
     poetry install --only main --no-root; \
     rm -f /root/.gitconfig

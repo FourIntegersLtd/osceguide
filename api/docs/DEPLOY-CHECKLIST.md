@@ -9,7 +9,7 @@ or `b2b-api/**`.
 ## Before deploy
 
 1. **Migrations** — Railway runs `alembic upgrade head` before every platform-api
-   deploy (`preDeployCommand` in `railway.toml`); a failed migration stops the deploy
+   deploy (its pre-deploy command, see ENVIRONMENT.md); a failed migration stops the deploy
    and the previous version keeps serving. Make sure each new migration only adds:
    a rollback keeps the new schema.
 2. **Tests** — `cd platform-api && poetry run pytest -q` (or rely on CI on `main`).
