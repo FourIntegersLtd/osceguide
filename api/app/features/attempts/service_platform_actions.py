@@ -145,5 +145,5 @@ async def fail(
 async def _scoring_jobs(session: AsyncSession, attempt_id: uuid.UUID) -> list[service_jobs.JobRef]:
     """Every scoring job queued for this attempt, so `rescore` can tell a wait from a no-op."""
     return await service_jobs.jobs_for_arg(
-        session, task_name=jobs.SCORING_TASK, key="attempt_id", values=[str(attempt_id)]
+        session, task_name=jobs.SCORING_TASK, key="attempt_id", matching_values=[str(attempt_id)]
     )

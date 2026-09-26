@@ -191,7 +191,7 @@ class AudienceOut(BaseModel):
     group_id: uuid.UUID | None = None
 
     @classmethod
-    def of(cls, row: Any) -> AudienceOut:
+    def from_row(cls, row: Any) -> AudienceOut:
         """Build the outbound shape from a stored row carrying the three audience columns."""
         audience = audience_of(row)
         return cls(visibility=audience.visibility, org_id=audience.org_id, group_id=audience.group_id)

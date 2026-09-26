@@ -254,5 +254,5 @@ async def _status(session: AsyncSession, entry: QueueEntry) -> QueueStatus:
         position=await repository.position_of(session, entry) if entry.status == "waiting" else None,
         waiting_count=await repository.waiting_count(session, entry.exam_id, audience=audience_of(entry)),
         session_id=entry.matched_session_id,
-        audience=AudienceOut.of(entry),
+        audience=AudienceOut.from_row(entry),
     )

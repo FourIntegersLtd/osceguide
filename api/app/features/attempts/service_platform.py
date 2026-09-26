@@ -95,7 +95,7 @@ async def _jobs_by_attempt(
         session,
         task_name=SCORING_TASK,
         key="attempt_id",
-        values=[str(attempt_id) for attempt_id in attempt_ids],
+        matching_values=[str(attempt_id) for attempt_id in attempt_ids],
     )
     jobs_by_attempt: dict[uuid.UUID, list[ScoringJobRead]] = {}
     for job in found:

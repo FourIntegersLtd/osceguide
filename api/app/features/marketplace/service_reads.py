@@ -48,7 +48,7 @@ def post_read(
         note=post.note,
         status=post.status,
         is_mine=post.owner_user_id == viewer_id,
-        audience=AudienceOut.of(post),
+        audience=AudienceOut.from_row(post),
     )
 
 

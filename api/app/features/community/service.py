@@ -293,7 +293,7 @@ async def read_many(session: AsyncSession, posts: list[Post], *, viewer_id: uuid
             # happen: a None here would fail the schema instead of reading
             # as the empty list it means.
             tags=list(post.tags or []),
-            audience=AudienceOut.of(post),
+            audience=AudienceOut.from_row(post),
             like_count=counts.get(post.id, 0),
             liked_by_me=post.id in mine,
             reply_count=reply_counts.get(post.id, 0),
