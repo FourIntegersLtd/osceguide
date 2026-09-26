@@ -18,17 +18,20 @@ class TraineeRevoked(Exception):
 
 @dataclass(frozen=True)
 class TraineeState:
+
     access_revoked: bool
 
 
 @dataclass(frozen=True)
 class GroupRef:
+
     group_id: str
     members: Sequence[str]
 
 
 @dataclass(frozen=True)
 class RosterWarning:
+
     code: str
     group_id: str
 

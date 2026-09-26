@@ -30,10 +30,10 @@ async def list_trainees(
     workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.TraineeRead]:
     """Readable by any member: a supervisor needs names to run a circuit."""
-    items, next_cursor = await service.list_trainees(
+    trainees, next_cursor = await service.list_trainees(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
     )
-    return Page(items=items, next_cursor=next_cursor)
+    return Page(items=trainees, next_cursor=next_cursor)
 
 
 @router.post(

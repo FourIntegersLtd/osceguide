@@ -31,12 +31,12 @@ async def add_cohort(
 ) -> CohortRead:
     if await repository_groups.cohort_by_name(session, org_id, name) is not None:
         raise errors.CohortExists()
-    row = await repository_groups.create_cohort(session, org_id, name=name, academic_year=academic_year)
-    return _cohort_read(row)
+    cohort = await repository_groups.create_cohort(session, org_id, name=name, academic_year=academic_year)
+    return _cohort_read(cohort)
 
 
 async def list_cohorts(session: AsyncSession, org_id: uuid.UUID) -> list[CohortRead]:
-    return [_cohort_read(r) for r in await repository_groups.list_cohorts(session, org_id)]
+    return [_cohort_read(cohort) for cohort in await repository_groups.list_cohorts(session, org_id)]
 
 
 async def update_cohort(
@@ -50,14 +50,14 @@ async def update_cohort(
     """Rename an intake, or say which academic year it is. Only what was sent is
     written. Renaming the row keeps its trainees; nothing has to be moved.
     """
-    row = await _require_cohort(session, org_id, cohort_id)
+    cohort = await _require_cohort(session, org_id, cohort_id)
     named = set(_COHORT_FIELDS) & fields_sent
     name = body.name if "name" in named else None
-    if name is not None and name != row.name:
+    if name is not None and name != cohort.name:
         # `(org_id, name)` is unique, and the database refuses it, which an
         # administrator reading "internal error" cannot act on.
         taken = await repository_groups.cohort_by_name(session, org_id, name)
-        if taken is not None and taken.id != row.id:
+        if taken is not None and taken.id != cohort.id:
             raise errors.CohortExists()
     await repository_groups.update_cohort(
         session,
@@ -86,14 +86,14 @@ async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uui
 async def add_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) -> GroupRead:
     if await repository_groups.group_by_label(session, org_id, label) is not None:
         raise errors.GroupExists()
-    row = await repository_groups.create_group(session, org_id, label=label)
-    return GroupRead(id=row.id, label=row.label, member_count=0)
+    group = await repository_groups.create_group(session, org_id, label=label)
+    return GroupRead(id=group.id, label=group.label, member_count=0)
 
 
 async def list_groups(session: AsyncSession, org_id: uuid.UUID) -> list[GroupRead]:
     return [
-        GroupRead(id=g.id, label=g.label, member_count=count)
-        for g, count in await repository_groups.list_groups(session, org_id)
+        GroupRead(id=group.id, label=group.label, member_count=member_count)
+        for group, member_count in await repository_groups.list_groups(session, org_id)
     ]
 
 
@@ -150,12 +150,18 @@ async def resolve_roster(
     for group_id in group_ids:
         await _require_group(session, org_id, group_id)
         members = await repository_groups.group_member_ids(session, group_id)
-        groups.append(domain.GroupRef(group_id=str(group_id), members=[str(m) for m in members]))
+        groups.append(
+            domain.GroupRef(group_id=str(group_id), members=[str(member_id) for member_id in members])
+        )
 
-    resolved, warnings = domain.resolve_roster(explicit=[str(t) for t in trainee_ids], groups=groups)
+    resolved, warnings = domain.resolve_roster(
+        explicit=[str(trainee_id) for trainee_id in trainee_ids], groups=groups
+    )
     return ResolvedRoster(
-        trainee_ids=[uuid.UUID(t) for t in resolved],
-        warnings=[RosterWarningRead(code=w.code, group_id=uuid.UUID(w.group_id)) for w in warnings],
+        trainee_ids=[uuid.UUID(trainee_id) for trainee_id in resolved],
+        warnings=[
+            RosterWarningRead(code=warning.code, group_id=uuid.UUID(warning.group_id)) for warning in warnings
+        ],
     )
 
 
@@ -164,18 +170,20 @@ async def _member_count(session: AsyncSession, group_id: uuid.UUID) -> int:
 
 
 async def _require_group(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> TraineeGroup:
-    row = await repository_groups.group_by_id(session, org_id, group_id)
-    if row is None:
+    group = await repository_groups.group_by_id(session, org_id, group_id)
+    if group is None:
         raise errors.GroupNotFound()
-    return row
+    return group
 
 
 async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> Cohort:
-    row = await repository_groups.cohort_by_id(session, org_id, cohort_id)
-    if row is None:
+    cohort = await repository_groups.cohort_by_id(session, org_id, cohort_id)
+    if cohort is None:
         raise errors.CohortNotFound()
-    return row
+    return cohort
 
 
-def _cohort_read(row: Cohort) -> CohortRead:
-    return CohortRead(id=row.id, name=row.name, academic_year=row.academic_year, status=row.status)
+def _cohort_read(cohort: Cohort) -> CohortRead:
+    return CohortRead(
+        id=cohort.id, name=cohort.name, academic_year=cohort.academic_year, status=cohort.status
+    )

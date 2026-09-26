@@ -35,7 +35,7 @@ async def add_trainee(
 ) -> TraineeRead:
     if await repository.trainee_by_email(session, org_id, email) is not None:
         raise errors.TraineeExists()
-    row = await repository.create_trainee(
+    trainee = await repository.create_trainee(
         session,
         org_id,
         email=email,
@@ -55,9 +55,9 @@ async def add_trainee(
             invited_to=org.name if org else "your institution",
             now=now,
         )
-    await repository.link_trainee_to_user(session, org_id, row.id, user_id=existing.id)
-    await session.refresh(row)
-    return _trainee_read(row)
+    await repository.link_trainee_to_user(session, org_id, trainee.id, user_id=existing.id)
+    await session.refresh(trainee)
+    return _trainee_read(trainee)
 
 
 def _display_name(first: str | None, last: str | None, email: str) -> str:
@@ -67,8 +67,8 @@ def _display_name(first: str | None, last: str | None, email: str) -> str:
 async def list_trainees(
     session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[TraineeRead], str | None]:
-    rows, next_cursor = await repository.list_trainees(session, org_id, limit=limit, cursor=cursor)
-    return [_trainee_read(r) for r in rows], next_cursor
+    trainees, next_cursor = await repository.list_trainees(session, org_id, limit=limit, cursor=cursor)
+    return [_trainee_read(trainee) for trainee in trainees], next_cursor
 
 
 async def set_access(
@@ -86,22 +86,22 @@ async def set_access(
 
 
 async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> Trainee:
-    row = await repository.trainee_by_id(session, org_id, trainee_id)
-    if row is None:
+    trainee = await repository.trainee_by_id(session, org_id, trainee_id)
+    if trainee is None:
         raise errors.TraineeNotFound()
-    return row
+    return trainee
 
 
-def _trainee_read(row: Trainee) -> TraineeRead:
+def _trainee_read(trainee: Trainee) -> TraineeRead:
     return TraineeRead(
-        id=row.id,
-        email=row.email,
-        first_name=row.first_name,
-        last_name=row.last_name,
-        cohort_id=row.cohort_id,
-        user_id=row.user_id,
-        access_revoked=row.access_revoked_at is not None,
-        anonymised=row.anonymised_at is not None,
+        id=trainee.id,
+        email=trainee.email,
+        first_name=trainee.first_name,
+        last_name=trainee.last_name,
+        cohort_id=trainee.cohort_id,
+        user_id=trainee.user_id,
+        access_revoked=trainee.access_revoked_at is not None,
+        anonymised=trainee.anonymised_at is not None,
     )
 
 
@@ -141,7 +141,7 @@ async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> Vie
     memberships = await tenancy.memberships_for_token(session, user_id)
     groups = await repository_groups.group_ids_for_user(session, user_id)
     return ViewerAudiences(
-        org_ids=frozenset(m.org_id for m in memberships),
+        org_ids=frozenset(membership.org_id for membership in memberships),
         group_ids=frozenset(groups),
     )
 
@@ -155,15 +155,15 @@ async def trainees_by_user_id(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, TraineeRead]:
     """Roster entries keyed by user id, for a caller holding slots (which name a `users.id`)."""
-    rows = await repository.trainees_for_users(session, org_id, list(user_ids))
-    return {row.user_id: _trainee_read(row) for row in rows if row.user_id is not None}
+    trainees = await repository.trainees_for_users(session, org_id, list(user_ids))
+    return {trainee.user_id: _trainee_read(trainee) for trainee in trainees if trainee.user_id is not None}
 
 
 async def claim_roster_entries(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
     """Connect a new account to the roster entries already waiting for it, by email."""
-    for row in await repository.trainees_by_email_everywhere(session, email):
-        if row.user_id is None:
-            await repository.link_trainee_to_user(session, row.org_id, row.id, user_id=user_id)
+    for trainee in await repository.trainees_by_email_everywhere(session, email):
+        if trainee.user_id is None:
+            await repository.link_trainee_to_user(session, trainee.org_id, trainee.id, user_id=user_id)
 
 
 async def ensure_rosterable(session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]) -> None:
@@ -202,12 +202,12 @@ async def add_trainees(
     Duplicates within the upload are skipped after the first, by normalised
     address, so a spreadsheet with the same person twice does not fail on the second.
     """
-    result = BulkTraineesResult()
+    outcome = BulkTraineesResult()
     seen: set[str] = set()
     for entry in entries:
         key = entry.email.strip().lower()
         if key in seen:
-            result.skipped.append(SkippedTrainee(email=entry.email, code=errors.TraineeExists.code))
+            outcome.skipped.append(SkippedTrainee(email=entry.email, code=errors.TraineeExists.code))
             continue
         seen.add(key)
         try:
@@ -221,7 +221,7 @@ async def add_trainees(
                 now=now,
             )
         except errors.TraineeExists as exc:
-            result.skipped.append(SkippedTrainee(email=entry.email, code=exc.code))
+            outcome.skipped.append(SkippedTrainee(email=entry.email, code=exc.code))
             continue
-        result.created.append(created)
-    return result
+        outcome.created.append(created)
+    return outcome

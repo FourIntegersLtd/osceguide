@@ -88,8 +88,8 @@ async def anonymise_trainee(
     address and name, not the decision. Idempotent: re-anonymising an already
     scrubbed row is a no-op that still answers 200, not a second audit row.
     """
-    row = await _require_trainee(session, org_id, trainee_id)
-    if row.anonymised_at is None:
+    trainee = await _require_trainee(session, org_id, trainee_id)
+    if trainee.anonymised_at is None:
         await repository.anonymise_trainee(
             session, org_id, trainee_id, email=f"anon-{trainee_id}@anonymised.invalid", at=now
         )
@@ -116,20 +116,20 @@ async def resend_invitation(
     invited rather than refused, since for that person this is the first
     invitation as much as the second.
     """
-    row = await _require_trainee(session, org_id, trainee_id)
+    trainee = await _require_trainee(session, org_id, trainee_id)
     org = await tenancy.org_ref_by_id(session, org_id)
     invited_to = org.name if org else "your institution"
-    user_id = row.user_id
+    user_id = trainee.user_id
     if user_id is None:
-        # Nothing linked this row. If an account holds the address, link it; if
-        # not, this is the first invitation rather than a repeat, and the row
+        # Nothing linked this trainee. If an account holds the address, link it; if
+        # not, this is the first invitation rather than a repeat, and the trainee
         # gets linked on the way out.
-        ref = await identity.user_ref_by_email(session, row.email)
+        ref = await identity.user_ref_by_email(session, trainee.email)
         if ref is None:
             created = await invitations.invite_user(
                 session,
-                email=row.email,
-                name=_display_name(row.first_name, row.last_name, row.email),
+                email=trainee.email,
+                name=_display_name(trainee.first_name, trainee.last_name, trainee.email),
                 invited_to=invited_to,
                 now=now,
             )
@@ -139,4 +139,4 @@ async def resend_invitation(
         await repository.link_trainee_to_user(session, org_id, trainee_id, user_id=user_id)
     if not await invitations.reissue_invitation(session, user_id=user_id, invited_to=invited_to, now=now):
         raise errors.InvitationNotPending()
-    return InvitationRead(email=row.email, invited_to=invited_to)
+    return InvitationRead(email=trainee.email, invited_to=invited_to)

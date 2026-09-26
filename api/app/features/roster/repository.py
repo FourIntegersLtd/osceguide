@@ -26,17 +26,17 @@ async def create_trainee(
     last_name: str | None,
     cohort_id: uuid.UUID | None,
 ) -> Trainee:
-    row = Trainee(
+    trainee = Trainee(
         org_id=org_id,
         email=normalize_email(email),
         first_name=first_name,
         last_name=last_name,
         cohort_id=cohort_id,
     )
-    session.add(row)
+    session.add(trainee)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(trainee)
+    return trainee
 
 
 async def trainee_by_id(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> Trainee | None:

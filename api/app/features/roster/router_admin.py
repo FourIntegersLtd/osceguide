@@ -105,6 +105,7 @@ async def remove_group(group_id: uuid.UUID, workspace: OrgAdmin, session: Sessio
     await service_groups.delete_group(session, workspace.org_id, group_id)
 
 
+# Renames a cohort, or changes its academic year.
 @router.patch(
     "/orgs/{org_slug}/cohorts/{cohort_id}",
     response_model=schemas.CohortRead,

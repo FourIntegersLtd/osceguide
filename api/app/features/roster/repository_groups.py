@@ -18,11 +18,11 @@ from app.features.roster.models import Cohort, Trainee, TraineeGroup, TraineeGro
 async def create_cohort(
     session: AsyncSession, org_id: uuid.UUID, *, name: str, academic_year: str | None
 ) -> Cohort:
-    row = Cohort(org_id=org_id, name=name, academic_year=academic_year, status="active")
-    session.add(row)
+    cohort = Cohort(org_id=org_id, name=name, academic_year=academic_year, status="active")
+    session.add(cohort)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(cohort)
+    return cohort
 
 
 async def list_cohorts(session: AsyncSession, org_id: uuid.UUID) -> list[Cohort]:
@@ -93,11 +93,11 @@ async def count_trainees_in_cohort(session: AsyncSession, org_id: uuid.UUID, coh
 
 
 async def create_group(session: AsyncSession, org_id: uuid.UUID, *, label: str) -> TraineeGroup:
-    row = TraineeGroup(org_id=org_id, label=label, label_normalized=normalize_label(label))
-    session.add(row)
+    group = TraineeGroup(org_id=org_id, label=label, label_normalized=normalize_label(label))
+    session.add(group)
     await session.flush()
-    await session.refresh(row)
-    return row
+    await session.refresh(group)
+    return group
 
 
 async def group_by_id(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> TraineeGroup | None:
@@ -121,7 +121,7 @@ async def list_groups(session: AsyncSession, org_id: uuid.UUID) -> list[tuple[Tr
         .group_by(TraineeGroup.id)
         .order_by(TraineeGroup.label)
     )
-    return [(row[0], row[1]) for row in (await session.execute(stmt)).all()]
+    return [(group, member_count) for group, member_count in (await session.execute(stmt)).all()]
 
 
 async def update_group_label(
@@ -156,7 +156,12 @@ async def set_group_members(
     partial update would leave whoever they removed still in it.
     """
     await session.execute(delete(TraineeGroupMember).where(TraineeGroupMember.group_id == group_id))
-    session.add_all([TraineeGroupMember(group_id=group_id, trainee_id=t) for t in dict.fromkeys(trainee_ids)])
+    session.add_all(
+        [
+            TraineeGroupMember(group_id=group_id, trainee_id=trainee_id)
+            for trainee_id in dict.fromkeys(trainee_ids)
+        ]
+    )
     await session.flush()
 
 

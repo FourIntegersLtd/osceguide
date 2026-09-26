@@ -55,6 +55,7 @@ class Trainee(Base, UUIDPrimaryKey, Timestamps):
 
 
 class TraineeGroup(Base, UUIDPrimaryKey, Timestamps):
+
     __tablename__ = "trainee_groups"
     __table_args__ = (UniqueConstraint("org_id", "label_normalized", name="uq_trainee_groups_org_label"),)
 
