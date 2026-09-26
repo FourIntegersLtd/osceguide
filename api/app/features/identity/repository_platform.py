@@ -105,6 +105,8 @@ async def count_users_matching(
     except_ids: Collection[uuid.UUID] | None = None,
     no_exam: bool = False,
 ) -> int:
+    """How many accounts `search_users` would page through with these same
+    filters, for the directory's total count rather than its page size."""
     stmt = _facets(
         select(func.count()).select_from(User),
         status=status,
@@ -144,6 +146,7 @@ async def set_platform_admin(session: AsyncSession, user_id: uuid.UUID, *, is_ad
 
 
 async def list_platform_admins(session: AsyncSession, *, limit: int) -> list[User]:
+    """Every account carrying `is_platform_admin`, newest first."""
     stmt = select(User).where(User.is_platform_admin.is_(True)).order_by(User.created_at.desc()).limit(limit)
     return list((await session.execute(stmt)).scalars())
 

@@ -6,18 +6,21 @@ from app.core.errors import Conflict, InvalidInput, NotFound, Unauthenticated, U
 
 
 class EmailTaken(Conflict):
+    """Refuses registration for an address another account already holds."""
 
     code = "email_taken"
     default_message = "That email address is already registered"
 
 
 class WeakPasswordError(InvalidInput):
+    """Refuses a password `domain.validate_password` rejects."""
 
     code = "weak_password"
     default_message = "Choose a stronger password"
 
 
 class InvalidCredentials(Unauthenticated):
+    """Refuses a sign-in whose address is unknown or whose password is wrong."""
 
     code = "invalid_credentials"
     # Deliberately the same message whether the address is unknown or the
@@ -26,6 +29,7 @@ class InvalidCredentials(Unauthenticated):
 
 
 class InvalidRefreshToken(Unauthenticated):
+    """Refuses a refresh token that is unknown, expired, or already revoked."""
 
     code = "invalid_refresh_token"
     default_message = "Sign in again"
@@ -43,12 +47,14 @@ class RefreshTokenReused(InvalidRefreshToken):
 
 
 class InvalidResetToken(InvalidInput):
+    """Refuses a password-reset token that is unknown, expired, or spent."""
 
     code = "invalid_reset_token"
     default_message = "That reset link has expired or has already been used"
 
 
 class AccountSuspended(Unauthenticated):
+    """Refuses sign-in for an account whose status is not `active`."""
 
     code = "account_suspended"
     default_message = "This account is not active"

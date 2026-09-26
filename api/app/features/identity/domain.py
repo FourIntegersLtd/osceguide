@@ -83,6 +83,10 @@ def password_for_hashing(raw: str) -> str:
 
 
 def validate_password(raw: str) -> None:
+    """Refuse a password that is too short, or that mixes fewer than two of
+    lower case, upper case, digit and punctuation — raises `WeakPassword`
+    rather than returning a verdict, since every caller's next step on
+    failure is the same: stop and tell the person why."""
     if len(raw) < MIN_PASSWORD_LENGTH:
         raise WeakPassword(f"Use at least {MIN_PASSWORD_LENGTH} characters")
     classes = (
@@ -107,6 +111,12 @@ class RefreshChain:
 
 @dataclass(frozen=True)
 class RefreshDecision:
+    """Whether a presented refresh token may be exchanged, and why not.
+
+    `revoke_chain` is set only for reuse: the chain must die even though this
+    one request is refused, because a spent token being presented again means
+    somebody else already holds it.
+    """
 
     accepted: bool
     revoke_chain: bool = False
@@ -131,6 +141,12 @@ def use_refresh_token(chain: RefreshChain, *, presented_token_id: str, now: date
 
 
 def may_call(*, must_change_password: bool, route: str) -> bool:
+    """Whether this route may run for an account holding a temporary password.
+
+    Everything is refused except the handful of routes named in
+    `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED`, so a forced reset cannot be
+    sidestepped by simply calling some other route instead.
+    """
     if not must_change_password:
         return True
     return route in ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED

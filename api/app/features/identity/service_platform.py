@@ -38,6 +38,7 @@ class SupportUser:
 
 
 def _support(user: User) -> SupportUser:
+    """The console's read shape for one account."""
     return SupportUser(
         id=user.id,
         email=user.email,
@@ -128,6 +129,7 @@ async def signed_in_user_ids(
 
 
 async def user_by_id(session: AsyncSession, user_id: uuid.UUID) -> SupportUser | None:
+    """One account for the console, or None for an id nothing matches."""
     user = await repository.user_by_id(session, user_id)
     return None if user is None else _support(user)
 

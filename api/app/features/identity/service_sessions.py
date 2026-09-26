@@ -64,6 +64,8 @@ async def issue(
     now: datetime,
     memberships: list[Membership],
 ) -> TokenPair:
+    """Start a new sign-in: mint an access token and the first refresh token
+    of a fresh chain."""
     principal = _principal_for(user, memberships=memberships)
     raw_refresh, token_hash = new_token()
     await repository.create_refresh_chain(
@@ -88,6 +90,11 @@ async def login_with_memberships(
     settings: Settings,
     now: datetime,
 ) -> AuthResult:
+    """The ordinary password sign-in. Refuses `invalid_credentials` alike for
+    an unknown address and a wrong password, `password_login_disabled` for an
+    account an SSO arrangement has switched to signing in elsewhere, and
+    `account_suspended` for one whose status is not active — checked in that
+    order so a suspended account is never told its password was merely wrong."""
     user = await repository.user_by_email(session, email)
     if user is None:
         # Verified against a dummy hash so an unknown address costs the same
@@ -121,6 +128,12 @@ async def refresh(
     settings: Settings,
     now: datetime,
 ) -> TokenPair:
+    """Trade a refresh token for a new pair, rotating the chain. Refuses
+    `invalid_refresh_token` for one unknown, revoked or expired, and raises
+    `RefreshTokenReused` (revoking the whole chain first) for one already
+    spent, since that shape means somebody else holds a copy of it. Also
+    ends the chain and refuses for an account a suspension has caught up
+    with since the token was issued."""
     presented = hash_token(refresh_token)
     token = await repository.refresh_token_by_hash(session, presented)
     if token is None:

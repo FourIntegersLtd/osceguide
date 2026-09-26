@@ -29,6 +29,7 @@ def hash_token(raw: str) -> str:
 
 
 def new_token() -> tuple[str, str]:
+    """A fresh random secret, and the hash of it that alone reaches storage."""
     raw = secrets.token_urlsafe(TOKEN_BYTES)
     return raw, hash_token(raw)
 
@@ -38,6 +39,10 @@ def hash_password(raw: str) -> str:
 
 
 def verify_password(password_hash: str | None, raw: str) -> bool:
+    """Whether this password matches the stored hash. Refuses (returns
+    False) rather than raises for a missing hash, a wrong password, or a
+    hash argon2 itself calls unreadable — every one of those is simply not
+    a match, not a reason to stop the caller."""
     if not password_hash:
         return False
     try:
@@ -58,5 +63,9 @@ _ABSENT_USER_HASH = _hasher.hash("password-for-an-account-that-does-not-exist")
 
 
 def verify_absent_password(raw: str) -> bool:
+    """Spend the same argon2 time an unknown address's login would, then
+    always refuse. Called so that address-not-found and wrong-password take
+    the same wall-clock time, which is what stops timing from being a
+    second, unofficial account-enumeration oracle alongside the message."""
     verify_password(_ABSENT_USER_HASH, raw)
     return False

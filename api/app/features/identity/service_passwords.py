@@ -56,6 +56,11 @@ async def begin_password_reset(
 
 
 async def confirm_password_reset(session: AsyncSession, *, token: str, password: str, now: datetime) -> None:
+    """Redeem a reset link for a new password, refusing `invalid_reset_token`
+    for one that is unknown, spent, expired, or belongs to an account whose
+    password sign-in an SSO arrangement has since disabled. Ends every
+    existing session on success, since a reset is itself a sign that one
+    of them may not be the account's owner."""
     try:
         validate_password(password)
     except WeakPassword as exc:
@@ -83,6 +88,10 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
 async def change_password(
     session: AsyncSession, *, user_id: uuid.UUID, current: str, new: str, now: datetime
 ) -> None:
+    """Set a new password once the current one is proved, refusing
+    `invalid_credentials` for an unknown account or a wrong current
+    password. Ends every other session, so a credential a thief also
+    knows does not survive the owner locking them out."""
     try:
         validate_password(new)
     except WeakPassword as exc:

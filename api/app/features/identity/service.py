@@ -115,6 +115,9 @@ async def register(
 async def read_me(
     session: AsyncSession, *, principal: Principal, memberships_for: MembershipLookup
 ) -> UserRead:
+    """The signed-in person, refusing `invalid_credentials` for a valid token
+    naming an account that no longer exists — the same code a bad token gets,
+    since the caller's next move is identical either way."""
     user = await repository.user_by_id(session, principal.user_id)
     if user is None:
         raise InvalidCredentials()
@@ -180,6 +183,7 @@ async def user_ref_by_id(session: AsyncSession, user_id: uuid.UUID) -> UserRef |
 
 
 def _ref(user: User) -> UserRef:
+    """The small, cross-slice shape another feature may hold about a person."""
     return UserRef(
         id=user.id,
         email=user.email,

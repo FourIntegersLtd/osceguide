@@ -24,6 +24,12 @@ from app.core.db import Base, Timestamps, UUIDPrimaryKey
 
 
 class User(Base, UUIDPrimaryKey, Timestamps):
+    """One person, however many organisations they belong to.
+
+    `password_hash` is nullable because an SSO-only account never gets one;
+    `password_login_disabled` is what then makes that a stated refusal rather
+    than a login that simply never verifies.
+    """
 
     __tablename__ = "users"
 
@@ -114,6 +120,8 @@ class RefreshToken(Base, UUIDPrimaryKey, Timestamps):
 
 
 class PasswordResetToken(Base, UUIDPrimaryKey, Timestamps):
+    """One issued reset link. `used_at` marks it spent so a link cannot be
+    redeemed twice, whether or not the password it set is still current."""
 
     __tablename__ = "password_reset_tokens"
 

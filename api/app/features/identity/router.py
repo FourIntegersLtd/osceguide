@@ -1,3 +1,5 @@
+"""Registration, sign-in, refresh, logout and the password-reset flow."""
+
 from __future__ import annotations
 
 from typing import Annotated

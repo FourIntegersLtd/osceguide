@@ -30,6 +30,8 @@ async def create_user(
     exam_code: str | None = None,
     password_login_disabled: bool = False,
 ) -> User:
+    """Write a new account. The caller has already checked the email is free
+    and, for a password account, that the password is strong enough."""
     user = User(
         email=normalize_email(email),
         name=name,
@@ -47,6 +49,8 @@ async def create_user(
 
 
 async def user_by_email(session: AsyncSession, email: str) -> User | None:
+    """The account with this address, or None — normalising first, since
+    the column is case-sensitive `citext` collision aside."""
     stmt = select(User).where(User.email == normalize_email(email))
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -56,6 +60,8 @@ async def user_by_id(session: AsyncSession, user_id: uuid.UUID) -> User | None:
 
 
 async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:
+    """Store a new password hash and clear the forced-reset flag: setting one
+    is what ends a temporary password's temporariness."""
     await session.execute(
         update(User).where(User.id == user_id).values(password_hash=password_hash, must_change_password=False)
     )
@@ -77,12 +83,15 @@ async def disable_password_login(session: AsyncSession, user_id: uuid.UUID) -> N
 async def link_identity(
     session: AsyncSession, *, user_id: uuid.UUID, provider: str, subject: str, tenant_slug: str | None
 ) -> UserIdentity:
+    """Record that this external subject now speaks for this account."""
     identity = UserIdentity(user_id=user_id, provider=provider, subject=subject, tenant_slug=tenant_slug)
     session.add(identity)
     return identity
 
 
 async def identity_by_subject(session: AsyncSession, provider: str, subject: str) -> UserIdentity | None:
+    """Which account this provider's subject is linked to, or None if it has
+    never signed in here before."""
     stmt = select(UserIdentity).where(UserIdentity.provider == provider, UserIdentity.subject == subject)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -111,6 +120,7 @@ async def create_refresh_chain(
     expires_at: datetime,
     user_agent: str | None = None,
 ) -> RefreshChain:
+    """Start a new sign-in: a chain and its first token, ready to rotate."""
     chain = RefreshChain(user_id=user_id, expires_at=expires_at, user_agent=user_agent)
     session.add(chain)
     await session.flush()
@@ -119,11 +129,14 @@ async def create_refresh_chain(
 
 
 async def refresh_token_by_hash(session: AsyncSession, token_hash: str) -> RefreshToken | None:
+    """The issued token this hash matches, or None for one this platform
+    never minted or has already forgotten."""
     stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def refresh_chain_by_id(session: AsyncSession, chain_id: uuid.UUID) -> RefreshChain | None:
+    """The sign-in a refresh token's chain id names, or None if it is gone."""
     stmt = select(RefreshChain).where(RefreshChain.id == chain_id)
     return (await session.execute(stmt)).scalar_one_or_none()
 
@@ -139,6 +152,8 @@ async def spend_and_issue(
 async def revoke_refresh_chain(
     session: AsyncSession, *, chain_id: uuid.UUID, at: datetime, reason: str
 ) -> None:
+    """End one sign-in: every refresh token issued from this chain stops
+    working, whatever token was last handed out."""
     await session.execute(
         update(RefreshChain).where(RefreshChain.id == chain_id).values(revoked_at=at, revoked_reason=reason)
     )
@@ -147,6 +162,8 @@ async def revoke_refresh_chain(
 async def revoke_all_chains_for_user(
     session: AsyncSession, *, user_id: uuid.UUID, at: datetime, reason: str
 ) -> None:
+    """End every sign-in this account still has open, such as on logout
+    without a specific token, a password change, or a suspicious reset."""
     await session.execute(
         update(RefreshChain)
         .where(RefreshChain.user_id == user_id, RefreshChain.revoked_at.is_(None))
@@ -160,17 +177,22 @@ async def revoke_all_chains_for_user(
 async def create_reset_token(
     session: AsyncSession, *, user_id: uuid.UUID, token_hash: str, expires_at: datetime
 ) -> PasswordResetToken:
+    """Mint a fresh reset link for this account. The caller is responsible
+    for spending any earlier unused link first, so only the newest works."""
     token = PasswordResetToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
     session.add(token)
     return token
 
 
 async def reset_token_by_hash(session: AsyncSession, token_hash: str) -> PasswordResetToken | None:
+    """The reset link this hash matches, or None for one that was never
+    issued or that this table has since forgotten."""
     stmt = select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def mark_reset_token_used(session: AsyncSession, *, token_id: uuid.UUID, at: datetime) -> None:
+    """Spend this one reset link so it cannot be redeemed a second time."""
     await session.execute(
         update(PasswordResetToken).where(PasswordResetToken.id == token_id).values(used_at=at)
     )
