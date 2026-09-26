@@ -29,6 +29,7 @@ _COLUMNS = "id, queue_name, task_name, status, attempts, scheduled_at, args, loc
 
 @dataclass(frozen=True)
 class JobRef:
+
     id: int
     queue_name: str
     task_name: str
@@ -40,36 +41,38 @@ class JobRef:
     queueing_lock: str | None
 
 
-def _ref(row: Any) -> JobRef:
+def _ref(job_row: Any) -> JobRef:
     return JobRef(
-        id=int(row.id),
-        queue_name=row.queue_name,
-        task_name=row.task_name,
-        status=row.status,
-        attempts=int(row.attempts),
-        scheduled_at=row.scheduled_at,
-        args=dict(row.args or {}),
-        lock=row.lock,
-        queueing_lock=row.queueing_lock,
+        id=int(job_row.id),
+        queue_name=job_row.queue_name,
+        task_name=job_row.task_name,
+        status=job_row.status,
+        attempts=int(job_row.attempts),
+        scheduled_at=job_row.scheduled_at,
+        args=dict(job_row.args or {}),
+        lock=job_row.lock,
+        queueing_lock=job_row.queueing_lock,
     )
 
 
 async def jobs_for_arg(
-    session: AsyncSession, *, task_name: str, key: str, values: Sequence[str]
+    session: AsyncSession, *, task_name: str, key: str, matching_values: Sequence[str]
 ) -> list[JobRef]:
     """Every job of one task whose `args[key]` is one of `values`, newest first.
 
     This is how a job is found from the thing it is about: the scoring job
     carries `attempt_id` in its arguments and nowhere else.
     """
-    if not values:
+    if not matching_values:
         return []
     stmt = text(
         f"SELECT {_COLUMNS} FROM procrastinate_jobs "  # noqa: S608 - column list is a constant
         "WHERE task_name = :task_name AND args->>:key = ANY(:values) ORDER BY id DESC"
     )
-    rows = await session.execute(stmt, {"task_name": task_name, "key": key, "values": list(values)})
-    return [_ref(row) for row in rows]
+    job_rows = await session.execute(
+        stmt, {"task_name": task_name, "key": key, "values": list(matching_values)}
+    )
+    return [_ref(job_row) for job_row in job_rows]
 
 
 async def list_jobs(
@@ -96,14 +99,16 @@ async def list_jobs(
         f"SELECT {_COLUMNS} FROM procrastinate_jobs WHERE {' AND '.join(clauses)} "  # noqa: S608
         "ORDER BY id DESC LIMIT :limit"
     )
-    return [_ref(row) for row in await session.execute(stmt, params)]
+    return [_ref(job_row) for job_row in await session.execute(stmt, params)]
 
 
 async def counts_by_status(session: AsyncSession) -> dict[str, int]:
-    rows = await session.execute(text("SELECT status, count(*) AS n FROM procrastinate_jobs GROUP BY status"))
+    status_rows = await session.execute(
+        text("SELECT status, count(*) AS n FROM procrastinate_jobs GROUP BY status")
+    )
     counts = {status: 0 for status in JOB_STATUSES}
-    for row in rows:
-        counts[str(row.status)] = int(row.n)
+    for status_row in status_rows:
+        counts[str(status_row.status)] = int(status_row.n)
     return counts
 
 

@@ -13,6 +13,7 @@ from app.features.health.schemas import HealthResponse
 router = APIRouter(tags=["health"])
 
 
+# Public and unauthenticated: a load balancer or uptime checker calls this, not a person.
 @router.get("/health", response_model=HealthResponse, responses={503: {"model": HealthResponse}})
 async def get_health(
     response: Response, session: Annotated[AsyncSession, Depends(get_session)]

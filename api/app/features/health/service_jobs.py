@@ -26,7 +26,7 @@ __all__ = [
 async def jobs_for_arg(
     session: AsyncSession, *, task_name: str, key: str, values: Sequence[str]
 ) -> list[JobRef]:
-    return await repository_jobs.jobs_for_arg(session, task_name=task_name, key=key, values=values)
+    return await repository_jobs.jobs_for_arg(session, task_name=task_name, key=key, matching_values=values)
 
 
 async def list_jobs(

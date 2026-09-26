@@ -24,7 +24,7 @@ async def test_a_job_is_found_by_the_thing_it_is_about(db_session: AsyncSession)
     )
 
     found = await repository_jobs.jobs_for_arg(
-        db_session, task_name="score_attempt", key="attempt_id", values=[attempt_id, "not-a-job"]
+        db_session, task_name="score_attempt", key="attempt_id", matching_values=[attempt_id, "not-a-job"]
     )
     [job] = found
     assert job.status == "todo"
@@ -32,7 +32,9 @@ async def test_a_job_is_found_by_the_thing_it_is_about(db_session: AsyncSession)
     assert job.args["policy_version"] == "v1"
     assert job.queueing_lock == f"score:{attempt_id}:v1"
     assert (
-        await repository_jobs.jobs_for_arg(db_session, task_name="score_attempt", key="attempt_id", values=[])
+        await repository_jobs.jobs_for_arg(
+            db_session, task_name="score_attempt", key="attempt_id", matching_values=[]
+        )
         == []
     )
 

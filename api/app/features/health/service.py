@@ -66,24 +66,24 @@ async def list_jobs(
     before_id: int | None,
     limit: int,
 ) -> JobsPage:
-    rows = await repository_jobs.list_jobs(
+    jobs = await repository_jobs.list_jobs(
         session, status=status, task_name=task_name, before_id=before_id, limit=limit + 1
     )
-    page = rows[:limit]
+    page = jobs[:limit]
     return JobsPage(
-        items=[_read(row) for row in page],
-        next_before_id=page[-1].id if len(rows) > limit else None,
+        items=[_read(job) for job in page],
+        next_before_id=page[-1].id if len(jobs) > limit else None,
     )
 
 
-def _read(row: JobRef) -> JobRead:
+def _read(job: JobRef) -> JobRead:
     return JobRead(
-        id=row.id,
-        queue_name=row.queue_name,
-        task_name=row.task_name,
-        status=row.status,
-        attempts=row.attempts,
-        scheduled_at=row.scheduled_at,
-        args=row.args,
-        queueing_lock=row.queueing_lock,
+        id=job.id,
+        queue_name=job.queue_name,
+        task_name=job.task_name,
+        status=job.status,
+        attempts=job.attempts,
+        scheduled_at=job.scheduled_at,
+        args=job.args,
+        queueing_lock=job.queueing_lock,
     )
