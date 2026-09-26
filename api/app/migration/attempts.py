@@ -30,6 +30,7 @@ __all__ = [
 
 @dataclass(frozen=True)
 class MigratedMessage:
+
     message_id: str
     seq: int
     role: str
@@ -39,6 +40,7 @@ class MigratedMessage:
 
 @dataclass(frozen=True)
 class MigratedResult:
+
     framework_id: str
     policy_version: str
     payload: dict[str, Any]
@@ -46,6 +48,7 @@ class MigratedResult:
 
 @dataclass
 class MigratedAttempt:
+
     legacy_ids: dict[str, str]
     exam_code: str
     kind: str
@@ -60,7 +63,7 @@ class MigratedAttempt:
     result: MigratedResult | None = None
 
 
-def _message_id(attempt_ref: str, index: int, raw: dict[str, Any]) -> str:
+def _message_id(attempt_ref: str, index: int, transcript_document: dict[str, Any]) -> str:
     """The turn's own id, or a stable one derived from where it sits.
 
     Older rows predate the field. Deriving it from the attempt and position
@@ -68,7 +71,7 @@ def _message_id(attempt_ref: str, index: int, raw: dict[str, Any]) -> str:
     on `(attempt_id, message_id)` makes a second run a no-op rather than a
     duplicate.
     """
-    existing = str(raw.get("transcript_message_id") or "").strip()
+    existing = str(transcript_document.get("transcript_message_id") or "").strip()
     if existing:
         return existing
     digest = hashlib.sha256(f"{attempt_ref}:{index}".encode()).hexdigest()
@@ -76,7 +79,7 @@ def _message_id(attempt_ref: str, index: int, raw: dict[str, Any]) -> str:
 
 
 def attempt_from_transcript(
-    raw: dict[str, Any],
+    transcript_document: dict[str, Any],
     *,
     app_type: str,
     feedback: dict[str, Any] | None = None,
@@ -94,7 +97,7 @@ def attempt_from_transcript(
     can be restored when the sets come across.
     """
     exam_code = exam_for_product(app_type)
-    attempt_ref = str(raw.get("attempt_id") or raw.get("transcript_id") or "")
+    attempt_ref = str(transcript_document.get("attempt_id") or transcript_document.get("transcript_id") or "")
 
     messages = [
         MigratedMessage(
@@ -104,7 +107,7 @@ def attempt_from_transcript(
             message=str(entry.get("message") or ""),
             spoken_at=parse_timestamp(entry.get("timestamp")) or datetime.now(UTC),
         )
-        for index, entry in enumerate(raw.get("transcript_message") or [])
+        for index, entry in enumerate(transcript_document.get("transcript_message") or [])
     ]
 
     if not messages:
@@ -123,16 +126,16 @@ def attempt_from_transcript(
 
     return MigratedAttempt(
         legacy_ids={
-            "transcript_id": str(raw.get("transcript_id") or ""),
-            "mock_id": str(raw.get("mock_id") or ""),
-            "station_id": str(raw.get("station_id") or ""),
-            "attempt_id": str(raw.get("attempt_id") or ""),
+            "transcript_id": str(transcript_document.get("transcript_id") or ""),
+            "mock_id": str(transcript_document.get("mock_id") or ""),
+            "station_id": str(transcript_document.get("station_id") or ""),
+            "attempt_id": str(transcript_document.get("attempt_id") or ""),
         },
         exam_code=exam_code,
         kind="set_station" if set_entry_ref else "practice",
         set_entry_ref=set_entry_ref,
-        user_ref=str(raw.get("user_id") or ""),
-        created_at=parse_timestamp(raw.get("created_at")) or datetime.now(UTC),
+        user_ref=str(transcript_document.get("user_id") or ""),
+        created_at=parse_timestamp(transcript_document.get("created_at")) or datetime.now(UTC),
         status=status,
         failed_reason=failed_reason,
         messages=messages,

@@ -51,32 +51,32 @@ def _serialize_value(value: Any) -> Any:
         except Exception:  # noqa: BLE001
             return str(value)
     if isinstance(value, dict):
-        return {str(k): _serialize_value(v) for k, v in value.items()}
+        return {str(key): _serialize_value(nested_value) for key, nested_value in value.items()}
     if isinstance(value, list):
-        return [_serialize_value(v) for v in value]
+        return [_serialize_value(nested_value) for nested_value in value]
     return value
 
 
 def _doc_to_dict(
     doc_id: str,
-    data: dict[str, Any],
+    document_data: dict[str, Any],
     *,
     app_type: str,
     media_kind: MediaKindSource,
 ) -> dict[str, Any]:
-    out = _serialize_value(dict(data))
-    out["id"] = doc_id
-    out.setdefault("app_type", app_type)
-    out["_media_kind"] = media_kind
-    return out
+    document = _serialize_value(dict(document_data))
+    document["id"] = doc_id
+    document.setdefault("app_type", app_type)
+    document["_media_kind"] = media_kind
+    return document
 
 
 def read_media_json(path: Path) -> list[dict[str, Any]]:
     """Read `media.json` — array of documents, each with `app_type` and `_media_kind`."""
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
+    documents = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(documents, list):
         raise ValueError(f"{path} should hold a JSON array of documents.")
-    return data
+    return documents
 
 
 def read_media_from_export_dir(export_dir: Path) -> list[dict[str, Any]]:
@@ -97,7 +97,7 @@ def stream_b2c_media_documents(
         ) from exc
 
     selected_kinds = list(kinds) if kinds is not None else list(ALL_MEDIA_KINDS)
-    unknown_kinds = [k for k in selected_kinds if k not in _MEDIA_KIND_TO_MAP]
+    unknown_kinds = [kind for kind in selected_kinds if kind not in _MEDIA_KIND_TO_MAP]
     if unknown_kinds:
         raise ValueError(f"unknown media kind(s): {unknown_kinds}; expected {ALL_MEDIA_KINDS}")
 
@@ -105,20 +105,22 @@ def stream_b2c_media_documents(
     selected_products = list(products) if products is not None else list(reference_map)
     for kind in selected_kinds:
         kind_map = _MEDIA_KIND_TO_MAP[kind]
-        unknown = [p for p in selected_products if p not in kind_map]
+        unknown = [product for product in selected_products if product not in kind_map]
         if unknown:
             raise ValueError(f"unknown product(s) for {kind}: {unknown}")
 
     db = firestore.Client()
-    out: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
     for media_kind in selected_kinds:
         collections = _MEDIA_KIND_TO_MAP[media_kind]
         for app_type in selected_products:
             collection = collections[app_type]
-            for snap in db.collection(collection).stream():
-                data = snap.to_dict() or {}
-                out.append(_doc_to_dict(snap.id, data, app_type=app_type, media_kind=media_kind))
-    return out
+            for snapshot in db.collection(collection).stream():
+                document_data = snapshot.to_dict() or {}
+                documents.append(
+                    _doc_to_dict(snapshot.id, document_data, app_type=app_type, media_kind=media_kind)
+                )
+    return documents
 
 
 def write_media_json(path: Path, documents: list[dict[str, Any]]) -> None:

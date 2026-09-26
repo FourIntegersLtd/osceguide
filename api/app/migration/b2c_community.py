@@ -16,6 +16,7 @@ class CommunityTransformError(Exception):
 
 @dataclass(frozen=True)
 class MigratedLike:
+
     legacy_ref: str
     post_legacy_ref: str
     legacy_user_id: str
@@ -23,6 +24,7 @@ class MigratedLike:
 
 @dataclass
 class MigratedCommunityPost:
+
     legacy_ref: str
     kind: str
     exam_code: str
@@ -69,20 +71,20 @@ def _likes_for_post(
 ) -> list[MigratedLike]:
     if not isinstance(liked_by, list):
         return []
-    out: list[MigratedLike] = []
-    for uid in liked_by:
-        legacy_user = str(uid or "").strip()
+    likes: list[MigratedLike] = []
+    for raw_user_id in liked_by:
+        legacy_user = str(raw_user_id or "").strip()
         if not legacy_user:
             continue
         like_ref = f"{post_legacy_ref}:like:{legacy_user}"
-        out.append(
+        likes.append(
             MigratedLike(
                 legacy_ref=like_ref,
                 post_legacy_ref=post_legacy_ref,
                 legacy_user_id=legacy_user,
             )
         )
-    return out
+    return likes
 
 
 def question_from_document(document: dict[str, Any]) -> MigratedCommunityPost:

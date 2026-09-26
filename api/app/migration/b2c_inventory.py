@@ -51,41 +51,51 @@ PARTNER_REPORTER_COLLECTION = "partner_reporters"
 
 # step name -> {collection: exam or ""}
 COPIED: dict[str, dict[str, str]] = {
-    "users": {c: e for e, c in B2C_USER_COLLECTIONS.items()},
-    "stations": {c: e for e, c in B2C_STATION_COLLECTIONS.items()},
+    "users": {collection_name: exam for exam, collection_name in B2C_USER_COLLECTIONS.items()},
+    "stations": {collection_name: exam for exam, collection_name in B2C_STATION_COLLECTIONS.items()},
     "media": {
-        c: e
-        for m in (B2C_MEDIA_SUMMARY_COLLECTIONS, B2C_MEDIA_BLOG_COLLECTIONS, B2C_MEDIA_SLIDE_COLLECTIONS)
-        for e, c in m.items()
+        collection_name: exam
+        for collection_map in (
+            B2C_MEDIA_SUMMARY_COLLECTIONS,
+            B2C_MEDIA_BLOG_COLLECTIONS,
+            B2C_MEDIA_SLIDE_COLLECTIONS,
+        )
+        for exam, collection_name in collection_map.items()
     },
     "community": {
-        c: e
-        for m in (
+        collection_name: exam
+        for collection_map in (
             B2C_COMMUNITY_QUESTION_COLLECTIONS,
             B2C_COMMUNITY_REPLY_COLLECTIONS,
             B2C_COMMENT_COLLECTIONS,
         )
-        for e, c in m.items()
+        for exam, collection_name in collection_map.items()
     },
     "marketplace": {
-        c: e
-        for m in (B2C_MARKETPLACE_POST_COLLECTIONS, B2C_MARKETPLACE_SESSION_COLLECTIONS)
-        for e, c in m.items()
+        collection_name: exam
+        for collection_map in (B2C_MARKETPLACE_POST_COLLECTIONS, B2C_MARKETPLACE_SESSION_COLLECTIONS)
+        for exam, collection_name in collection_map.items()
     },
-    "attempts": {c: e for m in (TRANSCRIPT_COLLECTIONS, FEEDBACK_COLLECTIONS) for e, c in m.items()},
+    "attempts": {
+        collection_name: exam
+        for collection_map in (TRANSCRIPT_COLLECTIONS, FEEDBACK_COLLECTIONS)
+        for exam, collection_name in collection_map.items()
+    },
     "live_coverage": {LIVE_COVERAGE_COLLECTION: ""},
-    "debriefs": {c: e for e, c in DEBRIEF_COLLECTIONS.items()},
-    "payments": {c: e for e, c in PAYMENT_COLLECTIONS.items()},
-    "referrals": {c: e for e, c in REFERRAL_COLLECTIONS.items()},
+    "debriefs": {collection_name: exam for exam, collection_name in DEBRIEF_COLLECTIONS.items()},
+    "payments": {collection_name: exam for exam, collection_name in PAYMENT_COLLECTIONS.items()},
+    "referrals": {collection_name: exam for exam, collection_name in REFERRAL_COLLECTIONS.items()},
     "partners": {PARTNER_ARRIVAL_COLLECTION: "", PARTNER_REPORTER_COLLECTION: ""},
-    "cvs": {c: e for e, c in CV_COLLECTIONS.items()},
+    "cvs": {collection_name: exam for exam, collection_name in CV_COLLECTIONS.items()},
     "site_messages": {
-        c: e for m in (CONTACT_MESSAGE_COLLECTIONS, FEATURE_REQUEST_COLLECTIONS) for e, c in m.items()
+        collection_name: exam
+        for collection_map in (CONTACT_MESSAGE_COLLECTIONS, FEATURE_REQUEST_COLLECTIONS)
+        for exam, collection_name in collection_map.items()
     },
     "peer_practice": {
-        c: e
-        for m in (HUMAN_PRACTICE_SESSION_COLLECTIONS, HUMAN_PRACTICE_FEEDBACK_COLLECTIONS)
-        for e, c in m.items()
+        collection_name: exam
+        for collection_map in (HUMAN_PRACTICE_SESSION_COLLECTIONS, HUMAN_PRACTICE_FEEDBACK_COLLECTIONS)
+        for exam, collection_name in collection_map.items()
     },
 }
 
@@ -103,13 +113,16 @@ SKIPPED: dict[str, str] = {
     "help_categories": _NO_TABLE,
     "help_requests": _NO_TABLE,
     **{
-        c: "a transient matchmaking queue (entries expire in minutes)"
-        for c in _per_exam("sca_human_practice_queue", "human_practice_queue").values()
+        collection_name: "a transient matchmaking queue (entries expire in minutes)"
+        for collection_name in _per_exam("sca_human_practice_queue", "human_practice_queue").values()
     },
     # A mock is a user's named bundle of stations. The attempts inside it are
     # copied; the bundle itself has no platform equivalent that is not a
     # station set, and making every user's mock a set is a product decision.
-    **{c: f"{_NO_TABLE}; its attempts are copied" for c in _per_exam("mocks", "mocks").values()},
+    **{
+        collection_name: f"{_NO_TABLE}; its attempts are copied"
+        for collection_name in _per_exam("mocks", "mocks").values()
+    },
 }
 
 # The retired pre-Supabase B2B arm. B2B data is owned by b2b-api, not this copy.
@@ -133,4 +146,8 @@ def skip_reason(collection: str) -> str | None:
 
 
 def unaccounted(live_collections: list[str]) -> list[str]:
-    return [c for c in live_collections if step_for(c) is None and skip_reason(c) is None]
+    return [
+        collection
+        for collection in live_collections
+        if step_for(collection) is None and skip_reason(collection) is None
+    ]

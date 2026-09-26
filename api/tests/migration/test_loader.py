@@ -78,7 +78,7 @@ async def test_one_person_across_products_becomes_one_row_with_both_entitlements
 
     report, ids, _ = await loader.load_users(db_session, merge_users(records), grants)
 
-    assert report.ok, report.problems
+    assert report.has_no_problems, report.problems
     assert report.users_created == 1
     assert report.entitlements_created == 2
     assert ids == {"fs-1": ids["fs-1"], "fs-2": ids["fs-1"]}, "both documents are the same person"
@@ -151,7 +151,7 @@ async def test_one_legacy_id_pointing_at_two_people_is_reported_not_guessed(
 
     report, ids, _ = await loader.load_users(db_session, merged)
 
-    assert not report.ok
+    assert not report.has_no_problems
     assert "shared" in report.problems[0]
     assert len(ids) == 1, "the ambiguous id resolves to one person, and the other is flagged"
 
@@ -181,7 +181,7 @@ async def test_a_transcript_with_feedback_becomes_an_evaluated_attempt(
 
     report = await loader.load_attempts(db_session, [migrated], user_ids=ids)  # type: ignore[arg-type]
 
-    assert report.ok, report.problems
+    assert report.has_no_problems, report.problems
     assert (report.attempts_created, report.messages_created, report.results_created) == (1, 2, 1)
 
     attempt = await db_session.scalar(select(Attempt))
@@ -249,7 +249,7 @@ async def test_an_attempt_whose_author_is_not_in_the_export_is_reported_not_drop
 
     report = await loader.load_attempts(db_session, [migrated], user_ids=ids)  # type: ignore[arg-type]
 
-    assert not report.ok
+    assert not report.has_no_problems
     assert "fs-nobody" in report.problems[0]
     assert await count(db_session, Attempt) == 0
 

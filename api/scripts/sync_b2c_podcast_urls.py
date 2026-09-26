@@ -128,7 +128,7 @@ async def run(
             print(f"  … and {len(report.problems) - 50} more problems")  # noqa: T201
         print(report.summary())  # noqa: T201
 
-        if commit and report.ok:
+        if commit and report.has_no_problems:
             await session.commit()
             print("committed")  # noqa: T201
         else:

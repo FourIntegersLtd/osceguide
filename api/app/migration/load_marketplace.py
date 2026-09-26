@@ -64,42 +64,42 @@ async def load_marketplace_posts(
     exams = {str(code).lower(): exam_id for code, exam_id in exam_rows.all()}
     users = await legacy_consumer_user_ids(session)
 
-    for item in sorted(posts, key=lambda p: p.starts_at):
-        if await session.get(AvailabilityPost, item.row_id) is not None:
+    for post in sorted(posts, key=lambda availability_post: availability_post.starts_at):
+        if await session.get(AvailabilityPost, post.row_id) is not None:
             report.marketplace_posts_existing += 1
             continue
 
-        owner_id = _resolve_user(report, users, item.owner_legacy_user_id, item.legacy_ref)
+        owner_id = _resolve_user(report, users, post.owner_legacy_user_id, post.legacy_ref)
         if owner_id is None:
             continue
 
-        exam_id = exams.get(item.exam_code)
+        exam_id = exams.get(post.exam_code)
         if exam_id is None:
-            report.problem(f"{item.legacy_ref}: exam {item.exam_code!r} is not in this database")
+            report.problem(f"{post.legacy_ref}: exam {post.exam_code!r} is not in this database")
             continue
 
         claimed_by: uuid.UUID | None = None
-        if item.claimed_by_legacy_user_id:
-            claimed_by = _resolve_user(report, users, item.claimed_by_legacy_user_id, item.legacy_ref)
+        if post.claimed_by_legacy_user_id:
+            claimed_by = _resolve_user(report, users, post.claimed_by_legacy_user_id, post.legacy_ref)
 
-        created = item.created_at or at
-        updated = item.updated_at or created
+        created = post.created_at or at
+        updated = post.updated_at or created
 
-        row = AvailabilityPost(
-            id=item.row_id,
+        post_row = AvailabilityPost(
+            id=post.row_id,
             owner_user_id=owner_id,
             exam_id=exam_id,
-            starts_at=item.starts_at,
-            duration_minutes=item.duration_minutes,
-            note=item.note,
-            status=item.status,
+            starts_at=post.starts_at,
+            duration_minutes=post.duration_minutes,
+            note=post.note,
+            status=post.status,
             claimed_by_user_id=claimed_by,
-            claimed_at=item.claimed_at,
-            cancelled_at=item.cancelled_at,
+            claimed_at=post.claimed_at,
+            cancelled_at=post.cancelled_at,
             created_at=created,
             updated_at=updated,
         )
-        session.add(row)
+        session.add(post_row)
         await session.flush()
         report.marketplace_posts_created += 1
 
@@ -119,46 +119,53 @@ async def load_peer_sessions(
     exams = {str(code).lower(): exam_id for code, exam_id in exam_rows.all()}
     users = await legacy_consumer_user_ids(session)
 
-    for item in sorted(sessions, key=lambda s: s.starts_at):
-        if await session.get(PeerSession, item.row_id) is not None:
+    for peer_session in sorted(sessions, key=lambda peer_session: peer_session.starts_at):
+        if await session.get(PeerSession, peer_session.row_id) is not None:
             report.marketplace_sessions_existing += 1
             continue
 
-        owner_id = _resolve_user(report, users, item.owner_legacy_user_id, item.legacy_ref)
-        claimer_id = _resolve_user(report, users, item.claimer_legacy_user_id, item.legacy_ref)
+        owner_id = _resolve_user(report, users, peer_session.owner_legacy_user_id, peer_session.legacy_ref)
+        claimer_id = _resolve_user(
+            report, users, peer_session.claimer_legacy_user_id, peer_session.legacy_ref
+        )
         if owner_id is None or claimer_id is None:
             continue
 
-        exam_id = exams.get(item.exam_code)
+        exam_id = exams.get(peer_session.exam_code)
         if exam_id is None:
-            report.problem(f"{item.legacy_ref}: exam {item.exam_code!r} is not in this database")
+            report.problem(
+                f"{peer_session.legacy_ref}: exam {peer_session.exam_code!r} is not in this database"
+            )
             continue
 
         post_id: uuid.UUID | None = None
-        if item.post_row_id is not None:
-            post = await session.get(AvailabilityPost, item.post_row_id)
-            if post is None:
-                report.problem(f"{item.legacy_ref}: availability post {item.post_legacy_ref!r} is missing")
+        if peer_session.post_row_id is not None:
+            availability_post = await session.get(AvailabilityPost, peer_session.post_row_id)
+            if availability_post is None:
+                report.problem(
+                    f"{peer_session.legacy_ref}: availability post "
+                    f"{peer_session.post_legacy_ref!r} is missing"
+                )
                 continue
-            post_id = item.post_row_id
+            post_id = peer_session.post_row_id
 
-        created = item.created_at or at
-        updated = item.updated_at or created
+        created = peer_session.created_at or at
+        updated = peer_session.updated_at or created
 
-        row = PeerSession(
-            id=item.row_id,
+        peer_session_row = PeerSession(
+            id=peer_session.row_id,
             post_id=post_id,
             owner_user_id=owner_id,
             claimer_user_id=claimer_id,
             exam_id=exam_id,
-            starts_at=item.starts_at,
-            room_name=item.room_name,
-            status=item.status,
-            ended_at=item.ended_at,
+            starts_at=peer_session.starts_at,
+            room_name=peer_session.room_name,
+            status=peer_session.status,
+            ended_at=peer_session.ended_at,
             created_at=created,
             updated_at=updated,
         )
-        session.add(row)
+        session.add(peer_session_row)
         await session.flush()
         report.marketplace_sessions_created += 1
 

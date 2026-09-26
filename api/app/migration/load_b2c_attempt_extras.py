@@ -34,11 +34,11 @@ def _when(raw: object) -> dict[str, Any]:
 
 
 def _refs_by_key(pairs: Sequence[tuple[MigratedAttempt, dict[str, Any]]]) -> dict[tuple, str]:
-    newest = sorted(pairs, key=lambda p: p[0].created_at, reverse=True)
-    out: dict[tuple, str] = {}
+    newest = sorted(pairs, key=lambda pair: pair[0].created_at, reverse=True)
+    refs_by_practice_key: dict[tuple, str] = {}
     for migrated, raw in newest:
-        out.setdefault(practice_key(raw), legacy_ref_for(migrated))
-    return out
+        refs_by_practice_key.setdefault(practice_key(raw), legacy_ref_for(migrated))
+    return refs_by_practice_key
 
 
 async def load_debriefs(
@@ -51,35 +51,35 @@ async def load_debriefs(
     refs = _refs_by_key(pairs)
     ids = await attempt_ids_by_ref(session, list(refs.values()))
     taken = set((await session.scalars(select(DebriefSummary.attempt_id))).all())
-    for doc in sorted(debriefs, key=lambda d: str(d.get("created_at") or ""), reverse=True):
-        label = f"debrief {doc.get('debrief_id') or doc.get('id')}"
+    for debrief in sorted(debriefs, key=lambda document: str(document.get("created_at") or ""), reverse=True):
+        label = f"debrief {debrief.get('debrief_id') or debrief.get('id')}"
         try:
-            exam_code = exam_for_product(doc.get("app_type"))
+            exam_code = exam_for_product(debrief.get("app_type"))
         except UnknownLegacyProduct as exc:
             report.problem(f"{label}: {exc}")
             continue
-        attempt_id = ids.get(refs.get(practice_key(doc), ""))
+        attempt_id = ids.get(refs.get(practice_key(debrief), ""))
         if attempt_id is None:
             report.count("debriefs with no copied attempt (not copyable)")
             continue
         if attempt_id in taken:
             report.count("debriefs for an attempt that already has one")
             continue
-        user_id = lookups.user(doc.get("user_id"))
+        user_id = lookups.user(debrief.get("user_id"))
         if user_id is None:
-            report.problem(f"{label}: no platform user for legacy user_id {doc.get('user_id')!r}")
+            report.problem(f"{label}: no platform user for legacy user_id {debrief.get('user_id')!r}")
             continue
         session.add(
             DebriefSummary(
-                id=legacy_row_id(f"{exam_code}:debrief:{doc.get('debrief_id') or doc.get('id')}"),
+                id=legacy_row_id(f"{exam_code}:debrief:{debrief.get('debrief_id') or debrief.get('id')}"),
                 attempt_id=attempt_id,
                 user_id=user_id,
                 exam_id=lookups.exams.get(exam_code),
-                key_insights=list(doc.get("key_insights") or []),
-                action_plan=list(doc.get("action_plan") or []),
-                narrative=doc.get("narrative_summary") or None,
+                key_insights=list(debrief.get("key_insights") or []),
+                action_plan=list(debrief.get("action_plan") or []),
+                narrative=debrief.get("narrative_summary") or None,
                 model_used=LEGACY_MODEL,
-                **_when(doc.get("created_at")),
+                **_when(debrief.get("created_at")),
             )
         )
         taken.add(attempt_id)
@@ -94,16 +94,18 @@ async def load_live_coverage(
     report = StepReport()
     by_doc_id = {"_".join(key[1:]): ref for key, ref in _refs_by_key(pairs).items()}
     ids = await attempt_ids_by_ref(session, list(by_doc_id.values()))
-    for doc in documents:
-        attempt_id = ids.get(by_doc_id.get(str(doc.get("id")), ""))
+    for coverage_document in documents:
+        attempt_id = ids.get(by_doc_id.get(str(coverage_document.get("id")), ""))
         if attempt_id is None:
             report.count("coverage with no copied attempt (not copyable)")
             continue
-        items = list(doc.get("items") or [])
+        items = list(coverage_document.get("items") or [])
         snapshot = {
             "items": items,
-            "last_seq": max((int(i.get("seq") or 0) for i in items if isinstance(i, dict)), default=0),
-            "saved_at": doc.get("saved_at"),
+            "last_seq": max(
+                (int(item.get("seq") or 0) for item in items if isinstance(item, dict)), default=0
+            ),
+            "saved_at": coverage_document.get("saved_at"),
             "source": LEGACY_MODEL,
         }
         result = await session.execute(

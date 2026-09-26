@@ -27,28 +27,28 @@ def _serialize_value(value: Any) -> Any:
         except Exception:  # noqa: BLE001
             return str(value)
     if isinstance(value, dict):
-        return {str(k): _serialize_value(v) for k, v in value.items()}
+        return {str(key): _serialize_value(nested_value) for key, nested_value in value.items()}
     if isinstance(value, list):
-        return [_serialize_value(v) for v in value]
+        return [_serialize_value(nested_value) for nested_value in value]
     return value
 
 
-def _doc_to_dict(doc_id: str, data: dict[str, Any], *, app_type: str) -> dict[str, Any]:
-    serialized = _serialize_value(dict(data))
+def _doc_to_dict(doc_id: str, document_data: dict[str, Any], *, app_type: str) -> dict[str, Any]:
+    serialized = _serialize_value(dict(document_data))
     if not isinstance(serialized, dict):
         raise TypeError("document payload must serialize to an object")
-    out: dict[str, Any] = serialized
-    out["id"] = doc_id
-    out.setdefault("app_type", app_type)
-    return out
+    document: dict[str, Any] = serialized
+    document["id"] = doc_id
+    document.setdefault("app_type", app_type)
+    return document
 
 
 def read_users_json(path: Path) -> list[dict[str, Any]]:
     """Read `users.json` — array of documents, each with `app_type` when merged."""
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
+    documents = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(documents, list):
         raise ValueError(f"{path} should hold a JSON array of documents.")
-    return data
+    return documents
 
 
 def read_users_from_export_dir(export_dir: Path) -> list[dict[str, Any]]:
@@ -68,18 +68,18 @@ def stream_b2c_user_documents(
         ) from exc
 
     selected = list(products) if products is not None else list(B2C_USER_COLLECTIONS)
-    unknown = [p for p in selected if p not in B2C_USER_COLLECTIONS]
+    unknown = [product for product in selected if product not in B2C_USER_COLLECTIONS]
     if unknown:
         raise ValueError(f"unknown product(s): {unknown}; expected {sorted(B2C_USER_COLLECTIONS)}")
 
     db = firestore.Client()
-    out: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
     for app_type in selected:
         collection = B2C_USER_COLLECTIONS[app_type]
-        for snap in db.collection(collection).stream():
-            data = snap.to_dict() or {}
-            out.append(_doc_to_dict(snap.id, data, app_type=app_type))
-    return out
+        for snapshot in db.collection(collection).stream():
+            document_data = snapshot.to_dict() or {}
+            documents.append(_doc_to_dict(snapshot.id, document_data, app_type=app_type))
+    return documents
 
 
 def write_users_json(path: Path, documents: list[dict[str, Any]]) -> None:

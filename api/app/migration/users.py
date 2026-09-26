@@ -41,6 +41,7 @@ class UnusableRecord(ValueError):
 
 @dataclass
 class MergedUser:
+
     email: str
     name: str = ""
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -66,6 +67,7 @@ class MergedUser:
 
 @dataclass(frozen=True)
 class MergedLegacyPayment:
+
     email: str
     exam_code: str
     plan_code: str
@@ -76,6 +78,7 @@ class MergedLegacyPayment:
 
 @dataclass(frozen=True)
 class MergedReferral:
+
     email: str
     code: str
     earned_pence: int
@@ -83,6 +86,7 @@ class MergedReferral:
 
 @dataclass(frozen=True)
 class MergedEntitlement:
+
     email: str
     exam_code: str
     source: str
@@ -145,7 +149,7 @@ def merge_users(
     admin_emails: Iterable[str] = (),
 ) -> list[MergedUser]:
     """One row per person, from every record that mentions them."""
-    admins = {normalize_email(a) for a in admin_emails}
+    admins = {normalize_email(admin_email) for admin_email in admin_emails}
     merged: dict[str, MergedUser] = {}
 
     for record in [*b2c_users, *b2b_users]:

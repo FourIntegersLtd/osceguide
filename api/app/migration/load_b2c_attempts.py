@@ -46,7 +46,7 @@ def practice_key(document: dict[str, Any]) -> tuple[str, str, str, str]:
 
 
 def _newest_first(documents: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
-    return sorted(documents, key=lambda d: str(d.get("created_at") or ""), reverse=True)
+    return sorted(documents, key=lambda document: str(document.get("created_at") or ""), reverse=True)
 
 
 def feedback_index(
@@ -55,11 +55,13 @@ def feedback_index(
     by_attempt: dict[tuple[str, str], dict[str, Any]] = {}
     by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for doc in _newest_first(feedbacks):
-        payload = {k: v for k, v in doc.items() if k not in _DROP}
+        feedback_fields = {
+            field_name: field_value for field_name, field_value in doc.items() if field_name not in _DROP
+        }
         attempt_id = str(doc.get("attempt_id") or "")
         if attempt_id:
-            by_attempt.setdefault((str(doc.get("app_type") or ""), attempt_id), payload)
-        by_key.setdefault(practice_key(doc), payload)
+            by_attempt.setdefault((str(doc.get("app_type") or ""), attempt_id), feedback_fields)
+        by_key.setdefault(practice_key(doc), feedback_fields)
     return by_attempt, by_key
 
 
@@ -70,7 +72,7 @@ def migrate_transcripts(
 ) -> list[tuple[MigratedAttempt, dict[str, Any]]]:
     by_attempt, by_key = feedback_index(feedbacks)
     used: set[int] = set()
-    out: list[tuple[MigratedAttempt, dict[str, Any]]] = []
+    transformed_pairs: list[tuple[MigratedAttempt, dict[str, Any]]] = []
     for raw in transcripts:
         app_type = str(raw.get("app_type") or "")
         feedback = by_attempt.get((app_type, str(raw.get("attempt_id") or ""))) or by_key.get(
@@ -83,28 +85,28 @@ def migrate_transcripts(
             continue
         if feedback is not None:
             used.add(id(feedback))
-        out.append((migrated, raw))
-    distinct = {id(f) for f in (*by_attempt.values(), *by_key.values())}
+        transformed_pairs.append((migrated, raw))
+    distinct = {id(feedback) for feedback in (*by_attempt.values(), *by_key.values())}
     report.count("feedbacks with no transcript (not copyable)", len(distinct - used))
-    return b2c_transcript_cleanup.clean(out, report)
+    return b2c_transcript_cleanup.clean(transformed_pairs, report)
 
 
 async def attempt_ids_by_ref(session: AsyncSession, refs: Sequence[str]) -> dict[str, uuid.UUID]:
-    out: dict[str, uuid.UUID] = {}
-    wanted = [r for r in refs if r]
+    ids_by_ref: dict[str, uuid.UUID] = {}
+    wanted = [ref for ref in refs if ref]
     for start in range(0, len(wanted), 1000):
         chunk = wanted[start : start + 1000]
-        rows = await session.execute(
+        attempt_rows = await session.execute(
             select(Attempt.legacy_ref, Attempt.id).where(Attempt.legacy_ref.in_(chunk))
         )
-        out.update({str(ref): attempt_id for ref, attempt_id in rows.all()})
-    return out
+        ids_by_ref.update({str(ref): attempt_id for ref, attempt_id in attempt_rows.all()})
+    return ids_by_ref
 
 
 async def _finish(
     session: AsyncSession, pairs: Sequence[tuple[MigratedAttempt, dict]], lookups: Lookups, report: StepReport
 ) -> None:
-    ids = await attempt_ids_by_ref(session, [legacy_ref_for(m) for m, _ in pairs])
+    ids = await attempt_ids_by_ref(session, [legacy_ref_for(migrated) for migrated, _ in pairs])
     have_transcript = (
         set(
             (
@@ -123,7 +125,7 @@ async def _finish(
         attempt = await session.get(Attempt, attempt_id)
         if attempt is None:
             continue
-        last_turn = max((m.spoken_at for m in migrated.messages), default=None)
+        last_turn = max((message.spoken_at for message in migrated.messages), default=None)
         if attempt.station_version_id is None:
             version = lookups.station_version(migrated.exam_code, raw.get("station_id"))
             if version is not None:
@@ -157,7 +159,7 @@ async def load(
     # their turns held in one session make every autoflush slower than the last.
     for start in range(0, len(pairs), CHUNK):
         chunk = pairs[start : start + CHUNK]
-        loaded = await load_attempts(session, [m for m, _ in chunk], user_ids=lookups.users)
+        loaded = await load_attempts(session, [migrated for migrated, _ in chunk], user_ids=lookups.users)
         report.problems.extend(loaded.problems)
         report.count("attempts created", loaded.attempts_created)
         report.count("attempts already there", loaded.attempts_existing)

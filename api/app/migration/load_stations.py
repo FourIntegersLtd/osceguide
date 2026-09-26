@@ -30,12 +30,12 @@ async def _existing_by_legacy_id(session: AsyncSession) -> dict[str, uuid.UUID]:
     Read once rather than queried per station: an import is tens of thousands
     of rows and a lookup each would be the whole runtime.
     """
-    rows = await session.execute(
+    version_rows = await session.execute(
         select(StationVersion.content["station_id"].astext, StationVersion.id).where(
             StationVersion.content["station_id"].astext.isnot(None)
         )
     )
-    return {str(legacy): version_id for legacy, version_id in rows.all() if legacy}
+    return {str(legacy): version_id for legacy, version_id in version_rows.all() if legacy}
 
 
 async def load_stations(
@@ -76,18 +76,18 @@ async def load_stations(
         for warning in station.warnings:
             report.problem(warning)
 
-        row = Station(
+        station_row = Station(
             owner_kind="platform",
             org_id=None,
             exam_id=exam_id,
             title=station.title,
             status="published",
         )
-        session.add(row)
+        session.add(station_row)
         await session.flush()
 
         version = StationVersion(
-            station_id=row.id,
+            station_id=station_row.id,
             org_id=None,
             version=1,
             content=station.content,
@@ -97,7 +97,7 @@ async def load_stations(
         session.add(version)
         await session.flush()
 
-        row.current_version_id = version.id
+        station_row.current_version_id = version.id
         by_legacy_id[station.legacy_id] = version.id
         report.stations_created += 1
 

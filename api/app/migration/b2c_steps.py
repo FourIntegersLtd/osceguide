@@ -52,6 +52,7 @@ def _script(name: str) -> ModuleType:
 
 
 class Run:
+
     def __init__(self, db: Any) -> None:
         self.db = db
         self.pairs: list[Any] = []  # attempts, for the steps that hang off them
@@ -59,15 +60,15 @@ class Run:
     def read(self, step: str) -> list[dict[str, Any]]:
         docs: list[dict[str, Any]] = []
         for collection, exam in b2c_inventory.COPIED[step].items():
-            rows, seeded = b2c_firestore.stream(self.db, collection, app_type=exam or None)
-            docs.extend(rows)
-            if rows or seeded:
+            documents, seeded = b2c_firestore.stream(self.db, collection, app_type=exam or None)
+            docs.extend(documents)
+            if documents or seeded:
                 dropped = f" (+{seeded} demo rows dropped)" if seeded else ""
-                print(f"    read {collection}: {len(rows)}{dropped}")  # noqa: T201
+                print(f"    read {collection}: {len(documents)}{dropped}")  # noqa: T201
         return docs
 
-    def of(self, docs: list[dict], collections: dict[str, str]) -> list[dict]:
-        return [d for d in docs if d.get("_collection") in collections.values()]
+    def matching(self, docs: list[dict], collections: dict[str, str]) -> list[dict]:
+        return [document for document in docs if document.get("_collection") in collections.values()]
 
 
 def _legacy(report: Any, extra: list[str]) -> StepReport:
@@ -80,47 +81,52 @@ def _legacy(report: Any, extra: list[str]) -> StepReport:
     return StepReport(problems=[*extra, *report.problems], notes=notes)
 
 
-async def _users(s: AsyncSession, run: Run) -> StepReport:
+async def _users(session: AsyncSession, run: Run) -> StepReport:
     merged, grants, payments, referrals, problems = _script("import_b2c_users").prepare_import(
         stream_b2c_user_documents()
     )
-    report, _ids, email_ids = await load_users(s, merged, grants)
-    report = report.merge(await load_legacy_payments(s, payments, user_ids=email_ids))
-    return _legacy(report.merge(await load_legacy_referrals(s, referrals, user_ids=email_ids)), problems)
+    report, _ids, email_ids = await load_users(session, merged, grants)
+    report = report.merge(await load_legacy_payments(session, payments, user_ids=email_ids))
+    return _legacy(
+        report.merge(await load_legacy_referrals(session, referrals, user_ids=email_ids)), problems
+    )
 
 
-async def _stations(s: AsyncSession, run: Run) -> StepReport:
+async def _stations(session: AsyncSession, run: Run) -> StepReport:
     migrated, problems = _script("import_b2c_stations").transform_documents(stream_b2c_station_documents())
-    return _legacy((await load_stations(s, migrated))[0], problems)
+    return _legacy((await load_stations(session, migrated))[0], problems)
 
 
-async def _media(s: AsyncSession, run: Run) -> StepReport:
+async def _media(session: AsyncSession, run: Run) -> StepReport:
     migrated, problems = _script("import_b2c_media").transform_documents(stream_b2c_media_documents())
-    return _legacy(await load_media(s, migrated), problems)
+    return _legacy(await load_media(session, migrated), problems)
 
 
-async def _community(s: AsyncSession, run: Run) -> StepReport:
+async def _community(session: AsyncSession, run: Run) -> StepReport:
     migrated, problems = _script("import_b2c_community").transform_documents(stream_b2c_community_documents())
-    return _legacy(await load_community(s, migrated), problems)
+    return _legacy(await load_community(session, migrated), problems)
 
 
-async def _marketplace(s: AsyncSession, run: Run) -> StepReport:
+async def _marketplace(session: AsyncSession, run: Run) -> StepReport:
     posts, sessions, problems = _script("import_b2c_marketplace").transform_documents(
         stream_b2c_marketplace_documents()
     )
     return _legacy(
-        (await load_marketplace_posts(s, posts)).merge(await load_peer_sessions(s, sessions)), problems
+        (await load_marketplace_posts(session, posts)).merge(await load_peer_sessions(session, sessions)),
+        problems,
     )
 
 
-async def _attempts(s: AsyncSession, run: Run) -> StepReport:
+async def _attempts(session: AsyncSession, run: Run) -> StepReport:
     docs = run.read("attempts")
     deleted = b2c_firestore.deleted_user_ids(run.db)
-    kept = [d for d in docs if str(d.get("user_id") or "") not in deleted]
-    transcripts = run.of(kept, b2c_inventory.TRANSCRIPT_COLLECTIONS)
-    feedbacks = run.of(kept, b2c_inventory.FEEDBACK_COLLECTIONS)
-    report, run.pairs = await load_b2c_attempts.load(s, transcripts, feedbacks, await b2c_lookups.build(s))
-    dropped = run.of(docs, b2c_inventory.TRANSCRIPT_COLLECTIONS)
+    kept = [document for document in docs if str(document.get("user_id") or "") not in deleted]
+    transcripts = run.matching(kept, b2c_inventory.TRANSCRIPT_COLLECTIONS)
+    feedbacks = run.matching(kept, b2c_inventory.FEEDBACK_COLLECTIONS)
+    report, run.pairs = await load_b2c_attempts.load(
+        session, transcripts, feedbacks, await b2c_lookups.build(session)
+    )
+    dropped = run.matching(docs, b2c_inventory.TRANSCRIPT_COLLECTIONS)
     report.count("transcripts of deleted accounts (not copied)", len(dropped) - len(transcripts))
     return report
 
@@ -130,42 +136,44 @@ async def _needs_attempts(run: Run) -> None:
     if not run.pairs:
         docs = run.read("attempts")
         run.pairs = load_b2c_attempts.migrate_transcripts(
-            run.of(docs, b2c_inventory.TRANSCRIPT_COLLECTIONS), [], StepReport()
+            run.matching(docs, b2c_inventory.TRANSCRIPT_COLLECTIONS), [], StepReport()
         )
 
 
-async def _live_coverage(s: AsyncSession, run: Run) -> StepReport:
+async def _live_coverage(session: AsyncSession, run: Run) -> StepReport:
     await _needs_attempts(run)
-    return await extras.load_live_coverage(s, run.read("live_coverage"), run.pairs)
+    return await extras.load_live_coverage(session, run.read("live_coverage"), run.pairs)
 
 
-async def _debriefs(s: AsyncSession, run: Run) -> StepReport:
+async def _debriefs(session: AsyncSession, run: Run) -> StepReport:
     await _needs_attempts(run)
-    return await extras.load_debriefs(s, run.read("debriefs"), run.pairs, await b2c_lookups.build(s))
-
-
-async def _with_lookups(
-    s: AsyncSession, run: Run, step: str, fn: Callable[..., Awaitable[StepReport]]
-) -> StepReport:
-    return await fn(s, run.read(step), await b2c_lookups.build(s))
-
-
-async def _partners(s: AsyncSession, run: Run) -> StepReport:
-    docs = run.read("partners")
-    return await load_b2c_billing.load_partners(
-        s,
-        run.of(docs, {"a": b2c_inventory.PARTNER_ARRIVAL_COLLECTION}),
-        run.of(docs, {"r": b2c_inventory.PARTNER_REPORTER_COLLECTION}),
+    return await extras.load_debriefs(
+        session, run.read("debriefs"), run.pairs, await b2c_lookups.build(session)
     )
 
 
-async def _peer_practice(s: AsyncSession, run: Run) -> StepReport:
+async def _with_lookups(
+    session: AsyncSession, run: Run, step: str, handler: Callable[..., Awaitable[StepReport]]
+) -> StepReport:
+    return await handler(session, run.read(step), await b2c_lookups.build(session))
+
+
+async def _partners(session: AsyncSession, run: Run) -> StepReport:
+    docs = run.read("partners")
+    return await load_b2c_billing.load_partners(
+        session,
+        run.matching(docs, {"a": b2c_inventory.PARTNER_ARRIVAL_COLLECTION}),
+        run.matching(docs, {"r": b2c_inventory.PARTNER_REPORTER_COLLECTION}),
+    )
+
+
+async def _peer_practice(session: AsyncSession, run: Run) -> StepReport:
     docs = run.read("peer_practice")
     return await load_b2c_misc.load_peer_practice(
-        s,
-        run.of(docs, b2c_inventory.HUMAN_PRACTICE_SESSION_COLLECTIONS),
-        run.of(docs, b2c_inventory.HUMAN_PRACTICE_FEEDBACK_COLLECTIONS),
-        await b2c_lookups.build(s),
+        session,
+        run.matching(docs, b2c_inventory.HUMAN_PRACTICE_SESSION_COLLECTIONS),
+        run.matching(docs, b2c_inventory.HUMAN_PRACTICE_FEEDBACK_COLLECTIONS),
+        await b2c_lookups.build(session),
     )
 
 
@@ -180,8 +188,12 @@ HANDLERS: dict[str, Callable[[AsyncSession, Run], Awaitable[StepReport]]] = {
     "debriefs": _debriefs,
     "partners": _partners,
     "peer_practice": _peer_practice,
-    "payments": lambda s, r: _with_lookups(s, r, "payments", load_b2c_billing.load_payments),
-    "referrals": lambda s, r: _with_lookups(s, r, "referrals", load_b2c_billing.load_referrals),
-    "cvs": lambda s, r: _with_lookups(s, r, "cvs", load_b2c_misc.load_cvs),
-    "site_messages": lambda s, r: _with_lookups(s, r, "site_messages", load_b2c_misc.load_site_messages),
+    "payments": lambda session, run: _with_lookups(session, run, "payments", load_b2c_billing.load_payments),
+    "referrals": lambda session, run: _with_lookups(
+        session, run, "referrals", load_b2c_billing.load_referrals
+    ),
+    "cvs": lambda session, run: _with_lookups(session, run, "cvs", load_b2c_misc.load_cvs),
+    "site_messages": lambda session, run: _with_lookups(
+        session, run, "site_messages", load_b2c_misc.load_site_messages
+    ),
 }

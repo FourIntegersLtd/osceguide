@@ -58,7 +58,7 @@ async def load_exams(session: AsyncSession, spec: Mapping[str, Any], *, now: dat
     if not isinstance(entries, list) or not entries:
         raise InvalidExamsFile("The exams file must hold a non-empty `exams` array.")
 
-    out: dict[str, Exam] = {}
+    exams_by_code: dict[str, Exam] = {}
     for entry in entries:
         if not isinstance(entry, Mapping):
             raise InvalidExamsFile("Each exam must be an object.")
@@ -68,7 +68,7 @@ async def load_exams(session: AsyncSession, spec: Mapping[str, Any], *, now: dat
 
         existing = await catalog_repository.exam_by_code(session, None, code)
         if existing is not None:
-            out[code] = existing
+            exams_by_code[code] = existing
             continue
 
         rubric_version_id = await _publish_rubric(session, entry, code=code, now=now)
@@ -83,10 +83,10 @@ async def load_exams(session: AsyncSession, spec: Mapping[str, Any], *, now: dat
             partner_pilot=bool(entry.get("partner_pilot", False)),
         )
         await catalog.publish_exam(session, exam.id)
-        row = await catalog_repository.exam_by_code(session, None, code)
-        assert row is not None
-        out[code] = row
-    return out
+        published_exam = await catalog_repository.exam_by_code(session, None, code)
+        assert published_exam is not None
+        exams_by_code[code] = published_exam
+    return exams_by_code
 
 
 async def _publish_rubric(

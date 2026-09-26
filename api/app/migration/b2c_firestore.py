@@ -64,9 +64,9 @@ def serialize(value: Any) -> Any:
         except Exception:  # noqa: BLE001
             return str(value)
     if isinstance(value, dict):
-        return {str(k): serialize(v) for k, v in value.items()}
+        return {str(key): serialize(nested_value) for key, nested_value in value.items()}
     if isinstance(value, list):
-        return [serialize(v) for v in value]
+        return [serialize(nested_value) for nested_value in value]
     return value
 
 
@@ -82,31 +82,31 @@ USER_COLLECTIONS = ("users", "plab_users", "casc_users", "ortho_users")
 def deleted_user_ids(db: Any) -> set[str]:
     """Legacy ids of people who deleted their account. Their email is already
     scrubbed and their history is not copied."""
-    out: set[str] = set()
+    deleted_ids: set[str] = set()
     for collection in USER_COLLECTIONS:
         for snapshot in db.collection(collection).select(["user_id", "is_deleted"]).stream():
-            data = snapshot.to_dict() or {}
-            if data.get("is_deleted") is True:
-                out.update({snapshot.id, str(data.get("user_id") or snapshot.id)})
-    return out
+            document_data = snapshot.to_dict() or {}
+            if document_data.get("is_deleted") is True:
+                deleted_ids.update({snapshot.id, str(document_data.get("user_id") or snapshot.id)})
+    return deleted_ids
 
 
 def root_collection_names(db: Any) -> list[str]:
-    return sorted(col.id for col in db.collections())
+    return sorted(collection.id for collection in db.collections())
 
 
 def stream(db: Any, collection: str, *, app_type: str | None = None) -> tuple[list[dict[str, Any]], int]:
     """Every non-seed document in `collection`, and how many seed rows were dropped."""
-    out: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
     seeded = 0
-    for snap in db.collection(collection).stream():
-        document = serialize(snap.to_dict() or {})
+    for snapshot in db.collection(collection).stream():
+        document = serialize(snapshot.to_dict() or {})
         if is_seed(document):
             seeded += 1
             continue
-        document["id"] = snap.id
+        document["id"] = snapshot.id
         if app_type is not None:
             document.setdefault("app_type", app_type)
         document["_collection"] = collection
-        out.append(document)
-    return out, seeded
+        documents.append(document)
+    return documents, seeded

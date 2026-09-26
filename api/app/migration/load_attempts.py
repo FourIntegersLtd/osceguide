@@ -24,9 +24,9 @@ def legacy_ref_for(attempt: MigratedAttempt) -> str:
     """The identity an imported attempt keeps, so a second run recognises it."""
     ids = attempt.legacy_ids
     for key in ("attempt_id", "transcript_id"):
-        value = str(ids.get(key) or "").strip()
-        if value:
-            return f"b2c:{key}:{value}"
+        legacy_value = str(ids.get(key) or "").strip()
+        if legacy_value:
+            return f"b2c:{key}:{legacy_value}"
     return ""
 
 

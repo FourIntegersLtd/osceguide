@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class LoadReport:
+
     users_created: int = 0
     users_matched: int = 0
     entitlements_created: int = 0
@@ -40,7 +41,7 @@ class LoadReport:
         self.problems.append(message)
 
     @property
-    def ok(self) -> bool:
+    def has_no_problems(self) -> bool:
         return not self.problems
 
     def merge(self, other: LoadReport) -> LoadReport:

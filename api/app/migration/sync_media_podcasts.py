@@ -29,6 +29,7 @@ from app.migration.media import (
 
 @dataclass
 class PodcastSyncReport:
+
     firestore_with_url: int = 0
     firestore_no_url: int = 0
     summaries_updated: int = 0
@@ -43,7 +44,7 @@ class PodcastSyncReport:
         self.problems.append(message)
 
     @property
-    def ok(self) -> bool:
+    def has_no_problems(self) -> bool:
         return not self.problems
 
     def summary(self) -> str:
@@ -70,13 +71,15 @@ def podcast_url_from_document(document: dict[str, Any]) -> str | None:
 
 
 async def _media_by_legacy_ref(session: AsyncSession) -> dict[str, MediaItem]:
-    rows = await session.execute(select(MediaItem).where(MediaItem.content["legacy_ref"].astext.isnot(None)))
-    out: dict[str, MediaItem] = {}
-    for row in rows.scalars():
-        legacy = row.content.get("legacy_ref")
+    media_rows = await session.execute(
+        select(MediaItem).where(MediaItem.content["legacy_ref"].astext.isnot(None))
+    )
+    media_by_legacy_ref: dict[str, MediaItem] = {}
+    for media_item in media_rows.scalars():
+        legacy = media_item.content.get("legacy_ref")
         if isinstance(legacy, str) and legacy:
-            out[legacy] = row
-    return out
+            media_by_legacy_ref[legacy] = media_item
+    return media_by_legacy_ref
 
 
 def _content_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:

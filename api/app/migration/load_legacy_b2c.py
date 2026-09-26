@@ -41,9 +41,9 @@ async def load_legacy_payments(
         plan_id = plans.get(merged.plan_code.lower())
         amount = merged.amount_pence
         if plan_id is not None and amount == 0:
-            row = await session.scalar(select(Plan.amount_pence).where(Plan.id == plan_id))
-            if row is not None:
-                amount = int(row)
+            plan_amount_pence = await session.scalar(select(Plan.amount_pence).where(Plan.id == plan_id))
+            if plan_amount_pence is not None:
+                amount = int(plan_amount_pence)
         session.add(
             Payment(
                 user_id=user_id,

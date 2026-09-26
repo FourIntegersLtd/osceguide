@@ -23,7 +23,7 @@ from app.migration.resolve_legacy_users import legacy_consumer_user_ids
 
 
 async def _station_id_by_exam_and_legacy(session: AsyncSession) -> dict[tuple[str, str], uuid.UUID]:
-    rows = await session.execute(
+    station_rows = await session.execute(
         select(
             Exam.code,
             StationVersion.content["station_id"].astext,
@@ -33,11 +33,11 @@ async def _station_id_by_exam_and_legacy(session: AsyncSession) -> dict[tuple[st
         .join(Exam, Exam.id == Station.exam_id)
         .where(StationVersion.content["station_id"].astext.isnot(None))
     )
-    out: dict[tuple[str, str], uuid.UUID] = {}
-    for exam_code, legacy_station, station_id in rows.all():
+    station_ids_by_exam_and_legacy: dict[tuple[str, str], uuid.UUID] = {}
+    for exam_code, legacy_station, station_id in station_rows.all():
         if legacy_station:
-            out[(str(exam_code).lower(), str(legacy_station))] = station_id
-    return out
+            station_ids_by_exam_and_legacy[(str(exam_code).lower(), str(legacy_station))] = station_id
+    return station_ids_by_exam_and_legacy
 
 
 def _resolve_user(
@@ -68,65 +68,65 @@ async def load_community(
 
     ordered = sorted(
         posts,
-        key=lambda p: (
-            0 if p.kind == "question" else 1 if p.kind == "reply" else 2,
-            p.created_at or at,
+        key=lambda post: (
+            0 if post.kind == "question" else 1 if post.kind == "reply" else 2,
+            post.created_at or at,
         ),
     )
 
-    for item in ordered:
-        existing = await session.get(Post, item.row_id)
+    for post in ordered:
+        existing = await session.get(Post, post.row_id)
         if existing is not None:
             report.community_posts_existing += 1
             continue
 
-        author_id = _resolve_user(report, users, item.author_legacy_user_id, item.legacy_ref)
+        author_id = _resolve_user(report, users, post.author_legacy_user_id, post.legacy_ref)
         if author_id is None:
             continue
 
-        exam_id = exams.get(item.exam_code)
+        exam_id = exams.get(post.exam_code)
         if exam_id is None:
-            report.problem(f"{item.legacy_ref}: exam {item.exam_code!r} is not in this database")
+            report.problem(f"{post.legacy_ref}: exam {post.exam_code!r} is not in this database")
             continue
 
         parent_id: uuid.UUID | None = None
-        if item.parent_legacy_ref is not None:
-            parent_id = legacy_row_id(item.parent_legacy_ref)
+        if post.parent_legacy_ref is not None:
+            parent_id = legacy_row_id(post.parent_legacy_ref)
             parent = await session.get(Post, parent_id)
             if parent is None:
-                report.problem(f"{item.legacy_ref}: parent post {item.parent_legacy_ref!r} is missing")
+                report.problem(f"{post.legacy_ref}: parent post {post.parent_legacy_ref!r} is missing")
                 continue
 
         station_id: uuid.UUID | None = None
-        if item.legacy_station_id is not None:
-            station_id = stations.get((item.exam_code, item.legacy_station_id))
+        if post.legacy_station_id is not None:
+            station_id = stations.get((post.exam_code, post.legacy_station_id))
             if station_id is None:
                 report.problem(
-                    f"{item.legacy_ref}: station {item.legacy_station_id!r} "
-                    f"for {item.exam_code} is not in this database; import stations first"
+                    f"{post.legacy_ref}: station {post.legacy_station_id!r} "
+                    f"for {post.exam_code} is not in this database; import stations first"
                 )
                 continue
 
-        created = item.created_at or at
-        updated = item.updated_at or created
+        created = post.created_at or at
+        updated = post.updated_at or created
 
-        row = Post(
-            id=item.row_id,
-            kind=item.kind,
+        post_row = Post(
+            id=post.row_id,
+            kind=post.kind,
             author_id=author_id,
-            body=item.body,
-            title=item.title,
+            body=post.body,
+            title=post.title,
             parent_id=parent_id,
             exam_id=exam_id,
             station_id=station_id,
             created_at=created,
             updated_at=updated,
         )
-        session.add(row)
+        session.add(post_row)
         await session.flush()
         report.community_posts_created += 1
 
-        for like in item.likes:
+        for like in post.likes:
             like_id = legacy_row_id(like.legacy_ref)
             if await session.get(PostLike, like_id) is not None:
                 report.community_likes_existing += 1
@@ -137,7 +137,7 @@ async def load_community(
             session.add(
                 PostLike(
                     id=like_id,
-                    post_id=item.row_id,
+                    post_id=post.row_id,
                     user_id=liker,
                     created_at=created,
                     updated_at=created,

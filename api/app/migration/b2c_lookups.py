@@ -27,19 +27,20 @@ class StepReport:
     problems: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)  # pre-formatted lines from the legacy `LoadReport`
 
-    def count(self, label: str, n: int = 1) -> None:
-        self.counts[label] += n
+    def count(self, label: str, amount: int = 1) -> None:
+        self.counts[label] += amount
 
     def problem(self, message: str) -> None:
         self.problems.append(message)
 
     def summary(self) -> str:
-        parts = [*self.notes, *(f"{label} {n}" for label, n in sorted(self.counts.items()))]
+        parts = [*self.notes, *(f"{label} {amount}" for label, amount in sorted(self.counts.items()))]
         return "; ".join(parts) or "nothing to do"
 
 
 @dataclass
 class Lookups:
+
     users: dict[str, uuid.UUID]
     users_by_email: dict[str, uuid.UUID]
     exams: dict[str, uuid.UUID]

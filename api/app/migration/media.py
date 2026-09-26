@@ -67,7 +67,7 @@ def _slug_part(raw: str) -> str:
 
 def _bounded_slug(*parts: str) -> str:
     """Exam-prefixed slug within `MAX_SLUG`."""
-    joined = "-".join(_slug_part(p) for p in parts if p)
+    joined = "-".join(_slug_part(part) for part in parts if part)
     if not joined:
         raise MediaTransformError("cannot build slug from empty parts")
     if len(joined) <= MAX_SLUG:
@@ -93,10 +93,10 @@ def _normalize_slides_array(slide_data: dict[str, Any]) -> None:
     if not isinstance(slides_field, dict):
         return
     keys = list(slides_field.keys())
-    if not keys or not all(str(k).isdigit() for k in keys):
+    if not keys or not all(str(key).isdigit() for key in keys):
         return
-    sorted_keys = sorted(keys, key=lambda k: int(str(k)))
-    slide_data["slides"] = [slides_field[k] for k in sorted_keys]
+    sorted_keys = sorted(keys, key=lambda key: int(str(key)))
+    slide_data["slides"] = [slides_field[key] for key in sorted_keys]
 
 
 def summary_from_document(document: dict[str, Any], *, product: str | None = None) -> MigratedMedia:
@@ -248,11 +248,11 @@ def media_from_document(document: dict[str, Any], *, product: str | None = None)
     kind = document.get("_media_kind") or document.get("kind")
     if kind == "summary":
         summary = summary_from_document(document, product=product)
-        rows = [summary]
+        media_items = [summary]
         podcast = podcast_from_summary(summary)
         if podcast is not None:
-            rows.append(podcast)
-        return rows
+            media_items.append(podcast)
+        return media_items
     if kind == "blog":
         return [blog_from_document(document, product=product)]
     if kind == "slide_deck":

@@ -56,38 +56,38 @@ def _serialize_value(value: Any) -> Any:
         except Exception:  # noqa: BLE001
             return str(value)
     if isinstance(value, dict):
-        return {str(k): _serialize_value(v) for k, v in value.items()}
+        return {str(key): _serialize_value(nested_value) for key, nested_value in value.items()}
     if isinstance(value, list):
-        return [_serialize_value(v) for v in value]
+        return [_serialize_value(nested_value) for nested_value in value]
     return value
 
 
 def _doc_to_dict(
     doc_id: str,
-    data: dict[str, Any],
+    document_data: dict[str, Any],
     *,
     app_type: str,
     social_kind: str,
 ) -> dict[str, Any]:
-    out = _serialize_value(dict(data))
-    out["id"] = doc_id
-    out.setdefault("app_type", app_type)
-    out["_social_kind"] = social_kind
-    return out
+    document = _serialize_value(dict(document_data))
+    document["id"] = doc_id
+    document.setdefault("app_type", app_type)
+    document["_social_kind"] = social_kind
+    return document
 
 
 def read_community_json(path: Path) -> list[dict[str, Any]]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
+    documents = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(documents, list):
         raise ValueError(f"{path} should hold a JSON array of documents.")
-    return data
+    return documents
 
 
 def read_marketplace_json(path: Path) -> list[dict[str, Any]]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
+    documents = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(documents, list):
         raise ValueError(f"{path} should hold a JSON array of documents.")
-    return data
+    return documents
 
 
 def read_community_from_export_dir(export_dir: Path) -> list[dict[str, Any]]:
@@ -105,11 +105,11 @@ def _stream_collection(
     app_type: str,
     social_kind: str,
 ) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for snap in db.collection(collection).stream():
-        data = snap.to_dict() or {}
-        out.append(_doc_to_dict(snap.id, data, app_type=app_type, social_kind=social_kind))
-    return out
+    documents: list[dict[str, Any]] = []
+    for snapshot in db.collection(collection).stream():
+        document_data = snapshot.to_dict() or {}
+        documents.append(_doc_to_dict(snapshot.id, document_data, app_type=app_type, social_kind=social_kind))
+    return documents
 
 
 def stream_b2c_community_documents(
@@ -131,10 +131,10 @@ def stream_b2c_community_documents(
             raise ValueError(f"unknown product {product!r}")
 
     db = firestore.Client()
-    out: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
     for app_type in selected_products:
         if "question" in selected_kinds:
-            out.extend(
+            documents.extend(
                 _stream_collection(
                     db,
                     B2C_COMMUNITY_QUESTION_COLLECTIONS[app_type],
@@ -143,7 +143,7 @@ def stream_b2c_community_documents(
                 )
             )
         if "reply" in selected_kinds:
-            out.extend(
+            documents.extend(
                 _stream_collection(
                     db,
                     B2C_COMMUNITY_REPLY_COLLECTIONS[app_type],
@@ -152,7 +152,7 @@ def stream_b2c_community_documents(
                 )
             )
         if "comment" in selected_kinds:
-            out.extend(
+            documents.extend(
                 _stream_collection(
                     db,
                     B2C_COMMENT_COLLECTIONS[app_type],
@@ -160,7 +160,7 @@ def stream_b2c_community_documents(
                     social_kind="comment",
                 )
             )
-    return out
+    return documents
 
 
 def stream_b2c_marketplace_documents(
@@ -182,10 +182,10 @@ def stream_b2c_marketplace_documents(
             raise ValueError(f"unknown product {product!r}")
 
     db = firestore.Client()
-    out: list[dict[str, Any]] = []
+    documents: list[dict[str, Any]] = []
     for app_type in selected_products:
         if "post" in selected_kinds:
-            out.extend(
+            documents.extend(
                 _stream_collection(
                     db,
                     B2C_MARKETPLACE_POST_COLLECTIONS[app_type],
@@ -194,7 +194,7 @@ def stream_b2c_marketplace_documents(
                 )
             )
         if "session" in selected_kinds:
-            out.extend(
+            documents.extend(
                 _stream_collection(
                     db,
                     B2C_MARKETPLACE_SESSION_COLLECTIONS[app_type],
@@ -202,7 +202,7 @@ def stream_b2c_marketplace_documents(
                     social_kind="session",
                 )
             )
-    return out
+    return documents
 
 
 def write_community_json(path: Path, documents: list[dict[str, Any]]) -> None:

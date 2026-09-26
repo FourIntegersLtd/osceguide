@@ -35,23 +35,28 @@ def message_key(message_id: str) -> str:
 
 
 def _richest(pairs: Sequence[Pair]) -> Pair:
-    return max(pairs, key=lambda p: (p[0].result is not None, len(p[0].messages), p[0].created_at))
+    return max(
+        pairs,
+        key=lambda pair: (pair[0].result is not None, len(pair[0].messages), pair[0].created_at),
+    )
 
 
 def _merge_saves(pairs: Sequence[Pair], report: StepReport) -> list[Pair]:
     groups: dict[str, list[Pair]] = {}
     for pair in pairs:
         groups.setdefault(legacy_ref_for(pair[0]) or f"unkeyed:{id(pair)}", []).append(pair)
-    out: list[Pair] = []
+    merged_pairs: list[Pair] = []
     for group in groups.values():
         if len(group) == 1:
-            out.append(group[0])
+            merged_pairs.append(group[0])
             continue
         migrated, raw = _richest(group)
-        migrated.messages = sorted((m for p in group for m in p[0].messages), key=lambda m: m.spoken_at)
+        migrated.messages = sorted(
+            (message for pair in group for message in pair[0].messages), key=lambda message: message.spoken_at
+        )
         report.count("double-saved transcripts merged", len(group) - 1)
-        out.append((migrated, raw))
-    return out
+        merged_pairs.append((migrated, raw))
+    return merged_pairs
 
 
 def _clean_turns(migrated: MigratedAttempt, report: StepReport) -> None:
@@ -59,7 +64,9 @@ def _clean_turns(migrated: MigratedAttempt, report: StepReport) -> None:
     for message in migrated.messages:
         latest[message_key(message.message_id)] = message
     report.count("re-sent transcript turns merged", len(migrated.messages) - len(latest))
-    migrated.messages = [replace(m, message_id=k, seq=i) for i, (k, m) in enumerate(latest.items())]
+    migrated.messages = [
+        replace(message, message_id=key, seq=index) for index, (key, message) in enumerate(latest.items())
+    ]
 
 
 def clean(pairs: Sequence[Pair], report: StepReport) -> list[Pair]:

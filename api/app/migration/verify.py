@@ -103,7 +103,7 @@ def transcript_fingerprint(messages: Sequence[tuple[int, str, str]]) -> str:
     is a different conversation, and a count cannot tell.
     """
     digest = hashlib.sha256()
-    for seq, role, message in sorted(messages, key=lambda m: m[0]):
+    for seq, role, message in sorted(messages, key=lambda entry: entry[0]):
         digest.update(f"{seq}\x1f{role}\x1f{message}\x1e".encode())
     return digest.hexdigest()
 
@@ -122,7 +122,7 @@ async def spot_check(session: AsyncSession, sample: Sequence[MigratedAttempt]) -
             problems.append(f"{ref} is in the export but not in the database.")
             continue
 
-        rows = (
+        stored_rows = (
             await session.execute(
                 select(
                     TranscriptMessage.seq,
@@ -132,15 +132,15 @@ async def spot_check(session: AsyncSession, sample: Sequence[MigratedAttempt]) -
             )
         ).all()
 
-        stored = transcript_fingerprint([(r[0], r[1], r[2]) for r in rows])
-        source = transcript_fingerprint([(m.seq, m.role, m.message) for m in migrated.messages])
+        stored = transcript_fingerprint([(row[0], row[1], row[2]) for row in stored_rows])
+        source = transcript_fingerprint([(turn.seq, turn.role, turn.message) for turn in migrated.messages])
         if stored != source:
 
-            def turns(n: int) -> str:
-                return f"{n} turn" if n == 1 else f"{n} turns"
+            def turns(count: int) -> str:
+                return f"{count} turn" if count == 1 else f"{count} turns"
 
             problems.append(
                 f"{ref}: the stored transcript does not match the export "
-                f"({turns(len(rows))} stored, {turns(len(migrated.messages))} in the export)."
+                f"({turns(len(stored_rows))} stored, {turns(len(migrated.messages))} in the export)."
             )
     return problems

@@ -30,21 +30,21 @@ from app.migration.users import MergedEntitlement, MergedUser
 LEGACY_SOURCE_REF = "legacy-import"
 
 
-def _apply_profile(row: User, merged: MergedUser, *, creating: bool) -> None:
-    if creating or not row.name.strip():
-        row.name = merged.name or row.name
-    if merged.last_login_at and (row.last_login_at is None or merged.last_login_at > row.last_login_at):
-        row.last_login_at = merged.last_login_at
-    if merged.exam_code and (creating or row.exam_code is None):
-        row.exam_code = merged.exam_code
-    if merged.exam_date and (creating or row.exam_date is None):
-        row.exam_date = merged.exam_date
-    if merged.extra_reading_percent > row.extra_reading_percent:
-        row.extra_reading_percent = merged.extra_reading_percent
+def _apply_profile(user: User, merged: MergedUser, *, creating: bool) -> None:
+    if creating or not user.name.strip():
+        user.name = merged.name or user.name
+    if merged.last_login_at and (user.last_login_at is None or merged.last_login_at > user.last_login_at):
+        user.last_login_at = merged.last_login_at
+    if merged.exam_code and (creating or user.exam_code is None):
+        user.exam_code = merged.exam_code
+    if merged.exam_date and (creating or user.exam_date is None):
+        user.exam_date = merged.exam_date
+    if merged.extra_reading_percent > user.extra_reading_percent:
+        user.extra_reading_percent = merged.extra_reading_percent
     if merged.consumer_role == "admin":
-        row.consumer_role = "admin"
+        user.consumer_role = "admin"
     if creating and merged.created_at:
-        row.created_at = merged.created_at
+        user.created_at = merged.created_at
 
 
 async def _link_consumer_ids(session: AsyncSession, user_id: uuid.UUID, merged: MergedUser) -> None:
@@ -77,8 +77,8 @@ async def _link_consumer_ids(session: AsyncSession, user_id: uuid.UUID, merged: 
 
 
 async def exams_by_code(session: AsyncSession) -> dict[str, uuid.UUID]:
-    rows = await session.execute(select(Exam.code, Exam.id))
-    return {str(code).lower(): exam_id for code, exam_id in rows.all()}
+    exam_rows = await session.execute(select(Exam.code, Exam.id))
+    return {str(code).lower(): exam_id for code, exam_id in exam_rows.all()}
 
 
 async def load_users(
@@ -103,7 +103,7 @@ async def load_users(
 
         existing = await session.scalar(select(User).where(User.email == email))
         if existing is None:
-            row = User(
+            user = User(
                 email=email,
                 name=merged.name,
                 # Neither legacy hash is argon2 and b2b's is unsalted SHA-256,
@@ -117,31 +117,31 @@ async def load_users(
                 consumer_role=merged.consumer_role,
                 last_login_at=merged.last_login_at,
             )
-            session.add(row)
+            session.add(user)
             await session.flush()
-            _apply_profile(row, merged, creating=True)
+            _apply_profile(user, merged, creating=True)
             report.users_created += 1
         else:
             # A second run, or somebody who signed up before their import.
             # Their password and status are theirs now; only the platform
             # admin flag is re-asserted, because that is an access decision
             # the export is authoritative about.
-            row = existing
-            if merged.is_platform_admin and not row.is_platform_admin:
-                row.is_platform_admin = True
-            _apply_profile(row, merged, creating=False)
+            user = existing
+            if merged.is_platform_admin and not user.is_platform_admin:
+                user.is_platform_admin = True
+            _apply_profile(user, merged, creating=False)
             report.users_matched += 1
 
-        await _link_consumer_ids(session, row.id, merged)
-        by_email[email] = row.id
+        await _link_consumer_ids(session, user.id, merged)
+        by_email[email] = user.id
         for legacy_id in merged.legacy_ids:
-            if legacy_id in by_legacy_id and by_legacy_id[legacy_id] != row.id:
+            if legacy_id in by_legacy_id and by_legacy_id[legacy_id] != user.id:
                 report.problem(
                     f"Legacy id {legacy_id!r} maps to two different people; "
                     "attempts referencing it were not loaded."
                 )
                 continue
-            by_legacy_id[legacy_id] = row.id
+            by_legacy_id[legacy_id] = user.id
 
     exams = await exams_by_code(session)
     for grant in entitlements:

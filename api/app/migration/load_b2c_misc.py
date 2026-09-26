@@ -54,7 +54,7 @@ async def load_cvs(
             report.problem(f"cv {doc.get('id')}: no platform user for legacy user_id {doc.get('user_id')!r}")
             continue
         status = str(doc.get("status") or "")
-        row = Cv(
+        cv = Cv(
             id=legacy_row_id(f"{doc.get('app_type') or 'ortho'}:cv:{doc.get('id')}"),
             user_id=user_id,
             status=status if status in _CV_STATUSES else "failed",
@@ -64,7 +64,7 @@ async def load_cvs(
             completed_at=parse_timestamp(doc.get("completed_at")),
             **_at("created_at", doc.get("uploaded_at")),
         )
-        await _add_once(session, report, row, "cvs")
+        await _add_once(session, report, cv, "cvs")
     await session.flush()
     return report
 
@@ -80,7 +80,7 @@ async def load_site_messages(
         if not body:
             report.count("site messages with no body (not copyable)")
             continue
-        row = SiteMessage(
+        site_message = SiteMessage(
             id=legacy_row_id(f"site_message:{collection}:{doc.get('id')}"),
             kind="product_feedback" if feature else "contact",
             email=(str(doc.get("email") or "").strip() or None),
@@ -90,7 +90,7 @@ async def load_site_messages(
             source=f"legacy-b2c:{collection}",
             **_at("created_at", doc.get("created_at")),
         )
-        await _add_once(session, report, row, "site messages")
+        await _add_once(session, report, site_message, "site messages")
     await session.flush()
     return report
 
@@ -103,9 +103,12 @@ def _recording_key(doc: dict[str, Any]) -> str | None:
 
 
 def _feedback_for(session_doc: dict[str, Any], feedback: dict[str, list[dict]]) -> dict[str, Any]:
-    rows = feedback.get(str(session_doc.get("session_id") or session_doc.get("id")), [])
+    feedback_rows = feedback.get(str(session_doc.get("session_id") or session_doc.get("id")), [])
     doctor = str(session_doc.get("doctor_user_id") or "")
-    return next((r for r in rows if str(r.get("user_id")) == doctor), rows[0] if rows else {})
+    return next(
+        (feedback_row for feedback_row in feedback_rows if str(feedback_row.get("user_id")) == doctor),
+        feedback_rows[0] if feedback_rows else {},
+    )
 
 
 async def load_peer_practice(
@@ -113,8 +116,8 @@ async def load_peer_practice(
 ) -> StepReport:
     report = StepReport()
     by_session: dict[str, list[dict]] = {}
-    for f in feedbacks:
-        by_session.setdefault(str(f.get("session_id") or ""), []).append(f)
+    for feedback in feedbacks:
+        by_session.setdefault(str(feedback.get("session_id") or ""), []).append(feedback)
     for doc in sessions:
         legacy_id = str(doc.get("session_id") or doc.get("id"))
         try:
@@ -126,9 +129,9 @@ async def load_peer_practice(
         if doctor is None or patient is None:
             report.problem(f"practice session {legacy_id}: doctor or patient is not a platform user")
             continue
-        fb = _feedback_for(doc, by_session)
-        rating = fb.get("experience_rating")
-        row = PracticeSession(
+        matched_feedback = _feedback_for(doc, by_session)
+        rating = matched_feedback.get("experience_rating")
+        practice_session = PracticeSession(
             id=legacy_row_id(f"{exam}:practice_session:{legacy_id}"),
             exam_id=lookups.exams[exam],
             doctor_user_id=doctor,
@@ -142,13 +145,13 @@ async def load_peer_practice(
             preparation_started_at=parse_timestamp(doc.get("preparation_started_at")),
             ended_at=parse_timestamp(doc.get("ended_at")) or parse_timestamp(doc.get("created_at")),
             feedback_rating=int(rating) if isinstance(rating, int) else None,
-            feedback_comment=(str(fb.get("feedback_text") or "")[:2000] or None),
-            would_practice_again=fb.get("would_practice_again"),
+            feedback_comment=(str(matched_feedback.get("feedback_text") or "")[:2000] or None),
+            would_practice_again=matched_feedback.get("would_practice_again"),
             egress_id=(str(doc.get("audio_egress_id") or "")[:128] or None),
             recording_key=_recording_key(doc),
             recording_state="none",
             **_at("created_at", doc.get("created_at")),
         )
-        await _add_once(session, report, row, "practice sessions")
+        await _add_once(session, report, practice_session, "practice sessions")
     await session.flush()
     return report

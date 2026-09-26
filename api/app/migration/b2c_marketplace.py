@@ -31,6 +31,7 @@ def _starts_at(document: dict[str, Any]) -> datetime:
 
 @dataclass
 class MigratedAvailabilityPost:
+
     legacy_ref: str
     exam_code: str
     owner_legacy_user_id: str
@@ -52,6 +53,7 @@ class MigratedAvailabilityPost:
 
 @dataclass
 class MigratedPeerSession:
+
     legacy_ref: str
     exam_code: str
     post_legacy_ref: str | None

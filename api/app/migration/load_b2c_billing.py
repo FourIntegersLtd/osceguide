@@ -53,7 +53,10 @@ async def load_payments(
     session: AsyncSession, documents: Sequence[dict[str, Any]], lookups: Lookups
 ) -> StepReport:
     report = StepReport()
-    plans = {str(c).lower(): i for c, i in (await session.execute(select(Plan.code, Plan.id))).all()}
+    plans = {
+        str(plan_code).lower(): plan_id
+        for plan_code, plan_id in (await session.execute(select(Plan.code, Plan.id))).all()
+    }
     receipts = set(
         (await session.scalars(select(Payment.receipt_id).where(Payment.receipt_id.isnot(None)))).all()
     )
@@ -64,13 +67,17 @@ async def load_payments(
         if not intent or paid_at is None:
             report.problem(f"{label}: no payment intent or payment time")
             continue
-        values = _payment_values(doc)
+        payment_field_values = _payment_values(doc)
         receipt = str(doc.get("receipt_id") or "").strip() or None
         existing = await session.scalar(select(Payment).where(Payment.stripe_payment_intent_id == intent))
         if existing is not None:
-            filled = [k for k in _FILL if getattr(existing, k) is None and values[k] is not None]
+            filled = [
+                field
+                for field in _FILL
+                if getattr(existing, field) is None and payment_field_values[field] is not None
+            ]
             for key in filled:
-                setattr(existing, key, values[key])
+                setattr(existing, key, payment_field_values[key])
             if existing.receipt_id is None and receipt and receipt not in receipts:
                 existing.receipt_id = receipt
                 receipts.add(receipt)
@@ -96,7 +103,7 @@ async def load_payments(
                 currency=str(doc.get("currency") or "gbp")[:3],
                 receipt_id=receipt if receipt and receipt not in receipts else None,
                 paid_at=paid_at,
-                **values,
+                **payment_field_values,
             )
         )
         if receipt:
@@ -147,8 +154,15 @@ async def load_referrals(
 
 def _arrival(doc: dict[str, Any]) -> PartnerArrival:
     path = str(doc.get("landing_path") or "")
-    query = {k: v[0] for k, v in parse_qs(urlparse(path).query).items() if v}
-    utm = {k: doc.get(f"utm_{k}") or query.get(f"utm_{k}") for k in ("source", "medium", "campaign")}
+    query = {
+        query_key: query_values[0]
+        for query_key, query_values in parse_qs(urlparse(path).query).items()
+        if query_values
+    }
+    utm = {
+        utm_field: doc.get(f"utm_{utm_field}") or query.get(f"utm_{utm_field}")
+        for utm_field in ("source", "medium", "campaign")
+    }
     landed = parse_timestamp(doc.get("landed_at")) or parse_timestamp(doc.get("created_at"))
     return PartnerArrival(
         id=legacy_row_id(f"partner_arrival:{doc.get('arrival_id') or doc.get('id')}"),
@@ -157,7 +171,7 @@ def _arrival(doc: dict[str, Any]) -> PartnerArrival:
         visitor_key=str(doc.get("visitor_key") or doc.get("id"))[:64],
         ref_id=(query.get("ref_id") or None),
         landing_path=path[:300] or None,
-        utm={k: v for k, v in utm.items() if v} or None,
+        utm={utm_field: utm_value for utm_field, utm_value in utm.items() if utm_value} or None,
         **({"landed_at": landed} if landed else {}),
     )
 
@@ -167,13 +181,13 @@ async def load_partners(
 ) -> StepReport:
     report = StepReport()
     for doc in arrivals:
-        row = _arrival(doc)
-        if not row.partner or await session.get(PartnerArrival, row.id) is not None:
+        arrival = _arrival(doc)
+        if not arrival.partner or await session.get(PartnerArrival, arrival.id) is not None:
             report.count(
-                "partner arrivals already there" if row.partner else "partner arrivals with no partner"
+                "partner arrivals already there" if arrival.partner else "partner arrivals with no partner"
             )
             continue
-        session.add(row)
+        session.add(arrival)
         report.count("partner arrivals created")
     for doc in reporters:
         partner, email = str(doc.get("partner") or ""), str(doc.get("email") or "").strip().lower()

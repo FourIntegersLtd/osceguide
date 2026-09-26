@@ -74,9 +74,9 @@ class MigratedStation:
 
 def _title(document: dict[str, Any], legacy_id: str) -> str:
     for key in ("station_name", "title", "name"):
-        value = document.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+        candidate_title = document.get(key)
+        if isinstance(candidate_title, str) and candidate_title.strip():
+            return candidate_title.strip()
     # Named rather than skipped: a station with no title is still a station
     # somebody wrote, and a librarian can rename it. Dropping it loses content.
     return f"Untitled station ({legacy_id})"
