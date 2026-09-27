@@ -67,6 +67,15 @@ class User(Base, UUIDPrimaryKey, Timestamps):
         Boolean, nullable=False, server_default=text("false")
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When `close_account` closed this account. Null while the account is
+    # active, or for an account closed before this column existed. The
+    # scheduled erasure job reads it to find every account closed more than
+    # 30 days ago.
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the erasure job scrubbed this account's personal fields and deleted
+    # its transcripts, recordings and feedback. Doubles as the job's
+    # idempotency check: an account with this set is skipped on the next run.
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # When they are sitting the real thing. The consumer dashboard counts down
     # to it, and the exam-wishes prompt appears in the week before.

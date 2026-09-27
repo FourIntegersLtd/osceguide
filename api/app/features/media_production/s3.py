@@ -49,6 +49,20 @@ def delete_object(settings: Settings, url: str) -> None:
     s3_client(settings).delete_object(Bucket=settings.aws_s3_bucket, Key=key)
 
 
+def delete_key(settings: Settings, key: str) -> None:
+    """Remove the object stored at `key` directly, for a caller that holds the
+    key itself rather than the public URL `delete_object` expects.
+
+    A delete for a key that is not there is not an error — S3 already treats
+    it as a no-op rather than raising `NoSuchKey` — so a caller like the
+    erasure job that must not fail its whole run over one recording that is
+    already gone needs nothing extra here.
+    """
+    if not key:
+        return
+    s3_client(settings).delete_object(Bucket=settings.aws_s3_bucket, Key=key)
+
+
 def object_exists(settings: Settings, key: str) -> bool:
     """Whether `key` is in the bucket yet. Egress writes the recording after the stop is
     acknowledged, so a caller that does not check may find nothing yet."""

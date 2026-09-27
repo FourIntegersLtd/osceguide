@@ -59,6 +59,51 @@ async def user_by_id(session: AsyncSession, user_id: uuid.UUID) -> User | None:
     return (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
 
 
+async def user_ids_closed_before(session: AsyncSession, *, cutoff: datetime) -> list[uuid.UUID]:
+    """Every closed account not yet erased, closed at or before `cutoff`.
+
+    Filters on `erased_at IS NULL` rather than trusting the caller to skip
+    ones it already handled — the scheduled erasure job's own idempotency
+    check, so a second run the same day finds nothing left to do.
+    """
+    stmt = select(User.id).where(
+        User.status == "deleted",
+        User.closed_at.is_not(None),
+        User.closed_at <= cutoff,
+        User.erased_at.is_(None),
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def scrub_for_erasure(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> bool:
+    """Overwrite this account's personal fields and mark it erased.
+
+    Returns False, doing nothing, if the account is gone or already erased —
+    the erasure job's per-account idempotency check, alongside
+    `user_ids_closed_before`'s own filter, so calling this twice on the same
+    account (a retried job run, an overlapping schedule) is always safe.
+    """
+    user = await session.get(User, user_id)
+    if user is None or user.erased_at is not None:
+        return False
+    user.name = "Deleted user"
+    user.email = f"deleted-{user.id}@invalid"
+    user.erased_at = now
+    return True
+
+
+async def is_erased(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether this account has already been scrubbed by the erasure job.
+
+    The erasure job asks this about the *other* side of a peer-practice
+    recording before deleting it on one participant's say-so alone — a
+    two-person recording is not erased just because one of them is.
+    """
+    stmt = select(User.erased_at).where(User.id == user_id)
+    erased_at = (await session.execute(stmt)).scalar_one_or_none()
+    return erased_at is not None
+
+
 async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:
     """Store a new password hash and clear the forced-reset flag: setting one
     is what ends a temporary password's temporariness."""

@@ -4530,6 +4530,249 @@
         "title": "ExamRead",
         "type": "object"
       },
+      "ExportedAttempt": {
+        "description": "One attempt this person ran, with its own transcript and marks.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ExportedResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transcript": {
+            "$ref": "#/components/schemas/ExportedTranscript"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "transcript"
+        ],
+        "title": "ExportedAttempt",
+        "type": "object"
+      },
+      "ExportedPayment": {
+        "description": "One payment this person made.",
+        "properties": {
+          "amount_tax_pence": {
+            "title": "Amount Tax Pence",
+            "type": "integer"
+          },
+          "amount_total_pence": {
+            "title": "Amount Total Pence",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "paid_at": {
+            "format": "date-time",
+            "title": "Paid At",
+            "type": "string"
+          },
+          "receipt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Id"
+          },
+          "receipt_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Url"
+          }
+        },
+        "required": [
+          "amount_total_pence",
+          "amount_tax_pence",
+          "currency",
+          "paid_at"
+        ],
+        "title": "ExportedPayment",
+        "type": "object"
+      },
+      "ExportedProfile": {
+        "description": "The account fields the export carries about the person themselves.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "exam_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "created_at"
+        ],
+        "title": "ExportedProfile",
+        "type": "object"
+      },
+      "ExportedResult": {
+        "description": "One mark the engine produced for an attempt.",
+        "properties": {
+          "framework_id": {
+            "title": "Framework Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "scored_at": {
+            "format": "date-time",
+            "title": "Scored At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "framework_id",
+          "policy_version",
+          "payload",
+          "scored_at"
+        ],
+        "title": "ExportedResult",
+        "type": "object"
+      },
+      "ExportedTranscript": {
+        "description": "One attempt's delivery record and the turns it carries.",
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ExportedTranscriptMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "complete"
+        ],
+        "title": "ExportedTranscript",
+        "type": "object"
+      },
+      "ExportedTranscriptMessage": {
+        "description": "One spoken turn, as the export hands it back.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "spoken_at": {
+            "format": "date-time",
+            "title": "Spoken At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "message",
+          "spoken_at"
+        ],
+        "title": "ExportedTranscriptMessage",
+        "type": "object"
+      },
       "ExtendClock": {
         "properties": {
           "reason": {
@@ -6134,6 +6377,33 @@
           "handled_at"
         ],
         "title": "MessageRead",
+        "type": "object"
+      },
+      "MyDataExport": {
+        "description": "Everything `GET /me/export` hands back: one person's own data.",
+        "properties": {
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/ExportedAttempt"
+            },
+            "title": "Attempts",
+            "type": "array"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/ExportedPayment"
+            },
+            "title": "Payments",
+            "type": "array"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ExportedProfile"
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "title": "MyDataExport",
         "type": "object"
       },
       "MySitting": {
@@ -22019,6 +22289,60 @@
           }
         },
         "summary": "Stream My Events",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/me/export": {
+      "get": {
+        "description": "Download everything this account owns: profile, attempts with their\ntranscripts and marks, and payments. Offered as an attachment, so the\nbrowser saves it rather than rendering it.",
+        "operationId": "identity_export_me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyDataExport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Me",
         "tags": [
           "identity"
         ]

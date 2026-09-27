@@ -176,6 +176,23 @@ async def set_recording_state(
     )
 
 
+async def clear_recording(session: AsyncSession, session_id: uuid.UUID) -> bool:
+    """Blank a session's recording pointers, once erasure has deleted the object they name.
+
+    Guarded on `recording_key` still being set, mirroring `set_recording_started`'s
+    own guard: the erasure job runs daily and a crash mid-run is simply retried,
+    so a second pass over an already-cleared session must find nothing to do
+    rather than clear it again and report a false success.
+    """
+    result = await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id, PracticeSession.recording_key.is_not(None))
+        .values(egress_id=None, recording_key=None, recording_state="erased")
+        .returning(PracticeSession.id)
+    )
+    return result.first() is not None
+
+
 async def set_doctor_attempt(session: AsyncSession, session_id: uuid.UUID, *, attempt_id: uuid.UUID) -> None:
     """Point the session at the doctor's marked attempt, once transcription has produced one."""
     await session.execute(

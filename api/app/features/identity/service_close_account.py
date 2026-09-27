@@ -43,4 +43,7 @@ async def close_account(
         raise InvalidCredentials()
     user.status = "deleted"
     user.password_hash = None
+    # Read by the scheduled erasure job (`identity/jobs.py`) to find every
+    # account closed more than 30 days ago.
+    user.closed_at = now
     await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason="account_closed")

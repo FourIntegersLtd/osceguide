@@ -55,6 +55,11 @@ make guards                                    # tests/guards only, fast
   rollback keeps the new schema). See `docs/ENVIRONMENT.md`, "Staging and production".
 - **Real data never goes to staging.** `app.migration` refuses to import under
   `APP_ENV=staging`; seed staging with `scripts/seed_platform.py` instead.
+- **A one-off script outside pytest needs `PYTHONPATH=.`.** `poetry run python
+  some_script.py` fails `ModuleNotFoundError: No module named 'app'` unless run
+  as `PYTHONPATH=. poetry run python some_script.py` from `backend/platform-api`
+  — pytest's own `pythonpath` config doesn't apply outside it. Needed to prove
+  the E-4 erasure job against a real row rather than only through pytest.
 - The e2e run (`pytest -m e2e`) installs `aiohttp` and the LiveKit SDK. Remove
   them afterwards or `make typecheck` fails on `voice/adapter.py`.
 - **A failed request rolls back the whole test's session, not just itself.**

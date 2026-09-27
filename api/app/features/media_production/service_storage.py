@@ -29,6 +29,13 @@ def remove_object(settings: Settings, url: str) -> None:
     s3.delete_object(settings, url)
 
 
+def remove_key(settings: Settings, key: str) -> None:
+    """Delete whatever is stored at `key` — for a caller that holds a bare key
+    (as `peer_practice`'s `recording_key` is stored), not the public URL
+    `remove_object` expects."""
+    s3.delete_key(settings, key)
+
+
 def object_exists(settings: Settings, key: str) -> bool:
     """Whether something has been stored at `key` yet."""
     return s3.object_exists(settings, key)

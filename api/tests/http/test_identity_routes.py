@@ -7,11 +7,20 @@ so the replacement never needs to.
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.identity import repository as identity_repo
+from app.features.identity.service_erasure import erase_due_accounts
+from app.features.peer_practice import repository_sessions as peer_repository_sessions
+from app.features.peer_practice import service_privacy as peer_practice_privacy
+from tests.http.test_attempt_material_routes import _entitled_attempt
 from tests.support.catalog import ensure_exam
+from tests.support.finished_consultation import finish_consultation
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -319,3 +328,182 @@ async def test_changing_one_field_leaves_the_exam_alone(
     assert response.status_code == 200
     assert response.json()["name"] == "Renamed"
     assert response.json()["exam_code"] == "sca"
+
+
+async def test_closing_an_account_records_when(client: AsyncClient, db_session: AsyncSession) -> None:
+    """`closed_at` is what the erasure job measures 30 days against — closing
+    with no timestamp would leave the job with nothing to compare."""
+    body = (await register(client)).json()
+    token = body["access_token"]
+
+    response = await client.post(
+        "/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token)
+    )
+    assert response.status_code == 204
+
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    assert user.status == "deleted"
+    assert user.closed_at is not None
+    assert user.erased_at is None
+
+
+async def test_the_erasure_job_scrubs_an_account_closed_over_30_days_ago(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Past the 30-day window: name and email are anonymised, the transcript
+    is gone, and a second run touches nothing more."""
+    body = (await register(client)).json()
+    token = body["access_token"]
+    user_id = body["user"]["id"]
+
+    await ensure_exam(db_session, "sca")
+    sat = await _entitled_attempt(db_session, "new@example.com")
+    await finish_consultation(db_session, sat.attempt_id)
+    await db_session.commit()
+
+    await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    user.closed_at = datetime.now(UTC) - timedelta(days=31)
+    await db_session.commit()
+
+    erased_first_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    await db_session.commit()
+    assert erased_first_run == 1
+
+    scrubbed = await identity_repo.user_by_id(db_session, user.id)
+    assert scrubbed is not None
+    assert scrubbed.name == "Deleted user"
+    assert scrubbed.email == f"deleted-{user_id}@invalid"
+    assert scrubbed.erased_at is not None
+
+    from sqlalchemy import select
+
+    from app.features.attempts.models import TranscriptMessage
+
+    remaining = list(
+        (
+            await db_session.execute(
+                select(TranscriptMessage).where(TranscriptMessage.attempt_id == sat.attempt_id)
+            )
+        ).scalars()
+    )
+    assert remaining == []
+
+    # Idempotent: the account is already erased, so a second run finds nothing due.
+    erased_second_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    assert erased_second_run == 0
+
+
+async def test_an_account_closed_within_30_days_is_left_alone(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    token = (await register(client)).json()["access_token"]
+    await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
+
+    erased = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    await db_session.commit()
+    assert erased == 0
+
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    assert user.name == "New Person"
+    assert user.erased_at is None
+
+
+async def test_a_peer_recording_is_deleted_only_once_both_sides_are_erased(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A peer session's recording is shared by two people. One side closing and
+    passing 30 days must not take it from a partner who has not asked to lose
+    it; only once both are erased does the object actually go."""
+    deleted_keys: list[str] = []
+    monkeypatch.setattr(
+        peer_practice_privacy.storage,
+        "remove_key",
+        lambda settings, key: deleted_keys.append(key),  # fake storage port: records, never touches S3
+    )
+
+    exam = await ensure_exam(db_session, "sca")
+    doctor_body = (await register(client, email="doctor@example.com")).json()
+    patient_body = (await register(client, email="patient@example.com")).json()
+    doctor_token = doctor_body["access_token"]
+    patient_token = patient_body["access_token"]
+    doctor_id = uuid.UUID(doctor_body["user"]["id"])
+    patient_id = uuid.UUID(patient_body["user"]["id"])
+
+    practice_session = await peer_repository_sessions.create_session(
+        db_session, exam_id=exam.id, doctor_user_id=doctor_id, patient_user_id=patient_id
+    )
+    await peer_repository_sessions.set_recording_started(
+        db_session,
+        practice_session.id,
+        egress_id="EG_1",
+        key="peer_practice/sca/session-1/consultation.ogg",
+    )
+    await db_session.commit()
+
+    # Close and backdate the doctor only.
+    await client.post(
+        "/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(doctor_token)
+    )
+    doctor = await identity_repo.user_by_email(db_session, "doctor@example.com")
+    assert doctor is not None
+    doctor.closed_at = datetime.now(UTC) - timedelta(days=31)
+    await db_session.commit()
+
+    erased_first_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    await db_session.commit()
+    assert erased_first_run == 1
+    assert deleted_keys == []
+
+    still_there = await peer_repository_sessions.session_by_id(db_session, practice_session.id)
+    assert still_there is not None
+    assert still_there.recording_key == "peer_practice/sca/session-1/consultation.ogg"
+
+    # Close and backdate the patient too — now both sides are erased.
+    await client.post(
+        "/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(patient_token)
+    )
+    patient = await identity_repo.user_by_email(db_session, "patient@example.com")
+    assert patient is not None
+    patient.closed_at = datetime.now(UTC) - timedelta(days=31)
+    await db_session.commit()
+
+    erased_second_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    await db_session.commit()
+    assert erased_second_run == 1
+    assert deleted_keys == ["peer_practice/sca/session-1/consultation.ogg"]
+
+    scrubbed = await peer_repository_sessions.session_by_id(db_session, practice_session.id)
+    assert scrubbed is not None
+    assert scrubbed.recording_key is None
+    assert scrubbed.egress_id is None
+    assert scrubbed.recording_state == "erased"
+
+    # Idempotent: nothing left due, and no second delete of an already-gone object.
+    erased_third_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    assert erased_third_run == 0
+    assert deleted_keys == ["peer_practice/sca/session-1/consultation.ogg"]
+
+
+async def test_the_export_route_returns_only_the_callers_own_data(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await ensure_exam(db_session, "sca")
+    token = (await register(client)).json()["access_token"]
+    sat = await _entitled_attempt(db_session, "new@example.com")
+    await finish_consultation(db_session, sat.attempt_id)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/me/export", headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.headers["content-disposition"] == "attachment; filename=my-data.json"
+    body = response.json()
+    assert body["profile"]["email"] == "new@example.com"
+    assert len(body["attempts"]) == 1
+    assert body["attempts"][0]["id"] == str(sat.attempt_id)
+    assert body["attempts"][0]["transcript"]["messages"][0]["message"] == "What brought you in today?"
+    assert body["payments"] == []

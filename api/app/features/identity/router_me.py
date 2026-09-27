@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +17,8 @@ from app.core.openapi import fan_in_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS, fan_in_stream
 from app.core.streams import StreamPrincipal
-from app.features.identity import schemas, service, service_close_account
-from app.features.identity.errors import ExamAlreadyChosen, InvalidCredentials, UnknownExamError
+from app.features.identity import schemas, service, service_close_account, service_export
+from app.features.identity.errors import ExamAlreadyChosen, InvalidCredentials, UnknownExamError, UserNotFound
 
 router = APIRouter(tags=["identity"])
 
@@ -79,6 +79,23 @@ async def close_me(
         confirm=body.confirm,
         now=clock.now(),
     )
+
+
+@router.get(
+    "/me/export",
+    response_model=schemas.MyDataExport,
+    responses=error_responses(Unauthenticated, UserNotFound),
+)
+async def export_me(
+    principal: CurrentPrincipal,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    response: Response,
+) -> schemas.MyDataExport:
+    """Download everything this account owns: profile, attempts with their
+    transcripts and marks, and payments. Offered as an attachment, so the
+    browser saves it rather than rendering it."""
+    response.headers["Content-Disposition"] = "attachment; filename=my-data.json"
+    return await service_export.export_my_data(session, user_id=principal.user_id)
 
 
 @router.get(

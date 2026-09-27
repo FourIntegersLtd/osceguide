@@ -174,3 +174,72 @@ class Accepted(BaseModel):
     """Returned where the answer must not depend on whether a record exists."""
 
     status: str = "accepted"
+
+
+# --- The personal data export (E-5): `GET /me/export`.
+
+
+class ExportedTranscriptMessage(BaseModel):
+    """One spoken turn, as the export hands it back."""
+
+    role: str
+    message: str
+    spoken_at: datetime
+
+
+class ExportedTranscript(BaseModel):
+    """One attempt's delivery record and the turns it carries."""
+
+    complete: bool
+    messages: list[ExportedTranscriptMessage] = Field(default_factory=list)
+
+
+class ExportedResult(BaseModel):
+    """One mark the engine produced for an attempt."""
+
+    framework_id: str
+    policy_version: str
+    payload: dict[str, object]
+    scored_at: datetime
+
+
+class ExportedAttempt(BaseModel):
+    """One attempt this person ran, with its own transcript and marks."""
+
+    id: uuid.UUID
+    kind: str
+    status: str
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    transcript: ExportedTranscript
+    results: list[ExportedResult] = Field(default_factory=list)
+
+
+class ExportedPayment(BaseModel):
+    """One payment this person made."""
+
+    receipt_id: str | None = None
+    amount_total_pence: int
+    amount_tax_pence: int
+    currency: str
+    receipt_url: str | None = None
+    paid_at: datetime
+
+
+class ExportedProfile(BaseModel):
+    """The account fields the export carries about the person themselves."""
+
+    id: uuid.UUID
+    email: str
+    name: str
+    exam_code: str | None = None
+    exam_date: date | None = None
+    created_at: datetime
+
+
+class MyDataExport(BaseModel):
+    """Everything `GET /me/export` hands back: one person's own data."""
+
+    profile: ExportedProfile
+    attempts: list[ExportedAttempt] = Field(default_factory=list)
+    payments: list[ExportedPayment] = Field(default_factory=list)

@@ -7,6 +7,7 @@ happened, this one is a customer asking for the document.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,4 +56,23 @@ async def list_my_receipts(session: AsyncSession, user_id: uuid.UUID) -> list[st
         payment.receipt_id
         for payment in await repository.payments_for_user(session, user_id)
         if payment.receipt_id is not None
+    ]
+
+
+async def export_payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[dict[str, Any]]:
+    """Every payment this person has made, shaped for the `/me/export` download.
+
+    Kept to what a person needs to see, not the Stripe identifiers a support
+    agent would use to look a charge up.
+    """
+    return [
+        {
+            "receipt_id": payment.receipt_id,
+            "amount_total_pence": payment.amount_total_pence,
+            "amount_tax_pence": payment.amount_tax_pence,
+            "currency": payment.currency,
+            "receipt_url": payment.receipt_url,
+            "paid_at": payment.paid_at,
+        }
+        for payment in await repository.payments_for_user(session, user_id)
     ]

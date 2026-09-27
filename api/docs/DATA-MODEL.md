@@ -93,6 +93,8 @@ names both.
 | `must_change_password` | `bool not null default false` | gates all but `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED` |
 | `password_login_disabled` | `bool not null default false` | set once by `identity.service_sso.sign_in_external` when this person signs in through an `sso_only` organisation; `identity` sits below `sso` and cannot read that configuration at login time, so the fact is written down here instead. Never cleared automatically |
 | `last_login_at` | `timestamptz null` | |
+| `closed_at` | `timestamptz null` | set by `identity.service_close_account.close_account`; the scheduled erasure job (`identity/jobs.py`) reads it to find every account closed more than 30 days ago |
+| `erased_at` | `timestamptz null` | set by `identity.service_erasure.erase_account` once the account's personal fields and content are scrubbed; also the job's idempotency check |
 | `exam_date` | `date null` | when they sit the real thing; the consumer dashboard counts down to it |
 | `exam_time` | `time null` | the time of day on `exam_date`, optional; cleared whenever `exam_date` is cleared, since a time with no date names nothing |
 | `exam_code` | `varchar(32) null` | which exam they signed up for; a preference, not a grant |

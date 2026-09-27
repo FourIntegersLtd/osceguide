@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts.models import AssessmentResult, Transcript, TranscriptMessage
@@ -139,6 +139,19 @@ async def scored_policy_versions(session: AsyncSession, attempt_id: uuid.UUID) -
     """Every policy version this attempt has already been marked under, for `domain.should_score`."""
     stmt = select(AssessmentResult.policy_version).where(AssessmentResult.attempt_id == attempt_id)
     return set((await session.execute(stmt)).scalars())
+
+
+async def erase_content_for_attempts(session: AsyncSession, attempt_ids: Sequence[uuid.UUID]) -> None:
+    """Delete every transcript message, transcript record and mark for these
+    attempts, for the account-erasure job (E-4). The attempts themselves are
+    kept — an institution's roster history still needs to know a slot was
+    sat — only the content a person spoke and the feedback it produced goes.
+    """
+    if not attempt_ids:
+        return
+    await session.execute(delete(TranscriptMessage).where(TranscriptMessage.attempt_id.in_(attempt_ids)))
+    await session.execute(delete(Transcript).where(Transcript.attempt_id.in_(attempt_ids)))
+    await session.execute(delete(AssessmentResult).where(AssessmentResult.attempt_id.in_(attempt_ids)))
 
 
 async def attempt_ids_with_results(session: AsyncSession, attempt_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:

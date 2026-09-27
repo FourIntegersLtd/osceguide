@@ -164,6 +164,23 @@ async def list_for_user(
     )
 
 
+async def all_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Attempt]:
+    """Every attempt this person has ever run, oldest first, unpaged.
+
+    For the personal-data export (E-5): one person's own attempts are few
+    enough to read in one page, unlike `list_for_user`'s keyset paging, which
+    exists for a library-wide listing that can run to thousands of rows.
+    """
+    stmt = select(Attempt).where(Attempt.user_id == user_id).order_by(Attempt.created_at)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def attempt_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
+    """The ids of every attempt this person has run, for the erasure job to scrub."""
+    stmt = select(Attempt.id).where(Attempt.user_id == user_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID) -> tuple[int, int]:
     """`(set stations used, attempts completed)` for the free-trial rule.
 
