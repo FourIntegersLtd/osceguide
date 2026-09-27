@@ -446,9 +446,10 @@ export default function PrivacyPolicy() {
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-6 py-4">Usage Logs</td>
+                  <td className="px-6 py-4">Technical Data (IP address, browser and device information)</td>
                   <td className="px-6 py-4">
-                    Up to 90 days after account deletion
+                    Kept only as long as needed for security monitoring; we do
+                    not run a fixed deletion schedule for it
                   </td>
                   <td className="px-6 py-4">
                     Security monitoring and fraud prevention
@@ -462,26 +463,39 @@ export default function PrivacyPolicy() {
             <div>
               <h3 className="font-semibold mb-4">Requesting Deletion</h3>
               <p className="text-osce-ink-700 leading-relaxed">
-                You can request deletion of your data at any time by contacting
-                us at{" "}
+                You can close your account at any time from Settings. Closing
+                stops sign-in immediately; your name, email, transcripts and
+                AI-generated feedback are then erased automatically 30 days
+                later, giving you a window to change your mind. A peer
+                practice recording is shared with the other person in it, so
+                it is deleted once both of you are erased, or immediately if
+                you were the only person in it — otherwise it is kept for
+                them until they close their own account too. You can also
+                contact us at{" "}
                 <a
                   href="mailto:privacy@fourintegers.com"
                   className="text-osce-accent hover:underline"
                 >
                   privacy@fourintegers.com
                 </a>{" "}
-                or in app within settings. Upon receiving your request, we will:
+                to ask about your data at any time.
               </p>
-              <ul className="list-disc list-inside text-osce-ink-700 ml-6 mt-2">
-                <li>
-                  Immediately anonymize or soft-delete your data to ensure it is
-                  no longer identifiable or accessible.
-                </li>
-                <li>
-                  Complete final deletion of all non-essential data within 30
-                  days, unless retention is required by law.
-                </li>
-              </ul>
+              <p className="text-osce-ink-700 leading-relaxed mt-2">
+                What is kept past that point: payment and receipt records, for
+                the 6 years the law requires, and the fact that an attempt took
+                place (with its marks) where an organisation&apos;s own results
+                depend on it — never its content.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-4">Downloading Your Data</h3>
+              <p className="text-osce-ink-700 leading-relaxed">
+                From Settings, you can download everything your account owns —
+                your profile, your attempts with their transcripts and marks,
+                and your payments — as one file, at any time, without waiting
+                on a request.
+              </p>
             </div>
 
             <div>

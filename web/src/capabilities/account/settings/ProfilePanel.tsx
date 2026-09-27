@@ -29,6 +29,7 @@ import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
+import { DownloadMyData } from "@/capabilities/account/settings/DownloadMyData";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
 const {
@@ -87,6 +88,7 @@ export default function ProfilePanel({
         exam rather than shown to everybody, which is how the old profile had it.
       */}
       {holdsOrtho ? <CvPanel /> : null}
+      <DownloadMyData />
       <CloseAccount isAdmin={isPlatformAdmin(session)} />
     </SettingsTabShell>
   );

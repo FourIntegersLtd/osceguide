@@ -219,6 +219,23 @@ export function closeAccount(input: { password: string | null; confirm: string |
   });
 }
 
+export type MyDataExport = components["schemas"]["MyDataExport"];
+
+/**
+ * Everything this account owns, as one JSON object: profile, attempts with
+ * their transcripts and marks, and payments (E-5, the self-serve subject
+ * access request).
+ *
+ * `platformRequest` always parses the body as JSON regardless of the
+ * backend's `Content-Disposition` header — that header only matters to a
+ * browser navigating there directly, not to a `fetch` call — so the caller
+ * turns this object into a download itself, the same way `ReceiptList`
+ * turns a receipt document into one.
+ */
+export function exportMyData(signal?: AbortSignal): Promise<MyDataExport> {
+  return platformRequest<MyDataExport>("/api/v1/me/export", { signal });
+}
+
 export type SsoSignIn = components["schemas"]["SsoSignIn"];
 export type SsoSession = components["schemas"]["SsoSession"];
 
