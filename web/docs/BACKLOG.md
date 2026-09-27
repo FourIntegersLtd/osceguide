@@ -92,6 +92,62 @@ The screens match legacy and drive the accept/decline handshake (proof:
 | W-1 | Enforcing the CSP blocks every script | Found on staging 2026-09-26 with `PLATFORM_WEB_CSP_ENFORCE=true`: pages are prerendered, so their `<script>` tags carry no nonce, and the enforced policy (`'nonce-…' 'strict-dynamic'`, where `'self'` no longer counts) blocks them all. The page never hydrates and loads forever. Staging and production stay on Report-Only until pages render per request (the nonce needs that) or the policy stops relying on a nonce. Prove it on staging before setting the variable again |
 | W-2 | The analytics consent prompt shows where no analytics can load | Staging and previews resolve no GA id (`foundation/analytics/gaMeasurementId.ts`), yet the "Allow analytics" prompt still covers the page. Skip it when there is no id |
 
+## Open: enterprise readiness
+
+What an institution's procurement and IT security review will ask for and we
+cannot yet show. Checked against the code on 2026-09-26. Everything here is
+about platform-api, platform-web and assessment-platform: until the legacy
+backends are switched off, what a buyer uses today is b2c-api and b2b-api.
+**Owner** rows need the business owner (accounts, contracts, money); **Eng**
+rows are code or docs. Work down the tiers in order.
+
+Already strong, so say so: server-side tenant isolation on every request,
+session revocation with refresh-token reuse detection, Argon2 passwords,
+fail-closed sign-in rate limits, an append-only `audit_log`, result decisions
+kept as revisions with who signed off and released them, rubric prompts stored
+per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
+
+### Tier 1: before answering any security questionnaire
+
+| # | Who | Item | State |
+|---|---|---|---|
+| E-1 | Owner | SEC-012: rotate exposed credentials | The only **Open** High in `platform-api/docs/security/SECURITY-ASSESSMENT-2026-09.md`. Four TLS/LiveKit keys (`misc/*.pem`) and a GCP `serviceAccountKey.json` still sit in the workspace, plus a GitHub credential in history. Revoke each at its provider, move them to a secrets store, purge history, turn on secret scanning. Done when old credentials are refused |
+| E-2 | Eng | The security report reads worse than the code | SEC-002 (platform-web `87485681`), SEC-008 (assessment-platform `a4f82ef`) and SEC-010 (`securityContext` in `k8s/base/deployment.yaml`) are still "pending merge" in the report but have landed. Confirm each is deployed to production, then issue v2.1 so the buyer copy shows 18 of 20 resolved. SEC-006 stays partial until W-1 |
+| E-3 | Eng | The privacy policy promises retention nothing enforces | `(public)/compliances/privacy-policy` promises account data kept for "duration of account + 30 days", logs "up to 90 days after account deletion", payments for 6 years. No job purges anything. Build the purge (E-4) or rewrite the policy to what is true. Legal exposure, not just a sales gap |
+| E-4 | Eng | Account deletion only closes the account | `identity/service_close_account.py` sets `status = "deleted"`, clears the password and ends sessions; name, email, transcripts, audio and feedback stay. Build erasure as anonymisation: scrub personal fields and delete recordings and transcripts, but keep the rows that payments, `signed_off_by` and memberships point at. Needs a scheduled job for the +30 days |
+| E-5 | Eng | There is no personal data export | No route returns a person's own data. Build one download: profile, attempts, transcripts, feedback, results, payments. UK GDPR gives a month to answer a request, so a support-run script is an acceptable first version |
+
+### Tier 2: before the first institutional contract
+
+| # | Who | Item | State |
+|---|---|---|---|
+| E-6 | Owner | Data processing agreement | No DPA template exists. Institutions are the controller for their candidates; we are the processor. Needs a lawyer-reviewed template |
+| E-7 | Eng + Owner | Subprocessor list with regions | None published. From code and env: OpenAI (marking, generation), Deepgram (speech to text), Cartesia (text to speech), LiveKit Cloud (voice), Stripe, Resend, Clerk and Microsoft Entra (SSO), AWS S3 (`eu-west-2`, the only region pinned), Railway (Postgres, Redis), Vercel (web), Sentry. Confirm and document the region of each, and name the transfer mechanism for the US ones; the policy says "protected by" without naming it |
+| E-8 | Eng | Customer DPIA pack | Institutions must run a DPIA before using us. Write one they can adapt: data flows, AI marking, the human review and sign-off step, retention, subprocessors |
+| E-9 | Owner | Cyber Essentials Plus | The baseline UK public-sector buyers check. Weeks, not months. Needs E-1 first |
+| E-10 | Owner | NHS Data Security and Protection Toolkit | Required before handling data for NHS organisations (deaneries, trusts). Annual self-assessment |
+| E-11 | Eng | MFA | None for any user. Add TOTP; require it for platform admins, offer it to org admins and examiners, and let an org require it for its staff |
+| E-12 | Eng | Backup restore is untested | Railway PITR is on (chosen 2026-09-26), but no doc says how to restore, and a restore has never been run. Restore production into a scratch database once, time it, write the runbook, state RPO and RTO |
+| E-13 | Eng | Uptime monitoring and a status page | Sentry runs in platform-api and assessment-platform, not in platform-web (no `@sentry/nextjs`). No external check on `/health`, no alert rules, no status page |
+| E-14 | Eng | A supported concurrency number | Each worker runs 3 replicas with no autoscaling. The last load test (legacy stack, 2026-09-14) passed 27 of 30. Load-test the live stack and publish how many candidates a sitting supports |
+| E-15 | Eng | Accessibility | No `jsx-a11y` lint, no axe checks, no accessibility statement page. Add both (new dev dependencies: ask first), fix to WCAG 2.2 AA, publish the statement. UK public bodies ask for it |
+| E-16 | Eng | Results export | No endpoint returns CSV (no `text/csv` anywhere in platform-api). Admins need a sitting's results as CSV, and a candidate's result as PDF. Different from the cohort markdown readout above |
+| E-17 | Owner | SLA and support terms | No uptime target, support hours or incident-notification promise is written down. Contracts will ask |
+| E-18 | Eng | Stale SSO note | `platform-api/docs/DATA-MODEL.md:141` says "Nothing verifies an identity yet"; `sso/entra.py` and `sso/clerk.py` now verify id tokens server-side. Fix the doc |
+
+### Tier 3: when a deal asks
+
+| # | Who | Item | State |
+|---|---|---|---|
+| E-19 | Owner | Accredited external pen test | The current report is white-box, local-only, not CREST-accredited, and did not test production. Larger buyers will ask for an accredited test of the deployed service |
+| E-20 | Eng | SAML, Google Workspace, NHS CIS2 sign-in | SSO is OIDC through Entra or Clerk only |
+| E-21 | Eng | SCIM provisioning | No SCIM. Roster CSV import (`domains/assess/roster/csv.ts`) and bulk trainee add cover small orgs |
+| E-22 | Eng | Invoices and purchase orders | `billing/service_settlement.py` settles non-card payments, but nothing issues an invoice or records a PO number |
+| E-23 | Eng | API-wide rate limiting | Limits cover sign-in, password reset, register, SSO callback, CV upload and the public site only, and are off without Redis. Add a per-user default and an edge WAF rule |
+| E-24 | Eng | Tamper-evident audit | `audit_log` is append-only by convention (no `updated_at`), not enforced. Revoke UPDATE and DELETE on it from the app's database role |
+| E-25 | Owner | ISO 27001 or SOC 2 | Only when a contract requires one. Months of work and ongoing cost |
+| E-26 | Eng | Metrics | No Prometheus or OpenTelemetry. Sentry and logs are enough until an SLA needs measuring |
+
 ## Open: needs a product decision
 
 | # | Question | Recommendation on record |
@@ -106,7 +162,7 @@ The screens match legacy and drive the accept/decline handshake (proof:
 | — | Preferences: AI-training consent, colleague-waiting email, onboarding replay | Decide which are worth storing |
 | — | Push notifications. `web-push` is not a dependency, and legacy's service worker never sent one | Decide whether wanted at all |
 | — | Consumer performance extras: RAG by domain, category volume, SCA trends | No data source exists for them; decide what to record first. `exam_date`/`exam_time` are now stored (A4) and read on `UserRead` |
-| — | Peer practice recording, transcript and AI feedback | Scope decided 2026-09-26: prove the existing pipeline on staging (egress uploads straight to S3; there are no local S3 keys). AWS settings copied from b2c-api to staging and production api + worker on 2026-09-26 (same bucket and keys as b2c-api; consider separating staging). Still to run: run a full session with two staging consumers (`~/.osce-staging-accounts.env`); check the S3 object `peer_practice/<exam>/<id>/consultation.ogg`, `recording_state` stopped → transcribing, `doctor_attempt_id` set, and the feedback page |
+| — | Peer practice: production promotion and two follow-ups | Proven on staging 2026-09-27 (session bc0e13de): match, preparation with a real station, consultation, recording, transcription (5 turns), marking and the doctor's "AI feedback is ready" page. Two fixes found on the way, platform-api 431bfa3 (recording creates the room first) and b6538bf (marking accepts doctor/patient turns), are on staging only: production needs the Promote workflow. Marking in that run needed a support rescore after b6538bf deployed, so the next staging session should confirm it marks unaided. Open: the matcher pairs people when an exam has no published stations (should refuse); the partner's video tile was black 20 s into the consultation (may be the fake camera) |
 | — | Ortho CV upload | No decision on record |
 | C-1 | **CASC existing databases still mark with the RCGP GP prompt.** A CASC prompt now exists (`platform-api/seeds/prompts/casc_system.txt`, 2026-09-26; b2c never had one, it fell back to SCA) and the seed uses it, but `seed_platform.py` never touches an exam that already exists | Publish a new CASC rubric version carrying the new prompt on staging and production (a deployed write: owner's go-ahead). Existing CASC feedback stays as it was marked |
 | B-3 | Referral discounts are built (checkout swaps to the `<plan>_referral` row, the webhook credits £2.50 / £5), but no environment has the 10%-off Stripe prices or `_referral` plan rows yet | Create them per exam after the code deploys; before that, a code at checkout is refused `referral_discount_unavailable` |
