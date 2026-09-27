@@ -84,6 +84,8 @@ The screens match legacy and drive the accept/decline handshake (proof:
 | G-1 | Partner reconciliation | b2c reconciles partner numbers against Mixpanel and raises spend alerts (`partner_attribution/`, fourteen services). Arrivals, acquisitions, reporters and the funnel are built; reconciliation is not ported. Mixpanel belongs behind a port |
 | T-1 | Chunker never size-caps a mid-document section | Only the tail after the last heading is size-capped, so the oracle fixture emits 3815 characters against an 1800 limit. This is legacy behaviour, pinned byte-for-byte by `tests/unit/test_tutor_memory_chunking.py`. Fix it as its own change, updating the oracle in the same commit, then re-index |
 | T-3 | Nothing re-indexes tutor material on publish | Material is re-indexed nightly, or by an admin through `POST /api/v1/admin/tutor-memory/reindex`, so a correction made in the morning is not searchable until the next night. Fix: let the job take one source, then call it from `media.service.publish` |
+| V-1 | The debrief clock and walk-through prompt are unproven live | Engine `engine-v0.8.0` (assessment-platform `fd5180b`) and platform-api `835d34e` are on staging. Run one staging debrief (`verify-voice-station`): the tutor walks the plan, never mentions time, and closes near 10 min. Then Promote the worker and platform-api together |
+| V-2 | The debrief rarely reaches the differential | Missed in 14 of 16 bench debriefs even with the clock (`scripts/debrief_bench.py`, `runs/debrief-shipped-clock.json`). Needs a prompt change measured on the bench, not a new rule on its own |
 
 ### Website hosting
 
@@ -111,8 +113,9 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 
 | # | Who | Item | State |
 |---|---|---|---|
-| E-1 | Owner | SEC-012: rotate exposed credentials | The only **Open** High in `platform-api/docs/security/SECURITY-ASSESSMENT-2026-09.md`. Four TLS/LiveKit keys (`misc/*.pem`) and a GCP `serviceAccountKey.json` still sit in the workspace, plus a GitHub credential in history. Revoke each at its provider, move them to a secrets store, purge history, turn on secret scanning. Done when old credentials are refused |
+| E-1 | Owner | SEC-012: rotate exposed credentials | The only **Open** High in `platform-api/docs/security/SECURITY-ASSESSMENT-2026-09.md`. Four TLS/LiveKit keys (`misc/*.pem`) and a GCP `serviceAccountKey.json` still sit in the workspace, plus a GitHub credential in history and a GitHub token written into platform-web's local `osceguide-frontend` remote URL (`git remote -v`). Revoke each at its provider, move them to a secrets store, purge history, turn on secret scanning. Done when old credentials are refused |
 | E-2 | Eng | The security report reads worse than the code | SEC-002 (platform-web `87485681`), SEC-008 (assessment-platform `a4f82ef`) and SEC-010 (`securityContext` in `k8s/base/deployment.yaml`) are still "pending merge" in the report but have landed. Confirm each is deployed to production, then issue v2.1 so the buyer copy shows 18 of 20 resolved. SEC-006 stays partial until W-1 |
+| E-3 | Eng | Erasure and data download are on staging only | Built 2026-09-27 (platform-api `c004c8e`, platform-web `654dfb50`): a daily job erases accounts closed over 30 days (peer recordings once both people are erased), `GET /me/export`, the "Download my data" button, and a corrected privacy policy. Still to do: click the button on staging, confirm the job runs there, then Promote (it carries the `users.closed_at`/`erased_at` migration). The privacy policy now describes this, so production is behind its own policy until then |
 
 ### Tier 2: before the first institutional contract
 
