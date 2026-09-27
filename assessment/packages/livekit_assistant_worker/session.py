@@ -15,6 +15,7 @@ from voice_infra import BackendEndpoints, BackendRegistry
 from voice_infra.audio_input import build_room_options
 from voice_infra.cloud_slot import register_cloud_slot_lifecycle
 from voice_infra.latency import ConversationLatencyTracker
+from voice_infra.pacing import InteractionClock, build_check_time_tool
 from voice_infra.participants import wait_for_candidate
 
 from . import handlers
@@ -22,11 +23,9 @@ from .agent_factory import AgentBuild, build_assistant_agent
 from .bootstrap import AssistantSession, BootstrapError, fetch_bootstrap, fetch_scene_instructions
 from .gpt_live_policy import register_gpt_live_session_policy
 from .metadata import MetadataError, parse_dispatch_metadata
-from .pacing import ConsultationClock
 from .runtime_policy import VoiceRuntime, select_voice_runtime
 from .session_cap import SessionCap, register_session_cap
 from .speech import build_assistant_llm, build_assistant_tts
-from .tools.check_time import build_check_time_tool
 from .tools.navigation_mode import build_offer_navigation_modes_tool
 from .tools.remote import build_remote_tools
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
@@ -52,7 +51,7 @@ class AssistantVoiceSession:
         self.delivery: TranscriptDelivery | None = None
         self._agent: Any = None
         self._endpoints: BackendEndpoints | None = None
-        self.clock: ConsultationClock | None = None
+        self.clock: InteractionClock | None = None
         self.session_cap: SessionCap | None = None
 
     # -- lifecycle ---------------------------------------------------------------
@@ -127,7 +126,7 @@ class AssistantVoiceSession:
         # interaction opens, not when the tool list is assembled. A backend that sends
         # no plan gets no clock and no tool, which is the old behaviour exactly.
         if session.mode.paced and session.extras.pacing is not None:
-            self.clock = ConsultationClock(session.extras.pacing)
+            self.clock = InteractionClock(session.extras.pacing)
             tools.append(build_check_time_tool(self.clock))
         # The backend's own tools: schema from the bootstrap, every call forwarded
         # back to it. A backend that names none gets none, whatever the mode.

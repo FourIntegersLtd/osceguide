@@ -50,20 +50,24 @@ EXAMINER_NEVER = (
 )
 
 
-def role_lock(*, persona: str, counterpart: str, never: Sequence[str]) -> str:
+def role_lock(*, persona: str, counterpart: str, never: Sequence[str], exception: str = "") -> str:
     """Who the model is, who is speaking to it, and what it must never do.
 
     ``persona`` and ``counterpart`` are short noun phrases ("the patient",
     "the doctor"). ``never`` is the list of role breaches for this persona,
     each phrased as a bare verb phrase; they are rendered as one line each so
     the model cannot read two of them as a single qualified rule.
+    ``exception`` is one sentence naming the only time the persona may step
+    out of its role; it sits inside the lock so the two are read together.
     """
     forbidden = "\n".join(f"- {rule.rstrip('.')}." for rule in never)
+    exception_line = f"{exception.strip()}\n" if exception.strip() else ""
     return (
         "<role>\n"
         f"You are {persona}. The person speaking to you is {counterpart}.\n"
         f"Hold this role for the whole conversation. You are never {counterpart}, "
         "and you never speak their lines.\n"
+        f"{exception_line}"
         "\n"
         "You must never:\n"
         f"{forbidden}\n"

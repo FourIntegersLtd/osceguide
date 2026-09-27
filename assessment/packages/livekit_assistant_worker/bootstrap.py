@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from voice_infra import BackendEndpoints
 from voice_infra.backend_http import sync_get_json, sync_post_json
+from voice_infra.pacing import PacingPlan
 
 from .metadata import SCENE_PATH_TEMPLATE, DispatchMetadata
 from .modes import ModeProfile, WorkerType, mode_profile
@@ -17,38 +18,6 @@ class BootstrapError(RuntimeError):
     def __init__(self, message: str, *, auth_failed: bool = False) -> None:
         super().__init__(message)
         self.auth_failed = auth_failed
-
-
-class PacingMark(BaseModel):
-    """One moment in an interaction, and the note to push in when it passes."""
-
-    model_config = ConfigDict(frozen=True)
-
-    at_seconds: float = Field(gt=0)
-    note: str = Field(min_length=1)
-
-
-class PacingPhase(BaseModel):
-    """A stretch of the interaction, named, ending at ``until_seconds``."""
-
-    model_config = ConfigDict(frozen=True)
-
-    until_seconds: float = Field(gt=0)
-    label: str = Field(min_length=1)
-
-
-class PacingPlan(BaseModel):
-    """A clock the backend chose: when to nudge, what each nudge says, what to call each stretch.
-
-    The worker runs it without knowing what kind of interaction this is; every
-    word the model will read was written by whoever rendered the instructions.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    total_seconds: float = Field(gt=0)
-    marks: tuple[PacingMark, ...] = ()
-    phases: tuple[PacingPhase, ...] = ()
 
 
 TOOL_NAME = re.compile(r"^[a-z][a-z0-9_]{1,63}$")

@@ -38,7 +38,8 @@ do what the patient greetings must not. The examiner prompt assumes this
 introduction has been made and starts from the first question."""
 
 DEBRIEF_GREETING = (
-    "Hello doctor, I'm Athena... well done on completing your case. "
-    "Let's take a moment to reflect. How do you think it went?"
+    "Hello doctor, I'm Athena... well done on getting through that case. "
+    "We'll hear how it felt, then walk through your management plan together, "
+    "and we can practise any moment you found tricky. How do you think it went?"
 )
-"""The tutor opens the debrief, and asks before it tells, as the prompt does."""
+"""The tutor opens the debrief with a one-line map of it, then asks before it tells, as the prompt does."""

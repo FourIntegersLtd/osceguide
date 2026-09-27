@@ -11,7 +11,7 @@
 # only needs to score a transcript should not install a realtime voice stack.
 #
 #   platform-api installs it with:
-#     osce-assessment = { git = "...", tag = "engine-v0.7.0",
+#     osce-assessment = { git = "...", tag = "engine-v0.8.0",
 #                         subdirectory = "packages/osce_assessment" }
 #
 # This directory is itself the package, so `package-dir` maps it onto the
@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "osce-assessment"
-version = "0.7.0"
+version = "0.8.0"
 description = "Consumer-agnostic OSCE assessment engine: contracts, catalogue, prompts and evaluation"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

@@ -17,12 +17,13 @@ from osce_assessment.contracts import AIInteractionProfile, InteractionMode, Mes
 from osce_assessment.runtime._awaitable import maybe_await
 from voice_infra.audio_input import build_room_options
 from voice_infra.latency import ConversationLatencyTracker
+from voice_infra.pacing import InteractionClock
 from voice_infra.speech import build_llm, build_stt, build_tts
 from voice_infra.tool_handling import ASYNC_TOOL_HANDLING
 from voice_infra.turn_handling import MIN_CONSECUTIVE_SPEECH_DELAY, build_turn_handling_options
 
 from .notices import wire_time_warnings
-from .tools import build_tools
+from .tools import build_tools, session_clock
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class LiveKitInteractionAdapter:
         self._session: AgentSession | None = None
         self._greeting: str | None = None
         self._ended: asyncio.Future | None = None
+        self._clock: InteractionClock | None = None
 
     async def connect(self) -> None:
         # The job connected to the room before the candidate was awaited; nothing to do.
@@ -61,7 +63,8 @@ class LiveKitInteractionAdapter:
         loop = asyncio.get_running_loop()
         self._ended = loop.create_future()
         role = role_for(profile)
-        tools = build_tools(self._ctx, profile.tools, profile.tool_context)
+        self._clock = session_clock(profile.tool_context)
+        tools = build_tools(self._ctx, profile.tools, profile.tool_context, self._clock)
         session_kwargs: dict[str, Any] = dict(
             stt=build_stt(),
             llm=build_llm(role),
@@ -84,6 +87,9 @@ class LiveKitInteractionAdapter:
             agent=Agent(instructions=profile.instructions, tools=tools),
             room_options=build_room_options(participant_identity=self._candidate_identity),
         )
+        # Time zero is the session opening, before the greeting: the greeting is part of the time.
+        if self._clock is not None:
+            self._clock.start(session)
         if self._greeting:
             try:
                 await asyncio.wait_for(session.say(self._greeting, allow_interruptions=True), timeout=GREETING_TIMEOUT_S)
@@ -92,6 +98,9 @@ class LiveKitInteractionAdapter:
         await self._ended
 
     async def disconnect(self) -> None:
+        clock, self._clock = self._clock, None
+        if clock is not None:
+            await clock.cancel()
         session, self._session = self._session, None
         if session is None:
             return

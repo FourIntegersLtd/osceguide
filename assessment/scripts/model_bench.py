@@ -98,8 +98,8 @@ REMINDERS = {
     ),
     "tutor": (
         "You are the tutor debriefing the doctor about a consultation that has already finished. "
-        "You were not in that consultation: never re-enact it and never invent anything that is not "
-        "in the transcript."
+        "You were not in that consultation: never re-enact it, play the patient only for a moment the "
+        "doctor agreed to practise, and never invent anything that is not in the transcript."
     ),
     "doctor": (
         "You are the doctor and the person speaking is the patient. "
@@ -257,7 +257,11 @@ def _debrief_prompt(context: dict) -> str:
     """
     framework = context.get("framework", "sca-rcgp-v1")
     is_ortho = framework == "ortho-frcs-v1"
-    feedback = json.loads((FEEDBACK / f"{context.get('feedback_fixture', 'sca_feedback')}.json").read_text())
+    # A scenario may carry its own marking inline, so a new case is not scored
+    # with another case's feedback.
+    feedback = context.get("feedback") or json.loads(
+        (FEEDBACK / f"{context.get('feedback_fixture', 'sca_feedback')}.json").read_text()
+    )
     station = context.get("station") or {}
     transcript = TranscriptFormatter.format(context["transcript"])
     station_type = station.get("station_type") or feedback.get("station_type", "") or ""
@@ -270,6 +274,43 @@ def _debrief_prompt(context: dict) -> str:
         plab_feedback=PlabFeedbackFormatter.format(feedback),
         ortho_feedback=OrthoFeedbackFormatter.format(feedback, station_type=station_type) if is_ortho else "",
         station_type=station_type,
+    )
+
+
+def generate(client: Any, *, arm: str, messages: list[dict[str, str]], effort: str, index: int, said: str) -> Turn:
+    """One streamed reply from the model under test, timed and costed from the API's own usage."""
+    kwargs: dict[str, Any] = {
+        "model": arm, "messages": messages, "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    if arm.startswith(REASONING_MODEL_PREFIX) and effort.strip():
+        kwargs["reasoning_effort"] = effort.strip()
+
+    started = time.perf_counter()
+    first: float | None = None
+    chunks: list[str] = []
+    usage: Any = None
+    for event in client.chat.completions.create(**kwargs):
+        if event.usage is not None:
+            usage = event.usage
+        if not event.choices:
+            continue
+        piece = event.choices[0].delta.content
+        if piece:
+            if first is None:
+                first = time.perf_counter() - started
+            chunks.append(piece)
+    cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0) or 0
+    return Turn(
+        index=index,
+        ttft_s=first,
+        latency_s=time.perf_counter() - started,
+        output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+        cached_tokens=cached,
+        bait=None,
+        said=said,
+        reply="".join(chunks).strip(),
     )
 
 
@@ -298,42 +339,10 @@ def replay(*, arm: str, role: str, repeat: int, script: dict, effort: str,
         if reminder:
             messages.append({"role": "system", "content": reminder})
         messages.append({"role": "user", "content": turn["say"]})
-        kwargs: dict[str, Any] = {
-            "model": arm, "messages": messages, "stream": True,
-            "stream_options": {"include_usage": True},
-        }
-        if arm.startswith(REASONING_MODEL_PREFIX) and effort.strip():
-            kwargs["reasoning_effort"] = effort.strip()
-
-        started = time.perf_counter()
-        first: float | None = None
-        chunks: list[str] = []
-        usage: Any = None
-        for event in client.chat.completions.create(**kwargs):
-            if event.usage is not None:
-                usage = event.usage
-            if not event.choices:
-                continue
-            piece = event.choices[0].delta.content
-            if piece:
-                if first is None:
-                    first = time.perf_counter() - started
-                chunks.append(piece)
-        reply = "".join(chunks).strip()
-        cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0) or 0
-
-        run.turns.append(Turn(
-            index=index,
-            ttft_s=first,
-            latency_s=time.perf_counter() - started,
-            output_tokens=getattr(usage, "completion_tokens", 0) or 0,
-            input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
-            cached_tokens=cached,
-            bait=turn.get("bait"),
-            said=turn["say"],
-            reply=reply,
-        ))
-        history += [{"role": "user", "content": turn["say"]}, {"role": "assistant", "content": reply}]
+        reply_turn = generate(client, arm=arm, messages=messages, effort=effort, index=index, said=turn["say"])
+        reply_turn.bait = turn.get("bait")
+        run.turns.append(reply_turn)
+        history += [{"role": "user", "content": turn["say"]}, {"role": "assistant", "content": reply_turn.reply}]
 
     run.flagged = prefilter(run, role)
     if role == "doctor":

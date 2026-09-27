@@ -27,6 +27,7 @@ from .consultation_pacing import (
     pacing_from_payload,
 )
 from .cv import format_structured_cv_for_llm
+from .debrief_pacing import DEBRIEF_PACING_BLOCK, DEBRIEF_SECONDS, debrief_pacing_payload
 from .dashboard_feedback import DashboardFeedbackPromptFormatter
 from .dashboard_tutor import DashboardTutorFormatter
 from .debrief_feedback import (
@@ -82,6 +83,9 @@ __all__ = [
     "DEFAULT_PACING",
     "InvalidPacingError",
     "consultation_pacing_payload",
+    "DEBRIEF_PACING_BLOCK",
+    "DEBRIEF_SECONDS",
+    "debrief_pacing_payload",
     "pacing_from_payload",
     "DashboardFeedbackPromptFormatter",
     "DashboardTutorFormatter",

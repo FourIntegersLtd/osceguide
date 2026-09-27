@@ -1,0 +1,224 @@
+{
+  "name": "chest_pain",
+  "notes": "Exertional chest tightness in a smoker whose father had an early heart attack. The doctor took a fair history, heard the family history and moved past it, never explained aspirin or GTN, and closed with a safety net that would not keep her safe.",
+  "context": {
+    "transcript": {
+      "transcript_message": [
+        {
+          "role": "user",
+          "message": "Hello, I'm one of the doctors. What's brought you in today?",
+          "transcript_message_id": "m1"
+        },
+        {
+          "role": "assistant",
+          "message": "I've had this tightness in my chest for a couple of weeks now.",
+          "transcript_message_id": "m2"
+        },
+        {
+          "role": "user",
+          "message": "Can you tell me more about it? When does it come on?",
+          "transcript_message_id": "m3"
+        },
+        {
+          "role": "assistant",
+          "message": "It comes on when I go up the stairs, or walk up the hill to the shops. It eases off when I stop.",
+          "transcript_message_id": "m4"
+        },
+        {
+          "role": "user",
+          "message": "How long does it last, and does it go anywhere, like your arm or jaw?",
+          "transcript_message_id": "m5"
+        },
+        {
+          "role": "assistant",
+          "message": "A few minutes. Sometimes it goes into my left arm a bit.",
+          "transcript_message_id": "m6"
+        },
+        {
+          "role": "user",
+          "message": "Have you ever had it at rest, or had it wake you up at night?",
+          "transcript_message_id": "m7"
+        },
+        {
+          "role": "assistant",
+          "message": "No, only when I'm doing something.",
+          "transcript_message_id": "m8"
+        },
+        {
+          "role": "user",
+          "message": "Any sweating, sickness or breathlessness with it?",
+          "transcript_message_id": "m9"
+        },
+        {
+          "role": "assistant",
+          "message": "A bit breathless, but I thought that was just me being unfit.",
+          "transcript_message_id": "m10"
+        },
+        {
+          "role": "user",
+          "message": "Do you have any medical problems, and do you take any medicines?",
+          "transcript_message_id": "m11"
+        },
+        {
+          "role": "assistant",
+          "message": "High blood pressure. I take ramipril.",
+          "transcript_message_id": "m12"
+        },
+        {
+          "role": "user",
+          "message": "Do you smoke?",
+          "transcript_message_id": "m13"
+        },
+        {
+          "role": "assistant",
+          "message": "About ten a day. I know, I know.",
+          "transcript_message_id": "m14"
+        },
+        {
+          "role": "user",
+          "message": "Is there anything you're worried about?",
+          "transcript_message_id": "m15"
+        },
+        {
+          "role": "assistant",
+          "message": "My dad had a heart attack at sixty. That's been on my mind.",
+          "transcript_message_id": "m16"
+        },
+        {
+          "role": "user",
+          "message": "Okay. I'd like to do an ECG and some bloods, and refer you to the chest pain clinic.",
+          "transcript_message_id": "m17"
+        },
+        {
+          "role": "assistant",
+          "message": "Okay... is that something serious then?",
+          "transcript_message_id": "m18"
+        },
+        {
+          "role": "user",
+          "message": "We'll know more after the tests. Come back if it gets worse.",
+          "transcript_message_id": "m19"
+        },
+        {
+          "role": "assistant",
+          "message": "Right. Okay then.",
+          "transcript_message_id": "m20"
+        }
+      ]
+    },
+    "framework": "sca-rcgp-v1",
+    "feedback": {
+      "global_skills": {
+        "structures_consultation": {
+          "score": "A",
+          "supporting_phrase": "I'd like to do an ECG and some bloods, and refer you to the chest pain clinic.",
+          "score_explanation": "A logical history, but the plan was announced rather than explained and the close was abrupt."
+        },
+        "uses_clear_language": {
+          "score": "A",
+          "supporting_phrase": "We'll know more after the tests.",
+          "score_explanation": "Plain words, but no working diagnosis was ever given, so the patient left not knowing what the doctor suspected."
+        }
+      },
+      "tasks": {
+        "gathers_information": {
+          "score": "G",
+          "supporting_phrase": "Have you ever had it at rest, or had it wake you up at night?",
+          "score_explanation": "Characterised the pain and screened for features of an acute coronary syndrome."
+        },
+        "management_plan": {
+          "score": "R",
+          "supporting_phrase": "I'd like to do an ECG and some bloods, and refer you to the chest pain clinic.",
+          "score_explanation": "Aspirin and GTN were never offered or explained."
+        },
+        "safety_netting": {
+          "score": "R",
+          "supporting_phrase": "Come back if it gets worse.",
+          "score_explanation": "No advice to call 999 for pain at rest lasting more than fifteen minutes, or pain with sweating or nausea."
+        }
+      },
+      "relating_to_others": {
+        "responds_to_cues": {
+          "score": "R",
+          "supporting_phrase": "Okay. I'd like to do an ECG and some bloods",
+          "score_explanation": "Moved straight past the fear about her father's heart attack."
+        },
+        "answers_patient_questions": {
+          "score": "R",
+          "supporting_phrase": "We'll know more after the tests.",
+          "score_explanation": "Did not answer 'is that something serious' or share what was suspected."
+        }
+      },
+      "actionable_feedback": {
+        "global_skills_feedback": {
+          "score": "A",
+          "strengths": [
+            "Focused, efficient history"
+          ],
+          "improvements": [
+            "Explain the working diagnosis before the tests"
+          ]
+        },
+        "overall_priorities": [
+          {
+            "area": "Safety netting",
+            "current_level": "R",
+            "improvement_steps": [
+              "Give specific red flags and the action for each",
+              "Include the fifteen minute rule for pain at rest"
+            ],
+            "expected_outcome": "Patient knows exactly when to call 999"
+          },
+          {
+            "area": "Responding to cues",
+            "current_level": "R",
+            "improvement_steps": [
+              "Acknowledge the fear about her father before moving on",
+              "Link the explanation back to that fear"
+            ],
+            "expected_outcome": "Patient feels heard and reassured appropriately"
+          }
+        ]
+      }
+    },
+    "station": {
+      "station_name": "Chest pain",
+      "station_type": "consultation",
+      "management_plan": {
+        "explanation": "Exertional chest tightness relieved by rest, on a background of hypertension, smoking and a father with an early heart attack. This is stable angina until proven otherwise, and the tests are to confirm it and look at her heart.",
+        "differential_diagnosis": [
+          "Stable angina",
+          "Acute coronary syndrome, if pain at rest or prolonged",
+          "Musculoskeletal or reflux pain, less likely given the exertional pattern"
+        ],
+        "assessment": [
+          "Characterise the pain against exertion and rest",
+          "Check family history and smoking",
+          "Screen for red flags suggesting an acute coronary syndrome"
+        ],
+        "ice": [
+          "Concern: her father had a heart attack at sixty",
+          "Question: is this something serious?"
+        ],
+        "immediate_actions": [
+          "Resting ECG today",
+          "FBC, lipids, HbA1c, renal function"
+        ],
+        "pharmacological_treatment": [
+          "Aspirin 75mg once daily",
+          "GTN spray as required: sit down, one spray under the tongue, repeat after five minutes"
+        ],
+        "non_pharmacological_treatment": [
+          "Stop smoking, with support offered"
+        ],
+        "follow_up": "Rapid access chest pain clinic within two weeks.",
+        "safety_netting": "Call 999 for pain at rest lasting more than fifteen minutes, pain not settling after two doses of GTN, or pain with sweating, nausea or breathlessness."
+      }
+    }
+  },
+  "trainee_brief": {
+    "hard_moment": "When she asked 'is that something serious then?', you didn't know how honest to be without frightening her, so you said 'we'll know more after the tests'. You felt awkward about it.",
+    "unaware_gap": "Your safety net was just 'come back if it gets worse'. You think that was fine. You also never mentioned aspirin or a GTN spray, and have not noticed.",
+    "safety_critical_gap": "The safety net omitted calling 999 for pain at rest over fifteen minutes or with sweating, nausea or breathlessness, and no GTN or aspirin was offered."
+  }
+}

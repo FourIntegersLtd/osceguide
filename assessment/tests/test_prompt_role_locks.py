@@ -129,8 +129,18 @@ def test_the_doctors_first_history_question_is_not_built_from_the_case_file() ->
 
 def test_the_tutor_is_told_it_was_not_in_the_consultation() -> None:
     prompt = _tutor()
-    assert "re-enact the consultation" in prompt
-    assert "speak as the patient or as the doctor from the transcript" in prompt
+    assert "re-enact the whole consultation" in prompt
+    assert "stay in the patient's role once the moment you agreed to practise is over" in prompt
+    assert "including when you speak as the patient" in prompt
+
+
+def test_the_tutor_may_play_the_patient_only_inside_a_bounded_practice_moment() -> None:
+    """Role-play of one hard moment is allowed; the lock says so itself, so the ban and the allowance are read together."""
+    prompt = _tutor()
+    role = prompt[prompt.index("<role>"):prompt.index("</role>")]
+    assert "The one exception is a practice moment" in role
+    assert "Stay as the patient for two or three exchanges at most." in prompt
+    assert '"Okay, stepping out of that."' in prompt
 
 
 def test_the_diagnosis_is_fenced_off_rather_than_announced() -> None:

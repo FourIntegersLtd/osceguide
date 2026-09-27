@@ -120,6 +120,20 @@ Re-sending a role reminder on every turn was tried and measured away: it bought
 nothing on the simulated patient and made the consulting doctor measurably
 worse. Do not reintroduce it without running `scripts/model_bench.py` first.
 
+The debrief tutor walks the trainee through the station's management plan
+together (PEARLS-style, not Pendleton), and may briefly play the patient for one
+moment the trainee asks to practise; the `exception` line in its role lock is
+the only such allowance. It was chosen by `scripts/debrief_bench.py`, which runs
+prompt variants against simulated trainees played by Claude. Change the debrief
+prompt only after running that against the baseline (about $2 for 16 debriefs).
+
+The debrief runs on a ten-minute clock, as the consulting doctor runs on its
+own: `osce_assessment.prompts.debrief_pacing` writes the marks and the prompt's
+`<pacing>` block, platform-api sends the plan as `tool_context["pacing"]` with
+`check_time` in `tools`, and the assessment worker's adapter starts the clock
+when the session opens. The clock itself (`InteractionClock`, `PacingPlan`,
+`build_check_time_tool`) lives in `voice_infra.pacing`, shared by both workers.
+
 `hosting/` runs one worker per process, selected by `OSCE_LIVEKIT_WORKER`;
 add a worker to `hosting/workers.py` when it lands. The container starts it
 directly (`python -m hosting.run_worker start`, PID 1). Never put a shell, make

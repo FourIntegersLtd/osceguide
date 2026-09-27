@@ -95,7 +95,7 @@ def test_adapter_wires_time_warnings_for_the_running_session() -> None:
         adapter_module,
         AgentSession=FakeAgentSession,
         Agent=lambda instructions, tools: {"instructions": instructions, "tools": tools},
-        build_tools=lambda ctx, names, context: [],
+        build_tools=lambda ctx, names, context, clock: [],
         build_stt=lambda: "stt",
         build_llm=lambda role: "llm",
         build_tts=lambda role, gender: "tts",
