@@ -53,6 +53,12 @@ async def test_tutor_gets_source_transcript_marking_and_opening_line(monkeypatch
     assert "Explored the patient's concerns." in text
     assert "Edited later" not in text
     assert "How do you think it went?" in rendered["greeting"]
+    # The ten-minute clock the prompt promises travels with it, for the worker to run.
+    assert "This debrief is about 10 min long." in text
+    assert rendered["tools"] == ["check_time"]
+    pacing = rendered["tool_context"]["pacing"]
+    assert pacing["total_seconds"] == 600
+    assert [mark["at_seconds"] for mark in pacing["marks"]] == [150, 300, 480, 600]
 
 
 @pytest.mark.asyncio

@@ -146,6 +146,8 @@ def definition_payload(
     at: datetime,
     voice: str | None = None,
     rubric: Mapping[str, Any] | None = None,
+    tools: Sequence[str] = (),
+    tool_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble what gets frozen onto the attempt.
 
@@ -169,8 +171,8 @@ def definition_payload(
             "instructions": instructions,
             "voice": voice,
             "greeting": greeting,
-            "tools": [],
-            "tool_context": {},
+            "tools": list(tools),
+            "tool_context": dict(tool_context or {}),
             "max_tool_steps": 5,
             "runtime_hint": "pipeline",
         },

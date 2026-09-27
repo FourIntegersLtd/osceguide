@@ -239,6 +239,31 @@ def test_a_rendered_definition_survives_the_worker_filter() -> None:
     assert visible["interaction_profile"]["instructions"] == "You are the patient."
 
 
+def test_the_tools_a_render_names_reach_the_worker_with_their_context() -> None:
+    """A debrief names check_time and sends its clock; both must survive the worker filter."""
+    pacing = {"total_seconds": 600, "marks": [], "phases": []}
+    payload = domain_definition.definition_payload(
+        attempt_id="a-4",
+        framework_id="sca-rcgp-v1",
+        scenario_source="library",
+        scenario_id="s-1",
+        scenario={"id": "s-1", "source": "library", "title": "Chest pain"},
+        instructions="You are the tutor.",
+        greeting=None,
+        mode="tutor",
+        policy_version="platform-default@1",
+        primary_model="gpt-5-mini",
+        at=NOW,
+        tools=("check_time",),
+        tool_context={"pacing": pacing},
+    )
+
+    profile = domain_definition.bootstrap_definition(payload)["interaction_profile"]
+
+    assert profile["tools"] == ["check_time"]
+    assert profile["tool_context"] == {"pacing": {"total_seconds": 600, "marks": [], "phases": []}}
+
+
 def test_the_scenario_is_frozen_beside_the_definition_and_handed_back() -> None:
     scenario = domain_definition.scenario_payload(
         scenario_id="s-1",

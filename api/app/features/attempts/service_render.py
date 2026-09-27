@@ -100,6 +100,8 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
         primary_model=get_settings().marking_primary_model,
         at=now,
         rubric=rubric,
+        tools=[str(name) for name in tools] if isinstance(tools := rendered.get("tools"), list) else (),
+        tool_context=tool_context if isinstance(tool_context := rendered.get("tool_context"), dict) else None,
     )
 
     if domain.should_freeze(render_degraded=degraded, already_frozen=bool(attempt.definition)):
@@ -167,6 +169,7 @@ async def render_debrief(
     source_results = await repository_transcript.results_for(session, source.id)
     frozen_context = ((source.definition or {}).get("scenario") or {}).get("examiner_context")
     try:
+        from osce_assessment.prompts.debrief_pacing import debrief_pacing_payload
         from osce_assessment.prompts.debrief_prompt import DebriefPromptFormatter
         from osce_assessment.prompts.debrief_transcript import TranscriptFormatter
         from osce_assessment.prompts.greetings import DEBRIEF_GREETING
@@ -191,4 +194,7 @@ async def render_debrief(
         ),
         "greeting": DEBRIEF_GREETING,
         "examiner_context": frozen_context or examiner_context,
+        # The ten-minute clock the prompt's <pacing> block promises: timed notes and check_time.
+        "tools": ["check_time"],
+        "tool_context": {"pacing": debrief_pacing_payload()},
     }
