@@ -34,8 +34,6 @@ Checked against the code on 2026-09-25.
 `capabilities/authoring/api/scope.ts` names the backend's asymmetries:
 
 - Platform scope has no brief edit and no draft-version delete (see decision D4 below).
-- The template list has no cursor pagination: it answers every row with `next_cursor: null`. The web client already follows the cursor, so paging it server-side needs no web change.
-- There is no "used by" count, so deleting a station cannot warn what it breaks. The web half waits on a count route (stations on circuits, in sets, adopted by organisations).
 - There is no delete for an exam or a template.
 
 ### Consumer (train)

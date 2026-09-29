@@ -27,9 +27,9 @@ const TEMPLATE_MAX_PAGES = 20;
 /**
  * Every template in this scope.
  *
- * The route answers the whole list with `next_cursor: null` today. Following
- * the cursor anyway means the day it pages, this still returns every template
- * rather than silently the first page; the pickers that use it need them all.
+ * The route pages with a real cursor (it used to answer everything with a
+ * null one), and the pickers that use this need every template, so it walks
+ * the pages.
  */
 export async function listStationTemplates(
   scope: AuthoringScope,
@@ -40,7 +40,7 @@ export async function listStationTemplates(
   for (let page = 0; page < TEMPLATE_MAX_PAGES; page += 1) {
     const result: S["Page_StationTemplateRead_"] = await platformRequest(
       `${scope.base}/station-templates`,
-      { query: { cursor: cursor ?? undefined }, signal },
+      { query: { cursor: cursor ?? undefined, limit: 100 }, signal },
     );
     items.push(...result.items);
     cursor = result.next_cursor ?? null;

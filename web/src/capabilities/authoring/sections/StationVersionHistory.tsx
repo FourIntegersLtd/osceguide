@@ -6,6 +6,7 @@ import { useAsync } from "@/foundation/hooks";
 import { listStationVersions, type StationVersion } from "@/capabilities/stations";
 import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
+import { usedByLabel } from "@/capabilities/authoring/sections/StationUsedBy";
 
 /**
  * Every revision this station has had, newest first.
@@ -61,6 +62,9 @@ export function StationVersionHistory({ stationId }: { stationId: string }) {
                       <StatusBadge status={item.status} />
                       <span className="min-w-0 flex-1 text-osce-caption text-b2b-mid">
                         {stamp(item)}
+                        {typeof item.used_by_count === "number"
+                          ? ` · ${usedByLabel(item.used_by_count)}`
+                          : ""}
                       </span>
                     </li>
                   ))}

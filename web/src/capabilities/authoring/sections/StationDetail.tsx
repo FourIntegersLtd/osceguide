@@ -8,12 +8,13 @@ import {
   HiOutlineDocumentDuplicate,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, Button } from "@/foundation/ui";
+import { Alert, Button, ConfirmModal } from "@/foundation/ui";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
 import { validateStationContentScoped } from "@/capabilities/authoring/lib/b2cStationContentScope";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { StationVersionHistory } from "@/capabilities/authoring/sections/StationVersionHistory";
+import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
@@ -67,6 +68,7 @@ export function StationDetail({
   const [working, setWorking] = useState<StationVersion | null>(null);
   const [editContent, setEditContent] = useState<Record<string, unknown>>({});
   const action = useAction();
+  const [confirming, setConfirming] = useState<"archive" | "delete" | null>(null);
 
   const version = working?.version ?? station.version;
   const status = working?.status ?? station.status;
@@ -160,11 +162,7 @@ export function StationDetail({
                 busy={action.busy === "archive"}
                 busyLabel="Archiving…"
                 disabled={action.busy !== null}
-                onClick={() =>
-                  void action.run("archive", async () =>
-                    setWorking(await archiveStationVersion(scope, station.id, version)),
-                  )
-                }
+                onClick={() => setConfirming("archive")}
               >
                 <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
@@ -176,12 +174,7 @@ export function StationDetail({
                 busy={action.busy === "delete"}
                 busyLabel="Deleting…"
                 disabled={action.busy !== null}
-                onClick={() =>
-                  void action.run("delete", async () => {
-                    await deleteStationVersion(scope, station.id, version);
-                    onBack();
-                  })
-                }
+                onClick={() => setConfirming("delete")}
               >
                 <HiOutlineTrash className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
@@ -207,6 +200,45 @@ export function StationDetail({
           than deleted.
         </p>
       </AuthoringCard>
+
+      <ConfirmModal
+        isOpen={confirming !== null}
+        onCancel={() => {
+          if (!action.busy) setConfirming(null);
+        }}
+        onConfirm={() => {
+          const which = confirming;
+          void action
+            .run(which ?? "archive", async () => {
+              if (which === "delete") {
+                await deleteStationVersion(scope, station.id, version);
+                onBack();
+              } else {
+                setWorking(await archiveStationVersion(scope, station.id, version));
+              }
+            })
+            .then((ok) => {
+              if (ok) setConfirming(null);
+            });
+        }}
+        isLoading={confirming !== null && action.busy === confirming}
+        title={
+          confirming === "delete"
+            ? `Delete draft v${version} of "${station.title}"?`
+            : `Archive v${version} of "${station.title}"?`
+        }
+        confirmText={confirming === "delete" ? "Delete" : "Archive"}
+        message={
+          <>
+            {confirming !== null ? <StationUsedBy stationId={station.id} version={version} /> : null}
+            <span className="mt-1 block">
+              {confirming === "delete"
+                ? "The draft is removed. Published versions are untouched."
+                : "Past attempts stay intact. The station is removed from the live library."}
+            </span>
+          </>
+        }
+      />
 
       {supportsBrief(scope) ? (
         <BriefEditor

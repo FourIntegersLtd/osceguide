@@ -26,6 +26,7 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationsTable } from "@/capabilities/authoring/sections/StationsTable";
+import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
 
 /**
  * The station catalogue, and the way into one station's versions.
@@ -194,7 +195,16 @@ export function StationsSection() {
             : "Archive station?"
         }
         confirmText="Archive"
-        message="Past attempts stay intact. The station is removed from the live library."
+        message={
+          <>
+            {archiveConfirm ? (
+              <StationUsedBy stationId={archiveConfirm.id} version={archiveConfirm.version} />
+            ) : null}
+            <span className="mt-1 block">
+              Past attempts stay intact. The station is removed from the live library.
+            </span>
+          </>
+        }
       />
     </div>
   );
