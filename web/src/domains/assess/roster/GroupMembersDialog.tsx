@@ -19,9 +19,8 @@ import { displayName, sortTrainees } from "@/domains/assess/roster/support";
 /**
  * Who is in a group.
  *
- * Reading membership is `GET …/members` (falling back to a `roster/resolve`
- * of this one group where that is not deployed yet), and writing it is a PUT
- * of the whole list. The old client had neither: membership was a label copied onto
+ * Reading membership is `GET …/members` and writing it is a PUT of the whole
+ * list. The old client had neither: membership was a label copied onto
  * the trainee, so "add to group" wrote to the person, and two administrators
  * editing at once each kept half of the result.
  */

@@ -44,12 +44,8 @@ export function authoringScope(surface: string, orgSlug: string | null): Authori
 /**
  * Where exams are *listed*: the scope's own `…/exams`, like everything else.
  *
- * `GET /platform/exams` is the platform's scoped listing (drafts included,
- * for staff) from platform-api's `feat/backend-backlog-batch-1`. Before that
- * `/platform/exams` was POST-only and the console read the unscoped
- * `GET /exams`, which answers a platform admin with the drafts too;
- * `listExams` falls back to it while the scoped read is not deployed
- * (`LEGACY_PLATFORM_EXAM_LIST`).
+ * `/platform/exams` used to be POST-only, so the console read the unscoped
+ * `GET /exams`; it now lists the platform's own exams, drafts included.
  *
  * `drafts` goes with the organisation's listing only, where it narrows to that
  * institution's own rows. The platform listing decides by who is asking, so
@@ -58,9 +54,6 @@ export function authoringScope(surface: string, orgSlug: string | null): Authori
 export function examListPath(scope: AuthoringScope): string {
   return `${scope.base}/exams`;
 }
-
-/** Where the platform's exams were listed before `/platform/exams` served a GET. */
-export const LEGACY_PLATFORM_EXAM_LIST = "/api/v1/exams";
 
 /** Programmes are an institution's own grouping; the catalogue has none. */
 export const supportsProgrammes = (s: AuthoringScope) => s.kind === "org";

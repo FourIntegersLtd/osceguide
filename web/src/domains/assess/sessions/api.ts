@@ -1,9 +1,4 @@
-import {
-  hasCode,
-  isRouteNotServed,
-  platformRequest,
-  type components,
-} from "@/foundation/platform-client";
+import { hasCode, platformRequest, type components } from "@/foundation/platform-client";
 import type { RoomGrant } from "@/foundation/livekit";
 import { orgPath } from "@/domains/assess/api";
 
@@ -160,15 +155,12 @@ export type CircuitReview = components["schemas"]["CircuitReviewRead"];
 /**
  * Whether this circuit's feedback has been published, as the server has it.
  *
- * `GET …/review` is the read beside `…/review/finalize` (backend branch
- * `feat/backend-backlog-batch-1`), answering the same `CircuitReviewRead`.
- * `unknown` means that route is not deployed yet, so the screen can only say
- * what it did itself; `review_not_found` means nothing has been published.
+ * `GET …/review` is the read beside `…/review/finalize`, answering the same
+ * `CircuitReviewRead`; `review_not_found` means nothing has been published.
  */
 export type CircuitReviewState =
   | { state: "published"; review: CircuitReview }
-  | { state: "unpublished"; review: CircuitReview | null }
-  | { state: "unknown" };
+  | { state: "unpublished"; review: CircuitReview | null };
 
 export async function readCircuitReview(
   slug: string,
@@ -182,7 +174,6 @@ export async function readCircuitReview(
     return review.finalized_at ? { state: "published", review } : { state: "unpublished", review };
   } catch (error) {
     if (hasCode(error, "review_not_found")) return { state: "unpublished", review: null };
-    if (isRouteNotServed(error)) return { state: "unknown" };
     throw error;
   }
 }

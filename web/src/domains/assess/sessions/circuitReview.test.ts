@@ -31,11 +31,6 @@ describe("whether a circuit's feedback was published", () => {
     assert.equal((await readCircuitReview("kings", "c1")).state, "unpublished");
   });
 
-  it("is unknown, not unpublished, where the read is not deployed", async () => {
-    respond(404, { detail: "Not Found" });
-    assert.equal((await readCircuitReview("kings", "c1")).state, "unknown");
-  });
-
   it("raises anything else", async () => {
     respond(403, { code: "forbidden", message: "No" });
     await assert.rejects(() => readCircuitReview("kings", "c1"));

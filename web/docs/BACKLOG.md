@@ -26,9 +26,6 @@ Checked against the code on 2026-09-25.
 | Item | State |
 |---|---|
 | Resend a staff invitation | There is no resend route for a staff membership. Trainees have one (`POST /orgs/{org_slug}/trainees/{trainee_id}/resend-invitation`) |
-| Read a trainee group's members | Only `PUT /orgs/{org_slug}/trainee-groups/{group_id}/members` is served; there is no read. The web side already asks for one (`readGroupMembers`, taking `{ trainee_ids }` or a page of trainees) and falls back to resolving the roster while it is missing. Delete the fallback when the route ships |
-| Whether a circuit's review was published | Only `POST /orgs/{org_slug}/circuits/{circuit_id}/review/finalize` is served. There is no read. `CircuitFeedbackCard` already asks for one (`readCircuitReview`: a `CircuitReviewRead`, or `review_not_found` when nothing is published) and says what it did in this visit while the read is missing. Delete that fallback when the route ships |
-| An examiner's own slot review | `PUT .../slots/{slot_id}/reviews/mine` is a write only; there is no read of one's own review. `SlotReview` already asks for one (`readMySlotReview`: a `SlotReviewRead`, or `review_not_found`) and finds it in the slot's review list while the read is missing. Delete that fallback when the route ships |
 | A candidate reading their published review | No candidate-facing read of a circuit's supervisor review or their slot review. The largest thing the sittings port could not carry |
 | Notify candidates when a decision is released | The Results screen releases a chosen set of signed-off candidates in one action (one release request each, so each emits `candidate_result_released`), but nothing tells the candidate. A server-side bulk release would save the round trips; it is not needed for the screen |
 | Cohort export (the markdown readout) | Not built. Low priority |
@@ -40,7 +37,6 @@ Checked against the code on 2026-09-25.
 |---|---|
 | Directory search | `GET /platform/organizations` takes `status`, `cursor` and `limit` only. The staff console already sends `search` and `org_type` (and still filters what comes back), so the backend half is the two query parameters; until then the whole directory is walked, which stops scaling in the thousands |
 | Audit search | Per-organisation audit (`GET /orgs/{org_slug}/audit`) takes no `actor_email` or `action` filter, though `GET /platform/audit` does. The Team History tab already sends both and, while they are ignored, filters the latest page itself and says so |
-| Platform exam list | There is no GET under `/platform/exams`. The console already asks it first and falls back to the unscoped `GET /exams` while it answers 405; delete the fallback (`LEGACY_PLATFORM_EXAM_LIST`) when the route ships |
 
 ### Authoring
 

@@ -21,8 +21,8 @@ import type { CircuitConsole } from "@/domains/assess/sessions/api";
  *
  * Whether it has already been published is read from the server
  * (`readCircuitReview`), so reopening the console after publishing says so,
- * with the notes that went out. Where that read is not deployed yet the card
- * falls back to saying what it did in this visit.
+ * with the notes that went out. It used to say only what it had done in this
+ * visit, so a reopened console offered to publish again from empty notes.
  */
 export function CircuitFeedbackCard({
   data,
@@ -49,7 +49,7 @@ export function CircuitFeedbackCard({
     <AsyncBoundary state={review}>
       {(current) => (
         <FeedbackForm
-          key={current.state === "unknown" ? "unknown" : (current.review?.finalized_at ?? "none")}
+          key={current.review?.finalized_at ?? "none"}
           current={current}
           marked={slots.filter((slot) => slot.has_review).length}
           total={slots.length}
@@ -84,10 +84,7 @@ function FeedbackForm({
   busy: string | null;
   publish: (notes: string | null) => Promise<boolean>;
 }) {
-  const saved = current.state === "unknown" ? null : current.review;
-  const [notes, setNotes] = useState(saved?.merged_notes ?? "");
-  // Only where the server cannot say: what this visit did.
-  const [publishedHere, setPublishedHere] = useState(false);
+  const [notes, setNotes] = useState(current.review?.merged_notes ?? "");
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
   return (
@@ -118,11 +115,9 @@ function FeedbackForm({
           Published {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
           Publishing again replaces it.
         </Alert>
-      ) : current.state === "unpublished" ? (
+      ) : (
         <p className="text-osce-caption text-b2b-mid">Not published yet.</p>
-      ) : publishedHere ? (
-        <Alert tone="success">The circuit&apos;s feedback has been published.</Alert>
-      ) : null}
+      )}
 
       {marked === 0 ? (
         <p className="text-osce-caption text-b2b-mid">
@@ -135,9 +130,7 @@ function FeedbackForm({
         variant="secondary"
         isLoading={busy === "publish"}
         disabled={busy !== null || marked === 0}
-        onClick={() =>
-          void publish(notes.trim() || null).then((done) => setPublishedHere(done))
-        }
+        onClick={() => void publish(notes.trim() || null)}
       >
         <HiCheckCircle className="h-4 w-4 shrink-0 text-b2b-success-text" aria-hidden />
         {publishedAt ? "Publish again" : "Publish circuit feedback"}

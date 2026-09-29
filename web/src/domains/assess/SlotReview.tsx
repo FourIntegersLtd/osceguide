@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, Card, PageHeader, Spinner, cn } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { useSession } from "@/foundation/session";
 import { latestResult, readResults } from "@/capabilities/attempt-runner";
 import { FeedbackView, normaliseFeedback, RAG_LABEL, type Rag } from "@/capabilities/feedback";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
@@ -40,12 +39,9 @@ export function SlotReview({
   /*
    * My review is read directly (`GET .../reviews/mine`). An earlier version
    * called that route before it existed, answered 405 on every load and
-   * swallowed it, so a reviewer's own draft never came back. Where the route
-   * is still not deployed, mine is the one in the slot's list with my id on
-   * it; any other failure is a failure, not "no review".
+   * swallowed it, so a reviewer's own draft never came back; a failure here
+   * is a failure, not "no review".
    */
-  const { session } = useSession();
-  const userId = session?.user.id ?? null;
 
   const state = useAsync(
     async (signal) => {
@@ -58,16 +54,9 @@ export function SlotReview({
         readSlotReviews(orgSlug, slotId, signal),
         readMySlotReview(orgSlug, slotId, signal),
       ]);
-      return {
-        result,
-        reviews,
-        mine:
-          mine !== undefined
-            ? mine
-            : ((reviews.items ?? []).find((item) => item.submitted_by === userId) ?? null),
-      };
+      return { result, reviews, mine };
     },
-    [orgSlug, slotId, attemptId, userId],
+    [orgSlug, slotId, attemptId],
   );
 
   return (

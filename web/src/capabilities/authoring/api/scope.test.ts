@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, describe, it } from "node:test";
-import { listExams } from "@/capabilities/authoring/api/catalog";
+import { describe, it } from "node:test";
 import {
   authoringScope,
   examListPath,
@@ -69,32 +68,3 @@ describe("the exam listing", () => {
   });
 });
 
-describe("the platform exam listing before the scoped read is deployed", () => {
-  const realFetch = globalThis.fetch;
-  afterEach(() => {
-    globalThis.fetch = realFetch;
-  });
-
-  it("falls back to the unscoped catalogue when /platform/exams refuses a GET", async () => {
-    const seen: string[] = [];
-    globalThis.fetch = (async (input: RequestInfo | URL) => {
-      const url = String(input);
-      seen.push(url);
-      return url.includes("/platform/exams")
-        ? new Response(JSON.stringify({ detail: "Method Not Allowed" }), { status: 405 })
-        : new Response(JSON.stringify({ items: [], next_cursor: null }), { status: 200 });
-    }) as typeof fetch;
-    const page = await listExams(authoringScope("platform", null));
-    assert.deepEqual(page.items, []);
-    assert.deepEqual(
-      seen.map((url) => url.replace(/^https?:\/\/[^/]+/, "")),
-      ["/api/v1/platform/exams", "/api/v1/exams"],
-    );
-  });
-
-  it("does not fall back for an organisation", async () => {
-    globalThis.fetch = (async () =>
-      new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 })) as typeof fetch;
-    await assert.rejects(() => listExams(authoringScope("assess", "kings")));
-  });
-});

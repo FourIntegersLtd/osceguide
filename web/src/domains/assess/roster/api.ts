@@ -8,7 +8,7 @@
  * across instead. Both spellings are live in the same API and the schema is
  * the only place that says which is which.
  */
-import { isRouteNotServed, platformRequest, type components } from "@/foundation/platform-client";
+import { platformRequest, type components } from "@/foundation/platform-client";
 import {
   collectPages,
   orgPath,
@@ -271,49 +271,22 @@ export function deleteGroup(slug: string, groupId: string): Promise<void> {
 /**
  * Who is in a group, by trainee id.
  *
- * `GET …/members` is the read beside the PUT below (backend branch
- * `feat/backend-backlog-batch-1`). Until it is deployed the answer comes from
- * `roster/resolve` of this one group, which is what screens used before: it
- * answers who a circuit would contain, so it is the membership less anybody a
- * circuit would leave out. Both a `{ trainee_ids }` body (the PUT's own shape)
- * and a page of trainees are read, since the route's shape is not yet fixed.
+ * `GET …/members` pages the group's own membership. It used to be read by
+ * resolving the roster for the group, which answers who a circuit would
+ * contain rather than who is in the group.
  */
 export async function readGroupMembers(
   slug: string,
   groupId: string,
   signal?: AbortSignal,
 ): Promise<string[]> {
-  try {
-    const body = await platformRequest<unknown>(
+  const members = await collectPages((cursor) =>
+    platformRequest<TraineePage>(
       `${orgPath(slug)}/trainee-groups/${encodeURIComponent(groupId)}/members`,
-      { signal },
-    );
-    return memberIdsOf(body);
-  } catch (error) {
-    if (!isRouteNotServed(error)) throw error;
-    const resolved = await resolveRoster(slug, { groupIds: [groupId] });
-    return resolved.trainee_ids;
-  }
-}
-
-/** Trainee ids out of either shape the members read may take. */
-export function memberIdsOf(body: unknown): string[] {
-  if (body && typeof body === "object") {
-    const record = body as Record<string, unknown>;
-    if (Array.isArray(record.trainee_ids)) {
-      return record.trainee_ids.filter((id): id is string => typeof id === "string");
-    }
-    const rows = Array.isArray(record.items) ? record.items : null;
-    if (rows) {
-      return rows.flatMap((row) => {
-        if (!row || typeof row !== "object") return [];
-        const item = row as Record<string, unknown>;
-        const id = item.trainee_id ?? item.id;
-        return typeof id === "string" ? [id] : [];
-      });
-    }
-  }
-  throw new Error("The group's members came back in a shape this screen does not read");
+      { signal, query: pageQuery({ cursor }) },
+    ),
+  );
+  return members.map((trainee) => trainee.id);
 }
 
 /**

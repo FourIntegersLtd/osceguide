@@ -26,8 +26,8 @@ describe("an examiner's own slot review", () => {
     assert.equal(await readMySlotReview("kings", "s1"), null);
   });
 
-  it("is undefined, so the caller looks in the list, where the read is not deployed", async () => {
-    respond(405, { detail: "Method Not Allowed" });
-    assert.equal(await readMySlotReview("kings", "s1"), undefined);
+  it("fails rather than reading as no review", async () => {
+    respond(403, { code: "forbidden", message: "No" });
+    await assert.rejects(() => readMySlotReview("kings", "s1"));
   });
 });
