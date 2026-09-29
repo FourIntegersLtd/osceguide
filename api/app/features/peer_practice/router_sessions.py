@@ -21,6 +21,7 @@ from app.core.logging import get_logger
 from app.core.openapi import sse_responses
 from app.core.pagination import Page
 from app.core.ports import ClockDep, EventBus, VoiceTokens
+from app.core.rate_limit import OUTBOUND_EMAIL, USER_WRITE, TooManyRequests, per_user
 from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
@@ -127,7 +128,10 @@ async def stream_session(
 @router.post(
     "/me/practice-sessions/{session_id}/feedback",
     response_model=schemas.PracticeSessionRead,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound, errors.FeedbackNotOpenError),
+    responses=error_responses(
+        TooManyRequests, Unauthenticated, errors.SessionNotFound, errors.FeedbackNotOpenError
+    ),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def session_feedback(
     session_id: uuid.UUID,
@@ -149,7 +153,8 @@ async def session_feedback(
 @router.post(
     "/me/practice-sessions/{session_id}/report-abuse",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound),
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.SessionNotFound),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def report_abuse(
     session_id: uuid.UUID,
@@ -173,7 +178,8 @@ async def report_abuse(
 @router.post(
     "/me/practice-sessions/{session_id}/report-no-show",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Unauthenticated, errors.SessionNotFound),
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.SessionNotFound),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def report_no_show(
     session_id: uuid.UUID,

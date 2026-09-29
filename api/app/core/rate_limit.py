@@ -1,8 +1,12 @@
 """How often one caller may do something.
 
-Only on the routes where an attacker gains something by repeating: signing
-in, asking for a password reset, and trading a legacy token. Everything else
-is behind a bearer token already.
+Two kinds of caller. An address, on the routes where an attacker gains
+something by repeating before signing in: signing in, asking for a password
+reset, trading a legacy token. And a signed-in person (`per_user`), on the
+routes where a bearer token is no brake because each call costs something: a
+model call, an email to somebody else, a post everybody reads (E-23). Ordinary
+reads and cheap writes are not limited: a bearer token is already a person, and
+counting every click would only find the people using the product hardest.
 
 **Mostly it fails open.** An unconfigured or switched-off Redis allows the
 call and says so in the log: turning the limiter off is a deployment choice,
@@ -19,10 +23,12 @@ profits from and a great deal less state to keep.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from fastapi import Request
 
+from app.core.auth import CurrentPrincipal
 from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.core.redis import get_redis
@@ -83,6 +89,27 @@ CV_UPLOAD = Limit(name="cv-upload", allowance=5, window_seconds=3600)
 # mid-check must not turn the second factor into an unlimited spray.
 MFA_VERIFY = Limit(name="mfa-verify", allowance=5, window_seconds=60, fail_closed=True)
 
+# --- per signed-in person (E-23) ----------------------------------------------
+#
+# Counted by user id, not address: a whole ward behind one NHS proxy is many
+# people, and one person on a phone and a laptop is one.
+
+# The default for a write that costs little but should not run in a loop:
+# flagging, liking, joining, accepting. A person clicking fast manages one a
+# second for a minute; a script manages far more.
+USER_WRITE = Limit(name="user-write", allowance=60, window_seconds=60)
+# Starts something that pays for a model call or a voice room: an attempt, a
+# debrief, a tutor session. Thirty in ten minutes is more stations than anybody
+# sits, and a runaway client costs real money every time it loops.
+AI_SPEND = Limit(name="ai-spend", allowance=30, window_seconds=600)
+# Sends an email to somebody other than the caller: an invitation, a resend, a
+# report to support. A bulk upload is one call however many rows it carries;
+# the limit is on a loop of calls, which is how an inbox gets flooded.
+OUTBOUND_EMAIL = Limit(name="outbound-email", allowance=30, window_seconds=3600)
+# Publishes something other people read: a question, a reply, a comment, a
+# marketplace slot. Sized well above a busy contributor and well below spam.
+PUBLISH = Limit(name="publish", allowance=20, window_seconds=600)
+
 
 def caller_key(request: Request) -> str:
     """Who is being counted.
@@ -132,3 +159,17 @@ async def check(limit: Limit, caller: str) -> None:
         # so a Redis blip does not lock people out of the whole product.
         if limit.fail_closed:
             raise TooManyRequests(details={"retry_after": limit.window_seconds, "limit": limit.name}) from exc
+
+
+def per_user(limit: Limit) -> Callable[..., Awaitable[None]]:
+    """A route dependency that counts `limit` against the signed-in caller.
+
+    Used as `dependencies=[Depends(per_user(AI_SPEND))]`, so the handler stays a
+    parse-and-call; the route must also declare `TooManyRequests`.
+    """
+
+    async def count_this_person(principal: CurrentPrincipal) -> None:
+        """Count one call against this person's allowance, or refuse it."""
+        await check(limit, f"user:{principal.user_id}")
+
+    return count_this_person

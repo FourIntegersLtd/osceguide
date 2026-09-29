@@ -16,6 +16,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import OUTBOUND_EMAIL, TooManyRequests, per_user
 from app.core.role_policy import policy
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin, Workspace, require_org
@@ -114,7 +115,8 @@ async def list_memberships(
     "/orgs/{org_slug}/memberships",
     response_model=schemas.MembershipRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.MembershipExists),
+    responses=error_responses(TooManyRequests, Forbidden, errors.MembershipExists),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_membership(
     body: schemas.CreateMembership, workspace: OrgAdmin, session: Session, clock: ClockDep
@@ -139,7 +141,8 @@ async def add_membership(
     "/orgs/{org_slug}/memberships/bulk",
     response_model=schemas.BulkMembershipsResult,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden),
+    responses=error_responses(TooManyRequests, Forbidden),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_memberships(
     body: schemas.BulkCreateMemberships, workspace: OrgAdmin, session: Session, clock: ClockDep
@@ -210,7 +213,10 @@ async def restore_membership(
 @router.post(
     "/orgs/{org_slug}/memberships/{membership_id}/resend-invitation",
     response_model=InvitationRead,
-    responses=error_responses(Forbidden, errors.MembershipNotFound, errors.InvitationNotPending),
+    responses=error_responses(
+        TooManyRequests, Forbidden, errors.MembershipNotFound, errors.InvitationNotPending
+    ),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def resend_membership_invitation(
     membership_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep

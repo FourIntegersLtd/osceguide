@@ -13,6 +13,7 @@ from app.core.db import get_session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import PlatformAdmin
 from app.features.tutor_memory import errors, schemas, service, service_material
 
@@ -39,7 +40,8 @@ async def list_debriefs(
     "/me/activity",
     response_model=schemas.ActivityAccepted,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(TooManyRequests, Unauthenticated),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def record_activity(
     body: schemas.ActivityBatch, principal: CurrentPrincipal, session: Session, clock: ClockDep

@@ -14,6 +14,7 @@ from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import PUBLISH, USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import admin_org_ids
 from app.features.community import errors, schemas, service
 
@@ -97,6 +98,7 @@ async def read_question(
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         errors.UnknownExamError,
         Unauthenticated,
         errors.EmptyContentError,
@@ -105,6 +107,7 @@ async def read_question(
         InvalidAudience,
         AudienceNotYours,
     ),
+    dependencies=[Depends(per_user(PUBLISH))],
 )
 async def ask(
     body: schemas.CreateQuestion, principal: CurrentPrincipal, session: Session
@@ -137,7 +140,10 @@ async def list_replies(
     "/community/questions/{question_id}/replies",
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.PostNotFound, errors.EmptyContentError),
+    responses=error_responses(
+        TooManyRequests, Unauthenticated, errors.PostNotFound, errors.EmptyContentError
+    ),
+    dependencies=[Depends(per_user(PUBLISH))],
 )
 async def reply(
     question_id: uuid.UUID,
@@ -151,7 +157,8 @@ async def reply(
 @router.post(
     "/community/posts/{post_id}/like",
     response_model=schemas.PostRead,
-    responses=error_responses(Unauthenticated, errors.PostNotFound),
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.PostNotFound),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def like(post_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> schemas.PostRead:
     """Idempotent. b2c increments a counter, so a double tap counts twice."""
@@ -161,7 +168,8 @@ async def like(post_id: uuid.UUID, principal: CurrentPrincipal, session: Session
 @router.delete(
     "/community/posts/{post_id}/like",
     response_model=schemas.PostRead,
-    responses=error_responses(Unauthenticated, errors.PostNotFound),
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.PostNotFound),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def unlike(post_id: uuid.UUID, principal: CurrentPrincipal, session: Session) -> schemas.PostRead:
     return await service.set_like(session, post_id, user_id=principal.user_id, liked=False)
@@ -210,8 +218,14 @@ async def list_station_comments(
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
-        Unauthenticated, errors.StationNotFound, errors.EmptyContentError, InvalidAudience, AudienceNotYours
+        TooManyRequests,
+        Unauthenticated,
+        errors.StationNotFound,
+        errors.EmptyContentError,
+        InvalidAudience,
+        AudienceNotYours,
     ),
+    dependencies=[Depends(per_user(PUBLISH))],
 )
 async def comment_on_station(
     station_id: uuid.UUID,

@@ -12,6 +12,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep, VoiceTokens
+from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.settings import SettingsDep
 from app.features.assistant import errors, schemas, service, service_content
 
@@ -25,7 +26,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     "/assistant/sessions",
     response_model=schemas.SessionRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Unauthenticated, errors.UnknownAssistantTypeError),
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.UnknownAssistantTypeError),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def start_session(
     body: schemas.StartSession, principal: CurrentPrincipal, session: Session, clock: ClockDep

@@ -16,6 +16,7 @@ from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventBus
+from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.features.attempts import (
@@ -39,12 +40,14 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     response_model=schemas.AttemptRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         Unauthenticated,
         errors.NotEntitled,
         errors.UnknownExamError,
         errors.StationNotFound,
         errors.StationNotPublishedError,
     ),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def start_attempt(
     body: schemas.CreateAttempt,

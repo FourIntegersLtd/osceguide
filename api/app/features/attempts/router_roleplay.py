@@ -10,6 +10,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
+from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.features.attempts import errors, schemas, service_debrief, service_material
 from app.features.attempts.schemas import PatientRoleplayRead
 
@@ -40,12 +41,14 @@ async def read_roleplay(
     response_model=schemas.AttemptRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         Unauthenticated,
         errors.AttemptNotFound,
         errors.AttemptNotYours,
         errors.AttemptNotReady,
         errors.AttemptNotFinished,
     ),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def start_debrief(
     attempt_id: uuid.UUID,

@@ -14,6 +14,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventCounts
+from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import PlatformAdmin
 from app.features.growth import errors, schemas, service, service_payouts, service_spend
 
@@ -111,7 +112,8 @@ async def add_reporter(
 @router.post(
     "/me/referral-code",
     response_model=schemas.ReferralRead,
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(TooManyRequests, Unauthenticated),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def issue_code(principal: CurrentPrincipal, session: Session) -> schemas.ReferralRead:
     """One code per person; asking again returns the one they have."""

@@ -401,3 +401,29 @@ async def test_a_row_from_before_the_tags_column_reads_back_with_an_empty_list( 
     listed = await client.get("/api/v1/community/questions", headers=bearer(token))
     legacy = next(item for item in listed.json()["items"] if item["title"] == "Legacy row")
     assert legacy["tags"] == []
+
+
+async def test_asking_in_a_loop_is_refused_per_person(
+    client: AsyncClient, make_actor, monkeypatch: pytest.MonkeyPatch
+) -> None:  # type: ignore[no-untyped-def]
+    """E-23: a question is read by everybody, so a script posting them is cut off
+    at the `publish` allowance — and someone else can still ask."""
+    from app.core.rate_limit import PUBLISH
+    from tests.http.test_mfa_routes import CountingRedis
+
+    counter = CountingRedis()
+    monkeypatch.setattr("app.core.rate_limit.get_redis", lambda: counter)
+    spammer = await make_actor("loop@example.com")
+    for number in range(PUBLISH.allowance):
+        await ask(client, spammer, title=f"Question {number}")
+
+    refused = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "One more", "body": "I am stuck on chest pain stations."},
+        headers=bearer(spammer),
+    )
+    assert refused.status_code == 429, refused.text
+    assert refused.json()["code"] == "too_many_requests"
+    assert refused.json()["details"]["limit"] == "publish"
+
+    await ask(client, await make_actor("someone-else@example.com"), title="Mine")

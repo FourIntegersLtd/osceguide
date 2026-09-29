@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep
+from app.core.rate_limit import OUTBOUND_EMAIL, TooManyRequests, per_user
 from app.core.tenancy import OrgAdmin
 from app.features.roster import errors, schemas, service_edit, service_groups
 
@@ -71,7 +72,10 @@ async def anonymise_trainee(
 @router.post(
     "/orgs/{org_slug}/trainees/{trainee_id}/resend-invitation",
     response_model=schemas.InvitationRead,
-    responses=error_responses(Forbidden, errors.TraineeNotFound, errors.InvitationNotPending),
+    responses=error_responses(
+        TooManyRequests, Forbidden, errors.TraineeNotFound, errors.InvitationNotPending
+    ),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def resend_invitation(
     trainee_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep

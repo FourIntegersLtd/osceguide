@@ -142,3 +142,37 @@ def test_a_spoofed_leading_address_does_not_mint_a_fresh_bucket() -> None:
 
 def test_a_caller_with_no_address_still_gets_a_bucket() -> None:
     assert caller_key(Request(host=None)) == "unknown"  # type: ignore[arg-type]
+
+
+async def test_a_per_user_limit_counts_the_person_not_the_address(redis: FakeRedis) -> None:
+    """E-23: two people behind one proxy each get their own allowance, and one
+    person's allowance runs out wherever they call from."""
+    import uuid
+
+    from app.core.auth import Principal
+
+    first, second = uuid.uuid4(), uuid.uuid4()
+    count_call = rate_limit.per_user(LIMIT)
+    for _ in range(LIMIT.allowance):
+        await count_call(Principal(user_id=first, email="first@example.com"))
+    await count_call(Principal(user_id=second, email="second@example.com"))
+
+    with pytest.raises(TooManyRequests) as refused:
+        await count_call(Principal(user_id=first, email="first@example.com"))
+    assert refused.value.details == {"retry_after": 42, "limit": "test"}
+    assert set(redis.counts) == {f"ratelimit:test:user:{first}", f"ratelimit:test:user:{second}"}
+
+
+def test_the_per_user_limits_are_sized_for_what_each_call_costs() -> None:
+    """The more a call costs somebody else, the fewer a person gets."""
+    per_minute = {
+        limit.name: limit.allowance / limit.window_seconds * 60
+        for limit in (
+            rate_limit.USER_WRITE,
+            rate_limit.AI_SPEND,
+            rate_limit.PUBLISH,
+            rate_limit.OUTBOUND_EMAIL,
+        )
+    }
+    assert per_minute["user-write"] > per_minute["ai-spend"] > per_minute["outbound-email"]
+    assert per_minute["user-write"] > per_minute["publish"]

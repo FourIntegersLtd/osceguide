@@ -16,6 +16,7 @@ from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
+from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.features.peer_practice import errors, schemas, service, service_stream
@@ -29,8 +30,14 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     response_model=schemas.QueueStatus,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
-        errors.UnknownExamError, errors.NotEntitled, Unauthenticated, InvalidAudience, AudienceNotYours
+        TooManyRequests,
+        errors.UnknownExamError,
+        errors.NotEntitled,
+        Unauthenticated,
+        InvalidAudience,
+        AudienceNotYours,
     ),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def join_queue(
     body: schemas.JoinQueue, principal: CurrentPrincipal, session: Session, clock: ClockDep
