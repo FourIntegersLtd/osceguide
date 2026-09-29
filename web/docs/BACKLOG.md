@@ -61,7 +61,7 @@ Checked against the code on 2026-09-25.
 | Upload your own profile photo | `PhotoUpload` has a real caller for station photos (`stations/router_photos.py`); nothing supplies an `upload` for a person's avatar. Reuse the station-photo route family |
 | Voice onboarding scenes | No onboarding-scenes route in `assistant/`; needs design as well as code |
 | Assistant cards | `parseAssistantCardPayload` (`foundation/livekit/guidance/contracts.ts`) has no receiver |
-| AI practice: flagged stations open the library station | A flag carries no set entry, so the Flagged tab links to the station on its own, not inside the session it was flagged from |
+| AI practice: flagged stations open the library station | A flag carries no set entry. The runner now sends `set_id` and `set_entry_id` with the report and the Flagged tab links into the session when a flag returns them (`flaggedStationPath`), but `FlagStationBody` ignores both and `StationFlagRead` has neither. Backend: two nullable columns on `station_flags`, accepted on create and returned on read. The one-flag-per-station-per-person constraint means the latest session a person flagged from wins |
 
 ### Peer practice
 

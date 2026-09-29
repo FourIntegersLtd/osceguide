@@ -5,7 +5,7 @@ import { HiOutlineChatBubbleLeftRight, HiOutlineChevronDown, HiOutlineChevronRig
 import { LuFlag } from "react-icons/lu";
 import { Back, cn, productTokens } from "@/foundation/ui";
 import { useToast } from "@/foundation/hooks";
-import { flagStation } from "@/capabilities/stations/api";
+import { flagStation, type FlagSetEntry } from "@/capabilities/stations/api";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 
 export type StationStep = "patient" | "simulation" | "management" | "feedback";
@@ -44,12 +44,15 @@ export function StationHeader({
   attemptsUsed,
   attemptLimit,
   flagStationId,
+  flagFrom,
 }: {
   index: number;
   total: number;
   attemptsUsed: number | null;
   attemptLimit: number | null;
   flagStationId?: string | null;
+  /** The session entry this station is being sat in, recorded with a flag. */
+  flagFrom?: FlagSetEntry | null;
 }) {
   const toast = useToast();
   const [flagged, setFlagged] = useState(false);
@@ -59,7 +62,7 @@ export function StationHeader({
   const onFlag = async () => {
     if (!flagStationId) return;
     try {
-      await flagStation(flagStationId);
+      await flagStation(flagStationId, flagFrom);
       setFlagged(true);
       toast.show({
         tone: "success",

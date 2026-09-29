@@ -368,6 +368,9 @@ export function StationScreen(props: StationScreenProps) {
         attemptsUsed={attemptsUsed}
         attemptLimit={attemptLimit}
         flagStationId={flagStationId}
+        flagFrom={
+          source.kind === "set" ? { setId: source.setId, entryId: source.entryId } : null
+        }
       />
 
       <div className="flex flex-col items-center justify-between lg:flex-row">

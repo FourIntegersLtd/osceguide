@@ -13,13 +13,24 @@ import {
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { practiseHref } from "@/capabilities/stations";
 import { myStationFlags, type StationFlag } from "@/capabilities/stations/api";
+import { flaggedStationPath } from "@/domains/train/mocks/model";
 
 const PER_PAGE = 10;
 
-/** A row is the report, with the title the backend resolved for it. */
-type FlagRow = StationFlag & { id: string; station_name: string };
+/**
+ * A row is the report, with the title the backend resolved for it.
+ *
+ * `set_id`/`set_entry_id` are not on `StationFlagRead` yet: the session a flag
+ * came from is sent by the runner but not stored. Read as optional so the link
+ * reopens the session the day the backend returns them.
+ */
+type FlagRow = StationFlag & {
+  id: string;
+  station_name: string;
+  set_id?: string | null;
+  set_entry_id?: string | null;
+};
 
 /**
  * What this person has reported, and nothing else's.
@@ -98,7 +109,7 @@ export function FlaggedStations() {
       header: "Station",
       key: "station_name",
       render: (row) => (
-        <Link href={practiseHref(hrefFor, row.station_id)} className={productTokens.b2cLink}>
+        <Link href={hrefFor(flaggedStationPath(row))} className={productTokens.b2cLink}>
           {row.station_name}
         </Link>
       ),
@@ -106,7 +117,7 @@ export function FlaggedStations() {
     {
       header: "Action",
       key: (row) => (
-        <Link href={practiseHref(hrefFor, row.station_id)} className={productTokens.b2cLink}>
+        <Link href={hrefFor(flaggedStationPath(row))} className={productTokens.b2cLink}>
           View details
         </Link>
       ),
