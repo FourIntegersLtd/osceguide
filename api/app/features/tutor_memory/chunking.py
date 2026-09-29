@@ -1,9 +1,11 @@
 """Cutting a piece of study material into passages that can be embedded.
 
-Behaviour-identical to the legacy chunker on purpose: a different cut would retrieve
-differently for the same question. `tests/unit/test_tutor_memory_chunking.py` holds it to
-the original. Turning a document into text is `sources.py`'s job; this only recognises
-section headings.
+Ported from the legacy chunker, and identical to it except in one place (T-1): a section
+between two headings longer than `MAX_CHUNK_CHARS` is now cut by size as well, where the
+legacy chunker emitted it whole. A different cut retrieves differently for the same
+question, so `tests/unit/test_tutor_memory_chunking.py` pins the output on a captured
+document. Turning a document into text is `sources.py`'s job; this only recognises section
+headings.
 """
 
 from __future__ import annotations
@@ -48,9 +50,13 @@ def chunk(text: str) -> list[Chunk]:
     """Split `text` into passages: by heading where there are headings, then by size.
 
     The two passes are not alternatives. A document with headings is cut at
-    them first, and whatever follows the last heading is then cut by size --
-    which is the case that matters, because the management plan is usually the
-    long tail after the last recognised heading.
+    them first, and every piece is then cut by size: each section keeps its
+    heading's name across its windows, and whatever follows the last heading is
+    the `management` tail -- usually the longest piece of all.
+
+    The legacy chunker size-cut only that tail, so a long section between two
+    headings became one passage past the embedding model's limit, silently
+    truncated when it was embedded (T-1).
     """
     if not text:
         return []
@@ -63,14 +69,14 @@ def chunk(text: str) -> list[Chunk]:
             break
         body = text[position : match.start()].strip()
         if len(body) > MIN_SECTION_CHARS:
-            chunks.append(Chunk(index=len(chunks), section=section, text=body))
+            chunks.extend(_by_size(body, first_index=len(chunks), section=section))
         section = _section_name(match.group(1))
         position = match.end()
 
     remainder = text[position:].strip() if position < len(text) else text
     if not remainder:
         return chunks
-    chunks.extend(_by_size(remainder, first_index=len(chunks)))
+    chunks.extend(_by_size(remainder, first_index=len(chunks), section=REMAINDER))
     return chunks
 
 
@@ -78,8 +84,9 @@ def _section_name(heading: str) -> str:
     return heading.lower().replace(" ", "_").replace("-", "_")[:30]
 
 
-def _by_size(text: str, *, first_index: int) -> list[Chunk]:
-    """Fixed-width windows that stop at a sentence, overlapping by a little.
+def _by_size(text: str, *, first_index: int, section: str) -> list[Chunk]:
+    """Fixed-width windows that stop at a sentence, overlapping by a little, all
+    filed under `section`. Text within the limit comes back as one window.
 
     The overlap is what stops a sentence split across two windows from being
     retrievable from neither: each window carries the tail of the one before
@@ -93,7 +100,7 @@ def _by_size(text: str, *, first_index: int) -> list[Chunk]:
             end = _break_before(text, start, end)
         body = text[start:end].strip()
         if body:
-            chunks.append(Chunk(index=first_index + len(chunks), section=REMAINDER, text=body))
+            chunks.append(Chunk(index=first_index + len(chunks), section=section, text=body))
         start = end - OVERLAP_CHARS if end < len(text) else len(text)
     return chunks
 

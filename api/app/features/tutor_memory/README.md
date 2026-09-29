@@ -119,10 +119,13 @@ Called by: `assistant` (session render, tool calls, `on_transcript`) and
 cites what it used. The index is pgvector in this same database (ADR 0019),
 behind `core.ports.MaterialIndex` with a fake for every test above it.
 
-- `chunking.py` cuts a document into passages. A byte-for-byte port of b2c's
+- `chunking.py` cuts a document into passages. A port of b2c's
   `management_text_utils.py`, pinned by an oracle: where a chunker cuts decides
   which passage answers a question, so moving a boundary changes a clinical
-  answer with no diff anywhere near it.
+  answer with no diff anywhere near it. One deliberate difference (T-1): a
+  section between two headings longer than `MAX_CHUNK_CHARS` is cut by size too,
+  keeping its heading, where b2c emitted it whole past the embedding limit. The
+  nightly `reindex_material` job re-cuts existing material on its next run.
 - `service_material.py` builds the index: which sources go in, and which are
   retired when they stop being published. It decides the corpora and the
   titles, so a citation and a suggestion name the same thing in the same
