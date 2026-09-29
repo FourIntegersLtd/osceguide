@@ -939,6 +939,21 @@
         "title": "Body_cv_upload_cv",
         "type": "object"
       },
+      "Body_identity_upload_my_avatar": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "A JPEG, PNG or WebP image",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_identity_upload_my_avatar",
+        "type": "object"
+      },
       "Body_stations_add_platform_station_photos": {
         "properties": {
           "files": {
@@ -4167,6 +4182,7 @@
               "invalid_attempt_state",
               "invalid_audience",
               "invalid_author_filter",
+              "invalid_avatar_file",
               "invalid_circuit",
               "invalid_credentials",
               "invalid_cv_file",
@@ -5489,7 +5505,7 @@
         "type": "object"
       },
       "InvitationRead": {
-        "description": "A re-sent invitation. The token itself is never returned; it goes only to\nthe address it was minted for.",
+        "description": "A re-sent invitation. The token itself is never returned; it goes only to\nthe address it was minted for.\n\nShared by roster's and tenancy's resend routes.",
         "properties": {
           "email": {
             "title": "Email",
@@ -7019,6 +7035,50 @@
           "joinable"
         ],
         "title": "MySlot",
+        "type": "object"
+      },
+      "MySlotReviewRead": {
+        "description": "A candidate's own read of their slot's review: the RAG summary and the\nGP-lead's written feedback, once one has been completed. Never a\nreviewer's draft, and never who observed them.",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SlotRagSummary"
+          }
+        },
+        "required": [
+          "slot_id",
+          "summary",
+          "notes",
+          "completed_at"
+        ],
+        "title": "MySlotReviewRead",
         "type": "object"
       },
       "NoteRead": {
@@ -15778,6 +15838,17 @@
             "title": "Ai Training Consent",
             "type": "boolean"
           },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
           "colleague_waiting_email": {
             "default": false,
             "title": "Colleague Waiting Email",
@@ -22449,6 +22520,70 @@
         ]
       }
     },
+    "/api/v1/me/avatar": {
+      "post": {
+        "description": "Replace this person's profile photo. Refused if the file is not a\nsmall image; the previous photo is deleted from storage on success.",
+        "operationId": "identity_upload_my_avatar",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_identity_upload_my_avatar"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_avatar_file",
+            "x-codes": [
+              "invalid_avatar_file"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload My Avatar",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/v1/me/capabilities": {
       "get": {
         "operationId": "tenancy_read_capabilities",
@@ -25415,6 +25550,82 @@
         "summary": "Stream My Sittings",
         "tags": [
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/me/slots/{slot_id}/review": {
+      "get": {
+        "description": "A candidate's own review of one of their slots, once their result is\nreleased and the GP lead has completed one. Never for a slot not theirs.",
+        "operationId": "reviews_read_my_slot_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MySlotReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "review_not_found",
+            "x-codes": [
+              "review_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Slot Review",
+        "tags": [
+          "reviews"
         ]
       }
     },
@@ -31436,6 +31647,106 @@
           }
         ],
         "summary": "Change Membership Role",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/memberships/{membership_id}/resend-invitation": {
+      "post": {
+        "description": "Send the choose-a-password link again, as a new token. Returns 409\n`invitation_not_pending` if the person has already chosen a password.",
+        "operationId": "tenancy_resend_membership_invitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Membership Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "membership_not_found",
+            "x-codes": [
+              "membership_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invitation_not_pending",
+            "x-codes": [
+              "invitation_not_pending"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resend Membership Invitation",
         "tags": [
           "tenancy"
         ]
