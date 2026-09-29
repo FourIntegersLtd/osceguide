@@ -160,6 +160,11 @@ consulting doctor inherits the new model untested. It is worth a listen before
 you rely on it, and `VOICE_TUTOR_LLM=gpt-4o` puts the old model back without a
 deploy.
 
+`scripts/debrief_bench.py` does the same for the debrief tutor's prompt, with a
+Claude model playing the trainee. Every run that chose a model or a prompt, and
+its numbers, is recorded in `scripts/bench/RESULTS.md`. Add yours there, because
+`runs/` is not committed.
+
 ## The assessment worker
 
 `livekit_assessment_worker` runs one attempt's interaction and nothing else.
