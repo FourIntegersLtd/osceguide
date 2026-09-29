@@ -61,7 +61,6 @@ Checked against the code on 2026-09-25.
 | Upload your own profile photo | `PhotoUpload` has a real caller for station photos (`stations/router_photos.py`); nothing supplies an `upload` for a person's avatar. Reuse the station-photo route family |
 | Voice onboarding scenes | No onboarding-scenes route in `assistant/`; needs design as well as code |
 | Assistant cards | `parseAssistantCardPayload` (`foundation/livekit/guidance/contracts.ts`) has no receiver |
-| Media specialty facet | Facets read `content.specialty`. `MediaRead.specialty` exists but nothing writes it; backfill, then switch |
 | AI practice: flagged stations open the library station | A flag carries no set entry, so the Flagged tab links to the station on its own, not inside the session it was flagged from |
 
 ### Peer practice

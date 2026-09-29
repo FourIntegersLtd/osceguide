@@ -393,17 +393,18 @@ export function psychosocialAspects(item: MediaItem): string[] {
 /**
  * The specialties an item is filed under.
  *
- * Reads the authoring payload (`content`), not `MediaRead.specialty`: the
- * content payload is what authors set and what the whole library was tagged
- * through, so it is the source that has data behind it. `MediaRead` does now
- * carry a root `specialty` column (see `openapi.json`), but nothing in the
- * porting wrote to it, and the facets these feed hide themselves when nothing
- * carries one — see `docs/BACKLOG.md`.
+ * `MediaRead.specialty` is the catalogue facet: the server derives it from the
+ * document whether or not the body is withheld (`media/service_reads.py`), so
+ * a locked item still carries it. The document is read first only because it
+ * can hold a whole `specialties` list where the root column holds the first
+ * entry; when the body is withheld the root column is all there is. Reading
+ * the document alone is how a locked item fell off the specialty list.
  */
 export function specialtiesOf(item: MediaItem): string[] {
-  const one = stringField(item, "specialty");
-  const many = stringList(item, "specialties");
-  return many.length > 0 ? many : one ? [one] : [];
+  const many = stringList(item, "specialties").filter((entry) => entry.trim() !== "");
+  if (many.length > 0) return many;
+  const one = stringField(item, "specialty") ?? item.specialty?.trim();
+  return one ? [one] : [];
 }
 
 /**
@@ -411,7 +412,7 @@ export function specialtiesOf(item: MediaItem): string[] {
  *
  * B2C stored it on the document; `MediaRead` also has a root `updated_at`
  * now, but it is not what these screens were built against, so the payload
- * stays the source. See also `specialtiesOf`.
+ * stays the source.
  */
 export function contentUpdatedAt(item: MediaItem): string | null {
   return stringField(item, "updated_at");

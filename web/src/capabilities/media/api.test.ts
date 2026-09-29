@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { audioUrl, podcastSeries, type MediaItem } from "@/capabilities/media/api";
+import { audioUrl, podcastSeries, specialtiesOf, type MediaItem } from "@/capabilities/media/api";
 
 function episode(
   id: string,
@@ -55,5 +55,30 @@ describe("podcastSeries", () => {
       series.map((entry) => entry.id),
       ["missed", "a"],
     );
+  });
+});
+
+describe("specialtiesOf", () => {
+  const item = (over: Partial<MediaItem>): MediaItem =>
+    ({ ...episode("s1", "Chest pain"), kind: "summary", ...over }) as MediaItem;
+
+  it("keeps a locked item on the facet list through the root column", () => {
+    // The server withholds `content` for a reader without the exam but still
+    // derives `specialty`; reading the document alone dropped these items.
+    assert.deepEqual(specialtiesOf(item({ content: null, locked: true, specialty: "Cardiology" })), [
+      "Cardiology",
+    ]);
+  });
+
+  it("prefers the document's whole list when the body is readable", () => {
+    const readable = item({
+      content: { specialties: ["Cardiology", "Respiratory"] },
+      specialty: "Cardiology",
+    });
+    assert.deepEqual(specialtiesOf(readable), ["Cardiology", "Respiratory"]);
+  });
+
+  it("files nothing when neither carries one", () => {
+    assert.deepEqual(specialtiesOf(item({ content: {}, specialty: null })), []);
   });
 });
