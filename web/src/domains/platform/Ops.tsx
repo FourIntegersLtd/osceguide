@@ -72,6 +72,11 @@ export function Ops() {
                     : `${c.active} of ${c.max_concurrent} slots held, ${c.free} free`}
                   {c.overflow_enabled ? "" : " · overflow metering off"}
                 </p>
+                <p className="mt-2 font-medium text-ink">Our workers</p>
+                <p className="text-ink-muted">
+                  {c.self_hosted_seats_taken ?? "—"} of {c.self_hosted_seats_total} seats taken ·{" "}
+                  {c.queue_length ?? "—"} in line
+                </p>
               </div>
             )}
           </AsyncBoundary>

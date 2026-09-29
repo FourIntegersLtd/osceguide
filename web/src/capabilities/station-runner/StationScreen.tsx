@@ -250,6 +250,8 @@ export function StationScreen(props: StationScreenProps) {
   );
 
   const endActiveConsultation = useCallback(async () => {
+    // Moving on while in line gives the place up for whoever is behind.
+    if (session.phase === "queued") await session.leaveQueue();
     if (live) {
       endReasonRef.current = "manual";
       await session.end();

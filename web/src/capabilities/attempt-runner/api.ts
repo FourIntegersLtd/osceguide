@@ -68,6 +68,11 @@ export function voiceQueuePath(attemptId: string): string {
   return `/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-queue`;
 }
 
+/** Give up a place in line, so the candidate behind moves up now rather than when it lapses. */
+export function leaveVoiceQueue(attemptId: string): Promise<void> {
+  return platformRequest<void>(voiceQueuePath(attemptId), { method: "DELETE" });
+}
+
 /** Give up on an attempt that was never really run. */
 export function abandonAttempt(attemptId: string): Promise<void> {
   return platformRequest<void>(`/api/v1/attempts/${encodeURIComponent(attemptId)}/abandon`, {

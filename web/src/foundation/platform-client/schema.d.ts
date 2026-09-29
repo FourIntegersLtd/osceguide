@@ -318,7 +318,8 @@ export interface paths {
         get: operations["voice_stream_voice_queue"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Leave Voice Queue */
+        delete: operations["voice_leave_voice_queue"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3151,6 +3152,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/exams/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Platform Catalogue */
+        get: operations["catalog_list_platform_catalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/exams/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Platform Exam
+         * @description Take on a published platform exam by reference: nothing is copied, a programme names it.
+         *
+         *     `unknown_exam` (404) unless it is a published platform exam; `exam_already_imported`
+         *     (409) if this institution already runs it.
+         */
+        post: operations["catalog_import_platform_exam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/exams/{exam_id}": {
         parameters: {
             query?: never;
@@ -3381,6 +3422,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/memberships/bulk/resend-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Resend Membership Invitations
+         * @description Resend the choose-a-password link to a selection at once, each row through
+         *     the same `POST /memberships/{id}/resend-invitation` decision.
+         */
+        post: operations["tenancy_bulk_resend_membership_invitations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/memberships/bulk/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Revoke Memberships
+         * @description Revoke a selection from the team table at once. Each row goes through the
+         *     same `POST /memberships/{id}/revoke` decision; an id from another
+         *     organisation, or repeated in the request, is reported rather than acted on twice.
+         */
+        post: operations["tenancy_bulk_revoke_memberships"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/memberships/{membership_id}": {
         parameters: {
             query?: never;
@@ -3471,6 +3555,67 @@ export interface paths {
         head?: never;
         /** Set Staff Mfa Policy */
         patch: operations["tenancy_set_staff_mfa_policy"];
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/practice-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Practice Access */
+        get: operations["entitlements_list_practice_access"];
+        put?: never;
+        /**
+         * Grant Practice Access
+         * @description Give one person practice access to an exam this organisation offers.
+         *
+         *     An address with no account is invited: the account is created without a password and
+         *     the grant is attached to it, usable once they choose a password from the email.
+         */
+        post: operations["entitlements_grant_practice_access"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/practice-access/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant Practice Access In Bulk
+         * @description Up to 500 rows the client parsed from a CSV; each row reports its own outcome.
+         */
+        post: operations["entitlements_grant_practice_access_in_bulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/practice-access/{access_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Practice Access */
+        post: operations["entitlements_revoke_practice_access"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/orgs/{org_slug}/programmes": {
@@ -4481,6 +4626,71 @@ export interface paths {
          * @description A spreadsheet's worth of trainees. Duplicates are reported, not fatal.
          */
         post: operations["roster_add_trainees"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/trainees/bulk/cohort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Set Trainee Cohort
+         * @description Move a selection into one intake, or clear it, at once. Returns 404
+         *     `cohort_not_found` for the whole request if `cohort_id` does not name an
+         *     intake of this organisation; each trainee id is otherwise reported on its own.
+         */
+        post: operations["roster_bulk_set_trainee_cohort"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/trainees/bulk/resend-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Resend Trainee Invitations
+         * @description Resend the sign-in invitation to a selection at once, each row through the
+         *     same `POST /trainees/{id}/resend-invitation` decision.
+         */
+        post: operations["roster_bulk_resend_trainee_invitations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/trainees/bulk/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Revoke Trainees
+         * @description Revoke access for a selection from the roster table at once. Each row goes
+         *     through the same `POST /trainees/{id}/access` decision; an id from another
+         *     organisation, or repeated in the request, is reported rather than acted on twice.
+         */
+        post: operations["roster_bulk_revoke_trainees"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7026,6 +7236,59 @@ export interface components {
             trainees: components["schemas"]["CreateTrainee"][];
         };
         /**
+         * BulkGrantPracticeAccess
+         * @description Up to 500 rows granted in one request.
+         */
+        BulkGrantPracticeAccess: {
+            /** Rows */
+            rows: components["schemas"]["PracticeAccessRow"][];
+        };
+        /**
+         * BulkMembershipIds
+         * @description A batch of membership ids, for a bulk action from a selection in the
+         *     team table. Capped the same as a bulk import, so a selected page cannot
+         *     name a whole organisation's team by accident.
+         */
+        BulkMembershipIds: {
+            /** Membership Ids */
+            membership_ids: string[];
+        };
+        /** BulkMembershipInvitationResponse */
+        BulkMembershipInvitationResponse: {
+            /** Results */
+            results: components["schemas"]["BulkMembershipInvitationResult"][];
+        };
+        /** BulkMembershipInvitationResult */
+        BulkMembershipInvitationResult: {
+            /**
+             * Membership Id
+             * Format: uuid
+             */
+            membership_id: string;
+            /** Outcome */
+            outcome: string;
+        };
+        /** BulkMembershipRevokeResponse */
+        BulkMembershipRevokeResponse: {
+            /** Results */
+            results: components["schemas"]["BulkMembershipRevokeResult"][];
+        };
+        /**
+         * BulkMembershipRevokeResult
+         * @description One row's outcome from a bulk revoke: whether this call changed
+         *     anything, or the row was already in that state or not this
+         *     organisation's to change.
+         */
+        BulkMembershipRevokeResult: {
+            /**
+             * Membership Id
+             * Format: uuid
+             */
+            membership_id: string;
+            /** Outcome */
+            outcome: string;
+        };
+        /**
          * BulkMembershipsResult
          * @description Who joined and who was already there, so a partial upload is not a mystery.
          */
@@ -7034,6 +7297,14 @@ export interface components {
             created?: components["schemas"]["app__features__tenancy__schemas__MembershipRead"][];
             /** Skipped */
             skipped?: components["schemas"]["SkippedMembership"][];
+        };
+        /**
+         * BulkPracticeAccessResults
+         * @description One result per row, in the order the rows were sent.
+         */
+        BulkPracticeAccessResults: {
+            /** Results */
+            results: components["schemas"]["PracticeAccessResult"][];
         };
         /**
          * BulkRelease
@@ -7067,6 +7338,75 @@ export interface components {
             released?: components["schemas"]["ReleasedCandidate"][];
             /** Skipped */
             skipped?: components["schemas"]["SkippedRelease"][];
+        };
+        /**
+         * BulkSetTraineeCohort
+         * @description Move a batch of trainees into one intake at once, or out of any intake.
+         */
+        BulkSetTraineeCohort: {
+            /** Cohort Id */
+            cohort_id?: string | null;
+            /** Trainee Ids */
+            trainee_ids: string[];
+        };
+        /** BulkTraineeAccessResponse */
+        BulkTraineeAccessResponse: {
+            /** Results */
+            results: components["schemas"]["BulkTraineeAccessResult"][];
+        };
+        /**
+         * BulkTraineeAccessResult
+         * @description One row's outcome from a bulk revoke: whether this call changed anything,
+         *     or the row was already in that state or not this organisation's to change.
+         */
+        BulkTraineeAccessResult: {
+            /** Outcome */
+            outcome: string;
+            /**
+             * Trainee Id
+             * Format: uuid
+             */
+            trainee_id: string;
+        };
+        /** BulkTraineeCohortResponse */
+        BulkTraineeCohortResponse: {
+            /** Results */
+            results: components["schemas"]["BulkTraineeCohortResult"][];
+        };
+        /** BulkTraineeCohortResult */
+        BulkTraineeCohortResult: {
+            /** Outcome */
+            outcome: string;
+            /**
+             * Trainee Id
+             * Format: uuid
+             */
+            trainee_id: string;
+        };
+        /**
+         * BulkTraineeIds
+         * @description A batch of roster ids, for a bulk action from a selection in the roster
+         *     table. Capped the same as a bulk upload, so a selected page cannot name a
+         *     whole institution's roster by accident.
+         */
+        BulkTraineeIds: {
+            /** Trainee Ids */
+            trainee_ids: string[];
+        };
+        /** BulkTraineeInvitationResponse */
+        BulkTraineeInvitationResponse: {
+            /** Results */
+            results: components["schemas"]["BulkTraineeInvitationResult"][];
+        };
+        /** BulkTraineeInvitationResult */
+        BulkTraineeInvitationResult: {
+            /** Outcome */
+            outcome: string;
+            /**
+             * Trainee Id
+             * Format: uuid
+             */
+            trainee_id: string;
         };
         /**
          * BulkTraineesResult
@@ -7270,10 +7610,12 @@ export interface components {
         };
         /**
          * CloudCapacityRead
-         * @description How full LiveKit Cloud is, for the people watching it.
+         * @description How full LiveKit Cloud, our own workers and the waiting line are, for the people watching them.
          *
          *     `active` is None when Redis cannot be asked, which is also what routes a
          *     new session to our own workers — so None here is the thing to look at.
+         *     `self_hosted_seats_taken` and `queue_length` are None for the same reason;
+         *     the total is configuration, so it is always known.
          */
         CloudCapacityRead: {
             /** Active */
@@ -7284,6 +7626,12 @@ export interface components {
             max_concurrent: number;
             /** Overflow Enabled */
             overflow_enabled: boolean;
+            /** Queue Length */
+            queue_length: number | null;
+            /** Self Hosted Seats Taken */
+            self_hosted_seats_taken: number | null;
+            /** Self Hosted Seats Total */
+            self_hosted_seats_total: number;
         };
         /**
          * CloudSlotPost
@@ -8212,7 +8560,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_exam_code" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -8586,6 +8934,19 @@ export interface components {
             /** Exam Code */
             exam_code: string;
         };
+        /**
+         * GrantPracticeAccess
+         * @description Give one person, who need not have an account yet, practice access to one exam.
+         */
+        GrantPracticeAccess: {
+            /** Email */
+            email: string;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
+        };
         /** GroupRead */
         GroupRead: {
             /**
@@ -8701,6 +9062,24 @@ export interface components {
             sort_order: number;
             /** Title */
             title: string;
+        };
+        /**
+         * ImportPlatformExam
+         * @description Which published platform exam to bring into the institution.
+         */
+        ImportPlatformExam: {
+            /**
+             * Platform Exam Id
+             * Format: uuid
+             */
+            platform_exam_id: string;
+        };
+        /**
+         * ImportedExamRead
+         * @description The exam now in the institution, shaped as `GET /orgs/{org_slug}/exams` lists it.
+         */
+        ImportedExamRead: {
+            exam: components["schemas"]["ExamRead"];
         };
         /** Intervention */
         Intervention: {
@@ -10347,6 +10726,33 @@ export interface components {
             target_type: string | null;
         };
         /**
+         * PlatformCatalogueExamRead
+         * @description One published platform exam, as an institution choosing what to import sees it.
+         */
+        PlatformCatalogueExamRead: {
+            /** Already Imported */
+            already_imported: boolean;
+            /** Code */
+            code: string;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
+            /** Station Count */
+            station_count: number;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlatformCatalogueRead
+         * @description The published platform exams an institution may import. Small, so never paged.
+         */
+        PlatformCatalogueRead: {
+            /** Items */
+            items: components["schemas"]["PlatformCatalogueExamRead"][];
+        };
+        /**
          * PlatformEntitlementRead
          * @description A grant as the platform console reads it: where it came from, who made it.
          */
@@ -10544,6 +10950,87 @@ export interface components {
              * @default active
              */
             status: string;
+        };
+        /**
+         * PracticeAccessItem
+         * @description One practice-access row, wrapped the way the frontend reads a single item.
+         */
+        PracticeAccessItem: {
+            item: components["schemas"]["PracticeAccessRead"];
+        };
+        /**
+         * PracticeAccessList
+         * @description Everything this organisation has granted as practice access, revoked rows included.
+         */
+        PracticeAccessList: {
+            /** Items */
+            items: components["schemas"]["PracticeAccessRead"][];
+        };
+        /**
+         * PracticeAccessRead
+         * @description One person's practice access to one exam, granted by this organisation.
+         *
+         *     `access_id` is the entitlement's id. `user_id` is always set today, because an invitation
+         *     creates the account up front; it is nullable in the contract so a pending invitation that
+         *     holds no account could be listed without a breaking change.
+         */
+        PracticeAccessRead: {
+            /**
+             * Access Id
+             * Format: uuid
+             */
+            access_id: string;
+            /** Email */
+            email: string;
+            /** Exam Code */
+            exam_code: string;
+            /**
+             * Exam Id
+             * Format: uuid
+             */
+            exam_id: string;
+            /** Exam Title */
+            exam_title: string;
+            /**
+             * Granted At
+             * Format: date-time
+             */
+            granted_at: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "invited" | "active" | "revoked";
+            /** User Id */
+            user_id: string | null;
+        };
+        /**
+         * PracticeAccessResult
+         * @description What happened to one row of a bulk grant.
+         */
+        PracticeAccessResult: {
+            /** Email */
+            email: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "granted" | "invited" | "already_active" | "invalid_email" | "unknown_exam";
+        };
+        /**
+         * PracticeAccessRow
+         * @description One row of a bulk grant, as the client parsed it from a CSV.
+         *
+         *     `exam_id` is a string rather than a uuid so one malformed cell becomes that row's
+         *     `unknown_exam` outcome instead of refusing the whole file.
+         */
+        PracticeAccessRow: {
+            /** Email */
+            email: string;
+            /** Exam Id */
+            exam_id: string;
         };
         /** PracticeCandidateScenarioRead */
         PracticeCandidateScenarioRead: {
@@ -14599,6 +15086,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    voice_leave_voice_queue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_yours */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description voice_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -22871,6 +23423,110 @@ export interface operations {
             };
         };
     };
+    catalog_list_platform_catalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCatalogueRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_import_platform_exam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPlatformExam"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportedExamRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description exam_already_imported */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     catalog_delete_org_exam: {
         parameters: {
             query?: never;
@@ -23557,6 +24213,96 @@ export interface operations {
             };
         };
     };
+    tenancy_bulk_resend_membership_invitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkMembershipIds"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkMembershipInvitationResponse"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenancy_bulk_revoke_memberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkMembershipIds"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkMembershipRevokeResponse"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     tenancy_change_membership_role: {
         parameters: {
             query?: never;
@@ -23818,6 +24564,206 @@ export interface operations {
                 };
             };
             /** @description org_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlements_list_practice_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeAccessList"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlements_grant_practice_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantPracticeAccess"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeAccessItem"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_exam */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description practice_access_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_email */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    entitlements_grant_practice_access_in_bulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkGrantPracticeAccess"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkPracticeAccessResults"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entitlements_revoke_practice_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                access_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeAccessItem"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description entitlement_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -28046,6 +28992,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    roster_bulk_set_trainee_cohort: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkSetTraineeCohort"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkTraineeCohortResponse"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cohort_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_bulk_resend_trainee_invitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkTraineeIds"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkTraineeInvitationResponse"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    roster_bulk_revoke_trainees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkTraineeIds"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkTraineeAccessResponse"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

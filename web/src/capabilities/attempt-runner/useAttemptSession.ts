@@ -7,6 +7,7 @@ import { publishToAgent, type RoomGrant } from "@/foundation/livekit";
 import {
   abandonAttempt,
   attemptVoiceToken,
+  leaveVoiceQueue,
   voiceQueuePath,
   type VoiceQueueStanding,
 } from "@/capabilities/attempt-runner/api";
@@ -58,7 +59,7 @@ export interface AttemptSession {
   /** Give up before the consultation began. */
   abandon: () => Promise<void>;
   /** Stop waiting for a patient. The attempt stays, so starting again rejoins the line at the back. */
-  leaveQueue: () => void;
+  leaveQueue: () => Promise<void>;
   attachRoom: (room: Room | null) => void;
   reportError: (cause: unknown) => void;
   /** Tell the agent to wind down. Sent once, near the end. */
@@ -132,6 +133,7 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   const startConsultation = useCallback(async () => {
     if (startingRef.current || endingRef.current) return;
     startingRef.current = true;
+    setPatientJoined(false);
     setPhase("connecting");
     setError(null);
     try {
@@ -183,11 +185,19 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   const queuePosition =
     phase !== "queued" ? null : standing && !standing.ready ? standing.position : answeredPosition;
 
-  const leaveQueue = useCallback(() => {
-    // Nothing to tell the server: an unwatched place lapses on its own, and
-    // stopping the stream is what stops watching it.
+  const leaveQueue = useCallback(async () => {
+    const running = attemptRef.current;
+    // Leaving the phase closes the stream at once; the call only frees the
+    // place sooner for whoever is behind.
     setAnsweredPosition(null);
     setPhase("idle");
+    if (!running) return;
+    try {
+      await leaveVoiceQueue(running.id);
+    } catch {
+      // An unwatched place lapses on its own, so a failed call only delays
+      // the line; it is no reason to keep the candidate here.
+    }
   }, []);
 
   const end = useCallback(async () => {

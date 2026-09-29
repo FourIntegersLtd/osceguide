@@ -8,7 +8,7 @@ import { Button, Spinner } from "@/foundation/ui";
  * Without it the candidate past the last seat joined an empty room and waited
  * for a patient who never came, with nothing to say why.
  */
-export function WaitingInLine({ position, onLeave }: { position: number | null; onLeave: () => void }) {
+export function WaitingInLine({ position, onLeave }: { position: number | null; onLeave: () => Promise<void> }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8 text-center" role="status" aria-live="polite">
       <Spinner />
@@ -18,7 +18,7 @@ export function WaitingInLine({ position, onLeave }: { position: number | null; 
         We will connect you as soon as a patient is free. Keep this page open to hold your place.
         Your consultation time starts when the patient joins, not before.
       </p>
-      <Button variant="ghost" size="sm" onClick={onLeave}>
+      <Button variant="ghost" size="sm" onClick={() => void onLeave()}>
         Leave the line
       </Button>
     </div>
