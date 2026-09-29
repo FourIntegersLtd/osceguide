@@ -26,7 +26,7 @@ Checked against the code on 2026-09-25.
 | Item | State |
 |---|---|
 | Resend a staff invitation | There is no resend route for a staff membership. Trainees have one (`POST /orgs/{org_slug}/trainees/{trainee_id}/resend-invitation`) |
-| Read a trainee group's members | Only `PUT /orgs/{org_slug}/trainee-groups/{group_id}/members` is served; there is no read, so screens resolve members through the roster |
+| Read a trainee group's members | Only `PUT /orgs/{org_slug}/trainee-groups/{group_id}/members` is served; there is no read. The web side already asks for one (`readGroupMembers`, taking `{ trainee_ids }` or a page of trainees) and falls back to resolving the roster while it is missing. Delete the fallback when the route ships |
 | Whether a circuit's review was published | Only `POST /orgs/{org_slug}/circuits/{circuit_id}/review/finalize` is served. There is no read, so `CircuitFeedbackCard` says what it did rather than what is true |
 | An examiner's own slot review | `PUT .../slots/{slot_id}/reviews/mine` is a write only; there is no read of one's own review, so screens find it in the slot's review list |
 | A candidate reading their published review | No candidate-facing read of a circuit's supervisor review or their slot review. The largest thing the sittings port could not carry |

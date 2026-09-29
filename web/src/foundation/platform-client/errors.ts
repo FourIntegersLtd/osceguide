@@ -68,3 +68,20 @@ export function hasCode(
 ): err is PlatformError {
   return isPlatformError(err) && codes.includes(err.code);
 }
+
+/**
+ * The API does not serve this route at all, as opposed to refusing a request.
+ *
+ * FastAPI answers an unknown path (404) or method (405) with its own body,
+ * not an `ErrorResponse`, so `asErrorBody` gives it the generic code. A real
+ * "that group does not exist" carries its own code (`group_not_found`) and is
+ * not this. Read by callers that ship ahead of a backend route and fall back
+ * to the older way until it is deployed; delete the fallback once it is.
+ */
+export function isRouteNotServed(err: unknown): err is PlatformError {
+  return (
+    isPlatformError(err) &&
+    (err.status === 404 || err.status === 405) &&
+    err.code === "internal_error"
+  );
+}

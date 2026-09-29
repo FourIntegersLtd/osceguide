@@ -4,6 +4,7 @@ export {
   PlatformTransportError,
   isPlatformError,
   hasCode,
+  isRouteNotServed,
   type PlatformErrorCode,
   type PlatformErrorBody,
 } from "@/foundation/platform-client/errors";

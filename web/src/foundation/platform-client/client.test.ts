@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { platformRequest, setPlatformTokenSource } from "@/foundation/platform-client/client";
-import { PlatformError, PlatformTransportError, hasCode } from "@/foundation/platform-client/errors";
+import {
+  PlatformError,
+  PlatformTransportError,
+  hasCode,
+  isRouteNotServed,
+} from "@/foundation/platform-client/errors";
 
 const realFetch = globalThis.fetch;
 
@@ -104,4 +109,18 @@ test("an idempotency key travels as a header, ready for a route to honour it", a
   });
 
   assert.equal(seen?.get("idempotency-key"), "org:session:slot");
+});
+
+test("a route the API does not serve is told apart from a refusal", async () => {
+  // FastAPI's own 404 for an unknown path: not an ErrorResponse.
+  respondWith(404, JSON.stringify({ detail: "Not Found" }));
+  const missing = await platformRequest("/api/v1/nowhere").catch((e: unknown) => e);
+  assert.equal(isRouteNotServed(missing), true);
+
+  // The app's own 404 names what was not found, and is a real answer.
+  respondWith(404, JSON.stringify({ code: "group_not_found", message: "No such group" }));
+  const refused = await platformRequest("/api/v1/orgs/x/trainee-groups/y/members").catch(
+    (e: unknown) => e,
+  );
+  assert.equal(isRouteNotServed(refused), false);
 });

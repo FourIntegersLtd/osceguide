@@ -13,16 +13,15 @@ import {
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import type { Trainee } from "@/domains/assess/api";
-import { resolveRoster, setGroupMembers, type TraineeGroup } from "@/domains/assess/roster/api";
+import { readGroupMembers, setGroupMembers, type TraineeGroup } from "@/domains/assess/roster/api";
 import { displayName, sortTrainees } from "@/domains/assess/roster/support";
 
 /**
  * Who is in a group.
  *
- * No endpoint lists a group's members, but `roster/resolve` answers exactly
- * that — it is what a circuit builder asks before it commits — so reading
- * membership is a resolve of this one group and writing it is a PUT of the
- * whole list. The old client had neither: membership was a label copied onto
+ * Reading membership is `GET …/members` (falling back to a `roster/resolve`
+ * of this one group where that is not deployed yet), and writing it is a PUT
+ * of the whole list. The old client had neither: membership was a label copied onto
  * the trainee, so "add to group" wrote to the person, and two administrators
  * editing at once each kept half of the result.
  */
@@ -41,7 +40,7 @@ export function GroupMembersDialog({
 }) {
   const groupId = group?.id ?? null;
   const members = useAsync(
-    async () => (groupId ? resolveRoster(orgSlug, { groupIds: [groupId] }) : null),
+    async (signal) => (groupId ? readGroupMembers(orgSlug, groupId, signal) : null),
     [orgSlug, groupId],
   );
 
@@ -65,7 +64,7 @@ export function GroupMembersDialog({
                   orgSlug={orgSlug}
                   groupId={group.id}
                   trainees={trainees}
-                  initial={resolved.trainee_ids}
+                  initial={resolved}
                   onClose={onClose}
                   onSaved={onSaved}
                 />
