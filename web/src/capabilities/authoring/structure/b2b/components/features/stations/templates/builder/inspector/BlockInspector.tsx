@@ -74,18 +74,22 @@ export function BlockInspector({
   return (
     <div className="space-y-4">
       <div>
-        <label className={inspectorLabel}>Label</label>
+        <label htmlFor="block-inspector-label" className={inspectorLabel}>Label</label>
         <input
+          id="block-inspector-label"
           value={block.label}
           onChange={(e) => onPatch({ label: e.target.value })}
           className={inspectorInput}
           placeholder="What the author fills in"
+          // Selecting a block opens this panel to name it.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
         />
       </div>
       <div>
-        <label className={inspectorLabel}>Answer format</label>
+        <label htmlFor="block-inspector-answer-format" className={inspectorLabel}>Answer format</label>
         <select
+          id="block-inspector-answer-format"
           value={block.type}
           onChange={(e) => onChangeType(e.target.value as StationBlockType)}
           className={inspectorInput}
@@ -99,9 +103,17 @@ export function BlockInspector({
       </div>
       {kind === "station" ? (
         <div>
-          <label className={inspectorLabel}>Used in the station as</label>
+          {/* A label only while there is a control; the fixed role is text. */}
+          {roleIsChoice ? (
+            <label htmlFor="block-inspector-role" className={inspectorLabel}>
+              Used in the station as
+            </label>
+          ) : (
+            <p className={inspectorLabel}>Used in the station as</p>
+          )}
           {roleIsChoice ? (
             <select
+              id="block-inspector-role"
               value={role}
               onChange={(e) => onPatch({ role: e.target.value as StationBlockRole })}
               className={inspectorInput}
@@ -137,8 +149,9 @@ export function BlockInspector({
 
       {(block.type === "singleSelect" || block.type === "multiSelect") && (
         <div>
-          <label className={inspectorLabel}>Options (one per line)</label>
+          <label htmlFor="block-inspector-options-one-per-line" className={inspectorLabel}>Options (one per line)</label>
           <textarea
+            id="block-inspector-options-one-per-line"
             value={block.options.join("\n")}
             onChange={(e) =>
               onPatch({
@@ -152,8 +165,9 @@ export function BlockInspector({
       )}
       {block.type === "checklist" && (
         <div>
-          <label className={inspectorLabel}>Items (one per line)</label>
+          <label htmlFor="block-inspector-items-one-per-line" className={inspectorLabel}>Items (one per line)</label>
           <textarea
+            id="block-inspector-items-one-per-line"
             value={block.items.map((it) => it.label).join("\n")}
             onChange={(e) => {
               const labels = splitMultilineToTrimmedLinesKeepEmpty(
@@ -174,8 +188,9 @@ export function BlockInspector({
       {block.type === "scale" && (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={inspectorLabel}>Min</label>
+            <label htmlFor="block-inspector-min" className={inspectorLabel}>Min</label>
             <input
+              id="block-inspector-min"
               type="number"
               value={block.min}
               onChange={(e) =>
@@ -185,8 +200,9 @@ export function BlockInspector({
             />
           </div>
           <div>
-            <label className={inspectorLabel}>Max</label>
+            <label htmlFor="block-inspector-max" className={inspectorLabel}>Max</label>
             <input
+              id="block-inspector-max"
               type="number"
               value={block.max}
               onChange={(e) =>
@@ -199,8 +215,9 @@ export function BlockInspector({
       )}
       {block.type === "ragCriterion" && (
         <div>
-          <label className={inspectorLabel}>Feedback scoring path</label>
+          <label htmlFor="block-inspector-feedback-scoring-path" className={inspectorLabel}>Feedback scoring path</label>
           <input
+            id="block-inspector-feedback-scoring-path"
             value={block.pathStem}
             onChange={(e) => onPatch({ pathStem: e.target.value })}
             className={inspectorInput}
@@ -214,12 +231,13 @@ export function BlockInspector({
 
       {kind === "station" ? (
         <div>
-          <label className={inspectorLabel}>Generate draft instructions</label>
+          <label htmlFor="block-inspector-generate-draft-instructions" className={inspectorLabel}>Generate draft instructions</label>
           {profileGuidesLoading ? (
             <p className={inspectorHint}>Loading exam model instructions…</p>
           ) : (
             <>
               <textarea
+                id="block-inspector-generate-draft-instructions"
                 value={generationGuideInField(block, catalogHint)}
                 onChange={(e) =>
                   patchGenerationGuide(onPatch, catalogHint.trim(), e.target.value)

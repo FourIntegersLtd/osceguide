@@ -69,6 +69,8 @@ export function StationInstanceArrayField({
                 }}
                 rows={Math.max(3, Math.min(8, editValue.split("\n").length + 1))}
                 className={`flex-1 ${multilineInputClass}`}
+                // Opened by the Edit action, so focus moves into what it opened.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 disabled={ro}
               />

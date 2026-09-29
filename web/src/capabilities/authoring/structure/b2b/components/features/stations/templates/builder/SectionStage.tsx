@@ -117,6 +117,9 @@ export function SectionStage({
   const count = section.blocks.length;
 
   return (
+    // Clicking empty canvas deselects, a pointer shortcut; the inspector's
+    // close button and Escape are the keyboard way.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <main
       className={`min-h-0 min-w-0 flex-1 ${builderUi.canvas}`}
       onClick={onSelectNone}

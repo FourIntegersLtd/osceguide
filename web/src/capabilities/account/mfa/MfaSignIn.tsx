@@ -126,6 +126,9 @@ function MfaCodeStep({
         name={mode === "code" ? "code" : "recovery_code"}
         inputMode={mode === "code" ? "numeric" : "text"}
         autoComplete={mode === "code" ? "one-time-code" : "off"}
+        // The password form this replaced held focus; without this it falls to
+        // the page, and a keyboard user starts again from the top.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         value={value}
         onChange={(event) => setValue(event.target.value)}

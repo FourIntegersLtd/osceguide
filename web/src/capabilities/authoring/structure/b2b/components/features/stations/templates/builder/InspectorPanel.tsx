@@ -147,6 +147,8 @@ function Drawer({
         onClick={onClose}
         className="absolute inset-0 z-20 bg-osce-ink-900/15 backdrop-blur-[1px] lg:hidden"
       />
+      {/* Stops a click inside reaching the canvas's deselect; not an action. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <aside
         role="dialog"
         aria-label={`${title} settings`}

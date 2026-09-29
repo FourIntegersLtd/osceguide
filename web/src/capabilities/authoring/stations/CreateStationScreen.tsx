@@ -140,10 +140,11 @@ export function CreateStationScreen() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-osce-body font-semibold text-b2b-headline">
+            <label htmlFor="create-station-screen-station-title" className="block text-osce-body font-semibold text-b2b-headline">
               Station title
             </label>
             <input
+              id="create-station-screen-station-title"
               value={form.title}
               onChange={(e) => form.setTitle(e.target.value)}
               className={`mt-1 ${getInputClassName()}`}
@@ -151,8 +152,9 @@ export function CreateStationScreen() {
             />
           </div>
           <div>
-            <label className="block text-osce-body font-semibold text-b2b-headline">Template</label>
+            <label htmlFor="create-station-screen-template" className="block text-osce-body font-semibold text-b2b-headline">Template</label>
             <select
+              id="create-station-screen-template"
               value={form.templateVersionId}
               onChange={(e) => form.handleTemplateSelect(e.target.value)}
               disabled={templates.loading}
@@ -181,8 +183,9 @@ export function CreateStationScreen() {
           */}
           {!form.templateVersionId ? (
             <div>
-              <label className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
+              <label htmlFor="create-station-screen-exam" className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
               <select
+                id="create-station-screen-exam"
                 value={form.examCode}
                 onChange={(e) => form.setExamCode(e.target.value)}
                 className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
@@ -199,10 +202,11 @@ export function CreateStationScreen() {
 
           {!form.templateVersionId && form.examCode === "ortho" ? (
             <div>
-              <label className="block text-osce-body font-semibold text-b2b-headline">
+              <label htmlFor="create-station-screen-station-type" className="block text-osce-body font-semibold text-b2b-headline">
                 Station type
               </label>
               <select
+                id="create-station-screen-station-type"
                 value={form.orthoStationType}
                 onChange={(e) => form.setOrthoStationType(e.target.value)}
                 className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"

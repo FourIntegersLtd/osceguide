@@ -165,6 +165,9 @@ export function MockStationsTable({
             key={row.entry.id}
             className="overflow-hidden rounded-none border border-b2c-border bg-osce-surface"
           >
+            {/* The whole card toggles for a pointer; the chevron button is the
+                keyboard and screen-reader way to do the same. */}
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
             <div
               className="cursor-pointer p-5 transition-colors hover:bg-b2c-surface-muted"
               onClick={() => toggleRow(row.entry.id)}
@@ -174,12 +177,24 @@ export function MockStationsTable({
                   <span className="rounded-md bg-b2c-secondary px-3 py-1 text-osce-body font-medium text-osce-ink-900">
                     {index + 1}
                   </span>
-                  <HiChevronUp
-                    className={cn(
-                      "h-5 w-5 text-b2c-text-muted transition-transform",
-                      expandedRows[row.entry.id] && "rotate-180",
-                    )}
-                  />
+                  <button
+                    type="button"
+                    aria-expanded={Boolean(expandedRows[row.entry.id])}
+                    aria-label={`${expandedRows[row.entry.id] ? "Hide" : "Show"} history for ${row.title}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleRow(row.entry.id);
+                    }}
+                    className="rounded-md p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent"
+                  >
+                    <HiChevronUp
+                      aria-hidden
+                      className={cn(
+                        "h-5 w-5 text-b2c-text-muted transition-transform",
+                        expandedRows[row.entry.id] && "rotate-180",
+                      )}
+                    />
+                  </button>
                 </div>
                 <span className={cn("text-osce-body font-medium", attemptsTone(row.entry))}>
                   {attemptsLabel(row.entry)}

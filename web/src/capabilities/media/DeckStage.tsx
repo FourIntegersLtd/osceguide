@@ -18,6 +18,9 @@ function SlideVideoPlayer({ src }: { src: string }) {
 
   return (
     <div className="relative w-full">
+      {/* Slide videos have no caption track yet; the accessibility statement
+          lists this as a known gap. */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={videoRef}
         src={src}

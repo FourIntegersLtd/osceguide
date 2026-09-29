@@ -244,6 +244,8 @@ function CodeDialog({
         name="code"
         inputMode="numeric"
         autoComplete="one-time-code"
+        // The dialog's only field: opening a dialog moves focus into it.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         value={code}
         onChange={(event) => setCode(event.target.value)}

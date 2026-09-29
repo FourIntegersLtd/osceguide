@@ -127,8 +127,9 @@ export function ProgrammesSection() {
         }
       >
         <div>
-          <label className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
+          <label htmlFor="programmes-section-exam" className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
           <select
+            id="programmes-section-exam"
             value={examCode}
             onChange={(e) => setExamCode(e.target.value)}
             className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"

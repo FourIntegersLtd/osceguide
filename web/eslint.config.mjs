@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import next from "eslint-config-next";
 import boundaries from "eslint-plugin-boundaries";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import tseslint from "typescript-eslint";
 
 /**
@@ -17,6 +18,25 @@ export default defineConfig([
   globalIgnores([".next/**", "out/**", "next-env.d.ts"]),
   ...next,
   ...tseslint.configs.recommended,
+  {
+    /**
+     * Accessibility (E-15). `eslint-config-next` registers the jsx-a11y plugin
+     * but switches on six of its rules; this is the plugin's recommended set,
+     * as errors, so a missing label or a click handler on a <div> fails CI the
+     * way a tier violation does. It is a floor, not an audit: lint cannot see
+     * contrast, focus order or what a screen reader actually announces.
+     */
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      ...jsxA11y.flatConfigs.recommended.rules,
+      // Our own inputs count as controls, and a label's text often sits a few
+      // elements deep (an icon, a span, then the words).
+      "jsx-a11y/label-has-associated-control": [
+        "error",
+        { assert: "either", controlComponents: ["Input", "Select", "Textarea", "AuthoringExamSelect"], depth: 4 },
+      ],
+    },
+  },
   {
     files: ["src/**/*.{ts,tsx}"],
     plugins: { boundaries },

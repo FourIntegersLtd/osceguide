@@ -334,6 +334,8 @@ function TableCards<T extends object>({
           ) : null}
 
           {renderExpandedRow && isRowExpanded?.(item) ? (
+            // Keeps a click in the expanded detail from collapsing the row; not an action.
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
             <div
               className="mt-3 border-t border-b2c-border pt-3"
               onClick={(event) => event.stopPropagation()}

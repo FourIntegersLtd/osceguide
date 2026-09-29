@@ -188,10 +188,11 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
               }
             >
               <div>
-                <label className="block text-osce-body font-semibold text-b2b-headline">
+                <label htmlFor="rubric-detail-system-prompt" className="block text-osce-body font-semibold text-b2b-headline">
                   System prompt
                 </label>
                 <textarea
+                  id="rubric-detail-system-prompt"
                   value={prompt}
                   rows={6}
                   onChange={(e) => setPrompt(e.target.value)}

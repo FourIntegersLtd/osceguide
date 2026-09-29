@@ -158,6 +158,8 @@ export function AddFieldMenu({
       })}
       {open && typeof document !== "undefined"
         ? createPortal(
+            // Stops a click inside the menu reaching the outside-click closer; not an action.
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus
             <div
               ref={panelRef}
               id={menuId}

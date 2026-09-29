@@ -56,6 +56,8 @@ export function MilestoneCelebration({ stationsCompleted }: { stationsCompleted:
 
   return (
     <>
+      {/* A cheer with no words in it: there is nothing to caption. */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} src="/sounds/crowd-cheers.mp3" preload="auto" />
       <Confetti
         isActive={showConfetti}

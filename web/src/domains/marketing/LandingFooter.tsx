@@ -185,6 +185,11 @@ export function LandingFooter({
                   </Link>
                 </li>
                 <li>
+                  <Link href="/compliances/accessibility" className={linkClass}>
+                    Accessibility
+                  </Link>
+                </li>
+                <li>
                   <Link href="/compliances/referrals" className={linkClass}>
                     Referral Policy
                   </Link>

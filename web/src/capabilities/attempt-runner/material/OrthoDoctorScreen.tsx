@@ -40,7 +40,7 @@ function OrthoDoctorScreen({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
-                  alt={`Additional image ${index + 1}`}
+                  alt={`Additional material ${index + 1}`}
                   className="h-auto max-w-full rounded-md border border-b2c-border"
                   style={{ maxHeight: "400px" }}
                   onError={(e) => {

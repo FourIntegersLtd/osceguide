@@ -170,6 +170,8 @@ export function B2BModal({
   }
 
   return createPortal(
+    // A click on the backdrop closes, as Escape does in `handleKeyDown`.
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <dialog
       ref={dialogRef}
       aria-modal="true"

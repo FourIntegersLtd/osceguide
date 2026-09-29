@@ -50,4 +50,5 @@ export const PUBLIC_MARKETING_PATHS: readonly string[] = [
   "/compliances/cookies-policy",
   "/compliances/legal-disclaimer",
   "/compliances/referrals",
+  "/compliances/accessibility",
 ];

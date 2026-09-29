@@ -181,8 +181,9 @@ export function RubricsSection() {
         }
       >
         <div>
-          <label className="block text-osce-body font-semibold text-b2b-headline">Title</label>
+          <label htmlFor="rubrics-section-title" className="block text-osce-body font-semibold text-b2b-headline">Title</label>
           <input
+            id="rubrics-section-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className={`mt-1 ${getInputClassName()}`}
@@ -190,13 +191,14 @@ export function RubricsSection() {
           />
         </div>
         <div>
-          <label className="block text-osce-body font-semibold text-b2b-headline">
+          <label htmlFor="rubrics-section-system-prompt" className="block text-osce-body font-semibold text-b2b-headline">
             System prompt
           </label>
           <p className="mt-0.5 text-osce-caption text-b2b-mid">
             What the marking engine is told before it reads a transcript.
           </p>
           <textarea
+            id="rubrics-section-system-prompt"
             value={prompt}
             rows={6}
             onChange={(e) => setPrompt(e.target.value)}

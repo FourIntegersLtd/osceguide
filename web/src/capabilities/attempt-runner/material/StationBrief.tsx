@@ -177,7 +177,7 @@ function Photos({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={url}
-                alt={`Medical image ${index + 1}`}
+                alt={`Clinical material ${index + 1}`}
                 className="h-40 w-full rounded-md object-cover transition-transform duration-300 group-hover:scale-[1.01]"
               />
             </button>

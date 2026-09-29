@@ -34,8 +34,10 @@ export function SectionInspector({
     <div className="space-y-4">
       {kind === "station" ? (
         <div>
-          <label className={inspectorLabel}>Written for</label>
-          <div className="space-y-1.5" role="radiogroup" aria-label="Written for">
+          <p id="section-inspector-audience" className={inspectorLabel}>
+            Written for
+          </p>
+          <div className="space-y-1.5" role="radiogroup" aria-labelledby="section-inspector-audience">
             {STATION_AUDIENCES.map((a) => {
               const active = a.id === audience;
               const Icon = a.icon;
@@ -72,16 +74,18 @@ export function SectionInspector({
         </div>
       ) : null}
       <div>
-        <label className={inspectorLabel}>Title</label>
+        <label htmlFor="section-inspector-title" className={inspectorLabel}>Title</label>
         <input
+          id="section-inspector-title"
           value={section.title}
           onChange={(e) => onPatch({ title: e.target.value })}
           className={inspectorInput}
         />
       </div>
       <div>
-        <label className={inspectorLabel}>Description</label>
+        <label htmlFor="section-inspector-description" className={inspectorLabel}>Description</label>
         <input
+          id="section-inspector-description"
           value={section.description || ""}
           onChange={(e) => onPatch({ description: e.target.value })}
           className={inspectorInput}

@@ -93,7 +93,11 @@ function Testimonials({
 
       <div
         className="testimonial-marquee-viewport focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-b2c-primary-subtle"
+        // A scrolling region must be reachable by keyboard (WCAG 2.1.1), and
+        // focusing it is what pauses the marquee.
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={0}
+        role="region"
         aria-label="Scrolling testimonials. Focus or hover to pause."
       >
         <div className="testimonial-marquee-track flex">

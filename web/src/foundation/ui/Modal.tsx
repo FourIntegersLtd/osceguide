@@ -106,6 +106,9 @@ const Modal = ({
         aria-hidden="true"
         onClick={closeOnBackdrop ? onClose : undefined}
       />
+      {/* Stops a click inside reaching whatever rendered the modal (portal
+          events bubble through the React tree); not an action. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
         ref={panelRef}
         role="dialog"

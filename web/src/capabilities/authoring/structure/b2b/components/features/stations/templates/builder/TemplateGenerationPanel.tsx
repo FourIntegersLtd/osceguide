@@ -93,8 +93,9 @@ export function TemplateGenerationPanel({
         <p className="mt-2 text-osce-caption text-red-600">{profileGuidesError}</p>
       ) : null}
       <div className="mt-3 max-w-md">
-        <label className={inspectorLabel}>Exam type</label>
+        <label htmlFor="template-generation-panel-exam-type" className={inspectorLabel}>Exam type</label>
         <select
+          id="template-generation-panel-exam-type"
           value={profileKey}
           onChange={(e) => applyExamType(e.target.value)}
           className={inputClass}
@@ -135,8 +136,9 @@ export function TemplateGenerationPanel({
         </details>
       ) : null}
       <div className="mt-3">
-        <label className={inspectorLabel}>Extra notes for the AI (optional)</label>
+        <label htmlFor="template-generation-panel-extra-notes" className={inspectorLabel}>Extra notes for the AI (optional)</label>
         <textarea
+          id="template-generation-panel-extra-notes"
           value={value.generation?.systemPromptAppend ?? ""}
           onChange={(e) => patchGeneration({ systemPromptAppend: e.target.value })}
           className={`${inputClass} min-h-[4rem] resize-y`}
@@ -146,8 +148,9 @@ export function TemplateGenerationPanel({
       </div>
       {allowCustomSystemPrompt && profileKey === "custom" ? (
         <div className="mt-3">
-          <label className={inspectorLabel}>Your own main instructions</label>
+          <label htmlFor="template-generation-panel-your-own-main-instructions" className={inspectorLabel}>Your own main instructions</label>
           <textarea
+            id="template-generation-panel-your-own-main-instructions"
             value={value.generation?.systemPromptOverride ?? ""}
             onChange={(e) => patchGeneration({ systemPromptOverride: e.target.value })}
             className={`${inputClass} min-h-[6rem] resize-y`}

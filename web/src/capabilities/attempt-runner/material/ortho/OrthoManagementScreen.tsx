@@ -67,7 +67,7 @@ export const OrthoManagementScreen = ({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
-                    alt={`Additional image ${idx + 1}`}
+                    alt={`Additional material ${idx + 1}`}
                     className="w-full h-auto"
                   />{" "}
                 </div>

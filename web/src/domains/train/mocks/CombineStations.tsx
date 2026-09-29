@@ -146,8 +146,9 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
               </div>
 
               <div ref={dropdownRef} className="relative">
-                <label className={productTokens.b2cFieldLabel}>Select attempted stations</label>
+                <label htmlFor="combine-stations-select-attempted-stations" className={productTokens.b2cFieldLabel}>Select attempted stations</label>
                 <input
+                  id="combine-stations-select-attempted-stations"
                   type="text"
                   placeholder="Search stations..."
                   value={stationSearch}

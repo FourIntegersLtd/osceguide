@@ -95,6 +95,9 @@ export function PodcastPlayer({
 
       <ModalSection>
         {current?.url ? (
+          // Episodes have no transcript to attach yet; the accessibility
+          // statement lists this as a known gap.
+          // eslint-disable-next-line jsx-a11y/media-has-caption
           <audio
             ref={audioRef}
             key={current.url}
