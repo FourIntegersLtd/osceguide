@@ -7,7 +7,7 @@ import { useSession } from "@/foundation/session";
 import { latestResult, readResults } from "@/capabilities/attempt-runner";
 import { FeedbackView, normaliseFeedback, RAG_LABEL, type Rag } from "@/capabilities/feedback";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
-import { saveReview } from "@/domains/assess/api";
+import { readMySlotReview, saveReview } from "@/domains/assess/api";
 import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
 import type { SlotReviews } from "@/domains/assess/results";
 
@@ -38,30 +38,36 @@ export function SlotReview({
   attemptId: string | null;
 }) {
   /*
-   * One read of the reviews, not two.
-   *
-   * There is no `GET .../reviews/mine` on the backend — only a PUT — so the
-   * rebuilt screen's call for it answered 405 on every load and the catch
-   * swallowed it, which meant a reviewer's own saved draft never came back.
-   * The list carries every review with who wrote it, so mine is the one with
-   * my id on it.
+   * My review is read directly (`GET .../reviews/mine`). An earlier version
+   * called that route before it existed, answered 405 on every load and
+   * swallowed it, so a reviewer's own draft never came back. Where the route
+   * is still not deployed, mine is the one in the slot's list with my id on
+   * it; any other failure is a failure, not "no review".
    */
   const { session } = useSession();
   const userId = session?.user.id ?? null;
 
   const state = useAsync(
     async (signal) => {
-      const [result, reviews] = await Promise.all([
+      const [result, reviews, mine] = await Promise.all([
         attemptId
           ? readResults(attemptId, signal)
               .then(latestResult)
               .catch(() => null)
           : Promise.resolve(null),
         readSlotReviews(orgSlug, slotId, signal),
+        readMySlotReview(orgSlug, slotId, signal),
       ]);
-      return { result, reviews };
+      return {
+        result,
+        reviews,
+        mine:
+          mine !== undefined
+            ? mine
+            : ((reviews.items ?? []).find((item) => item.submitted_by === userId) ?? null),
+      };
     },
-    [orgSlug, slotId, attemptId],
+    [orgSlug, slotId, attemptId, userId],
   );
 
   return (
@@ -86,7 +92,7 @@ export function SlotReview({
             attemptId={attemptId}
             payload={data.result?.payload ?? null}
             reviews={data.reviews}
-            initial={(data.reviews.items ?? []).find((item) => item.submitted_by === userId) ?? null}
+            initial={data.mine}
             onSaved={state.reload}
           />
         )}

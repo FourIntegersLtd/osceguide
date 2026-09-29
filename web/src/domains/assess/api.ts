@@ -1,4 +1,9 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import {
+  hasCode,
+  isRouteNotServed,
+  platformRequest,
+  type components,
+} from "@/foundation/platform-client";
 
 export type Sitting = components["schemas"]["SittingRead"];
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
@@ -302,11 +307,30 @@ export function readAttemptTranscript(
     { signal },
   );
 }
-/*
- * `mine` is a PUT and nothing else: there is no read for one's own review, so
- * a screen finds it in the slot's review list by the id on it. See
- * `docs/BACKLOG.md`.
+/**
+ * This examiner's own review of a slot, or `null` for none yet.
+ *
+ * `GET …/reviews/mine` is the read beside the PUT (backend branch
+ * `feat/backend-backlog-batch-1`). `undefined` means that route is not
+ * deployed yet, and the caller finds the review in the slot's list by the id
+ * on it, as screens did before.
  */
+export async function readMySlotReview(
+  slug: string,
+  slotId: string,
+  signal?: AbortSignal,
+): Promise<SlotReview | null | undefined> {
+  try {
+    return await platformRequest<SlotReview>(
+      `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
+      { signal },
+    );
+  } catch (error) {
+    if (hasCode(error, "review_not_found")) return null;
+    if (isRouteNotServed(error)) return undefined;
+    throw error;
+  }
+}
 
 /**
  * Save or submit a review.
