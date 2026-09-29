@@ -1,5 +1,17 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
-import { orgPath } from "@/domains/assess/api";
+import {
+  collectPages,
+  orgPath,
+  pageQuery,
+  readSitting,
+  type Sitting,
+  type SittingPage,
+} from "@/domains/assess/api";
+import {
+  circuitsStartedOn,
+  sittingNearDay,
+  type PastCircuit,
+} from "@/domains/assess/dashboard/support";
 
 export type OrgDashboard = components["schemas"]["OrgDashboard"];
 export type OrgSetup = components["schemas"]["OrgSetup"];
@@ -46,4 +58,31 @@ export function readSupervisorCircuits(
   signal?: AbortSignal,
 ): Promise<SupervisorCircuits> {
   return platformRequest<SupervisorCircuits>(`${orgPath(slug)}/supervisor/circuits`, { signal });
+}
+
+/**
+ * What ran on one day, finished or not.
+ *
+ * `/live` answers now only. There is no history route, but every circuit on a
+ * sitting carries `started_at` and `ended_at`, so this reads the sittings
+ * scheduled near the day and keeps the circuits that started on it. The
+ * sitting list carries no circuits, hence one read per nearby sitting.
+ */
+export async function readCircuitsOnDay(
+  slug: string,
+  day: string,
+  signal?: AbortSignal,
+): Promise<PastCircuit[]> {
+  const sittings = await collectPages((cursor) =>
+    platformRequest<SittingPage>(`${orgPath(slug)}/sittings`, {
+      signal,
+      query: pageQuery({ cursor }),
+    }),
+  );
+  const nearby: Sitting[] = await Promise.all(
+    sittings
+      .filter((sitting) => sittingNearDay(sitting, day))
+      .map((sitting) => readSitting(slug, sitting.id, signal)),
+  );
+  return circuitsStartedOn(nearby, day);
 }

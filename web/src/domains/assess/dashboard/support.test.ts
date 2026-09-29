@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
+import type { Sitting } from "@/domains/assess/api";
 import {
+  circuitsStartedOn,
+  localDay,
+  sittingNearDay,
   boardOrder,
   candidatesLabel,
   circuitStatus,
@@ -148,4 +152,40 @@ test("a training circuit names the first people and counts the rest", () => {
     candidatesLabel(circuit({ circuit_id: "a", candidates: people(5) })),
     "Person 0, Person 1 and 3 more",
   );
+});
+
+test("what ran on a day is the circuits that started on it, earliest first", () => {
+  const circuit = (id: string, started_at: string | null, ended_at: string | null = null) =>
+    ({ id, name: id, started_at, ended_at, slots: [{}, {}] }) as unknown as NonNullable<
+      Sitting["circuits"]
+    >[number];
+  const sitting = {
+    id: "s1",
+    name: "Mock",
+    mode: "exam",
+    scheduled_for: "2026-09-29T08:00:00",
+    circuits: [
+      circuit("afternoon", "2026-09-29T14:00:00", "2026-09-29T15:00:00"),
+      circuit("morning", "2026-09-29T09:00:00", "2026-09-29T10:00:00"),
+      circuit("yesterday", "2026-09-28T09:00:00", "2026-09-28T10:00:00"),
+      circuit("never started", null),
+    ],
+  } as unknown as Sitting;
+  const rows = circuitsStartedOn([sitting], "2026-09-29");
+  assert.deepEqual(
+    rows.map((row) => row.circuitId),
+    ["morning", "afternoon"],
+  );
+  assert.equal(rows[0]?.stations, 2);
+});
+
+test("only sittings scheduled near the day are opened", () => {
+  assert.equal(sittingNearDay({ scheduled_for: "2026-09-29T08:00:00" }, "2026-09-29"), true);
+  assert.equal(sittingNearDay({ scheduled_for: "2026-09-28T20:00:00" }, "2026-09-29"), true);
+  assert.equal(sittingNearDay({ scheduled_for: "2026-09-20T08:00:00" }, "2026-09-29"), false);
+  assert.equal(sittingNearDay({ scheduled_for: null }, "2026-09-29"), false);
+});
+
+test("the default day is the browser's own date", () => {
+  assert.equal(localDay(new Date(2026, 8, 9, 23, 30)), "2026-09-09");
 });

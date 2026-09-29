@@ -1,4 +1,5 @@
 import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
+import type { Sitting } from "@/domains/assess/api";
 
 /**
  * What the institution's home screen works out from what it is given.
@@ -143,4 +144,73 @@ export function candidatesLabel(circuit: LiveCircuit): string {
   const names = people.map((person) => person.name ?? person.email ?? "Candidate");
   if (names.length <= 2) return names.join(" and ");
   return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+}
+
+/* ---------- what ran earlier ---------- */
+
+/** One circuit that started on the day being looked at. */
+export interface PastCircuit {
+  circuitId: string;
+  circuitName: string;
+  sittingId: string;
+  sittingName: string;
+  mode: string;
+  startedAt: string;
+  /** `null` while it is still running. */
+  endedAt: string | null;
+  stations: number;
+}
+
+/** Midnight to midnight, in the browser's own time zone, for a `YYYY-MM-DD`. */
+export function dayBounds(day: string): { start: Date; end: Date } {
+  const [year = 1970, month = 1, date = 1] = day.split("-").map(Number);
+  const start = new Date(year, month - 1, date);
+  const end = new Date(year, month - 1, date + 1);
+  return { start, end };
+}
+
+/** Today as `YYYY-MM-DD`, local time: the value a date input takes. */
+export function localDay(now: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/**
+ * Whether a sitting could hold circuits that ran on this day.
+ *
+ * Only these are opened, so looking at a day costs one read per nearby
+ * sitting rather than one per sitting ever held. A day either side covers a
+ * sitting scheduled late the evening before or run past midnight; one run a
+ * week off its scheduled day is the case this misses.
+ */
+export function sittingNearDay(sitting: { scheduled_for?: string | null }, day: string): boolean {
+  if (!sitting.scheduled_for) return false;
+  const { start, end } = dayBounds(day);
+  const at = new Date(sitting.scheduled_for).getTime();
+  const slack = 24 * 60 * 60 * 1000;
+  return at >= start.getTime() - slack && at < end.getTime() + slack;
+}
+
+/** The circuits among these sittings that started on the day, earliest first. */
+export function circuitsStartedOn(sittings: readonly Sitting[], day: string): PastCircuit[] {
+  const { start, end } = dayBounds(day);
+  const rows: PastCircuit[] = [];
+  for (const sitting of sittings) {
+    for (const circuit of sitting.circuits ?? []) {
+      if (!circuit.started_at) continue;
+      const at = new Date(circuit.started_at).getTime();
+      if (at < start.getTime() || at >= end.getTime()) continue;
+      rows.push({
+        circuitId: circuit.id,
+        circuitName: circuit.name,
+        sittingId: sitting.id,
+        sittingName: sitting.name,
+        mode: sitting.mode,
+        startedAt: circuit.started_at,
+        endedAt: circuit.ended_at ?? null,
+        stations: circuit.slots?.length ?? 0,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
 }

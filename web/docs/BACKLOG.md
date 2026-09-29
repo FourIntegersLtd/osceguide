@@ -33,7 +33,6 @@ Checked against the code on 2026-09-25.
 | Notify candidates when a decision is released | The Results screen releases a chosen set of signed-off candidates in one action (one release request each, so each emits `candidate_result_released`), but nothing tells the candidate. A server-side bulk release would save the round trips; it is not needed for the screen |
 | Cohort export (the markdown readout) | Not built. Low priority |
 | Organisation hierarchy | `organizations.parent_org_id` exists but `OrganizationRead` does not return it. The staff console's organisation page already shows "Part of …" when it does (read-only; nothing sets a parent) |
-| Live board history | `/orgs/{slug}/live` shows now only; nothing shows what ran this morning |
 
 ### Staff console (platform)
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { HiMiniSignal, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Badge, EmptyState, b2bTokens } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
@@ -9,6 +10,7 @@ import { ExamClock } from "@/capabilities/attempt-runner";
 import { alertCopy } from "@/domains/assess/sessions/support";
 import {
   liveBoardStreamPath,
+  readCircuitsOnDay,
   readLiveBoard,
   type LiveBoard as Board,
   type LiveCircuit,
@@ -17,7 +19,9 @@ import {
   boardOrder,
   candidatesLabel,
   circuitStatus,
+  localDay,
   recordingMissing,
+  type PastCircuit,
 } from "@/domains/assess/dashboard/support";
 
 /**
@@ -72,7 +76,86 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
           );
         }}
       </AsyncBoundary>
+
+      <Earlier orgSlug={orgSlug} />
     </div>
+  );
+}
+
+const timeOf = (iso: string) =>
+  new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+/**
+ * What ran on a day: this morning by default, any day on request.
+ *
+ * The board above is now only, so once a circuit ended it vanished and "what
+ * ran this morning" had no answer short of opening each sitting. Each row
+ * opens the circuit's own console, where its record and feedback are.
+ */
+function Earlier({ orgSlug }: { orgSlug: string }) {
+  const { hrefFor } = useSurface();
+  const [day, setDay] = useState(() => localDay(new Date()));
+  const today = localDay(new Date());
+  const past = useAsync((signal) => readCircuitsOnDay(orgSlug, day, signal), [orgSlug, day]);
+
+  return (
+    <section className="space-y-3 border-t border-b2b-border pt-5" aria-labelledby="live-earlier">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 id="live-earlier" className={b2bTokens.b2bSectionTitle}>
+          {day === today ? "Earlier today" : "On this day"}
+        </h2>
+        <div className="flex items-center gap-2">
+          <label htmlFor="live-earlier-day" className="text-osce-caption text-b2b-mid">
+            Day
+          </label>
+          <input
+            id="live-earlier-day"
+            type="date"
+            value={day}
+            max={today}
+            onChange={(event) => {
+              if (event.target.value) setDay(event.target.value);
+            }}
+            className={b2bTokens.b2bInputBase}
+          />
+        </div>
+      </div>
+      <AsyncBoundary
+        state={past}
+        empty={{
+          title: day === today ? "Nothing has run yet today." : "Nothing ran that day.",
+        }}
+      >
+        {(rows: PastCircuit[]) => (
+          <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border bg-white">
+            {rows.map((row) => (
+              <li
+                key={row.circuitId}
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={hrefFor(`/circuits/${row.circuitId}`)}
+                    className="text-osce-body font-semibold text-b2b-headline hover:underline"
+                  >
+                    {row.circuitName}
+                  </Link>
+                  <p className="mt-0.5 text-osce-caption text-b2b-mid">
+                    {row.sittingName} · {row.mode} · {row.stations}{" "}
+                    {row.stations === 1 ? "station" : "stations"}
+                  </p>
+                </div>
+                <span className="shrink-0 font-mono text-osce-caption text-b2b-mid">
+                  {row.endedAt
+                    ? `${timeOf(row.startedAt)}–${timeOf(row.endedAt)}`
+                    : `since ${timeOf(row.startedAt)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AsyncBoundary>
+    </section>
   );
 }
 
