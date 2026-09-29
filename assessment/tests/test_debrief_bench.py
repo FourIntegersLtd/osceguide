@@ -25,6 +25,7 @@ from debrief_bench import (  # noqa: E402
     apply_variant,
     clock_status,
     conversation_text,
+    heading_misses,
     load_scenarios,
     load_variant,
     marks_due,
@@ -202,3 +203,42 @@ def test_a_clock_check_is_answered_from_the_simulated_clock_and_kept_in_the_hist
     assert history[-1] == {"role": "tool", "tool_call_id": "call_1", "content": clock_status(seconds_at(8))}
     assert notices == [{"before": 8, "kind": "check_time", "text": clock_status(seconds_at(8))}]
     assert tutor.requests[1]["messages"][-1]["role"] == "tool"
+
+
+def _judged(variant: str, statuses: dict[str, str]) -> Any:
+    """A judged debrief with only what the heading count reads."""
+    from debrief_bench import Debrief
+
+    return Debrief(
+        variant=variant,
+        scenario="chest_pain",
+        persona="p",
+        repeat=0,
+        greeting="",
+        never=[],
+        plan_sections=list(statuses),
+        judge={"sections": [{"title": title, "status": status} for title, status in statuses.items() if status]},
+    )
+
+
+def test_heading_misses_count_each_heading_per_variant():
+    """V-2: "missed the differential in 14 of 16 runs" is read per heading, not from the average."""
+    debriefs = [
+        _judged(BASELINE, {"Differential Diagnosis": "missed", "Safety Netting": "built_together"}),
+        # A heading the judge left out counts as missed, as `section_shares` counts it.
+        _judged(BASELINE, {"Differential Diagnosis": "", "Safety Netting": "told"}),
+        _judged("differential", {"Differential Diagnosis": "built_together", "Safety Netting": "missed"}),
+    ]
+    table = heading_misses(debriefs)
+    assert table[BASELINE] == {"Differential Diagnosis": (2, 2), "Safety Netting": (0, 2)}
+    assert table["differential"] == {"Differential Diagnosis": (0, 1), "Safety Netting": (1, 1)}
+
+
+def test_the_differential_variant_changes_only_the_walkthrough():
+    """The V-2 candidate swaps one block of the production prompt and keeps its greeting."""
+    variant = load_variant("differential")
+    assert set(variant.blocks) == {"how_the_debrief_goes"} and variant.greeting is None
+    block = variant.blocks["how_the_debrief_goes"]
+    assert "ask what else it could have been" in block
+    assert "the differential the plan says must not be missed" in block
+

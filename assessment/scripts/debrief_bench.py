@@ -673,6 +673,46 @@ def section_shares(judged: dict[str, Any], plan_sections: list[str]) -> dict[str
     }
 
 
+def heading_misses(debriefs: list[Debrief]) -> dict[str, dict[str, tuple[int, int]]]:
+    """Per variant, per plan heading: (debriefs that missed it, debriefs judged with it).
+
+    The averaged `missed` share hides which heading goes: "the tutor missed the
+    differential in 14 of 16 runs" (V-2) is this table, not that column.
+    """
+    counts: dict[str, dict[str, list[int]]] = {}
+    for debrief in debriefs:
+        if debrief.error is not None or not debrief.judge:
+            continue
+        statuses = {entry.get("title"): entry.get("status") for entry in debrief.judge.get("sections", [])}
+        per_heading = counts.setdefault(debrief.variant, {})
+        for title in debrief.plan_sections:
+            missed_judged = per_heading.setdefault(title, [0, 0])
+            missed_judged[1] += 1
+            if statuses.get(title, "missed") == "missed":
+                missed_judged[0] += 1
+    return {
+        variant: {title: (missed, judged) for title, (missed, judged) in headings.items()}
+        for variant, headings in counts.items()
+    }
+
+
+def print_heading_misses(debriefs: list[Debrief]) -> None:
+    """How often each plan heading was missed, by variant, as "missed/judged"."""
+    table = heading_misses(debriefs)
+    if not table:
+        return
+    variants = list(table)
+    headings = list(dict.fromkeys(title for per_heading in table.values() for title in per_heading))
+    print("\nplan headings missed (missed/judged)")
+    print(f"{'heading':<38}" + "  ".join(f"{variant:>14}" for variant in variants))
+    for title in headings:
+        cells = []
+        for variant in variants:
+            missed, judged = table[variant].get(title, (0, 0))
+            cells.append(f"{f'{missed}/{judged}' if judged else '-':>14}")
+        print(f"{title:<38}" + "  ".join(cells))
+
+
 def _mean(values: list[float]) -> float | None:
     """The mean, or None when there is nothing to average."""
     return statistics.mean(values) if values else None
@@ -915,6 +955,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     spent = sum(debrief.cost_usd() for debrief in done)
     print_report(summarise(done))
+    print_heading_misses(done)
     print(f"\nspent ${spent:.2f}; full debriefs: {out}")
     return 0
 
@@ -943,6 +984,7 @@ def cmd_rejudge(args: argparse.Namespace) -> int:
     data["rejudged_at"] = datetime.now(timezone.utc).isoformat()
     Path(args.results).write_text(json.dumps(data, indent=2))
     print_report(data["summary"])
+    print_heading_misses(debriefs)
     print("\njudge drift (this pass minus the last), per variant")
     keys = ("built_together", "clinical_teaching", "interrogation", "trainee_led", "warmth", "invented_facts",
             "breaches")
@@ -1016,6 +1058,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     """Re-print the table from a saved run."""
     data = json.loads(Path(args.results).read_text())
     print_report(data["summary"])
+    print_heading_misses([_debrief_from(raw) for raw in data.get("debriefs", [])])
     return 0
 
 
