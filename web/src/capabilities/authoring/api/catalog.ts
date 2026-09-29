@@ -1,23 +1,33 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { isRouteNotServed, platformRequest, type components } from "@/foundation/platform-client";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
 import type { Exam, Programme } from "@/capabilities/authoring/api/scope";
-import { examListPath, pathId } from "@/capabilities/authoring/api/scope";
+import {
+  LEGACY_PLATFORM_EXAM_LIST,
+  examListPath,
+  pathId,
+} from "@/capabilities/authoring/api/scope";
 
 type S = components["schemas"];
 
 /* ------------------------------------------------------- exams, programmes */
 
-export function listExams(
+export async function listExams(
   scope: AuthoringScope,
   params: { drafts?: boolean } = {},
   signal?: AbortSignal,
 ): Promise<S["Page_ExamRead_"]> {
-  return platformRequest(examListPath(scope), {
-    // The platform listing decides by who is asking; only an organisation's
-    // takes `drafts`.
-    query: { drafts: scope.kind === "org" ? params.drafts : undefined },
-    signal,
-  });
+  try {
+    return await platformRequest<S["Page_ExamRead_"]>(examListPath(scope), {
+      // The platform listing decides by who is asking; only an organisation's
+      // takes `drafts`.
+      query: { drafts: scope.kind === "org" ? params.drafts : undefined },
+      signal,
+    });
+  } catch (error) {
+    // `/platform/exams` answers 405 to a GET until the scoped list is deployed.
+    if (scope.kind !== "platform" || !isRouteNotServed(error)) throw error;
+    return platformRequest<S["Page_ExamRead_"]>(LEGACY_PLATFORM_EXAM_LIST, { signal });
+  }
 }
 
 export function createExam(

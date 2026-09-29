@@ -42,22 +42,25 @@ export function authoringScope(surface: string, orgSlug: string | null): Authori
  * `docs/BACKLOG.md` carries the detail. */
 
 /**
- * Where exams are *listed*.
+ * Where exams are *listed*: the scope's own `…/exams`, like everything else.
  *
- * The one place the scope is not simply a prefix. `/platform/exams` is
- * POST-only: the platform's listing is the unscoped `/exams`, which already
- * answers a platform admin with the catalogue's drafts included and answers
- * everybody else without them. Writing it as a prefix put a GET on a POST-only
- * route, and the staff console's Exams section showed a 405 where the
- * catalogue should be.
+ * `GET /platform/exams` is the platform's scoped listing (drafts included,
+ * for staff) from platform-api's `feat/backend-backlog-batch-1`. Before that
+ * `/platform/exams` was POST-only and the console read the unscoped
+ * `GET /exams`, which answers a platform admin with the drafts too;
+ * `listExams` falls back to it while the scoped read is not deployed
+ * (`LEGACY_PLATFORM_EXAM_LIST`).
  *
  * `drafts` goes with the organisation's listing only, where it narrows to that
  * institution's own rows. The platform listing decides by who is asking, so
  * passing it there would be a query the backend ignores.
  */
 export function examListPath(scope: AuthoringScope): string {
-  return scope.kind === "platform" ? "/api/v1/exams" : `${scope.base}/exams`;
+  return `${scope.base}/exams`;
 }
+
+/** Where the platform's exams were listed before `/platform/exams` served a GET. */
+export const LEGACY_PLATFORM_EXAM_LIST = "/api/v1/exams";
 
 /** Programmes are an institution's own grouping; the catalogue has none. */
 export const supportsProgrammes = (s: AuthoringScope) => s.kind === "org";
