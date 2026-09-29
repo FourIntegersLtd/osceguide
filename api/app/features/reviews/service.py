@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.reviews import domain, errors, repository
-from app.features.reviews.models import GpLeadReview, SlotReview
+from app.features.reviews.models import CircuitReview, GpLeadReview, SlotReview
 from app.features.reviews.schemas import (
     CircuitReviewRead,
     GpLeadReviewRead,
@@ -167,12 +167,34 @@ async def finalize_circuit(
         finalized_by=finalized_by,
         at=now,
     )
-    return CircuitReviewRead(
-        id=review.id,
-        circuit_id=review.circuit_id,
-        merged_notes=review.merged_notes,
-        finalized_at=review.finalized_at,
-    )
+    return _circuit_read(review)
+
+
+async def read_circuit_review(
+    session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
+) -> CircuitReviewRead:
+    """Whether a circuit's merged review has been finalised, by whom and when.
+
+    Refuses with `review_not_found` until somebody finalises it, so a screen can
+    tell "not yet published" apart from a published review with no notes.
+    """
+    review = await repository.circuit_review(session, org_id, circuit_id)
+    if review is None:
+        raise errors.ReviewNotFound()
+    return _circuit_read(review)
+
+
+async def read_my_slot_review(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, *, submitted_by: uuid.UUID
+) -> SlotReviewRead:
+    """The caller's own review of this slot, so an examiner can pick up a draft
+    where they left it. Refuses when they have not started one.
+    """
+    await _require_slot(session, org_id, slot_id)
+    review = await repository.slot_review_for(session, org_id, slot_id, submitted_by)
+    if review is None:
+        raise errors.ReviewNotFound()
+    return _slot_read(review)
 
 
 async def slot_has_review(session: AsyncSession, slot_id: uuid.UUID) -> bool:
@@ -190,6 +212,17 @@ def _slot_read(slot_review: SlotReview) -> SlotReviewRead:
         field_values=dict(slot_review.field_values or {}),
         notes=slot_review.notes,
         completed_at=slot_review.completed_at,
+    )
+
+
+def _circuit_read(review: CircuitReview) -> CircuitReviewRead:
+    """Map a stored circuit review onto what a route returns."""
+    return CircuitReviewRead(
+        id=review.id,
+        circuit_id=review.circuit_id,
+        merged_notes=review.merged_notes,
+        finalized_at=review.finalized_at,
+        finalized_by=review.finalized_by,
     )
 
 

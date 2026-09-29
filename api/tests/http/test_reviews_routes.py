@@ -406,3 +406,94 @@ async def test_a_slot_nobody_has_reviewed_still_has_a_summary(
     assert body["items"] == []
     assert body["summary"]["slot_id"] == str(slot_id)
     assert body["summary"]["overall_rag"] is None
+
+
+async def test_an_examiner_reads_back_only_their_own_review(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A draft is picked up where it was left, and nobody else's is returned."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    colleague = await make_actor(
+        "colleague-kings@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="owner"),),
+        active_org_slug="kings",
+    )
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+    await client.put(url, json={"notes": "Mine"}, headers=bearer(admin))
+    await client.put(url, json={"notes": "Theirs"}, headers=bearer(colleague))
+
+    mine = await client.get(url, headers=bearer(admin))
+    assert mine.status_code == 200, mine.text
+    assert mine.json()["notes"] == "Mine"
+    assert mine.json()["status"] == "draft"
+
+
+async def test_no_review_of_my_own_yet_is_not_found(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    missing = await client.get(f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine", headers=bearer(admin))
+    assert missing.status_code == 404, missing.text
+    assert missing.json()["code"] == "review_not_found"
+
+
+async def test_my_review_of_another_orgs_slot_cannot_be_read(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    kings_id, _ = await org_with_admin(client, make_actor, "kings")
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    kings_slot = await a_slot(db_session, kings_id)
+    refused = await client.get(
+        f"/api/v1/orgs/guys/slots/{kings_slot}/reviews/mine", headers=bearer(guys_admin)
+    )
+    assert refused.status_code == 404, refused.text
+    assert refused.json()["code"] == "slot_not_found"
+
+
+async def _circuit_of(db_session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID:
+    """The circuit a fixture slot was built in."""
+    from sqlalchemy import select
+
+    from app.features.sittings.models import Slot
+
+    circuit_id = await db_session.scalar(select(Slot.circuit_id).where(Slot.id == slot_id))
+    assert circuit_id is not None
+    return circuit_id
+
+
+async def test_whether_a_circuit_review_was_published_can_be_read(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Not found until finalised; then who finalised it and when."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id = await _circuit_of(db_session, await a_slot(db_session, org_id))
+    url = f"/api/v1/orgs/kings/circuits/{circuit_id}/review"
+
+    finalized = await client.post(f"{url}/finalize", json={"merged_notes": "Good day"}, headers=bearer(admin))
+    assert finalized.status_code == 200, finalized.text
+
+    read = await client.get(url, headers=bearer(admin))
+    assert read.status_code == 200, read.text
+    assert read.json()["merged_notes"] == "Good day"
+    assert read.json()["finalized_at"] == finalized.json()["finalized_at"]
+    assert read.json()["finalized_by"] is not None
+    assert read.json()["finalized_by"] == finalized.json()["finalized_by"]
+
+
+async def test_an_unpublished_circuit_review_is_not_found(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id = await _circuit_of(db_session, await a_slot(db_session, org_id))
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/review/finalize", json={}, headers=bearer(admin)
+    )
+
+    unpublished = await client.get(
+        f"/api/v1/orgs/guys/circuits/{circuit_id}/review", headers=bearer(guys_admin)
+    )
+    assert unpublished.status_code == 404, unpublished.text
+    assert unpublished.json()["code"] == "review_not_found"
