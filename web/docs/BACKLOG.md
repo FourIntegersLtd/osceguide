@@ -126,7 +126,7 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 | E-9 | Owner | Cyber Essentials Plus | The baseline UK public-sector buyers check. Weeks, not months. Needs E-1 first |
 | E-10 | Owner | NHS Data Security and Protection Toolkit | Required before handling data for NHS organisations (deaneries, trusts). Annual self-assessment |
 | E-12 | Eng | Backup restore is untested | Railway PITR is on (chosen 2026-09-26), but no doc says how to restore, and a restore has never been run. Restore production into a scratch database once, time it, write the runbook, state RPO and RTO |
-| E-13 | Eng | Uptime monitoring and a status page | Sentry runs in platform-api and assessment-platform, not in platform-web (no `@sentry/nextjs`). No external check on `/health`, no alert rules, no status page |
+| E-13 | Eng | Uptime monitoring and a status page | Sentry now runs in all three (platform-web through `@sentry/nextjs`, off until `NEXT_PUBLIC_SENTRY_DSN` is set per deployment). No external check on `/health`, no alert rules, no status page |
 | E-14 | Eng | A supported concurrency number | Each worker runs 3 replicas with no autoscaling. The last load test (legacy stack, 2026-09-14) passed 27 of 30. Load-test the live stack and publish how many candidates a sitting supports |
 | E-15 | Eng | Accessibility | No `jsx-a11y` lint, no axe checks, no accessibility statement page. Add both (new dev dependencies: ask first), fix to WCAG 2.2 AA, publish the statement. UK public bodies ask for it |
 | E-16 | Eng | Results export | No endpoint returns CSV (no `text/csv` anywhere in platform-api). Admins need a sitting's results as CSV, and a candidate's result as PDF. Different from the cohort markdown readout above |

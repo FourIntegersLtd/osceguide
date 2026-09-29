@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -91,4 +92,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Error reporting (E-13). The runtime side is `src/instrumentation*.ts` and is
+ * off without a DSN. This wrapper only matters at build time: with
+ * `SENTRY_AUTH_TOKEN` (plus `SENTRY_ORG`/`SENTRY_PROJECT`) it uploads source
+ * maps so stack traces read as source; without one it uploads nothing and
+ * says nothing, which is every local and CI build.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  telemetry: false,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

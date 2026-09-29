@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/foundation/ui";
+import { reportError } from "@/foundation/observability";
 
 /**
  * Something threw while rendering.
@@ -19,7 +20,7 @@ export default function ErrorPage({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    reportError(error, error.digest ? { digest: error.digest } : undefined);
   }, [error]);
 
   return (
