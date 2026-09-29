@@ -39,7 +39,7 @@ Checked against the code on 2026-09-25.
 | Item | State |
 |---|---|
 | Directory search | `GET /platform/organizations` takes `status`, `cursor` and `limit` only. The staff console already sends `search` and `org_type` (and still filters what comes back), so the backend half is the two query parameters; until then the whole directory is walked, which stops scaling in the thousands |
-| Audit search | Per-organisation audit has no actor filter |
+| Audit search | Per-organisation audit (`GET /orgs/{org_slug}/audit`) takes no `actor_email` or `action` filter, though `GET /platform/audit` does. The Team History tab already sends both and, while they are ignored, filters the latest page itself and says so |
 | Platform exam list | There is no list under `/platform/exams`; the console reads the unscoped `GET /exams` |
 
 ### Authoring

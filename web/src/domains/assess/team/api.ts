@@ -100,11 +100,33 @@ export function restoreMembership(slug: string, membershipId: string): Promise<v
   );
 }
 
-/** Who added, changed or removed people and groups — the History tab. */
+export interface AuditFilters {
+  /** Exactly this person, any case. */
+  actorEmail?: string | null;
+  /** An action name or its prefix, such as `membership.`. */
+  action?: string | null;
+}
+
+/**
+ * Who added, changed or removed people and groups — the History tab.
+ *
+ * `actor_email` and `action` mean what they mean on `GET /platform/audit`;
+ * the organisation's own read takes them from platform-api's
+ * `feat/backend-backlog-batch-1` and ignores them before that, which the
+ * screen detects (`auditMatches`) rather than trusting.
+ */
 export function listAudit(
   slug: string,
   signal?: AbortSignal,
   page?: PageParams,
+  filters: AuditFilters = {},
 ): Promise<AuditPage> {
-  return platformRequest<AuditPage>(`${orgPath(slug)}/audit`, { signal, query: pageQuery(page) });
+  return platformRequest<AuditPage>(`${orgPath(slug)}/audit`, {
+    signal,
+    query: {
+      ...pageQuery(page),
+      actor_email: filters.actorEmail?.trim() || undefined,
+      action: filters.action?.trim() || undefined,
+    },
+  });
 }
