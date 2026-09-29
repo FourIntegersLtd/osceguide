@@ -118,7 +118,11 @@ async def test_an_institution_trainee_is_never_emailed(db_session: AsyncSession)
     user_id = await _create_user_signed_up(db_session, created_at=NOW - timedelta(days=2))
     org = await tenancy_repo.create_organization(db_session, slug=f"org-{uuid.uuid4().hex[:8]}", name="Org")
     trainee = await roster_repo.create_trainee(
-        db_session, org.id, email=f"t-{uuid.uuid4().hex[:8]}@example.com", first_name=None, last_name=None,
+        db_session,
+        org.id,
+        email=f"t-{uuid.uuid4().hex[:8]}@example.com",
+        first_name=None,
+        last_name=None,
         cohort_id=None,
     )
     await roster_repo.link_trainee_to_user(db_session, org.id, trainee.id, user_id=user_id)

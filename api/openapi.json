@@ -1048,6 +1048,116 @@
         "title": "BulkCreateTrainees",
         "type": "object"
       },
+      "BulkGrantPracticeAccess": {
+        "description": "Up to 500 rows granted in one request.",
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeAccessRow"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "BulkGrantPracticeAccess",
+        "type": "object"
+      },
+      "BulkMembershipIds": {
+        "description": "A batch of membership ids, for a bulk action from a selection in the\nteam table. Capped the same as a bulk import, so a selected page cannot\nname a whole organisation's team by accident.",
+        "properties": {
+          "membership_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Membership Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "membership_ids"
+        ],
+        "title": "BulkMembershipIds",
+        "type": "object"
+      },
+      "BulkMembershipInvitationResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkMembershipInvitationResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkMembershipInvitationResponse",
+        "type": "object"
+      },
+      "BulkMembershipInvitationResult": {
+        "properties": {
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "membership_id",
+          "outcome"
+        ],
+        "title": "BulkMembershipInvitationResult",
+        "type": "object"
+      },
+      "BulkMembershipRevokeResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkMembershipRevokeResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkMembershipRevokeResponse",
+        "type": "object"
+      },
+      "BulkMembershipRevokeResult": {
+        "description": "One row's outcome from a bulk revoke: whether this call changed\nanything, or the row was already in that state or not this\norganisation's to change.",
+        "properties": {
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "membership_id",
+          "outcome"
+        ],
+        "title": "BulkMembershipRevokeResult",
+        "type": "object"
+      },
       "BulkMembershipsResult": {
         "description": "Who joined and who was already there, so a partial upload is not a mystery.",
         "properties": {
@@ -1067,6 +1177,23 @@
           }
         },
         "title": "BulkMembershipsResult",
+        "type": "object"
+      },
+      "BulkPracticeAccessResults": {
+        "description": "One result per row, in the order the rows were sent.",
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeAccessResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkPracticeAccessResults",
         "type": "object"
       },
       "BulkRelease": {
@@ -1126,6 +1253,164 @@
           }
         },
         "title": "BulkReleaseResult",
+        "type": "object"
+      },
+      "BulkSetTraineeCohort": {
+        "description": "Move a batch of trainees into one intake at once, or out of any intake.",
+        "properties": {
+          "cohort_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cohort Id"
+          },
+          "trainee_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Trainee Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trainee_ids"
+        ],
+        "title": "BulkSetTraineeCohort",
+        "type": "object"
+      },
+      "BulkTraineeAccessResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTraineeAccessResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkTraineeAccessResponse",
+        "type": "object"
+      },
+      "BulkTraineeAccessResult": {
+        "description": "One row's outcome from a bulk revoke: whether this call changed anything,\nor the row was already in that state or not this organisation's to change.",
+        "properties": {
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "outcome"
+        ],
+        "title": "BulkTraineeAccessResult",
+        "type": "object"
+      },
+      "BulkTraineeCohortResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTraineeCohortResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkTraineeCohortResponse",
+        "type": "object"
+      },
+      "BulkTraineeCohortResult": {
+        "properties": {
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "outcome"
+        ],
+        "title": "BulkTraineeCohortResult",
+        "type": "object"
+      },
+      "BulkTraineeIds": {
+        "description": "A batch of roster ids, for a bulk action from a selection in the roster\ntable. Capped the same as a bulk upload, so a selected page cannot name a\nwhole institution's roster by accident.",
+        "properties": {
+          "trainee_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Trainee Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trainee_ids"
+        ],
+        "title": "BulkTraineeIds",
+        "type": "object"
+      },
+      "BulkTraineeInvitationResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTraineeInvitationResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkTraineeInvitationResponse",
+        "type": "object"
+      },
+      "BulkTraineeInvitationResult": {
+        "properties": {
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "outcome"
+        ],
+        "title": "BulkTraineeInvitationResult",
         "type": "object"
       },
       "BulkTraineesResult": {
@@ -4380,6 +4665,7 @@
               "entitlement_not_found",
               "evidence_changed",
               "exam_already_chosen",
+              "exam_already_imported",
               "exam_code_taken",
               "exam_in_use",
               "exam_not_in_pilot",
@@ -4402,6 +4688,7 @@
               "invalid_credentials",
               "invalid_cv_file",
               "invalid_date_range",
+              "invalid_email",
               "invalid_exam_code",
               "invalid_input",
               "invalid_invoice_line",
@@ -4471,6 +4758,7 @@
               "post_not_found",
               "post_not_yours",
               "post_unavailable",
+              "practice_access_exists",
               "practice_feedback_not_open",
               "practice_session_ended",
               "practice_session_not_accepted",
@@ -5442,6 +5730,28 @@
         "title": "GrantEntitlement",
         "type": "object"
       },
+      "GrantPracticeAccess": {
+        "description": "Give one person, who need not have an account yet, practice access to one exam.",
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Email",
+            "type": "string"
+          },
+          "exam_id": {
+            "format": "uuid",
+            "title": "Exam Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "exam_id"
+        ],
+        "title": "GrantPracticeAccess",
+        "type": "object"
+      },
       "GroupRead": {
         "properties": {
           "id": {
@@ -5676,6 +5986,34 @@
           "exam_codes"
         ],
         "title": "HelpCategory",
+        "type": "object"
+      },
+      "ImportPlatformExam": {
+        "description": "Which published platform exam to bring into the institution.",
+        "properties": {
+          "platform_exam_id": {
+            "format": "uuid",
+            "title": "Platform Exam Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform_exam_id"
+        ],
+        "title": "ImportPlatformExam",
+        "type": "object"
+      },
+      "ImportedExamRead": {
+        "description": "The exam now in the institution, shaped as `GET /orgs/{org_slug}/exams` lists it.",
+        "properties": {
+          "exam": {
+            "$ref": "#/components/schemas/ExamRead"
+          }
+        },
+        "required": [
+          "exam"
+        ],
+        "title": "ImportedExamRead",
         "type": "object"
       },
       "Intervention": {
@@ -10208,6 +10546,58 @@
         "title": "PlatformAuditRead",
         "type": "object"
       },
+      "PlatformCatalogueExamRead": {
+        "description": "One published platform exam, as an institution choosing what to import sees it.",
+        "properties": {
+          "already_imported": {
+            "title": "Already Imported",
+            "type": "boolean"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "exam_id": {
+            "format": "uuid",
+            "title": "Exam Id",
+            "type": "string"
+          },
+          "station_count": {
+            "title": "Station Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exam_id",
+          "code",
+          "title",
+          "station_count",
+          "already_imported"
+        ],
+        "title": "PlatformCatalogueExamRead",
+        "type": "object"
+      },
+      "PlatformCatalogueRead": {
+        "description": "The published platform exams an institution may import. Small, so never paged.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformCatalogueExamRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PlatformCatalogueRead",
+        "type": "object"
+      },
       "PlatformEntitlementRead": {
         "description": "A grant as the platform console reads it: where it came from, who made it.",
         "properties": {
@@ -10721,6 +11111,161 @@
           "created_at"
         ],
         "title": "PlatformUserDetail",
+        "type": "object"
+      },
+      "PracticeAccessItem": {
+        "description": "One practice-access row, wrapped the way the frontend reads a single item.",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/PracticeAccessRead"
+          }
+        },
+        "required": [
+          "item"
+        ],
+        "title": "PracticeAccessItem",
+        "type": "object"
+      },
+      "PracticeAccessList": {
+        "description": "Everything this organisation has granted as practice access, revoked rows included.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PracticeAccessRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PracticeAccessList",
+        "type": "object"
+      },
+      "PracticeAccessRead": {
+        "description": "One person's practice access to one exam, granted by this organisation.\n\n`access_id` is the entitlement's id. `user_id` is always set today, because an invitation\ncreates the account up front; it is nullable in the contract so a pending invitation that\nholds no account could be listed without a breaking change.",
+        "properties": {
+          "access_id": {
+            "format": "uuid",
+            "title": "Access Id",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "exam_id": {
+            "format": "uuid",
+            "title": "Exam Id",
+            "type": "string"
+          },
+          "exam_title": {
+            "title": "Exam Title",
+            "type": "string"
+          },
+          "granted_at": {
+            "format": "date-time",
+            "title": "Granted At",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "enum": [
+              "invited",
+              "active",
+              "revoked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "access_id",
+          "email",
+          "user_id",
+          "exam_id",
+          "exam_code",
+          "exam_title",
+          "status",
+          "granted_at",
+          "revoked_at"
+        ],
+        "title": "PracticeAccessRead",
+        "type": "object"
+      },
+      "PracticeAccessResult": {
+        "description": "What happened to one row of a bulk grant.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "granted",
+              "invited",
+              "already_active",
+              "invalid_email",
+              "unknown_exam"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "outcome"
+        ],
+        "title": "PracticeAccessResult",
+        "type": "object"
+      },
+      "PracticeAccessRow": {
+        "description": "One row of a bulk grant, as the client parsed it from a CSV.\n\n`exam_id` is a string rather than a uuid so one malformed cell becomes that row's\n`unknown_exam` outcome instead of refusing the whole file.",
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          },
+          "exam_id": {
+            "maxLength": 64,
+            "title": "Exam Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "exam_id"
+        ],
+        "title": "PracticeAccessRow",
         "type": "object"
       },
       "PracticeCandidateScenarioRead": {
@@ -33482,6 +34027,169 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/exams/catalog": {
+      "get": {
+        "operationId": "catalog_list_platform_catalogue",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformCatalogueRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Platform Catalogue",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/exams/import": {
+      "post": {
+        "description": "Take on a published platform exam by reference: nothing is copied, a programme names it.\n\n`unknown_exam` (404) unless it is a published platform exam; `exam_already_imported`\n(409) if this institution already runs it.",
+        "operationId": "catalog_import_platform_exam",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportPlatformExam"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedExamRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_already_imported",
+            "x-codes": [
+              "exam_already_imported"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Platform Exam",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/exams/{exam_id}": {
       "delete": {
         "description": "Remove an exam nothing was ever built on. Retire the rest.\n\nReturns `exam_in_use` (409) if a station, sitting, attempt or rubric\nbinding already references it.",
@@ -34684,6 +35392,154 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/memberships/bulk/resend-invitation": {
+      "post": {
+        "description": "Resend the choose-a-password link to a selection at once, each row through\nthe same `POST /memberships/{id}/resend-invitation` decision.",
+        "operationId": "tenancy_bulk_resend_membership_invitations",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMembershipIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMembershipInvitationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Resend Membership Invitations",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/memberships/bulk/revoke": {
+      "post": {
+        "description": "Revoke a selection from the team table at once. Each row goes through the\nsame `POST /memberships/{id}/revoke` decision; an id from another\norganisation, or repeated in the request, is reported rather than acted on twice.",
+        "operationId": "tenancy_bulk_revoke_memberships",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMembershipIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMembershipRevokeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Revoke Memberships",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/memberships/{membership_id}": {
       "patch": {
         "operationId": "tenancy_change_membership_role",
@@ -35149,6 +36005,330 @@
         "summary": "Set Staff Mfa Policy",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/practice-access": {
+      "get": {
+        "operationId": "entitlements_list_practice_access",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAccessList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Practice Access",
+        "tags": [
+          "entitlements"
+        ]
+      },
+      "post": {
+        "description": "Give one person practice access to an exam this organisation offers.\n\nAn address with no account is invited: the account is created without a password and\nthe grant is attached to it, usable once they choose a password from the email.",
+        "operationId": "entitlements_grant_practice_access",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantPracticeAccess"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAccessItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "practice_access_exists",
+            "x-codes": [
+              "practice_access_exists"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_email",
+            "x-codes": [
+              "invalid_email"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grant Practice Access",
+        "tags": [
+          "entitlements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/practice-access/bulk": {
+      "post": {
+        "description": "Up to 500 rows the client parsed from a CSV; each row reports its own outcome.",
+        "operationId": "entitlements_grant_practice_access_in_bulk",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkGrantPracticeAccess"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkPracticeAccessResults"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grant Practice Access In Bulk",
+        "tags": [
+          "entitlements"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/practice-access/{access_id}/revoke": {
+      "post": {
+        "operationId": "entitlements_revoke_practice_access",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "access_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Access Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeAccessItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "entitlement_not_found",
+            "x-codes": [
+              "entitlement_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Practice Access",
+        "tags": [
+          "entitlements"
         ]
       }
     },
@@ -42636,6 +43816,244 @@
         ],
         "summary": "Add Trainees",
         "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk/cohort": {
+      "post": {
+        "description": "Move a selection into one intake, or clear it, at once. Returns 404\n`cohort_not_found` for the whole request if `cohort_id` does not name an\nintake of this organisation; each trainee id is otherwise reported on its own.",
+        "operationId": "roster_bulk_set_trainee_cohort",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkSetTraineeCohort"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineeCohortResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_not_found",
+            "x-codes": [
+              "cohort_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Set Trainee Cohort",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk/resend-invitation": {
+      "post": {
+        "description": "Resend the sign-in invitation to a selection at once, each row through the\nsame `POST /trainees/{id}/resend-invitation` decision.",
+        "operationId": "roster_bulk_resend_trainee_invitations",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTraineeIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineeInvitationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Resend Trainee Invitations",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk/revoke": {
+      "post": {
+        "description": "Revoke access for a selection from the roster table at once. Each row goes\nthrough the same `POST /trainees/{id}/access` decision; an id from another\norganisation, or repeated in the request, is reported rather than acted on twice.",
+        "operationId": "roster_bulk_revoke_trainees",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTraineeIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineeAccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Revoke Trainees",
+        "tags": [
+          "roster",
           "roster"
         ]
       }
