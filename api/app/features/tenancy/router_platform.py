@@ -35,10 +35,14 @@ async def list_organizations(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     status: Annotated[str | None, Query(description="Filter by organisation status")] = None,
+    search: Annotated[
+        str | None, Query(max_length=200, description="Part of the organisation's name or slug")
+    ] = None,
+    org_type: Annotated[str | None, Query(description="Filter by organisation type")] = None,
 ) -> Page[schemas.OrganizationRead]:
     """Every organisation on the platform. The console's first screen."""
     organizations, next_cursor = await service_platform.list_organizations(
-        session, limit=page.limit, cursor=page.cursor, status=status
+        session, limit=page.limit, cursor=page.cursor, status=status, search=search, org_type=org_type
     )
     return Page(items=organizations, next_cursor=next_cursor)
 

@@ -244,3 +244,31 @@ async def test_deactivating_an_account_ends_its_sessions_now(client: AsyncClient
     ]
     # The old sessions stay ended; signing in again is how they come back.
     assert (await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})).status_code == 401
+
+
+async def test_the_console_directory_can_be_searched_and_filtered_by_type(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Typing part of a name or slug finds it; the type narrows further."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await an_org(client, root, "kings-college")
+    await an_org(client, root, "guys")
+    employer = await client.post(
+        "/api/v1/platform/organizations",
+        json={"slug": "kings-recruit", "name": "Kings Recruitment", "org_type": "partner"},
+        headers=bearer(root),
+    )
+    assert employer.status_code == 201, employer.text
+
+    found = await client.get(
+        "/api/v1/platform/organizations", params={"search": "KINGS"}, headers=bearer(root)
+    )
+    assert found.status_code == 200, found.text
+    assert {org["slug"] for org in found.json()["items"]} == {"kings-college", "kings-recruit"}
+
+    narrowed = await client.get(
+        "/api/v1/platform/organizations",
+        params={"search": "kings", "org_type": "partner"},
+        headers=bearer(root),
+    )
+    assert [org["slug"] for org in narrowed.json()["items"]] == ["kings-recruit"]

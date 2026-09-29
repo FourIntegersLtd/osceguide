@@ -17,12 +17,26 @@ from app.features.tenancy.models import AuditEntry, Organization
 
 
 async def list_organizations(
-    session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None = None, status: str | None = None
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    status: str | None = None,
+    search: str | None = None,
+    org_type: str | None = None,
 ) -> tuple[list[Organization], str | None]:
-    """Every organisation. Deliberately not org-scoped: this is the console."""
+    """Every organisation. Deliberately not org-scoped: this is the console.
+
+    `search` matches part of the name or the slug, ignoring case.
+    """
     stmt = select(Organization)
     if status is not None:
         stmt = stmt.where(Organization.status == status)
+    if org_type is not None:
+        stmt = stmt.where(Organization.org_type == org_type)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        stmt = stmt.where(or_(Organization.name.ilike(term), Organization.slug.ilike(term)))
     return await keyset_page(
         session,
         stmt,

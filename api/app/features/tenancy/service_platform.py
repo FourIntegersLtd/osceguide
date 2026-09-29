@@ -39,11 +39,18 @@ ENDING_SOON = timedelta(days=30)
 
 
 async def list_organizations(
-    session: AsyncSession, *, limit: int, cursor: dict[str, Any] | None, status: str | None = None
+    session: AsyncSession,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    status: str | None = None,
+    search: str | None = None,
+    org_type: str | None = None,
 ) -> tuple[list[OrganizationRead], str | None]:
-    """A page of every organisation on the platform, optionally filtered by status."""
+    """A page of every organisation on the platform, optionally filtered by
+    status and type, or narrowed to names and slugs containing `search`."""
     organizations, next_cursor = await repository_platform.list_organizations(
-        session, limit=limit, cursor=cursor, status=status
+        session, limit=limit, cursor=cursor, status=status, search=search, org_type=org_type
     )
     return [_org_read(org) for org in organizations], next_cursor
 

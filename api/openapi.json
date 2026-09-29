@@ -41127,6 +41127,43 @@
             }
           },
           {
+            "description": "Part of the organisation's name or slug",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the organisation's name or slug",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Filter by organisation type",
+            "in": "query",
+            "name": "org_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by organisation type",
+              "title": "Org Type"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
