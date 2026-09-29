@@ -84,3 +84,32 @@ class TraineeGroupMember(Base, UUIDPrimaryKey, Timestamps):
     trainee_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("trainees.id", ondelete="CASCADE"), nullable=False
     )
+
+
+class ScimToken(Base, UUIDPrimaryKey, Timestamps):
+    """A bearer token an organisation's identity provider uses to provision its roster (E-21).
+
+    Only a hash is stored: the token is shown once, when it is issued, and a
+    database dump must not hand anybody the ability to add people to an
+    institution. Revoked rather than deleted, so "which connector did this"
+    stays answerable.
+    """
+
+    __tablename__ = "scim_tokens"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_scim_tokens_token_hash"),
+        Index("ix_scim_tokens_org", "org_id"),
+    )
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    # sha256 of the token, hex. The token itself has 256 bits of entropy, so an
+    # unsalted fast hash is enough: there is nothing to guess.
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # The first characters, so an admin can tell two tokens apart on screen.
+    token_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

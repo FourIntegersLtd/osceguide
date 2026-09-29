@@ -43,6 +43,7 @@ TAGS: list[dict[str, str]] = [
     {"name": "billing", "description": "Plans, payment and what it grants"},
     {"name": "sittings", "description": "Scheduled examinations and training"},
     {"name": "roster", "description": "Trainees, cohorts and groups"},
+    {"name": "scim", "description": "SCIM 2.0 provisioning of a roster by an identity provider"},
     {"name": "reviews", "description": "Human judgement about a slot"},
     {"name": "results", "description": "Candidate outcomes and their release"},
     {"name": "dashboard", "description": "What a learner sees on opening the app"},

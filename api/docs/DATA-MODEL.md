@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-74 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+75 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -914,7 +914,7 @@ coming.
 
 A slot carries no clock. That is the circuit's: see `circuits` above.
 
-## roster — 4 tables
+## roster — 5 tables
 
 ### `cohorts`
 `org_id` → `organizations.id` CASCADE, `name varchar(200) not null`,
@@ -953,6 +953,22 @@ group empties it, two groups sharing a label collide, and nobody can be in two g
 
 `group_id` → `trainee_groups.id` CASCADE, `trainee_id` → `trainees.id` CASCADE
 (indexed). UNIQUE `(group_id, trainee_id)`.
+
+### `scim_tokens`
+A bearer token an organisation's identity provider (Entra, Okta) uses to provision
+its roster over SCIM 2.0 (E-21), issued by the organisation's admin. Only the hash is
+kept: the token is shown once, and a dump must not let anybody add people to an
+institution. Revoked, never deleted.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | indexed |
+| `token_hash` | `varchar(64) not null unique` | sha256 hex; the token carries 256 bits, so there is nothing to salt against |
+| `token_prefix` | `varchar(16) not null` | the first characters, to tell tokens apart on screen |
+| `label` | `varchar(100) not null` | which connector it is for |
+| `created_by` | `uuid null` → `users.id` SET NULL | |
+| `last_used_at` | `timestamptz null` | stamped on every SCIM request, so a dead connector is visible |
+| `revoked_at` | `timestamptz null` | a revoked token is refused from the next request |
 
 ---
 

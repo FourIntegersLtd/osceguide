@@ -158,6 +158,12 @@ async def list_group_members(
     return [_trainee_read(trainee) for trainee in trainees], next_cursor
 
 
+async def group_member_ids(session: AsyncSession, org_id: uuid.UUID, group_id: uuid.UUID) -> list[uuid.UUID]:
+    """Every trainee id in one of this organisation's groups, oldest member first."""
+    await _require_group(session, org_id, group_id)
+    return await repository_groups.group_member_ids(session, group_id)
+
+
 async def resolve_roster(
     session: AsyncSession,
     org_id: uuid.UUID,

@@ -4,7 +4,9 @@ group, a duplicate, or a person a circuit may not examine.
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, NotFound
+from typing import Any
+
+from app.core.errors import AppError, Conflict, NotFound
 
 
 class TraineeNotFound(NotFound):
@@ -94,3 +96,87 @@ class TraineeInUse(Conflict):
 
     code = "trainee_in_use"
     default_message = "This trainee has a decision recorded and cannot be deleted. Revoke access instead."
+
+
+# --- SCIM (E-21) ------------------------------------------------------------------
+
+SCIM_ERROR_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:Error"
+
+
+class ScimError(AppError):
+    """A refusal on the SCIM routes, in the body an identity provider reads (RFC 7644 §3.12).
+
+    `code` rides along beside the SCIM fields: a connector ignores it, and it
+    is what the rest of this API's error contract is checked against.
+    """
+
+    status = 400
+    code = "scim_invalid_value"
+    default_message = "The request was not valid SCIM"
+    media_type = "application/scim+json"
+    # RFC 7644's `scimType`, where the RFC names one for this refusal.
+    scim_type: str | None = "invalidValue"
+
+    def envelope(self) -> dict[str, Any] | None:
+        """The SCIM error body."""
+        body: dict[str, Any] = {
+            "schemas": [SCIM_ERROR_SCHEMA],
+            "status": str(self.status),
+            "detail": self.message,
+            "code": self.code,
+        }
+        if self.scim_type is not None:
+            body["scimType"] = self.scim_type
+        return body
+
+
+class ScimUnauthorized(ScimError):
+    """No bearer token, or one this organisation did not issue or has revoked."""
+
+    status = 401
+    code = "scim_unauthorized"
+    default_message = "A valid SCIM bearer token for this organisation is required"
+    scim_type = None
+
+
+class ScimResourceNotFound(ScimError):
+    """No user or group by that id on this organisation's roster."""
+
+    status = 404
+    code = "scim_not_found"
+    default_message = "No such resource"
+    scim_type = None
+
+
+class ScimUniqueness(ScimError):
+    """A user with that userName, or a group with that displayName, already exists."""
+
+    status = 409
+    code = "scim_uniqueness"
+    default_message = "That resource already exists"
+    scim_type = "uniqueness"
+
+
+class ScimInvalidFilter(ScimError):
+    """A filter this server does not understand. Only `attribute eq "value"` is supported."""
+
+    status = 400
+    code = "scim_invalid_filter"
+    default_message = 'Only a single `attribute eq "value"` filter is supported'
+    scim_type = "invalidFilter"
+
+
+class ScimMutability(ScimError):
+    """An attempt to change what the roster does not let change: a user's email address."""
+
+    status = 400
+    code = "scim_mutability"
+    default_message = "userName cannot be changed; it is the address the account was linked by"
+    scim_type = "mutability"
+
+
+class ScimTokenNotFound(NotFound):
+    """No SCIM token by that id belongs to this organisation."""
+
+    code = "scim_token_not_found"
+    default_message = "No such SCIM token"
