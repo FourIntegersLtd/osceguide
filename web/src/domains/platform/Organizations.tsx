@@ -17,7 +17,7 @@ import { useSurface } from "@/capabilities";
 import { listAllOrganizations, type Organization } from "@/domains/platform/api";
 import { Row, RowList, Section, StatusBadge } from "@/domains/platform/chrome";
 import { ProvisionModal } from "@/domains/platform/ProvisionPanel";
-import { ORG_STATUSES, ORG_TYPES, matchesSearch } from "@/domains/platform/support";
+import { ORG_STATUSES, ORG_TYPES } from "@/domains/platform/support";
 
 type TypeFilter = "all" | string;
 
@@ -25,10 +25,8 @@ type TypeFilter = "all" | string;
  * The tenant directory: partners and institutions, grouped by type.
  *
  * Status, type and search all go to the backend (`GET /platform/organizations`
- * takes `status`, and `org_type` and `search` from platform-api's
- * `feat/backend-backlog-batch-1`), so the directory is not walked whole to be
- * searched in the browser. The same filters are applied to what comes back,
- * which keeps the screen right against a backend that ignores the new ones.
+ * takes `status`, `org_type` and `search`), so the directory is no longer
+ * walked whole to be searched in the browser.
  *
  * There is no delete. The backend will not delete an organisation and that is
  * a decision, not an omission: a tenant's rows include candidate results that
@@ -146,7 +144,7 @@ export function Organizations() {
               }
         }
       >
-        {(rows) => <Directory rows={rows} typeFilter={typeFilter} search={search} hrefFor={hrefFor} />}
+        {(rows) => <Directory rows={rows} typeFilter={typeFilter} hrefFor={hrefFor} />}
       </AsyncBoundary>
     </div>
   );
@@ -155,19 +153,15 @@ export function Organizations() {
 function Directory({
   rows,
   typeFilter,
-  search,
   hrefFor,
 }: {
   rows: Organization[];
   typeFilter: TypeFilter;
-  search: string;
   hrefFor: (path: string) => string;
 }) {
   const groups = useMemo(() => {
-    const visible = rows.filter(
-      (row) =>
-        (typeFilter === "all" || row.org_type === typeFilter) && matchesSearch(row, search),
-    );
+    // Already filtered by the backend; this only groups by type.
+    const visible = rows;
     return ORG_TYPES.map((type) => ({
       ...type,
       rows: visible.filter((row) => row.org_type === type.value),
@@ -177,7 +171,7 @@ function Directory({
         ? visible.filter((row) => !ORG_TYPES.some((t) => t.value === row.org_type))
         : [],
     })).filter((group) => typeFilter === "all" || group.value === typeFilter);
-  }, [rows, typeFilter, search]);
+  }, [rows, typeFilter]);
 
   const total = groups.reduce((sum, group) => sum + group.rows.length + group.extra.length, 0);
 

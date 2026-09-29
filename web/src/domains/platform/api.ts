@@ -21,14 +21,11 @@ export type Overview = S["PlatformOverview"];
 /**
  * Contract dates may be present once the OpenAPI spec catches up with
  * platform-api. `parent_org_id` is the organisation this one sits under (a
- * deanery's trusts, say): the column exists on `organizations`, and
- * `OrganizationRead` carries it from platform-api's
- * `feat/backend-backlog-batch-1`. Absent means no parent, or not deployed yet.
+ * deanery's trusts, say).
  */
 export type Organization = S["OrganizationRead"] & {
   contract_starts_at?: string | null;
   contract_ends_at?: string | null;
-  parent_org_id?: string | null;
 };
 export type OrganizationPage = S["Page_OrganizationRead_"];
 export type User = S["UserSummary"];
@@ -136,13 +133,10 @@ export function listOrganizations(
 }
 
 /**
- * Every organisation matching the filters.
+ * Every organisation matching the filters, filtered by the backend.
  *
- * `search` and `org_type` are sent to the backend, which takes them from
- * platform-api's `feat/backend-backlog-batch-1`; before that it takes
- * `status` only and ignores the rest. So the caller still filters what comes
- * back (`matchesSearch`, the type): a no-op against a backend that filtered,
- * and what keeps the screen right against one that did not.
+ * Search (name or slug) and type used to run in the browser over the whole
+ * directory, walked page by page, which stops scaling in the thousands.
  */
 export function listAllOrganizations(
   filters: DirectoryFilters | string | null = null,

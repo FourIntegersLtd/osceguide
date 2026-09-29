@@ -28,13 +28,11 @@ Checked against the code on 2026-09-25.
 | Resend a staff invitation | There is no resend route for a staff membership. Trainees have one (`POST /orgs/{org_slug}/trainees/{trainee_id}/resend-invitation`) |
 | A candidate reading their published review | No candidate-facing read of a circuit's supervisor review or their slot review. The largest thing the sittings port could not carry |
 | Cohort export (the markdown readout) | Not built. Low priority |
-| Organisation hierarchy | `organizations.parent_org_id` exists but `OrganizationRead` does not return it. The staff console's organisation page already shows "Part of …" when it does (read-only; nothing sets a parent) |
 
 ### Staff console (platform)
 
 | Item | State |
 |---|---|
-| Directory search | `GET /platform/organizations` takes `status`, `cursor` and `limit` only. The staff console already sends `search` and `org_type` (and still filters what comes back), so the backend half is the two query parameters; until then the whole directory is walked, which stops scaling in the thousands |
 | Audit search | Per-organisation audit (`GET /orgs/{org_slug}/audit`) takes no `actor_email` or `action` filter, though `GET /platform/audit` does. The Team History tab already sends both and, while they are ignored, filters the latest page itself and says so |
 
 ### Authoring
