@@ -12,6 +12,7 @@ import { errorMessage } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import {
   changeMemberRole,
+  resendInvitation,
   restoreMembership,
   revokeMembership,
   type Membership,
@@ -57,6 +58,20 @@ export function MembersPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  async function resend(member: Membership) {
+    setError(null);
+    setResendingId(member.id);
+    try {
+      const result = await resendInvitation(orgSlug, member.id);
+      setNotice(`Resent the invitation to ${result.email}.`);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setResendingId(null);
+    }
+  }
 
   function open(next: NonNullable<Pending>) {
     setError(null);
@@ -160,11 +175,13 @@ export function MembersPanel({
               member={member}
               lastAdmin={isLastAdmin(member, rows)}
               onAction={open}
+              onResend={resend}
+              resending={resendingId === member.id}
             />
           ) : null,
       },
     ],
-    [canManage, rows],
+    [canManage, rows, resendingId, resend],
   );
 
   if (rows.length === 0) {
@@ -273,14 +290,30 @@ function RowActions({
   member,
   lastAdmin,
   onAction,
+  onResend,
+  resending,
 }: {
   member: Membership;
   lastAdmin: boolean;
   onAction: (pending: NonNullable<Pending>) => void;
+  onResend: (member: Membership) => void;
+  resending: boolean;
 }) {
   const owner = isOwner(member);
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
+      {!owner && isActive(member) ? (
+        <Button
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+          disabled={resending}
+          title="Only sends if that person has not yet chosen a password."
+          onClick={() => onResend(member)}
+        >
+          {resending ? "Resending…" : "Resend invitation"}
+        </Button>
+      ) : null}
       {!owner ? (
         <Button
           themeType="b2b"

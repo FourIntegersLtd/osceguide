@@ -83,6 +83,7 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "myTraining",
   "mySitting",
   "myResult",
+  "myReview",
   "myPractice",
   /*
    * The practice-set screens, answered here as well as on Train.

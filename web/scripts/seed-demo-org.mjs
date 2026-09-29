@@ -11,6 +11,8 @@
  *
  *   node scripts/seed-demo-org.mjs --email dev@example.com --password ...
  */
+import { signInWithPassword } from "./admin-totp.mjs";
+
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
 const SLUG = "st-marys";
 
@@ -45,7 +47,7 @@ async function main() {
   const email = arg("email", "dev@example.com");
   const password = arg("password", "platform-dev-password-1");
 
-  token = (await call("/api/v1/auth/login", { method: "POST", body: { email, password } })).access_token;
+  token = (await signInWithPassword(API, email, password)).access_token;
 
   // 1. The organisation. `institution` is what decides which console its
   //    members land in; an employer would be the same call with `employer`.

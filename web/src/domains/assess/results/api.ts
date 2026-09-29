@@ -1,4 +1,9 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import {
+  platformDownload,
+  platformRequest,
+  type PlatformDownload,
+  type components,
+} from "@/foundation/platform-client";
 import { orgPath } from "@/domains/assess/api";
 
 export type SittingReport = components["schemas"]["SittingReport"];
@@ -21,6 +26,29 @@ export function readSittingReport(
   return platformRequest<SittingReport>(
     `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/report`,
     { signal },
+  );
+}
+
+/** The sitting report as a CSV file the browser saves. */
+export function downloadSittingResults(slug: string, sittingId: string): Promise<PlatformDownload> {
+  return platformDownload(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/report.csv`,
+  );
+}
+
+/**
+ * One candidate's released result as a PDF.
+ *
+ * `traineeId` is the roster id. The route refuses a decision that has not
+ * been released, which is why the button is only offered once it has.
+ */
+export function downloadCandidateResult(
+  slug: string,
+  sittingId: string,
+  traineeId: string,
+): Promise<PlatformDownload> {
+  return platformDownload(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/candidates/${encodeURIComponent(traineeId)}/result.pdf`,
   );
 }
 

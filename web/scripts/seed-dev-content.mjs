@@ -7,6 +7,8 @@
  *
  *   node scripts/seed-dev-content.mjs --email dev@example.com --password ...
  */
+import { signInWithPassword } from "./admin-totp.mjs";
+
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
 
 function arg(name, fallback) {
@@ -64,10 +66,7 @@ async function main() {
   const email = arg("email", "dev@example.com");
   const password = arg("password", "platform-dev-password-1");
 
-  const auth = await call("/api/v1/auth/login", {
-    method: "POST",
-    body: { email, password },
-  });
+  const auth = await signInWithPassword(API, email, password);
   const token = auth.access_token;
 
   const existing = new Set(

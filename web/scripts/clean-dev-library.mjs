@@ -14,6 +14,8 @@
  *   --dry-run          print matches without archiving
  */
 
+import { signInWithPassword } from "./admin-totp.mjs";
+
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
 
 function arg(name, fallback) {
@@ -89,10 +91,7 @@ async function allPlatformStations(token) {
 }
 
 async function main() {
-  const auth = await call("/api/v1/auth/login", {
-    method: "POST",
-    body: { email: EMAIL, password: PASSWORD },
-  });
+  const auth = await signInWithPassword(API, EMAIL, PASSWORD);
   const token = auth.access_token;
   const rows = (await allPlatformStations(token)).filter(matches);
 

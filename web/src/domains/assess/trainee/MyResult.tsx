@@ -3,7 +3,8 @@
 import { useCallback, useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { acknowledgeResult, readMyResult } from "@/domains/assess/trainee/api";
+import { saveBlob } from "@/foundation/platform-client";
+import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
 import { outcomeTone } from "@/domains/assess/results/support";
 
 /**
@@ -21,8 +22,22 @@ import { outcomeTone } from "@/domains/assess/results/support";
 export function MyResult({ sittingId }: { sittingId: string }) {
   const state = useAsync((signal) => readMyResult(sittingId, signal), [sittingId]);
   const [acknowledging, setAcknowledging] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const reload = state.reload;
+
+  const downloadPdf = useCallback(async () => {
+    setDownloading(true);
+    setError(null);
+    try {
+      const file = await downloadMyResult(sittingId);
+      saveBlob(file.blob, file.filename);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error(String(cause)));
+    } finally {
+      setDownloading(false);
+    }
+  }, [sittingId]);
 
   const acknowledge = useCallback(async () => {
     setAcknowledging(true);
@@ -90,7 +105,15 @@ export function MyResult({ sittingId }: { sittingId: string }) {
 
               {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
-              <div className="border-t border-b2b-border pt-4">
+              <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => void downloadPdf()}
+                  disabled={downloading}
+                  className="inline-flex items-center justify-center rounded-osce-md border border-border bg-surface px-3 py-2 text-osce-meta font-medium text-ink hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
+                >
+                  {downloading ? "Preparing…" : "Download PDF"}
+                </button>
                 {result.acknowledged_at ? (
                   <Alert tone="success">
                     You acknowledged this on{" "}

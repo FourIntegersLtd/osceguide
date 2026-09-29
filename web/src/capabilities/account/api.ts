@@ -14,7 +14,9 @@ import {
  * instances and seven components calling them inline.
  */
 
-export type Me = components["schemas"]["UserRead"];
+// `& { avatar_url?: ... }` until `npm run platform:types` picks up the new
+// field on `UserRead` — the route already returns it.
+export type Me = components["schemas"]["UserRead"] & { avatar_url?: string | null };
 export type Entitlement = components["schemas"]["EntitlementSummary"];
 export type Plan = components["schemas"]["PlanRead"];
 export type Receipt = components["schemas"]["ReceiptRead"];
@@ -27,6 +29,13 @@ export type Achievements = components["schemas"]["AchievementsRead"];
 
 export function readMe(signal?: AbortSignal): Promise<Me> {
   return platformRequest<Me>("/api/v1/me", { signal });
+}
+
+/** Replace this person's profile photo. Answers the refreshed profile, photo included. */
+export function uploadAvatar(file: File): Promise<Me> {
+  const form = new FormData();
+  form.append("file", file);
+  return platformRequest<Me>("/api/v1/me/avatar", { method: "POST", formData: form });
 }
 
 /**

@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import Script from "next/script";
 import type { ReactNode } from "react";
 import CookiesConsentModal from "@/foundation/ui/CookiesConsentModal";
-import { GA_MEASUREMENT_ID } from "@/foundation/analytics/gaMeasurementId";
+import {
+  GA_MEASUREMENT_ID,
+  shouldAskForAnalyticsConsent,
+} from "@/foundation/analytics/gaMeasurementId";
 
 /**
  * Google Analytics, behind the consent that was always meant to gate it.
@@ -42,7 +45,7 @@ const CONSENT_KEY = "analytics-consent";
 export function hasAnsweredAnalyticsConsent(): boolean {
   if (typeof window === "undefined") return true;
   const stored = window.localStorage.getItem(CONSENT_KEY);
-  return stored === "accepted" || stored === "rejected";
+  return !shouldAskForAnalyticsConsent(GA_MEASUREMENT_ID, stored);
 }
 
 export function AnalyticsConsentGate({ children }: { children: ReactNode }) {
@@ -73,7 +76,12 @@ export function AnalyticsConsentGate({ children }: { children: ReactNode }) {
           </Script>
         </>
       ) : null}
-      {consent === "unknown" ? <CookiesConsentModal setAnalyticsEnabled={decide} /> : null}
+      {shouldAskForAnalyticsConsent(
+        GA_MEASUREMENT_ID,
+        consent === "accepted" ? "accepted" : consent === "rejected" ? "rejected" : null,
+      ) ? (
+        <CookiesConsentModal setAnalyticsEnabled={decide} />
+      ) : null}
     </>
   );
 }

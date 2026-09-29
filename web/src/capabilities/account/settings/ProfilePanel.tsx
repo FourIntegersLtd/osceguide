@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { LuUserCog } from "react-icons/lu";
 import {
   HiOutlineArrowPath,
@@ -25,7 +25,7 @@ import { errorMessage, useAsync } from "@/foundation/hooks";
 import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useCurrentExam } from "@/foundation/session/useCurrentExam";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { readMe, updateMe, type Me } from "@/capabilities/account/api";
+import { readMe, updateMe, uploadAvatar, type Me } from "@/capabilities/account/api";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
@@ -122,6 +122,27 @@ function AccountForm({
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatar_url ?? null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const onAvatarPicked = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setAvatarBusy(true);
+    setAvatarError(null);
+    try {
+      const updated = await uploadAvatar(file);
+      setAvatarUrl(updated.avatar_url ?? null);
+      await refresh();
+      onSaved();
+    } catch (cause) {
+      setAvatarError(errorMessage(cause));
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
 
   useEffect(() => {
     onDirtyChange?.(name !== savedName);
@@ -168,6 +189,42 @@ function AccountForm({
 
           {successMessage ? <Alert message={successMessage} type="success" /> : null}
           {error ? <Alert message={error} type="error" /> : null}
+          {avatarError ? <Alert message={avatarError} type="error" /> : null}
+
+          <div className="flex items-center gap-4">
+            {avatarUrl ? (
+              // A private, per-account S3 URL, not a build-time asset.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt=""
+                className="h-14 w-14 rounded-full border border-b2c-border object-cover"
+              />
+            ) : (
+              <div
+                className="flex h-14 w-14 items-center justify-center rounded-full border border-b2c-border bg-b2c-surface-muted text-osce-body text-b2c-text-muted"
+                aria-hidden
+              >
+                {(user.name || user.email).slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <label
+                htmlFor="avatar-upload"
+                className="inline-block cursor-pointer text-osce-meta font-medium text-b2c-link"
+              >
+                {avatarBusy ? "Uploading…" : "Change photo"}
+              </label>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={avatarBusy}
+                onChange={(event) => void onAvatarPicked(event)}
+              />
+            </div>
+          </div>
 
           <div>
             <label htmlFor="username" className={b2cFieldLabel}>

@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { signInWithPassword } from "../../../scripts/admin-totp.mjs";
 
 export const WEB = process.env.VERIFY_WEB_URL ?? "http://localhost:3100";
 export const API = process.env.VERIFY_API_URL ?? "http://127.0.0.1:8002";
@@ -67,6 +68,33 @@ function note(run, line) {
  */
 export async function signIn(run, account = ACCOUNT) {
   const { page } = run;
+  const probe = await fetch(`${API}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(account),
+  });
+  const body = await probe.json().catch(() => null);
+  // The login form does not collect a second factor yet. A platform admin
+  // (and anyone else already enrolled) finishes here, then the same cookie
+  // the form would have set is stored on the browser.
+  if (body?.status === "mfa_required" || body?.status === "mfa_enrolment_required") {
+    const session = await signInWithPassword(API, account.email, account.password);
+    const stored = await page.request.post(`${WEB}/api/session`, {
+      data: {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_in: session.expires_in,
+      },
+    });
+    if (!stored.ok()) throw new Error(`session cookie ${stored.status()}`);
+    await page.goto(WEB, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.waitForURL(/\/(app|staff)(\/|$)/, { timeout: 30_000 }).catch(async (cause) => {
+      await proof(run, "sign-in-failed");
+      throw cause;
+    });
+    note(run, `signed in as ${account.email} -> ${page.url().replace(WEB, "")}`);
+    return;
+  }
   await page.goto(`${WEB}/login`, { waitUntil: "networkidle", timeout: 90_000 });
   await page.waitForTimeout(1500);
   // A fresh browser gets the cookie dialog, and its scrim swallows every click.

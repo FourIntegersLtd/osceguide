@@ -40,3 +40,19 @@ export const GA_MEASUREMENT_ID: string | null = resolveGaMeasurementId(
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID,
   IS_PRODUCTION_SITE,
 );
+
+/**
+ * Whether this deployment should show the analytics consent modal.
+ *
+ * When there is no measurement id, analytics cannot load — asking would block
+ * the page for a choice that changes nothing.
+ */
+export function shouldAskForAnalyticsConsent(
+  gaId: string | null,
+  stored: string | null,
+): boolean {
+  if (!gaId) {
+    return false;
+  }
+  return stored !== "accepted" && stored !== "rejected";
+}
