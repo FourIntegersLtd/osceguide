@@ -9,6 +9,8 @@
  *
  *   node scripts/smoke.mjs [--email ...] [--password ...]
  */
+import { signInWithPassword } from "./admin-totp.mjs";
+
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
 
 function arg(name, fallback) {
@@ -74,12 +76,15 @@ async function main() {
 
   await step("health", "/health", { expect: (p) => must(p.status === "ok", "not ok") });
 
-  const auth = await step("sign in", "/api/v1/auth/login", {
-    method: "POST",
-    body: { email, password },
-    expect: (p) => must(p.access_token && p.refresh_token, "missing tokens"),
-  });
-  if (!auth) return report();
+  let auth;
+  try {
+    auth = await signInWithPassword(API, email, password);
+    must(auth.access_token && auth.refresh_token, "missing tokens");
+    results.push({ label: "sign in", ok: true });
+  } catch (error) {
+    results.push({ label: "sign in", ok: false, detail: error.message });
+    return report();
+  }
   token = auth.access_token;
 
   await step("who am I", "/api/v1/me", {

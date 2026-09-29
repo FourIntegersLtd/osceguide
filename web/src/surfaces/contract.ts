@@ -48,6 +48,7 @@ export type ScreenName =
   | "myTraining"
   | "mySitting"
   | "myResult"
+  | "myReview"
   | "myPractice"
   // Partner
   | "reporting"

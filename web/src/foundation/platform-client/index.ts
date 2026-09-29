@@ -1,4 +1,12 @@
-export { platformRequest, platformApiUrl, setPlatformTokenSource, type RequestOptions } from "@/foundation/platform-client/client";
+export {
+  platformRequest,
+  platformDownload,
+  saveBlob,
+  platformApiUrl,
+  setPlatformTokenSource,
+  type RequestOptions,
+  type PlatformDownload,
+} from "@/foundation/platform-client/client";
 export {
   PlatformError,
   PlatformTransportError,

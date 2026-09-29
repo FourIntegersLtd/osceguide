@@ -117,22 +117,27 @@ function asErrorBody(status: number, payload: unknown): PlatformErrorBody {
   };
 }
 
-export async function platformRequest<T>(
+export interface PlatformDownload {
+  blob: Blob;
+  filename: string;
+}
+
+async function platformFetch(
   path: string,
-  options: RequestOptions = {},
-): Promise<T> {
+  options: RequestOptions,
+  accept: string,
+): Promise<Response> {
   const { method = "GET", body, formData, query, signal, idempotencyKey } = options;
 
-  const headers: Record<string, string> = { Accept: "application/json", ...options.headers };
+  const headers: Record<string, string> = { Accept: accept, ...options.headers };
   const token = await readToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
   // FormData sets its own multipart boundary; setting Content-Type breaks it.
   if (body !== undefined && !formData) headers["Content-Type"] = "application/json";
 
-  let response: Response;
   try {
-    response = await fetch(`${platformApiUrl()}${withQuery(path, query)}`, {
+    return await fetch(`${platformApiUrl()}${withQuery(path, query)}`, {
       method,
       headers,
       signal,
@@ -143,19 +148,74 @@ export async function platformRequest<T>(
     if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
     throw new PlatformTransportError("Could not reach the server", cause);
   }
+}
 
+async function readPayload(response: Response): Promise<unknown> {
+  const raw = await response.text();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+export async function platformRequest<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const response = await platformFetch(path, options, "application/json");
   if (response.status === 204) return undefined as T;
 
-  const raw = await response.text();
-  let payload: unknown = null;
-  if (raw) {
-    try {
-      payload = JSON.parse(raw);
-    } catch {
-      payload = raw;
-    }
-  }
-
+  const payload = await readPayload(response);
   if (!response.ok) throw new PlatformError(response.status, asErrorBody(response.status, payload));
   return payload as T;
+}
+
+/**
+ * A file download that uses the same token and the same error mapping as
+ * `platformRequest`. The filename is the one the response asks the browser to
+ * save, from `Content-Disposition`.
+ */
+export async function platformDownload(
+  path: string,
+  options: RequestOptions = {},
+): Promise<PlatformDownload> {
+  const response = await platformFetch(path, options, "*/*");
+  if (!response.ok) {
+    const payload = await readPayload(response);
+    throw new PlatformError(response.status, asErrorBody(response.status, payload));
+  }
+  return {
+    blob: await response.blob(),
+    filename: filenameFromContentDisposition(response.headers.get("Content-Disposition")),
+  };
+}
+
+function filenameFromContentDisposition(header: string | null): string {
+  if (!header) return "download";
+  const encoded = /filename\*=(?:UTF-8''|utf-8'')([^;]+)/i.exec(header);
+  if (encoded?.[1]) {
+    try {
+      return decodeURIComponent(encoded[1].trim().replace(/^"|"$/g, ""));
+    } catch {
+      // A malformed encoding falls through to the plain filename parameter.
+    }
+  }
+  const quoted = /filename="([^"]*)"/.exec(header);
+  if (quoted?.[1]) return quoted[1];
+  const plain = /filename=([^;]+)/.exec(header);
+  return plain?.[1]?.trim() ?? "download";
+}
+
+/** Hand a blob to the browser as a saved file, then drop the object URL. */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }

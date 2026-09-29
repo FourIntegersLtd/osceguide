@@ -12,6 +12,7 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
+import { saveBlob } from "@/foundation/platform-client";
 import { exportMyData } from "@/capabilities/account/api";
 
 const { b2cSettingsCardHeaderIcon } = productTokens;
@@ -23,8 +24,7 @@ const { b2cSettingsCardHeaderIcon } = productTokens;
  * `GET /me/export` answers the object directly — `platformRequest` reads
  * JSON regardless of the backend's `Content-Disposition` header, since that
  * header only steers a browser navigating there directly — so this builds
- * the download itself from a `Blob`, the same way `ReceiptList` turns a
- * fetched receipt document into an opened tab.
+ * the file itself and hands it to `saveBlob`.
  */
 export function DownloadMyData() {
   const [busy, setBusy] = useState(false);
@@ -35,16 +35,10 @@ export function DownloadMyData() {
     setError(null);
     try {
       const data = await exportMyData();
-      const url = URL.createObjectURL(
+      saveBlob(
         new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+        "my-data.json",
       );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "my-data.json";
-      // Never attached to the page, so nothing is left behind if the click
-      // handler throws before the browser reads it.
-      link.click();
-      URL.revokeObjectURL(url);
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {

@@ -32,6 +32,9 @@ A migrated database is empty: `poetry run python scripts/seed_platform.py`
 seeds exams. The test account comes from `make bootstrap-admin
 EMAIL=<name>@example.com`, and `node scripts/seed-demo-org.mjs` gives it an
 institution. Point the harness at it with `VERIFY_EMAIL` / `VERIFY_PASSWORD`.
+A platform admin must have an authenticator: set `ADMIN_TOTP_SECRET` (or put
+it in `~/.osce-staging-accounts.env`) and re-run bootstrap so the harness can
+compute the code.
 
 **Never sign in as a real person.** The local database holds imported
 production users; only `@example.com` accounts are fair game.

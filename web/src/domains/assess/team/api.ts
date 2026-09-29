@@ -100,6 +100,17 @@ export function restoreMembership(slug: string, membershipId: string): Promise<v
   );
 }
 
+/** Send the choose-a-password link again, as a new token. */
+export function resendInvitation(
+  slug: string,
+  membershipId: string,
+): Promise<{ email: string; invited_to: string }> {
+  return platformRequest<{ email: string; invited_to: string }>(
+    `${orgPath(slug)}/memberships/${encodeURIComponent(membershipId)}/resend-invitation`,
+    { method: "POST" },
+  );
+}
+
 /** Who added, changed or removed people and groups — the History tab. */
 export function listAudit(
   slug: string,

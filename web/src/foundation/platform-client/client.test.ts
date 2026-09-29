@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { platformRequest, setPlatformTokenSource } from "@/foundation/platform-client/client";
+import {
+  platformDownload,
+  platformRequest,
+  setPlatformTokenSource,
+} from "@/foundation/platform-client/client";
 import { PlatformError, PlatformTransportError, hasCode } from "@/foundation/platform-client/errors";
 
 const realFetch = globalThis.fetch;
@@ -104,4 +108,32 @@ test("an idempotency key travels as a header, ready for a route to honour it", a
   });
 
   assert.equal(seen?.get("idempotency-key"), "org:session:slot");
+});
+
+test("a download keeps the filename from Content-Disposition and the error code", async () => {
+  globalThis.fetch = (async () =>
+    new Response("name,email\n", {
+      status: 200,
+      headers: {
+        "content-type": "text/csv",
+        "content-disposition": 'attachment; filename="finals-results.csv"',
+      },
+    })) as typeof fetch;
+
+  const file = await platformDownload("/api/v1/orgs/kings/sittings/x/report.csv");
+  assert.equal(file.filename, "finals-results.csv");
+  assert.equal(await file.blob.text(), "name,email\n");
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({ code: "result_not_released", message: "Your result has not been released yet" }),
+      { status: 404, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  const err = await platformDownload("/api/v1/me/results/x.pdf").then(
+    () => null,
+    (cause: unknown) => cause,
+  );
+  assert.ok(err instanceof PlatformError);
+  assert.equal(err.code, "result_not_released");
 });

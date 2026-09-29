@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Alert, Button } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { hasCode } from "@/foundation/platform-client";
+import { hasCode, saveBlob } from "@/foundation/platform-client";
 import { readSittingReadout } from "@/domains/assess/results/api";
 import { readoutAsMarkdown, readoutFilename } from "@/domains/assess/results/support";
 
@@ -32,7 +32,8 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
     setNote(null);
     try {
       const readout = await readSittingReadout(orgSlug, sittingId);
-      downloadText(readoutFilename(readout), readoutAsMarkdown(readout));
+      const markdown = readoutAsMarkdown(readout);
+      saveBlob(new Blob([markdown], { type: "text/markdown;charset=utf-8" }), readoutFilename(readout));
     } catch (cause) {
       // Not an examination is not a failure to export — there is simply nothing
       // to export, which is what the cohort screen already says about the same
@@ -73,17 +74,3 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
   );
 }
 
-function downloadText(filename: string, text: string): void {
-  const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = window.document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  window.document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // The download reads the blob when the click is handled, so the URL can go as
-  // soon as this turn is finished — and if it never does, the blob is one file's
-  // worth of JSON.
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}

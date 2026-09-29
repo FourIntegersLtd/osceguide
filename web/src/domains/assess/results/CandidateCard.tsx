@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { HiChevronDown, HiChevronRight } from "react-icons/hi2";
-import { Badge, b2bTokens } from "@/foundation/ui";
+import { Alert, Badge, b2bTokens } from "@/foundation/ui";
+import { errorMessage } from "@/foundation/hooks";
+import { saveBlob } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
 import { RAG_LABEL, type Rag } from "@/capabilities/feedback";
-import type { CandidateReport, StationReport } from "@/domains/assess/results/api";
+import { downloadCandidateResult, type CandidateReport, type StationReport } from "@/domains/assess/results/api";
 import { CandidateDecision } from "@/domains/assess/results/CandidateDecision";
 import {
   candidateName,
@@ -35,16 +37,34 @@ export function CandidateCard({
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const decision = candidate.decision;
   const stations = candidate.stations ?? [];
+  const resultReleased = candidate.trainee_id != null && decision?.released_at != null;
+
+  async function downloadPdf() {
+    if (!candidate.trainee_id) return;
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const file = await downloadCandidateResult(orgSlug, sittingId, candidate.trainee_id);
+      saveBlob(file.blob, file.filename);
+    } catch (cause) {
+      setDownloadError(errorMessage(cause));
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-b2b-border bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex items-center gap-2 px-4 py-3 sm:px-5">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-b2b-cream/60 sm:px-5"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left hover:bg-canvas"
       >
         {open ? (
           <HiChevronDown className="h-4 w-4 shrink-0 text-b2b-icon" aria-hidden />
@@ -69,6 +89,22 @@ export function CandidateCard({
           </Badge>
         </div>
       </button>
+      {resultReleased ? (
+        <button
+          type="button"
+          onClick={() => void downloadPdf()}
+          disabled={downloading}
+          className="shrink-0 text-osce-meta font-semibold text-accent underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
+        >
+          {downloading ? "Preparing…" : "Result PDF"}
+        </button>
+      ) : null}
+      </div>
+      {downloadError ? (
+        <div className="px-4 pb-3 sm:px-5">
+          <Alert tone="danger">{downloadError}</Alert>
+        </div>
+      ) : null}
 
       {open ? (
         <div className="space-y-5 border-t border-b2b-border p-4 sm:p-5">

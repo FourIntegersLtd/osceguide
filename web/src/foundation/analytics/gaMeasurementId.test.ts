@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveGaMeasurementId } from "@/foundation/analytics/gaMeasurementId";
+import {
+  resolveGaMeasurementId,
+  shouldAskForAnalyticsConsent,
+} from "@/foundation/analytics/gaMeasurementId";
 
 describe("resolveGaMeasurementId", () => {
   it("falls back to production's GA id when nothing is configured and this is production", () => {
@@ -28,5 +31,21 @@ describe("resolveGaMeasurementId", () => {
 
   it("loads nothing when the id is explicitly set to an empty string, off production", () => {
     assert.equal(resolveGaMeasurementId("", false), null);
+  });
+});
+
+describe("shouldAskForAnalyticsConsent", () => {
+  it("does not ask when there is no measurement id, whatever is stored", () => {
+    assert.equal(shouldAskForAnalyticsConsent(null, null), false);
+    assert.equal(shouldAskForAnalyticsConsent(null, "accepted"), false);
+  });
+
+  it("asks on production when the visitor has not answered yet", () => {
+    assert.equal(shouldAskForAnalyticsConsent("G-57RJ52Q20T", null), true);
+  });
+
+  it("does not ask once the visitor has accepted or rejected", () => {
+    assert.equal(shouldAskForAnalyticsConsent("G-TEST", "accepted"), false);
+    assert.equal(shouldAskForAnalyticsConsent("G-TEST", "rejected"), false);
   });
 });

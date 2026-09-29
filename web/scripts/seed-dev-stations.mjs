@@ -20,6 +20,8 @@
  * you pass (archives published junk; does not delete rows).
  */
 
+import { signInWithPassword } from "./admin-totp.mjs";
+
 const API = process.env.PLATFORM_API_URL ?? "http://127.0.0.1:8002";
 
 function arg(name, fallback) {
@@ -153,10 +155,7 @@ async function main() {
     return;
   }
 
-  const auth = await call("/api/v1/auth/login", {
-    method: "POST",
-    body: { email: EMAIL, password: PASSWORD },
-  });
+  const auth = await signInWithPassword(API, EMAIL, PASSWORD);
   const token = auth.access_token;
 
   for (const station of STATIONS) {

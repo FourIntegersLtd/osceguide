@@ -1,4 +1,9 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import {
+  platformDownload,
+  platformRequest,
+  type PlatformDownload,
+  type components,
+} from "@/foundation/platform-client";
 import type { RoomGrant } from "@/foundation/livekit";
 import { collectPages, orgPath, pageQuery } from "@/domains/assess/api";
 
@@ -20,6 +25,22 @@ export type MySitting = components["schemas"]["MySitting"];
 export type MySlot = components["schemas"]["MySlot"];
 export type TraineeResult = components["schemas"]["TraineeResultRead"];
 export type OrgStation = components["schemas"]["StationRead"];
+
+/**
+ * Not yet in `schema.d.ts` — `npm run platform:types` hasn't run against the
+ * backend's new `/me/slots/{id}/review` route. Inline until it has.
+ */
+export type MySlotReview = {
+  slot_id: string;
+  summary: {
+    slot_id: string;
+    overall_rag: string | null;
+    by_domain: Record<string, string>;
+    completed_reviews: number;
+  };
+  notes: string | null;
+  completed_at: string | null;
+};
 
 /** Pushed, not polled. The old detail screen re-fetched every five seconds. */
 export const MY_SITTINGS_STREAM = "/api/v1/me/sittings/stream";
@@ -45,11 +66,24 @@ export function readMyResult(sittingId: string, signal?: AbortSignal): Promise<T
   });
 }
 
+/** This candidate's released result as a PDF the browser saves. */
+export function downloadMyResult(sittingId: string): Promise<PlatformDownload> {
+  return platformDownload(`/api/v1/me/results/${encodeURIComponent(sittingId)}.pdf`);
+}
+
 export function acknowledgeResult(sittingId: string): Promise<void> {
   return platformRequest<void>(
     `/api/v1/me/results/${encodeURIComponent(sittingId)}/acknowledge`,
     { method: "POST" },
   );
+}
+
+/** This candidate's own review of one of their slots, once a GP lead has
+ * completed one — not before. */
+export function readMyReview(slotId: string, signal?: AbortSignal): Promise<MySlotReview> {
+  return platformRequest<MySlotReview>(`/api/v1/me/slots/${encodeURIComponent(slotId)}/review`, {
+    signal,
+  });
 }
 
 /**

@@ -19,6 +19,7 @@ import {
   LiveBoard,
   MySittingDetail,
   MyResult,
+  MyReview,
   NewCircuit,
   NewSitting,
   OrgDashboard,
@@ -110,6 +111,10 @@ function AssessMyResult({ params }: ScreenProps) {
   return <MyResult sittingId={params?.sittingId ?? ""} />;
 }
 
+function AssessMyReview({ params }: ScreenProps) {
+  return <MyReview slotId={params?.slotId ?? ""} />;
+}
+
 function AssessMyPractice(props: ScreenProps) {
   return <SelfPractice orgSlug={slugOf(props)} />;
 }
@@ -191,6 +196,7 @@ export const assessScreens: ScreenMap = {
   myTraining: AssessMyTraining,
   mySitting: AssessMySitting,
   myResult: AssessMyResult,
+  myReview: AssessMyReview,
   myPractice: AssessMyPractice,
   mocks: AssessMocks,
   mockDetail: AssessMockDetail,

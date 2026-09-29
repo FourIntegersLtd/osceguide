@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Badge, Button, EmptyState, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { readSittingReport, releaseDecision } from "@/domains/assess/results/api";
+import { saveBlob } from "@/foundation/platform-client";
+import { downloadSittingResults, readSittingReport, releaseDecision } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
 import { CandidateCard } from "@/domains/assess/results/CandidateCard";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
@@ -53,21 +54,47 @@ function Report({
 }) {
   const candidates = report.candidates ?? [];
   const waiting = candidates.filter(releasable);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const downloadCsv = useCallback(async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const file = await downloadSittingResults(orgSlug, sittingId);
+      saveBlob(file.blob, file.filename);
+    } catch (cause) {
+      setDownloadError(errorMessage(cause));
+    } finally {
+      setDownloading(false);
+    }
+  }, [orgSlug, sittingId]);
 
   return (
     <>
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-b2b-border pb-4">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
         <div className="min-w-0">
           <h1 className={b2bTokens.b2bPageTitle}>Results</h1>
-          <p className="mt-1 text-osce-caption text-b2b-mid">
+          <p className="mt-1 text-osce-caption text-ink-muted">
             {report.sitting.name} · {report.totals.stations_marked} of {report.totals.stations}{" "}
             stations marked
           </p>
         </div>
-        <Badge variant={report.totals.decisions_released === report.totals.candidates ? "success" : "neutral"}>
-          {report.totals.decisions_released} of {report.totals.candidates} released
-        </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void downloadCsv()}
+            disabled={downloading}
+            className="inline-flex items-center justify-center rounded-osce-md border border-border bg-surface px-3 py-2 text-osce-meta font-medium text-ink hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
+          >
+            {downloading ? "Preparing…" : "Download CSV"}
+          </button>
+          <Badge variant={report.totals.decisions_released === report.totals.candidates ? "success" : "neutral"}>
+            {report.totals.decisions_released} of {report.totals.candidates} released
+          </Badge>
+        </div>
       </header>
+      {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}
 
       {candidates.length === 0 ? (
         <EmptyState title="Nobody has sat this yet." />

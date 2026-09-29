@@ -22,6 +22,7 @@ const org = (over: Partial<Organization> = {}): Organization => ({
   name: "King's College",
   org_type: "institution",
   status: "active",
+  require_staff_mfa: false,
   created_at: "2026-01-04T09:00:00Z",
   ...over,
 });

@@ -17,6 +17,7 @@ import { SlotReadingBrief } from "@/domains/assess/trainee/SlotReadingBrief";
 import {
   MY_SITTINGS_STREAM,
   readMyResult,
+  readMyReview,
   readMySittings,
   type MySitting,
   type MySittings,
@@ -193,7 +194,35 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
           {status.done ? "Review station" : "Station record"}
         </ButtonLink>
       ) : null}
+      {status.done ? <MyReviewLink slotId={slot.id} /> : null}
     </div>
+  );
+}
+
+/**
+ * The way to this station's feedback, shown only once the server says there
+ * is some to read (the result released and a GP lead review completed).
+ */
+function MyReviewLink({ slotId }: { slotId: string }) {
+  const { hrefFor } = useSurface();
+  // Not yet readable answers 404, which is not a page failure — no link.
+  const state = useAsync(
+    (signal) => readMyReview(slotId, signal).catch(() => null),
+    [slotId],
+  );
+
+  if (!state.data) return null;
+
+  return (
+    <ButtonLink
+      themeType="b2b"
+      variant="secondary"
+      size="sm"
+      href={hrefFor(`/trainee/reviews/${slotId}`)}
+      className="w-full sm:w-auto"
+    >
+      Station feedback
+    </ButtonLink>
   );
 }
 
