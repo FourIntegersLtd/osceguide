@@ -133,6 +133,10 @@ export function TwoFactorPanel() {
       {dialog ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>
           <div className="p-5">
+            {/* The modal's own title is for screen readers only. */}
+            <h3 className="mb-4 font-heading text-osce-subheading font-semibold text-ink" aria-hidden>
+              {DIALOG_TITLES[dialog.kind]}
+            </h3>
             {dialog.kind === "enrol" ? (
               <EnrolDialog
                 enrolment={dialog.enrolment}

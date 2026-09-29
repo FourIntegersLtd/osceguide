@@ -162,7 +162,7 @@ export default function Login() {
         subtitle={
           challenge.status === "mfa_required"
             ? "One more step to confirm it is you"
-            : "Your organisation requires a second factor"
+            : "This account requires a second factor"
         }
         sidePanel={<AuthQuotePanel />}
       >
