@@ -260,9 +260,18 @@ async def test_a_payment_for_an_unknown_address_is_kept_and_applied_on_retry(
 
 
 async def test_a_plan_with_no_exam_grants_nothing(client: AsyncClient, db_session: AsyncSession) -> None:
-    """It used to default to SCA, which is a wrong grant, not a safe one (B-2)."""
+    """It used to default to SCA, which is a wrong grant, not a safe one (B-2).
+
+    The column is NOT NULL now, so the only plan with no exam is one the
+    migration found without one: it holds '' and must still be refused.
+    """
     await billing_repo.create_plan(
-        db_session, code="vague", stripe_price_id="price_vague", amount_pence=100, duration_days=30
+        db_session,
+        code="vague",
+        stripe_price_id="price_vague",
+        amount_pence=100,
+        duration_days=30,
+        exam_code="",
     )
     await db_session.flush()
     await a_customer(db_session, "vague@example.com")

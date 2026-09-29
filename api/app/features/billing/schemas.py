@@ -13,7 +13,7 @@ class PlanRead(BaseModel):
     amount_pence: int
     currency: str
     duration_days: int
-    exam_code: str | None
+    exam_code: str
     # What this plan costs with a referral code, or None when it has no
     # referral discount. The discounted plan is not listed on its own.
     referral_amount_pence: int | None = None

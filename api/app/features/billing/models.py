@@ -22,7 +22,9 @@ class Plan(Base, UUIDPrimaryKey, Timestamps):
 
     code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     stripe_price_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    exam_code: Mapped[str | None] = mapped_column(String(32))
+    # Required (B-2): a plan that names no exam would charge a card and grant
+    # nothing. Rows from before the constraint hold '' and are off sale.
+    exam_code: Mapped[str] = mapped_column(String(32), nullable=False)
     amount_pence: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'gbp'"))
     duration_days: Mapped[int] = mapped_column(Integer, nullable=False)

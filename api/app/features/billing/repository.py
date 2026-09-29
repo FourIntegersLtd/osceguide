@@ -28,7 +28,7 @@ async def create_plan(
     stripe_price_id: str,
     amount_pence: int,
     duration_days: int,
-    exam_code: str | None = None,
+    exam_code: str,
     currency: str = "gbp",
 ) -> Plan:
     """Insert a new plan row for a Stripe price. Used by seeding, not by any customer path."""

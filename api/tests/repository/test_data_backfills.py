@@ -70,3 +70,41 @@ async def test_the_media_specialty_backfill_files_items_as_the_reader_does(db_se
         specialty_of(document) for document in MEDIA_DOCUMENTS
     ]
     assert [stored[item_id] for item_id in item_ids] == ["Cardiology", "Renal", "Neurology", None, None, None]
+
+
+async def test_a_plan_with_no_exam_is_taken_off_sale_before_the_column_is_required(
+    db_session: AsyncSession,
+) -> None:
+    """B-2: a null exam becomes '' (which settlement refuses as it refused null) and
+    the plan stops being sold; a plan that names its exam is left alone."""
+    from sqlalchemy.exc import IntegrityError
+
+    from app.features.billing.models import Plan
+
+    # The constraint is what the migration adds; lifted here, inside this test's
+    # own transaction, to write the row the migration will find.
+    await db_session.execute(text("ALTER TABLE plans ALTER COLUMN exam_code DROP NOT NULL"))
+    await db_session.execute(
+        text(
+            "INSERT INTO plans (id, code, stripe_price_id, exam_code, amount_pence, duration_days) VALUES "
+            "(gen_random_uuid(), 'vague', 'price_vague', NULL, 100, 30), "
+            "(gen_random_uuid(), 'named', 'price_named', 'sca', 100, 30)"
+        )
+    )
+
+    await db_session.execute(text(migration("fbe151cbbf1f").BACKFILL_SQL))
+    await db_session.execute(text("ALTER TABLE plans ALTER COLUMN exam_code SET NOT NULL"))
+
+    rows = (
+        await db_session.execute(select(Plan.code, Plan.exam_code, Plan.active).order_by(Plan.code))
+    ).all()
+    assert [tuple(row) for row in rows] == [("named", "sca", True), ("vague", "", False)]
+
+    with pytest.raises(IntegrityError):
+        async with db_session.begin_nested():
+            await db_session.execute(
+                text(
+                    "INSERT INTO plans (id, code, stripe_price_id, amount_pence, duration_days) "
+                    "VALUES (gen_random_uuid(), 'unnamed', 'price_unnamed', 100, 30)"
+                )
+            )

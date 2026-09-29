@@ -994,7 +994,7 @@ breaks the purchase *after* the card has been charged.
 |---|---|---|
 | `code` | `varchar(32) not null unique` | `one_month` \| `three_month` \| `six_month` |
 | `stripe_price_id` | `varchar(100) not null unique` | |
-| `exam_code` | `varchar(32) null` | |
+| `exam_code` | `varchar(32) not null` | the exam the plan sells (B-2). Rows written before the constraint hold `''` and were taken off sale; settlement refuses an empty code with `unknown_plan` |
 | `amount_pence` | `int not null` | |
 | `currency` | `varchar(3) not null default 'gbp'` | |
 | `duration_days` | `int not null` | `DEFAULT_PLAN_DAYS = {one_month: 30, three_month: 90, six_month: 180}` |
