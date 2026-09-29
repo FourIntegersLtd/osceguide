@@ -7,6 +7,7 @@ import { publishToAgent, type RoomGrant } from "@/foundation/livekit";
 import {
   abandonAttempt,
   attemptVoiceToken,
+  closeVoiceRoom,
   leaveVoiceQueue,
   voiceQueuePath,
   type VoiceQueueStanding,
@@ -212,6 +213,11 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
       if (room && room.state !== "disconnected") await room.disconnect();
     } catch {
       // Already gone. The server ends the session from its side regardless.
+    }
+    if (attempt) {
+      // Frees the seat for whoever is next in line now. Best effort: if it
+      // fails, LiveKit still closes the empty room itself, just later.
+      await closeVoiceRoom(attempt.id).catch(() => undefined);
     }
     setPhase("ended");
     if (attempt) inputRef.current.onEnded?.(attempt.id);

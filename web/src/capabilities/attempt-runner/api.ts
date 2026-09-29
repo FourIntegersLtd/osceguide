@@ -73,6 +73,15 @@ export function leaveVoiceQueue(attemptId: string): Promise<void> {
   return platformRequest<void>(voiceQueuePath(attemptId), { method: "DELETE" });
 }
 
+/**
+ * Close the attempt's room once the candidate has ended. The patient would
+ * otherwise wait out LiveKit's ~20s empty-room timeout before its worker
+ * frees the seat, and the next person in line waits with it.
+ */
+export function closeVoiceRoom(attemptId: string): Promise<void> {
+  return platformRequest<void>(`/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-room`, { method: "DELETE" });
+}
+
 /** Give up on an attempt that was never really run. */
 export function abandonAttempt(attemptId: string): Promise<void> {
   return platformRequest<void>(`/api/v1/attempts/${encodeURIComponent(attemptId)}/abandon`, {
