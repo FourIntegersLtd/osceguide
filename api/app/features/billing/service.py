@@ -197,3 +197,10 @@ async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
 async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UUID]) -> int:
     """For the partner funnel's purchase count."""
     return await repository.count_payments_for_users(session, user_ids)
+
+
+async def revenue_for_users(
+    session: AsyncSession, user_ids: list[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> int:
+    """For a partner's spend report: what the people it sent paid in the window, gross."""
+    return await repository.revenue_for_users(session, user_ids, paid_from=paid_from, paid_before=paid_before)

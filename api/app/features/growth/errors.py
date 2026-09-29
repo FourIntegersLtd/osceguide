@@ -71,3 +71,10 @@ class PayoutAccountNumberRequired(InvalidInput):
 
     code = "payout_account_number_required"
     default_message = "An account number is required the first time you save payout details"
+
+
+class InvalidDateRangeError(InvalidInput):
+    """A reporting range that ends before it starts."""
+
+    code = "invalid_date_range"
+    default_message = "from_date must be on or before to_date"

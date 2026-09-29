@@ -37,6 +37,9 @@ FEATURE_TASKS = {
     # withdrawn, with a citation to a page that no longer says it.
     "reindex_material",
     "reindex_media_item",
+    # A partner pilot's spend crossing a threshold. Unregistered, nobody is told
+    # until the partner's invoice arrives.
+    "check_partner_spend",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",
@@ -45,6 +48,7 @@ PERIODIC_TASKS = {
     "suspend_lapsed_organizations",
     "sweep_circuits",
     "reindex_material",
+    "check_partner_spend",
 }
 
 

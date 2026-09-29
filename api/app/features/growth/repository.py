@@ -7,12 +7,14 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
 from app.features.growth.models import (
     Acquisition,
     PartnerArrival,
+    PartnerPilotConfig,
     PartnerReporter,
     Referral,
     ReferralPayoutDetails,
@@ -318,3 +320,66 @@ async def upsert_payout_details(
     # context and raises `MissingGreenlet`.
     await session.refresh(existing)
     return existing
+
+
+# --- reconciliation and spend (G-1) ------------------------------------------------
+
+
+async def count_arrivals_between(
+    session: AsyncSession,
+    partner: str,
+    *,
+    landed_from: datetime,
+    landed_before: datetime,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
+) -> int:
+    """Raw arrivals from this partner's links in a window, every visit counted."""
+    stmt = select(func.count(PartnerArrival.id)).where(
+        PartnerArrival.partner == partner,
+        PartnerArrival.landed_at >= landed_from,
+        PartnerArrival.landed_at < landed_before,
+    )
+    if exam_code is not None:
+        stmt = stmt.where(PartnerArrival.exam_code == exam_code)
+    if utm_campaign is not None:
+        stmt = stmt.where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def first_arrival_at(session: AsyncSession, partner: str) -> datetime | None:
+    """When this partner's first visitor landed, or None if nobody has."""
+    stmt = select(func.min(PartnerArrival.landed_at)).where(PartnerArrival.partner == partner)
+    return (await session.execute(stmt)).scalar_one()
+
+
+async def acquired_user_ids_between(
+    session: AsyncSession, partner: str, *, acquired_from: datetime, acquired_before: datetime
+) -> list[uuid.UUID]:
+    """The people this partner was credited with in a window."""
+    stmt = select(Acquisition.user_id).where(
+        Acquisition.partner == partner,
+        Acquisition.acquired_at >= acquired_from,
+        Acquisition.acquired_at < acquired_before,
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def pilot_config(session: AsyncSession, partner: str) -> PartnerPilotConfig | None:
+    """This partner's stored pilot settings, or None while the defaults apply."""
+    stmt = select(PartnerPilotConfig).where(PartnerPilotConfig.partner == partner)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def save_pilot_config(session: AsyncSession, partner: str, **values: Any) -> PartnerPilotConfig:
+    """Write this partner's pilot settings, creating the row on first save."""
+    stmt = (
+        insert(PartnerPilotConfig)
+        .values(id=uuid.uuid4(), partner=partner, **values)
+        .on_conflict_do_update(
+            constraint="uq_partner_pilot_configs_partner", set_={**values, "updated_at": func.now()}
+        )
+        .returning(PartnerPilotConfig)
+        .execution_options(populate_existing=True)
+    )
+    return (await session.execute(stmt)).scalar_one()

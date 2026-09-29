@@ -4269,6 +4269,7 @@
               "invalid_circuit",
               "invalid_credentials",
               "invalid_cv_file",
+              "invalid_date_range",
               "invalid_exam_code",
               "invalid_input",
               "invalid_legacy_token",
@@ -5838,6 +5839,107 @@
           "reply"
         ],
         "title": "KnowledgeReply",
+        "type": "object"
+      },
+      "LandingReconciliationRead": {
+        "properties": {
+          "delta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "delta_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Percent"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "ledger_raw_count": {
+            "title": "Ledger Raw Count",
+            "type": "integer"
+          },
+          "mixpanel_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mixpanel Error"
+          },
+          "mixpanel_raw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mixpanel Raw Count"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "ledger_raw_count",
+          "status"
+        ],
+        "title": "LandingReconciliationRead",
         "type": "object"
       },
       "LegacyExchangeRequest": {
@@ -8620,6 +8722,87 @@
         "title": "Page[str]",
         "type": "object"
       },
+      "PartnerSpendRead": {
+        "properties": {
+          "acquired_user_count": {
+            "title": "Acquired User Count",
+            "type": "integer"
+          },
+          "billing_disclaimer": {
+            "default": "This is a rough estimate only. We count link visits on OSCE Guide and multiply by our agreed rate per visit. BMJ invoices based on their own click records, so this won't match what they bill you.",
+            "title": "Billing Disclaimer",
+            "type": "string"
+          },
+          "click_count_source": {
+            "default": "osce_raw_arrivals_proxy",
+            "title": "Click Count Source",
+            "type": "string"
+          },
+          "cost_per_acquisition_pence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Acquisition Pence"
+          },
+          "cost_per_click_pence": {
+            "title": "Cost Per Click Pence",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "gbp",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_click_count": {
+            "title": "Estimated Click Count",
+            "type": "integer"
+          },
+          "estimated_spend_pence": {
+            "title": "Estimated Spend Pence",
+            "type": "integer"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "gross_revenue_pence": {
+            "title": "Gross Revenue Pence",
+            "type": "integer"
+          },
+          "net_margin_pence": {
+            "title": "Net Margin Pence",
+            "type": "integer"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "estimated_click_count",
+          "cost_per_click_pence",
+          "estimated_spend_pence",
+          "gross_revenue_pence",
+          "net_margin_pence",
+          "acquired_user_count"
+        ],
+        "title": "PartnerSpendRead",
+        "type": "object"
+      },
       "PasswordResetConfirm": {
         "properties": {
           "password": {
@@ -9115,6 +9298,45 @@
           "error"
         ],
         "title": "PhotoUploadFailure",
+        "type": "object"
+      },
+      "PilotConfigRead": {
+        "properties": {
+          "cost_per_click_pence": {
+            "title": "Cost Per Click Pence",
+            "type": "integer"
+          },
+          "last_alerted_threshold_pence": {
+            "title": "Last Alerted Threshold Pence",
+            "type": "integer"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "spend_alert_recipients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Spend Alert Recipients",
+            "type": "array"
+          },
+          "spend_alert_thresholds_pence": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Spend Alert Thresholds Pence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "partner",
+          "cost_per_click_pence",
+          "spend_alert_thresholds_pence",
+          "spend_alert_recipients",
+          "last_alerted_threshold_pence"
+        ],
+        "title": "PilotConfigRead",
         "type": "object"
       },
       "PlanRead": {
@@ -15835,6 +16057,61 @@
         "title": "UpdateOrganization",
         "type": "object"
       },
+      "UpdatePilotConfig": {
+        "description": "Change a pilot's rate or its alerts. Fields left out are unchanged.\n\n`reset_spend_alerts` forgets which thresholds have already alerted, so\nraised or lowered thresholds are judged afresh.",
+        "properties": {
+          "cost_per_click_pence": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Click Pence"
+          },
+          "reset_spend_alerts": {
+            "default": false,
+            "title": "Reset Spend Alerts",
+            "type": "boolean"
+          },
+          "spend_alert_recipients": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "email",
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend Alert Recipients"
+          },
+          "spend_alert_thresholds_pence": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend Alert Thresholds Pence"
+          }
+        },
+        "title": "UpdatePilotConfig",
+        "type": "object"
+      },
       "UpdatePlatformUser": {
         "properties": {
           "custom_reading_seconds": {
@@ -21384,6 +21661,294 @@
         ]
       }
     },
+    "/api/v1/growth/partners/{partner}/pilot-config": {
+      "get": {
+        "operationId": "growth_read_pilot_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PilotConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Pilot Config",
+        "tags": [
+          "growth"
+        ]
+      },
+      "patch": {
+        "operationId": "growth_update_pilot_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePilotConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PilotConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Pilot Config",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reconciliation": {
+      "get": {
+        "operationId": "growth_read_landing_reconciliation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandingReconciliationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Landing Reconciliation",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/growth/partners/{partner}/ref-ids": {
       "get": {
         "description": "The references this partner puts in its links, one per exam in the pilot.\n\nReporter-gated like the funnel.",
@@ -21544,6 +22109,106 @@
           }
         ],
         "summary": "Add Reporter",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/spend": {
+      "get": {
+        "operationId": "growth_read_partner_spend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerSpendRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Partner Spend",
         "tags": [
           "growth"
         ]

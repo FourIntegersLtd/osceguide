@@ -147,6 +147,18 @@ async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UU
     return int((await session.execute(stmt)).scalar_one())
 
 
+async def revenue_for_users(
+    session: AsyncSession, user_ids: list[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> int:
+    """Pence these people paid in a window, gross. Zero for an empty list."""
+    if not user_ids:
+        return 0
+    stmt = select(func.coalesce(func.sum(Payment.amount_total_pence), 0)).where(
+        Payment.user_id.in_(user_ids), Payment.paid_at >= paid_from, Payment.paid_at < paid_before
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
 async def payment_by_receipt_id(session: AsyncSession, user_id: uuid.UUID, receipt_id: str) -> Payment | None:
     """One of this person's receipts, scoped to them: a receipt id is short and printed on a
     document that gets forwarded, so it must not be a key anybody holding it can read."""

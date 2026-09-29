@@ -190,6 +190,27 @@ def _no_show_report(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _partner_spend_alert(escaped_fields: dict[str, str]) -> str:
+    """The body telling the team a partner pilot's estimated spend crossed a threshold.
+
+    Oracle: b2c `partner_spend_alert_email.html`, the same figures and the same
+    disclaimer, which is what keeps it from being read as the partner's invoice.
+    """
+    return (
+        f"<h1>{escaped_fields.get('partner', '')} pilot spend alert</h1>"
+        f"<p>Estimated spend has reached {escaped_fields.get('estimated_spend', '')}, "
+        f"past the {escaped_fields.get('threshold', '')} threshold, for "
+        f"{escaped_fields.get('from_date', '')} to {escaped_fields.get('to_date', '')}.</p>"
+        "<ul>"
+        f"<li>Estimated clicks: {escaped_fields.get('estimated_clicks', '')} at "
+        f"{escaped_fields.get('cost_per_click', '')} each</li>"
+        f"<li>Gross revenue from acquired users: {escaped_fields.get('gross_revenue', '')}</li>"
+        f"<li>Net margin: {escaped_fields.get('net_margin', '')}</li>"
+        "</ul>"
+        f"<p><small>{escaped_fields.get('disclaimer', '')}</small></p>"
+    )
+
+
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
     "payment_receipt": _payment_receipt,
@@ -197,4 +218,5 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "candidate_result_released": _result_released,
     "peer_practice_abuse_report": _abuse_report,
     "peer_practice_no_show_report": _no_show_report,
+    "partner_spend_alert": _partner_spend_alert,
 }

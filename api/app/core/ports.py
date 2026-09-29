@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Protocol, runtime_checkable
 
 from fastapi import Depends
@@ -71,6 +71,34 @@ class CheckoutSessions(Protocol):
 
 class CheckoutUnavailable(Exception):
     """The card processor could not start a checkout."""
+
+
+class EventCountsUnavailable(Exception):
+    """Event counts cannot be had at all here: switched off, no secret, or not on
+    the analytics plan. Reported as "unconfigured", not as an error."""
+
+
+class EventCountsFailed(Exception):
+    """The analytics provider was asked and did not answer usably."""
+
+
+@runtime_checkable
+class EventCounts(Protocol):
+    """Counting raw product-analytics events, to corroborate our own ledger.
+
+    A port because Mixpanel is only ever a second opinion: a test proves the
+    reconciliation arithmetic, and what happens when Mixpanel is missing,
+    without an account.
+    """
+
+    async def count(self, *, event: str, from_date: date, to_date: date, where: dict[str, str]) -> int:
+        """How many times `event` fired between two UTC dates, inclusive, whose
+        properties equal every entry in `where`.
+
+        Raises `EventCountsUnavailable` when counts cannot be had here at all,
+        and `EventCountsFailed` when the provider errs.
+        """
+        ...
 
 
 @runtime_checkable

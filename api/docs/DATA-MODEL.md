@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-71 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+72 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -1031,7 +1031,7 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `amount_tax_pence` | `int not null default 0` | |
 | `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |
 
-## growth — 5 tables
+## growth — 6 tables
 
 `PILOT_PARTNERS = {bmj}`, `PILOT_EXAMS = (sca, plab, ortho)`,
 `ATTRIBUTION_WINDOW = 90 days`, landing paths under `/exams/`.
@@ -1057,6 +1057,26 @@ partner's numbers stop being reconcilable.
 `user_id` → `users.id` CASCADE (UNIQUE), `partner varchar(32) not null`,
 `exam_code varchar(32) null`, `arrival_id` → `partner_arrivals.id` SET NULL,
 `acquired_at timestamptz not null default now()`.
+
+### `partner_pilot_configs`
+A partner pilot's commercial settings (G-1), ported from b2c's `partner_pilot_config`
+collection: what a click costs, and at which estimated spend to email the team. One
+row per partner, written on the first edit; until then the b2c defaults apply in
+code (`DEFAULT_COST_PER_CLICK_PENCE = 40`, thresholds £500 / £1,000 / £2,500), so an
+empty table changes nothing.
+
+| Field | Type | Notes |
+|---|---|---|
+| `partner` | `varchar(32) not null` | UNIQUE `uq_partner_pilot_configs_partner` |
+| `cost_per_click_pence` | `int not null` | every raw arrival is taken as a paid click |
+| `spend_alert_thresholds_pence` | `jsonb not null` | ascending pence amounts; each alerts once |
+| `spend_alert_recipients` | `jsonb not null` | email addresses; empty means `SUPPORT_EMAIL` |
+| `last_alerted_threshold_pence` | `int not null default 0` | the highest threshold already alerted; `reset_spend_alerts` clears it |
+
+The daily `check_partner_spend` job judges the whole pilot so far (from the
+partner's first arrival), not a screen's chosen range — b2c alerted from whichever
+range an admin happened to view, so the same spend alerted or not depending on the
+dates picked.
 
 ### `partner_reporters`
 Someone allowed to read one partner's numbers, and nothing else.

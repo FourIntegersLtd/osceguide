@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -130,3 +130,25 @@ class ReferralPayoutDetails(Base, UUIDPrimaryKey, Timestamps):
     account_holder_name: Mapped[str] = mapped_column(String(200), nullable=False)
     sort_code_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
     account_number_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class PartnerPilotConfig(Base, UUIDPrimaryKey, Timestamps):
+    """What one partner's pilot costs per click, and when its spend should be flagged.
+
+    One row per partner, written on first edit; until then the b2c defaults apply
+    (`domain.DEFAULT_COST_PER_CLICK_PENCE`, `DEFAULT_SPEND_ALERT_THRESHOLDS_PENCE`).
+    """
+
+    __tablename__ = "partner_pilot_configs"
+    __table_args__ = (UniqueConstraint("partner", name="uq_partner_pilot_configs_partner"),)
+
+    partner: Mapped[str] = mapped_column(String(32), nullable=False)
+    cost_per_click_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Ascending pence amounts; each alerts once when the estimate reaches it.
+    spend_alert_thresholds_pence: Mapped[list[int]] = mapped_column(JSONB, nullable=False, default=list)
+    # Empty means the platform's support address.
+    spend_alert_recipients: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    # The highest threshold already alerted, so each alerts once until reset.
+    last_alerted_threshold_pence: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
