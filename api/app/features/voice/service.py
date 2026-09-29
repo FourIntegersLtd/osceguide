@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import SessionOpener
+from app.core.events import voice_queue_topic
 from app.core.logging import get_logger
-from app.core.ports import RoomAgents, RoomRecorder, VoiceTokens
+from app.core.ports import EventBus, RoomAgents, RoomRecorder, VoiceTokens
 from app.core.settings import Settings
+from app.core.sse import Snapshot, event_stream
 from app.features.attempts import service_reads as attempts
 from app.features.attempts.errors import AttemptNotFound, AttemptNotYours
-from app.features.voice import capacity, domain, errors
-from app.features.voice.schemas import CloudCapacityRead, VoiceGrant
+from app.features.voice import capacity, domain, errors, seats
+from app.features.voice.schemas import CloudCapacityRead, VoiceGrant, VoiceQueueStanding
 from app.features.voice.schemas import RoomGrant as RoomGrant
 
 log = get_logger(__name__)
@@ -42,11 +46,13 @@ async def grant_for_attempt(
     requester_id: uuid.UUID,
     tokens: VoiceTokens,
     settings: Settings,
-) -> VoiceGrant:
+) -> VoiceGrant | VoiceQueueStanding:
     """A token into this attempt's room, with its patient or tutor dispatched to meet it there.
 
-    Routes to LiveKit Cloud or our own workers according to the configured
-    mode, overflowing to self-hosted when Cloud has no free slot.
+    Seats the room on LiveKit Cloud or our own workers according to the
+    configured mode, overflowing to self-hosted when Cloud has no free slot.
+    When both are full it returns the candidate's place in line instead of a
+    token: a room with no worker free to take it is a patient who never comes.
     """
     attempt = await attempts.attempt_ref(session, attempt_id)
     if attempt is None:
@@ -68,16 +74,18 @@ async def grant_for_attempt(
     configured = domain.normalize_mode(settings.livekit_routing_mode)
     room = attempt.room_name or domain.room_name_for(str(attempt.id))
 
-    # Asked only when the answer can change the outcome. `slots_free` reserves
-    # a slot as it answers — asking and then taking would race — so calling it
-    # for a session already routed self-hosted would hold a Cloud slot nobody
-    # is going to use until it expired.
-    cloud_slots_free = (
-        await capacity.slots_free(settings, room) if configured is domain.Mode.LIVEKIT_CLOUD else False
-    )
-    mode = domain.resolve_mode(configured, cloud_slots_free=cloud_slots_free)
-    if mode is not configured:
-        log.info("cloud is full; serving from our own workers", room=room, attempt_id=str(attempt.id))
+    # A circuit's patient is dispatched by the orchestrator, into a room that
+    # is already up. Carrying a dispatch on the candidate's token as well would
+    # put a second patient in beside the first, and both would answer. It also
+    # takes no seat here: the circuit holds its own when it dispatches, and a
+    # Cloud slot taken for a room whose patient runs on our workers would be
+    # counted against Cloud for the whole session.
+    agent_name: str | None = None
+    if attempt.kind != "exam_slot":
+        seat = await _seat(settings, room, configured)
+        if isinstance(seat, VoiceQueueStanding):
+            return seat
+        agent_name = domain.agent_name(family, seat, namespace=settings.livekit_agent_namespace)
 
     # The three strings the worker is given. Everything else it needs it
     # fetches from the bootstrap route, which is what keeps the dispatch
@@ -88,15 +96,6 @@ async def grant_for_attempt(
         "candidate_ref": str(attempt.user_id),
     }
 
-    # A circuit's patient is dispatched by the orchestrator, into a room that
-    # is already up. Carrying a dispatch on the candidate's token as well would
-    # put a second patient in beside the first, and both would answer.
-    agent_name = (
-        None
-        if attempt.kind == "exam_slot"
-        else domain.agent_name(family, mode, namespace=settings.livekit_agent_namespace)
-    )
-
     token = tokens.issue(
         identity=str(attempt.user_id),
         room=room,
@@ -105,6 +104,62 @@ async def grant_for_attempt(
         ttl_seconds=settings.livekit_token_ttl_seconds,
     )
     return VoiceGrant(token=token, server_url=settings.livekit_url, room=room, attempt_id=attempt.id)
+
+
+async def _seat(settings: Settings, room: str, configured: domain.Mode) -> domain.Mode | VoiceQueueStanding:
+    """Where this room's agent will run, or the candidate's place in line when every seat is taken.
+
+    Unmetered Cloud (overflow off) has nothing to count, so it is used as
+    configured. Otherwise one atomic admission decides Cloud, our own workers
+    or the line, so two replicas can never hand out the same last seat.
+    """
+    if configured is domain.Mode.LIVEKIT_CLOUD and not settings.livekit_cloud_overflow_enabled:
+        return configured
+    admission = await seats.admit(settings, room, use_cloud=configured is domain.Mode.LIVEKIT_CLOUD)
+    if admission.placement is seats.Placement.QUEUED:
+        log.info("every seat is taken; candidate waits in line", room=room, position=admission.position)
+        return VoiceQueueStanding(ready=False, position=admission.position)
+    on_cloud = admission.placement is seats.Placement.CLOUD
+    mode = domain.Mode.LIVEKIT_CLOUD if on_cloud else domain.Mode.SELF_HOSTED
+    if mode is not configured:
+        log.info("cloud is full; serving from our own workers", room=room)
+    return mode
+
+
+async def ensure_queue_watchable(
+    attempt_id: uuid.UUID, *, requester_id: uuid.UUID, open_session: SessionOpener
+) -> str:
+    """The room whose place in line this person may watch, or raise before the stream opens.
+
+    Checked before the response rather than inside it: a stream that answers
+    200 and then dies looks like a network fault rather than a refusal.
+    """
+    async with open_session() as session:
+        attempt = await attempts.attempt_ref(session, attempt_id)
+    if attempt is None:
+        raise AttemptNotFound()
+    if attempt.user_id != requester_id:
+        raise AttemptNotYours()
+    return attempt.room_name or domain.room_name_for(str(attempt.id))
+
+
+def queue_stream(room: str, *, settings: Settings, bus: EventBus) -> AsyncIterator[str]:
+    """A waiter's place in line, pushed until a seat is theirs to claim.
+
+    Woken when a worker gives a seat back, and re-read on every heartbeat as
+    well: a seat whose reservation lapses frees up with nobody announcing it,
+    and each read is what keeps this waiter in line. The stream ends on
+    `ready`; the page then asks for its token, which takes the seat.
+    """
+    use_cloud = domain.normalize_mode(settings.livekit_routing_mode) is domain.Mode.LIVEKIT_CLOUD
+
+    async def snapshot() -> Snapshot:
+        """The waiter's current standing, final once they may take a seat."""
+        place = await seats.standing(settings, room, use_cloud=use_cloud)
+        standing = VoiceQueueStanding(ready=place.ready, position=place.position)
+        return Snapshot(standing.model_dump_json(), final=standing.ready)
+
+    return event_stream(topics=[voice_queue_topic()], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True)
 
 
 def grant_for_room(
@@ -205,6 +260,10 @@ async def dispatch_agent_into_room(
     family = domain.family_for(session_type)
     mode = domain.resolve_mode(domain.normalize_mode(settings.livekit_routing_mode), cloud_slots_free=False)
     agent = domain.agent_name(family, mode, namespace=settings.livekit_agent_namespace)
+    # A circuit never waits in line, but its patient occupies one of our seats
+    # all the same; left uncounted, the line would admit a candidate into it.
+    if family is domain.Family.ASSESSMENT:
+        await seats.hold(settings, room)
 
     removed = await agents.remove_agents(room)
     if removed:

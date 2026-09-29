@@ -168,6 +168,14 @@ class Settings(BaseSettings):
     # cannot fire it on real inboxes until the owner turns it on deliberately.
     engagement_email_enabled: bool = False
 
+    # Our own assessment workers' seats: nodes x LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS
+    # in assessment-platform's k8s config (3 x 6 in production). Past these and
+    # Cloud's, a candidate waits in line instead of joining a room no worker
+    # will take. A waiter whose screen stops refreshing leaves the line after
+    # the TTL, which must outlast a stream reconnecting after a network blip.
+    livekit_self_hosted_seats: int = 18
+    livekit_queue_waiter_ttl_seconds: int = 90
+
     # Email. Resend is the only provider b2c uses, and the key is the only
     # configuration it needs.
     resend_api_key: str = ""

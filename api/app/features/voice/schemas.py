@@ -18,6 +18,18 @@ class VoiceGrant(BaseModel):
     attempt_id: uuid.UUID
 
 
+class VoiceQueueStanding(BaseModel):
+    """A candidate's place in line while every voice seat is taken.
+
+    `position` is 1 at the front. `ready` means a seat is free for them now:
+    ask for the token again and it is theirs. Sent as the 202 body of the
+    token request and as each frame of the waiting stream.
+    """
+
+    ready: bool
+    position: int
+
+
 class CloudSlotPost(BaseModel):
     """What the worker posts. `room_name` is fixed by `slot_payload_key` in its
     own configuration, so the field name is part of the contract."""

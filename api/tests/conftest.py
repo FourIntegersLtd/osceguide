@@ -365,3 +365,59 @@ async def make_actor(db_session: AsyncSession):  # type: ignore[no-untyped-def]
 @pytest.fixture
 def settings():  # type: ignore[no-untyped-def]
     return get_settings()
+
+
+@pytest_asyncio.fixture
+async def seat_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[object]:
+    """A real Redis for the voice seat scripts, under keys no other test shares.
+
+    The Lua scripts are what is under test, so a fake that re-implements them
+    would only prove the fake. Redis stays disabled for the rest of the app;
+    only `voice.seats` is pointed here. Skipped when no Redis is reachable
+    (`docker compose up -d` serves one on :6380), as the `db` tests skip
+    without Postgres.
+    """
+    import uuid
+
+    from redis.asyncio import Redis
+
+    from app.features.voice import seats
+
+    url = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/15")
+    client = Redis.from_url(url, decode_responses=True, socket_connect_timeout=0.5)
+    try:
+        await client.ping()
+    except Exception:  # noqa: BLE001 - any failure to reach it means skip
+        await client.aclose()
+        pytest.skip(f"no Redis at {url}; the voice seat scripts need a real one")
+
+    # Per-test keys, because xdist runs tests from this file side by side.
+    prefix = f"test:{uuid.uuid4().hex}"
+    keys = {
+        "CLOUD_SLOTS_KEY": f"{prefix}:cloud",
+        "SEATS_KEY": f"{prefix}:seats",
+        "QUEUE_KEY": f"{prefix}:queue",
+        "SEEN_KEY": f"{prefix}:seen",
+    }
+    for constant, key in keys.items():
+        monkeypatch.setattr(seats, constant, key)
+    monkeypatch.setattr(seats, "get_redis", lambda: client)
+    try:
+        yield client
+    finally:
+        await client.delete(*keys.values())
+        await client.aclose()
+
+
+@pytest.fixture
+def voice_tokens(client: AsyncClient):  # type: ignore[no-untyped-def]
+    """Replace the LiveKit adapter with a recording fake.
+
+    An override rather than a patch, so the seam is the one production uses.
+    """
+    from app.features.voice.service import get_voice_tokens
+    from tests.support.fakes import FakeVoiceTokens
+
+    fake = FakeVoiceTokens()
+    client._transport.app.dependency_overrides[get_voice_tokens] = lambda: fake  # type: ignore[attr-defined]
+    return fake
