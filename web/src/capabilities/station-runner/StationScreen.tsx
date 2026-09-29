@@ -534,7 +534,7 @@ export function StationScreen(props: StationScreenProps) {
         }}
         onConfirm={enterConsultation}
         closeOnBack={false}
-        message="Start the consultation now? Reading time ends and the consultation timer starts immediately."
+        message="Start the consultation now? Reading time ends now, and the consultation timer starts when the patient joins."
       />
 
       <ConfirmModal
