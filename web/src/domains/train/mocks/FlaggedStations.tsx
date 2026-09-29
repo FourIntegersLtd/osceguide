@@ -11,41 +11,47 @@ import {
   B2CPanelCardHeader,
   productTokens,
 } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { myStationFlags, type StationFlag } from "@/capabilities/stations/api";
-import { flaggedStationPath } from "@/domains/train/mocks/model";
+import { flagSetEntry, listFlaggedStations, type FlaggedEntry } from "@/domains/train/api";
+import { flaggedEntryPath } from "@/domains/train/mocks/model";
 
 const PER_PAGE = 10;
 
-/**
- * A row is the report, with the title the backend resolved for it.
- *
- * `set_id`/`set_entry_id` are not on `StationFlagRead` yet: the session a flag
- * came from is sent by the runner but not stored. Read as optional so the link
- * reopens the session the day the backend returns them.
- */
-type FlagRow = StationFlag & {
-  id: string;
-  station_name: string;
-  set_id?: string | null;
-  set_entry_id?: string | null;
-};
+/** A row is the flagged entry, with the title the backend resolved for it. */
+type FlagRow = FlaggedEntry & { id: string; station_name: string };
 
 /**
- * What this person has reported, and nothing else's.
+ * The stations this person flagged to come back to, each in its own session.
  *
  * The retiring client read `user.flagged_stations` — an array on the learner's
  * own document — and resolved each title by listing every station it could
  * fetch and matching on id, which is why a case off that page printed "Unknown
- * Station". A report is a row about a station now, so the title arrives with it.
+ * Station". A flag is a mark on a practice set's entry now, so the title and
+ * the session arrive with it, and a row reopens the station inside the session
+ * it was flagged in rather than the library's copy.
  *
  * It is the same list the runner's flag button writes to, which is the point of
- * the tab: a report you cannot find again is a report you stop making.
+ * the tab. Reporting a station as wrong is a different button and goes to the
+ * content team, not here.
  */
 export function FlaggedStations() {
   const { hrefFor } = useSurface();
-  const flags = useAsync((signal) => myStationFlags(signal), []);
+  const toast = useToast();
+  const flags = useAsync((signal) => listFlaggedStations(signal), []);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const unflag = async (row: FlagRow) => {
+    setRemoving(row.id);
+    try {
+      await flagSetEntry(row.set_id, row.entry_id, false);
+      flags.reload();
+    } catch (cause) {
+      toast.show({ tone: "error", title: "We couldn't remove the flag", message: errorMessage(cause) });
+    } finally {
+      setRemoving(null);
+    }
+  };
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE);
@@ -53,7 +59,11 @@ export function FlaggedStations() {
   const rows = useMemo<FlagRow[]>(
     () =>
       (flags.data ?? [])
-        .map((flag) => ({ ...flag, station_name: flag.station_title ?? "Unknown Station" }))
+        .map((flag) => ({
+          ...flag,
+          id: flag.entry_id,
+          station_name: flag.station_title ?? "Unknown Station",
+        }))
         .filter((row) => row.station_name.toLowerCase().includes(search.toLowerCase())),
     [flags.data, search],
   );
@@ -109,17 +119,31 @@ export function FlaggedStations() {
       header: "Station",
       key: "station_name",
       render: (row) => (
-        <Link href={hrefFor(flaggedStationPath(row))} className={productTokens.b2cLink}>
+        <Link href={hrefFor(flaggedEntryPath(row))} className={productTokens.b2cLink}>
           {row.station_name}
         </Link>
       ),
     },
     {
+      header: "Session",
+      key: "set_name",
+    },
+    {
       header: "Action",
       key: (row) => (
-        <Link href={hrefFor(flaggedStationPath(row))} className={productTokens.b2cLink}>
-          View details
-        </Link>
+        <span className="flex flex-wrap items-center gap-3">
+          <Link href={hrefFor(flaggedEntryPath(row))} className={productTokens.b2cLink}>
+            Open
+          </Link>
+          <button
+            type="button"
+            className={productTokens.b2cLink}
+            disabled={removing !== null}
+            onClick={() => void unflag(row)}
+          >
+            {removing === row.id ? "Removing…" : "Remove flag"}
+          </button>
+        </span>
       ),
     },
   ];
@@ -128,7 +152,7 @@ export function FlaggedStations() {
     <Table<FlagRow>
       className="mb-24"
       title="Flagged stations"
-      description="Stations you marked for review during practice."
+      description="Stations you flagged during practice to come back to."
       data={rows.slice((safePage - 1) * perPage, safePage * perPage)}
       columns={columns}
       totalItems={rows.length}

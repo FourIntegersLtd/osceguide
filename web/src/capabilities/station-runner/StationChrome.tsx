@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import { HiOutlineChatBubbleLeftRight, HiOutlineChevronDown, HiOutlineChevronRight } from "react-icons/hi2";
-import { LuFlag } from "react-icons/lu";
+import { LuFlag, LuMessageSquareWarning } from "react-icons/lu";
 import { Back, cn, productTokens } from "@/foundation/ui";
 import { useToast } from "@/foundation/hooks";
-import { flagStation, type FlagSetEntry } from "@/capabilities/stations/api";
+import { flagStation } from "@/capabilities/stations/api";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 
 export type StationStep = "patient" | "simulation" | "management" | "feedback";
+
+/** The learner's own "come back to" flag on this station, and how to change it. */
+export interface ComeBackFlag {
+  initial: boolean;
+  save: (flagged: boolean) => Promise<void>;
+}
 
 /** The four steps, numbered as the retiring client numbered them. */
 export const STEP_LABELS: Record<StationStep, string> = {
@@ -44,35 +50,64 @@ export function StationHeader({
   attemptsUsed,
   attemptLimit,
   flagStationId,
-  flagFrom,
+  comeBack,
 }: {
   index: number;
   total: number;
   attemptsUsed: number | null;
   attemptLimit: number | null;
   flagStationId?: string | null;
-  /** The session entry this station is being sat in, recorded with a flag. */
-  flagFrom?: FlagSetEntry | null;
+  /**
+   * Flagging this station to come back to: the learner's own list, the
+   * Flagged tab. The arm supplies it where there is somewhere to keep the
+   * flag (a practice set's entry); without it only reporting is offered.
+   */
+  comeBack?: ComeBackFlag | null;
 }) {
   const toast = useToast();
   const [flagged, setFlagged] = useState(false);
+  const [marked, setMarked] = useState(comeBack?.initial ?? false);
+  const [marking, setMarking] = useState(false);
+
+  const onMark = async () => {
+    if (!comeBack || marking) return;
+    const next = !marked;
+    setMarking(true);
+    try {
+      await comeBack.save(next);
+      setMarked(next);
+      toast.show({
+        tone: "success",
+        title: next ? "Flagged to come back to" : "Flag removed",
+        message: next ? "Find it under Flagged stations." : "It is off your Flagged stations.",
+      });
+    } catch {
+      toast.show({
+        tone: "error",
+        title: "We couldn't change the flag",
+        message: "Please try again in a moment.",
+      });
+    } finally {
+      setMarking(false);
+    }
+  };
   const completed =
     attemptsUsed !== null && attemptLimit !== null && attemptsUsed >= attemptLimit;
 
   const onFlag = async () => {
     if (!flagStationId) return;
     try {
-      await flagStation(flagStationId, flagFrom);
+      await flagStation(flagStationId);
       setFlagged(true);
       toast.show({
         tone: "success",
-        title: "Station flagged",
+        title: "Problem reported",
         message: "Thanks. Our team will take a look at this station.",
       });
     } catch {
       toast.show({
         tone: "error",
-        title: "We couldn't flag this station",
+        title: "We couldn't report this station",
         message: "Please try again in a moment.",
       });
     }
@@ -97,15 +132,34 @@ export function StationHeader({
               )}
             </span>
           )}
+          {comeBack ? (
+            <button
+              type="button"
+              onClick={() => void onMark()}
+              disabled={marking}
+              aria-pressed={marked}
+              aria-label="Flag this station to come back to"
+              title={marked ? "Flagged to come back to" : "Flag this station to come back to"}
+            >
+              <LuFlag
+                aria-hidden
+                className={cn(
+                  "h-4 w-4 transition-colors md:h-5 md:w-5",
+                  marked ? "fill-current text-osce-accent" : "text-b2c-text-muted hover:text-osce-accent",
+                )}
+              />
+            </button>
+          ) : null}
           {flagStationId ? (
             <button
               type="button"
               onClick={() => void onFlag()}
               aria-pressed={flagged}
-              aria-label="Flag this station for review"
-              title="Flag this station for review"
+              aria-label="Report a problem with this station"
+              title="Report a problem with this station"
             >
-              <LuFlag
+              <LuMessageSquareWarning
+                aria-hidden
                 className={cn(
                   "h-4 w-4 transition-colors md:h-5 md:w-5",
                   flagged ? "text-osce-danger" : "text-b2c-text-muted hover:text-osce-danger",

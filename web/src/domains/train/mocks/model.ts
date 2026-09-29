@@ -248,22 +248,7 @@ export function checkMilestone(currentCount: number, previousCount: number): Mil
   };
 }
 
-/**
- * Where a flagged station reopens: inside the session it was flagged from.
- *
- * A flag names a station, not the session entry it was sat in, so the Flagged
- * tab could only open the library's copy. The runner now sends the entry with
- * the report (`flagStation`), and once `StationFlagRead` carries `set_id` and
- * `set_entry_id` back, the row reopens the session; until then the library
- * station is the only place there is.
- */
-export function flaggedStationPath(flag: {
-  station_id: string;
-  set_id?: string | null;
-  set_entry_id?: string | null;
-}): string {
-  if (flag.set_id && flag.set_entry_id) {
-    return `/mocks/${encodeURIComponent(flag.set_id)}/stations/${encodeURIComponent(flag.set_entry_id)}`;
-  }
-  return `/stations/${encodeURIComponent(flag.station_id)}/practise`;
+/** Where a flagged station reopens: inside the session it was flagged in. */
+export function flaggedEntryPath(flag: { set_id: string; entry_id: string }): string {
+  return `/mocks/${encodeURIComponent(flag.set_id)}/stations/${encodeURIComponent(flag.entry_id)}`;
 }

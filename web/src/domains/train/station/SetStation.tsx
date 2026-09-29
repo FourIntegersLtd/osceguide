@@ -5,7 +5,7 @@ import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listExams } from "@/capabilities/stations";
-import { loadStationCatalogue, readSet, startSetAttempt } from "@/domains/train/api";
+import { flagSetEntry, loadStationCatalogue, readSet, startSetAttempt } from "@/domains/train/api";
 import { StationScreen } from "@/capabilities/station-runner/StationScreen";
 import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
@@ -75,6 +75,16 @@ export function SetStation({
           attemptsUsed={entry?.attempts ?? null}
           attemptLimit={exam?.station_attempt_limit ?? null}
           flagStationId={station?.id ?? null}
+          comeBack={
+            entry
+              ? {
+                  initial: Boolean(entry.flagged_at),
+                  save: async (flagged) => {
+                    await flagSetEntry(setId, entryId, flagged);
+                  },
+                }
+              : null
+          }
           createAttempt={create}
           nextHref={next ? hrefFor(`/mocks/${setId}/stations/${next.id}`) : null}
           completeHref={hrefFor(`/mocks/${setId}/complete`)}

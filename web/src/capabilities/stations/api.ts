@@ -58,33 +58,14 @@ export function listExams(signal?: AbortSignal): Promise<ExamPage> {
   return platformRequest<ExamPage>("/api/v1/exams", { signal });
 }
 
-/** The practice session a flag was raised inside, when there was one. */
-export interface FlagSetEntry {
-  setId: string;
-  entryId: string;
-}
-
-/**
- * Ask the content team to review a station.
- *
- * `from` names the session entry the station was sat in, so the reporter's
- * Flagged tab can reopen it there. `FlagStationBody` takes `station_id` only
- * and ignores the rest today, so the two ids are dropped until the backend
- * stores them (see `docs/BACKLOG.md`, "flagged stations open the library").
- */
-export async function flagStation(
-  stationId: string,
-  from?: FlagSetEntry | null,
-  signal?: AbortSignal,
-): Promise<void> {
+/** Ask the content team to review a station. */
+export async function flagStation(stationId: string, signal?: AbortSignal): Promise<void> {
   await platformRequest(`/api/v1/me/station-flags`, {
     method: "POST",
     // An object: `platformRequest` serialises it. This used to pass
     // `JSON.stringify(...)`, which serialised a *string* — so the request the
     // button made was rejected before it reached a handler that discarded it.
-    body: from
-      ? { station_id: stationId, set_id: from.setId, set_entry_id: from.entryId }
-      : { station_id: stationId },
+    body: { station_id: stationId },
     signal,
   });
 }

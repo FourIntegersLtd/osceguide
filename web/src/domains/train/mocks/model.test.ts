@@ -7,7 +7,7 @@ import {
   attemptsWithTranscript,
   checkMilestone,
   chooseStations,
-  flaggedStationPath,
+  flaggedEntryPath,
   groupSets,
   incompleteVersionIds,
   sessionAction,
@@ -240,19 +240,8 @@ describe("checkMilestone", () => {
   });
 });
 
-describe("flaggedStationPath", () => {
-  it("reopens the session entry a flag was raised in", () => {
-    assert.equal(
-      flaggedStationPath({ station_id: "st1", set_id: "set1", set_entry_id: "e2" }),
-      "/mocks/set1/stations/e2",
-    );
-  });
-
-  it("falls back to the library station when the flag names no entry", () => {
-    assert.equal(flaggedStationPath({ station_id: "st1" }), "/stations/st1/practise");
-    assert.equal(
-      flaggedStationPath({ station_id: "st1", set_id: "set1", set_entry_id: null }),
-      "/stations/st1/practise",
-    );
+describe("flaggedEntryPath", () => {
+  it("reopens the session entry a station was flagged in", () => {
+    assert.equal(flaggedEntryPath({ set_id: "set1", entry_id: "e2" }), "/mocks/set1/stations/e2");
   });
 });

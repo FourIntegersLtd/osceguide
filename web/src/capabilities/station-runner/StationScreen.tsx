@@ -41,6 +41,7 @@ import {
   StationHeader,
   StationTabs,
   stepsFor,
+  type ComeBackFlag,
   type StationStep,
 } from "@/capabilities/station-runner/StationChrome";
 import {
@@ -74,8 +75,10 @@ export interface StationScreenProps {
   createAttempt: () => Promise<{ id: string }>;
   nextHref: string | null;
   completeHref: string | null;
-  /** For flagging — library station id when known. */
+  /** For reporting a problem — library station id when known. */
   flagStationId?: string | null;
+  /** The learner's own flag, where the arm has somewhere to keep it. */
+  comeBack?: ComeBackFlag | null;
 }
 
 type EndReason = "manual" | "timer" | null;
@@ -97,6 +100,7 @@ export function StationScreen(props: StationScreenProps) {
     nextHref,
     completeHref,
     flagStationId,
+    comeBack,
   } = props;
 
   const router = useRouter();
@@ -368,9 +372,7 @@ export function StationScreen(props: StationScreenProps) {
         attemptsUsed={attemptsUsed}
         attemptLimit={attemptLimit}
         flagStationId={flagStationId}
-        flagFrom={
-          source.kind === "set" ? { setId: source.setId, entryId: source.entryId } : null
-        }
+        comeBack={comeBack}
       />
 
       <div className="flex flex-col items-center justify-between lg:flex-row">

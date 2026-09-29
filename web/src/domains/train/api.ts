@@ -25,6 +25,26 @@ export function readSet(setId: string, signal?: AbortSignal): Promise<StationSet
   });
 }
 
+/**
+ * Flag one station in a set to come back to, or take the flag off.
+ *
+ * The learner's own list (the Flagged tab), and separate from reporting a
+ * station as wrong, which goes to the content team (`flagStation`).
+ */
+export function flagSetEntry(setId: string, entryId: string, flagged: boolean): Promise<StationSet> {
+  return platformRequest<StationSet>(
+    `/api/v1/me/station-sets/${encodeURIComponent(setId)}/entries/${encodeURIComponent(entryId)}/flag`,
+    { method: "PUT", body: { flagged } },
+  );
+}
+
+export type FlaggedEntry = components["schemas"]["FlaggedEntryRead"];
+
+/** Every station this person has flagged across their sets, most recent first. */
+export function listFlaggedStations(signal?: AbortSignal): Promise<FlaggedEntry[]> {
+  return platformRequest<FlaggedEntry[]>("/api/v1/me/flagged-stations", { signal });
+}
+
 export function createSet(input: {
   name: string;
   examCode: string;
