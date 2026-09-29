@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import PlatformAdmin
 from app.features.stations import errors, schemas, service_templates
@@ -29,15 +29,19 @@ _LIFECYCLE = (
 )
 
 
+# The platform's own templates, a page at a time.
 @router.get(
     "/platform/station-templates",
     response_model=Page[schemas.StationTemplateRead],
     responses=error_responses(*_AUTH),
 )
 async def list_platform_station_templates(
-    admin: PlatformAdmin, session: Session
+    admin: PlatformAdmin, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.StationTemplateRead]:
-    return Page(items=await service_templates.list_templates(session, None), next_cursor=None)
+    templates, next_cursor = await service_templates.list_templates(
+        session, None, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=templates, next_cursor=next_cursor)
 
 
 # Author a new platform-owned template.

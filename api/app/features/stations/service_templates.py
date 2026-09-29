@@ -67,13 +67,18 @@ async def create_template(
     return _template_read(template, code, [version])
 
 
-async def list_templates(session: AsyncSession, org_id: uuid.UUID | None) -> list[StationTemplateRead]:
-    """This org's own templates and the platform's, each with all its versions."""
+async def list_templates(
+    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[StationTemplateRead], str | None]:
+    """A page of this org's own templates and the platform's, each with all its versions."""
+    templates, next_cursor = await repository.templates_visible_to(
+        session, org_id, limit=limit, cursor=cursor
+    )
     templates_read: list[StationTemplateRead] = []
-    for template in await repository.templates_visible_to(session, org_id):
+    for template in templates:
         versions = await repository.template_versions(session, org_id, template.id)
         templates_read.append(_template_read(template, await _exam_code(session, template), versions))
-    return templates_read
+    return templates_read, next_cursor
 
 
 async def add_version(

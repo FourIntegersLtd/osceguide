@@ -16,6 +16,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import owned_by, owner_kind_for, visible_to
+from app.core.pagination import keyset_page
 from app.features.stations.models import StationTemplate, StationTemplateVersion
 
 
@@ -38,14 +39,21 @@ async def template_by_id(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def templates_visible_to(session: AsyncSession, org_id: uuid.UUID | None) -> list[StationTemplate]:
-    """This owner's templates and the platform's: what a station may be built on."""
-    stmt = (
-        select(StationTemplate)
-        .where(visible_to(StationTemplate, org_id))
-        .order_by(StationTemplate.created_at, StationTemplate.id)
+async def templates_visible_to(
+    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None = None
+) -> tuple[list[StationTemplate], str | None]:
+    """A page of this owner's templates and the platform's, oldest first: what a
+    station may be built on."""
+    stmt = select(StationTemplate).where(visible_to(StationTemplate, org_id))
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=StationTemplate.created_at,
+        id_col=StationTemplate.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
     )
-    return list((await session.execute(stmt)).scalars())
 
 
 async def template_versions(
