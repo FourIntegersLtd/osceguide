@@ -77,6 +77,8 @@ async def test_cloud_capacity_is_a_count_not_a_reservation(client: AsyncClient, 
     # rather than pretending the cap is empty.
     assert body["active"] is None
     assert body["free"] is None
+    assert body["self_hosted_seats_taken"] is None
+    assert body["queue_length"] is None
 
 
 async def test_the_machinery_is_refused_to_anybody_but_a_platform_admin(

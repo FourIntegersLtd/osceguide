@@ -143,6 +143,30 @@ async def ensure_queue_watchable(
     return attempt.room_name or domain.room_name_for(str(attempt.id))
 
 
+async def leave_queue(room: str, *, bus: EventBus) -> None:
+    """Take this room out of line and tell the people behind it to move up.
+
+    Not being in line is already the outcome asked for, so it is not an
+    error, and nobody is told anything. Redis being unavailable is left to
+    raise: saying "you left" when the place is still held would be a lie, and
+    the waiter's expiry reclaims it anyway once their screen stops watching.
+    """
+    try:
+        left = await seats.leave(room)
+    except Exception as exc:
+        log.warning("leaving the line failed", room=room, exc_info=True)
+        raise errors.VoiceUnavailable() from exc
+    if not left:
+        return
+    log.info("candidate left the line", room=room)
+    # Best effort, like a worker's release: a waiter who misses this still
+    # re-reads their place on the stream's next heartbeat.
+    try:
+        await bus.publish(voice_queue_topic(), "seat_freed")
+    except Exception:  # noqa: BLE001
+        log.warning("seat_freed publish failed", room=room, exc_info=True)
+
+
 def queue_stream(room: str, *, settings: Settings, bus: EventBus) -> AsyncIterator[str]:
     """A waiter's place in line, pushed until a seat is theirs to claim.
 
@@ -301,13 +325,17 @@ def get_room_agents() -> RoomAgents:
 
 
 async def cloud_capacity(settings: Settings) -> CloudCapacityRead:
-    """The Cloud slot count as the console reads it. Looks; never reserves."""
+    """Cloud slots, our own seats and the line, as the console reads them. Looks; never reserves."""
     active = await capacity.active_slots()
+    counts = await seats.line_counts()
     return CloudCapacityRead(
         overflow_enabled=settings.livekit_cloud_overflow_enabled,
         max_concurrent=settings.livekit_cloud_max_concurrent,
         active=active,
         free=None if active is None else max(0, settings.livekit_cloud_max_concurrent - active),
+        self_hosted_seats_total=settings.livekit_self_hosted_seats,
+        self_hosted_seats_taken=None if counts is None else counts.seats_taken,
+        queue_length=None if counts is None else counts.queue_length,
     )
 
 

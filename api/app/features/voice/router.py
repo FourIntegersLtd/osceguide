@@ -6,7 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -85,3 +85,27 @@ async def stream_voice_queue(
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )
+
+
+# Step out of line, so everybody behind this attempt moves up at once.
+@router.delete(
+    "/attempts/{attempt_id}/voice-queue",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Unauthenticated,
+        errors.AttemptNotFound,
+        errors.AttemptNotYours,
+        errors.VoiceUnavailable,
+    ),
+)
+async def leave_voice_queue(
+    attempt_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    bus: Annotated[EventBus, Depends(get_event_bus)],
+    open_session: SessionOpenerDep,
+) -> Response:
+    room = await service.ensure_queue_watchable(
+        attempt_id, requester_id=principal.user_id, open_session=open_session
+    )
+    await service.leave_queue(room, bus=bus)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

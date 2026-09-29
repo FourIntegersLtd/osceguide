@@ -44,6 +44,10 @@ Owns no tables. The decisions are pure and live in `domain.py`.
   refreshes it; a waiter unseen for `LIVEKIT_QUEUE_WAITER_TTL_SECONDS` drops
   out. The stream re-reads on every heartbeat as well as on `seat_freed`,
   because a reservation that lapses frees a seat with nobody announcing it.
+- **Leaving is said, not waited out.** A candidate who gives up calls
+  `DELETE voice-queue`: one script takes the room out of both the line and
+  the presence set, and `seat_freed` moves everyone behind up at once instead
+  of after the waiter's TTL. Not being in line is also a 204.
 - **A circuit never waits, but it does take a seat.** `dispatch_agent_into_room`
   holds one for its room, so practice candidates queue behind it rather than
   crowding a worker a circuit has already been promised.
@@ -76,7 +80,8 @@ Owns no tables. The decisions are pure and live in `domain.py`.
 |---|---|---|---|
 | POST | `/api/v1/attempts/{id}/voice-token` | owner | 202 with `{ready, position}` when every seat is taken; `attempt_not_joinable` (409), `voice_unavailable` (503) |
 | GET | `/api/v1/attempts/{id}/voice-queue` | owner (stream ticket) | SSE: the candidate's place in line, pushed until `ready`, then the stream ends |
-| GET | `/api/v1/platform/voice/capacity` | platform admin | Cloud slots held against the metered cap; a count, never a reservation. `active: null` means Redis could not say, which is also what routes sessions self-hosted |
+| DELETE | `/api/v1/attempts/{id}/voice-queue` | owner | Leave the line; 204 whether or not the attempt was in it. `attempt_not_yours` (403), `voice_unavailable` (503) when Redis cannot be asked |
+| GET | `/api/v1/platform/voice/capacity` | platform admin | Cloud slots held against the metered cap, plus `self_hosted_seats_total`, `self_hosted_seats_taken` and `queue_length`; counts, never a reservation. A null count means Redis could not say, which is also what routes sessions self-hosted |
 
 The worker routes `/api/worker/livekit-cloud-slot/{extend,release}` keep their
 names but cover both kinds of seat: extend lengthens whichever the room holds,

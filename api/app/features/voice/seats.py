@@ -151,6 +151,27 @@ RELEASE = """
 return redis.call('ZREM', KEYS[1], ARGV[1])
 """
 
+# Step out of line. Both keys in one script, so no reader sees a waiter whose
+# presence is gone but whose place still counts. KEYS: queue, seen. ARGV: room.
+LEAVE = """
+local removed = redis.call('ZREM', KEYS[1], ARGV[1])
+redis.call('ZREM', KEYS[2], ARGV[1])
+return removed
+"""
+
+# How full our own seats and the line are, for the console. Purges like every
+# other script, so the counts match what admission would see; takes nothing.
+# KEYS: cloud, seats, queue, seen. ARGV: now.
+COUNTS = (
+    """
+local now = tonumber(ARGV[1])
+"""
+    + _PURGE
+    + """
+return {redis.call('ZCARD', KEYS[2]), redis.call('ZCARD', KEYS[3])}
+"""
+)
+
 
 class Placement(StrEnum):
     """Where a room was seated, or that it is waiting."""
@@ -166,6 +187,14 @@ class Admission:
 
     placement: Placement
     position: int
+
+
+@dataclass(frozen=True)
+class LineCounts:
+    """Seats taken on our own workers and people waiting, as one consistent read."""
+
+    seats_taken: int
+    queue_length: int
 
 
 @dataclass(frozen=True)
@@ -269,3 +298,18 @@ async def release(room: str) -> bool:
     except Exception:  # noqa: BLE001
         log.warning("seat release failed", room=room, exc_info=True)
         return False
+
+
+async def leave(room: str) -> bool:
+    """Take this room out of line. False when it was not in line, which is not an error."""
+    return bool(int(await _run(LEAVE, (QUEUE_KEY, SEEN_KEY), room)))
+
+
+async def line_counts() -> LineCounts | None:
+    """Seats taken and the line's length right now; None when Redis cannot say."""
+    try:
+        raw = await _run(COUNTS, _line_keys(), int(time.time()))
+    except Exception:  # noqa: BLE001 - a count nobody acts on automatically
+        log.warning("seat count failed", exc_info=True)
+        return None
+    return LineCounts(seats_taken=int(raw[0]), queue_length=int(raw[1]))
