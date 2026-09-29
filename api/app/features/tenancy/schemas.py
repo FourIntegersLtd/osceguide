@@ -180,6 +180,38 @@ class BulkMembershipsResult(BaseModel):
     skipped: list[SkippedMembership] = Field(default_factory=list)
 
 
+class BulkMembershipIds(BaseModel):
+    """A batch of membership ids, for a bulk action from a selection in the
+    team table. Capped the same as a bulk import, so a selected page cannot
+    name a whole organisation's team by accident.
+    """
+
+    membership_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_BULK_MEMBERSHIPS)
+
+
+class BulkMembershipRevokeResult(BaseModel):
+    """One row's outcome from a bulk revoke: whether this call changed
+    anything, or the row was already in that state or not this
+    organisation's to change.
+    """
+
+    membership_id: uuid.UUID
+    outcome: str  # "revoked" | "already_revoked" | "not_found"
+
+
+class BulkMembershipRevokeResponse(BaseModel):
+    results: list[BulkMembershipRevokeResult]
+
+
+class BulkMembershipInvitationResult(BaseModel):
+    membership_id: uuid.UUID
+    outcome: str  # "sent" | "already_accepted" | "not_found"
+
+
+class BulkMembershipInvitationResponse(BaseModel):
+    results: list[BulkMembershipInvitationResult]
+
+
 class SwitchWorkspace(BaseModel):
     """Which workspace to re-issue the token against. `None` means the person's own practice
     — a real destination, not an absence."""

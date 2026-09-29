@@ -1028,6 +1028,97 @@
         "title": "BulkCreateTrainees",
         "type": "object"
       },
+      "BulkMembershipIds": {
+        "description": "A batch of membership ids, for a bulk action from a selection in the\nteam table. Capped the same as a bulk import, so a selected page cannot\nname a whole organisation's team by accident.",
+        "properties": {
+          "membership_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Membership Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "membership_ids"
+        ],
+        "title": "BulkMembershipIds",
+        "type": "object"
+      },
+      "BulkMembershipInvitationResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkMembershipInvitationResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkMembershipInvitationResponse",
+        "type": "object"
+      },
+      "BulkMembershipInvitationResult": {
+        "properties": {
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "membership_id",
+          "outcome"
+        ],
+        "title": "BulkMembershipInvitationResult",
+        "type": "object"
+      },
+      "BulkMembershipRevokeResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkMembershipRevokeResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkMembershipRevokeResponse",
+        "type": "object"
+      },
+      "BulkMembershipRevokeResult": {
+        "description": "One row's outcome from a bulk revoke: whether this call changed\nanything, or the row was already in that state or not this\norganisation's to change.",
+        "properties": {
+          "membership_id": {
+            "format": "uuid",
+            "title": "Membership Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "membership_id",
+          "outcome"
+        ],
+        "title": "BulkMembershipRevokeResult",
+        "type": "object"
+      },
       "BulkMembershipsResult": {
         "description": "Who joined and who was already there, so a partial upload is not a mystery.",
         "properties": {
@@ -1047,6 +1138,164 @@
           }
         },
         "title": "BulkMembershipsResult",
+        "type": "object"
+      },
+      "BulkSetTraineeCohort": {
+        "description": "Move a batch of trainees into one intake at once, or out of any intake.",
+        "properties": {
+          "cohort_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cohort Id"
+          },
+          "trainee_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Trainee Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trainee_ids"
+        ],
+        "title": "BulkSetTraineeCohort",
+        "type": "object"
+      },
+      "BulkTraineeAccessResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTraineeAccessResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkTraineeAccessResponse",
+        "type": "object"
+      },
+      "BulkTraineeAccessResult": {
+        "description": "One row's outcome from a bulk revoke: whether this call changed anything,\nor the row was already in that state or not this organisation's to change.",
+        "properties": {
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "outcome"
+        ],
+        "title": "BulkTraineeAccessResult",
+        "type": "object"
+      },
+      "BulkTraineeCohortResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTraineeCohortResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkTraineeCohortResponse",
+        "type": "object"
+      },
+      "BulkTraineeCohortResult": {
+        "properties": {
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "outcome"
+        ],
+        "title": "BulkTraineeCohortResult",
+        "type": "object"
+      },
+      "BulkTraineeIds": {
+        "description": "A batch of roster ids, for a bulk action from a selection in the roster\ntable. Capped the same as a bulk upload, so a selected page cannot name a\nwhole institution's roster by accident.",
+        "properties": {
+          "trainee_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Trainee Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "trainee_ids"
+        ],
+        "title": "BulkTraineeIds",
+        "type": "object"
+      },
+      "BulkTraineeInvitationResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTraineeInvitationResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "BulkTraineeInvitationResponse",
+        "type": "object"
+      },
+      "BulkTraineeInvitationResult": {
+        "properties": {
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "outcome"
+        ],
+        "title": "BulkTraineeInvitationResult",
         "type": "object"
       },
       "BulkTraineesResult": {
@@ -31556,6 +31805,154 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/memberships/bulk/resend-invitation": {
+      "post": {
+        "description": "Resend the choose-a-password link to a selection at once, each row through\nthe same `POST /memberships/{id}/resend-invitation` decision.",
+        "operationId": "tenancy_bulk_resend_membership_invitations",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMembershipIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMembershipInvitationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Resend Membership Invitations",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/memberships/bulk/revoke": {
+      "post": {
+        "description": "Revoke a selection from the team table at once. Each row goes through the\nsame `POST /memberships/{id}/revoke` decision; an id from another\norganisation, or repeated in the request, is reported rather than acted on twice.",
+        "operationId": "tenancy_bulk_revoke_memberships",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMembershipIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMembershipRevokeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Revoke Memberships",
+        "tags": [
+          "tenancy"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/memberships/{membership_id}": {
       "patch": {
         "operationId": "tenancy_change_membership_role",
@@ -37531,6 +37928,244 @@
         ],
         "summary": "Add Trainees",
         "tags": [
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk/cohort": {
+      "post": {
+        "description": "Move a selection into one intake, or clear it, at once. Returns 404\n`cohort_not_found` for the whole request if `cohort_id` does not name an\nintake of this organisation; each trainee id is otherwise reported on its own.",
+        "operationId": "roster_bulk_set_trainee_cohort",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkSetTraineeCohort"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineeCohortResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cohort_not_found",
+            "x-codes": [
+              "cohort_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Set Trainee Cohort",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk/resend-invitation": {
+      "post": {
+        "description": "Resend the sign-in invitation to a selection at once, each row through the\nsame `POST /trainees/{id}/resend-invitation` decision.",
+        "operationId": "roster_bulk_resend_trainee_invitations",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTraineeIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineeInvitationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Resend Trainee Invitations",
+        "tags": [
+          "roster",
+          "roster"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/trainees/bulk/revoke": {
+      "post": {
+        "description": "Revoke access for a selection from the roster table at once. Each row goes\nthrough the same `POST /trainees/{id}/access` decision; an id from another\norganisation, or repeated in the request, is reported rather than acted on twice.",
+        "operationId": "roster_bulk_revoke_trainees",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTraineeIds"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkTraineeAccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Bulk Revoke Trainees",
+        "tags": [
+          "roster",
           "roster"
         ]
       }

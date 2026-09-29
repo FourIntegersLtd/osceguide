@@ -169,6 +169,45 @@ async def change_membership_role(
     )
 
 
+# The two bulk routes below must stay registered before the `{membership_id}` routes
+# they share a first path segment with ("revoke", "resend-invitation"): FastAPI matches
+# path segments in registration order, so a `{membership_id}` route registered first
+# would swallow "bulk" as the id and 422 on the UUID parse.
+@router.post(
+    "/orgs/{org_slug}/memberships/bulk/revoke",
+    response_model=schemas.BulkMembershipRevokeResponse,
+    responses=error_responses(Forbidden),
+)
+async def bulk_revoke_memberships(
+    body: schemas.BulkMembershipIds, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkMembershipRevokeResponse:
+    """Revoke a selection from the team table at once. Each row goes through the
+    same `POST /memberships/{id}/revoke` decision; an id from another
+    organisation, or repeated in the request, is reported rather than acted on twice.
+    """
+    results = await service_bulk.revoke_memberships(
+        session, workspace.org_id, body.membership_ids, actor=workspace.principal, now=clock.now()
+    )
+    return schemas.BulkMembershipRevokeResponse(results=results)
+
+
+@router.post(
+    "/orgs/{org_slug}/memberships/bulk/resend-invitation",
+    response_model=schemas.BulkMembershipInvitationResponse,
+    responses=error_responses(Forbidden),
+)
+async def bulk_resend_membership_invitations(
+    body: schemas.BulkMembershipIds, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkMembershipInvitationResponse:
+    """Resend the choose-a-password link to a selection at once, each row through
+    the same `POST /memberships/{id}/resend-invitation` decision.
+    """
+    results = await service_bulk.resend_membership_invitations(
+        session, workspace.org_id, body.membership_ids, now=clock.now()
+    )
+    return schemas.BulkMembershipInvitationResponse(results=results)
+
+
 @router.post(
     "/orgs/{org_slug}/memberships/{membership_id}/revoke",
     response_model=schemas.MembershipRead,
