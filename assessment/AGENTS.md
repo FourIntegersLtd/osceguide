@@ -3,6 +3,55 @@
 Instructions for AI coding agents working in this project. The root
 `OSCE Guide/AGENTS.md` still applies; this file adds the rules for this subtree.
 
+## Token discipline (read first — measured, not guessed)
+
+Cost = **context size x request count**. Every tool call replays the whole
+context, so the same Bash call cost ~5k tokens early in a session and ~76k late
+in it. Measured on this project: one session grew 46k -> 758k, never
+compacted, and moved 575M tokens over 2,346 requests; 41% of that day's cost
+landed in 18 minutes when 16 `general-purpose` subagents ran at once on a
+premium model for read-only audit work. Skills and MCP were not the cause.
+
+**Context**
+- Stay on a 200k model; auto-compact at 200k (`.claude/settings.json`). Never
+  a 1M model for ordinary work.
+- `/compact` at a natural break, `/clear` between unrelated tasks. One writing
+  session per repository at a time.
+
+**Calls**
+- Issue every independent read in ONE turn, as parallel calls. Batch related
+  greps into one Bash call.
+- Locate before you read (grep, `git ls-files | grep`), then read only the line
+  ranges you need. Skip lockfiles, node_modules, build output, generated types.
+- Never re-read a file you already read unless it changed, nor after your own
+  edit "to verify": the edit tool reports failure.
+- Long output goes to a file; read the tail and check the exit code:
+  `cmd > "$TMPDIR/out.txt" 2>&1; echo "exit=$?"; tail -40 "$TMPDIR/out.txt"`
+
+**Subagents**
+- Read-only sweeps (audits, parity checks, "where is X") needing more than 2-3
+  greps: `Explore` with `model: "haiku"` (or `"sonnet"` for judgement).
+- Never `general-purpose` for read-only work: it boots with ~24k tokens of tool
+  schema and skill descriptions and inherits the parent's premium model.
+- Always set `model` on an Agent call.
+- At most 3-4 subagents at once; 16 in parallel finished no sooner.
+- Test/lint/type runs and edits you have already fully specified: the `worker`
+  agent (haiku, `.claude/agents/worker.md`), which returns only failures.
+- The `reviewer` agent (opus) only when the task asks for review or the change
+  moves money or touches auth.
+
+**Model and effort**
+- Sonnet for a well-specified build task; Opus for design, review, debugging an
+  unknown cause, and anything that moves money or touches auth.
+- Effort stays medium; raise it only for hard debugging, then drop back.
+
+**Replies**
+- Result first, 10 lines or fewer: `path:line`, how it was verified, what's
+  left. No preamble, no recap, no pasting back code you just wrote.
+
+**Auditing usage**: subagent transcripts live in
+`<session-id>/subagents/*.jsonl`; a tally that skips them undercounts by ~40%.
+
 ## What this project is
 
 The shared assessment engine (`packages/osce_assessment`) plus the LiveKit
