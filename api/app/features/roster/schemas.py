@@ -135,3 +135,50 @@ class ResolvedRoster(BaseModel):
 class TraineeAccess(BaseModel):
     revoked: bool
     at: datetime | None = None
+
+
+class BulkTraineeIds(BaseModel):
+    """A batch of roster ids, for a bulk action from a selection in the roster
+    table. Capped the same as a bulk upload, so a selected page cannot name a
+    whole institution's roster by accident.
+    """
+
+    trainee_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_BULK_TRAINEES)
+
+
+class BulkTraineeAccessResult(BaseModel):
+    """One row's outcome from a bulk revoke: whether this call changed anything,
+    or the row was already in that state or not this organisation's to change.
+    """
+
+    trainee_id: uuid.UUID
+    outcome: str  # "revoked" | "already_revoked" | "not_found"
+
+
+class BulkTraineeAccessResponse(BaseModel):
+    results: list[BulkTraineeAccessResult]
+
+
+class BulkSetTraineeCohort(BaseModel):
+    """Move a batch of trainees into one intake at once, or out of any intake."""
+
+    trainee_ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_BULK_TRAINEES)
+    cohort_id: uuid.UUID | None = None
+
+
+class BulkTraineeCohortResult(BaseModel):
+    trainee_id: uuid.UUID
+    outcome: str  # "updated" | "not_found"
+
+
+class BulkTraineeCohortResponse(BaseModel):
+    results: list[BulkTraineeCohortResult]
+
+
+class BulkTraineeInvitationResult(BaseModel):
+    trainee_id: uuid.UUID
+    outcome: str  # "sent" | "already_signed_in" | "not_found"
+
+
+class BulkTraineeInvitationResponse(BaseModel):
+    results: list[BulkTraineeInvitationResult]

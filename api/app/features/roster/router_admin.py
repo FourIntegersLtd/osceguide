@@ -15,7 +15,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep
 from app.core.rate_limit import OUTBOUND_EMAIL, TooManyRequests, per_user
 from app.core.tenancy import OrgAdmin
-from app.features.roster import errors, schemas, service_edit, service_groups
+from app.features.roster import errors, schemas, service_bulk, service_edit, service_groups
 
 router = APIRouter(tags=["roster"])
 
@@ -67,6 +67,62 @@ async def anonymise_trainee(
     return await service_edit.anonymise_trainee(
         session, workspace.org_id, trainee_id, actor=workspace.principal, now=clock.now()
     )
+
+
+# The three routes below must stay registered before `{trainee_id}/resend-invitation`:
+# FastAPI matches path segments in registration order, so a `{trainee_id}` route
+# registered first would swallow "bulk" as the id and 422 on the UUID parse.
+@router.post(
+    "/orgs/{org_slug}/trainees/bulk/revoke",
+    response_model=schemas.BulkTraineeAccessResponse,
+    responses=error_responses(Forbidden),
+)
+async def bulk_revoke_trainees(
+    body: schemas.BulkTraineeIds, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkTraineeAccessResponse:
+    """Revoke access for a selection from the roster table at once. Each row goes
+    through the same `POST /trainees/{id}/access` decision; an id from another
+    organisation, or repeated in the request, is reported rather than acted on twice.
+    """
+    results = await service_bulk.bulk_revoke_trainees(
+        session, workspace.org_id, body.trainee_ids, now=clock.now()
+    )
+    return schemas.BulkTraineeAccessResponse(results=results)
+
+
+@router.post(
+    "/orgs/{org_slug}/trainees/bulk/cohort",
+    response_model=schemas.BulkTraineeCohortResponse,
+    responses=error_responses(Forbidden, errors.CohortNotFound),
+)
+async def bulk_set_trainee_cohort(
+    body: schemas.BulkSetTraineeCohort, workspace: OrgAdmin, session: Session
+) -> schemas.BulkTraineeCohortResponse:
+    """Move a selection into one intake, or clear it, at once. Returns 404
+    `cohort_not_found` for the whole request if `cohort_id` does not name an
+    intake of this organisation; each trainee id is otherwise reported on its own.
+    """
+    results = await service_bulk.bulk_set_trainee_cohort(
+        session, workspace.org_id, body.trainee_ids, cohort_id=body.cohort_id
+    )
+    return schemas.BulkTraineeCohortResponse(results=results)
+
+
+@router.post(
+    "/orgs/{org_slug}/trainees/bulk/resend-invitation",
+    response_model=schemas.BulkTraineeInvitationResponse,
+    responses=error_responses(Forbidden),
+)
+async def bulk_resend_trainee_invitations(
+    body: schemas.BulkTraineeIds, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkTraineeInvitationResponse:
+    """Resend the sign-in invitation to a selection at once, each row through the
+    same `POST /trainees/{id}/resend-invitation` decision.
+    """
+    results = await service_bulk.bulk_resend_trainee_invitations(
+        session, workspace.org_id, body.trainee_ids, now=clock.now()
+    )
+    return schemas.BulkTraineeInvitationResponse(results=results)
 
 
 @router.post(
