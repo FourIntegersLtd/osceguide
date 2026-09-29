@@ -1026,7 +1026,7 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `receipt_url` | `varchar(500) null` | |
 | `paid_at` | `timestamptz not null` | |
 | `entitlement_id` | `uuid null` → `entitlements.id` SET NULL | the entitlement this payment bought; nullable because a refund revokes the entitlement without deleting either record |
-| `receipt_id` | `varchar(32) null unique` | our own receipt number, minted when the webhook records the payment. Null for payments taken before receipts existed: those stay Stripe-only until a backfill decides otherwise |
+| `receipt_id` | `varchar(64) null unique` | our own receipt number (`RCP-<exam>-<8 hex>`), minted when the webhook records the payment. Payments taken before receipts existed were minted one by migration `e27eb81413ee` (B-4), naming the plan's exam, else the granted exam, else `all`; the column stays nullable because the legacy billing loader can still write a payment whose source document carried no receipt |
 | `customer_email` / `customer_name` | `varchar(320) null` / `varchar(200) null` | frozen at payment. A receipt shows who paid at the time, not who the account belongs to now |
 | `amount_tax_pence` | `int not null default 0` | |
 | `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |

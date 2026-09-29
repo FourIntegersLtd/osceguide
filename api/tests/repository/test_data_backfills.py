@@ -108,3 +108,87 @@ async def test_a_plan_with_no_exam_is_taken_off_sale_before_the_column_is_requir
                     "VALUES (gen_random_uuid(), 'unnamed', 'price_unnamed', 100, 30)"
                 )
             )
+
+
+async def test_every_payment_without_a_receipt_is_given_one(db_session: AsyncSession) -> None:
+    """B-4: an old payment gets a receipt id in the settlement's own format, naming
+    the plan's exam, else the granted exam, else `all`; one it already has is kept."""
+    import re
+    from datetime import UTC, datetime
+
+    from app.features.billing import repository as billing_repo
+    from app.features.billing.models import Payment
+    from app.features.entitlements import repository as entitlements_repo
+    from app.features.identity import repository as identity_repo
+    from tests.support.catalog import ensure_exam
+
+    buyer = await identity_repo.create_user(
+        session=db_session, email="old-buyer@example.com", name="Old Buyer", password_hash=None
+    )
+    plab = await ensure_exam(db_session, "plab")
+    plan = await billing_repo.create_plan(
+        db_session,
+        code="sca_1m",
+        stripe_price_id="price_old",
+        amount_pence=2499,
+        duration_days=30,
+        exam_code="sca",
+    )
+    grant = await entitlements_repo.grant(
+        session=db_session, user_id=buyer.id, exam_id=plab.id, source="purchase"
+    )
+    paid_at = datetime(2025, 1, 1, tzinfo=UTC)
+    payments = [
+        Payment(
+            user_id=buyer.id,
+            plan_id=plan.id,
+            stripe_payment_intent_id="pi_plan",
+            amount_total_pence=2499,
+            currency="gbp",
+            paid_at=paid_at,
+        ),
+        Payment(
+            user_id=buyer.id,
+            entitlement_id=grant.id,
+            stripe_payment_intent_id="pi_grant",
+            amount_total_pence=2499,
+            currency="gbp",
+            paid_at=paid_at,
+        ),
+        Payment(
+            user_id=buyer.id,
+            stripe_payment_intent_id="pi_bare",
+            amount_total_pence=2499,
+            currency="gbp",
+            paid_at=paid_at,
+        ),
+        Payment(
+            user_id=buyer.id,
+            receipt_id="RCP-sca-kept0000",
+            stripe_payment_intent_id="pi_kept",
+            amount_total_pence=2499,
+            currency="gbp",
+            paid_at=paid_at,
+        ),
+    ]
+    db_session.add_all(payments)
+    await db_session.flush()
+
+    written = await db_session.run_sync(
+        lambda sync_session: migration("e27eb81413ee").backfill(sync_session.connection())
+    )
+
+    assert written == 3
+    receipts = dict(
+        (await db_session.execute(select(Payment.stripe_payment_intent_id, Payment.receipt_id))).all()
+    )
+    assert re.fullmatch(r"RCP-sca-[0-9a-f]{8}", receipts["pi_plan"])
+    assert re.fullmatch(r"RCP-plab-[0-9a-f]{8}", receipts["pi_grant"])
+    assert re.fullmatch(r"RCP-all-[0-9a-f]{8}", receipts["pi_bare"])
+    assert receipts["pi_kept"] == "RCP-sca-kept0000"
+    assert (
+        await db_session.run_sync(
+            lambda sync_session: migration("e27eb81413ee").backfill(sync_session.connection())
+        )
+        == 0
+    ), "a second run finds nothing left to mint"
