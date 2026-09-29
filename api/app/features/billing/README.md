@@ -10,9 +10,13 @@ service and never grants access itself.
 - As a **consumer**, I pay and get access for the plan's duration.
 - As the **platform**, I apply each Stripe delivery exactly once.
 - As **support**, I can see what a customer paid and what it granted.
+- As the **platform**, I invoice an organisation, and mark the invoice paid or void.
+- As an **organisation admin**, I read my organisation's invoices and quote our
+  purchase order number on one we have not yet paid.
 
 ## Aggregates & invariants
-**Plan** and **Payment** stand alone; **StripeEvent** is the idempotency ledger.
+**Plan** and **Payment** stand alone; **StripeEvent** is the idempotency ledger;
+**Invoice** owns its **InvoiceLine**s.
 
 - What a customer bought is decided by the Stripe **price id**, not by matching
   the pence amount. b2c matches the amount against a hardcoded table and raises
@@ -28,6 +32,13 @@ service and never grants access itself.
   unprocessed, so it can be reconciled rather than lost.
 - `mode='payment'`, not Stripe Subscriptions: these are fixed-term purchases and
   the entitlement model already expresses that.
+- An invoice number is `INV-<year>-<n>` from a Postgres sequence: never shared by
+  two invoices raised at once, never reused, void ones included.
+- An invoice is `issued`, then `paid` or `void`, and those two are final. The PO
+  number may be set or corrected only while it is `issued`.
+- A line may name a settled payment (`service_settlement`, typically a bank
+  transfer entered in the console); it then bills that payment's total and is
+  described by the plan it bought unless told otherwise.
 
 ## Routes
 | Method | Path | Auth | Notes |
@@ -41,6 +52,11 @@ service and never grants access itself.
 | GET | `/api/v1/platform/users/{id}/payments` | platform admin | this person's payments with what each bought; `user_not_found` (404) |
 | GET | `/api/v1/platform/users/{id}/billing-events` | platform admin | every webhook delivery naming their address, applied or refused |
 | GET | `/api/v1/platform/billing/events` | platform admin | the ledger, newest first; `?failed_only=true` is the reconcile queue |
+| POST | `/api/v1/platform/organizations/{org_slug}/invoices` | platform admin | raise an invoice; `invalid_invoice_line` (422) |
+| PATCH | `/api/v1/platform/invoices/{invoice_id}` | platform admin | `status` `paid`/`void`, `po_number`; `invoice_not_editable` (409) |
+| GET | `/api/v1/orgs/{org_slug}/invoices` | org admin | newest first, with lines |
+| GET | `/api/v1/orgs/{org_slug}/invoices/{invoice_id}` | org admin | `invoice_not_found` (404) |
+| PUT | `/api/v1/orgs/{org_slug}/invoices/{invoice_id}/po-number` | org admin | `invoice_not_editable` (409) once paid or void |
 
 A receipt is scoped to the person who paid. The id is short and printed on a
 document that gets forwarded to an accountant or an employer, so holding it is
@@ -52,5 +68,6 @@ sending belong behind the existing `EmailSender` port, with byte-level goldens
 against `b2c-api/b2c/tests/unit/test_receipt_document.py`.
 
 ## Cross-slice dependencies
-Calls `entitlements` to grant access and `identity` to resolve the payer.
+Calls `entitlements` to grant access, `identity` to resolve the payer, and
+`tenancy` to name the organisation an invoice is for.
 Signatures are verified in `signature.py` against `STRIPE_WEBHOOK_SECRET`.

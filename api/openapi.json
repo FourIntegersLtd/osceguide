@@ -2672,6 +2672,118 @@
         "title": "CreateGroup",
         "type": "object"
       },
+      "CreateInvoice": {
+        "description": "An invoice for an organisation. The number is assigned; the PO number may come later.",
+        "properties": {
+          "currency": {
+            "default": "gbp",
+            "pattern": "^[a-z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CreateInvoiceLine"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "po_number": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "CreateInvoice",
+        "type": "object"
+      },
+      "CreateInvoiceLine": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "payment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Id"
+          },
+          "quantity": {
+            "default": 1,
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "unit_amount_pence": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Amount Pence"
+          }
+        },
+        "title": "CreateInvoiceLine",
+        "type": "object"
+      },
       "CreateMedia": {
         "properties": {
           "content": {
@@ -4272,6 +4384,7 @@
               "invalid_date_range",
               "invalid_exam_code",
               "invalid_input",
+              "invalid_invoice_line",
               "invalid_legacy_token",
               "invalid_media_status",
               "invalid_message",
@@ -4287,6 +4400,8 @@
               "invalid_webhook",
               "invalid_workflow",
               "invitation_not_pending",
+              "invoice_not_editable",
+              "invoice_not_found",
               "knowledge_unavailable",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
@@ -5686,6 +5801,173 @@
           "email"
         ],
         "title": "InvitePlatformAdmin",
+        "type": "object"
+      },
+      "InvoiceLineRead": {
+        "properties": {
+          "amount_pence": {
+            "title": "Amount Pence",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "payment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Id"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "unit_amount_pence": {
+            "title": "Unit Amount Pence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "description",
+          "quantity",
+          "unit_amount_pence",
+          "amount_pence"
+        ],
+        "title": "InvoiceLineRead",
+        "type": "object"
+      },
+      "InvoiceRead": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "title": "Invoice Number",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineRead"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "po_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "total_pence": {
+            "title": "Total Pence",
+            "type": "integer"
+          },
+          "voided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided At"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "invoice_number",
+          "po_number",
+          "customer_name",
+          "status",
+          "currency",
+          "total_pence",
+          "issued_at",
+          "due_at",
+          "paid_at",
+          "voided_at",
+          "notes",
+          "lines"
+        ],
+        "title": "InvoiceRead",
         "type": "object"
       },
       "JobRead": {
@@ -8045,6 +8327,33 @@
           "items"
         ],
         "title": "Page[GroupRead]",
+        "type": "object"
+      },
+      "Page_InvoiceRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[InvoiceRead]",
         "type": "object"
       },
       "Page_LibraryStationRead_": {
@@ -13000,6 +13309,21 @@
         "title": "SetPlatformAdmin",
         "type": "object"
       },
+      "SetPoNumber": {
+        "properties": {
+          "po_number": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Po Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "po_number"
+        ],
+        "title": "SetPoNumber",
+        "type": "object"
+      },
       "SetRead": {
         "properties": {
           "attempted_entries": {
@@ -15805,6 +16129,38 @@
           "label"
         ],
         "title": "UpdateGroup",
+        "type": "object"
+      },
+      "UpdateInvoice": {
+        "description": "What the console may change: the PO number while issued, and the status.",
+        "properties": {
+          "po_number": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "pattern": "^(issued|paid|void)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "UpdateInvoice",
         "type": "object"
       },
       "UpdateMe": {
@@ -32698,6 +33054,294 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/invoices": {
+      "get": {
+        "operationId": "billing_list_invoices",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_InvoiceRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Invoices",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/invoices/{invoice_id}": {
+      "get": {
+        "operationId": "billing_read_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_found",
+            "x-codes": [
+              "invoice_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Invoice",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/invoices/{invoice_id}/po-number": {
+      "put": {
+        "operationId": "billing_set_invoice_po_number",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPoNumber"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_found",
+            "x-codes": [
+              "invoice_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_editable",
+            "x-codes": [
+              "invoice_not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Invoice Po Number",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/live": {
       "get": {
         "description": "Every examination this organisation has running, in one request.\n\nThe screen that did not exist: a course lead on the morning of an OSCE\ncould open one circuit's console, or a list of sittings that did not say\nwhich were live.",
@@ -42577,6 +43221,103 @@
         ]
       }
     },
+    "/api/v1/platform/invoices/{invoice_id}": {
+      "patch": {
+        "operationId": "billing_update_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_found",
+            "x-codes": [
+              "invoice_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_editable",
+            "x-codes": [
+              "invoice_not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Invoice",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/platform/jobs": {
       "get": {
         "description": "The queue, newest first. `status=failed` is what to look at when something is missing.\n\nNo retry route: a failed job is re-queued through the thing it was about \u2014\n`POST /platform/attempts/{id}/rescore` for a marking \u2014 so the retry is\nchecked against the current state rather than replayed blind.",
@@ -43255,6 +43996,92 @@
         "summary": "Renew Contract",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{org_slug}/invoices": {
+      "post": {
+        "operationId": "billing_create_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_invoice_line",
+            "x-codes": [
+              "invalid_invoice_line"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Invoice",
+        "tags": [
+          "billing"
         ]
       }
     },

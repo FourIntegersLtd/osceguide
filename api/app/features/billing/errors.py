@@ -112,3 +112,24 @@ class PaymentNotFound(NotFound):
 
     code = "payment_not_found"
     default_message = "No such payment"
+
+
+class InvoiceNotFound(NotFound):
+    """No invoice by that id belongs to this organisation."""
+
+    code = "invoice_not_found"
+    default_message = "No such invoice"
+
+
+class InvoiceNotEditableError(Conflict):
+    """The invoice is paid or void, and a final invoice is not changed."""
+
+    code = "invoice_not_editable"
+    default_message = "That invoice is final and cannot be changed"
+
+
+class InvalidInvoiceLineError(InvalidInput):
+    """A line needs an amount, or a payment of this organisation's to take one from."""
+
+    code = "invalid_invoice_line"
+    default_message = "Each line needs an amount, or a payment to bill for"

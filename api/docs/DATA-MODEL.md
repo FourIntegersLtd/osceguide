@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-72 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+74 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -982,7 +982,7 @@ Partial index `ix_entitlements_live` on `(user_id, exam_id)` WHERE
 `revoked_at IS NULL` — the only lookup the access check performs.
 Domain: `ALLOWED_TRIAL_STATIONS = 3`, `TRIAL_DAYS = 14`.
 
-## billing — 3 tables
+## billing — 5 tables
 
 ### `plans`
 What a Stripe price buys. A row rather than a hardcoded table keyed by pence: b2c
@@ -1030,6 +1030,38 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `customer_email` / `customer_name` | `varchar(320) null` / `varchar(200) null` | frozen at payment. A receipt shows who paid at the time, not who the account belongs to now |
 | `amount_tax_pence` | `int not null default 0` | |
 | `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |
+
+### `invoices`
+What an organisation is billed, under the purchase order its finance team raised
+(E-22). An institution pays on an invoice rather than a card, and its finance
+office will not pay one that does not quote their PO number.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` **RESTRICT** | an organisation with invoices has a ledger; index `(org_id, issued_at)` |
+| `invoice_number` | `varchar(32) not null unique` | `INV-<year>-<6 digits>`, the digits from the `invoice_number_seq` sequence so two invoices raised at once never share one and none is reused |
+| `po_number` | `varchar(64) null` | the customer's purchase order; the org admin may set it while the invoice is `issued` |
+| `customer_name` | `varchar(200) not null` | the organisation's name as billed, frozen like a receipt's |
+| `status` | `varchar(16) not null default 'issued'` | `issued` \| `paid` \| `void`; CHECK `ck_invoices_status`. Paid and void are final |
+| `currency` | `varchar(3) not null default 'gbp'` | |
+| `total_pence` | `int not null` | the sum of the lines' `amount_pence` |
+| `issued_at` / `due_at` | `timestamptz` | `issued_at not null`, `due_at null` |
+| `paid_at` / `voided_at` | `timestamptz null` | set by the move to that status |
+| `notes` | `text null` | |
+| `created_by` | `uuid null` → `users.id` SET NULL | the console user who raised it |
+
+### `invoice_lines`
+One line on an invoice. No `updated_at`: lines are written with the invoice and
+never edited.
+
+| Field | Type | Notes |
+|---|---|---|
+| `invoice_id` | `uuid not null` → `invoices.id` CASCADE | |
+| `position` | `int not null` | UNIQUE `(invoice_id, position)` |
+| `description` | `varchar(300) not null` | from the payment's plan when a payment is named and no description is given |
+| `quantity` | `int not null` | |
+| `unit_amount_pence` / `amount_pence` | `int not null` | `amount = quantity × unit`; the unit defaults to the payment's total |
+| `payment_id` | `uuid null` → `payments.id` SET NULL | the settled payment (typically a console-entered bank transfer, `service_settlement`) this line bills for |
 
 ## growth — 6 tables
 
