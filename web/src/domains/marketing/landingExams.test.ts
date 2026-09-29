@@ -14,6 +14,17 @@ describe("buildExamUrl", () => {
     );
   });
 
+  it("builds the CASC subdomain on production and staging", () => {
+    assert.equal(
+      buildExamUrl("casc", "osceguide.com", "", "https:"),
+      "https://casc.osceguide.com",
+    );
+    assert.equal(
+      buildExamUrl("casc", "staging.osceguide.com", "", "https:", "staging.osceguide.com"),
+      "https://casc.staging.osceguide.com",
+    );
+  });
+
   it("builds local lvh.me URLs with port", () => {
     assert.equal(
       buildExamUrl("ortho", "lvh.me", "3000", "http:"),

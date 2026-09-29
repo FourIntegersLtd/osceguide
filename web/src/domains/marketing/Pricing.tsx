@@ -7,6 +7,7 @@ import { Button } from "@/foundation/ui";
 import type { LandingType } from "./landingTypography";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
+import type { ExamKey } from "./landingExams";
 import { REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
 const EXAM_CONFIGS = {
@@ -176,6 +177,82 @@ const EXAM_CONFIGS = {
       },
     },
   },
+  CASC: {
+    name: "CASC",
+    label: "Clinical Assessment of Skills and Competencies",
+    plans: {
+      trial: {
+        name: "Free Trial",
+        stations: 3,
+        duration: "2 week",
+        price: 0,
+        features: [
+          "3 free trial stations",
+          "3 attempts per station",
+          "Two week access",
+          "Real-Time Speech Transcription",
+          "RCPsych CASC-Aligned Feedback",
+          "Performance Analytics (Basic)",
+          "Athena as Doctor",
+          "Debrief with Athena",
+        ],
+        cta: "Try Now",
+        ctaColor: "gray",
+      },
+      monthly: {
+        name: "1 Month",
+        stations: "50 High-Yield Psychiatry Scenarios",
+        price: 24.99,
+        features: [
+          "50 High-Yield Psychiatry Stations",
+          "3 attempts per station",
+          "Real-Time Speech Transcription",
+          "RCPsych CASC-Aligned Feedback",
+          "In-Depth Performance Analytics",
+          "Athena as Doctor",
+          "Debrief with Athena",
+          "Practice with Colleagues (Live Video Matching)",
+        ],
+        cta: "Start Now",
+        ctaColor: "gray",
+      },
+      quarterly: {
+        name: "3 Months",
+        stations: "75 High-Yield Psychiatry Scenarios",
+        price: 64.99,
+        isPopular: true,
+        features: [
+          "100+ High-Yield Psychiatry Scenarios",
+          "3 attempts per station",
+          "Real-Time Speech Transcription",
+          "RCPsych CASC-Aligned Feedback",
+          "In-Depth Performance Analytics",
+          "Athena as Doctor",
+          "Debrief with Athena",
+          "Practice with Colleagues (Live Video Matching)",
+        ],
+        cta: "Get Started",
+        ctaColor: "blue",
+      },
+      sixMonth: { 
+        name: "6 Months",
+        stations: "100+ High-Yield Psychiatry Scenarios", 
+        price: 94.99, 
+        features: [
+          "125+ High-Yield Psychiatry Scenarios",
+          "3 attempts per station",
+          "Real-Time Speech Transcription",
+          "RCPsych CASC-Aligned Feedback",
+          "In-Depth Performance Analytics",
+          "Athena as Doctor",
+          "Debrief with Athena",
+          "Practice with Colleagues (Live Video Matching)",
+        ],
+        cta: "Go Premium",
+        ctaColor: "gray", 
+      },
+    },
+  },
   ORTHO: {
     name: "Orthopaedics",
     label: "ST3 Interview",
@@ -239,10 +316,6 @@ const EXAM_CONFIGS = {
         ctaColor: "gray",
       },
     },
-  },
-  CASC: {
-    name: "CASC",
-    label: "Psychiatry clinical assessment",
   },
 } as const;
 
@@ -426,17 +499,18 @@ export const PricingSection = () => {
   return <PricingSectionContent />;
 };
 
-const APP_TYPE_TO_EXAM: Record<string, ExamName> = {
+const APP_TYPE_TO_EXAM: Record<ExamKey, ExamName> = {
   sca: "SCA",
   ortho: "ORTHO",
   plab: "PLAB",
+  casc: "CASC",
 };
 
 export type LandingPricingSectionProps = {
-  appType: "sca" | "ortho" | "plab";
+  appType: ExamKey;
 };
 
-/** Reusable pricing section for SCA, Ortho, and PLAB landing pages. Uses EXAM_CONFIGS. */
+/** Reusable pricing section for the SCA, PLAB, CASC and Ortho landing pages. Uses EXAM_CONFIGS. */
 export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
   const router = useRouter();
   const partner = usePartnerContext();

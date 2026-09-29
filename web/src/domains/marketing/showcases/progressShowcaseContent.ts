@@ -102,6 +102,36 @@ export const PROGRESS_SHOWCASE_CONTENT: Record<
     categoryAxisMax: 100,
     caption: "Example dashboard. Figures are illustrative.",
   },
+  casc: {
+    eyebrow: "27 stations attempted",
+    title: "Where you stand",
+    subtitle: "History taking is strong. Management plans need the work.",
+    examDateLabel: "8 weeks to go",
+    ctaLabel: "Practise a station",
+    competency: { competent: 24, developing: 36, development: 40 },
+    weeklyTrend: [10, 0, 0, 15, 18, 0, 24, 29],
+    domains: [
+      {
+        label: "History taking",
+        split: { development: 28, developing: 37, competent: 35 },
+      },
+      {
+        label: "Examination",
+        split: { development: 39, developing: 35, competent: 26 },
+      },
+      {
+        label: "Management",
+        split: { development: 51, developing: 31, competent: 18 },
+      },
+    ],
+    categories: [
+      { labelLines: ["Risk", "Assessment"], value: 82 },
+      { labelLines: ["Mental State", "Examination"], value: 64 },
+      { labelLines: ["Explaining", "Treatment"], value: 57 },
+    ],
+    categoryAxisMax: 100,
+    caption: "Example dashboard. Figures are illustrative.",
+  },
   ortho: {
     eyebrow: "18 stations attempted",
     title: "Where you stand",

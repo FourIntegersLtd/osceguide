@@ -88,6 +88,44 @@ export const HERO_REPORT_SHOWCASE_CONTENT: Record<
       total: "18 / 24",
     },
   },
+  casc: {
+    backLeft: {
+      stationTitle: "Explaining lithium",
+      patientSummary: "Relative · bipolar disorder",
+    },
+    backRight: {
+      marks: "16 / 20",
+      totalPercent: "80%",
+    },
+    front: {
+      stationTitle: "Suicide risk assessment",
+      patientSummary: "27M · low mood after job loss",
+      examMeta: "MRCPsych CASC · 7 minutes, timed",
+      domains: [
+        {
+          domain: "History taking",
+          marks: "5 / 6",
+          variant: "competent",
+        },
+        {
+          domain: "Examination",
+          marks: "3 / 4",
+          variant: "competent",
+        },
+        {
+          domain: "Management",
+          marks: "2 / 4",
+          variant: "developing",
+        },
+        {
+          domain: "Communication",
+          marks: "3 / 6",
+          variant: "development",
+        },
+      ],
+      total: "13 / 20",
+    },
+  },
   ortho: {
     backLeft: {
       stationTitle: "Trauma prioritisation",

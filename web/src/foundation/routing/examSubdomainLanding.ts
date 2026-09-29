@@ -1,6 +1,6 @@
 import { getExamFromHost } from "@/foundation/routing/examFromHost";
 
-export const SUPPORTED_EXAM_LANDING_SUBDOMAINS = new Set(["sca", "plab", "ortho"]);
+export const SUPPORTED_EXAM_LANDING_SUBDOMAINS = new Set(["sca", "plab", "casc", "ortho"]);
 
 /**
  * When a visitor hits `{exam}.osceguide.com/` (or `{exam}.lvh.me` locally),

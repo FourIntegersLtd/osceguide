@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { SITE_HOSTNAME } from "@/foundation/config/siteUrl";
 
-export type ExamKey = "sca" | "plab" | "ortho";
+export type ExamKey = "sca" | "plab" | "casc" | "ortho";
 
 export type LandingExam = {
   key: ExamKey;
@@ -23,6 +23,12 @@ export const LANDING_EXAMS: LandingExam[] = [
     title: "PLAB 2",
     description:
       "Comprehensive preparation with realistic patient scenarios and structured feedback.",
+  },
+  {
+    key: "casc",
+    title: "MRCPsych CASC",
+    description:
+      "Voice-first psychiatry stations for the RCPsych CASC, from risk assessment to capacity.",
   },
   {
     key: "ortho",

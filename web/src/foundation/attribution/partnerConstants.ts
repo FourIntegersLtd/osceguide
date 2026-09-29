@@ -13,7 +13,7 @@ export const APP_TYPE_PARAM = "appType";
  */
 export const PILOT_PARTNERS = ["bmj"] as const;
 
-export const PILOT_EXAMS = ["sca", "plab", "ortho"] as const;
+export const PILOT_EXAMS = ["sca", "plab", "casc", "ortho"] as const;
 
 /** Default when building links if `partner` is omitted. */
 export const DEFAULT_PILOT_PARTNER: (typeof PILOT_PARTNERS)[number] = "bmj";

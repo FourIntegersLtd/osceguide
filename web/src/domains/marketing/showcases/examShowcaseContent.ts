@@ -1,4 +1,4 @@
-export type ExamShowcaseVariant = "sca" | "plab" | "ortho";
+export type ExamShowcaseVariant = "sca" | "plab" | "casc" | "ortho";
 
 export type SimulationShowcaseContent = {
   examLabel: string;
@@ -117,6 +117,40 @@ export const SIMULATION_SHOWCASE_CONTENT: Record<
       { label: "Explained next steps clearly", done: false },
     ],
     checklistEyebrow: "Live marking against PLAB domains",
+  },
+  casc: {
+    examLabel: "Station 03 · CASC",
+    stationTitle: "Suicide risk assessment · 27M",
+    timerLabel: "05:10 left",
+    transcriptRows: [
+      {
+        speaker: "PATIENT",
+        time: "01:50",
+        text:
+          "Since I lost my job I can't see the point any more. Some nights I just sit there thinking everyone would be better off.",
+        side: "them",
+      },
+      {
+        speaker: "YOU",
+        time: "02:04",
+        text:
+          "That sounds incredibly hard. When you think everyone would be better off, have you had thoughts of ending your life?",
+        side: "you",
+      },
+      {
+        speaker: "PATIENT",
+        time: "02:15",
+        text: "I've looked at how many tablets I'd need. I haven't done anything.",
+        side: "them",
+      },
+    ],
+    checklistItems: [
+      { label: "Asked directly about suicidal thoughts", done: true },
+      { label: "Explored plans and access to means", done: true },
+      { label: "Asked about protective factors", done: false },
+      { label: "Agreed a safety plan", done: false },
+    ],
+    checklistEyebrow: "Live marking against CASC domains",
   },
   ortho: {
     examLabel: "Clinical · Ortho ST3",

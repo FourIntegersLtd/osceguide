@@ -17,6 +17,7 @@ const SOCIAL_ICON_BLUE_CLASS =
 const FOOTER_EXAMS = [
   { key: "sca", label: "SCA (UK)" },
   { key: "plab", label: "PLAB 2 (UK)" },
+  { key: "casc", label: "MRCPsych CASC" },
   { key: "ortho", label: "Orthopaedic ST3" },
 ] as const;
 

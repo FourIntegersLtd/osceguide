@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import {
   BaseLandingPage,
+  CascLandingPage,
   LandingPage,
   OrthoLandingPage,
   PlabLandingPage,
@@ -19,6 +20,7 @@ import {
  */
 const EXAM_PAGES: Record<string, () => ReactElement> = {
   avodeck: () => <BaseLandingPage />,
+  casc: () => <CascLandingPage />,
   classic: () => <LandingPage />,
   ortho: () => <OrthoLandingPage />,
   plab: () => <PlabLandingPage />,
@@ -36,6 +38,13 @@ export async function generateMetadata({
       title: "AvoDeck. Find RCGP CSA Practice Partners | OSCE Guide",
       description:
         "Match with GP trainees for structured CSA practice sessions. Session transcripts, AI cases, NHS-verified users.",
+    };
+  }
+  if (exam === "casc") {
+    return {
+      title: "MRCPsych CASC Exam | OSCE Guide",
+      description:
+        "Voice-first AI practice for the Royal College of Psychiatrists CASC: risk assessment, mental state examination, capacity and communication stations with structured feedback.",
     };
   }
   const name = exam.charAt(0).toUpperCase() + exam.slice(1).toUpperCase();
