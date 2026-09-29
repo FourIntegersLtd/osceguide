@@ -66,3 +66,9 @@ class PeerSession(Base, UUIDPrimaryKey, Timestamps):
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'scheduled'"))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set by `jobs.send_marketplace_session_reminders` once it has queued the
+    # "starts in an hour" email to both participants. Null until then, and the
+    # job's own idempotency check: claimed with an atomic
+    # `UPDATE ... WHERE reminder_sent_at IS NULL`, so two workers polling at
+    # once never both queue the reminder for the same session.
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -16,6 +16,16 @@ Credentials: `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_KEY_PAT
 when present (does not override platform-api `.env`).
 
 `--dry-run` is the default: full load, then rollback.
+
+Backfilling `users.engagement_email_sent_at` against a prod database that was
+already imported before this column existed: re-run this script against
+Firestore (`--from-firestore --no-dry-run`). `load_users` matches by email and
+only fills a blank `engagement_email_sent_at` (`load_people._apply_profile`),
+so a second run is safe — it changes nothing else about an already-imported
+account, and only sets the column where a legacy record shows a prior send.
+Do this, or the fresh column, before turning on `ENGAGEMENT_EMAIL_ENABLED`
+in prod: otherwise the job's first run re-emails everyone legacy already
+reached.
 """
 
 from __future__ import annotations

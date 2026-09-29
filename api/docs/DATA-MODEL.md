@@ -107,6 +107,7 @@ names both.
 | `replay_onboarding` | `bool not null default false` | offer the guided voice tour again on the dashboard |
 | `consumer_role` | `varchar(32) not null default 'user'` | staff vs learner on the consumer product |
 | `avatar_url` | `text null` | this person's profile photo, written by `identity.service.upload_avatar`; stored in S3 like a station photo |
+| `engagement_email_sent_at` | `timestamptz null` | set once `identity.jobs.send_engagement_emails` queues the "come try a station" nudge for this person; also the job's idempotency check (`UPDATE ... WHERE ... IS NULL ... RETURNING`), and backfilled by `app.migration` from legacy's `inactive_engagement_email_sent_at` for anyone imported from Firestore |
 
 Domain: `MIN_PASSWORD_LENGTH = 12`.
 
@@ -1135,7 +1136,9 @@ The session a claim creates. Two people, one room, one appointed time.
 matched pair opens their LiveKit room), `doctor_user_id` and `patient_user_id` →
 `users.id` SET NULL (nullable — the two roles are appointed when the session
 starts, not when it is scheduled), `ended_at timestamptz null`,
-`cancelled_at timestamptz null`.
+`cancelled_at timestamptz null`, `reminder_sent_at timestamptz null` (set once
+`marketplace.jobs.send_marketplace_session_reminders` queues the "starts in an
+hour" email to both participants; also the job's idempotency check).
 
 ## peer_practice — 3 tables
 

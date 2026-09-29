@@ -61,6 +61,12 @@ def _apply_profile(user: User, merged: MergedUser, *, creating: bool) -> None:
         user.consumer_role = "admin"
     if creating and merged.created_at:
         user.created_at = merged.created_at
+    # Only ever filled, never overwritten: once this account is marked as
+    # having been sent the engagement email — by legacy, or by a run of
+    # `identity.jobs.send_engagement_emails` since the last import — a later
+    # import must not un-send it by leaving the column blank again.
+    if merged.engagement_email_sent_at and user.engagement_email_sent_at is None:
+        user.engagement_email_sent_at = merged.engagement_email_sent_at
 
 
 async def _link_consumer_ids(session: AsyncSession, user_id: uuid.UUID, merged: MergedUser) -> None:

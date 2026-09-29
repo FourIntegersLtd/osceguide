@@ -58,6 +58,7 @@ least 32 characters.
 | `CARTESIA_API_KEY` | — | TTS for slide and podcast production. Jobs raise `av_unavailable` without it. |
 | `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_S3_BUCKET` | — | Where produced audio and video are stored. Jobs raise `av_unavailable` without a bucket. |
 | `MEDIA_AV_FONT_DIR` | — | Optional extra font directory for slide video. Empty uses the bundled fonts. |
+| `ENGAGEMENT_EMAIL_ENABLED` | false | Gates `identity.jobs.send_engagement_emails`, the daily "come try a station" nudge to a signed-up person who never ran a practice station (ported from legacy `b2c-api`'s `InactiveUserEngagementService`). Off by default so a freshly migrated environment cannot fire it on real inboxes until the owner switches it on deliberately. |
 
 ## Local gotcha
 

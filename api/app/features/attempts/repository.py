@@ -254,6 +254,24 @@ async def count_evaluated(session: AsyncSession) -> int:
     return int((await session.execute(stmt)).scalar_one())
 
 
+async def has_completed_any(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether this person has ever finished a station, of any kind.
+
+    Used by `identity.service_engagement` to exclude someone from the
+    "come try a station" nudge once they have actually tried one — legacy's
+    `user_has_completed_station` check, ported against `completed_at` rather
+    than a Firestore `station_progress` list. Any attempt with a
+    `completed_at` counts, regardless of `status`: this asks whether the
+    person finished a consultation, not whether it was later marked.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(Attempt)
+        .where(Attempt.user_id == user_id, Attempt.completed_at.is_not(None))
+    )
+    return int((await session.execute(stmt)).scalar_one()) > 0
+
+
 # --- Live coverage snapshots.
 
 

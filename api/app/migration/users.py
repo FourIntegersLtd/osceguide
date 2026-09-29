@@ -71,6 +71,14 @@ class MergedUser:
     custom_reading_seconds: int | None = None
     custom_simulation_seconds: int | None = None
     consumer_role: str = "user"
+    # Legacy `inactive_engagement_email_sent_at`, carried across so the
+    # engagement-email job (`identity.jobs.send_engagement_emails`) never
+    # re-sends the "come try a station" nudge to someone legacy already
+    # reached. Firestore holds this per app-type document, not per person, so
+    # `merge_users` below keeps whichever is earliest across a person's docs —
+    # the same "oldest wins" rule as `created_at`, since any one legacy send
+    # already satisfies "never emailed before".
+    engagement_email_sent_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -270,6 +278,12 @@ def merge_users(
 
         if not user.exam_code and product:
             user.exam_code = product
+
+        engagement_sent = parse_timestamp(record.get("inactive_engagement_email_sent_at"))
+        if engagement_sent and (
+            user.engagement_email_sent_at is None or engagement_sent < user.engagement_email_sent_at
+        ):
+            user.engagement_email_sent_at = engagement_sent
 
     return list(merged.values())
 

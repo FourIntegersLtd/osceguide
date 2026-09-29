@@ -77,6 +77,50 @@ async def user_ids_closed_before(session: AsyncSession, *, cutoff: datetime) -> 
     return list((await session.execute(stmt)).scalars())
 
 
+async def candidates_for_engagement_email(
+    session: AsyncSession, *, window_start: datetime, window_end: datetime
+) -> list[User]:
+    """Every account signed up inside the lookback window that has not yet
+    been sent, or ruled out for, the "come try a station" nudge.
+
+    Only what this slice can answer on its own: the sign-up window and
+    `engagement_email_sent_at IS NULL`. `service_engagement.py` still has to
+    check each candidate against `attempts` (never completed a station) and
+    `roster` (never an institution-provisioned trainee) before sending —
+    those tables belong to other slices, so this query cannot see them.
+    A closed account (`status == "deleted"`) is excluded here: legacy's own
+    `_should_send_engagement_email` refuses a deleted account outright, and
+    there is nothing to nudge someone back to if their account is gone.
+    """
+    stmt = select(User).where(
+        User.created_at >= window_start,
+        User.created_at <= window_end,
+        User.status != "deleted",
+        User.engagement_email_sent_at.is_(None),
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def claim_engagement_email(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> bool:
+    """Atomically mark one account as having been sent the engagement email.
+
+    Returns False, claiming nothing, if it was already sent (by an earlier
+    run, or by another worker's identical statement a moment before this
+    one) — the same `UPDATE ... WHERE ... IS NULL ... RETURNING` shape as
+    `marketplace.repository.claim_due_reminders`, sized to one row at a time
+    here because each candidate needs its own cross-slice checks in between
+    the select and the claim, unlike a marketplace session's single-table
+    check.
+    """
+    claimed = await session.execute(
+        update(User)
+        .where(User.id == user_id, User.engagement_email_sent_at.is_(None))
+        .values(engagement_email_sent_at=now)
+        .returning(User.id)
+    )
+    return claimed.scalar_one_or_none() is not None
+
+
 async def scrub_for_erasure(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> bool:
     """Overwrite this account's personal fields and mark it erased.
 

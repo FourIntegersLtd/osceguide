@@ -210,6 +210,32 @@ async def sessions_for_post(session: AsyncSession, post_id: uuid.UUID) -> list[P
     return list((await session.execute(stmt)).scalars())
 
 
+async def claim_due_reminders(
+    session: AsyncSession, *, now: datetime, remind_before: datetime
+) -> list[PeerSession]:
+    """Take every scheduled session starting between `now` and `remind_before` that has
+    not yet had its reminder queued, and mark it claimed in the same statement.
+
+    A plain `SELECT` then `UPDATE` would let two workers polling at the same moment both
+    read `reminder_sent_at IS NULL`, both decide the reminder is theirs to send, and both
+    queue it. Folding the check into the `UPDATE`'s own `WHERE` and reading back only the
+    rows it actually touched (`RETURNING`) is what makes the claim atomic: a second
+    worker's identical statement, run a moment later, finds nothing left to claim.
+    """
+    claimed = await session.execute(
+        update(PeerSession)
+        .where(
+            PeerSession.status == "scheduled",
+            PeerSession.starts_at > now,
+            PeerSession.starts_at <= remind_before,
+            PeerSession.reminder_sent_at.is_(None),
+        )
+        .values(reminder_sent_at=now)
+        .returning(PeerSession)
+    )
+    return list(claimed.scalars())
+
+
 async def sessions_for_user(
     session: AsyncSession,
     user_id: uuid.UUID,
