@@ -22,11 +22,31 @@ type S = components["schemas"];
 
 /* ------------------------------------------------------- station templates */
 
-export function listStationTemplates(
+const TEMPLATE_MAX_PAGES = 20;
+
+/**
+ * Every template in this scope.
+ *
+ * The route answers the whole list with `next_cursor: null` today. Following
+ * the cursor anyway means the day it pages, this still returns every template
+ * rather than silently the first page; the pickers that use it need them all.
+ */
+export async function listStationTemplates(
   scope: AuthoringScope,
   signal?: AbortSignal,
 ): Promise<S["Page_StationTemplateRead_"]> {
-  return platformRequest(`${scope.base}/station-templates`, { signal });
+  const items: StationTemplate[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < TEMPLATE_MAX_PAGES; page += 1) {
+    const result: S["Page_StationTemplateRead_"] = await platformRequest(
+      `${scope.base}/station-templates`,
+      { query: { cursor: cursor ?? undefined }, signal },
+    );
+    items.push(...result.items);
+    cursor = result.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  return { items, next_cursor: null };
 }
 
 export function createStationTemplate(

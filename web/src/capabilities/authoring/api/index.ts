@@ -25,7 +25,7 @@ export {
 
 export {
   listStations,
-  listAllStations,
+  STATION_PAGE_LIMIT,
   createStation,
   generateStation,
   autogenerateStationDraft,

@@ -7,31 +7,28 @@ type S = components["schemas"];
 
 /* ---------------------------------------------------------------- stations */
 
-const STATION_PAGE_LIMIT = 100;
-const STATION_MAX_PAGES = 25;
+/** The backend's page cap. */
+export const STATION_PAGE_LIMIT = 100;
 
+/**
+ * One page of this scope's stations.
+ *
+ * `search` matches a title fragment in SQL, so finding one station in a
+ * catalogue of thousands is one request rather than loading all of it.
+ */
 export function listStations(
   scope: AuthoringScope,
-  params: { cursor?: string | null; limit?: number } = {},
+  params: { cursor?: string | null; limit?: number; search?: string | null } = {},
   signal?: AbortSignal,
 ): Promise<S["Page_StationRead_"]> {
   return platformRequest(`${scope.base}/stations`, {
-    query: { cursor: params.cursor ?? undefined, limit: params.limit },
+    query: {
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+      search: params.search?.trim() || undefined,
+    },
     signal,
   });
-}
-
-/** Walk cursors until the library is in memory — same pattern as org roster lists. */
-export async function listAllStations(scope: AuthoringScope, signal?: AbortSignal): Promise<Station[]> {
-  const items: Station[] = [];
-  let cursor: string | null = null;
-  for (let index = 0; index < STATION_MAX_PAGES; index += 1) {
-    const page = await listStations(scope, { limit: STATION_PAGE_LIMIT, cursor }, signal);
-    items.push(...(page.items as Station[]));
-    cursor = page.next_cursor ?? null;
-    if (!cursor) break;
-  }
-  return items;
 }
 
 export function autogenerateStationDraft(

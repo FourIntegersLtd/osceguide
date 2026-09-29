@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlinePlusCircle } from "react-icons/hi2";
 import { useSurface } from "@/capabilities";
@@ -16,13 +16,15 @@ import {
 import { useAsync } from "@/foundation/hooks";
 import {
   archiveStationVersion,
-  listAllStations,
+  listStations,
   listStationTemplates,
+  STATION_PAGE_LIMIT,
   type Station,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
+import { useCursorPages } from "@/capabilities/authoring/parts/useCursorPages";
 import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationsTable } from "@/capabilities/authoring/sections/StationsTable";
 
@@ -40,6 +42,8 @@ export function StationsSection() {
   const { hrefFor } = useSurface();
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Station | null>(null);
   const [archiveConfirm, setArchiveConfirm] = useState<{
     id: string;
@@ -47,7 +51,19 @@ export function StationsSection() {
     version: number;
   } | null>(null);
 
-  const stations = useAsync((signal) => listAllStations(scope, signal), [scope.base]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, searched in SQL. This used to walk up to 25 pages of
+  // 100 before drawing anything, and quietly stopped at 2,500 stations.
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listStations(scope, { cursor, limit: STATION_PAGE_LIMIT, search: query }, signal),
+    [scope.base, query],
+  );
+  const stations = pages.state;
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const action = useAction(stations.reload);
 
@@ -95,7 +111,8 @@ export function StationsSection() {
         Published station cases for sessions and practice.
         {stations.data ? (
           <span className="block text-sm font-normal text-b2c-text-secondary">
-            {visibleCount} station{visibleCount === 1 ? "" : "s"}
+            {visibleCount}
+            {pages.hasMore ? "+" : ""} station{visibleCount === 1 && !pages.hasMore ? "" : "s"}
             {published.length > 0 ? ` · ${published.length} template(s) available` : ""}
           </span>
         ) : null}
@@ -126,7 +143,7 @@ export function StationsSection() {
         <StationsTable
           stations={stations.data ?? []}
           examFilter={examFilter}
-          search={search}
+          search={query}
           busy={action.busy}
           onOpen={setOpen}
           onArchive={(station) =>
@@ -138,6 +155,24 @@ export function StationsSection() {
           }
         />
       )}
+
+      {pages.moreError ? (
+        <Alert tone="danger">
+          Could not load more stations: {pages.moreError.message}
+        </Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="flex justify-center">
+          <AuthoringButton
+            variant="secondary"
+            size="sm"
+            disabled={pages.loadingMore}
+            onClick={pages.loadMore}
+          >
+            {pages.loadingMore ? "Loading…" : "Load more stations"}
+          </AuthoringButton>
+        </div>
+      ) : null}
 
       <ConfirmModal
         isOpen={archiveConfirm !== null}
