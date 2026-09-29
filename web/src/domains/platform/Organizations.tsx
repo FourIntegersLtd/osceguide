@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LuChevronRight } from "react-icons/lu";
 import { AsyncBoundary, Button, Card } from "@/foundation/ui";
 import { LuBuilding2 } from "react-icons/lu";
@@ -24,11 +24,11 @@ type TypeFilter = "all" | string;
 /**
  * The tenant directory: partners and institutions, grouped by type.
  *
- * The status filter is the backend's — `GET /platform/organizations` takes
- * one — and changing it reloads. The search box and the type filter are over
- * what has been paged in, because the endpoint takes neither; the whole
- * directory is walked for exactly that reason, and `docs/BACKLOG.md` says
- * where that stops scaling.
+ * Status, type and search all go to the backend (`GET /platform/organizations`
+ * takes `status`, and `org_type` and `search` from platform-api's
+ * `feat/backend-backlog-batch-1`), so the directory is not walked whole to be
+ * searched in the browser. The same filters are applied to what comes back,
+ * which keeps the screen right against a backend that ignores the new ones.
  *
  * There is no delete. The backend will not delete an organisation and that is
  * a decision, not an omission: a tenant's rows include candidate results that
@@ -40,11 +40,26 @@ export function Organizations() {
   const [status, setStatus] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [search, setSearch] = useState("");
+  // What the server is asked: the box, once typing pauses.
+  const [query, setQuery] = useState("");
   const [provisioning, setProvisioning] = useState(false);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const state = useAsync(
-    (signal) => listAllOrganizations(status || null, signal),
-    [status],
+    (signal) =>
+      listAllOrganizations(
+        {
+          status: status || null,
+          search: query || null,
+          orgType: typeFilter === "all" ? null : typeFilter,
+        },
+        signal,
+      ),
+    [status, query, typeFilter],
   );
 
   return (
@@ -110,7 +125,12 @@ export function Organizations() {
          * rendering as no data.
          */
         empty={
-          status
+          query || typeFilter !== "all"
+            ? {
+                title: "Nothing matches those filters",
+                description: "Try a different name, or clear the type filter.",
+              }
+            : status
             ? {
                 title: `No organisation is ${status}`,
                 description: "Clear the status filter to see the rest of the directory.",

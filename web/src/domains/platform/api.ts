@@ -113,29 +113,43 @@ export function readOverview(signal?: AbortSignal): Promise<Overview> {
   return platformRequest<Overview>(`${PLATFORM}/overview`, { signal });
 }
 
+export interface DirectoryFilters {
+  status?: string | null;
+  /** Name or slug fragment. */
+  search?: string | null;
+  orgType?: string | null;
+}
+
 export function listOrganizations(
-  options: { status?: string | null } & PageParams = {},
+  options: DirectoryFilters & PageParams = {},
   signal?: AbortSignal,
 ): Promise<OrganizationPage> {
   return platformRequest<OrganizationPage>(`${PLATFORM}/organizations`, {
     signal,
-    query: { ...pageQuery(options), status: options.status ?? undefined },
+    query: {
+      ...pageQuery(options),
+      status: options.status ?? undefined,
+      search: options.search?.trim() || undefined,
+      org_type: options.orgType ?? undefined,
+    },
   });
 }
 
 /**
- * Every organisation, status filter applied by the backend.
+ * Every organisation matching the filters.
  *
- * The directory is searched and grouped in the browser — by name, by slug and
- * by type — because the endpoint takes `status`, `cursor` and `limit` and
- * nothing else. That is fine at this size and stops being fine in the
- * thousands; `docs/BACKLOG.md` says so.
+ * `search` and `org_type` are sent to the backend, which takes them from
+ * platform-api's `feat/backend-backlog-batch-1`; before that it takes
+ * `status` only and ignores the rest. So the caller still filters what comes
+ * back (`matchesSearch`, the type): a no-op against a backend that filtered,
+ * and what keeps the screen right against one that did not.
  */
 export function listAllOrganizations(
-  status?: string | null,
+  filters: DirectoryFilters | string | null = null,
   signal?: AbortSignal,
 ): Promise<Organization[]> {
-  return collectPages((cursor) => listOrganizations({ status, cursor }, signal));
+  const options = typeof filters === "string" || filters === null ? { status: filters } : filters;
+  return collectPages((cursor) => listOrganizations({ ...options, cursor }, signal));
 }
 
 /** One organisation. The org-scoped read, which admits a platform admin. */
