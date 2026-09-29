@@ -7462,6 +7462,18 @@
             "title": "Org Type",
             "type": "string"
           },
+          "parent_org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Org Id"
+          },
           "require_staff_mfa": {
             "default": false,
             "title": "Require Staff Mfa",

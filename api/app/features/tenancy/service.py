@@ -241,4 +241,5 @@ def _org_read(org: Any) -> OrganizationRead:
         contract_starts_at=org.contract_starts_at,
         contract_ends_at=org.contract_ends_at,
         require_staff_mfa=org.require_staff_mfa,
+        parent_org_id=org.parent_org_id,
     )

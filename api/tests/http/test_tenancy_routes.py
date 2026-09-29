@@ -433,3 +433,28 @@ async def test_a_platform_admin_can_still_reach_a_suspended_organisation(
     response = await client.get("/api/v1/orgs/lookable", headers=bearer(root))
 
     assert response.status_code == 200, response.text
+
+
+async def test_an_organisation_says_which_one_it_sits_under(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A trust above its hospitals: the column was stored but never returned."""
+    from sqlalchemy import update
+
+    from app.features.tenancy.models import Organization
+
+    trust_id = await seed_org(client, make_actor, "trust")
+    hospital_id = await seed_org(client, make_actor, "kings")
+    await db_session.execute(
+        update(Organization).where(Organization.id == hospital_id).values(parent_org_id=trust_id)
+    )
+    await db_session.flush()
+
+    hospital = await client.get(
+        "/api/v1/orgs/kings", headers=bearer(await member_token(make_actor, hospital_id, "kings", "owner"))
+    )
+    assert hospital.json()["parent_org_id"] == str(trust_id)
+    trust = await client.get(
+        "/api/v1/orgs/trust", headers=bearer(await member_token(make_actor, trust_id, "trust", "owner"))
+    )
+    assert trust.json()["parent_org_id"] is None
