@@ -352,3 +352,66 @@ async def test_an_org_admin_may_not_read_the_librarys_history(
 
     assert response.status_code == 403, response.text
     assert response.json()["code"] == "forbidden"
+
+
+async def test_the_history_says_how_much_uses_each_revision(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """What a delete or archive screen shows before the button is pressed.
+
+    Two practice sets and one circuit (named by its station list and by two
+    slots, counted once) use version 1; nothing uses the draft.
+    """
+    from sqlalchemy import select
+
+    from app.features.identity import repository as identity_repo
+    from app.features.sittings.models import Circuit, CircuitStation, Sitting, Slot
+    from app.features.station_sets.models import StationSet, StationSetEntry
+    from app.features.stations.models import StationVersion
+    from tests.support.rubrics import published_feedback_version
+
+    org_id = await seed_org(client, make_actor)
+    admin = await member(make_actor, org_id, "kings", "owner")
+    station_id = await an_authored_station_with_three_revisions(client, admin)
+    first_version = await db_session.scalar(
+        select(StationVersion.id).where(
+            StationVersion.station_id == uuid.UUID(station_id), StationVersion.version == 1
+        )
+    )
+    assert first_version is not None
+    exam = await ensure_exam(db_session, "sca")
+
+    for owner_email in ("set-one@example.com", "set-two@example.com"):
+        owner = await identity_repo.create_user(
+            session=db_session, email=owner_email, name="Owner", password_hash=None
+        )
+        station_set = StationSet(owner_user_id=owner.id, exam_id=exam.id, name="Mine")
+        db_session.add(station_set)
+        await db_session.flush()
+        db_session.add(StationSetEntry(set_id=station_set.id, position=0, station_version_id=first_version))
+
+    rubric_version = await published_feedback_version(db_session, org_id)
+    sitting = Sitting(org_id=org_id, name="S", mode="exam", rubric_version_id=rubric_version.id)
+    db_session.add(sitting)
+    await db_session.flush()
+    circuit = Circuit(org_id=org_id, sitting_id=sitting.id, name="C")
+    db_session.add(circuit)
+    await db_session.flush()
+    db_session.add(CircuitStation(circuit_id=circuit.id, position=0, station_version_id=first_version))
+    for slot_index in range(2):
+        trainee = await identity_repo.create_user(
+            session=db_session, email=f"slot{slot_index}@example.com", name="T", password_hash=None
+        )
+        db_session.add(
+            Slot(
+                org_id=org_id,
+                circuit_id=circuit.id,
+                slot_index=slot_index,
+                trainee_id=trainee.id,
+                station_version_id=first_version,
+            )
+        )
+    await db_session.flush()
+
+    rows = (await client.get(f"/api/v1/stations/{station_id}/versions", headers=bearer(admin))).json()
+    assert [(row["version"], row["used_by_count"]) for row in rows] == [(2, 0), (1, 3)]

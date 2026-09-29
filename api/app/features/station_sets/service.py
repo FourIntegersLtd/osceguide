@@ -343,3 +343,11 @@ async def _set_read(
         entries=entry_reads,
         feedback_ready=any_feedback_ready,
     )
+
+
+async def set_counts_by_station_version(
+    session: AsyncSession, station_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many practice sets include each station version, for an author
+    deciding whether a version is safe to throw away."""
+    return await repository.set_counts_by_station_version(session, station_version_ids)

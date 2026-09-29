@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, union, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -245,3 +246,26 @@ async def rubric_version_for_slot(
         .where(Slot.org_id == org_id, Slot.id == slot_id)
     )
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def circuit_counts_by_station_version(
+    session: AsyncSession, station_version_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many circuits, in any organisation, name each station version.
+
+    A circuit names a version through its station list and through each slot,
+    so both are read and a circuit is counted once.
+    """
+    if not station_version_ids:
+        return {}
+    ids = list(station_version_ids)
+    uses = union(
+        select(CircuitStation.station_version_id, CircuitStation.circuit_id).where(
+            CircuitStation.station_version_id.in_(ids)
+        ),
+        select(Slot.station_version_id, Slot.circuit_id).where(Slot.station_version_id.in_(ids)),
+    ).subquery()
+    stmt = select(uses.c.station_version_id, func.count(uses.c.circuit_id.distinct())).group_by(
+        uses.c.station_version_id
+    )
+    return {version_id: int(count) for version_id, count in (await session.execute(stmt)).all()}

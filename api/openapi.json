@@ -14225,6 +14225,17 @@
             "title": "Status",
             "type": "string"
           },
+          "used_by_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used By Count"
+          },
           "version": {
             "title": "Version",
             "type": "integer"

@@ -182,7 +182,38 @@ async def version_history(
         station.org_id is None or station.org_id not in admin_org_ids(caller)
     ):
         raise Forbidden()
-    return [_version_read(station_version) for station_version in reversed(versions)]
+    used_by = await used_by_counts(session, [station_version.id for station_version in versions])
+    return [
+        _version_read(station_version).model_copy(
+            update={"used_by_count": used_by.get(station_version.id, 0)}
+        )
+        for station_version in reversed(versions)
+    ]
+
+
+async def used_by_counts(session: AsyncSession, station_version_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """How many things name each station version, summed across the slices
+    that hold one: circuits, attempts, peer practice sessions and practice sets.
+
+    Information for the author, not a refusal: deleting is still decided by
+    status alone (T6). Imported inside because every one of those slices reads
+    stations at module load.
+    """
+    from app.features.attempts import service as attempts
+    from app.features.peer_practice import service as peer_practice
+    from app.features.sittings import service as sittings
+    from app.features.station_sets import service as station_sets
+
+    totals: dict[uuid.UUID, int] = dict.fromkeys(station_version_ids, 0)
+    for counts in (
+        await sittings.circuit_counts_by_station_version(session, station_version_ids),
+        await attempts.attempt_counts_by_station_version(session, station_version_ids),
+        await peer_practice.session_counts_by_station_version(session, station_version_ids),
+        await station_sets.set_counts_by_station_version(session, station_version_ids),
+    ):
+        for version_id, count in counts.items():
+            totals[version_id] = totals.get(version_id, 0) + count
+    return totals
 
 
 def _version_read(station_version: StationVersion) -> StationVersionRead:

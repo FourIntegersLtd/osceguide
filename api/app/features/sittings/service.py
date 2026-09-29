@@ -221,3 +221,11 @@ async def rubric_version_for_programme(
         raise errors.ExamRubricNotReady("That programme's exam has no published rubric to mark against yet.")
     await service_marking.published_version(session, org_id, exam.rubric_version_id)
     return exam.rubric_version_id
+
+
+async def circuit_counts_by_station_version(
+    session: AsyncSession, station_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many circuits name each station version, for an author deciding
+    whether a version is safe to throw away."""
+    return await repository.circuit_counts_by_station_version(session, station_version_ids)

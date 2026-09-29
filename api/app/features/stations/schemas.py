@@ -21,6 +21,10 @@ class StationVersionRead(BaseModel):
     # Read by the revision history, where "archived" is an answer a screen has
     # to date. The lifecycle routes write it and say nothing about when.
     archived_at: datetime | None = None
+    # How many circuits, attempts, peer practice sessions and practice sets
+    # name this version, so a delete or archive screen can say what depends on
+    # it. Counted on the revision history; null from routes that do not count.
+    used_by_count: int | None = None
 
 
 class StationRead(BaseModel):
