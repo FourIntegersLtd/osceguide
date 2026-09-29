@@ -27941,6 +27941,42 @@
             }
           },
           {
+            "description": "Only what this person did",
+            "in": "query",
+            "name": "actor_email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only what this person did",
+              "title": "Actor Email"
+            }
+          },
+          {
+            "description": "An action name, or its prefix such as `membership.`",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "An action name, or its prefix such as `membership.`",
+              "title": "Action"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",

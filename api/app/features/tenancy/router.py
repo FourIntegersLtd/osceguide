@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -229,10 +229,21 @@ async def resend_membership_invitation(
     responses=error_responses(Forbidden),
 )
 async def list_audit(
-    workspace: OrgAdmin, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    actor_email: Annotated[str | None, Query(description="Only what this person did")] = None,
+    action: Annotated[
+        str | None, Query(description="An action name, or its prefix such as `membership.`")
+    ] = None,
 ) -> Page[schemas.AuditRead]:
     audit_entries, next_cursor = await service.list_audit(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session,
+        workspace.org_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        actor_email=actor_email,
+        action=action,
     )
     return Page(items=audit_entries, next_cursor=next_cursor)
 
