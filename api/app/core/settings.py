@@ -224,6 +224,10 @@ class Settings(BaseSettings):
     # comma-separated form in `.env.example` failed at startup.
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     frontend_url: str = "http://localhost:3000"
+    # This API's own public address. SAML needs it: the service provider's
+    # entity id and its assertion consumer URL are absolute, are pasted into
+    # an institution's IdP, and are checked against every response (E-20).
+    public_api_url: str = "http://localhost:8002"
     # Where a safety report (abuse, no-show) lands. The retiring backend sent
     # these straight to an inbox; this queues the same email through the
     # notification outbox rather than an ad-hoc send inside the request.

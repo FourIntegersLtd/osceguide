@@ -82,6 +82,11 @@ LEGACY_EXCHANGE = Limit(name="legacy-exchange", allowance=20, window_seconds=60)
 # account on first sign-in. The token is verified by the broker, so this is not
 # guessable either; the limit keeps a forged-token spray from being free.
 SSO_CALLBACK = Limit(name="sso-callback", allowance=20, window_seconds=60)
+# A SAML response posted to the assertion consumer: sized like the SSO
+# callback it hands on to, and counted separately so one does not spend the
+# other's allowance. The signature is checked by `python3-saml`, so this is not
+# guessable either; the limit keeps a forged-response spray from being free.
+SAML_ACS = Limit(name="saml-acs", allowance=20, window_seconds=60)
 # A CV upload pays for a PDF parse and, behind it, a model call. Five an hour
 # is generous for somebody re-uploading a corrected CV and expensive to repeat.
 CV_UPLOAD = Limit(name="cv-upload", allowance=5, window_seconds=3600)

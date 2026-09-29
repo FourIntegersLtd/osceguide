@@ -46,11 +46,41 @@ organisation.
 | `POST /auth/sso/callback` | **Anyone, unauthenticated** — trades the broker's token for a platform session, provisioning the person on first sign-in. Rate limited. |
 | `GET /platform/orgs/{slug}/sso` | Platform admin |
 | `PUT /platform/orgs/{slug}/sso` | Platform admin |
+| `GET /sso/saml/{connection_id}/metadata` | **Anyone** — the SP metadata an institution uploads to its IdP (`application/samlmetadata+xml`). Nothing in it is secret. |
+| `POST /sso/saml/{connection_id}/acs` | **The IdP, via the browser** — the SAML assertion consumer. Verifies the signed response, then `303`s the browser to the frontend callback page with a two-minute signed hand-off (`token`), or with `error=sso_verification_failed`. Rate limited (`SAML_ACS`). |
+| `GET /platform/orgs/{slug}/sso/saml` | Platform admin |
+| `PUT /platform/orgs/{slug}/sso/saml` | Platform admin |
 
 The write is platform-admin deliberately. Whoever controls the issuer controls
 who may sign in as that institution's members, so it is not a field to put on a
 customer's own settings screen beside their logo. When there is an onboarding
 flow with a domain verification step in it, that is where this moves.
+
+## SAML (E-20)
+
+An institution whose IdP speaks only SAML sets `organization_sso.provider` to
+`saml` (with the IdP's entity id as `issuer`) and describes the IdP in
+`organization_saml_connections`: entity id, sign-in URL, signing certificate and
+which attributes carry the address and name (Entra's claim URIs by default).
+
+- **The XML signature is `python3-saml`'s to check, never ours.** Strict mode:
+  the response or its assertion must be signed with the connection's
+  certificate, issued by its entity id, for this SP's audience and assertion
+  consumer URL, inside its time window.
+- **Stateless, like the OIDC flow (SEC-015).** `POST /auth/sso/login` builds the
+  AuthnRequest and puts its id in the signed `state` as the nonce, sent as
+  `RelayState`; the assertion consumer requires the response's `InResponseTo`
+  to be that id, so a response to anybody else's sign-in is refused.
+- **The IdP posts to this API, not to a page**, and the platform sets no cookies
+  (ADR 0004). So the assertion consumer hands the browser to the frontend
+  callback page with a short-lived signed hand-off of who was verified; the page
+  posts it to `POST /auth/sso/callback` like any provider's token, and the person
+  is provisioned by `identity.sign_in_external` exactly as an OIDC sign-in is.
+  The hand-off lives two minutes and is not single-use: replaying it inside that
+  window signs the same person in again, the same exposure as the access token
+  it becomes.
+- The SP's URLs are built on `PUBLIC_API_URL`, not the request, so a proxy in
+  front cannot make them disagree with what the IdP was given.
 
 ## Jobs
 

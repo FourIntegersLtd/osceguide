@@ -101,3 +101,48 @@ class SsoSession(BaseModel):
     refresh_token: str
     token_type: str = "bearer"  # noqa: S105 - a scheme name, not a secret
     expires_in: int
+
+
+class SamlConnectionRead(BaseModel):
+    """An organisation's SAML identity provider, and the two URLs to give it."""
+
+    id: uuid.UUID
+    org_slug: str
+    idp_entity_id: str
+    idp_sso_url: str
+    idp_x509_cert: str
+    email_attribute: str
+    first_name_attribute: str | None
+    last_name_attribute: str | None
+    display_name_attribute: str | None
+    enabled: bool
+    # What the institution's IdP administrator pastes in, or fetches.
+    sp_entity_id: str
+    sp_acs_url: str
+    sp_metadata_url: str
+
+
+class SaveSamlConnection(BaseModel):
+    """What an institution's IdP metadata says, and which attributes carry the address and name.
+
+    The attribute defaults are the claim URIs Entra sends.
+    """
+
+    idp_entity_id: str = Field(min_length=1, max_length=500)
+    idp_sso_url: str = Field(min_length=1, max_length=1000, pattern="^https://")
+    idp_x509_cert: str = Field(min_length=1, max_length=20_000)
+    email_attribute: str = Field(
+        default="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+        min_length=1,
+        max_length=255,
+    )
+    first_name_attribute: str | None = Field(
+        default="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname", max_length=255
+    )
+    last_name_attribute: str | None = Field(
+        default="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname", max_length=255
+    )
+    display_name_attribute: str | None = Field(
+        default="http://schemas.microsoft.com/identity/claims/displayname", max_length=255
+    )
+    enabled: bool = False

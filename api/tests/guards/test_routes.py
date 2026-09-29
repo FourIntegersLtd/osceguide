@@ -88,12 +88,17 @@ def test_every_route_declares_a_response_model(app: FastAPI) -> None:
     reason and no further: its body is an unbounded sequence of frames, not one
     object. It is not exempt from declaring a shape — the test below requires
     it to name the schema each frame carries.
+
+    A redirect (3xx) is exempt like a 204: its answer is a `Location`, not a
+    body. The one there is, SAML's assertion consumer, sends a browser on to
+    the frontend, because the IdP posts to this API and not to a page.
     """
     missing = [
         f"{sorted(r.methods)} {r.path}"
         for r in api_routes(app)
         if r.response_model is None
         and r.status_code != status.HTTP_204_NO_CONTENT
+        and not 300 <= (r.status_code or 200) < 400
         and not streams_events(r)
         and not serves_a_document(r)
     ]

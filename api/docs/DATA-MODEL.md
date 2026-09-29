@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-75 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+76 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -160,6 +160,24 @@ A host, or an email domain, that means one organisation.
 UNIQUE `(kind, value)` — across the whole platform, not within an organisation.
 A hostname belongs to exactly one, and two rows claiming `nhs.net` would make
 home-realm discovery a coin toss.
+
+### `organization_saml_connections`
+One organisation's SAML 2.0 identity provider (E-20), for an institution whose IdP
+speaks only SAML. Owned by `sso`, beside `organization_sso`, whose `provider` is
+`saml` and whose `issuer` holds the IdP's entity id when this is the way in. At
+most one per organisation. The row's `id` is the public handle the SP metadata
+(`GET /sso/saml/{id}/metadata`) and assertion consumer (`POST /sso/saml/{id}/acs`)
+URLs are built on, under `PUBLIC_API_URL`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | UNIQUE `uq_organization_saml_connections_org_id` |
+| `idp_entity_id` | `varchar(500) not null` | checked against every response's issuer |
+| `idp_sso_url` | `varchar(1000) not null` | where the AuthnRequest is sent (HTTP-Redirect) |
+| `idp_x509_cert` | `text not null` | the IdP's signing certificate; public. Responses signed by anything else are refused by `python3-saml` |
+| `email_attribute` | `varchar(255) not null` | defaults to Entra's `emailaddress` claim URI |
+| `first_name_attribute` / `last_name_attribute` / `display_name_attribute` | `varchar(255) null` | Entra's claim URIs by default |
+| `enabled` | `bool not null` | a disabled connection answers `saml_connection_not_found` |
 
 ### `cvs`
 A learner's uploaded CV, and what was read out of it. The PDF is not stored:

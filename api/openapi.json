@@ -954,6 +954,26 @@
         "title": "Body_identity_upload_my_avatar",
         "type": "object"
       },
+      "Body_sso_saml_acs": {
+        "properties": {
+          "RelayState": {
+            "maxLength": 4096,
+            "title": "Relaystate",
+            "type": "string"
+          },
+          "SAMLResponse": {
+            "maxLength": 200000,
+            "title": "Samlresponse",
+            "type": "string"
+          }
+        },
+        "required": [
+          "SAMLResponse",
+          "RelayState"
+        ],
+        "title": "Body_sso_saml_acs",
+        "type": "object"
+      },
       "Body_stations_add_platform_station_photos": {
         "properties": {
           "files": {
@@ -4395,6 +4415,7 @@
               "invalid_reset_token",
               "invalid_review_status",
               "invalid_rubric",
+              "invalid_saml_connection",
               "invalid_signature",
               "invalid_sso_binding",
               "invalid_webhook",
@@ -4471,6 +4492,7 @@
               "rubric_not_found",
               "rubric_version_not_found",
               "rubric_version_not_published",
+              "saml_connection_not_found",
               "scim_invalid_filter",
               "scim_invalid_value",
               "scim_mutability",
@@ -12791,6 +12813,102 @@
         "title": "RubricVersionRead",
         "type": "object"
       },
+      "SamlConnectionRead": {
+        "description": "An organisation's SAML identity provider, and the two URLs to give it.",
+        "properties": {
+          "display_name_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name Attribute"
+          },
+          "email_attribute": {
+            "title": "Email Attribute",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "first_name_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name Attribute"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "idp_entity_id": {
+            "title": "Idp Entity Id",
+            "type": "string"
+          },
+          "idp_sso_url": {
+            "title": "Idp Sso Url",
+            "type": "string"
+          },
+          "idp_x509_cert": {
+            "title": "Idp X509 Cert",
+            "type": "string"
+          },
+          "last_name_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name Attribute"
+          },
+          "org_slug": {
+            "title": "Org Slug",
+            "type": "string"
+          },
+          "sp_acs_url": {
+            "title": "Sp Acs Url",
+            "type": "string"
+          },
+          "sp_entity_id": {
+            "title": "Sp Entity Id",
+            "type": "string"
+          },
+          "sp_metadata_url": {
+            "title": "Sp Metadata Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "org_slug",
+          "idp_entity_id",
+          "idp_sso_url",
+          "idp_x509_cert",
+          "email_attribute",
+          "first_name_attribute",
+          "last_name_attribute",
+          "display_name_attribute",
+          "enabled",
+          "sp_entity_id",
+          "sp_acs_url",
+          "sp_metadata_url"
+        ],
+        "title": "SamlConnectionRead",
+        "type": "object"
+      },
       "SaveDecision": {
         "description": "A decision to save as a draft.\n\n`expected_revision` is the revision this screen last read, or 0 when it has\nread nothing. A save that does not name the current one is refused with\n`decision_revised` (409), so two administrators cannot overwrite each\nother's draft.",
         "properties": {
@@ -12901,6 +13019,88 @@
           "revision"
         ],
         "title": "SaveGpLeadReview",
+        "type": "object"
+      },
+      "SaveSamlConnection": {
+        "description": "What an institution's IdP metadata says, and which attributes carry the address and name.\n\nThe attribute defaults are the claim URIs Entra sends.",
+        "properties": {
+          "display_name_attribute": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://schemas.microsoft.com/identity/claims/displayname",
+            "title": "Display Name Attribute"
+          },
+          "email_attribute": {
+            "default": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Email Attribute",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "first_name_attribute": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+            "title": "First Name Attribute"
+          },
+          "idp_entity_id": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Idp Entity Id",
+            "type": "string"
+          },
+          "idp_sso_url": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "pattern": "^https://",
+            "title": "Idp Sso Url",
+            "type": "string"
+          },
+          "idp_x509_cert": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Idp X509 Cert",
+            "type": "string"
+          },
+          "last_name_attribute": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+            "title": "Last Name Attribute"
+          }
+        },
+        "required": [
+          "idp_entity_id",
+          "idp_sso_url",
+          "idp_x509_cert"
+        ],
+        "title": "SaveSamlConnection",
         "type": "object"
       },
       "SaveSsoConfig": {
@@ -47162,6 +47362,192 @@
         ]
       }
     },
+    "/api/v1/platform/orgs/{org_slug}/sso/saml": {
+      "get": {
+        "operationId": "sso_read_saml_connection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamlConnectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured, saml_connection_not_found",
+            "x-codes": [
+              "sso_not_configured",
+              "saml_connection_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Saml Connection",
+        "tags": [
+          "sso"
+        ]
+      },
+      "put": {
+        "operationId": "sso_save_saml_connection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSamlConnection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamlConnectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_saml_connection",
+            "x-codes": [
+              "invalid_saml_connection"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Saml Connection",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
     "/api/v1/platform/overview": {
       "get": {
         "description": "The numbers the console opens with, and the organisations to look at first.",
@@ -51700,6 +52086,134 @@
         "summary": "Read Statistics",
         "tags": [
           "public-site"
+        ]
+      }
+    },
+    "/api/v1/sso/saml/{connection_id}/acs": {
+      "post": {
+        "operationId": "sso_saml_acs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_sso_saml_acs"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "303": {
+            "description": "To the frontend SSO callback page, with `token` or `error`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "saml_connection_not_found",
+            "x-codes": [
+              "saml_connection_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "summary": "Saml Acs",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
+    "/api/v1/sso/saml/{connection_id}/metadata": {
+      "get": {
+        "operationId": "sso_saml_metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/samlmetadata+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "SAML 2.0 service-provider metadata."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "saml_connection_not_found",
+            "x-codes": [
+              "saml_connection_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Saml Metadata",
+        "tags": [
+          "sso"
         ]
       }
     },
