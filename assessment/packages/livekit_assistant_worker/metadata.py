@@ -1,16 +1,10 @@
-"""What a dispatching backend must put in the job metadata, and the routes it must serve."""
+"""What a dispatching backend must put in the job metadata."""
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
 from typing import Any
-
-BOOTSTRAP_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}"
-SCENE_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/scene"
-TRANSCRIPT_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/transcript"
-TOOL_PATH_TEMPLATE = "/api/worker/assistant-sessions/{session_id}/tools/{tool_name}"
-COMPLETION_PATH_TEMPLATE = "/api/worker/sessions/{session_id}/complete"
 
 
 class MetadataError(ValueError):
@@ -22,10 +16,6 @@ class DispatchMetadata:
     session_id: str
     backend: str
     candidate_ref: str = ""
-
-    @property
-    def bootstrap_path(self) -> str:
-        return BOOTSTRAP_PATH_TEMPLATE.format(session_id=self.session_id)
 
 
 def _pick(data: dict[str, Any], *keys: str) -> str:

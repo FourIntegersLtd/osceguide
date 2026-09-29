@@ -47,7 +47,21 @@ def sync_get_json(
     log_prefix: str = "worker_api",
 ) -> SyncGetResult:
     qs = f"?{urllib.parse.urlencode(query)}" if query else ""
-    url = f"{base_url.rstrip('/')}{path}{qs}"
+    return sync_get_json_url(
+        f"{base_url.rstrip('/')}{path}{qs}",
+        headers=headers,
+        timeout=timeout,
+        log_prefix=log_prefix,
+    )
+
+
+def sync_get_json_url(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 15.0,
+    log_prefix: str = "worker_api",
+) -> SyncGetResult:
     req = urllib.request.Request(url, headers=request_headers(headers), method="GET")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -55,10 +69,10 @@ def sync_get_json(
             return SyncGetResult(ok=True, status=resp.status, data=payload if isinstance(payload, dict) else None)
     except urllib.error.HTTPError as exc:
         auth_failed = exc.code in {401, 403}
-        (logger.error if auth_failed else logger.warning)("[%s] GET %s HTTP %s", log_prefix, path, exc.code)
+        (logger.error if auth_failed else logger.warning)("[%s] GET %s HTTP %s", log_prefix, url, exc.code)
         return SyncGetResult(ok=False, status=exc.code, data=None, auth_failed=auth_failed)
     except Exception as exc:  # noqa: BLE001 — reported through the result
-        logger.warning("[%s] GET %s failed: %s", log_prefix, path, exc)
+        logger.warning("[%s] GET %s failed: %s", log_prefix, url, exc)
         return SyncGetResult(ok=False, status=None, data=None)
 
 
@@ -92,7 +106,24 @@ def sync_post_json(
     log_prefix: str = "worker_api",
 ) -> SyncGetResult:
     """POST and read a JSON object back; callers keep it off the audio loop with ``asyncio.to_thread``."""
-    url = f"{base_url.rstrip('/')}{path}"
+    return sync_post_json_url(
+        f"{base_url.rstrip('/')}{path}",
+        payload,
+        headers=headers,
+        timeout=timeout,
+        log_prefix=log_prefix,
+    )
+
+
+def sync_post_json_url(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 15.0,
+    log_prefix: str = "worker_api",
+) -> SyncGetResult:
+    """POST to a full URL and read a JSON object back."""
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url, data=body, headers=request_headers({"Content-Type": "application/json", **(headers or {})}), method="POST"
@@ -103,8 +134,8 @@ def sync_post_json(
             return SyncGetResult(ok=True, status=resp.status, data=data if isinstance(data, dict) else None)
     except urllib.error.HTTPError as exc:
         auth_failed = exc.code in {401, 403}
-        (logger.error if auth_failed else logger.warning)("[%s] POST %s HTTP %s", log_prefix, path, exc.code)
+        (logger.error if auth_failed else logger.warning)("[%s] POST %s HTTP %s", log_prefix, url, exc.code)
         return SyncGetResult(ok=False, status=exc.code, data=None, auth_failed=auth_failed)
     except Exception as exc:  # noqa: BLE001 — reported through the result
-        logger.warning("[%s] POST %s failed: %s", log_prefix, path, exc)
+        logger.warning("[%s] POST %s failed: %s", log_prefix, url, exc)
         return SyncGetResult(ok=False, status=None, data=None)

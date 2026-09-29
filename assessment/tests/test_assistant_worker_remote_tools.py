@@ -57,10 +57,10 @@ def test_the_schema_the_model_sees_is_the_backends_own() -> None:
 
 def test_a_call_is_posted_to_the_backend_and_its_text_returned() -> None:
     tools, _ = _tools(LOOKUP)
-    with patch.object(remote, "sync_post_json", return_value=SyncGetResult(ok=True, status=200, data={"result": "Two notes found."})) as post:
+    with patch.object(remote, "sync_post_json_url", return_value=SyncGetResult(ok=True, status=200, data={"result": "Two notes found."})) as post:
         assert _call(tools[0], {"query": "chest pain"}) == "Two notes found."
-    base_url, path, payload = post.call_args.args
-    assert (base_url, path) == ("https://api.test", "/api/worker/assistant-sessions/unified_1/tools/lookup_notes")
+    tool_url, payload = post.call_args.args
+    assert tool_url == "https://api.test/api/worker/assistant-sessions/unified_1/tools/lookup_notes"
     assert payload["tool"] == "lookup_notes" and payload["arguments"] == {"query": "chest pain"} and payload["call_id"]
     assert post.call_args.kwargs["headers"] == {"X-S": "s3cret"}
     assert post.call_args.kwargs["timeout"] == remote.REMOTE_TOOL_TIMEOUT_S
@@ -69,14 +69,14 @@ def test_a_call_is_posted_to_the_backend_and_its_text_returned() -> None:
 def test_what_the_backend_wants_shown_reaches_the_browser_unchanged() -> None:
     tools, room = _tools(SHOW)
     card = {"type": "assistant_card", "schemaVersion": 2, "card": "suggestion", "ref": {"kind": "station", "id": "sv-1"}, "title": "Anxiety"}
-    with patch.object(remote, "sync_post_json", return_value=SyncGetResult(ok=True, status=200, data={"result": "Shown.", "display": card})):
+    with patch.object(remote, "sync_post_json_url", return_value=SyncGetResult(ok=True, status=200, data={"result": "Shown.", "display": card})):
         assert _call(tools[0], {"ref": "sv-1"}) == "Shown."
     assert room.local_participant.published == [card]
 
 
 def test_nothing_is_published_when_the_backend_returns_no_display() -> None:
     tools, room = _tools(SHOW)
-    with patch.object(remote, "sync_post_json", return_value=SyncGetResult(ok=True, status=200, data={"result": "Shown.", "display": None})):
+    with patch.object(remote, "sync_post_json_url", return_value=SyncGetResult(ok=True, status=200, data={"result": "Shown.", "display": None})):
         _call(tools[0], {})
     assert room.local_participant.published == []
 
@@ -88,13 +88,13 @@ def test_nothing_is_published_when_the_backend_returns_no_display() -> None:
 )
 def test_a_failed_lookup_gives_the_model_a_line_it_can_say(outcome: SyncGetResult) -> None:
     tools, _ = _tools(LOOKUP)
-    with patch.object(remote, "sync_post_json", return_value=outcome):
+    with patch.object(remote, "sync_post_json_url", return_value=outcome):
         assert _call(tools[0], {"query": "x"}) == remote.TOOL_UNAVAILABLE
 
 
 def test_a_transport_failure_does_the_same() -> None:
     tools, _ = _tools(LOOKUP)
-    with patch.object(remote, "sync_post_json", side_effect=OSError("down")):
+    with patch.object(remote, "sync_post_json_url", side_effect=OSError("down")):
         assert _call(tools[0], {"query": "x"}) == remote.TOOL_UNAVAILABLE
 
 
@@ -133,7 +133,7 @@ def test_a_normal_call_logs_how_long_the_model_waited(caplog: pytest.LogCaptureF
     tools, _ = _tools(LOOKUP)
     answered = SyncGetResult(ok=True, status=200, data={"result": "Two notes found."})
     with caplog.at_level(logging.INFO, logger=remote.__name__):
-        with patch.object(remote, "sync_post_json", return_value=answered):
+        with patch.object(remote, "sync_post_json_url", return_value=answered):
             assert _call(tools[0], {"query": "x"}) == "Two notes found."
     assert any("answered in" in r.getMessage() for r in caplog.records)
 
@@ -151,7 +151,7 @@ def test_a_slow_call_is_logged_loudly_enough_to_find(
     answered = SyncGetResult(ok=True, status=200, data={"result": "Two notes found."})
 
     with caplog.at_level(logging.INFO, logger=remote.__name__):
-        with patch.object(remote, "sync_post_json", return_value=answered):
+        with patch.object(remote, "sync_post_json_url", return_value=answered):
             assert _call(tools[0], {"query": "x"}) == "Two notes found."
 
     slow = [r for r in caplog.records if r.levelno == logging.WARNING]
@@ -163,6 +163,6 @@ def test_a_failure_says_how_long_it_took_to_fail(caplog: pytest.LogCaptureFixtur
     """A timeout and an instant refusal need different fixes, so the log separates them."""
     tools, _ = _tools(LOOKUP)
     with caplog.at_level(logging.WARNING, logger=remote.__name__):
-        with patch.object(remote, "sync_post_json", side_effect=OSError("down")):
+        with patch.object(remote, "sync_post_json_url", side_effect=OSError("down")):
             assert _call(tools[0], {"query": "x"}) == remote.TOOL_UNAVAILABLE
     assert any("failed after" in r.getMessage() for r in caplog.records)

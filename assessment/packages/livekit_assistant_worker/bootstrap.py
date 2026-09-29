@@ -7,10 +7,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from voice_infra import BackendEndpoints
-from voice_infra.backend_http import sync_get_json, sync_post_json
+from voice_infra.backend_http import sync_get_json_url, sync_post_json_url
 from voice_infra.pacing import PacingPlan
 
-from .metadata import SCENE_PATH_TEMPLATE, DispatchMetadata
+from .metadata import DispatchMetadata
 from .modes import ModeProfile, WorkerType, mode_profile
 
 
@@ -120,7 +120,11 @@ def parse_bootstrap(payload: Any) -> AssistantSession:
 
 def fetch_bootstrap(endpoints: BackendEndpoints, metadata: DispatchMetadata) -> AssistantSession:
     """Synchronous; callers keep it off the audio loop with ``asyncio.to_thread``."""
-    result = sync_get_json(endpoints.required_base_url(), metadata.bootstrap_path, headers=endpoints.secret_headers(), log_prefix="assistant_bootstrap")
+    result = sync_get_json_url(
+        endpoints.assistant_bootstrap_url(metadata.session_id),
+        headers=endpoints.secret_headers(),
+        log_prefix="assistant_bootstrap",
+    )
     if result.auth_failed:
         raise BootstrapError(f"backend {endpoints.label!r} rejected worker credentials", auth_failed=True)
     if not result.ok or result.data is None:
@@ -133,9 +137,11 @@ def fetch_bootstrap(endpoints: BackendEndpoints, metadata: DispatchMetadata) -> 
 
 def fetch_scene_instructions(endpoints: BackendEndpoints, session_id: str, scene: dict[str, Any]) -> str:
     """Instructions for a new scene; the backend renders them from what the browser announced."""
-    result = sync_post_json(
-        endpoints.required_base_url(), SCENE_PATH_TEMPLATE.format(session_id=session_id), scene,
-        headers=endpoints.secret_headers(), log_prefix="assistant_scene",
+    result = sync_post_json_url(
+        endpoints.assistant_scene_url(session_id),
+        scene,
+        headers=endpoints.secret_headers(),
+        log_prefix="assistant_scene",
     )
     instructions = (result.data or {}).get("instructions") if result.ok else None
     if not isinstance(instructions, str) or not instructions.strip():

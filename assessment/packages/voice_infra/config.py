@@ -27,6 +27,11 @@ to the values shown; a backend that mounts its worker routes under a prefix
 (say ``/api/org/worker/attempts/{attempt_id}``) declares its own. Each must
 contain the ``{attempt_id}`` placeholder.
 
+The four ``assistant_*`` keys and ``worker_session_complete_path`` for the
+assistant worker are optional with the defaults shown. Each assistant route
+must contain ``{session_id}``; ``assistant_tool_path`` must also contain
+``{tool_name}``.
+
 URLs and secrets are read from the named environment variables at call time,
 so the JSON itself carries no secrets.
 """
@@ -40,9 +45,16 @@ from dataclasses import dataclass
 BACKENDS_ENV = "VOICE_BACKENDS_JSON"
 
 ATTEMPT_ID_PLACEHOLDER = "{attempt_id}"
+SESSION_ID_PLACEHOLDER = "{session_id}"
+TOOL_NAME_PLACEHOLDER = "{tool_name}"
 DEFAULT_ATTEMPT_PATH = "/api/worker/attempts/{attempt_id}"
 DEFAULT_TRANSCRIPT_CHUNKS_PATH = "/api/worker/attempts/{attempt_id}/transcript-chunks"
 DEFAULT_TRANSCRIPT_PATH = "/api/worker/attempts/{attempt_id}/transcript"
+DEFAULT_ASSISTANT_BOOTSTRAP_PATH = "/api/worker/assistant-sessions/{session_id}"
+DEFAULT_ASSISTANT_SCENE_PATH = "/api/worker/assistant-sessions/{session_id}/scene"
+DEFAULT_ASSISTANT_TRANSCRIPT_PATH = "/api/worker/assistant-sessions/{session_id}/transcript"
+DEFAULT_ASSISTANT_TOOL_PATH = "/api/worker/assistant-sessions/{session_id}/tools/{tool_name}"
+DEFAULT_WORKER_SESSION_COMPLETE_PATH = "/api/worker/sessions/{session_id}/complete"
 
 
 class BackendRegistryError(RuntimeError):
@@ -61,11 +73,24 @@ class BackendEndpoints:
     attempt_path: str = DEFAULT_ATTEMPT_PATH
     transcript_chunks_path: str = DEFAULT_TRANSCRIPT_CHUNKS_PATH
     transcript_path: str = DEFAULT_TRANSCRIPT_PATH
+    assistant_bootstrap_path: str = DEFAULT_ASSISTANT_BOOTSTRAP_PATH
+    assistant_scene_path: str = DEFAULT_ASSISTANT_SCENE_PATH
+    assistant_transcript_path: str = DEFAULT_ASSISTANT_TRANSCRIPT_PATH
+    assistant_tool_path: str = DEFAULT_ASSISTANT_TOOL_PATH
+    worker_session_complete_path: str = DEFAULT_WORKER_SESSION_COMPLETE_PATH
 
     def __post_init__(self) -> None:
         for name in _PATH_TEMPLATE_KEYS:
             if ATTEMPT_ID_PLACEHOLDER not in getattr(self, name):
                 raise BackendRegistryError(f"backend {self.label!r}: {name} must contain {ATTEMPT_ID_PLACEHOLDER}")
+        for name in _ASSISTANT_PATH_TEMPLATE_KEYS:
+            path = getattr(self, name)
+            if SESSION_ID_PLACEHOLDER not in path:
+                raise BackendRegistryError(f"backend {self.label!r}: {name} must contain {SESSION_ID_PLACEHOLDER}")
+        if TOOL_NAME_PLACEHOLDER not in self.assistant_tool_path:
+            raise BackendRegistryError(
+                f"backend {self.label!r}: assistant_tool_path must contain {TOOL_NAME_PLACEHOLDER}"
+            )
 
     def base_url(self) -> str | None:
         url = (os.getenv(self.base_url_env) or "").strip().rstrip("/")
@@ -105,6 +130,25 @@ class BackendEndpoints:
     def transcript_url(self, attempt_id: str) -> str:
         return self.url(self.transcript_path.format(attempt_id=attempt_id))
 
+    # -- assistant worker routes, keyed by session ---------------------------
+
+    def assistant_bootstrap_url(self, session_id: str) -> str:
+        return self.url(self.assistant_bootstrap_path.format(session_id=session_id))
+
+    def assistant_scene_url(self, session_id: str) -> str:
+        return self.url(self.assistant_scene_path.format(session_id=session_id))
+
+    def assistant_transcript_url(self, session_id: str) -> str:
+        return self.url(self.assistant_transcript_path.format(session_id=session_id))
+
+    def assistant_tool_url(self, session_id: str, tool_name: str) -> str:
+        return self.url(
+            self.assistant_tool_path.format(session_id=session_id, tool_name=tool_name)
+        )
+
+    def worker_session_complete_url(self, session_id: str) -> str:
+        return self.url(self.worker_session_complete_path.format(session_id=session_id))
+
 
 _REQUIRED_KEYS = (
     "base_url_env",
@@ -115,6 +159,14 @@ _REQUIRED_KEYS = (
     "slot_payload_key",
 )
 _PATH_TEMPLATE_KEYS = ("attempt_path", "transcript_chunks_path", "transcript_path")
+_ASSISTANT_PATH_TEMPLATE_KEYS = (
+    "assistant_bootstrap_path",
+    "assistant_scene_path",
+    "assistant_transcript_path",
+    "assistant_tool_path",
+    "worker_session_complete_path",
+)
+_OPTIONAL_PATH_KEYS = (*_PATH_TEMPLATE_KEYS, *_ASSISTANT_PATH_TEMPLATE_KEYS)
 
 
 class BackendRegistry:
@@ -138,7 +190,7 @@ class BackendRegistry:
                 raise BackendRegistryError(f"backend {label!r} is missing {missing}")
             fields = {key: str(spec[key]).strip() for key in _REQUIRED_KEYS}
             # Optional route templates: an absent or blank key keeps the default.
-            fields.update({key: str(spec[key]).strip() for key in _PATH_TEMPLATE_KEYS if str(spec.get(key, "")).strip()})
+            fields.update({key: str(spec[key]).strip() for key in _OPTIONAL_PATH_KEYS if str(spec.get(key, "")).strip()})
             backends[label] = BackendEndpoints(label=label, **fields)
         return cls(backends)
 

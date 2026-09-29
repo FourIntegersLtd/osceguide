@@ -11,8 +11,6 @@ from osce_assessment.contracts import MessageRole, Transcript, TranscriptMessage
 from voice_infra import BackendEndpoints
 from voice_infra.backend_http import post_json
 
-from .metadata import TRANSCRIPT_PATH_TEMPLATE
-
 logger = logging.getLogger(__name__)
 
 RETRY_DELAYS_S = (0.0, 2.0, 5.0, 10.0)
@@ -52,7 +50,7 @@ class TranscriptDelivery:
                 return True
             if settle_s:
                 await self._sleep(settle_s)
-            url = self._endpoints.url(TRANSCRIPT_PATH_TEMPLATE.format(session_id=self._recorder.session_id))
+            url = self._endpoints.assistant_transcript_url(self._recorder.session_id)
             payload = {
                 "session_id": self._recorder.session_id,
                 "worker_type": self._worker_type,

@@ -16,9 +16,10 @@ from voice_infra.backend_http import SyncGetResult
 ENDPOINTS = BackendEndpoints(label="practice", base_url_env="PRACTICE_URL", secret_env="PRACTICE_SECRET", secret_header="X-S", slot_release_path="/r", slot_extend_path="/e", slot_payload_key="room_name")
 
 
-def test_metadata_accepts_both_spellings_and_requires_session_and_backend() -> None:
+def test_metadata_accepts_both_spellings_and_requires_session_and_backend(monkeypatch) -> None:
+    monkeypatch.setenv("PRACTICE_URL", "https://api.test")
     assert parse_dispatch_metadata(json.dumps({"sessionId": "unified_1", "backend": "practice", "candidateRef": "u1"})) == DispatchMetadata("unified_1", "practice", "u1")
-    assert parse_dispatch_metadata('{"session_id": "s", "backend": "b"}').bootstrap_path == "/api/worker/assistant-sessions/s"
+    assert ENDPOINTS.assistant_bootstrap_url("s") == "https://api.test/api/worker/assistant-sessions/s"
     with pytest.raises(MetadataError):
         parse_dispatch_metadata('{"backend": "b"}')
     with pytest.raises(MetadataError):
@@ -52,14 +53,14 @@ def test_fetch_uses_the_backend_and_checks_the_session_id(monkeypatch) -> None:
     monkeypatch.setenv("PRACTICE_URL", "https://api.test")
     monkeypatch.setenv("PRACTICE_SECRET", "s")
     payload = {"session": {"session_id": "unified_1", "worker_type": "help", "instructions": "Help."}}
-    with patch.object(bootstrap_module, "sync_get_json", return_value=SyncGetResult(ok=True, status=200, data=payload)) as get:
+    with patch.object(bootstrap_module, "sync_get_json_url", return_value=SyncGetResult(ok=True, status=200, data=payload)) as get:
         assert fetch_bootstrap(ENDPOINTS, DispatchMetadata("unified_1", "practice")).worker_type == "help"
-    assert get.call_args.args == ("https://api.test", "/api/worker/assistant-sessions/unified_1")
+    assert get.call_args.args == ("https://api.test/api/worker/assistant-sessions/unified_1",)
     assert get.call_args.kwargs["headers"] == {"X-S": "s"}
-    with patch.object(bootstrap_module, "sync_get_json", return_value=SyncGetResult(ok=True, status=200, data=payload)):
+    with patch.object(bootstrap_module, "sync_get_json_url", return_value=SyncGetResult(ok=True, status=200, data=payload)):
         with pytest.raises(BootstrapError, match="different session"):
             fetch_bootstrap(ENDPOINTS, DispatchMetadata("other", "practice"))
-    with patch.object(bootstrap_module, "sync_get_json", return_value=SyncGetResult(ok=False, status=401, data=None, auth_failed=True)):
+    with patch.object(bootstrap_module, "sync_get_json_url", return_value=SyncGetResult(ok=False, status=401, data=None, auth_failed=True)):
         with pytest.raises(BootstrapError, match="credentials"):
             fetch_bootstrap(ENDPOINTS, DispatchMetadata("unified_1", "practice"))
 
@@ -68,10 +69,10 @@ def test_scene_instructions_are_fetched_from_the_backend(monkeypatch) -> None:
     monkeypatch.setenv("PRACTICE_URL", "https://api.test")
     monkeypatch.setenv("PRACTICE_SECRET", "s")
     scene = {"phase": "demo", "question": "Q?", "patientLine": "Line"}
-    with patch.object(bootstrap_module, "sync_post_json", return_value=SyncGetResult(ok=True, status=200, data={"instructions": "Demo scene."})) as post:
+    with patch.object(bootstrap_module, "sync_post_json_url", return_value=SyncGetResult(ok=True, status=200, data={"instructions": "Demo scene."})) as post:
         assert fetch_scene_instructions(ENDPOINTS, "unified_1", scene) == "Demo scene."
-    assert post.call_args.args == ("https://api.test", "/api/worker/assistant-sessions/unified_1/scene", scene)
+    assert post.call_args.args == ("https://api.test/api/worker/assistant-sessions/unified_1/scene", scene)
     assert post.call_args.kwargs["headers"] == {"X-S": "s"}
-    with patch.object(bootstrap_module, "sync_post_json", return_value=SyncGetResult(ok=True, status=200, data={"instructions": ""})):
+    with patch.object(bootstrap_module, "sync_post_json_url", return_value=SyncGetResult(ok=True, status=200, data={"instructions": ""})):
         with pytest.raises(BootstrapError, match="scene instructions unavailable"):
             fetch_scene_instructions(ENDPOINTS, "unified_1", scene)

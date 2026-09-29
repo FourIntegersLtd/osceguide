@@ -23,10 +23,9 @@ from typing import Any
 from livekit.agents import RunContext
 from livekit.agents.llm import function_tool
 from voice_infra import BackendEndpoints
-from voice_infra.backend_http import sync_post_json
+from voice_infra.backend_http import sync_post_json_url
 
 from livekit_assistant_worker.bootstrap import RemoteTool
-from livekit_assistant_worker.metadata import TOOL_PATH_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +46,17 @@ def build_remote_tools(endpoints: BackendEndpoints, session_id: str, specs: Iter
 
 
 def _build(endpoints: BackendEndpoints, session_id: str, spec: RemoteTool, publish: Publish):
-    path = TOOL_PATH_TEMPLATE.format(session_id=session_id, tool_name=spec.name)
+    tool_url = endpoints.assistant_tool_url(session_id, spec.name)
 
     async def _impl(raw_arguments: dict[str, Any], context: RunContext) -> str:  # noqa: ARG001 — injected by the runtime
-        return await call_backend_tool(endpoints, path, spec.name, raw_arguments, publish)
+        return await call_backend_tool(endpoints, tool_url, spec.name, raw_arguments, publish)
 
     return function_tool(_impl, raw_schema={"name": spec.name, "description": spec.description, "parameters": spec.parameters})
 
 
-async def call_backend_tool(endpoints: BackendEndpoints, path: str, name: str, arguments: dict[str, Any] | None, publish: Publish) -> str:
+async def call_backend_tool(
+    endpoints: BackendEndpoints, tool_url: str, name: str, arguments: dict[str, Any] | None, publish: Publish
+) -> str:
     """Forward one call; whatever goes wrong, the model gets a line it can say."""
     payload = {"tool": name, "arguments": arguments or {}, "call_id": uuid.uuid4().hex[:12]}
     # Timed on this side as well as the backend's, because the two measure
@@ -64,8 +65,12 @@ async def call_backend_tool(endpoints: BackendEndpoints, path: str, name: str, a
     started = time.monotonic()
     try:
         result = await asyncio.to_thread(
-            sync_post_json, endpoints.required_base_url(), path, payload,
-            headers=endpoints.secret_headers(), timeout=REMOTE_TOOL_TIMEOUT_S, log_prefix="assistant_tool",
+            sync_post_json_url,
+            tool_url,
+            payload,
+            headers=endpoints.secret_headers(),
+            timeout=REMOTE_TOOL_TIMEOUT_S,
+            log_prefix="assistant_tool",
         )
     except Exception as exc:  # noqa: BLE001 — a failed lookup must not end the turn
         logger.warning("[assistant_tool] %s failed after %d ms: %s", name, _elapsed_ms(started), exc)

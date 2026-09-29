@@ -7,7 +7,14 @@ import json
 import pytest
 
 from voice_infra import BackendEndpoints, BackendRegistry, BackendRegistryError
-from voice_infra.config import BACKENDS_ENV
+from voice_infra.config import (
+    BACKENDS_ENV,
+    DEFAULT_ASSISTANT_BOOTSTRAP_PATH,
+    DEFAULT_ASSISTANT_SCENE_PATH,
+    DEFAULT_ASSISTANT_TOOL_PATH,
+    DEFAULT_ASSISTANT_TRANSCRIPT_PATH,
+    DEFAULT_WORKER_SESSION_COMPLETE_PATH,
+)
 
 SPEC = {
     "practice": {
@@ -83,6 +90,41 @@ def test_attempt_routes_default_when_absent_and_are_per_backend_when_declared(re
     assert institution.attempt_url("s-1") == "https://org.test/api/org/worker/attempts/s-1"
     assert institution.transcript_chunks_url("s-1") == "https://org.test/api/org/worker/attempts/s-1/transcript-chunks"
     assert institution.transcript_url("s-1") == "https://org.test/api/org/worker/attempts/s-1/transcript"
+
+
+def test_assistant_routes_default_when_absent_and_can_be_overridden(registry: BackendRegistry, monkeypatch) -> None:
+    monkeypatch.setenv("PRACTICE_URL", "https://practice.test")
+    practice = registry.get("practice")
+    assert practice.assistant_bootstrap_path == DEFAULT_ASSISTANT_BOOTSTRAP_PATH
+    assert practice.assistant_scene_path == DEFAULT_ASSISTANT_SCENE_PATH
+    assert practice.assistant_transcript_path == DEFAULT_ASSISTANT_TRANSCRIPT_PATH
+    assert practice.assistant_tool_path == DEFAULT_ASSISTANT_TOOL_PATH
+    assert practice.worker_session_complete_path == DEFAULT_WORKER_SESSION_COMPLETE_PATH
+    assert practice.assistant_bootstrap_url("sess-1") == "https://practice.test/api/worker/assistant-sessions/sess-1"
+    assert (
+        practice.assistant_tool_url("sess-1", "check_time")
+        == "https://practice.test/api/worker/assistant-sessions/sess-1/tools/check_time"
+    )
+
+
+def test_assistant_route_override_is_honoured(monkeypatch) -> None:
+    spec = {
+        "practice": {
+            **SPEC["practice"],
+            "assistant_bootstrap_path": "/custom/assistant/{session_id}",
+        }
+    }
+    monkeypatch.setenv(BACKENDS_ENV, json.dumps(spec))
+    monkeypatch.setenv("PRACTICE_URL", "https://practice.test")
+    practice = BackendRegistry.from_env().get("practice")
+    assert practice.assistant_bootstrap_url("s") == "https://practice.test/custom/assistant/s"
+
+
+def test_an_assistant_route_without_session_id_is_rejected(monkeypatch) -> None:
+    spec = {"practice": {**SPEC["practice"], "assistant_transcript_path": "/api/worker/transcript"}}
+    monkeypatch.setenv(BACKENDS_ENV, json.dumps(spec))
+    with pytest.raises(BackendRegistryError, match="assistant_transcript_path must contain {session_id}"):
+        BackendRegistry.from_env()
 
 
 def test_a_route_without_the_attempt_placeholder_is_rejected(monkeypatch) -> None:

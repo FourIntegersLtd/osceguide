@@ -19,8 +19,6 @@ from voice_infra import BackendEndpoints
 from voice_infra.backend_http import post_json
 from voice_infra.worker_config import optional_float
 
-from .metadata import COMPLETION_PATH_TEMPLATE
-
 main_logger = logging.getLogger(__name__)
 
 # Default limits for speech-to-speech sessions; see GptLiveSessionPolicyConfig.from_env.
@@ -248,7 +246,7 @@ class GptLiveSessionController:
         }
         try:
             status = await post_json(
-                self._endpoints.url(COMPLETION_PATH_TEMPLATE.format(session_id=self._session_id)),
+                self._endpoints.worker_session_complete_url(self._session_id),
                 payload,
                 headers=self._endpoints.secret_headers(),
                 timeout=5.0,
