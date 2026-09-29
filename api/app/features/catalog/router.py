@@ -6,7 +6,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -34,6 +34,27 @@ async def list_exams(principal: CurrentPrincipal, session: Session) -> Page[sche
     """
     exams = await service_authoring.list_exams(session, include_unpublished=principal.is_platform_admin)
     return Page(items=exams, next_cursor=None)
+
+
+# The platform's own exams in every status, a page at a time, for the console.
+@router.get(
+    "/platform/exams",
+    response_model=Page[schemas.ExamRead],
+    responses=error_responses(Unauthenticated, Forbidden),
+)
+async def list_platform_exams(
+    admin: PlatformAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    status: Annotated[
+        str | None, Query(pattern="^(draft|published|retired)$", description="Filter by exam status")
+    ] = None,
+) -> Page[schemas.ExamRead]:
+    _ = admin
+    exams, next_cursor = await service_authoring.list_platform_exams(
+        session, status=status, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=exams, next_cursor=next_cursor)
 
 
 @router.post(

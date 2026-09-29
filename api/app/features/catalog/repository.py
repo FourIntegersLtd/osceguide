@@ -35,6 +35,28 @@ async def list_exams(
     return list((await session.execute(stmt)).scalars())
 
 
+async def list_platform_exams(
+    session: AsyncSession, *, status: str | None, limit: int, cursor: dict[str, Any] | None = None
+) -> tuple[list[Exam], str | None]:
+    """A page of the platform's own exams, every status, oldest first.
+
+    Not org-scoped: this is the console's list of the consumer catalogue, and
+    an institution's own exams never appear in it.
+    """
+    stmt = select(Exam).where(Exam.org_id.is_(None))
+    if status is not None:
+        stmt = stmt.where(Exam.status == status)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Exam.created_at,
+        id_col=Exam.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
+    )
+
+
 async def exam_by_code(session: AsyncSession, org_id: uuid.UUID | None, code: str) -> Exam | None:
     """One exam by code, within what this caller may see.
 
