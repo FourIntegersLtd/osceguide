@@ -14,7 +14,7 @@ from app.core.db import SessionOpenerDep, get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
-from app.core.ports import EventBus, VoiceTokens
+from app.core.ports import EventBus, RoomAgents, VoiceTokens
 from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
@@ -108,4 +108,27 @@ async def leave_voice_queue(
         attempt_id, requester_id=principal.user_id, open_session=open_session
     )
     await service.leave_queue(room, bus=bus)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# Close the attempt's room when the candidate ends, so the worker frees its seat now.
+@router.delete(
+    "/attempts/{attempt_id}/voice-room",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Unauthenticated,
+        errors.AttemptNotFound,
+        errors.AttemptNotYours,
+        errors.VoiceUnavailable,
+    ),
+)
+async def close_voice_room(
+    attempt_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    agents: Annotated[RoomAgents, Depends(service.get_room_agents)],
+    open_session: SessionOpenerDep,
+) -> Response:
+    await service.close_own_room(
+        attempt_id, requester_id=principal.user_id, open_session=open_session, agents=agents
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

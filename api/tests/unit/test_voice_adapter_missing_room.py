@@ -53,11 +53,14 @@ class _Room:
         participants: list[str],
         list_error: Exception | None = None,
         remove_error: Exception | None = None,
+        delete_error: Exception | None = None,
     ) -> None:
         self._participants = participants
         self._list_error = list_error
         self._remove_error = remove_error
+        self._delete_error = delete_error
         self.removed: list[str] = []
+        self.deleted: list[str] = []
 
     async def list_participants(self, _request: object) -> object:
         if self._list_error is not None:
@@ -68,6 +71,11 @@ class _Room:
         if self._remove_error is not None:
             raise self._remove_error
         self.removed.append(request.identity)
+
+    async def delete_room(self, request: object) -> None:
+        if self._delete_error is not None:
+            raise self._delete_error
+        self.deleted.append(request.room)
 
 
 class _Client:
@@ -134,3 +142,32 @@ async def test_a_room_reaped_mid_sweep_is_not_a_failure(monkeypatch: pytest.Monk
 
     assert await adapter.LiveKitRoomAgents().remove_agents("circuit_abc") == 0
     get_settings.cache_clear()
+
+
+async def test_closing_a_room_the_patient_is_in_deletes_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    room = _Room(participants=["candidate-1", "agent-AJ_1"])
+    _install(monkeypatch, room)
+    assert await adapter.LiveKitRoomAgents().close_room("attempt_abc") is True
+    assert room.deleted == ["attempt_abc"]
+
+
+async def test_closing_a_room_that_is_already_gone_is_not_a_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """LiveKit reaps an empty room itself, so the candidate may end after it is gone."""
+    _install(monkeypatch, _Room(participants=["agent-AJ_1"], list_error=MISSING))
+    assert await adapter.LiveKitRoomAgents().close_room("attempt_abc") is False
+
+
+async def test_a_room_the_patient_has_not_joined_yet_is_left_to_close_itself(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A worker still starting when its room is deleted never shuts down, so never frees its seat."""
+    room = _Room(participants=["candidate-1"])
+    _install(monkeypatch, room)
+    assert await adapter.LiveKitRoomAgents().close_room("attempt_abc") is False
+    assert room.deleted == []
+
+
+async def test_closing_a_room_still_surfaces_a_real_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install(monkeypatch, _Room(participants=["agent-AJ_1"], delete_error=BROKEN))
+    with pytest.raises(Exception, match="unauthenticated"):
+        await adapter.LiveKitRoomAgents().close_room("attempt_abc")

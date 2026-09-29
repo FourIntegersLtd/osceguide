@@ -18,7 +18,7 @@ from app.core.settings import get_settings
 from tests.contract.test_cloud_slot_routes import worker_headers
 from tests.http.test_streams import frames
 from tests.http.test_voice_routes import an_attempt
-from tests.support.fakes import FakeVoiceTokens
+from tests.support.fakes import FakeRoomAgents, FakeVoiceTokens
 from tests.support.tokens import bearer
 
 pytestmark = [pytest.mark.db, pytest.mark.usefixtures("seat_redis", "one_seat")]
@@ -183,3 +183,35 @@ async def test_staff_see_seats_taken_and_the_line_length(
     assert body["self_hosted_seats_total"] == 2
     assert body["self_hosted_seats_taken"] == 2
     assert body["queue_length"] == 1
+
+
+async def test_ending_closes_the_candidates_own_room_so_the_worker_frees_its_seat_now(
+    app: FastAPI, client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.voice.service import get_room_agents
+
+    agents = FakeRoomAgents()
+    app.dependency_overrides[get_room_agents] = lambda: agents
+    attempt_id, token = await an_attempt(client, db_session, make_actor, "q20@example.com")
+
+    closed = await client.delete(f"/api/v1/attempts/{attempt_id}/voice-room", headers=bearer(token))
+
+    assert closed.status_code == 204, closed.text
+    assert agents.closed == [f"attempt_{attempt_id}"]
+
+
+async def test_nobody_may_close_somebody_elses_room(
+    app: FastAPI, client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.voice.service import get_room_agents
+
+    agents = FakeRoomAgents()
+    app.dependency_overrides[get_room_agents] = lambda: agents
+    attempt_id, _owner_token = await an_attempt(client, db_session, make_actor, "q21@example.com")
+    _other_id, other_token = await an_attempt(client, db_session, make_actor, "q22@example.com")
+
+    refused = await client.delete(f"/api/v1/attempts/{attempt_id}/voice-room", headers=bearer(other_token))
+
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["code"] == "attempt_not_yours"
+    assert agents.closed == []

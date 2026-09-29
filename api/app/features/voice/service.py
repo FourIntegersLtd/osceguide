@@ -167,6 +167,32 @@ async def leave_queue(room: str, *, bus: EventBus) -> None:
         log.warning("seat_freed publish failed", room=room, exc_info=True)
 
 
+async def close_own_room(
+    attempt_id: uuid.UUID, *, requester_id: uuid.UUID, open_session: SessionOpener, agents: RoomAgents
+) -> None:
+    """Close the attempt's room the moment its candidate ends the consultation.
+
+    Without this the patient stays in the empty room until LiveKit's
+    departure timeout (about 20s), and only then does the worker shut down and
+    release its seat, so the next person in line waits that long for nothing.
+    Closing it sends the worker down the same shutdown path, just sooner.
+
+    A room a sitting owns (an exam slot's circuit room) is left alone: the
+    supervisor, not the candidate, decides when that room ends.
+    """
+    async with open_session() as session:
+        attempt = await attempts.attempt_ref(session, attempt_id)
+    if attempt is None:
+        raise AttemptNotFound()
+    if attempt.user_id != requester_id:
+        raise AttemptNotYours()
+    own_room = domain.room_name_for(str(attempt.id))
+    if attempt.room_name not in (None, own_room):
+        return
+    closed = await agents.close_room(own_room)
+    log.info("closed attempt room", room=own_room, was_open=closed)
+
+
 def queue_stream(room: str, *, settings: Settings, bus: EventBus) -> AsyncIterator[str]:
     """A waiter's place in line, pushed until a seat is theirs to claim.
 
