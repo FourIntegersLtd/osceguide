@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.features.billing import repository as billing_repo
 from app.features.identity import repository as identity_repo
+from app.features.tenancy import repository as tenancy_repo
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -40,17 +41,21 @@ async def an_org(client: AsyncClient, make_actor, slug: str = "kings") -> tuple[
     return root, admin, org_id
 
 
-async def a_settled_payment(db_session: AsyncSession) -> uuid.UUID:
-    """A bank transfer the console recorded, which an invoice line can bill for."""
+async def a_settled_payment(
+    db_session: AsyncSession, org_id: uuid.UUID | None, currency: str = "gbp", plan_code: str = "sca_6m"
+) -> uuid.UUID:
+    """A bank transfer the console recorded, by a member of `org_id` (or of no organisation)."""
     payer = await identity_repo.create_user(
         session=db_session,
         email=f"payer-{uuid.uuid4().hex[:6]}@example.com",
         name="Payer",
         password_hash=None,
     )
+    if org_id is not None:
+        await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=payer.id, role="trainee")
     plan = await billing_repo.create_plan(
         db_session,
-        code="sca_6m",
+        code=plan_code,
         stripe_price_id=f"price_{uuid.uuid4().hex[:6]}",
         amount_pence=4999,
         duration_days=180,
@@ -63,7 +68,7 @@ async def a_settled_payment(db_session: AsyncSession) -> uuid.UUID:
         stripe_payment_intent_id=f"manual_{uuid.uuid4().hex[:8]}",
         checkout_session_id=None,
         amount_total_pence=4999,
-        currency="gbp",
+        currency=currency,
         receipt_url=None,
         paid_at=datetime.now(UTC),
         entitlement_id=None,
@@ -77,7 +82,7 @@ async def test_an_invoice_is_raised_numbered_and_read_by_the_org(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     root, admin, org_id = await an_org(client, make_actor)
-    payment_id = await a_settled_payment(db_session)
+    payment_id = await a_settled_payment(db_session, org_id)
 
     created = await client.post(
         "/api/v1/platform/organizations/kings/invoices",
@@ -194,3 +199,27 @@ async def test_an_unknown_organisation_cannot_be_invoiced(client: AsyncClient, m
         headers=bearer(root),
     )
     assert refused.status_code == 404
+
+
+async def test_a_line_bills_only_this_organisations_unbilled_payment_in_its_currency(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    # Otherwise one organisation's invoice could show another's customer and
+    # plan, or bill the same transfer twice.
+    root, _, org_id = await an_org(client, make_actor)
+    outsider = await a_settled_payment(db_session, None, plan_code="sca_3m")
+    in_euros = await a_settled_payment(db_session, org_id, currency="eur", plan_code="sca_12m")
+    ours = await a_settled_payment(db_session, org_id)
+
+    async def raise_for(payment_id: uuid.UUID) -> int:
+        """Raise an invoice with one line billing this payment; answer the status."""
+        response = await client.post(
+            "/api/v1/platform/organizations/kings/invoices",
+            json={"lines": [{"payment_id": str(payment_id)}]},
+            headers=bearer(root),
+        )
+        return response.status_code
+
+    assert await raise_for(ours) == 201
+    for refused in (outsider, in_euros, ours):
+        assert await raise_for(refused) == 422

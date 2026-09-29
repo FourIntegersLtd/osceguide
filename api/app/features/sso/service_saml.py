@@ -101,25 +101,34 @@ async def consume_response(
         if request_id is not None
         else None
     )
-    if identity is None:
+    # Each AuthnRequest is answered once, so a captured response cannot be replayed.
+    if identity is None or not await sso_state.spend_once(
+        settings, f"saml-request:{request_id}", ttl_seconds=sso_state.STATE_TTL_SECONDS
+    ):
         return _frontend_callback(settings, org.slug, error=errors.SsoVerificationFailed.code)
     handoff = sso_state.issue_assertion(
         settings,
         org_slug=org.slug,
         email=identity.email,
         name=identity.name,
-        subject=identity.subject,
+        # A NameID is only unique within the IdP that issued it, and every
+        # organisation runs its own, so the subject is scoped to this connection.
+        subject=f"{connection.id}:{identity.subject}",
         now=now,
     )
     return _frontend_callback(settings, org.slug, token=handoff)
 
 
-def identity_from_handoff(settings: Settings, *, token: str, org_slug: str) -> SsoIdentity | None:
-    """Who the assertion consumer verified, from the hand-off the frontend posted back."""
+async def identity_from_handoff(settings: Settings, *, token: str, org_slug: str) -> SsoIdentity | None:
+    """Who the assertion consumer verified, from the hand-off the frontend posted back. Single use."""
     verified = sso_state.verify_assertion(settings, token=token, org_slug=org_slug)
     if verified is None:
         return None
-    email, name, subject = verified
+    email, name, subject, jti = verified
+    if not await sso_state.spend_once(
+        settings, f"saml-handoff:{jti}", ttl_seconds=sso_state.ASSERTION_TTL_SECONDS
+    ):
+        return None
     return SsoIdentity(email=email, name=name, subject=subject)
 
 

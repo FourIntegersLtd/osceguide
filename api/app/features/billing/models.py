@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -130,7 +131,7 @@ class Invoice(Base, UUIDPrimaryKey, Timestamps):
     customer_name: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'issued'"))
     currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default=text("'gbp'"))
-    total_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_pence: Mapped[int] = mapped_column(BigInteger, nullable=False)
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -151,8 +152,8 @@ class InvoiceLine(Base, UUIDPrimaryKey):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str] = mapped_column(String(300), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    unit_amount_pence: Mapped[int] = mapped_column(Integer, nullable=False)
-    amount_pence: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_amount_pence: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    amount_pence: Mapped[int] = mapped_column(BigInteger, nullable=False)
     # The settlement this line bills for, when it bills for one: a payment
     # recorded through `service_settlement` (a bank transfer entered in the
     # console, typically). SET NULL keeps the line if the payment row goes.

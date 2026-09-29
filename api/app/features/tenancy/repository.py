@@ -225,9 +225,10 @@ async def list_audit(
     to one person's acts or to an action name or its prefix."""
     stmt = select(AuditEntry).where(AuditEntry.org_id == org_id)
     if actor_email:
-        stmt = stmt.where(AuditEntry.actor_email.ilike(actor_email.strip()))
+        # Compared, not pattern-matched: a `%` in the filter must not widen it.
+        stmt = stmt.where(func.lower(AuditEntry.actor_email) == actor_email.strip().lower())
     if action:
-        stmt = stmt.where(AuditEntry.action.like(f"{action.strip()}%"))
+        stmt = stmt.where(AuditEntry.action.startswith(action.strip(), autoescape=True))
     return await keyset_page(
         session, stmt, sort_col=AuditEntry.at, id_col=AuditEntry.id, limit=limit, cursor=cursor
     )

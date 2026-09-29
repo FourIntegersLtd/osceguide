@@ -1078,7 +1078,7 @@ office will not pay one that does not quote their PO number.
 | `customer_name` | `varchar(200) not null` | the organisation's name as billed, frozen like a receipt's |
 | `status` | `varchar(16) not null default 'issued'` | `issued` \| `paid` \| `void`; CHECK `ck_invoices_status`. Paid and void are final |
 | `currency` | `varchar(3) not null default 'gbp'` | |
-| `total_pence` | `int not null` | the sum of the lines' `amount_pence` |
+| `total_pence` | `bigint not null` | the sum of the lines' `amount_pence` |
 | `issued_at` / `due_at` | `timestamptz` | `issued_at not null`, `due_at null` |
 | `paid_at` / `voided_at` | `timestamptz null` | set by the move to that status |
 | `notes` | `text null` | |
@@ -1094,7 +1094,7 @@ never edited.
 | `position` | `int not null` | UNIQUE `(invoice_id, position)` |
 | `description` | `varchar(300) not null` | from the payment's plan when a payment is named and no description is given |
 | `quantity` | `int not null` | |
-| `unit_amount_pence` / `amount_pence` | `int not null` | `amount = quantity × unit`; the unit defaults to the payment's total |
+| `unit_amount_pence` / `amount_pence` | `bigint not null` | `amount = quantity × unit`; the unit defaults to the payment's total |
 | `payment_id` | `uuid null` → `payments.id` SET NULL | the settled payment (typically a console-entered bank transfer, `service_settlement`) this line bills for |
 
 ## growth — 6 tables

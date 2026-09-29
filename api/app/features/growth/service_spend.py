@@ -221,7 +221,9 @@ async def check_spend_alerts(session: AsyncSession, *, now: datetime) -> list[st
                     "net_margin": domain.format_gbp(spend.net_margin_pence),
                     "disclaimer": spend.billing_disclaimer,
                 },
-                idempotency_key=f"partner_spend_alert:{partner}:{threshold}:{recipient}",
+                # The day is in the key: a retried run is deduplicated, but a threshold that
+                # alerts again after the thresholds were reset is not swallowed forever.
+                idempotency_key=f"partner_spend_alert:{partner}:{threshold}:{today.isoformat()}:{recipient}",
             )
         await repository.save_pilot_config(
             session,

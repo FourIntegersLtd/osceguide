@@ -46,7 +46,10 @@ async def create_invoice(
     if summary is None:
         raise OrgNotFound()
     try:
-        lines = [await _line_values(session, line) for line in body.lines]
+        lines = [
+            await _line_values(session, line, org_id=summary.id, currency=body.currency)
+            for line in body.lines
+        ]
     except domain.InvalidInvoiceLine as exc:
         raise_mapped(exc, _REFUSALS)
     sequence = await repository_invoices.next_invoice_sequence(session)
@@ -126,11 +129,16 @@ async def update_invoice(
     return await read_invoice(session, invoice.org_id, invoice.id)
 
 
-async def _line_values(session: AsyncSession, line: CreateInvoiceLine) -> dict[str, Any]:
+async def _line_values(
+    session: AsyncSession, line: CreateInvoiceLine, *, org_id: uuid.UUID, currency: str
+) -> dict[str, Any]:
     """The stored values for one requested line, filling blanks from its payment.
 
     A line naming a payment bills that payment's total unless an amount is
     given, and is described by the plan it bought unless a description is.
+    The payment must be one of this organisation's people's, in the invoice's
+    currency, and not already billed on an invoice that still stands, so one
+    organisation's invoice can neither disclose nor double-bill another's.
     """
     unit_amount = line.unit_amount_pence
     description = line.description
@@ -138,6 +146,15 @@ async def _line_values(session: AsyncSession, line: CreateInvoiceLine) -> dict[s
         payment = await repository.payment_by_id(session, line.payment_id)
         if payment is None:
             raise domain.InvalidInvoiceLine("That payment does not exist.")
+        payer_orgs = {
+            membership.org_id for membership in await tenancy.memberships_for_token(session, payment.user_id)
+        }
+        if org_id not in payer_orgs:
+            raise domain.InvalidInvoiceLine("That payment was not made by a member of this organisation.")
+        if payment.currency.lower() != currency.lower():
+            raise domain.InvalidInvoiceLine("That payment is in a different currency from the invoice.")
+        if await repository_invoices.payment_is_invoiced(session, payment.id):
+            raise domain.InvalidInvoiceLine("That payment is already billed on another invoice.")
         if unit_amount is None:
             unit_amount = payment.amount_total_pence
         if description is None:

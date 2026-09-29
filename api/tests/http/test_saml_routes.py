@@ -176,3 +176,85 @@ async def test_a_certificate_that_is_not_one_is_refused(client: AsyncClient, mak
     )
     assert refused.status_code == 422
     assert refused.json()["code"] == "invalid_saml_connection"
+
+
+class OnceStore:
+    """Just enough of Redis for `SET NX`: the single-use check, without a server."""
+
+    def __init__(self) -> None:
+        self.keys: set[str] = set()
+
+    async def set(self, key: str, value: str, *, nx: bool, ex: int) -> bool:
+        """True the first time a key is set, as Redis answers `SET key value NX`."""
+        if key in self.keys:
+            return False
+        self.keys.add(key)
+        return True
+
+
+async def signed_in_handoff(
+    client: AsyncClient, connection: dict, idp: TestIdentityProvider, email: str
+) -> str:
+    """Post a valid response for `email` to the assertion consumer; answer the hand-off token."""
+    relay_state, request_id = await start_sign_in(client)
+    posted = await client.post(
+        f"/api/v1/sso/saml/{connection['id']}/acs",
+        data={
+            "SAMLResponse": idp.response(
+                acs_url=connection["sp_acs_url"],
+                audience=connection["sp_entity_id"],
+                in_response_to=request_id,
+                email=email,
+            ),
+            "RelayState": relay_state,
+        },
+    )
+    assert posted.status_code == 303, posted.text
+    return handed_back(posted.headers["location"])["token"]
+
+
+async def test_a_handoff_signs_in_once_and_a_response_is_consumed_once(
+    client: AsyncClient, make_actor, monkeypatch: pytest.MonkeyPatch
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.sso import state as sso_state
+
+    store = OnceStore()
+    monkeypatch.setattr(sso_state, "get_redis", lambda: store)
+    idp = TestIdentityProvider()
+    connection = await a_saml_org(client, make_actor, idp)
+
+    relay_state, request_id = await start_sign_in(client)
+    form = {
+        "SAMLResponse": idp.response(
+            acs_url=connection["sp_acs_url"],
+            audience=connection["sp_entity_id"],
+            in_response_to=request_id,
+            email="ana.lee@kings.ac.uk",
+        ),
+        "RelayState": relay_state,
+    }
+    first = await client.post(f"/api/v1/sso/saml/{connection['id']}/acs", data=form)
+    token = handed_back(first.headers["location"])["token"]
+    replayed = await client.post(f"/api/v1/sso/saml/{connection['id']}/acs", data=form)
+    assert handed_back(replayed.headers["location"]).get("error") == "sso_verification_failed"
+
+    signed_in = await client.post("/api/v1/auth/sso/callback", json={"org_slug": "kings", "token": token})
+    assert signed_in.status_code == 200, signed_in.text
+    again = await client.post("/api/v1/auth/sso/callback", json={"org_slug": "kings", "token": token})
+    assert again.status_code == 422
+    assert again.json()["code"] == "sso_verification_failed"
+
+
+async def test_the_idp_is_not_believed_for_an_address_outside_the_organisations_domains(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    # A customer's IdP can assert any address. Without this check it could sign
+    # itself into another tenant's account, or a platform administrator's.
+    await make_actor("root@osceguide.com", platform_admin=True)
+    idp = TestIdentityProvider()
+    connection = await a_saml_org(client, make_actor, idp)
+    token = await signed_in_handoff(client, connection, idp, "root@osceguide.com")
+
+    refused = await client.post("/api/v1/auth/sso/callback", json={"org_slug": "kings", "token": token})
+    assert refused.status_code == 422
+    assert refused.json()["code"] == "sso_verification_failed"

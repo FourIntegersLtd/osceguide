@@ -154,7 +154,12 @@ async def complete_callback(
     if provider is domain.Provider.SAML:
         # The assertion consumer has already verified the IdP's signed response
         # and its `InResponseTo`; what arrives here is its signed hand-off.
-        identity = service_saml.identity_from_handoff(settings, token=token, org_slug=org_slug)
+        identity = await service_saml.identity_from_handoff(settings, token=token, org_slug=org_slug)
+        # The IdP is the customer's own, so it may assert any address. It is
+        # believed only for an email domain the platform bound to this organisation;
+        # otherwise it could sign someone into another tenant's account.
+        if identity is not None and not await _email_domain_is_bound(session, config, identity.email):
+            identity = None
     else:
         identity = await _verified_by_broker(
             brokers.for_provider(provider),
@@ -187,6 +192,18 @@ async def complete_callback(
         token_type=auth.token_type,
         expires_in=auth.expires_in,
     )
+
+
+async def _email_domain_is_bound(session: AsyncSession, config: OrganizationSso, email: str) -> bool:
+    """Whether the address's domain is one this organisation's SSO configuration owns."""
+    _, _, email_domain = email.rpartition("@")
+    if not email_domain:
+        return False
+    kind = domain.BindingKind.EMAIL_DOMAIN
+    owner = await repository.binding_owner(
+        session, kind=kind.value, binding_value=domain.normalise_binding(kind, email_domain)
+    )
+    return owner == config.id
 
 
 async def _verified_by_broker(

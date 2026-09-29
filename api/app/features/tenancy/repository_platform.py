@@ -35,8 +35,14 @@ async def list_organizations(
     if org_type is not None:
         stmt = stmt.where(Organization.org_type == org_type)
     if search and search.strip():
-        term = f"%{search.strip()}%"
-        stmt = stmt.where(or_(Organization.name.ilike(term), Organization.slug.ilike(term)))
+        # autoescape, so a typed `%` or `_` is a character, not a wildcard.
+        term = search.strip()
+        stmt = stmt.where(
+            or_(
+                Organization.name.icontains(term, autoescape=True),
+                Organization.slug.icontains(term, autoescape=True),
+            )
+        )
     return await keyset_page(
         session,
         stmt,

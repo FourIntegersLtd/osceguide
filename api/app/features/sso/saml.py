@@ -137,6 +137,11 @@ def verify_response(
         if not response.is_valid(request_data, request_id=request_id):
             log.warning("saml response refused", reason=response.get_error())
             return None
+        # The library checks InResponseTo and the audience only when the response
+        # carries them, so an unsolicited or unscoped response would otherwise pass.
+        if response.get_in_response_to() != request_id or ours.entity_id not in response.get_audiences():
+            log.warning("saml response refused", reason="unsolicited or not addressed to this connection")
+            return None
         attributes = response.get_attributes()
         subject = str(response.get_nameid() or "")
     except Exception as exc:  # noqa: BLE001 - the library raises many types for a malformed document

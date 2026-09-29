@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.features.billing import domain
 from app.features.billing.models import INVOICE_NUMBER_SEQUENCE, Invoice, InvoiceLine
 
 
@@ -46,6 +47,17 @@ async def invoice_by_id(session: AsyncSession, org_id: uuid.UUID, invoice_id: uu
 async def any_invoice_by_id(session: AsyncSession, invoice_id: uuid.UUID) -> Invoice | None:
     """Any organisation's invoice, for the platform console. Not org-scoped on purpose."""
     return (await session.execute(select(Invoice).where(Invoice.id == invoice_id))).scalar_one_or_none()
+
+
+async def payment_is_invoiced(session: AsyncSession, payment_id: uuid.UUID) -> bool:
+    """Whether a line on an invoice that is not void already bills this payment."""
+    stmt = (
+        select(InvoiceLine.id)
+        .join(Invoice, Invoice.id == InvoiceLine.invoice_id)
+        .where(InvoiceLine.payment_id == payment_id, Invoice.status != domain.INVOICE_VOID)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None
 
 
 async def lines_for(

@@ -618,7 +618,7 @@ async def test_a_groups_members_can_be_read_a_page_at_a_time(client: AsyncClient
         f"{KINGS}/trainee-groups/{group}/members", params={"limit": 1}, headers=bearer(admin)
     )
     assert page_one.status_code == 200, page_one.text
-    assert [trainee["id"] for trainee in page_one.json()["items"]] == [first]
+    assert len(page_one.json()["items"]) == 1
     cursor = page_one.json()["next_cursor"]
     assert cursor is not None
 
@@ -627,7 +627,10 @@ async def test_a_groups_members_can_be_read_a_page_at_a_time(client: AsyncClient
         params={"limit": 1, "cursor": cursor},
         headers=bearer(admin),
     )
-    assert [trainee["id"] for trainee in page_two.json()["items"]] == [second]
+    # One transaction stamps both rows with the same created_at, so the id breaks
+    # the tie: which comes first is arbitrary, but the pages must not overlap.
+    both = [trainee["id"] for page in (page_one, page_two) for trainee in page.json()["items"]]
+    assert sorted(both) == sorted([first, second])
     assert page_two.json()["next_cursor"] is None
 
 

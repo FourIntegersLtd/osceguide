@@ -17,8 +17,10 @@ import uuid
 from datetime import datetime
 
 import jwt
+from redis.exceptions import RedisError
 
 from app.core.logging import get_logger
+from app.core.redis import get_redis
 from app.core.settings import Settings
 
 log = get_logger(__name__)
@@ -26,7 +28,7 @@ log = get_logger(__name__)
 # Distinct from the access-token type so a state can never be presented as a
 # session token, nor a session token as a state.
 _PURPOSE = "sso-state"
-_TTL_SECONDS = 600  # ten minutes to finish signing in at the provider
+STATE_TTL_SECONDS = 600  # ten minutes to finish signing in at the provider
 _ALGORITHM = "HS256"
 
 
@@ -48,7 +50,7 @@ def issue_state(
         "org_slug": org_slug,
         "nonce": nonce,
         "iat": issued_at,
-        "exp": issued_at + _TTL_SECONDS,
+        "exp": issued_at + STATE_TTL_SECONDS,
         "jti": uuid.uuid4().hex,
     }
     token = jwt.encode(claims, settings.jwt_secret, algorithm=_ALGORITHM)
@@ -91,7 +93,7 @@ def verify_state(settings: Settings, *, state: str, org_slug: str) -> str | None
 # person is provisioned and the session minted.
 
 _ASSERTION_PURPOSE = "saml-assertion"
-_ASSERTION_TTL_SECONDS = 120
+ASSERTION_TTL_SECONDS = 120
 
 
 def issue_assertion(
@@ -107,21 +109,21 @@ def issue_assertion(
         "name": name,
         "sub": subject,
         "iat": issued_at,
-        "exp": issued_at + _ASSERTION_TTL_SECONDS,
+        "exp": issued_at + ASSERTION_TTL_SECONDS,
         "jti": uuid.uuid4().hex,
     }
     return jwt.encode(claims, settings.jwt_secret, algorithm=_ALGORITHM)
 
 
-def verify_assertion(settings: Settings, *, token: str, org_slug: str) -> tuple[str, str, str] | None:
-    """(email, name, subject) from a hand-off this platform minted for this organisation, or None."""
+def verify_assertion(settings: Settings, *, token: str, org_slug: str) -> tuple[str, str, str, str] | None:
+    """(email, name, subject, jti) from a hand-off this platform minted for this organisation, or None."""
     try:
         claims = jwt.decode(
             token,
             settings.jwt_secret,
             algorithms=[_ALGORITHM],
             issuer=settings.jwt_issuer,
-            options={"require": ["exp", "iss", "sub"]},
+            options={"require": ["exp", "iss", "sub", "jti"]},
         )
     except jwt.InvalidTokenError as exc:
         log.warning("saml hand-off failed verification", error=str(exc))
@@ -131,4 +133,20 @@ def verify_assertion(settings: Settings, *, token: str, org_slug: str) -> tuple[
     email = str(claims.get("email") or "")
     if not email:
         return None
-    return email, str(claims.get("name") or ""), str(claims["sub"])
+    return email, str(claims.get("name") or ""), str(claims["sub"]), str(claims["jti"])
+
+
+async def spend_once(settings: Settings, key: str, *, ttl_seconds: int) -> bool:
+    """True the first time `key` is presented within `ttl_seconds`, False on any replay.
+
+    Fails closed when Redis is configured but unreachable. Only a deliberately
+    disabled Redis (local development, tests) skips the check.
+    """
+    redis = get_redis()
+    if redis is None:
+        return settings.redis_disabled
+    try:
+        return bool(await redis.set(f"sso-once:{key}", "1", nx=True, ex=ttl_seconds))
+    except RedisError as exc:
+        log.warning("sso single-use check unavailable", error=str(exc))
+        return False
