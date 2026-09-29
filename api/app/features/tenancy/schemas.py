@@ -10,6 +10,10 @@ from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field
 
+# Re-exported so tenancy's own resend route shares this shape with roster's
+# rather than FastAPI qualifying two identically named classes in openapi.json.
+from app.core.schemas import InvitationRead as InvitationRead
+
 
 class OrganizationRead(BaseModel):
     id: uuid.UUID
@@ -20,6 +24,7 @@ class OrganizationRead(BaseModel):
     created_at: datetime
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
+    require_staff_mfa: bool = False
 
 
 class UpdateOrganization(BaseModel):
@@ -29,6 +34,13 @@ class UpdateOrganization(BaseModel):
     org_type: str | None = Field(default=None, max_length=32)
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
+    require_staff_mfa: bool | None = None
+
+
+class StaffMfaPolicy(BaseModel):
+    """Whether this organisation's staff must sign in with a second factor."""
+
+    require_staff_mfa: bool
 
 
 class UserSummary(BaseModel):

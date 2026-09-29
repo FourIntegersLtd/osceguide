@@ -41,8 +41,7 @@ from app.features.identity.errors import (
     LegacyAccountNotImported,
     LegacyExchangeUnavailable,
 )
-from app.features.identity.schemas import AuthResult
-from app.features.identity.service_sessions import issue
+from app.features.identity.schemas import SignInResult
 
 _ALGORITHM: Final = "HS256"
 
@@ -103,8 +102,12 @@ async def exchange(
     memberships_for: MembershipLookup,
     settings: Settings,
     now: datetime,
-) -> AuthResult:
+) -> SignInResult:
     """Verify a token the old backend issued, and answer with a platform pair.
+
+    This is not a password, but it mints a session the same way login does, so
+    it goes through the MFA gate. A platform admin cannot skip the second
+    factor by trading an old token. SSO does not use this function.
 
     What it does *not* do is create anybody. An address with no row is
     `legacy_account_not_imported`, so a gap in the import surfaces as a named
@@ -127,9 +130,7 @@ async def exchange(
     if user.status != "active":
         raise AccountSuspended()
 
-    await repository.record_login(session, user.id, now)
     memberships = await memberships_for(session, user.id)
-    tokens = await issue(session, user, settings=settings, now=now, memberships=memberships)
-    from app.features.identity.service import user_read  # noqa: PLC0415 - one direction at import
+    from app.features.identity.service_mfa import finish_password_sign_in  # noqa: PLC0415
 
-    return AuthResult(**tokens.model_dump(), user=user_read(user, memberships))
+    return await finish_password_sign_in(session, user, settings=settings, now=now, memberships=memberships)

@@ -135,6 +135,19 @@ async def reset_user_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# Clear a lost authenticator. The person enrols again the next time they sign in.
+@router.post(
+    "/platform/users/{user_id}/reset-mfa",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.UserNotFound, errors.MfaNotEnrolled),
+)
+async def reset_user_mfa(
+    user_id: uuid.UUID, admin: PlatformAdmin, session: Session, clock: ClockDep
+) -> Response:
+    await service_platform_users.reset_user_mfa(session, user_id, actor=admin, now=clock.now())
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get(
     "/platform/users/{user_id}/audit",
     response_model=Page[schemas.PlatformAuditRead],

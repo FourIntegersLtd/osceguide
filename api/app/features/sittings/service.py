@@ -17,7 +17,7 @@ from app.features.catalog import service as catalog
 from app.features.roster import service as roster
 from app.features.rubrics import service_marking
 from app.features.sittings import domain, domain_edit, domain_run, errors, repository
-from app.features.sittings.models import Circuit, Sitting
+from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
 
@@ -181,6 +181,24 @@ async def slot_is_in_org(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid
     tenant's slot (P4).
     """
     return await repository.slot_by_id(session, org_id, slot_id) is not None
+
+
+async def slot_and_circuit_for_owner(
+    session: AsyncSession, slot_id: uuid.UUID, user_id: uuid.UUID
+) -> tuple[Slot, Circuit] | None:
+    """The slot and its circuit, if the slot is this signed-in person's own.
+
+    Exposed for `reviews`, whose own read of a slot's review needs the slot's
+    org and the circuit's sitting to check the result is released, without
+    reaching into this slice's repository directly.
+    """
+    slot = await repository.slot_by_id_for_user(session, slot_id, user_id)
+    if slot is None:
+        return None
+    circuit = await repository.circuit_by_id(session, slot.org_id, slot.circuit_id)
+    if circuit is None:
+        return None
+    return slot, circuit
 
 
 async def rubric_version_for_slot(

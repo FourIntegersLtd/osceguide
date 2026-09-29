@@ -9,6 +9,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.core.schemas import InvitationRead as InvitationRead
+
 
 class TraineeRead(BaseModel):
     id: uuid.UUID
@@ -37,15 +39,6 @@ class UpdateTrainee(BaseModel):
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
     cohort_id: uuid.UUID | None = None
-
-
-class InvitationRead(BaseModel):
-    """A re-sent invitation. The token itself is never returned; it goes only to
-    the address it was minted for.
-    """
-
-    email: str
-    invited_to: str
 
 
 MAX_BULK_TRAINEES = 500

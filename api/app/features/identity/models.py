@@ -6,6 +6,7 @@ import uuid
 from datetime import date, datetime, time
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -116,6 +117,9 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     )
     replay_onboarding: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     consumer_role: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'user'"))
+    # The person's own photo, as an S3 object URL. Null until they upload one;
+    # cleared, and the object deleted, when the account is erased.
+    avatar_url: Mapped[str | None] = mapped_column(Text)
 
 
 class UserIdentity(Base, UUIDPrimaryKey, Timestamps):
@@ -159,6 +163,39 @@ class RefreshToken(Base, UUIDPrimaryKey, Timestamps):
         ForeignKey("refresh_chains.id", ondelete="CASCADE"), nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class UserMfa(Base):
+    """One authenticator app for one person.
+
+    `user_id` is the primary key: an account has one secret, replaced when
+    they enrol again. `confirmed_at` stays null until a code from that secret
+    has been accepted, so a half-finished enrolment is not a second factor
+    yet. `last_used_step` is the TOTP counter of the last accepted code, and
+    a code at that step or earlier is a replay. No `updated_at`: the columns
+    above are the whole history that matters.
+    """
+
+    __tablename__ = "user_mfa"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    secret_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_step: Mapped[int | None] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class UserMfaRecoveryCode(Base, UUIDPrimaryKey):
+    """One single-use recovery code. Only the argon2 hash is stored."""
+
+    __tablename__ = "user_mfa_recovery_codes"
+    __table_args__ = (Index("ix_user_mfa_recovery_codes_user_id", "user_id"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    code_hash: Mapped[str] = mapped_column(Text, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

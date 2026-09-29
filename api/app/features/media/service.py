@@ -12,11 +12,16 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
+from app.core.jobs import defer_in_transaction
 from app.core.ports import VectorIndex
 from app.features.catalog.service import resolve_exam
 from app.features.media import domain, errors, repository, service_reads
 from app.features.media.models import MediaItem
 from app.features.media.schemas import MediaRead
+
+# Owned by tutor_memory/jobs.py; named here as a string so media does not import that module (cycle).
+_TUTOR_REINDEX_MEDIA_TASK = "reindex_media_item"
+_TUTOR_MATERIAL_QUEUE = "material"
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.UnknownMediaKind: errors.UnknownMediaKindError,
@@ -110,6 +115,13 @@ async def publish(
         doc_id=str(item.id),
         text=f"{item.title}\n{item.summary or ''}",
         metadata={"kind": item.kind, "slug": item.slug},
+    )
+    await defer_in_transaction(
+        session,
+        queue=_TUTOR_MATERIAL_QUEUE,
+        task=_TUTOR_REINDEX_MEDIA_TASK,
+        queueing_lock=f"reindex-media:{item_id}",
+        args={"media_item_id": str(item_id)},
     )
     return await service_reads.read_one(session, await _require(session, item_id), unlocked_exam_ids=None)
 

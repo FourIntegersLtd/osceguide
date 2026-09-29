@@ -7,6 +7,9 @@ from __future__ import annotations
 from app.core.errors import Conflict, Forbidden, NotFound
 from app.core.tenancy import OrgNotFound
 
+# The same class identity raises. The console route documents it; there is not a second one.
+from app.features.identity.errors import MfaNotEnrolled as MfaNotEnrolled
+
 # Re-exported, not redefined: `require_org` in core raises this and the routers
 # here document it, so both have to mean the same class.
 __all__ = ["OrgNotFound"]
@@ -45,6 +48,13 @@ class PlatformAdminExists(Conflict):
 
     code = "platform_admin_exists"
     default_message = "That person already has staff console access"
+
+
+class InvitationNotPending(Conflict):
+    """That member has already chosen a password, or signs in through SSO."""
+
+    code = "invitation_not_pending"
+    default_message = "There is nothing to resend for that member"
 
 
 class UserNotFound(NotFound):

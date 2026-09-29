@@ -79,6 +79,9 @@ SSO_CALLBACK = Limit(name="sso-callback", allowance=20, window_seconds=60)
 # A CV upload pays for a PDF parse and, behind it, a model call. Five an hour
 # is generous for somebody re-uploading a corrected CV and expensive to repeat.
 CV_UPLOAD = Limit(name="cv-upload", allowance=5, window_seconds=3600)
+# Guessing a six-digit code or a recovery code. Fails closed: a Redis error
+# mid-check must not turn the second factor into an unlimited spray.
+MFA_VERIFY = Limit(name="mfa-verify", allowance=5, window_seconds=60, fail_closed=True)
 
 
 def caller_key(request: Request) -> str:

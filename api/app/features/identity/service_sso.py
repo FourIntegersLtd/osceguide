@@ -39,6 +39,10 @@ async def sign_in_external(
 ) -> AuthResult:
     """Find or provision the user a broker vouched for, and issue a session.
 
+    Deliberately does not call `finish_password_sign_in`. The identity
+    provider owns the second factor, so this platform does not ask for
+    another one. A password sign-in for the same person still does.
+
     Resolved by the broker's `(provider, subject)` first, so a person who
     changes their address keeps one account; by email second, so an account
     that already exists is linked rather than duplicated. The link is written

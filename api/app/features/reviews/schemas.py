@@ -71,6 +71,17 @@ class SaveGpLeadReview(BaseModel):
     status: str = Field(default="draft")
 
 
+class MySlotReviewRead(BaseModel):
+    """A candidate's own read of their slot's review: the RAG summary and the
+    GP-lead's written feedback, once one has been completed. Never a
+    reviewer's draft, and never who observed them."""
+
+    slot_id: uuid.UUID
+    summary: SlotRagSummary
+    notes: str | None
+    completed_at: datetime | None
+
+
 class CircuitReviewRead(BaseModel):
     id: uuid.UUID
     circuit_id: uuid.UUID

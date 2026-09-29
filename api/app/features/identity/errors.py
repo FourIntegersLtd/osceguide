@@ -90,6 +90,13 @@ class UnknownExamError(NotFound):
     default_message = "No such exam"
 
 
+class InvalidAvatarFile(InvalidInput):
+    """The uploaded file is not a small image."""
+
+    code = "invalid_avatar_file"
+    default_message = "That file cannot be used as a profile photo"
+
+
 class UserNotFound(NotFound):
     """No such account.
 
@@ -124,6 +131,41 @@ class LegacyAccountNotImported(Unauthenticated):
 
     code = "legacy_account_not_imported"
     default_message = "This account has not been migrated yet"
+
+
+class InvalidMfaCode(Unauthenticated):
+    """A TOTP or recovery code that does not match, or a TOTP step already used."""
+
+    code = "invalid_mfa_code"
+    default_message = "That code is not valid"
+
+
+class MfaChallengeExpired(Unauthenticated):
+    """The sign-in challenge is missing, signed wrong, the wrong kind, or past its expiry."""
+
+    code = "mfa_challenge_expired"
+    default_message = "That sign-in challenge has expired. Sign in again."
+
+
+class MfaRequiredByPolicy(Conflict):
+    """Refuses turning MFA off for an account the policy says must keep it."""
+
+    code = "mfa_required_by_policy"
+    default_message = "This account must keep two-factor sign-in"
+
+
+class MfaAlreadyEnrolled(Conflict):
+    """An authenticator is already confirmed, so enrolment cannot start again."""
+
+    code = "mfa_already_enrolled"
+    default_message = "An authenticator is already set up"
+
+
+class MfaNotEnrolled(Conflict):
+    """No confirmed authenticator, so there is nothing to verify, disable or reset."""
+
+    code = "mfa_not_enrolled"
+    default_message = "This account has no authenticator set up"
 
 
 class LegacyExchangeUnavailable(Unavailable):

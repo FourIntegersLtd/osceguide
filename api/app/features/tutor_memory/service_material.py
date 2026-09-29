@@ -92,19 +92,54 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
         if media_item.kind not in MEDIA_CORPORA:
             continue
         seen[media_item.kind].add(str(media_item.id))
-        passages += await _index_one(
-            index,
-            corpus=media_item.kind,
-            source_id=str(media_item.id),
-            exam_id=exam_id,
-            title=media_item.title,
-            text=" ".join(part for part in (media_item.summary, _content_text(media_item.content)) if part),
-        )
+        passages += await _index_published_media_item(index, media_item=media_item, exam_id=exam_id)
         sources += 1
 
     retired = await _retire(index, seen)
     log.info("material reindexed", sources=sources, passages=passages, retired=retired)
     return IndexRun(sources=sources, passages=passages, retired=retired)
+
+
+async def reindex_media_item(
+    session: AsyncSession, media_item_id: uuid.UUID, *, index: MaterialIndex | None = None
+) -> int:
+    """Index one published media item into the tutor material index, if it belongs there.
+
+    Does not retire other sources — that is only safe on a full re-index walk.
+    """
+    from app.features.catalog import service as catalog  # noqa: PLC0415 - avoids an import cycle
+    from app.features.tutor_memory.index import NoMaterialIndex, build_material_index  # noqa: PLC0415
+
+    read = await media.read_by_id(session, media_item_id, viewer_is_admin=True)
+    if read.status != "published":
+        return 0
+
+    material_index = index or build_material_index(session) or NoMaterialIndex()
+    exam_id: str | None = None
+    if read.exam_code:
+        exam_id = str((await catalog.resolve_exam(session, read.exam_code)).id)
+    return await _index_published_media_item(material_index, media_item=read, exam_id=exam_id)
+
+
+async def _index_published_media_item(
+    index: MaterialIndex, *, media_item: MediaRead, exam_id: str | None
+) -> int:
+    """Hand one published media item to the index when its kind is tutor-searchable."""
+    if media_item.kind not in MEDIA_CORPORA:
+        return 0
+    return await _index_one(
+        index,
+        corpus=media_item.kind,
+        source_id=str(media_item.id),
+        exam_id=exam_id,
+        title=media_item.title,
+        text=_media_index_text(media_item),
+    )
+
+
+def _media_index_text(media_item: MediaRead) -> str:
+    """Prose the chunker sees for one media item — summary plus body."""
+    return " ".join(part for part in (media_item.summary, _content_text(media_item.content)) if part)
 
 
 async def _index_one(

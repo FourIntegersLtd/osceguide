@@ -45,6 +45,9 @@ _LOCAL_JWT_SECRET = "dev-only-jwt-secret-change-me"  # noqa: S105 — local and 
 # process: local and test data must decrypt the same way across restarts, and
 # nobody should mistake this for a secret worth protecting.
 _LOCAL_PAYOUT_DETAILS_KEY = "6cPODgYlKDgonNz1cBKWl39dFazTwpMyf4VLADcjQH8="  # noqa: S105
+# A different local Fernet key from the payout one, so a dump encrypted under
+# one cannot be read as the other during development.
+_LOCAL_MFA_SECRET_KEY = "bYrouRlioj3ZSZOXp3gtQxtfrPzxG_Es6HT95Kajh9Q="  # noqa: S105
 
 
 # The values a deployed process refuses to start without, named once so the
@@ -62,6 +65,7 @@ REQUIRED_WHEN_DEPLOYED: Final[tuple[str, ...]] = (
     "RESEND_API_KEY",
     "OPENAI_API_KEY",
     "PAYOUT_DETAILS_KEY",
+    "MFA_SECRET_KEY",
 )
 
 
@@ -174,6 +178,11 @@ class Settings(BaseSettings):
     # `app.core.secrets_at_rest`.
     payout_details_key: str = ""
 
+    # Encrypts a TOTP shared secret at rest. A database dump must not hand
+    # over the second factor. Recovery codes are hashed, not encrypted.
+    # See `app.core.secrets_at_rest`.
+    mfa_secret_key: str = ""
+
     # Marking. One default for every exam, rather than b2c's gpt-5-mini and
     # b2b's gpt-4o producing results nobody can compare (E-2). The effort is
     # set explicitly: unset means "medium" under any gpt-5 model, which is a
@@ -247,6 +256,7 @@ class Settings(BaseSettings):
             self.database_url = self.database_url or _LOCAL_DATABASE_URL
             self.cors_origins = self.cors_origins or list(_LOCAL_CORS_ORIGINS)
             self.payout_details_key = self.payout_details_key or _LOCAL_PAYOUT_DETAILS_KEY
+            self.mfa_secret_key = self.mfa_secret_key or _LOCAL_MFA_SECRET_KEY
             return self
         present = {
             "JWT_SECRET": self.jwt_secret,
@@ -260,6 +270,7 @@ class Settings(BaseSettings):
             "RESEND_API_KEY": self.resend_api_key,
             "OPENAI_API_KEY": self.openai_api_key,
             "PAYOUT_DETAILS_KEY": self.payout_details_key,
+            "MFA_SECRET_KEY": self.mfa_secret_key,
         }
         missing = [name for name in REQUIRED_WHEN_DEPLOYED if not present[name].strip()]
         if missing:

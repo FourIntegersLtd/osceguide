@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-68 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+70 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -53,7 +53,7 @@ Three things are true of almost every table, so they are not repeated below:
 | `created_at`, `updated_at` | `timestamptz not null default now()`, `updated_at` bumped on write, from the `Timestamps` mixin |
 | Constraint names | fixed by a naming convention on `Base.metadata` (`ix_`, `uq_`, `ck_`, `fk_`, `pk_`), so Alembic can drop them by name later |
 
-Tables that deliberately have **no `updated_at`** are called out: `audit_log`,
+Tables that deliberately have **no `updated_at`** are called out: `audit_log`, `user_mfa`, `user_mfa_recovery_codes`,
 `transcript_messages`, `assistant_transcript_messages`, `circuit_stations`,
 `circuit_trainees`, `candidate_result_revisions`, `candidate_result_events`,
 `stripe_events`. Nothing edits those rows; a change is a new row.
@@ -106,6 +106,7 @@ names both.
 | `colleague_waiting_email` | `bool not null default false` | email when a peer is waiting to practise |
 | `replay_onboarding` | `bool not null default false` | offer the guided voice tour again on the dashboard |
 | `consumer_role` | `varchar(32) not null default 'user'` | staff vs learner on the consumer product |
+| `avatar_url` | `text null` | this person's profile photo, written by `identity.service.upload_avatar`; stored in S3 like a station photo |
 
 Domain: `MIN_PASSWORD_LENGTH = 12`.
 
@@ -133,15 +134,19 @@ beside it.
 | Field | Type | Notes |
 |---|---|---|
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | UNIQUE |
-| `provider` | `varchar(32) not null` | `clerk` or `entra`. Named before either is built, so a row says what it expects |
+| `provider` | `varchar(32) not null` | `clerk` or `entra`; selects which adapter verifies the id token at sign-in |
 | `issuer` | `varchar(255) null` | the broker's own identity. Not a secret |
 | `enabled` | `bool not null default false` | |
-| `sso_only` | `bool not null default false` | hides the password form. CHECK `NOT sso_only OR enabled` — otherwise one checkbox leaves nobody a way in |
+| `sso_only` | `bool not null default false` | refuses password sign-in for the org when set. CHECK `NOT sso_only OR enabled` — otherwise one checkbox leaves nobody a way in |
 | `sign_in_label` | `varchar(80) null` | null takes the provider's default rather than rendering a button with no words |
 | `default_exam_code` | `varchar(32) null` | which exam a white-label site lands on |
 
-**Nothing verifies an identity yet.** `sso_only` is a display rule, not an
-enforcement one.
+Sign-in exchanges the broker's code for an id token, then verifies issuer,
+audience and signature against the provider's JWKS (`sso/entra.py` for Entra,
+`sso/clerk.py` for Clerk). When `sso_only` is true, password login is refused
+for that organisation (`identity/service_sessions.py`, `login_with_memberships`,
+enforced in the database by migration
+`02a17a847052_sso_only_disables_password_login`).
 
 ### `organization_sso_bindings`
 A host, or an email domain, that means one organisation.
@@ -215,6 +220,50 @@ token that never existed, so the leaked chain stays alive.
 `user_id` → `users.id` CASCADE, `token_hash varchar(64) not null unique`,
 `expires_at timestamptz not null`, `used_at timestamptz null`.
 
+### `user_mfa`
+One authenticator for one account. `user_id` is the primary key, so there is
+no second secret. `confirmed_at` stays null until a code from that secret has
+been accepted; until then the row is an enrolment in progress, not a second
+factor. `last_used_step` is the TOTP counter of the last accepted code, and a
+later code at that step or earlier is refused as a replay. The secret is
+Fernet ciphertext under `MFA_SECRET_KEY`, never the shared secret itself.
+No `updated_at`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id` | `uuid not null` → `users.id` CASCADE | primary key |
+| `secret_ciphertext` | `text not null` | Fernet token, not the TOTP secret |
+| `confirmed_at` | `timestamptz null` | null until the first code is accepted |
+| `last_used_step` | `bigint null` | replay window; a step at or below this is refused |
+| `created_at` | `timestamptz not null default now()` | |
+
+Password login, registration and the legacy token exchange all go through
+one gate (`identity.service_mfa.finish_password_sign_in`). When the
+authenticator is confirmed the response is `mfa_required` and a challenge
+JWT (`typ` `mfa_challenge`, five minutes). When policy requires one and none
+is confirmed, the response is `mfa_enrolment_required` (`typ` `mfa_enrol`,
+ten minutes). The access-token verifier rejects both types.
+
+SSO sign-in (`identity.service_sso.sign_in_external`) does not use the gate.
+The identity provider owns the second factor, so this platform does not ask
+for another. Password reset and accepting an invitation do not mint a
+session; they set a password, and the next login is the gate.
+
+Requiring MFA, or an organisation turning `require_staff_mfa` on, takes
+effect at the next password sign-in. A refresh chain already issued keeps
+working until it expires or is revoked.
+
+### `user_mfa_recovery_codes`
+Ten single-use codes, shown once when the authenticator is confirmed or when
+they are regenerated. Only the argon2 hash is stored. No `created_at` or
+`updated_at`: `used_at` is the only clock that matters.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id` | `uuid not null` → `users.id` CASCADE | indexed |
+| `code_hash` | `text not null` | argon2id, same hasher as a password |
+| `used_at` | `timestamptz null` | set when the code signs someone in; a second use is refused |
+
 ## tenancy — 3 tables
 
 ### `organizations`
@@ -228,6 +277,7 @@ token that never existed, so the leaked chain stays alive.
 | `contract_starts_at` / `contract_ends_at` | `timestamptz null` | |
 | `suspended_at` | `timestamptz null` | |
 | `suspended_by` | `uuid null` → `users.id` SET NULL | |
+| `require_staff_mfa` | `bool not null default false` | when set, a membership whose role is outside `END_USER_ROLES` must use a second factor. Same precedent as `organization_sso.sso_only`: the organisation states a sign-in rule. Takes effect at the next password sign-in; existing refresh chains continue |
 
 ### `memberships`
 A person's role in an organisation. A user may hold several, in several orgs.

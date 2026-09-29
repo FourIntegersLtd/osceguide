@@ -8,10 +8,10 @@ and rules are tested here without a container.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 MIN_PASSWORD_LENGTH = 12
 
@@ -138,6 +138,46 @@ def use_refresh_token(chain: RefreshChain, *, presented_token_id: str, now: date
     if presented_token_id != chain.current_token_id:
         return RefreshDecision(accepted=False, revoke_chain=True, reason="reuse_detected")
     return RefreshDecision(accepted=True)
+
+
+# The same set as `tenancy.domain.END_USER_ROLES`. Duplicated here because a
+# domain module may not import another slice. `tests/unit/test_mfa_domain.py`
+# asserts the two stay equal.
+STAFF_MFA_EXEMPT_ROLES = frozenset({"trainee", "practice_user"})
+
+MFA_VERIFY_TTL_SECONDS = 300
+MFA_ENROL_TTL_SECONDS = 600
+
+MfaRequiredReason = Literal["platform_admin", "org_policy"]
+
+
+@dataclass(frozen=True)
+class MfaMembership:
+    """One live membership, and whether that organisation requires staff MFA."""
+
+    role: str
+    org_requires_staff_mfa: bool
+
+
+def mfa_required_reason(
+    *, is_platform_admin: bool, memberships: Sequence[MfaMembership]
+) -> MfaRequiredReason | None:
+    """Why this person must use a second factor, or None when they need not.
+
+    A platform admin always must. So must anyone holding a role outside
+    `STAFF_MFA_EXEMPT_ROLES` in an organisation that has required it of its
+    staff. A trainee or practice user in that organisation is not staff, and
+    a staff role in an organisation that has not required it is not required
+    either. Anyone with a password may still enrol; this function only says
+    who is refused a session until they have.
+    """
+    if is_platform_admin:
+        return "platform_admin"
+    for membership in memberships:
+        role = membership.role.strip().lower()
+        if role not in STAFF_MFA_EXEMPT_ROLES and membership.org_requires_staff_mfa:
+            return "org_policy"
+    return None
 
 
 def may_call(*, must_change_password: bool, route: str) -> bool:

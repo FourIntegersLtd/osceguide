@@ -17,6 +17,7 @@ DEPLOYED = dict(
     # A structurally valid Fernet key (32 raw bytes, base64 urlsafe-encoded),
     # generated the same way `.env.example` tells a deployer to.
     payout_details_key="6cPODgYlKDgonNz1cBKWl39dFazTwpMyf4VLADcjQH8=",
+    mfa_secret_key="bYrouRlioj3ZSZOXp3gtQxtfrPzxG_Es6HT95Kajh9Q=",
 )
 
 

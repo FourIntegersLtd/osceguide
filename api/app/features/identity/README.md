@@ -53,7 +53,15 @@ live inside it and are never addressed independently.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/auth/register` | none | 201; `email_taken` (409), `weak_password` (422) |
-| POST | `/api/v1/auth/login` | none | `invalid_credentials` (401), `account_suspended` (403), `too_many_requests` (429) |
+| POST | `/api/v1/auth/login` | none | `invalid_credentials` (401), `account_suspended` (403), `too_many_requests` (429). A second factor answers `200` with `status` `mfa_required` or `mfa_enrolment_required` instead of tokens |
+| POST | `/api/v1/auth/mfa/verify` | challenge | `invalid_mfa_code` (401), `mfa_challenge_expired` (401), `mfa_not_enrolled` (409), `too_many_requests` (429) |
+| POST | `/api/v1/auth/mfa/enrol/start` | enrolment challenge | returns the secret once |
+| POST | `/api/v1/auth/mfa/enrol/confirm` | enrolment challenge | tokens plus ten recovery codes, shown once |
+| GET | `/api/v1/me/mfa` | bearer | enrolled or not, and why it is required |
+| POST | `/api/v1/me/mfa/enrol` | bearer | voluntary enrolment |
+| POST | `/api/v1/me/mfa/confirm` | bearer | |
+| POST | `/api/v1/me/mfa/recovery-codes` | bearer | needs a current code |
+| DELETE | `/api/v1/me/mfa` | bearer | `mfa_required_by_policy` (409) when policy still requires it |
 | POST | `/api/v1/auth/refresh` | refresh token | `invalid_refresh_token` (401) on reuse or expiry |
 | POST | `/api/v1/auth/exchange-legacy` | a token from the retiring backend | `invalid_legacy_token` (401), `legacy_account_not_imported` (401), `legacy_exchange_unavailable` (503). Deleted at decommission |
 | POST | `/api/v1/auth/logout` | bearer | revokes the presented chain |

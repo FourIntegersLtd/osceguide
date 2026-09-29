@@ -14,7 +14,11 @@ logger = get_logger(__name__)
 
 TModel = TypeVar("TModel", bound=BaseModel)
 
-STATION_AUTOGENERATE_MODEL = "gpt-4o"
+# o3 primary, claude-sonnet-4-5 fallback: the legacy pairing (b2c's
+# `ai_service._get_model_details`), restored after a regression left this
+# hardcoded to gpt-4o.
+STATION_AUTOGENERATE_MODEL = "o3"
+STATION_AUTOGENERATE_FALLBACK_MODEL = "claude-sonnet-4-5"
 PARSE_TIMEOUT_SEC = 480
 
 
@@ -25,6 +29,40 @@ async def parse_ai_structured(
     settings: Settings,
     model: str = STATION_AUTOGENERATE_MODEL,
     log_prefix: str = "[PLATFORM_AUTOGENERATE]",
+) -> tuple[TModel | None, str]:
+    """Structured parse against `model`, falling back to Anthropic when the primary refuses or times out."""
+    if not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
+        return None, "No model provider is configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY)"
+
+    parsed, err = await _parse_with_openai(
+        messages, response_model, settings=settings, model=model, log_prefix=log_prefix
+    )
+    if parsed is not None:
+        return parsed, ""
+    if not settings.anthropic_api_key.strip():
+        return None, err
+    logger.warning(
+        "%s falling back to %s after primary failure: %s",
+        log_prefix,
+        STATION_AUTOGENERATE_FALLBACK_MODEL,
+        err,
+    )
+    return await _parse_with_anthropic(
+        messages,
+        response_model,
+        settings=settings,
+        model=STATION_AUTOGENERATE_FALLBACK_MODEL,
+        log_prefix=log_prefix,
+    )
+
+
+async def _parse_with_openai(
+    messages: list[dict[str, str]],
+    response_model: type[TModel],
+    *,
+    settings: Settings,
+    model: str,
+    log_prefix: str,
 ) -> tuple[TModel | None, str]:
     """Call OpenAI beta.chat.completions.parse. Returns (parsed, error_message)."""
     if not settings.openai_api_key.strip():
@@ -64,6 +102,61 @@ async def parse_ai_structured(
         return None, str(exc)
 
 
+async def _parse_with_anthropic(
+    messages: list[dict[str, str]],
+    response_model: type[TModel],
+    *,
+    settings: Settings,
+    model: str,
+    log_prefix: str,
+) -> tuple[TModel | None, str]:
+    """The same structured-output contract via Anthropic's tool-use, for the fallback model."""
+    from anthropic import AsyncAnthropic, omit
+
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    system = "\n".join(message["content"] for message in messages if message["role"] == "system")
+    user_messages = [
+        {"role": message["role"], "content": message["content"]}
+        for message in messages
+        if message["role"] != "system"
+    ]
+    tool_name = "emit_result"
+    try:
+        response = await client.messages.create(  # type: ignore[call-overload]
+            model=model,
+            max_tokens=4096,
+            system=system or omit,
+            messages=user_messages,
+            tools=[
+                {
+                    "name": tool_name,
+                    "description": f"Return {response_model.__name__} as structured data.",
+                    "input_schema": response_model.model_json_schema(),
+                }
+            ],
+            tool_choice={"type": "tool", "name": tool_name},
+            timeout=PARSE_TIMEOUT_SEC,
+        )
+        tool_use = next((block for block in response.content if block.type == "tool_use"), None)
+        if tool_use is None:
+            return None, "Fallback model returned no structured result"
+        parsed = response_model.model_validate(tool_use.input)
+        logger.debug(
+            "%s parse ok (fallback) model=%s responseModel=%s", log_prefix, model, response_model.__name__
+        )
+        return parsed, ""
+    except Exception as exc:
+        logger.warning(
+            "%s fallback structured parse failed model=%s responseModel=%s error=%s",
+            log_prefix,
+            model,
+            response_model.__name__,
+            exc,
+            exc_info=True,
+        )
+        return None, str(exc)
+
+
 async def generate_station_autogenerate(
     messages: list[dict[str, str]],
     *,
@@ -79,7 +172,7 @@ async def generate_station_autogenerate(
         model=model,
         log_prefix=log_prefix,
     )
-    if parsed is None and not settings.openai_api_key.strip():
+    if parsed is None and not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
         raise GenerationUnavailable()
     return parsed, err
 

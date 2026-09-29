@@ -36,6 +36,7 @@ FEATURE_TASKS = {
     # rebuilt — so the tutor goes on quoting material that was edited or
     # withdrawn, with a citation to a page that no longer says it.
     "reindex_material",
+    "reindex_media_item",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",

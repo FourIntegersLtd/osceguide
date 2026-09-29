@@ -81,6 +81,16 @@ async def add_membership(
     return membership
 
 
+async def staff_mfa_flags(session: AsyncSession, user_id: uuid.UUID) -> list[tuple[str, bool]]:
+    """Each live membership's role, and whether that organisation requires staff MFA."""
+    stmt = (
+        select(Membership.role, Organization.require_staff_mfa)
+        .join(Organization, Organization.id == Membership.org_id)
+        .where(Membership.user_id == user_id, Membership.revoked_at.is_(None))
+    )
+    return [(role, required) for role, required in (await session.execute(stmt)).all()]
+
+
 async def memberships_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Membership]:
     """Not org-scoped by design: this answers "which orgs is this person in?",
     which is what login needs before any workspace exists."""

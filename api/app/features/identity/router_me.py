@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,10 +15,22 @@ from app.core.events import get_event_bus, user_topic
 from app.core.memberships import MembershipsFor
 from app.core.openapi import fan_in_responses
 from app.core.ports import ClockDep, EventBus
+from app.core.rate_limit import TooManyRequests, caller_key
+from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS, fan_in_stream
 from app.core.streams import StreamPrincipal
-from app.features.identity import schemas, service, service_close_account, service_export
-from app.features.identity.errors import ExamAlreadyChosen, InvalidCredentials, UnknownExamError, UserNotFound
+from app.features.identity import schemas, service, service_close_account, service_export, service_mfa
+from app.features.identity.errors import (
+    ExamAlreadyChosen,
+    InvalidAvatarFile,
+    InvalidCredentials,
+    InvalidMfaCode,
+    MfaAlreadyEnrolled,
+    MfaNotEnrolled,
+    MfaRequiredByPolicy,
+    UnknownExamError,
+    UserNotFound,
+)
 
 router = APIRouter(tags=["identity"])
 
@@ -58,6 +70,31 @@ async def read_me(
     memberships_for: MembershipsFor,
 ) -> schemas.UserRead:
     return await service.read_me(session, principal=principal, memberships_for=memberships_for)
+
+
+@router.post(
+    "/me/avatar",
+    response_model=schemas.UserRead,
+    responses=error_responses(Unauthenticated, InvalidAvatarFile),
+)
+async def upload_my_avatar(
+    principal: CurrentPrincipal,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    memberships_for: MembershipsFor,
+    settings: SettingsDep,
+    file: Annotated[UploadFile, File(description="A JPEG, PNG or WebP image")],
+) -> schemas.UserRead:
+    """Replace this person's profile photo. Refused if the file is not a
+    small image; the previous photo is deleted from storage on success."""
+    content = await file.read()
+    return await service.upload_avatar(
+        session,
+        user_id=principal.user_id,
+        content=content,
+        content_type=file.content_type,
+        settings=settings,
+        memberships_for=memberships_for,
+    )
 
 
 @router.post(
@@ -127,3 +164,109 @@ async def stream_my_events(
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )
+
+
+# Whether this account has an authenticator, and whether policy requires one.
+@router.get(
+    "/me/mfa",
+    response_model=schemas.MfaStatusRead,
+    responses=error_responses(Unauthenticated),
+)
+async def read_my_mfa(principal: CurrentPrincipal, session: Session) -> schemas.MfaStatusRead:
+    return await service_mfa.read_status(
+        session, user_id=principal.user_id, is_platform_admin=principal.is_platform_admin
+    )
+
+
+# Start authenticator enrolment from an existing session.
+@router.post(
+    "/me/mfa/enrol",
+    response_model=schemas.MfaEnrolmentStart,
+    responses=error_responses(Unauthenticated, MfaAlreadyEnrolled),
+)
+async def start_my_mfa_enrolment(
+    principal: CurrentPrincipal,
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.MfaEnrolmentStart:
+    return await service_mfa.start_enrolment_for_user(
+        session, user_id=principal.user_id, settings=settings, now=clock.now()
+    )
+
+
+# Confirm that authenticator. Recovery codes are in this response only.
+@router.post(
+    "/me/mfa/confirm",
+    response_model=schemas.MfaRecoveryCodesRead,
+    responses=error_responses(
+        Unauthenticated, InvalidMfaCode, MfaNotEnrolled, MfaAlreadyEnrolled, TooManyRequests
+    ),
+)
+async def confirm_my_mfa(
+    request: Request,
+    body: schemas.MfaCodeRequest,
+    principal: CurrentPrincipal,
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.MfaRecoveryCodesRead:
+    return await service_mfa.confirm_enrolment_for_user(
+        session,
+        user_id=principal.user_id,
+        code=body.code,
+        settings=settings,
+        now=clock.now(),
+        caller=caller_key(request),
+    )
+
+
+# Replace every recovery code. A current authenticator code is required.
+@router.post(
+    "/me/mfa/recovery-codes",
+    response_model=schemas.MfaRecoveryCodesRead,
+    responses=error_responses(Unauthenticated, InvalidMfaCode, MfaNotEnrolled, TooManyRequests),
+)
+async def regenerate_my_recovery_codes(
+    request: Request,
+    body: schemas.MfaCodeRequest,
+    principal: CurrentPrincipal,
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.MfaRecoveryCodesRead:
+    return await service_mfa.regenerate_recovery_codes(
+        session,
+        user_id=principal.user_id,
+        code=body.code,
+        settings=settings,
+        now=clock.now(),
+        caller=caller_key(request),
+    )
+
+
+# Remove the authenticator. Refused when policy still requires one.
+@router.delete(
+    "/me/mfa",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Unauthenticated, InvalidMfaCode, MfaNotEnrolled, MfaRequiredByPolicy, TooManyRequests
+    ),
+)
+async def disable_my_mfa(
+    request: Request,
+    body: schemas.MfaCodeRequest,
+    principal: CurrentPrincipal,
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> Response:
+    await service_mfa.disable_for_user(
+        session,
+        user_id=principal.user_id,
+        code=body.code,
+        settings=settings,
+        now=clock.now(),
+        caller=caller_key(request),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

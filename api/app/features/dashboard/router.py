@@ -6,7 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -31,6 +31,7 @@ from app.features.dashboard import (
     service_performance,
     service_readout,
     service_report,
+    service_report_csv,
     service_streams,
     service_trainee,
 )
@@ -130,6 +131,32 @@ async def read_sitting_report(
     """The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision
     status. Org admin only — carries decisions not yet released."""
     return await service_report.build_sitting_report(session, workspace.org_id, sitting_id)
+
+
+# The same report as a spreadsheet. Decisions not yet released are in it, so the access matches.
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/report.csv",
+    response_class=Response,
+    responses={
+        **error_responses(Forbidden, errors.SittingNotFound),
+        200: {
+            "description": "The sitting's results as a CSV file.",
+            "content": {"text/csv": {"schema": {"type": "string", "format": "binary"}}},
+        },
+    },
+)
+async def read_sitting_report_csv(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> Response:
+    payload, filename = await service_report_csv.export_sitting_results(
+        session,
+        org_id=workspace.org_id,
+        sitting_id=sitting_id,
+        actor=workspace.principal,
+    )
+    return Response(
+        content=payload,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get(

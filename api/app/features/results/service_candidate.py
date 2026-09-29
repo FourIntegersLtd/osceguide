@@ -38,13 +38,34 @@ async def read_my_result(
     Moderation notes and the evidence snapshot stay internal.
     """
     revision_row = await _released_for(session, sitting_id, user_id)
+    return await project_released_result(session, revision_row, user_id)
+
+
+async def project_released_result(
+    session: AsyncSession,
+    revision_row: CandidateResultRevision,
+    user_id: uuid.UUID | None,
+) -> TraineeResultRead:
+    """The fields a candidate may see of one revision.
+
+    Moderation notes and the evidence snapshot stay off this shape. A revision
+    that has not been released is refused here, so a draft cannot be rendered
+    by handing it in.
+    """
+    if revision_row.workflow_state != "released":
+        raise errors.NotReleased()
+    acknowledged_at = None
+    assessment_score = None
+    if user_id is not None:
+        acknowledged_at = await _acknowledged_at(session, revision_row.id, user_id)
+        assessment_score = await _assessment_score(session, revision_row, user_id)
     return TraineeResultRead(
         sitting_id=revision_row.sitting_id,
         assessment_outcome=revision_row.assessment_outcome,
         rationale=revision_row.rationale,
         released_at=revision_row.released_at,
-        acknowledged_at=await _acknowledged_at(session, revision_row.id, user_id),
-        assessment_score=await _assessment_score(session, revision_row, user_id),
+        acknowledged_at=acknowledged_at,
+        assessment_score=assessment_score,
     )
 
 

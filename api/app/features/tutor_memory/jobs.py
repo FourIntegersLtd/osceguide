@@ -28,11 +28,14 @@ DEBRIEF_SUMMARY_TASK = "summarise_debrief"
 
 INDEX_QUEUE = "material"
 REINDEX_TASK = "reindex_material"
+REINDEX_ITEM_TASK = "reindex_media_item"
 
-# Nightly, not on every publish. Embedding the whole library takes minutes
-# and costs money, and material is edited in batches by an author rather
-# than continuously — so a fixed run is cheaper than a stampede of them,
-# and the admin route is there for when somebody cannot wait for it.
+# Nightly full rebuild: the only pass that retires withdrawn or replaced
+# material. Embedding the whole library takes minutes and costs money, so it
+# runs on a schedule rather than on every edit. Publishing one media item
+# queues `reindex_media_item` for that item alone so the tutor can cite it
+# the same day; the admin re-index route remains for when somebody cannot
+# wait for either.
 REINDEX_CRON = "17 3 * * *"
 
 
@@ -88,6 +91,18 @@ def register() -> None:
         async with job_session() as session:
             await service_summaries.summarise_assistant_session(
                 session, uuid.UUID(session_id), summariser=build_summariser()
+            )
+
+    @app.task(name=REINDEX_ITEM_TASK, queue=INDEX_QUEUE)
+    async def reindex_media_item(media_item_id: str) -> None:
+        """Embed one published media item so the tutor can cite it without waiting for the nightly run."""
+        from app.core.db import job_session
+        from app.features.tutor_memory import service_material
+        from app.features.tutor_memory.index import build_material_index
+
+        async with job_session() as session:
+            await service_material.reindex_media_item(
+                session, uuid.UUID(media_item_id), index=build_material_index(session)
             )
 
     @app.periodic(cron=REINDEX_CRON)

@@ -106,6 +106,71 @@ async def provision_organization(
     return _org_read(org)
 
 
+async def staff_mfa_flags(session: AsyncSession, user_id: uuid.UUID) -> list[tuple[str, bool]]:
+    """Each live membership's role and whether that organisation requires staff MFA.
+
+    Identity asks for this at password sign-in. A revoked membership is absent,
+    so leaving an organisation drops the requirement at the next sign-in.
+    """
+    return await repository.staff_mfa_flags(session, user_id)
+
+
+async def record_audit(
+    session: AsyncSession,
+    *,
+    org_id: uuid.UUID | None,
+    actor_user_id: uuid.UUID | None,
+    actor_email: str | None,
+    action: str,
+    at: datetime | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    summary: str | None = None,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    """Append one audit row. `org_id=None` is a platform event, not an organisation's."""
+    await repository.write_audit(
+        session,
+        org_id=org_id,
+        actor_user_id=actor_user_id,
+        actor_email=actor_email,
+        action=action,
+        at=at,
+        target_type=target_type,
+        target_id=target_id,
+        summary=summary,
+        meta=meta,
+    )
+
+
+async def set_require_staff_mfa(
+    session: AsyncSession, org_id: uuid.UUID, *, required: bool, actor: Principal, now: datetime
+) -> OrganizationRead:
+    """Require (or stop requiring) a second factor for this organisation's staff.
+
+    Takes effect at the next password sign-in. Refresh chains already issued
+    keep working until they expire or are revoked.
+    """
+    org = await repository.organization_by_id(session, org_id)
+    if org is None:
+        raise OrgNotFound()
+    await repository.update_organization(session, org_id, require_staff_mfa=required)
+    await repository.write_audit(
+        session,
+        org_id=org_id,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action="org.mfa_policy_changed",
+        at=now,
+        target_type="organization",
+        target_id=str(org_id),
+        summary="Staff must use a second factor" if required else "Staff second factor is no longer required",
+        meta={"require_staff_mfa": required},
+    )
+    refreshed = await repository.organization_by_id(session, org_id)
+    return _org_read(refreshed)
+
+
 async def read_organization(session: AsyncSession, org_id: uuid.UUID) -> OrganizationRead:
     """Fetch an organisation, or refuse if it does not exist."""
     org = await repository.organization_by_id(session, org_id)
@@ -175,4 +240,5 @@ def _org_read(org: Any) -> OrganizationRead:
         created_at=org.created_at,
         contract_starts_at=org.contract_starts_at,
         contract_ends_at=org.contract_ends_at,
+        require_staff_mfa=org.require_staff_mfa,
     )

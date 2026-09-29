@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.identity import service as identity
-from app.features.identity import service_close_account, service_passwords
+from app.features.identity import service_close_account, service_mfa, service_passwords
 from app.features.identity import service_invitations as invitations
 from app.features.identity import service_platform as accounts
 from app.features.tenancy import repository, repository_platform
@@ -207,6 +207,20 @@ async def trigger_password_reset(
         target_type="user",
         target_id=str(user_id),
         summary=user.email,
+    )
+
+
+async def reset_user_mfa(
+    session: AsyncSession, user_id: uuid.UUID, *, actor: Principal, now: datetime
+) -> None:
+    """Clear a lost authenticator so the person can enrol again at the next sign-in."""
+    await _require(session, user_id)
+    await service_mfa.reset_for_support(
+        session,
+        user_id=user_id,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        now=now,
     )
 
 

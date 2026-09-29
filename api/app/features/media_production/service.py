@@ -7,18 +7,19 @@ from __future__ import annotations
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
-from app.core.settings import get_settings
+from app.core.settings import Settings, get_settings
 from app.features.catalog import service as catalog
 from app.features.media import service as media_service
 from app.features.media.service import production_item, replace_content
 from app.features.media_production import domain
 from app.features.media_production.errors import AvAlreadyRunning, WrongMediaKind
 from app.features.media_production.repository import defer_job, lock_for_media
+from app.features.media_production.s3 import delete_object, upload_fileobj
 from app.features.media_production.schemas import MediaRead
 
 # Published to the requesting admin's `/me/events` topic once a production job
@@ -102,6 +103,19 @@ async def enqueue_podcast_audio(
 def work_dir(media_id: str) -> Path:
     """The scratch directory a production job renders its files into before they are uploaded."""
     return Path(tempfile.gettempdir()) / "media_av" / media_id
+
+
+def upload_image(settings: Settings, content: BinaryIO, key: str) -> str:
+    """Uploads an image (e.g. an avatar) to this slice's bucket.
+
+    Exposed for `identity`, which owns no storage of its own.
+    """
+    return upload_fileobj(settings, content, key)
+
+
+def delete_image(settings: Settings, url: str) -> None:
+    """Deletes a previously uploaded image. Exposed for `identity`, same as `upload_image`."""
+    delete_object(settings, url)
 
 
 async def run_summary_podcast_job(

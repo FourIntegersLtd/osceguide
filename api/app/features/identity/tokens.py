@@ -7,14 +7,21 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
+from uuid import UUID
 
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, VerifyMismatchError
 
 from app.core.auth import Principal, issue_access_token
 from app.core.settings import Settings
 from app.features.identity.domain import password_for_hashing
+
+# Distinct from the access token's `typ`, so `decode_access_token` refuses
+# these as a bearer. A challenge is not a session.
+MFA_CHALLENGE_TYPE = "mfa_challenge"  # noqa: S105 — a token type, not a secret
+MFA_ENROL_TYPE = "mfa_enrol"  # noqa: S105 — a token type, not a secret
 
 _hasher = PasswordHasher()
 
@@ -53,6 +60,44 @@ def verify_password(password_hash: str | None, raw: str) -> bool:
 
 def access_token_for(principal: Principal, *, settings: Settings, now: datetime) -> str:
     return issue_access_token(principal, settings=settings, now=now)
+
+
+def issue_mfa_challenge(
+    user_id: UUID, *, token_type: str, ttl_seconds: int, settings: Settings, now: datetime
+) -> str:
+    """A short-lived JWT that names who just passed the password, and nothing else.
+
+    `token_type` is `mfa_challenge` once an authenticator is confirmed, or
+    `mfa_enrol` when policy requires one that does not exist yet. It carries
+    no memberships and is not an access token.
+    """
+    claims = {
+        "iss": settings.jwt_issuer,
+        "sub": str(user_id),
+        "typ": token_type,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=ttl_seconds)).timestamp()),
+    }
+    return jwt.encode(claims, settings.jwt_secret, algorithm="HS256")
+
+
+def read_mfa_challenge(token: str, *, expected_type: str, settings: Settings) -> UUID:
+    """The user id a challenge names, or raise `jwt.PyJWTError`.
+
+    The caller turns that into `mfa_challenge_expired`. A token of the wrong
+    `typ` is the same refusal: an enrolment challenge cannot verify, and a
+    verify challenge cannot enrol.
+    """
+    claims = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=["HS256"],
+        issuer=settings.jwt_issuer,
+        options={"require": ["exp", "iat", "sub"]},
+    )
+    if claims.get("typ") != expected_type:
+        raise jwt.InvalidTokenError("wrong challenge type")
+    return UUID(claims["sub"])
 
 
 # A hash to verify against when the address is unknown, so a miss costs the

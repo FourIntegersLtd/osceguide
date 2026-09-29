@@ -122,6 +122,47 @@ async def test_a_draft_station_is_not_indexed(db_session: AsyncSession) -> None:
     assert run.sources == 0
 
 
+async def test_reindex_media_item_indexes_one_source_and_leaves_others(
+    db_session: AsyncSession,
+) -> None:
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    author = await identity_repo.create_user(
+        db_session, email=f"o{uuid.uuid4().hex[:8]}@example.com", name="O", password_hash=None
+    )
+    kept = await media.create(
+        db_session,
+        kind="blog",
+        title="Already indexed",
+        summary="An older blog post.",
+        content={"body": "Keep this passage in the index."},
+        exam_code="sca",
+        author_id=author.id,
+    )
+    await media.publish(db_session, kept.id, index=FakeVectorIndex(), now=NOW)
+    index = FakeMaterialIndex()
+    await service_material.reindex(db_session, index=index)
+    before = len(index.passages)
+
+    fresh = await media.create(
+        db_session,
+        kind="summary",
+        title="New summary",
+        summary="Indexed on its own.",
+        content={"body": "Only this summary should be added now."},
+        exam_code="sca",
+        author_id=author.id,
+    )
+    await media.publish(db_session, fresh.id, index=FakeVectorIndex(), now=NOW)
+
+    added = await service_material.reindex_media_item(db_session, fresh.id, index=index)
+
+    assert added == 1
+    assert len(index.passages) == before + added
+    assert any(p.source_id == str(kept.id) for p in index.passages)
+    assert any("Only this summary" in p.text for p in index.passages)
+
+
 async def test_published_media_is_indexed_with_its_exam(db_session: AsyncSession) -> None:
     exam = await ensure_exam(db_session, "sca")
     assert exam is not None

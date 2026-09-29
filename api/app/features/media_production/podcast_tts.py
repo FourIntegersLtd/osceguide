@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -25,26 +26,54 @@ def _require_av_settings(settings: Settings) -> None:
         raise AvUnavailable("S3 bucket is not configured")
 
 
-def generate_script(settings: Settings, source_text: str) -> str:
-    """Asks the model to turn `source_text` into a two-host Ben-and-Michelle dialogue script."""
-    from openai import OpenAI  # noqa: PLC0415 - optional dependency
+PODCAST_SCRIPT_MODEL = "o3"
+PODCAST_SCRIPT_FALLBACK_MODEL = "claude-sonnet-4-5"
 
-    client = OpenAI(api_key=settings.openai_api_key)
+logger = logging.getLogger(__name__)
+
+_PODCAST_SYSTEM_PROMPT = (
+    "You create a natural medical podcast between Ben and Michelle (UK GPs). "
+    'Use the format Ben: "..." and Michelle: "...".'
+)
+
+
+def generate_script(settings: Settings, source_text: str) -> str:
+    """Asks the model to turn `source_text` into a two-host Ben-and-Michelle dialogue script.
+
+    Tries `o3` first, falling back to `claude-sonnet-4-5` when the primary fails.
+    """
     prompt = PODCAST_PROMPT.format(text=source_text)
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You create a natural medical podcast between Ben and Michelle (UK GPs). "
-                    'Use the format Ben: "..." and Michelle: "...".'
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
+    if settings.openai_api_key.strip():
+        from openai import OpenAI  # noqa: PLC0415 - optional dependency
+
+        client = OpenAI(api_key=settings.openai_api_key)
+        try:
+            response = client.chat.completions.create(
+                model=PODCAST_SCRIPT_MODEL,
+                messages=[
+                    {"role": "system", "content": _PODCAST_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return (response.choices[0].message.content or "").strip()
+        except Exception:
+            logger.warning(
+                "Podcast script generation via %s failed, falling back to %s",
+                PODCAST_SCRIPT_MODEL,
+                PODCAST_SCRIPT_FALLBACK_MODEL,
+                exc_info=True,
+            )
+
+    from anthropic import Anthropic  # noqa: PLC0415 - optional dependency
+
+    fallback_client = Anthropic(api_key=settings.anthropic_api_key)
+    fallback_response = fallback_client.messages.create(
+        model=PODCAST_SCRIPT_FALLBACK_MODEL,
+        max_tokens=4096,
+        system=_PODCAST_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": prompt}],
     )
-    return (response.choices[0].message.content or "").strip()
+    return next((block.text for block in fallback_response.content if block.type == "text"), "").strip()
 
 
 def _split_script(script: str) -> list[tuple[str, str]]:

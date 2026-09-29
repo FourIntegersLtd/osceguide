@@ -27,6 +27,7 @@ from app.features.identity import (
     schemas,
     service,
     service_legacy,
+    service_mfa,
     service_passwords,
     service_sessions,
 )
@@ -40,7 +41,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 # first login, so there is no separate first-session step.
 @router.post(
     "/auth/register",
-    response_model=schemas.AuthResult,
+    response_model=schemas.SignInResult,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(errors.EmailTaken, errors.WeakPasswordError, TooManyRequests),
 )
@@ -50,7 +51,7 @@ async def register(
     session: Annotated[AsyncSession, Depends(get_session)],
     settings: SettingsDep,
     clock: ClockDep,
-) -> schemas.AuthResult:
+) -> schemas.SignInResult:
     # SEC-004: unauthenticated and it writes a user + sends mail, so it is
     # rate limited like the other public identity routes.
     await check(REGISTER, caller_key(request))
@@ -69,7 +70,7 @@ async def register(
 # arrangement has switched to signing in elsewhere.
 @router.post(
     "/auth/login",
-    response_model=schemas.AuthResult,
+    response_model=schemas.SignInResult,
     responses=error_responses(
         errors.InvalidCredentials, errors.AccountSuspended, errors.PasswordLoginDisabled, TooManyRequests
     ),
@@ -81,7 +82,7 @@ async def login(
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
-) -> schemas.AuthResult:
+) -> schemas.SignInResult:
     await check(SIGN_IN, caller_key(request))
     return await service_sessions.login_with_memberships(
         session,
@@ -119,7 +120,7 @@ async def refresh(
 
 @router.post(
     "/auth/exchange-legacy",
-    response_model=schemas.AuthResult,
+    response_model=schemas.SignInResult,
     responses=error_responses(
         errors.InvalidLegacyToken,
         errors.LegacyAccountNotImported,
@@ -135,7 +136,7 @@ async def exchange_legacy(
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
-) -> schemas.AuthResult:
+) -> schemas.SignInResult:
     """Sign in here with the session the old backend already gave you."""
     await check(LEGACY_EXCHANGE, caller_key(request))
     return await service_legacy.exchange(
@@ -253,3 +254,86 @@ async def change_password(
         now=clock.now(),
     )
     return schemas.Accepted()
+
+
+# Redeem a sign-in challenge with an authenticator code or a one-time recovery code.
+@router.post(
+    "/auth/mfa/verify",
+    response_model=schemas.AuthResult,
+    responses=error_responses(
+        errors.InvalidMfaCode,
+        errors.MfaChallengeExpired,
+        errors.MfaNotEnrolled,
+        errors.PasswordLoginDisabled,
+        TooManyRequests,
+    ),
+)
+async def verify_mfa(
+    request: Request,
+    body: schemas.MfaVerifyRequest,
+    session: Session,
+    memberships_for: MembershipsFor,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.AuthResult:
+    return await service_mfa.verify_challenge(
+        session,
+        challenge_token=body.challenge_token,
+        code=body.code,
+        recovery_code=body.recovery_code,
+        memberships_for=memberships_for,
+        settings=settings,
+        now=clock.now(),
+        caller=caller_key(request),
+    )
+
+
+# Start authenticator enrolment when sign-in said a second factor is required.
+@router.post(
+    "/auth/mfa/enrol/start",
+    response_model=schemas.MfaEnrolmentStart,
+    responses=error_responses(
+        errors.MfaChallengeExpired, errors.MfaAlreadyEnrolled, errors.PasswordLoginDisabled
+    ),
+)
+async def start_mfa_enrolment(
+    body: schemas.MfaEnrolStartRequest,
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.MfaEnrolmentStart:
+    return await service_mfa.start_enrolment_from_challenge(
+        session, challenge_token=body.challenge_token, settings=settings, now=clock.now()
+    )
+
+
+# Confirm that authenticator and sign in. Recovery codes are in this response only.
+@router.post(
+    "/auth/mfa/enrol/confirm",
+    response_model=schemas.MfaEnrolmentConfirmed,
+    responses=error_responses(
+        errors.InvalidMfaCode,
+        errors.MfaChallengeExpired,
+        errors.MfaNotEnrolled,
+        errors.MfaAlreadyEnrolled,
+        errors.PasswordLoginDisabled,
+        TooManyRequests,
+    ),
+)
+async def confirm_mfa_enrolment(
+    request: Request,
+    body: schemas.MfaEnrolConfirmRequest,
+    session: Session,
+    memberships_for: MembershipsFor,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.MfaEnrolmentConfirmed:
+    return await service_mfa.confirm_enrolment_from_challenge(
+        session,
+        challenge_token=body.challenge_token,
+        code=body.code,
+        memberships_for=memberships_for,
+        settings=settings,
+        now=clock.now(),
+        caller=caller_key(request),
+    )

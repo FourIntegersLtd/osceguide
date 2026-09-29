@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.secrets_at_rest import decrypt_text
+from app.core.settings import get_settings
 from app.features.growth import domain, errors, repository
 from app.features.growth.models import ReferralPayoutDetails
 from app.features.growth.schemas import PayoutDetailsAdminRead, ReferralAdminRead
@@ -31,8 +32,10 @@ def _admin_payout_details(stored: ReferralPayoutDetails | None) -> PayoutDetails
     return PayoutDetailsAdminRead(
         bank_name=stored.bank_name,
         account_holder_name=stored.account_holder_name,
-        sort_code=domain.format_sort_code(decrypt_text(stored.sort_code_ciphertext)),
-        account_number=decrypt_text(stored.account_number_ciphertext),
+        sort_code=domain.format_sort_code(
+            decrypt_text(stored.sort_code_ciphertext, key=get_settings().payout_details_key)
+        ),
+        account_number=decrypt_text(stored.account_number_ciphertext, key=get_settings().payout_details_key),
         updated_at=stored.updated_at,
     )
 

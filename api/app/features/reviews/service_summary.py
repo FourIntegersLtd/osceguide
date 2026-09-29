@@ -8,9 +8,46 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.reviews import domain, repository, scoring
-from app.features.reviews.schemas import SlotRagSummary, SlotReviewsRead
+from app.features.reviews import domain, errors, repository, scoring
+from app.features.reviews.schemas import MySlotReviewRead, SlotRagSummary, SlotReviewsRead
 from app.features.reviews.service import _slot_read
+from app.features.sittings import service as sittings
+
+
+async def read_my_slot_review(
+    session: AsyncSession, *, slot_id: uuid.UUID, user_id: uuid.UUID
+) -> MySlotReviewRead:
+    """A candidate's own read of their slot's review, once their result for the
+    sitting is released and the GP lead has completed a review. Refused, as
+    "not found" rather than "forbidden", if the slot is not this person's own
+    or either is missing — the same privacy posture `SlotNotFound` uses."""
+    # `results` imports this module, so its import has to wait until call time.
+    from app.features.results import errors as results_errors  # noqa: PLC0415
+    from app.features.results import service_candidate as results_candidate  # noqa: PLC0415
+
+    pair = await sittings.slot_and_circuit_for_owner(session, slot_id, user_id)
+    if pair is None:
+        raise errors.ReviewNotFound()
+    slot, circuit = pair
+    # The review feeds the decision, so it stays hidden until the decision is released.
+    try:
+        await results_candidate.read_my_result(session, circuit.sitting_id, user_id)
+    except results_errors.NotReleased as not_released:
+        raise errors.ReviewNotFound() from not_released
+
+    lead_review = await repository.gp_lead_review(session, slot.org_id, slot_id)
+    if lead_review is None or lead_review.status != "completed":
+        raise errors.ReviewNotFound()
+
+    reviews = await repository.slot_reviews(session, slot.org_id, slot_id)
+    completed = [review for review in reviews if review.status == "completed"]
+    summary = _rag_summary(slot_id, [dict(review.field_values or {}) for review in completed])
+    return MySlotReviewRead(
+        slot_id=slot_id,
+        summary=summary,
+        notes=lead_review.notes,
+        completed_at=lead_review.completed_at,
+    )
 
 
 async def read_slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> SlotReviewsRead:

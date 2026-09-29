@@ -9,8 +9,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
-from app.core.errors import Forbidden, error_responses
+from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin, OrgReader
 from app.features.reviews import errors, schemas, service, service_summary
@@ -18,6 +19,19 @@ from app.features.reviews import errors, schemas, service, service_summary
 router = APIRouter(tags=["reviews"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+@router.get(
+    "/me/slots/{slot_id}/review",
+    response_model=schemas.MySlotReviewRead,
+    responses=error_responses(Unauthenticated, errors.ReviewNotFound),
+)
+async def read_my_slot_review(
+    slot_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.MySlotReviewRead:
+    """A candidate's own review of one of their slots, once their result is
+    released and the GP lead has completed one. Never for a slot not theirs."""
+    return await service_summary.read_my_slot_review(session, slot_id=slot_id, user_id=principal.user_id)
 
 
 @router.get(

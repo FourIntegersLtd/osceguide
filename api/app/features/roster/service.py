@@ -117,6 +117,11 @@ def _trainee_read(trainee: Trainee) -> TraineeRead:
     )
 
 
+async def read_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> TraineeRead:
+    """One roster entry of this organisation, or a refusal if it has none by that id."""
+    return _trainee_read(await _require_trainee(session, org_id, trainee_id))
+
+
 async def ensure_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> None:
     """Confirm this id names a roster entry of this organisation.
 

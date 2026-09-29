@@ -20,15 +20,63 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import secrets
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.db import get_session_factory, import_all_models  # noqa: E402
+from app.core.secrets_at_rest import encrypt_text  # noqa: E402
+from app.core.settings import get_settings  # noqa: E402
 from app.features.identity import repository, repository_platform  # noqa: E402
 from app.features.identity.service_passwords import hash_password  # noqa: E402
+
+
+def admin_totp_secret() -> str:
+    """The shared TOTP secret harnesses compute a code from, if one is configured."""
+    configured = os.environ.get("ADMIN_TOTP_SECRET", "").strip()
+    if configured:
+        return configured
+    for name in (".osce-staging-accounts.env", ".osce-local-accounts.env"):
+        path = Path.home() / name
+        if not path.is_file():
+            continue
+        for line in path.read_text().splitlines():
+            stripped = line.strip()
+            if stripped.startswith("ADMIN_TOTP_SECRET="):
+                return stripped.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
+async def ensure_admin_mfa(session: AsyncSession, user_id: UUID) -> None:
+    """Confirm an authenticator from ADMIN_TOTP_SECRET when this admin has none yet.
+
+    Re-running bootstrap does not replace an authenticator that is already
+    confirmed: that secret is the one the person (and the harness) already has.
+    """
+    secret = admin_totp_secret()
+    if not secret:
+        print("No ADMIN_TOTP_SECRET. The next password sign-in must enrol an authenticator.")  # noqa: T201
+        return
+    existing = await repository.mfa_by_user(session, user_id)
+    if existing is not None and existing.confirmed_at is not None:
+        print("Authenticator already confirmed.")  # noqa: T201
+        return
+    now = datetime.now(UTC)
+    await repository.save_pending_mfa_secret(
+        session,
+        user_id,
+        secret_ciphertext=encrypt_text(secret, key=get_settings().mfa_secret_key),
+        now=now,
+    )
+    await repository.confirm_mfa(session, user_id, at=now, step=0)
+    print("Authenticator confirmed from ADMIN_TOTP_SECRET.")  # noqa: T201
 
 
 async def bootstrap(*, email: str, name: str, password: str | None) -> int:
@@ -39,9 +87,10 @@ async def bootstrap(*, email: str, name: str, password: str | None) -> int:
         if existing is not None:
             if existing.is_platform_admin:
                 print(f"{email} is already a platform admin.")  # noqa: T201
-                return 0
-            await repository_platform.set_platform_admin(session, existing.id, is_admin=True)
-            print(f"{email} is now a platform admin.")  # noqa: T201
+            else:
+                await repository_platform.set_platform_admin(session, existing.id, is_admin=True)
+                print(f"{email} is now a platform admin.")  # noqa: T201
+            await ensure_admin_mfa(session, existing.id)
             return 0
 
         generated = password or secrets.token_urlsafe(16)
@@ -57,6 +106,7 @@ async def bootstrap(*, email: str, name: str, password: str | None) -> int:
         if password is None:
             print(f"One-time password: {generated}")  # noqa: T201
         print("It must be changed at first login.")  # noqa: T201
+        await ensure_admin_mfa(session, user.id)
         return 0
 
 

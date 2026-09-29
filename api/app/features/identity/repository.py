@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import date, datetime, time
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity.domain import normalize_email
@@ -16,6 +16,8 @@ from app.features.identity.models import (
     RefreshToken,
     User,
     UserIdentity,
+    UserMfa,
+    UserMfaRecoveryCode,
 )
 
 
@@ -88,6 +90,7 @@ async def scrub_for_erasure(session: AsyncSession, user_id: uuid.UUID, *, now: d
         return False
     user.name = "Deleted user"
     user.email = f"deleted-{user.id}@invalid"
+    user.avatar_url = None
     user.erased_at = now
     return True
 
@@ -271,6 +274,13 @@ async def users_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> 
     return list((await session.execute(stmt)).scalars())
 
 
+async def set_avatar_url(session: AsyncSession, user_id: uuid.UUID, *, avatar_url: str | None) -> User | None:
+    """Write this person's photo URL, or clear it. No `Timestamps.updated_at`
+    read follows, so this needs no `session.refresh()`."""
+    await session.execute(update(User).where(User.id == user_id).values(avatar_url=avatar_url))
+    return await user_by_id(session, user_id)
+
+
 async def update_profile(
     session: AsyncSession,
     user_id: uuid.UUID,
@@ -333,3 +343,81 @@ async def update_profile(
             user.exam_time = exam_time
     await session.flush()
     return user
+
+
+# --- authenticator ---------------------------------------------------------
+
+
+async def mfa_by_user(session: AsyncSession, user_id: uuid.UUID) -> UserMfa | None:
+    """The authenticator row for this account, confirmed or not."""
+    return (await session.execute(select(UserMfa).where(UserMfa.user_id == user_id))).scalar_one_or_none()
+
+
+async def save_pending_mfa_secret(
+    session: AsyncSession, user_id: uuid.UUID, *, secret_ciphertext: str, now: datetime
+) -> UserMfa:
+    """Store a secret that has not been confirmed yet, replacing any previous attempt.
+
+    A confirmed authenticator is never overwritten here. The caller refuses
+    that case before asking.
+    """
+    row = await mfa_by_user(session, user_id)
+    if row is None:
+        row = UserMfa(user_id=user_id, secret_ciphertext=secret_ciphertext, confirmed_at=None, created_at=now)
+        session.add(row)
+    else:
+        row.secret_ciphertext = secret_ciphertext
+        row.confirmed_at = None
+        row.last_used_step = None
+    await session.flush()
+    return row
+
+
+async def confirm_mfa(session: AsyncSession, user_id: uuid.UUID, *, at: datetime, step: int) -> None:
+    """Mark the pending secret as the live authenticator and remember the step just used."""
+    await session.execute(
+        update(UserMfa).where(UserMfa.user_id == user_id).values(confirmed_at=at, last_used_step=step)
+    )
+
+
+async def set_mfa_last_used_step(session: AsyncSession, user_id: uuid.UUID, step: int) -> None:
+    """Remember a TOTP step so the same code cannot be accepted again."""
+    await session.execute(update(UserMfa).where(UserMfa.user_id == user_id).values(last_used_step=step))
+
+
+async def delete_mfa(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Remove the authenticator and every recovery code. The account can enrol again."""
+    await session.execute(delete(UserMfaRecoveryCode).where(UserMfaRecoveryCode.user_id == user_id))
+    await session.execute(delete(UserMfa).where(UserMfa.user_id == user_id))
+
+
+async def replace_recovery_codes(session: AsyncSession, user_id: uuid.UUID, code_hashes: list[str]) -> None:
+    """Throw away every previous recovery code and store these hashes."""
+    await session.execute(delete(UserMfaRecoveryCode).where(UserMfaRecoveryCode.user_id == user_id))
+    session.add_all(UserMfaRecoveryCode(user_id=user_id, code_hash=code_hash) for code_hash in code_hashes)
+    await session.flush()
+
+
+async def unused_recovery_codes(session: AsyncSession, user_id: uuid.UUID) -> list[UserMfaRecoveryCode]:
+    """Recovery codes that have not been spent."""
+    stmt = select(UserMfaRecoveryCode).where(
+        UserMfaRecoveryCode.user_id == user_id, UserMfaRecoveryCode.used_at.is_(None)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def count_unused_recovery_codes(session: AsyncSession, user_id: uuid.UUID) -> int:
+    """How many recovery codes are left. The codes themselves are not returned."""
+    stmt = (
+        select(func.count())
+        .select_from(UserMfaRecoveryCode)
+        .where(UserMfaRecoveryCode.user_id == user_id, UserMfaRecoveryCode.used_at.is_(None))
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def mark_recovery_code_used(session: AsyncSession, code_id: uuid.UUID, *, at: datetime) -> None:
+    """Spend one recovery code. A second presentation finds `used_at` set and is refused."""
+    await session.execute(
+        update(UserMfaRecoveryCode).where(UserMfaRecoveryCode.id == code_id).values(used_at=at)
+    )

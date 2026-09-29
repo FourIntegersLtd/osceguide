@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,10 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     contract_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     suspended_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # When true, every membership whose role is not an end user must sign in
+    # with a second factor. Takes effect at the next password sign-in; a
+    # refresh chain already issued keeps working.
+    require_staff_mfa: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
 
 class Membership(Base, UUIDPrimaryKey, Timestamps):

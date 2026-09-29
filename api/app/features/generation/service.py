@@ -119,26 +119,52 @@ async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Sett
     return normalize_podcast_response(raw)
 
 
+GENERATION_MODEL = "o3"
+GENERATION_FALLBACK_MODEL = "claude-sonnet-4-5"
+
+
 async def _json_completion(*, settings: Settings, system: str, user: str) -> dict[str, Any]:
     """Calls the LLM with the given system and user messages and parses its reply as a JSON object.
 
     Refuses before calling out if no API key is configured, and refuses again if the model's
     reply is not itself a JSON object, so callers never have to guard against a malformed shape.
+    Tries `o3` first, falling back to `claude-sonnet-4-5` when the primary fails.
     """
-    if not settings.openai_api_key.strip():
+    if not settings.openai_api_key.strip() and not settings.anthropic_api_key.strip():
         raise GenerationUnavailable()
-    from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
-    response = await client.chat.completions.create(
-        model="gpt-4o-mini",
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-    )
-    text = response.choices[0].message.content or "{}"
+    text: str | None = None
+    if settings.openai_api_key.strip():
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        try:
+            response = await client.chat.completions.create(
+                model=GENERATION_MODEL,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            )
+            text = response.choices[0].message.content or "{}"
+        except Exception:
+            text = None
+
+    if text is None:
+        if not settings.anthropic_api_key.strip():
+            raise GenerationUnavailable()
+        from anthropic import AsyncAnthropic
+
+        fallback_client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+        fallback_response = await fallback_client.messages.create(
+            model=GENERATION_FALLBACK_MODEL,
+            max_tokens=4096,
+            system=system + "\n\nRespond with a single JSON object and nothing else.",
+            messages=[{"role": "user", "content": user}],
+        )
+        text = next((block.text for block in fallback_response.content if block.type == "text"), "{}")
+
     parsed = json.loads(text)
     if not isinstance(parsed, dict):
         raise GenerationUnavailable("Model did not return a JSON object")

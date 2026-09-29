@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -18,14 +19,15 @@ from app.features.identity.domain import WeakPassword, may_call, validate_passwo
 from app.features.identity.errors import (
     EmailTaken,
     ExamAlreadyChosen,
+    InvalidAvatarFile,
     InvalidCredentials,
     UnknownExamError,
     UserNotFound,
     WeakPasswordError,
 )
 from app.features.identity.models import User
-from app.features.identity.schemas import AuthResult, MembershipRead, UpdateMe, UserRead
-from app.features.identity.service_sessions import default_workspace_slug, issue
+from app.features.identity.schemas import MembershipRead, SignInResult, UpdateMe, UserRead
+from app.features.identity.service_sessions import default_workspace_slug
 from app.features.identity.tokens import (
     hash_password,
 )
@@ -73,6 +75,7 @@ def user_read(user: User, memberships: list[Membership]) -> UserRead:
         ai_training_consent=user.ai_training_consent,
         colleague_waiting_email=user.colleague_waiting_email,
         replay_onboarding=user.replay_onboarding,
+        avatar_url=user.avatar_url,
         memberships=[
             MembershipRead(
                 org_id=membership.org_id,
@@ -98,7 +101,7 @@ async def register(
     settings: Settings,
     now: datetime,
     exam_code: str | None = None,
-) -> AuthResult:
+) -> SignInResult:
     """Open an account, optionally saying which exam it is for.
 
     The exam code grants nothing — it only says which exam the screens should open on. A code
@@ -118,8 +121,14 @@ async def register(
         session, email=email, name=name, password_hash=hash_password(password), exam_code=exam_code
     )
     await _announce_registration(session, user.id, user.email)
-    tokens = await issue(session, user, settings=settings, now=now, memberships=[])
-    return AuthResult(**tokens.model_dump(), user=user_read(user, []))
+    from app.features.identity.service_mfa import finish_password_sign_in  # noqa: PLC0415
+
+    # Registration is a password sign-in. A new account is not a platform admin
+    # and holds no membership, so this mints a session; the gate is the same
+    # one login uses, so a later requirement cannot grow a second path.
+    return await finish_password_sign_in(
+        session, user, settings=settings, now=now, memberships=[], count_as_login=False
+    )
 
 
 async def read_me(
@@ -132,6 +141,48 @@ async def read_me(
     if user is None:
         raise InvalidCredentials()
     memberships = await memberships_for(session, principal.user_id)
+    return user_read(user, memberships)
+
+
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+AVATAR_CONTENT_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
+
+async def upload_avatar(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    content: bytes,
+    content_type: str | None,
+    settings: Settings,
+    memberships_for: MembershipLookup,
+) -> UserRead:
+    """Replace this person's profile photo. Keyed by a fresh id each time, so
+    an old cached copy is never overwritten in place."""
+    ext = AVATAR_CONTENT_TYPES.get((content_type or "").lower())
+    if ext is None:
+        raise InvalidAvatarFile("Upload a JPEG, PNG or WebP image")
+    if not content or len(content) > AVATAR_MAX_BYTES:
+        raise InvalidAvatarFile("That image is too large (5MB max)")
+
+    from app.features.media_production import service as media_production
+
+    key = f"avatars/{user_id}/{uuid.uuid4()}{ext}"
+    url = media_production.upload_image(settings, io.BytesIO(content), key)
+
+    previous = await repository.user_by_id(session, user_id)
+    previous_url = previous.avatar_url if previous else None
+    user = await repository.set_avatar_url(session, user_id, avatar_url=url)
+    if user is None:
+        raise InvalidCredentials()
+    if previous_url:
+        media_production.delete_image(settings, previous_url)
+
+    memberships = await memberships_for(session, user_id)
     return user_read(user, memberships)
 
 

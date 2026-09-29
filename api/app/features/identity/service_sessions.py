@@ -26,7 +26,7 @@ from app.features.identity.errors import (
     RefreshTokenReused,
 )
 from app.features.identity.models import User
-from app.features.identity.schemas import AuthResult, StreamTicket, TokenPair
+from app.features.identity.schemas import SignInResult, StreamTicket, TokenPair
 from app.features.identity.tokens import (
     access_token_for,
     hash_token,
@@ -89,12 +89,16 @@ async def login_with_memberships(
     memberships_for: MembershipLookup,
     settings: Settings,
     now: datetime,
-) -> AuthResult:
+) -> SignInResult:
     """The ordinary password sign-in. Refuses `invalid_credentials` alike for
     an unknown address and a wrong password, `password_login_disabled` for an
     account an SSO arrangement has switched to signing in elsewhere, and
     `account_suspended` for one whose status is not active — checked in that
-    order so a suspended account is never told its password was merely wrong."""
+    order so a suspended account is never told its password was merely wrong.
+
+    When the password is right, `finish_password_sign_in` either mints the
+    session or returns an MFA challenge. A refresh already issued is not
+    revisited here."""
     user = await repository.user_by_email(session, email)
     if user is None:
         # Verified against a dummy hash so an unknown address costs the same
@@ -112,12 +116,10 @@ async def login_with_memberships(
         raise InvalidCredentials()
     if user.status != "active":
         raise AccountSuspended()
-    await repository.record_login(session, user.id, now)
     memberships = await memberships_for(session, user.id)
-    tokens = await issue(session, user, settings=settings, now=now, memberships=memberships)
-    from app.features.identity.service import user_read  # noqa: PLC0415 - one direction at import
+    from app.features.identity.service_mfa import finish_password_sign_in  # noqa: PLC0415
 
-    return AuthResult(**tokens.model_dump(), user=user_read(user, memberships))
+    return await finish_password_sign_in(session, user, settings=settings, now=now, memberships=memberships)
 
 
 async def refresh(

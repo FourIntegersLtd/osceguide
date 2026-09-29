@@ -8,6 +8,7 @@ from app.core.errors import Conflict, InvalidInput, NotFound
 # Re-exported rather than restated so there is one `trainee_not_found`, and so
 # the router can keep importing only its own errors.
 from app.features.roster.errors import TraineeNotFound as TraineeNotFound
+from app.features.sittings.errors import SittingNotFound as SittingNotFound
 
 
 class ResultNotFound(NotFound):

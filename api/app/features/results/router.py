@@ -7,6 +7,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -14,7 +15,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin
-from app.features.results import errors, schemas, service, service_candidate
+from app.features.results import errors, schemas, service, service_candidate, service_result_pdf
 
 router = APIRouter(tags=["results"])
 
@@ -126,6 +127,64 @@ async def release(
     )
 
 
+# The released result as a PDF. A draft is refused; the file matches what the candidate can download.
+@router.get(
+    "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/result.pdf",
+    response_class=Response,
+    responses={
+        **error_responses(Forbidden, errors.SittingNotFound, errors.TraineeNotFound, errors.NotReleased),
+        200: {
+            "description": "The candidate's released result as a PDF.",
+            "content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}},
+        },
+    },
+)
+async def read_result_pdf(
+    sitting_id: uuid.UUID,
+    trainee_id: uuid.UUID,
+    workspace: OrgInstitutionAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> Response:
+    payload, filename = await service_result_pdf.render_admin_result_pdf(
+        session,
+        org_id=workspace.org_id,
+        sitting_id=sitting_id,
+        trainee_id=trainee_id,
+        actor=workspace.principal,
+        generated_at=clock.now(),
+    )
+    return _pdf_attachment(payload, filename)
+
+
+# Registered before `/me/results/{sitting_id}`: that pattern would otherwise take `….pdf`
+# as the id and refuse it as an invalid UUID.
+@router.get(
+    "/me/results/{sitting_id}.pdf",
+    response_class=Response,
+    responses={
+        **error_responses(Unauthenticated, errors.NotReleased),
+        200: {
+            "description": "This candidate's released result as a PDF.",
+            "content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}},
+        },
+    },
+)
+async def read_my_result_pdf(
+    sitting_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+) -> Response:
+    payload, filename = await service_result_pdf.render_my_result_pdf(
+        session,
+        sitting_id=sitting_id,
+        user_id=principal.user_id,
+        generated_at=clock.now(),
+    )
+    return _pdf_attachment(payload, filename)
+
+
 @router.get(
     "/me/results/{sitting_id}",
     response_model=schemas.TraineeResultRead,
@@ -136,6 +195,15 @@ async def read_my_result(
 ) -> schemas.TraineeResultRead:
     """Released revisions only, and narrower than the internal record."""
     return await service_candidate.read_my_result(session, sitting_id, principal.user_id)
+
+
+def _pdf_attachment(payload: bytes, filename: str) -> Response:
+    """A PDF the browser saves under `filename` rather than displaying inline."""
+    return Response(
+        content=payload,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post(

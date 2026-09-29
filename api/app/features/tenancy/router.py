@@ -16,8 +16,9 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.role_policy import policy
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
+from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin, Workspace, require_org
 from app.features.tenancy import (
     errors,
     schemas,
@@ -26,6 +27,7 @@ from app.features.tenancy import (
     service_memberships,
     service_workspace,
 )
+from app.features.tenancy.schemas import InvitationRead
 
 router = APIRouter(tags=["tenancy"])
 
@@ -65,6 +67,32 @@ async def suspend_organization(
 )
 async def read_organization(workspace: OrgReader, session: Session) -> schemas.OrganizationRead:
     return await service.read_organization(session, workspace.org_id)
+
+
+InstitutionOrPlatform = Annotated[
+    Workspace, Depends(require_org(policy("is_institution_admin"), allow_platform_admin=True))
+]
+
+
+# Institution admins of this organisation, and platform admins, require staff MFA.
+@router.patch(
+    "/orgs/{org_slug}/mfa-policy",
+    response_model=schemas.OrganizationRead,
+    responses=error_responses(Forbidden, errors.OrgNotFound),
+)
+async def set_staff_mfa_policy(
+    body: schemas.StaffMfaPolicy,
+    workspace: InstitutionOrPlatform,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.OrganizationRead:
+    return await service.set_require_staff_mfa(
+        session,
+        workspace.org_id,
+        required=body.require_staff_mfa,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
 
 
 # A page of an organisation's memberships.
@@ -176,6 +204,21 @@ async def restore_membership(
         revoked=False,
         actor=workspace.principal,
         now=clock.now(),
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/memberships/{membership_id}/resend-invitation",
+    response_model=InvitationRead,
+    responses=error_responses(Forbidden, errors.MembershipNotFound, errors.InvitationNotPending),
+)
+async def resend_membership_invitation(
+    membership_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> InvitationRead:
+    """Send the choose-a-password link again, as a new token. Returns 409
+    `invitation_not_pending` if the person has already chosen a password."""
+    return await service_memberships.resend_invitation(
+        session, workspace.org_id, membership_id, now=clock.now()
     )
 
 

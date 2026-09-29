@@ -53,9 +53,12 @@ async def update_organization(
     workspace: OrgReader,
     admin: PlatformAdmin,
     session: Session,
+    clock: ClockDep,
 ) -> schemas.OrganizationRead:
-    """Rename an organisation, change its type, or record its contract dates."""
-    return await service_platform.update_organization(session, workspace.org_id, changes=body, actor=admin)
+    """Rename an organisation, change its type, record its contract dates, or require staff MFA."""
+    return await service_platform.update_organization(
+        session, workspace.org_id, changes=body, actor=admin, now=clock.now()
+    )
 
 
 @router.post(

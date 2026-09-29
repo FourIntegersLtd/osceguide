@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.core.secrets_at_rest import decrypt_text, encrypt_text
+from app.core.settings import get_settings
 from app.features.billing import service as billing
 from app.features.catalog import service as catalog
 from app.features.growth import domain, errors, repository
@@ -226,11 +227,13 @@ async def read_my_payout_details(session: AsyncSession, *, user_id: uuid.UUID) -
     stored = await repository.payout_details_by_user(session, user_id)
     if stored is None:
         raise errors.PayoutDetailsNotFound()
-    account_number = decrypt_text(stored.account_number_ciphertext)
+    account_number = decrypt_text(stored.account_number_ciphertext, key=get_settings().payout_details_key)
     return PayoutDetailsRead(
         bank_name=stored.bank_name,
         account_holder_name=stored.account_holder_name,
-        sort_code=domain.format_sort_code(decrypt_text(stored.sort_code_ciphertext)),
+        sort_code=domain.format_sort_code(
+            decrypt_text(stored.sort_code_ciphertext, key=get_settings().payout_details_key)
+        ),
         account_number_last4=account_number[-ACCOUNT_NUMBER_VISIBLE_DIGITS:],
         updated_at=stored.updated_at,
     )
@@ -250,7 +253,9 @@ async def write_my_payout_details(
     if body.account_number is not None:
         account_number = domain.validate_account_number(body.account_number)
     elif existing is not None:
-        account_number = decrypt_text(existing.account_number_ciphertext)
+        account_number = decrypt_text(
+            existing.account_number_ciphertext, key=get_settings().payout_details_key
+        )
     else:
         raise errors.PayoutAccountNumberRequired()
     sort_code_digits = domain.normalise_sort_code(body.sort_code)
@@ -259,8 +264,8 @@ async def write_my_payout_details(
         user_id=user_id,
         bank_name=body.bank_name.strip(),
         account_holder_name=body.account_holder_name.strip(),
-        sort_code_ciphertext=encrypt_text(sort_code_digits),
-        account_number_ciphertext=encrypt_text(account_number),
+        sort_code_ciphertext=encrypt_text(sort_code_digits, key=get_settings().payout_details_key),
+        account_number_ciphertext=encrypt_text(account_number, key=get_settings().payout_details_key),
     )
     return PayoutDetailsRead(
         bank_name=stored.bank_name,

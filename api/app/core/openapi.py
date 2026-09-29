@@ -147,6 +147,10 @@ SSE_MEDIA_TYPE = "text/event-stream"
 # print or keep. Declared so the generated client knows not to parse it,
 # and so the route guard's exemption is stated rather than inferred.
 DOCUMENT_MEDIA_TYPE = "text/html"
+# A file the browser saves rather than a JSON object: a receipt, a spreadsheet,
+# a PDF. A route guard treats these as declared, so they do not need a
+# response model that would describe nothing.
+FILE_MEDIA_TYPES = frozenset({DOCUMENT_MEDIA_TYPE, "text/csv", "application/pdf"})
 
 
 def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[str, Any]]:

@@ -208,6 +208,18 @@ async def slot_by_id(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUI
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def slot_by_id_for_user(session: AsyncSession, slot_id: uuid.UUID, user_id: uuid.UUID) -> Slot | None:
+    """The slot with this id, if it is this signed-in person's own.
+
+    For a `/me` route, which has no `org_slug` to scope by first — `trainee_id`
+    on a slot is `users.id` (unlike a result decision's `trainee_id`), so this
+    checks ownership directly rather than requiring the org lookup `slot_by_id`
+    does first.
+    """
+    stmt = select(Slot).where(Slot.id == slot_id, Slot.trainee_id == user_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def update_slots_for_circuit(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID, **values: Any
 ) -> None:

@@ -27,6 +27,7 @@ from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings
 from app.features.attempts import service_privacy as attempts_privacy
 from app.features.identity import repository
+from app.features.media_production import service as media_production
 from app.features.peer_practice import service_privacy as peer_practice_privacy
 from app.features.tutor_memory import service as tutor_memory_service
 
@@ -81,7 +82,11 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     not what was said in it), and every payment and receipt, which the policy
     keeps for 6 years regardless of what happens to the account.
     """
+    user = await repository.user_by_id(session, user_id)
+    avatar_url = user.avatar_url if user else None
     scrubbed = await repository.scrub_for_erasure(session, user_id, now=now)
+    if avatar_url and scrubbed:
+        media_production.delete_image(get_settings(), avatar_url)
     if not scrubbed:
         # Already gone, or already erased by an earlier, still-running pass —
         # nothing left to do, and nothing else to delete on its behalf either.

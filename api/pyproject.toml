@@ -52,12 +52,18 @@ dependencies = [
     # the call, so a machine without it still starts and still serves every
     # route that is not a CV upload. Same pin as the retiring consumer backend.
     "pypdf (>=6.5,<7)",
+    # Result PDFs. Pure Python, so a Railway deploy does not need a system
+    # PDF library. The Unicode face is the bundled DejaVu file, not a font
+    # the host is assumed to have.
+    "fpdf2 (>=2.8,<3)",
     "sentry-sdk[fastapi] (>=2.19,<3)",
     "boto3 (>=1.36,<2)",
     "cartesia (>=1.4,<2)",
     "moviepy (>=2.2,<3)",
     "pydub (>=0.25,<1)",
     "cryptography (>=50.0.1,<51.0.0)",
+    # TOTP for authenticator-app sign-in. Recovery codes are argon2, not this.
+    "pyotp (>=2.9,<3)",
 ]
 
 [tool.poetry]

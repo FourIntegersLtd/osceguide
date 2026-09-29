@@ -12,8 +12,14 @@ from app.core.auth import Principal
 from app.core.errors import Forbidden, InvalidInput
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
+from app.features.roster.schemas import InvitationRead
 from app.features.tenancy import domain, repository
-from app.features.tenancy.errors import MembershipExists, MembershipNotFound, OrgNotFound
+from app.features.tenancy.errors import (
+    InvitationNotPending,
+    MembershipExists,
+    MembershipNotFound,
+    OrgNotFound,
+)
 from app.features.tenancy.schemas import MembershipRead
 
 
@@ -152,6 +158,30 @@ async def set_membership_revoked(
         target_id=str(membership_id),
     )
     return await _read_with_email(session, await _require_membership(session, org_id, membership_id))
+
+
+async def resend_invitation(
+    session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID, *, now: datetime
+) -> InvitationRead:
+    """Send the choose-a-password link to this staff member again.
+
+    A staff membership is always attached to an account (unlike a roster row),
+    so this only needs `identity.reissue_invitation`. Returns 409
+    `invitation_not_pending` if the person already has a password or signs in
+    through SSO.
+    """
+    membership = await _require_membership(session, org_id, membership_id)
+    org = await repository.organization_by_id(session, org_id)
+    invited_to = org.name if org else "your organisation"
+    people = await identity.user_refs_by_ids(session, [membership.user_id])
+    ref = people.get(membership.user_id)
+    if ref is None:
+        raise MembershipNotFound()
+    if not await invitations.reissue_invitation(
+        session, user_id=membership.user_id, invited_to=invited_to, now=now
+    ):
+        raise InvitationNotPending()
+    return InvitationRead(email=ref.email, invited_to=invited_to)
 
 
 async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID) -> Any:

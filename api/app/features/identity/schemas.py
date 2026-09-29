@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, time
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -54,6 +54,7 @@ class UserRead(BaseModel):
     ai_training_consent: bool = False
     colleague_waiting_email: bool = False
     replay_onboarding: bool = False
+    avatar_url: str | None = None
 
 
 # A timer of zero is not a custom timer at all; 3659 is 60 minutes 59 seconds,
@@ -99,7 +100,87 @@ class TokenPair(BaseModel):
 
 
 class AuthResult(TokenPair):
+    """A finished sign-in. `status` distinguishes it from an MFA challenge on the same route."""
+
+    status: Literal["signed_in"] = "signed_in"
     user: UserRead
+
+
+class MfaRequiredResponse(BaseModel):
+    """The password was right and an authenticator is already confirmed."""
+
+    status: Literal["mfa_required"] = "mfa_required"
+    challenge_token: str
+    expires_in: int
+
+
+class MfaEnrolmentRequiredResponse(BaseModel):
+    """A second factor is required and this account has not confirmed one yet."""
+
+    status: Literal["mfa_enrolment_required"] = "mfa_enrolment_required"
+    challenge_token: str
+    expires_in: int
+
+
+SignInResult = Annotated[
+    AuthResult | MfaRequiredResponse | MfaEnrolmentRequiredResponse,
+    Field(discriminator="status"),
+]
+
+
+class MfaVerifyRequest(BaseModel):
+    """Redeem a sign-in challenge with an authenticator code or a recovery code."""
+
+    challenge_token: str = Field(min_length=1, max_length=4096)
+    code: str | None = Field(default=None, min_length=1, max_length=16)
+    recovery_code: str | None = Field(default=None, min_length=1, max_length=64)
+
+
+class MfaEnrolStartRequest(BaseModel):
+    """The enrolment challenge from a sign-in that required a second factor."""
+
+    challenge_token: str = Field(min_length=1, max_length=4096)
+
+
+class MfaEnrolConfirmRequest(BaseModel):
+    """Confirm a pending authenticator during sign-in."""
+
+    challenge_token: str = Field(min_length=1, max_length=4096)
+    code: str = Field(min_length=1, max_length=16)
+
+
+class MfaEnrolmentStart(BaseModel):
+    """The shared secret and the URI an authenticator app scans. Shown once."""
+
+    secret: str
+    otpauth_uri: str
+
+
+class MfaCodeRequest(BaseModel):
+    """A current authenticator code, required to confirm, rotate or remove MFA."""
+
+    code: str = Field(min_length=1, max_length=16)
+
+
+class MfaRecoveryCodesRead(BaseModel):
+    """Recovery codes in plaintext. The only response that ever contains them."""
+
+    recovery_codes: list[str]
+
+
+class MfaEnrolmentConfirmed(AuthResult):
+    """A sign-in that has just confirmed an authenticator, plus the codes shown once."""
+
+    recovery_codes: list[str]
+
+
+class MfaStatusRead(BaseModel):
+    """Whether this account has an authenticator, and whether policy requires one."""
+
+    enabled: bool
+    required: bool
+    required_reason: Literal["platform_admin", "org_policy"] | None = None
+    recovery_codes_remaining: int
 
 
 class StreamTicket(BaseModel):
