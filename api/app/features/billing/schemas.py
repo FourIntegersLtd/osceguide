@@ -13,7 +13,7 @@ class PlanRead(BaseModel):
     amount_pence: int
     currency: str
     duration_days: int
-    exam_code: str | None
+    exam_code: str
     # What this plan costs with a referral code, or None when it has no
     # referral discount. The discounted plan is not listed on its own.
     referral_amount_pence: int | None = None
@@ -111,3 +111,61 @@ class RefundRequest(BaseModel):
     what the payment bought and says so in the audit log; the payment row stays."""
 
     reason: str = Field(min_length=1, max_length=500)
+
+
+# One line to put on a new invoice. Either an amount, or a settled payment to bill for.
+class CreateInvoiceLine(BaseModel):
+    description: str | None = Field(default=None, min_length=1, max_length=300)
+    quantity: int = Field(default=1, ge=1, le=100_000)
+    # Pence per unit. Taken from the payment when a payment is named and this is not.
+    unit_amount_pence: int | None = Field(default=None, ge=0)
+    payment_id: uuid.UUID | None = None
+
+
+class CreateInvoice(BaseModel):
+    """An invoice for an organisation. The number is assigned; the PO number may come later."""
+
+    po_number: str | None = Field(default=None, min_length=1, max_length=64)
+    due_at: datetime | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    currency: str = Field(default="gbp", pattern="^[a-z]{3}$")
+    lines: list[CreateInvoiceLine] = Field(min_length=1, max_length=200)
+
+
+class UpdateInvoice(BaseModel):
+    """What the console may change: the PO number while issued, and the status."""
+
+    po_number: str | None = Field(default=None, min_length=1, max_length=64)
+    # `paid` or `void`, from `issued` only.
+    status: str | None = Field(default=None, pattern="^(issued|paid|void)$")
+
+
+# The organisation's finance team quoting their purchase order.
+class SetPoNumber(BaseModel):
+    po_number: str = Field(min_length=1, max_length=64)
+
+
+class InvoiceLineRead(BaseModel):
+    position: int
+    description: str
+    quantity: int
+    unit_amount_pence: int
+    amount_pence: int
+    payment_id: uuid.UUID | None = None
+
+
+class InvoiceRead(BaseModel):
+    id: uuid.UUID
+    org_id: uuid.UUID
+    invoice_number: str
+    po_number: str | None
+    customer_name: str
+    status: str
+    currency: str
+    total_pence: int
+    issued_at: datetime
+    due_at: datetime | None
+    paid_at: datetime | None
+    voided_at: datetime | None
+    notes: str | None
+    lines: list[InvoiceLineRead]

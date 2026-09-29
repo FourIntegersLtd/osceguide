@@ -16,7 +16,7 @@ from app.features.catalog import service as catalog
 from app.features.catalog.service import resolve_exam
 from app.features.station_sets import domain, errors, repository
 from app.features.station_sets.models import StationSet, StationSetEntry
-from app.features.station_sets.schemas import EntryRead, SetRead, StartedAttempt
+from app.features.station_sets.schemas import EntryRead, FlaggedEntryRead, SetRead, StartedAttempt
 from app.features.stations import service_reads as stations_reads
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -288,6 +288,61 @@ async def record_started_attempt(
     return True
 
 
+async def flag_entry(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    set_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    *,
+    flagged: bool,
+    now: datetime,
+) -> SetRead:
+    """Flag a station in your own set to come back to, or take the flag off.
+
+    Allowed on a locked set: a flag changes nothing about access, and the
+    learner may be marking what to revisit once they renew. Flagging twice
+    keeps the first time it was flagged.
+    """
+    station_set = await _require(session, owner_user_id, set_id)
+    entry = await repository.entry_by_id(session, set_id, entry_id)
+    if entry is None:
+        raise errors.EntryNotFound()
+    if not flagged:
+        await repository.set_entry_flag(session, set_id, entry_id, flagged_at=None)
+    elif entry.flagged_at is None:
+        await repository.set_entry_flag(session, set_id, entry_id, flagged_at=now)
+    return await read_set(session, owner_user_id, station_set.id)
+
+
+async def list_flagged(session: AsyncSession, owner_user_id: uuid.UUID) -> list[FlaggedEntryRead]:
+    """Every station this person has flagged across their sets, most recent first.
+
+    Titles come from `stations` in one read for the whole list.
+    """
+    flagged = await repository.flagged_entries_for_owner(session, owner_user_id)
+    summaries = await stations_reads.summaries_by_version_id(
+        session, None, [entry.station_version_id for entry, _ in flagged]
+    )
+    exam_codes = await catalog.exam_codes_by_id(session, [station_set.exam_id for _, station_set in flagged])
+    reads = []
+    for entry, station_set in flagged:
+        if entry.flagged_at is None:  # the query filters these out; this narrows the type
+            continue
+        summary = summaries.get(entry.station_version_id)
+        reads.append(
+            FlaggedEntryRead(
+                set_id=station_set.id,
+                set_name=station_set.name,
+                exam_code=exam_codes.get(station_set.exam_id, ""),
+                entry_id=entry.id,
+                station_version_id=entry.station_version_id,
+                station_title=summary.title if summary is not None else None,
+                flagged_at=entry.flagged_at,
+            )
+        )
+    return reads
+
+
 async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:
     """Load a set this owner may act on, or refuse `set_not_found` if it is not theirs."""
     station_set = await repository.set_by_id(session, owner_user_id, set_id)
@@ -330,6 +385,7 @@ async def _set_read(
                 last_attempt_at=entry.last_attempt_at,
                 last_attempt_status=last_status,
                 feedback_ready=entry_feedback_ready,
+                flagged_at=entry.flagged_at,
             )
         )
     return SetRead(
@@ -343,3 +399,11 @@ async def _set_read(
         entries=entry_reads,
         feedback_ready=any_feedback_ready,
     )
+
+
+async def set_counts_by_station_version(
+    session: AsyncSession, station_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many practice sets include each station version, for an author
+    deciding whether a version is safe to throw away."""
+    return await repository.set_counts_by_station_version(session, station_version_ids)

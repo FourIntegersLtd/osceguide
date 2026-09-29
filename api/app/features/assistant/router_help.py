@@ -9,6 +9,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import NotFound, Unauthenticated, error_responses
 from app.core.ports import ClockDep, VectorIndex
+from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.settings import SettingsDep
 from app.features.assistant import schemas as schemas
 from app.features.assistant import service_help, service_knowledge
@@ -53,7 +54,8 @@ async def article(
 @router.post(
     "/help/knowledge-chat",
     response_model=schemas.KnowledgeReply,
-    responses=error_responses(Unauthenticated, service_knowledge.KnowledgeUnavailable),
+    responses=error_responses(TooManyRequests, Unauthenticated, service_knowledge.KnowledgeUnavailable),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def knowledge_chat(
     body: schemas.KnowledgeChat,

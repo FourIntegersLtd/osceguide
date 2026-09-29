@@ -221,3 +221,63 @@ async def test_a_supervisor_can_read_the_board(
 
     assert response.status_code == 200
     assert len(response.json()["circuits"]) == 1
+
+
+async def test_a_circuit_that_has_ended_is_kept_in_the_boards_history(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
+) -> None:
+    """Gone from the live board, and still there to look back at.
+
+    Ended before any station was sat, so it is filed as `ended_early` with
+    nothing completed — the unsat stations are skipped, not counted.
+    """
+    admin, circuit_id, _ = await a_running_morning(client, make_actor, db_session)
+    assert (await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))).json()["items"] == []
+
+    clock.advance(7 * 60)
+    ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/end", headers=bearer(admin))
+    assert ended.status_code == 200, ended.text
+
+    response = await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))
+    assert response.status_code == 200, response.text
+    assert response.json()["next_cursor"] is None
+    (run,) = response.json()["items"]
+    assert run["circuit_id"] == circuit_id
+    assert run["circuit_name"] == "Circuit A"
+    assert run["sitting_name"] == "Finals"
+    assert run["mode"] == "exam"
+    assert run["started_at"] == "2026-09-18T09:00:00Z"
+    assert run["ended_at"] == "2026-09-18T09:07:00Z"
+    assert run["candidate_count"] == 1
+    assert (run["stations_total"], run["stations_completed"]) == (2, 0)
+    assert run["status"] == "ended_early"
+
+    # Ending it again is a no-op, not a second run.
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/end", headers=bearer(admin))
+    again = await client.get("/api/v1/orgs/kings/live/history", headers=bearer(admin))
+    assert len(again.json()["items"]) == 1
+
+
+async def test_a_candidate_cannot_read_the_boards_history(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
+) -> None:
+    from app.features.tenancy import repository as tenancy_repository
+
+    await a_running_morning(client, make_actor, db_session)
+    org = await tenancy_repository.organization_by_slug(db_session, "kings")
+    assert org is not None
+    candidate = await make_actor(
+        "history-trainee@example.com",
+        memberships=(Membership(org_id=org.id, org_slug="kings", role="trainee"),),
+        active_org_slug="kings",
+    )
+    response = await client.get("/api/v1/orgs/kings/live/history", headers=bearer(candidate))
+    assert response.status_code == 403
+
+
+def test_a_run_is_complete_only_when_every_station_was_sat() -> None:
+    from app.features.sittings.domain_run import run_status
+
+    assert run_status(stations_total=3, stations_completed=3) == "completed"
+    assert run_status(stations_total=3, stations_completed=2) == "ended_early"
+    assert run_status(stations_total=0, stations_completed=0) == "ended_early"

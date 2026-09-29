@@ -260,3 +260,25 @@ async def test_a_published_template_version_cannot_be_deleted(client: AsyncClien
     )
     assert response.status_code == 409
     assert response.json()["code"] == "not_deletable"
+
+
+async def test_templates_are_listed_a_page_at_a_time(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The cursor used to be always empty, so a long list could not be paged."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    created_ids = {(await a_template(client, admin))["id"] for _ in range(3)}
+
+    first = await client.get(
+        "/api/v1/orgs/kings/station-templates", params={"limit": 2}, headers=bearer(admin)
+    )
+    assert first.status_code == 200, first.text
+    assert len(first.json()["items"]) == 2
+    assert first.json()["next_cursor"] is not None
+
+    rest = await client.get(
+        "/api/v1/orgs/kings/station-templates",
+        params={"limit": 2, "cursor": first.json()["next_cursor"]},
+        headers=bearer(admin),
+    )
+    assert rest.json()["next_cursor"] is None
+    listed_ids = [template["id"] for template in first.json()["items"] + rest.json()["items"]]
+    assert sorted(listed_ids) == sorted(created_ids)

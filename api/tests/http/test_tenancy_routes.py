@@ -433,3 +433,72 @@ async def test_a_platform_admin_can_still_reach_a_suspended_organisation(
     response = await client.get("/api/v1/orgs/lookable", headers=bearer(root))
 
     assert response.status_code == 200, response.text
+
+
+async def test_an_organisation_says_which_one_it_sits_under(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A trust above its hospitals: the column was stored but never returned."""
+    from sqlalchemy import update
+
+    from app.features.tenancy.models import Organization
+
+    trust_id = await seed_org(client, make_actor, "trust")
+    hospital_id = await seed_org(client, make_actor, "kings")
+    await db_session.execute(
+        update(Organization).where(Organization.id == hospital_id).values(parent_org_id=trust_id)
+    )
+    await db_session.flush()
+
+    hospital = await client.get(
+        "/api/v1/orgs/kings", headers=bearer(await member_token(make_actor, hospital_id, "kings", "owner"))
+    )
+    assert hospital.json()["parent_org_id"] == str(trust_id)
+    trust = await client.get(
+        "/api/v1/orgs/trust", headers=bearer(await member_token(make_actor, trust_id, "trust", "owner"))
+    )
+    assert trust.json()["parent_org_id"] is None
+
+
+async def test_an_organisations_audit_log_can_be_narrowed(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The same two filters the platform console has, on one organisation's log."""
+    from app.features.tenancy.models import AuditEntry
+
+    org_id = await seed_org(client, make_actor)
+    other_id = await seed_org(client, make_actor, "guys")
+    db_session.add_all(
+        [
+            AuditEntry(org_id=org_id, actor_email="ana@example.com", action="trainee.anonymised"),
+            AuditEntry(org_id=org_id, actor_email="ana@example.com", action="membership.revoked"),
+            AuditEntry(org_id=org_id, actor_email="ben@example.com", action="trainee.deleted"),
+            AuditEntry(org_id=other_id, actor_email="ana@example.com", action="trainee.deleted"),
+        ]
+    )
+    await db_session.flush()
+    admin = await member_token(make_actor, org_id, "kings", "owner")
+
+    by_person = await client.get(
+        "/api/v1/orgs/kings/audit", params={"actor_email": "ANA@example.com"}, headers=bearer(admin)
+    )
+    assert by_person.status_code == 200, by_person.text
+    assert sorted(entry["action"] for entry in by_person.json()["items"]) == [
+        "membership.revoked",
+        "trainee.anonymised",
+    ]
+
+    by_action = await client.get(
+        "/api/v1/orgs/kings/audit", params={"action": "trainee."}, headers=bearer(admin)
+    )
+    assert sorted(entry["action"] for entry in by_action.json()["items"]) == [
+        "trainee.anonymised",
+        "trainee.deleted",
+    ]
+
+    both = await client.get(
+        "/api/v1/orgs/kings/audit",
+        params={"actor_email": "ben@example.com", "action": "trainee."},
+        headers=bearer(admin),
+    )
+    assert [entry["action"] for entry in both.json()["items"]] == ["trainee.deleted"]

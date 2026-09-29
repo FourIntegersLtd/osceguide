@@ -35,14 +35,15 @@ of those, with the same publish-and-read logic copied into each.
   list, which is what the consumer screens showed. An `exam_code` that names no
   published exam is refused (`unknown_exam`) rather than quietly answering with
   the free material alone.
-- `specialty` and `updated_at` on `MediaRead` are **read out of `content`** by
-  the projection (`service_reads.py`), not stored in columns: both are fields
-  the authoring payload has always carried and only some kinds use, so a column
-  for either would be null for most rows. `specialty` takes the first of
-  `content.specialties`, falling back to `content.specialty` — the precedence
-  both retiring readers used. `updated_at` takes `content.updated_at` (what a
-  migrated b2c blog carries, and the date its card printed) and otherwise the
-  row's own `updated_at`, which is `created_at` for an item nobody has edited.
+- `specialty` on `MediaRead` is **its own column**, written from `content` on
+  every write (`domain.specialty_of`: the first of `content.specialties`,
+  falling back to `content.specialty` — the precedence both retiring readers
+  used). It used to be derived from `content` on every read, which meant
+  reading the gated body to file an item that was about to be withheld.
+  `updated_at` is still **read out of `content`** by the projection
+  (`service_reads.py`): it takes `content.updated_at` (what a migrated b2c blog
+  carries, and the date its card printed) and otherwise the row's own
+  `updated_at`, which is `created_at` for an item nobody has edited.
   It is never null.
 
 ## Routes
@@ -93,7 +94,7 @@ New accounts also unlock their registered exam's study library for fourteen
 days from account creation, independently of the AI station quota. After that
 window, a live entitlement is required. Other exams remain locked.
 
-`specialty` is derived even for an item whose body is withheld. It is a
+`specialty` is returned even for an item whose body is withheld. It is a
 catalogue facet in the same family as `kind`, `title` and `exam_code`, all of
 which are already public, and a locked deck that reported no specialty would
 disappear from the facet list on the very screen that offers to unlock it. The

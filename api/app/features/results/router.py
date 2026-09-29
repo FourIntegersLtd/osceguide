@@ -99,6 +99,29 @@ async def sign_off(
     )
 
 
+# Release several signed-off candidates at once; each still gets their own email.
+@router.post(
+    "/orgs/{org_slug}/sittings/{sitting_id}/decisions/release",
+    response_model=schemas.BulkReleaseResult,
+    responses=error_responses(Forbidden),
+)
+async def release_many(
+    sitting_id: uuid.UUID,
+    body: schemas.BulkRelease,
+    workspace: OrgInstitutionAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.BulkReleaseResult:
+    return await service.release_many(
+        session,
+        workspace.org_id,
+        sitting_id=sitting_id,
+        candidates=body.candidates,
+        actor_id=workspace.principal.user_id,
+        now=clock.now(),
+    )
+
+
 @router.post(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/release",
     response_model=schemas.DecisionRead,

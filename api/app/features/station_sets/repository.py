@@ -7,7 +7,7 @@ from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -240,3 +240,41 @@ async def remove_entries(
         delete(StationSetEntry).where(StationSetEntry.id.in_(_owned_entry_ids(owner_user_id, version_ids)))
     )
     return int(getattr(delete_outcome, "rowcount", 0) or 0)
+
+
+async def set_counts_by_station_version(
+    session: AsyncSession, station_version_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many practice sets, anyone's, include each station version."""
+    if not station_version_ids:
+        return {}
+    stmt = (
+        select(StationSetEntry.station_version_id, func.count(StationSetEntry.set_id.distinct()))
+        .where(StationSetEntry.station_version_id.in_(list(station_version_ids)))
+        .group_by(StationSetEntry.station_version_id)
+    )
+    return {version_id: int(count) for version_id, count in (await session.execute(stmt)).all()}
+
+
+async def set_entry_flag(
+    session: AsyncSession, set_id: uuid.UUID, entry_id: uuid.UUID, *, flagged_at: datetime | None
+) -> None:
+    """Flag one entry of a set (a timestamp) or clear its flag (`None`)."""
+    await session.execute(
+        update(StationSetEntry)
+        .where(StationSetEntry.set_id == set_id, StationSetEntry.id == entry_id)
+        .values(flagged_at=flagged_at)
+    )
+
+
+async def flagged_entries_for_owner(
+    session: AsyncSession, owner_user_id: uuid.UUID
+) -> list[tuple[StationSetEntry, StationSet]]:
+    """Every flagged entry across this person's sets, most recently flagged first."""
+    stmt = (
+        select(StationSetEntry, StationSet)
+        .join(StationSet, StationSet.id == StationSetEntry.set_id)
+        .where(StationSet.owner_user_id == owner_user_id, StationSetEntry.flagged_at.is_not(None))
+        .order_by(StationSetEntry.flagged_at.desc(), StationSetEntry.id)
+    )
+    return [(entry, station_set) for entry, station_set in (await session.execute(stmt)).all()]

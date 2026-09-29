@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
 from app.features.stations import errors, schemas, service_templates
@@ -30,9 +30,13 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     response_model=Page[schemas.StationTemplateRead],
     responses=error_responses(Forbidden),
 )
-async def list_station_templates(workspace: OrgReader, session: Session) -> Page[schemas.StationTemplateRead]:
-    items = await service_templates.list_templates(session, workspace.org_id)
-    return Page(items=items, next_cursor=None)
+async def list_station_templates(
+    workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
+) -> Page[schemas.StationTemplateRead]:
+    templates, next_cursor = await service_templates.list_templates(
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=templates, next_cursor=next_cursor)
 
 
 # Author a new template owned by this org.

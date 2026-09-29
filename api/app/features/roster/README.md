@@ -12,6 +12,10 @@ groups a circuit can be built from.
 - As an **org admin**, I make a group and say who is in it.
 - As an **org admin**, I revoke someone's access and restore it later.
 - As a **supervisor**, I see who would be on a circuit before I build it.
+- As an **org admin**, I read who is in a group, a page at a time.
+- As an **org admin**, I issue our identity provider a SCIM token, and revoke it.
+- As an **identity provider** (Entra, Okta), I provision the roster over SCIM 2.0:
+  users are trainees, groups are trainee groups.
 
 ## Aggregates & invariants
 **Trainee**, **Cohort** and **TraineeGroup** are each org-owned roots;
@@ -78,6 +82,19 @@ groups a circuit can be built from.
 - Resolving a roster keeps order, because a training circuit pairs trainee *i*
   with station *i*. An empty linked group is **reported**, not passed over, so a
   supervisor finds out now rather than when the examination starts.
+- **SCIM goes through the roster's own use cases** (`service_scim.py`): creating
+  a user is `add_trainees` (so the person is invited and linked), `active` is
+  `set_access`, names are `update_trainee`, groups are `service_groups`. SCIM
+  only translates. Deleting a user **deactivates** them — revoking access keeps
+  what was decided about them, as the roster screen does. Deleting a group is
+  the provider saying so on purpose, so it is emptied and removed.
+- A user's `userName` is their address and cannot change over SCIM
+  (`mutability`), for the same reason `PATCH /trainees/{id}` will not change it.
+- Attributes the roster does not keep (a title, a department) are ignored, not
+  refused: connectors send them unasked. Filters are one `attribute eq "value"`
+  clause on `userName`/`emails`/`id` (users) or `displayName`/`id` (groups).
+- A SCIM token is stored as a sha256 and shown once. A missing, foreign, revoked
+  token and a suspended organisation are one refusal, `scim_unauthorized`.
 
 ## Routes
 | Method | Path | Auth | Notes |
@@ -96,6 +113,15 @@ groups a circuit can be built from.
 | DELETE | `/api/v1/orgs/{org_slug}/trainee-groups/{id}` | org admin | 204; `group_not_empty` (409) while it has members |
 | PUT | `/api/v1/orgs/{org_slug}/trainee-groups/{id}/members` | org admin | states the whole membership |
 | POST | `/api/v1/orgs/{org_slug}/roster/resolve` | org member | preview, changes nothing |
+| GET | `/api/v1/orgs/{org_slug}/trainee-groups/{id}/members` | org member | cursor-paged trainees; `group_not_found` (404) |
+| POST | `/api/v1/orgs/{org_slug}/scim/tokens` | org admin | 201 with the token, shown once |
+| GET | `/api/v1/orgs/{org_slug}/scim/tokens` | org admin | never the token itself |
+| DELETE | `/api/v1/orgs/{org_slug}/scim/tokens/{id}` | org admin | 204; refused from the next request |
+| GET, POST | `/api/v1/orgs/{org_slug}/scim/v2/Users` | SCIM token | list (`filter`, `startIndex`, `count`) / create |
+| GET, PUT, PATCH, DELETE | `/api/v1/orgs/{org_slug}/scim/v2/Users/{id}` | SCIM token | DELETE deactivates |
+| GET, POST | `/api/v1/orgs/{org_slug}/scim/v2/Groups` | SCIM token | |
+| GET, PUT, PATCH, DELETE | `/api/v1/orgs/{org_slug}/scim/v2/Groups/{id}` | SCIM token | PATCH adds, removes or replaces members |
+| GET | `/api/v1/orgs/{org_slug}/scim/v2/ServiceProviderConfig` | SCIM token | |
 
 The write routes live in `router_admin.py` and are mounted by `router.py`,
 which is the only thing `main.py` imports from this slice.

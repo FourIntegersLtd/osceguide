@@ -192,3 +192,38 @@ class CircuitIntervention(Base, UUIDPrimaryKey):
     phase_seq_before: Mapped[int] = mapped_column(Integer, nullable=False)
     phase_seq_after: Mapped[int] = mapped_column(Integer, nullable=False)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CircuitRunHistory(Base, UUIDPrimaryKey):
+    """One finished run of a circuit, as the exam-day board last saw it.
+
+    Written once, in the same transaction that ends the circuit, and never
+    edited. The circuit row keeps changing meaning after it ends (its slots can
+    be rescued, the circuit or its sitting deleted); this is what the day
+    actually looked like when it stopped. Field names follow the live board's.
+    """
+
+    __tablename__ = "circuit_run_history"
+    __table_args__ = (
+        UniqueConstraint("circuit_id", "ended_at", name="uq_circuit_run_history_circuit_ended"),
+        Index("ix_circuit_run_history_org_ended", "org_id", "ended_at"),
+    )
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    # SET NULL rather than CASCADE: deleting a circuit or a sitting afterwards
+    # must not rewrite what happened on the day.
+    circuit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("circuits.id", ondelete="SET NULL"))
+    sitting_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sittings.id", ondelete="SET NULL"))
+    circuit_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    sitting_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    supervisor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    candidate_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    stations_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    stations_completed: Mapped[int] = mapped_column(Integer, nullable=False)
+    # `completed` when every station was sat, `ended_early` when any was skipped.
+    status: Mapped[str] = mapped_column(String(16), nullable=False)

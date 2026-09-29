@@ -35,7 +35,11 @@ class StationSetEntry(Base, UUIDPrimaryKey, Timestamps):
     """
 
     __tablename__ = "station_set_entries"
-    __table_args__ = (UniqueConstraint("set_id", "position", name="uq_station_set_entries_set_position"),)
+    __table_args__ = (
+        UniqueConstraint("set_id", "position", name="uq_station_set_entries_set_position"),
+        # "My flagged stations" reads only flagged rows, which are few.
+        Index("ix_station_set_entries_flagged", "set_id", postgresql_where=text("flagged_at IS NOT NULL")),
+    )
 
     set_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("station_sets.id", ondelete="CASCADE"), nullable=False
@@ -47,3 +51,6 @@ class StationSetEntry(Base, UUIDPrimaryKey, Timestamps):
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     debrief_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the owner flagged this station to come back to, or null. Personal:
+    # a report to the content team is a `station_flags` row instead.
+    flagged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

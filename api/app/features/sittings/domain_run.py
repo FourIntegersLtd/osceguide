@@ -222,3 +222,11 @@ def sitting_is_over(circuit_ended: Iterable[bool]) -> bool:
     """
     ended = list(circuit_ended)
     return bool(ended) and all(ended)
+
+
+def run_status(*, stations_total: int, stations_completed: int) -> str:
+    """How a finished run is filed: `completed` when every station was sat,
+    `ended_early` when any was skipped (including a circuit with none)."""
+    if stations_total and stations_completed >= stations_total:
+        return "completed"
+    return "ended_early"

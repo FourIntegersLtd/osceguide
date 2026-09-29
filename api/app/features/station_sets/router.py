@@ -13,6 +13,7 @@ from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import AI_SPEND, USER_WRITE, TooManyRequests, per_user
 from app.features.station_sets import errors, schemas, service
 
 router = APIRouter(tags=["station-sets"])
@@ -41,7 +42,8 @@ async def list_sets(
     "/me/station-sets",
     response_model=schemas.SetRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(errors.UnknownExamError, errors.NotEntitled, Unauthenticated),
+    responses=error_responses(TooManyRequests, errors.UnknownExamError, errors.NotEntitled, Unauthenticated),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def create_set(
     body: schemas.CreateSet, principal: CurrentPrincipal, session: Session, clock: ClockDep
@@ -110,11 +112,44 @@ async def delete_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Se
     await service.delete_set(session, principal.user_id, set_id)
 
 
+# Flag a station in your own set to come back to, or take the flag off.
+@router.put(
+    "/me/station-sets/{set_id}/entries/{entry_id}/flag",
+    response_model=schemas.SetRead,
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.SetNotFound, errors.EntryNotFound),
+    dependencies=[Depends(per_user(USER_WRITE))],
+)
+async def flag_set_entry(
+    set_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    body: schemas.FlagEntry,
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.SetRead:
+    return await service.flag_entry(
+        session, principal.user_id, set_id, entry_id, flagged=body.flagged, now=clock.now()
+    )
+
+
+# Every station you have flagged across your sets, most recently flagged first.
+@router.get(
+    "/me/flagged-stations",
+    response_model=list[schemas.FlaggedEntryRead],
+    responses=error_responses(Unauthenticated),
+)
+async def list_flagged_stations(
+    principal: CurrentPrincipal, session: Session
+) -> list[schemas.FlaggedEntryRead]:
+    return await service.list_flagged(session, principal.user_id)
+
+
 @router.post(
     "/me/station-sets/{set_id}/entries/{entry_id}/attempts",
     response_model=schemas.StartedAttempt,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         Unauthenticated,
         errors.NotEntitled,
         errors.SetNotFound,
@@ -122,6 +157,7 @@ async def delete_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Se
         errors.AttemptLimitReachedError,
         errors.SetLockedError,
     ),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def start_attempt(
     set_id: uuid.UUID,
@@ -138,6 +174,7 @@ async def start_attempt(
     response_model=schemas.StartedAttempt,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         Unauthenticated,
         errors.NotEntitled,
         errors.SetNotFound,
@@ -145,6 +182,7 @@ async def start_attempt(
         errors.AttemptLimitReachedError,
         errors.NothingToDebriefError,
     ),
+    dependencies=[Depends(per_user(AI_SPEND))],
 )
 async def start_debrief(
     set_id: uuid.UUID,

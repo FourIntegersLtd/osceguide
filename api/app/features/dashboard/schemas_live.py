@@ -72,3 +72,25 @@ class LiveBoard(BaseModel):
 
     as_of: datetime
     circuits: list[LiveCircuit] = Field(default_factory=list)
+
+
+class LiveRunRead(BaseModel):
+    """One circuit run that has finished, as the board last saw it.
+
+    Field names follow `LiveCircuit`. `status` is `completed` when every
+    station was sat and `ended_early` when any was skipped.
+    """
+
+    id: uuid.UUID
+    circuit_id: uuid.UUID | None
+    circuit_name: str
+    sitting_id: uuid.UUID | None
+    sitting_name: str
+    mode: str
+    supervisor: LivePerson | None = None
+    started_at: datetime | None
+    ended_at: datetime
+    candidate_count: int
+    stations_total: int
+    stations_completed: int
+    status: str

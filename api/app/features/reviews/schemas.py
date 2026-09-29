@@ -87,6 +87,7 @@ class CircuitReviewRead(BaseModel):
     circuit_id: uuid.UUID
     merged_notes: str | None
     finalized_at: datetime | None
+    finalized_by: uuid.UUID | None = None
 
 
 class FinalizeCircuitReview(BaseModel):

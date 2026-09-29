@@ -88,3 +88,46 @@ def grants_access(event_type: str) -> bool:
     """Everything else is acknowledged and ignored: a non-2xx to an event we will never act on
     just asks Stripe to keep delivering it."""
     return (event_type or "").strip() in ACCESS_GRANTING_EVENTS
+
+
+# --- invoices (E-22) ----------------------------------------------------------
+
+INVOICE_ISSUED = "issued"
+INVOICE_PAID = "paid"
+INVOICE_VOID = "void"
+
+# Which way an invoice may move. Paid and void are final: a mistake on a paid
+# invoice is a credit note, not an edit, and a void number is never reused.
+_INVOICE_MOVES = {INVOICE_ISSUED: frozenset({INVOICE_PAID, INVOICE_VOID})}
+
+
+class InvoiceNotEditable(ValueError):
+    """Raised when an invoice is asked to move from a final state."""
+
+
+class InvalidInvoiceLine(ValueError):
+    """Raised when a line has no amount and no payment to take one from."""
+
+
+def invoice_number(*, year: int, sequence: int) -> str:
+    """`INV-2026-000123`: the year it was raised, and a number never used before."""
+    return f"INV-{year}-{sequence:06d}"
+
+
+def ensure_invoice_move(current: str, target: str) -> None:
+    """Refuse a status change the invoice cannot make; staying put is allowed."""
+    if current == target:
+        return
+    if target not in _INVOICE_MOVES.get(current, frozenset()):
+        raise InvoiceNotEditable(f"An invoice that is {current} cannot become {target}.")
+
+
+def ensure_po_editable(status: str) -> None:
+    """A PO number may be added or corrected until the invoice is paid or void."""
+    if status != INVOICE_ISSUED:
+        raise InvoiceNotEditable(f"An invoice that is {status} is final.")
+
+
+def line_amount(*, quantity: int, unit_amount_pence: int) -> int:
+    """What one line comes to."""
+    return quantity * unit_amount_pence

@@ -443,12 +443,13 @@ async def test_total_count_counts_the_match_not_the_page(
 
 
 # --------------------------------------------------------------------------
-# Fields the read model carries but no column does
+# Fields the read model derives from the document
 #
-# `specialty` and `updated_at` live inside the document-shaped `content`, so a
-# screen that wanted either had to know the authoring payload's shape — and
-# got nothing at all for an item the reader had not unlocked, whose `content`
-# is withheld.
+# `specialty` and `updated_at` are written inside the document-shaped
+# `content`, so a screen that wanted either had to know the authoring
+# payload's shape — and got nothing at all for an item the reader had not
+# unlocked, whose `content` is withheld. `specialty` is now copied into its own
+# column on every write; `updated_at` is still read from the document.
 # --------------------------------------------------------------------------
 
 
@@ -634,3 +635,27 @@ async def test_search_pages_through_every_hit_exactly_once(
 
     assert len(seen) == len(set(seen)), f"a hit was served twice: {seen}"
     assert set(seen) == {f"paging-{name.lower()}" for name in names}, "a hit was skipped"
+
+
+async def test_editing_a_drafts_document_refiles_its_specialty(
+    client: AsyncClient,
+    make_actor,
+    index: FakeVectorIndex,  # type: ignore[no-untyped-def]
+) -> None:
+    """The facet is stored beside the body now, so a rewrite of the body must move it too."""
+    admin = await make_actor("m-refile@osceguide.com", platform_admin=True)
+    created = await client.post(
+        "/api/v1/media",
+        json={"kind": "summary", "title": "Refiled", "content": {"specialty": "Cardiology"}},
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["specialty"] == "Cardiology"
+
+    edited = await client.patch(
+        f"/api/v1/media/{created.json()['id']}",
+        json={"content": {"specialties": ["Renal"]}},
+        headers=bearer(admin),
+    )
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["specialty"] == "Renal"

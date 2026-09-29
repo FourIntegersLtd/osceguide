@@ -47,6 +47,17 @@ async def list_exams(
     return [exam_read(exam) for exam in exams]
 
 
+async def list_platform_exams(
+    session: AsyncSession, *, status: str | None, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[ExamRead], str | None]:
+    """A page of the consumer catalogue as the console sees it: drafts and
+    retired exams included, optionally narrowed to one status."""
+    exams, next_cursor = await repository.list_platform_exams(
+        session, status=status, limit=limit, cursor=cursor
+    )
+    return [exam_read(exam) for exam in exams], next_cursor
+
+
 async def create_exam(
     session: AsyncSession,
     org_id: uuid.UUID | None = None,

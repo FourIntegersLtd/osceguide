@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -12,9 +13,10 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.ports import ClockDep
+from app.core.ports import ClockDep, EventCounts
+from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import PlatformAdmin
-from app.features.growth import errors, schemas, service, service_payouts
+from app.features.growth import errors, schemas, service, service_payouts, service_spend
 
 router = APIRouter(tags=["growth"])
 
@@ -110,7 +112,8 @@ async def add_reporter(
 @router.post(
     "/me/referral-code",
     response_model=schemas.ReferralRead,
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(TooManyRequests, Unauthenticated),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def issue_code(principal: CurrentPrincipal, session: Session) -> schemas.ReferralRead:
     """One code per person; asking again returns the one they have."""
@@ -219,3 +222,72 @@ async def set_referral_payout(
         actor_user_id=admin.user_id,
         now=clock.now(),
     )
+
+
+# Our arrival ledger for a partner beside Mixpanel's landing count, for a date range.
+@router.get(
+    "/growth/partners/{partner}/reconciliation",
+    response_model=schemas.LandingReconciliationRead,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError, errors.InvalidDateRangeError),
+)
+async def read_landing_reconciliation(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    event_counts: Annotated[EventCounts, Depends(service_spend.get_event_counts)],
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.LandingReconciliationRead:
+    _ = admin
+    return await service_spend.reconcile_landings(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        event_counts=event_counts,
+    )
+
+
+# A partner's estimated click spend for a date range, against what the people it sent paid.
+@router.get(
+    "/growth/partners/{partner}/spend",
+    response_model=schemas.PartnerSpendRead,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError, errors.InvalidDateRangeError),
+)
+async def read_partner_spend(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+) -> schemas.PartnerSpendRead:
+    _ = admin
+    return await service_spend.read_spend(session, partner=partner, from_date=from_date, to_date=to_date)
+
+
+# A partner pilot's cost per click and spend alert settings.
+@router.get(
+    "/growth/partners/{partner}/pilot-config",
+    response_model=schemas.PilotConfigRead,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError),
+)
+async def read_pilot_config(partner: str, admin: PlatformAdmin, session: Session) -> schemas.PilotConfigRead:
+    _ = admin
+    return await service_spend.read_config(session, partner=partner)
+
+
+# Change a partner pilot's cost per click or spend alerts.
+@router.patch(
+    "/growth/partners/{partner}/pilot-config",
+    response_model=schemas.PilotConfigRead,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError),
+)
+async def update_pilot_config(
+    partner: str, body: schemas.UpdatePilotConfig, admin: PlatformAdmin, session: Session
+) -> schemas.PilotConfigRead:
+    _ = admin
+    return await service_spend.update_config(session, partner=partner, changes=body)

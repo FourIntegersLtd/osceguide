@@ -326,3 +326,11 @@ async def _status(session: AsyncSession, entry: QueueEntry) -> QueueStatus:
         session_id=entry.matched_session_id,
         audience=AudienceOut.from_row(entry),
     )
+
+
+async def session_counts_by_station_version(
+    session: AsyncSession, station_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many peer practice sessions used each station version, for an
+    author deciding whether a version is safe to throw away."""
+    return await repository_sessions.session_counts_by_station_version(session, station_version_ids)

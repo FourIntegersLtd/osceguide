@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Form, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
+from app.core.openapi import SAML_METADATA_MEDIA_TYPE
 from app.core.ports import ClockDep
-from app.core.rate_limit import SSO_CALLBACK, TooManyRequests, caller_key, check
+from app.core.rate_limit import SAML_ACS, SSO_CALLBACK, TooManyRequests, caller_key, check
 from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
-from app.features.sso import errors, schemas, service, service_login
+from app.features.sso import errors, schemas, service, service_login, service_saml
 
 router = APIRouter(tags=["sso"])
 
@@ -160,3 +163,86 @@ async def save_config(
     settings screen.
     """
     return await service.save_config(session, org_slug, body)
+
+
+# The SAML service-provider metadata an institution uploads to its identity provider.
+@router.get(
+    "/sso/saml/{connection_id}/metadata",
+    response_class=Response,
+    responses={
+        **error_responses(errors.SamlConnectionNotFound),
+        200: {
+            "description": "SAML 2.0 service-provider metadata.",
+            "content": {SAML_METADATA_MEDIA_TYPE: {"schema": {"type": "string"}}},
+        },
+    },
+)
+async def saml_metadata(connection_id: uuid.UUID, session: Session, settings: SettingsDep) -> Response:
+    return Response(
+        content=await service_saml.metadata(session, connection_id, settings=settings),
+        media_type=SAML_METADATA_MEDIA_TYPE,
+    )
+
+
+# The SAML assertion consumer: the IdP posts the signed response here, and the browser
+# is sent on to the frontend callback page with a short-lived hand-off, or an error.
+@router.post(
+    "/sso/saml/{connection_id}/acs",
+    response_class=RedirectResponse,
+    status_code=status.HTTP_303_SEE_OTHER,
+    responses={
+        **error_responses(errors.SamlConnectionNotFound, TooManyRequests),
+        303: {"description": "To the frontend SSO callback page, with `token` or `error`."},
+    },
+)
+async def saml_acs(
+    connection_id: uuid.UUID,
+    request: Request,
+    saml_response: Annotated[str, Form(alias="SAMLResponse", max_length=200_000)],
+    relay_state: Annotated[str, Form(alias="RelayState", max_length=4096)],
+    session: Session,
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> RedirectResponse:
+    await check(SAML_ACS, caller_key(request))
+    location = await service_saml.consume_response(
+        session,
+        connection_id,
+        saml_response=saml_response,
+        relay_state=relay_state,
+        settings=settings,
+        now=clock.now(),
+    )
+    return RedirectResponse(location, status_code=status.HTTP_303_SEE_OTHER)
+
+
+# An organisation's SAML identity provider, for the platform console.
+@router.get(
+    "/platform/orgs/{org_slug}/sso/saml",
+    response_model=schemas.SamlConnectionRead,
+    responses=error_responses(
+        Unauthenticated, Forbidden, errors.SsoNotConfigured, errors.SamlConnectionNotFound
+    ),
+)
+async def read_saml_connection(
+    org_slug: str, _admin: PlatformAdmin, session: Session, settings: SettingsDep
+) -> schemas.SamlConnectionRead:
+    return await service_saml.read_connection(session, org_slug, settings=settings)
+
+
+# Write an organisation's SAML identity provider. Platform admin only, as the rest of SSO is.
+@router.put(
+    "/platform/orgs/{org_slug}/sso/saml",
+    response_model=schemas.SamlConnectionRead,
+    responses=error_responses(
+        Unauthenticated, Forbidden, errors.SsoNotConfigured, errors.InvalidSamlConnection
+    ),
+)
+async def save_saml_connection(
+    org_slug: str,
+    body: schemas.SaveSamlConnection,
+    _admin: PlatformAdmin,
+    session: Session,
+    settings: SettingsDep,
+) -> schemas.SamlConnectionRead:
+    return await service_saml.save_connection(session, org_slug, body, settings=settings)

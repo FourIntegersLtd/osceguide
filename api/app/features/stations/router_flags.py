@@ -19,6 +19,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import PlatformAdmin
 from app.features.stations import errors, schemas, service_flags
 
@@ -30,7 +31,8 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.post(
     "/me/station-flags",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Unauthenticated, errors.StationNotFound),
+    responses=error_responses(TooManyRequests, Unauthenticated, errors.StationNotFound),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def report_station(
     body: schemas.FlagStationBody, principal: CurrentPrincipal, session: Session

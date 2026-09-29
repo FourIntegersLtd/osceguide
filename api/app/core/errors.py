@@ -48,6 +48,15 @@ class AppError(Exception):
         self.details = details
         super().__init__(self.message)
 
+    # A protocol with an error body of its own (SCIM, RFC 7644 §3.12) answers
+    # in that shape instead of `ErrorResponse`; it must still carry `code`,
+    # which is what the declared-codes check and the frontend read.
+    media_type: str = "application/json"
+
+    def envelope(self) -> dict[str, Any] | None:
+        """The body to answer with in place of `ErrorResponse`, or None for the usual one."""
+        return None
+
 
 def raise_mapped(exc: Exception, mapping: Mapping[type[Exception], type[AppError]]) -> NoReturn:
     """Translate a domain refusal into the API error that carries its status.
@@ -184,6 +193,9 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error(request: Request, exc: AppError) -> JSONResponse:
         """Turn a raised `AppError` into its declared status and code."""
+        envelope = exc.envelope()
+        if envelope is not None:
+            return JSONResponse(status_code=exc.status, content=envelope, media_type=exc.media_type)
         return _error_response(
             request, exc.status, ErrorResponse(code=exc.code, message=exc.message, details=exc.details)
         )

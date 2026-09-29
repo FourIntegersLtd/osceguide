@@ -28,7 +28,7 @@ async def create_plan(
     stripe_price_id: str,
     amount_pence: int,
     duration_days: int,
-    exam_code: str | None = None,
+    exam_code: str,
     currency: str = "gbp",
 ) -> Plan:
     """Insert a new plan row for a Stripe price. Used by seeding, not by any customer path."""
@@ -144,6 +144,18 @@ async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UU
     if not user_ids:
         return 0
     stmt = select(func.count(Payment.id)).where(Payment.user_id.in_(user_ids))
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def revenue_for_users(
+    session: AsyncSession, user_ids: list[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> int:
+    """Pence these people paid in a window, gross. Zero for an empty list."""
+    if not user_ids:
+        return 0
+    stmt = select(func.coalesce(func.sum(Payment.amount_total_pence), 0)).where(
+        Payment.user_id.in_(user_ids), Payment.paid_at >= paid_from, Payment.paid_at < paid_before
+    )
     return int((await session.execute(stmt)).scalar_one())
 
 

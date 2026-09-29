@@ -25,6 +25,9 @@ class OrganizationRead(BaseModel):
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
     require_staff_mfa: bool = False
+    # The organisation this one sits under (a trust above its hospitals), or
+    # null for a top-level organisation.
+    parent_org_id: uuid.UUID | None = None
 
 
 class UpdateOrganization(BaseModel):

@@ -954,6 +954,26 @@
         "title": "Body_identity_upload_my_avatar",
         "type": "object"
       },
+      "Body_sso_saml_acs": {
+        "properties": {
+          "RelayState": {
+            "maxLength": 4096,
+            "title": "Relaystate",
+            "type": "string"
+          },
+          "SAMLResponse": {
+            "maxLength": 200000,
+            "title": "Samlresponse",
+            "type": "string"
+          }
+        },
+        "required": [
+          "SAMLResponse",
+          "RelayState"
+        ],
+        "title": "Body_sso_saml_acs",
+        "type": "object"
+      },
       "Body_stations_add_platform_station_photos": {
         "properties": {
           "files": {
@@ -1047,6 +1067,65 @@
           }
         },
         "title": "BulkMembershipsResult",
+        "type": "object"
+      },
+      "BulkRelease": {
+        "description": "Several signed-off candidates to release at once.\n\nEach carries its own evidence: a release re-checks it against what was\nsigned off, candidate by candidate.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/BulkReleaseCandidate"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Candidates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidates"
+        ],
+        "title": "BulkRelease",
+        "type": "object"
+      },
+      "BulkReleaseCandidate": {
+        "properties": {
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id"
+        ],
+        "title": "BulkReleaseCandidate",
+        "type": "object"
+      },
+      "BulkReleaseResult": {
+        "description": "Who was released and who was not, so a partial release is not a mystery.",
+        "properties": {
+          "released": {
+            "items": {
+              "$ref": "#/components/schemas/ReleasedCandidate"
+            },
+            "title": "Released",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRelease"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "title": "BulkReleaseResult",
         "type": "object"
       },
       "BulkTraineesResult": {
@@ -1577,6 +1656,18 @@
               }
             ],
             "title": "Finalized At"
+          },
+          "finalized_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finalized By"
           },
           "id": {
             "format": "uuid",
@@ -2599,6 +2690,118 @@
           "label"
         ],
         "title": "CreateGroup",
+        "type": "object"
+      },
+      "CreateInvoice": {
+        "description": "An invoice for an organisation. The number is assigned; the PO number may come later.",
+        "properties": {
+          "currency": {
+            "default": "gbp",
+            "pattern": "^[a-z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CreateInvoiceLine"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "po_number": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "CreateInvoice",
+        "type": "object"
+      },
+      "CreateInvoiceLine": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "payment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Id"
+          },
+          "quantity": {
+            "default": 1,
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "unit_amount_pence": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Amount Pence"
+          }
+        },
+        "title": "CreateInvoiceLine",
         "type": "object"
       },
       "CreateMedia": {
@@ -4072,6 +4275,18 @@
             "title": "Feedback Ready",
             "type": "boolean"
           },
+          "flagged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flagged At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4186,8 +4401,10 @@
               "invalid_circuit",
               "invalid_credentials",
               "invalid_cv_file",
+              "invalid_date_range",
               "invalid_exam_code",
               "invalid_input",
+              "invalid_invoice_line",
               "invalid_legacy_token",
               "invalid_media_status",
               "invalid_message",
@@ -4198,11 +4415,14 @@
               "invalid_reset_token",
               "invalid_review_status",
               "invalid_rubric",
+              "invalid_saml_connection",
               "invalid_signature",
               "invalid_sso_binding",
               "invalid_webhook",
               "invalid_workflow",
               "invitation_not_pending",
+              "invoice_not_editable",
+              "invoice_not_found",
               "knowledge_unavailable",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
@@ -4272,6 +4492,14 @@
               "rubric_not_found",
               "rubric_version_not_found",
               "rubric_version_not_published",
+              "saml_connection_not_found",
+              "scim_invalid_filter",
+              "scim_invalid_value",
+              "scim_mutability",
+              "scim_not_found",
+              "scim_token_not_found",
+              "scim_unauthorized",
+              "scim_uniqueness",
               "set_entry_has_attempts",
               "set_entry_not_found",
               "set_has_attempts",
@@ -4891,6 +5119,19 @@
         "title": "FinalizeCircuitReview",
         "type": "object"
       },
+      "FlagEntry": {
+        "properties": {
+          "flagged": {
+            "title": "Flagged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "flagged"
+        ],
+        "title": "FlagEntry",
+        "type": "object"
+      },
       "FlagStationBody": {
         "description": "A report that one station is wrong.\n\nWas served by `identity` with a docstring saying persistence is TODO, so the\nbutton in the runner confirmed a report that went nowhere.",
         "properties": {
@@ -4904,6 +5145,60 @@
           "station_id"
         ],
         "title": "FlagStationBody",
+        "type": "object"
+      },
+      "FlaggedEntryRead": {
+        "properties": {
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "flagged_at": {
+            "format": "date-time",
+            "title": "Flagged At",
+            "type": "string"
+          },
+          "set_id": {
+            "format": "uuid",
+            "title": "Set Id",
+            "type": "string"
+          },
+          "set_name": {
+            "title": "Set Name",
+            "type": "string"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "set_id",
+          "set_name",
+          "exam_code",
+          "entry_id",
+          "station_version_id",
+          "station_title",
+          "flagged_at"
+        ],
+        "title": "FlaggedEntryRead",
         "type": "object"
       },
       "ForgottenCounts": {
@@ -5537,6 +5832,189 @@
         "title": "InvitePlatformAdmin",
         "type": "object"
       },
+      "InvoiceLineRead": {
+        "properties": {
+          "amount_pence": {
+            "title": "Amount Pence",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "payment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Id"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "unit_amount_pence": {
+            "title": "Unit Amount Pence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "description",
+          "quantity",
+          "unit_amount_pence",
+          "amount_pence"
+        ],
+        "title": "InvoiceLineRead",
+        "type": "object"
+      },
+      "InvoiceRead": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "title": "Invoice Number",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceLineRead"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "po_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "total_pence": {
+            "title": "Total Pence",
+            "type": "integer"
+          },
+          "voided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided At"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "invoice_number",
+          "po_number",
+          "customer_name",
+          "status",
+          "currency",
+          "total_pence",
+          "issued_at",
+          "due_at",
+          "paid_at",
+          "voided_at",
+          "notes",
+          "lines"
+        ],
+        "title": "InvoiceRead",
+        "type": "object"
+      },
+      "IssueScimToken": {
+        "description": "Name the connector this token is for, so it can be told apart and revoked.",
+        "properties": {
+          "label": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "IssueScimToken",
+        "type": "object"
+      },
       "JobRead": {
         "description": "One queued job as procrastinate holds it.",
         "properties": {
@@ -5688,6 +6166,107 @@
           "reply"
         ],
         "title": "KnowledgeReply",
+        "type": "object"
+      },
+      "LandingReconciliationRead": {
+        "properties": {
+          "delta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "delta_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Percent"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "ledger_raw_count": {
+            "title": "Ledger Raw Count",
+            "type": "integer"
+          },
+          "mixpanel_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mixpanel Error"
+          },
+          "mixpanel_raw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mixpanel Raw Count"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "ledger_raw_count",
+          "status"
+        ],
+        "title": "LandingReconciliationRead",
         "type": "object"
       },
       "LegacyExchangeRequest": {
@@ -6001,6 +6580,111 @@
           "user_id"
         ],
         "title": "LivePerson",
+        "type": "object"
+      },
+      "LiveRunRead": {
+        "description": "One circuit run that has finished, as the board last saw it.\n\nField names follow `LiveCircuit`. `status` is `completed` when every\nstation was sat and `ended_early` when any was skipped.",
+        "properties": {
+          "candidate_count": {
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "circuit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Circuit Id"
+          },
+          "circuit_name": {
+            "title": "Circuit Name",
+            "type": "string"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "sitting_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitting Id"
+          },
+          "sitting_name": {
+            "title": "Sitting Name",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "stations_completed": {
+            "title": "Stations Completed",
+            "type": "integer"
+          },
+          "stations_total": {
+            "title": "Stations Total",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "supervisor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "circuit_id",
+          "circuit_name",
+          "sitting_id",
+          "sitting_name",
+          "mode",
+          "started_at",
+          "ended_at",
+          "candidate_count",
+          "stations_total",
+          "stations_completed",
+          "status"
+        ],
+        "title": "LiveRunRead",
         "type": "object"
       },
       "LiveStation": {
@@ -7391,6 +8075,18 @@
             "title": "Org Type",
             "type": "string"
           },
+          "parent_org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Org Id"
+          },
           "require_staff_mfa": {
             "default": false,
             "title": "Require Staff Mfa",
@@ -7678,6 +8374,33 @@
         "title": "Page[GroupRead]",
         "type": "object"
       },
+      "Page_InvoiceRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[InvoiceRead]",
+        "type": "object"
+      },
       "Page_LibraryStationRead_": {
         "properties": {
           "items": {
@@ -7703,6 +8426,33 @@
           "items"
         ],
         "title": "Page[LibraryStationRead]",
+        "type": "object"
+      },
+      "Page_LiveRunRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LiveRunRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[LiveRunRead]",
         "type": "object"
       },
       "Page_MembershipRead_": {
@@ -8326,6 +9076,87 @@
         "title": "Page[str]",
         "type": "object"
       },
+      "PartnerSpendRead": {
+        "properties": {
+          "acquired_user_count": {
+            "title": "Acquired User Count",
+            "type": "integer"
+          },
+          "billing_disclaimer": {
+            "default": "This is a rough estimate only. We count link visits on OSCE Guide and multiply by our agreed rate per visit. BMJ invoices based on their own click records, so this won't match what they bill you.",
+            "title": "Billing Disclaimer",
+            "type": "string"
+          },
+          "click_count_source": {
+            "default": "osce_raw_arrivals_proxy",
+            "title": "Click Count Source",
+            "type": "string"
+          },
+          "cost_per_acquisition_pence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Acquisition Pence"
+          },
+          "cost_per_click_pence": {
+            "title": "Cost Per Click Pence",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "gbp",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_click_count": {
+            "title": "Estimated Click Count",
+            "type": "integer"
+          },
+          "estimated_spend_pence": {
+            "title": "Estimated Spend Pence",
+            "type": "integer"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "gross_revenue_pence": {
+            "title": "Gross Revenue Pence",
+            "type": "integer"
+          },
+          "net_margin_pence": {
+            "title": "Net Margin Pence",
+            "type": "integer"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "estimated_click_count",
+          "cost_per_click_pence",
+          "estimated_spend_pence",
+          "gross_revenue_pence",
+          "net_margin_pence",
+          "acquired_user_count"
+        ],
+        "title": "PartnerSpendRead",
+        "type": "object"
+      },
       "PasswordResetConfirm": {
         "properties": {
           "password": {
@@ -8823,6 +9654,45 @@
         "title": "PhotoUploadFailure",
         "type": "object"
       },
+      "PilotConfigRead": {
+        "properties": {
+          "cost_per_click_pence": {
+            "title": "Cost Per Click Pence",
+            "type": "integer"
+          },
+          "last_alerted_threshold_pence": {
+            "title": "Last Alerted Threshold Pence",
+            "type": "integer"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "spend_alert_recipients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Spend Alert Recipients",
+            "type": "array"
+          },
+          "spend_alert_thresholds_pence": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Spend Alert Thresholds Pence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "partner",
+          "cost_per_click_pence",
+          "spend_alert_thresholds_pence",
+          "spend_alert_recipients",
+          "last_alerted_threshold_pence"
+        ],
+        "title": "PilotConfigRead",
+        "type": "object"
+      },
       "PlanRead": {
         "properties": {
           "amount_pence": {
@@ -8842,15 +9712,8 @@
             "type": "integer"
           },
           "exam_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exam Code"
+            "title": "Exam Code",
+            "type": "string"
           },
           "referral_amount_pence": {
             "anyOf": [
@@ -11540,6 +12403,24 @@
         "title": "ReindexReport",
         "type": "object"
       },
+      "ReleasedCandidate": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/DecisionRead"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "decision"
+        ],
+        "title": "ReleasedCandidate",
+        "type": "object"
+      },
       "RemoveStationPhoto": {
         "properties": {
           "photo_url": {
@@ -11932,6 +12813,102 @@
         "title": "RubricVersionRead",
         "type": "object"
       },
+      "SamlConnectionRead": {
+        "description": "An organisation's SAML identity provider, and the two URLs to give it.",
+        "properties": {
+          "display_name_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name Attribute"
+          },
+          "email_attribute": {
+            "title": "Email Attribute",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "first_name_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name Attribute"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "idp_entity_id": {
+            "title": "Idp Entity Id",
+            "type": "string"
+          },
+          "idp_sso_url": {
+            "title": "Idp Sso Url",
+            "type": "string"
+          },
+          "idp_x509_cert": {
+            "title": "Idp X509 Cert",
+            "type": "string"
+          },
+          "last_name_attribute": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name Attribute"
+          },
+          "org_slug": {
+            "title": "Org Slug",
+            "type": "string"
+          },
+          "sp_acs_url": {
+            "title": "Sp Acs Url",
+            "type": "string"
+          },
+          "sp_entity_id": {
+            "title": "Sp Entity Id",
+            "type": "string"
+          },
+          "sp_metadata_url": {
+            "title": "Sp Metadata Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "org_slug",
+          "idp_entity_id",
+          "idp_sso_url",
+          "idp_x509_cert",
+          "email_attribute",
+          "first_name_attribute",
+          "last_name_attribute",
+          "display_name_attribute",
+          "enabled",
+          "sp_entity_id",
+          "sp_acs_url",
+          "sp_metadata_url"
+        ],
+        "title": "SamlConnectionRead",
+        "type": "object"
+      },
       "SaveDecision": {
         "description": "A decision to save as a draft.\n\n`expected_revision` is the revision this screen last read, or 0 when it has\nread nothing. A save that does not name the current one is refused with\n`decision_revised` (409), so two administrators cannot overwrite each\nother's draft.",
         "properties": {
@@ -12042,6 +13019,88 @@
           "revision"
         ],
         "title": "SaveGpLeadReview",
+        "type": "object"
+      },
+      "SaveSamlConnection": {
+        "description": "What an institution's IdP metadata says, and which attributes carry the address and name.\n\nThe attribute defaults are the claim URIs Entra sends.",
+        "properties": {
+          "display_name_attribute": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://schemas.microsoft.com/identity/claims/displayname",
+            "title": "Display Name Attribute"
+          },
+          "email_attribute": {
+            "default": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Email Attribute",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "first_name_attribute": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+            "title": "First Name Attribute"
+          },
+          "idp_entity_id": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Idp Entity Id",
+            "type": "string"
+          },
+          "idp_sso_url": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "pattern": "^https://",
+            "title": "Idp Sso Url",
+            "type": "string"
+          },
+          "idp_x509_cert": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Idp X509 Cert",
+            "type": "string"
+          },
+          "last_name_attribute": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+            "title": "Last Name Attribute"
+          }
+        },
+        "required": [
+          "idp_entity_id",
+          "idp_sso_url",
+          "idp_x509_cert"
+        ],
+        "title": "SaveSamlConnection",
         "type": "object"
       },
       "SaveSsoConfig": {
@@ -12167,6 +13226,600 @@
           }
         },
         "title": "SceneRequest",
+        "type": "object"
+      },
+      "ScimEmail": {
+        "properties": {
+          "primary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ScimEmail",
+        "type": "object"
+      },
+      "ScimGroup": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ScimMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ScimMeta"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemas",
+          "id",
+          "displayName",
+          "members",
+          "meta"
+        ],
+        "title": "ScimGroup",
+        "type": "object"
+      },
+      "ScimGroupIn": {
+        "properties": {
+          "displayName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "externalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Externalid"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ScimMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "displayName"
+        ],
+        "title": "ScimGroupIn",
+        "type": "object"
+      },
+      "ScimGroupList": {
+        "properties": {
+          "Resources": {
+            "items": {
+              "$ref": "#/components/schemas/ScimGroup"
+            },
+            "title": "Resources",
+            "type": "array"
+          },
+          "itemsPerPage": {
+            "title": "Itemsperpage",
+            "type": "integer"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          },
+          "startIndex": {
+            "title": "Startindex",
+            "type": "integer"
+          },
+          "totalResults": {
+            "title": "Totalresults",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemas",
+          "totalResults",
+          "startIndex",
+          "itemsPerPage",
+          "Resources"
+        ],
+        "title": "ScimGroupList",
+        "type": "object"
+      },
+      "ScimMember": {
+        "properties": {
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ScimMember",
+        "type": "object"
+      },
+      "ScimMeta": {
+        "properties": {
+          "created": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created"
+          },
+          "lastModified": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastmodified"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "resourceType": {
+            "title": "Resourcetype",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resourceType"
+        ],
+        "title": "ScimMeta",
+        "type": "object"
+      },
+      "ScimName": {
+        "properties": {
+          "familyName": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Familyname"
+          },
+          "givenName": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Givenname"
+          }
+        },
+        "title": "ScimName",
+        "type": "object"
+      },
+      "ScimPatch": {
+        "properties": {
+          "Operations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Operations",
+            "type": "array"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "Operations"
+        ],
+        "title": "ScimPatch",
+        "type": "object"
+      },
+      "ScimServiceProviderConfig": {
+        "properties": {
+          "authenticationSchemes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Authenticationschemes",
+            "type": "array"
+          },
+          "bulk": {
+            "additionalProperties": true,
+            "title": "Bulk",
+            "type": "object"
+          },
+          "changePassword": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Changepassword",
+            "type": "object"
+          },
+          "etag": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Etag",
+            "type": "object"
+          },
+          "filter": {
+            "additionalProperties": true,
+            "title": "Filter",
+            "type": "object"
+          },
+          "patch": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Patch",
+            "type": "object"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          },
+          "sort": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Sort",
+            "type": "object"
+          }
+        },
+        "required": [
+          "schemas",
+          "patch",
+          "bulk",
+          "filter",
+          "changePassword",
+          "sort",
+          "etag",
+          "authenticationSchemes"
+        ],
+        "title": "ScimServiceProviderConfig",
+        "type": "object"
+      },
+      "ScimTokenIssued": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "token_prefix": {
+            "title": "Token Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "token",
+          "token_prefix",
+          "created_at"
+        ],
+        "title": "ScimTokenIssued",
+        "type": "object"
+      },
+      "ScimTokenRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "token_prefix": {
+            "title": "Token Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "token_prefix",
+          "created_at",
+          "last_used_at",
+          "revoked_at"
+        ],
+        "title": "ScimTokenRead",
+        "type": "object"
+      },
+      "ScimUser": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/ScimEmail"
+            },
+            "title": "Emails",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ScimMeta"
+          },
+          "name": {
+            "$ref": "#/components/schemas/ScimName"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          },
+          "userName": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemas",
+          "id",
+          "userName",
+          "name",
+          "emails",
+          "active",
+          "meta"
+        ],
+        "title": "ScimUser",
+        "type": "object"
+      },
+      "ScimUserIn": {
+        "properties": {
+          "active": {
+            "default": true,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/ScimEmail"
+            },
+            "title": "Emails",
+            "type": "array"
+          },
+          "externalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Externalid"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScimName"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          },
+          "userName": {
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userName"
+        ],
+        "title": "ScimUserIn",
+        "type": "object"
+      },
+      "ScimUserList": {
+        "properties": {
+          "Resources": {
+            "items": {
+              "$ref": "#/components/schemas/ScimUser"
+            },
+            "title": "Resources",
+            "type": "array"
+          },
+          "itemsPerPage": {
+            "title": "Itemsperpage",
+            "type": "integer"
+          },
+          "schemas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+          },
+          "startIndex": {
+            "title": "Startindex",
+            "type": "integer"
+          },
+          "totalResults": {
+            "title": "Totalresults",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemas",
+          "totalResults",
+          "startIndex",
+          "itemsPerPage",
+          "Resources"
+        ],
+        "title": "ScimUserList",
         "type": "object"
       },
       "ScoringJobRead": {
@@ -12471,6 +14124,21 @@
           "is_platform_admin"
         ],
         "title": "SetPlatformAdmin",
+        "type": "object"
+      },
+      "SetPoNumber": {
+        "properties": {
+          "po_number": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Po Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "po_number"
+        ],
+        "title": "SetPoNumber",
         "type": "object"
       },
       "SetRead": {
@@ -12810,6 +14478,25 @@
           "code"
         ],
         "title": "SkippedMembership",
+        "type": "object"
+      },
+      "SkippedRelease": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "code"
+        ],
+        "title": "SkippedRelease",
         "type": "object"
       },
       "SkippedTrainee": {
@@ -14105,6 +15792,17 @@
             "title": "Status",
             "type": "string"
           },
+          "used_by_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used By Count"
+          },
           "version": {
             "title": "Version",
             "type": "integer"
@@ -15250,6 +16948,38 @@
         "title": "UpdateGroup",
         "type": "object"
       },
+      "UpdateInvoice": {
+        "description": "What the console may change: the PO number while issued, and the status.",
+        "properties": {
+          "po_number": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "pattern": "^(issued|paid|void)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "UpdateInvoice",
+        "type": "object"
+      },
       "UpdateMe": {
         "description": "What a person may change about themselves. Absent means \"leave it\".",
         "properties": {
@@ -15498,6 +17228,61 @@
           }
         },
         "title": "UpdateOrganization",
+        "type": "object"
+      },
+      "UpdatePilotConfig": {
+        "description": "Change a pilot's rate or its alerts. Fields left out are unchanged.\n\n`reset_spend_alerts` forgets which thresholds have already alerted, so\nraised or lowered thresholds are judged afresh.",
+        "properties": {
+          "cost_per_click_pence": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Click Pence"
+          },
+          "reset_spend_alerts": {
+            "default": false,
+            "title": "Reset Spend Alerts",
+            "type": "boolean"
+          },
+          "spend_alert_recipients": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "email",
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend Alert Recipients"
+          },
+          "spend_alert_thresholds_pence": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spend Alert Thresholds Pence"
+          }
+        },
+        "title": "UpdatePilotConfig",
         "type": "object"
       },
       "UpdatePlatformUser": {
@@ -17022,6 +18807,19 @@
             "x-codes": [
               "unknown_assistant_type"
             ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -17237,6 +19035,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -17716,6 +19527,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -19844,6 +21668,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -19918,6 +21755,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -20186,6 +22036,19 @@
               "too_many_tags",
               "invalid_audience"
             ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -20422,6 +22285,19 @@
             "description": "empty_content",
             "x-codes": [
               "empty_content"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },
@@ -21049,6 +22925,294 @@
         ]
       }
     },
+    "/api/v1/growth/partners/{partner}/pilot-config": {
+      "get": {
+        "operationId": "growth_read_pilot_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PilotConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Pilot Config",
+        "tags": [
+          "growth"
+        ]
+      },
+      "patch": {
+        "operationId": "growth_update_pilot_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePilotConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PilotConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Pilot Config",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reconciliation": {
+      "get": {
+        "operationId": "growth_read_landing_reconciliation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LandingReconciliationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Landing Reconciliation",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/growth/partners/{partner}/ref-ids": {
       "get": {
         "description": "The references this partner puts in its links, one per exam in the pilot.\n\nReporter-gated like the funnel.",
@@ -21209,6 +23373,106 @@
           }
         ],
         "summary": "Add Reporter",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/spend": {
+      "get": {
+        "operationId": "growth_read_partner_spend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerSpendRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Partner Spend",
         "tags": [
           "growth"
         ]
@@ -21700,6 +23964,19 @@
             },
             "description": "Validation Error"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          },
           "503": {
             "content": {
               "application/json": {
@@ -21965,6 +24242,19 @@
             "x-codes": [
               "invalid_audience"
             ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -22163,6 +24453,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -22390,6 +24693,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -22570,6 +24886,19 @@
             "description": "invalid_avatar_file",
             "x-codes": [
               "invalid_avatar_file"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },
@@ -23081,6 +25410,50 @@
         "summary": "Export Me",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/api/v1/me/flagged-stations": {
+      "get": {
+        "operationId": "station_sets_list_flagged_stations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FlaggedEntryRead"
+                  },
+                  "title": "Response Station Sets List Flagged Stations",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Flagged Stations",
+        "tags": [
+          "station-sets"
         ]
       }
     },
@@ -23710,6 +26083,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -24283,6 +26669,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -24450,6 +26849,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -24528,6 +26940,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -24966,6 +27391,19 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },
@@ -25726,6 +28164,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -25919,6 +28370,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -26286,6 +28750,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -26400,6 +28877,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -26408,6 +28898,115 @@
           }
         ],
         "summary": "Start Debrief",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
+    "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/flag": {
+      "put": {
+        "operationId": "station_sets_flag_set_entry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found, set_entry_not_found",
+            "x-codes": [
+              "set_not_found",
+              "set_entry_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Flag Set Entry",
         "tags": [
           "station-sets"
         ]
@@ -27818,6 +30417,42 @@
               "description": "Organisation slug",
               "title": "Org Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "Only what this person did",
+            "in": "query",
+            "name": "actor_email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only what this person did",
+              "title": "Actor Email"
+            }
+          },
+          {
+            "description": "An action name, or its prefix such as `membership.`",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "An action name, or its prefix such as `membership.`",
+              "title": "Action"
             }
           },
           {
@@ -29753,6 +32388,92 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/review": {
+      "get": {
+        "operationId": "reviews_read_circuit_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircuitReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "review_not_found",
+            "x-codes": [
+              "review_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Circuit Review",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/review/finalize": {
       "post": {
         "operationId": "reviews_finalize_circuit_review",
@@ -31150,6 +33871,294 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/invoices": {
+      "get": {
+        "operationId": "billing_list_invoices",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_InvoiceRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Invoices",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/invoices/{invoice_id}": {
+      "get": {
+        "operationId": "billing_read_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_found",
+            "x-codes": [
+              "invoice_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Invoice",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/invoices/{invoice_id}/po-number": {
+      "put": {
+        "operationId": "billing_set_invoice_po_number",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPoNumber"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_found",
+            "x-codes": [
+              "invoice_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_editable",
+            "x-codes": [
+              "invoice_not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Invoice Po Number",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/live": {
       "get": {
         "description": "Every examination this organisation has running, in one request.\n\nThe screen that did not exist: a course lead on the morning of an OSCE\ncould open one circuit's console, or a list of sittings that did not say\nwhich were live.",
@@ -31209,6 +34218,99 @@
           }
         ],
         "summary": "Read Live Board",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/live/history": {
+      "get": {
+        "operationId": "dashboard_list_live_history",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_LiveRunRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Live History",
         "tags": [
           "dashboard"
         ]
@@ -31469,6 +34571,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -31543,6 +34658,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -31739,6 +34867,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -33076,6 +36217,1632 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/scim/tokens": {
+      "get": {
+        "operationId": "scim_list_scim_tokens",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScimTokenRead"
+                  },
+                  "title": "Response Scim List Scim Tokens",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Scim Tokens",
+        "tags": [
+          "scim"
+        ]
+      },
+      "post": {
+        "operationId": "scim_issue_scim_token",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueScimToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimTokenIssued"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Issue Scim Token",
+        "tags": [
+          "scim"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/scim/tokens/{token_id}": {
+      "delete": {
+        "operationId": "scim_revoke_scim_token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Token Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_token_not_found",
+            "x-codes": [
+              "scim_token_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Scim Token",
+        "tags": [
+          "scim"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/scim/v2/Groups": {
+      "get": {
+        "operationId": "scim_scim_list_groups",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startIndex",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Startindex"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Count"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimGroupList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_invalid_filter",
+            "x-codes": [
+              "scim_invalid_filter"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim List Groups",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "post": {
+        "operationId": "scim_scim_create_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScimGroupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimGroup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_invalid_value",
+            "x-codes": [
+              "scim_invalid_value"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_uniqueness",
+            "x-codes": [
+              "scim_uniqueness"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Create Group",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/scim/v2/Groups/{group_id}": {
+      "delete": {
+        "operationId": "scim_scim_delete_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Delete Group",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "get": {
+        "operationId": "scim_scim_read_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimGroup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Read Group",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "patch": {
+        "operationId": "scim_scim_patch_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScimPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimGroup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_invalid_value",
+            "x-codes": [
+              "scim_invalid_value"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_uniqueness",
+            "x-codes": [
+              "scim_uniqueness"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Patch Group",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "put": {
+        "operationId": "scim_scim_replace_group",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScimGroupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimGroup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_invalid_value",
+            "x-codes": [
+              "scim_invalid_value"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_uniqueness",
+            "x-codes": [
+              "scim_uniqueness"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Replace Group",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/scim/v2/ServiceProviderConfig": {
+      "get": {
+        "operationId": "scim_scim_service_provider_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimServiceProviderConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Service Provider Config",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/scim/v2/Users": {
+      "get": {
+        "operationId": "scim_scim_list_users",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startIndex",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Startindex"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Count"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimUserList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_invalid_filter",
+            "x-codes": [
+              "scim_invalid_filter"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim List Users",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "post": {
+        "operationId": "scim_scim_create_user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScimUserIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimUser"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_invalid_value",
+            "x-codes": [
+              "scim_invalid_value"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_uniqueness",
+            "x-codes": [
+              "scim_uniqueness"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Create User",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/scim/v2/Users/{user_id}": {
+      "delete": {
+        "operationId": "scim_scim_delete_user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Delete User",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "get": {
+        "operationId": "scim_scim_read_user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimUser"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Read User",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "patch": {
+        "operationId": "scim_scim_patch_user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScimPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimUser"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_mutability, scim_invalid_value",
+            "x-codes": [
+              "scim_mutability",
+              "scim_invalid_value"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Patch User",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      },
+      "put": {
+        "operationId": "scim_scim_replace_user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScimUserIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScimUser"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_mutability",
+            "x-codes": [
+              "scim_mutability"
+            ]
+          },
+          "401": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_unauthorized",
+            "x-codes": [
+              "scim_unauthorized"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/scim+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "scim_not_found",
+            "x-codes": [
+              "scim_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scim Replace User",
+        "tags": [
+          "scim",
+          "scim"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/sittings": {
       "get": {
         "operationId": "sittings_list_sittings",
@@ -34220,6 +38987,89 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/decisions/release": {
+      "post": {
+        "operationId": "results_release_many",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRelease"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkReleaseResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Release Many",
+        "tags": [
+          "results"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout": {
       "get": {
         "description": "The document a course lead downloads after an examination: the cohort ranked, what it\nadds up to, and what it recommends. Org admin only. Exam sittings only.",
@@ -34758,6 +39608,91 @@
       }
     },
     "/api/v1/orgs/{org_slug}/slots/{slot_id}/reviews/mine": {
+      "get": {
+        "operationId": "reviews_read_my_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found, review_not_found",
+            "x-codes": [
+              "slot_not_found",
+              "review_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read My Review",
+        "tags": [
+          "reviews"
+        ]
+      },
       "put": {
         "description": "Submit or update your own review of this slot. One per reviewer per slot.",
         "operationId": "reviews_submit_my_review",
@@ -34884,6 +39819,36 @@
               "description": "Organisation slug",
               "title": "Org Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -37185,6 +42150,120 @@
       }
     },
     "/api/v1/orgs/{org_slug}/trainee-groups/{group_id}/members": {
+      "get": {
+        "operationId": "roster_list_group_members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TraineeRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "group_not_found",
+            "x-codes": [
+              "group_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Group Members",
+        "tags": [
+          "roster"
+        ]
+      },
       "put": {
         "description": "Replace the group's full membership list.",
         "operationId": "roster_set_group_members",
@@ -37448,6 +42527,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -37522,6 +42614,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -37998,6 +43103,19 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
           }
         },
         "security": [
@@ -38089,6 +43207,19 @@
             "description": "invalid_audience",
             "x-codes": [
               "invalid_audience"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },
@@ -39616,6 +44747,118 @@
       }
     },
     "/api/v1/platform/exams": {
+      "get": {
+        "operationId": "catalog_list_platform_exams",
+        "parameters": [
+          {
+            "description": "Filter by exam status",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(draft|published|retired)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by exam status",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ExamRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Platform Exams",
+        "tags": [
+          "catalog"
+        ]
+      },
       "post": {
         "description": "A new platform exam, as a draft \u2014 the consumer catalogue.",
         "operationId": "catalog_create_exam",
@@ -40421,6 +45664,103 @@
         ]
       }
     },
+    "/api/v1/platform/invoices/{invoice_id}": {
+      "patch": {
+        "operationId": "billing_update_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_found",
+            "x-codes": [
+              "invoice_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invoice_not_editable",
+            "x-codes": [
+              "invoice_not_editable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Invoice",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/platform/jobs": {
       "get": {
         "description": "The queue, newest first. `status=failed` is what to look at when something is missing.\n\nNo retry route: a failed job is re-queued through the thing it was about \u2014\n`POST /platform/attempts/{id}/rescore` for a marking \u2014 so the retry is\nchecked against the current state rather than replayed blind.",
@@ -40636,6 +45976,43 @@
               ],
               "description": "Filter by organisation status",
               "title": "Status"
+            }
+          },
+          {
+            "description": "Part of the organisation's name or slug",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the organisation's name or slug",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Filter by organisation type",
+            "in": "query",
+            "name": "org_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by organisation type",
+              "title": "Org Type"
             }
           },
           {
@@ -41062,6 +46439,92 @@
         "summary": "Renew Contract",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/v1/platform/organizations/{org_slug}/invoices": {
+      "post": {
+        "operationId": "billing_create_invoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_invoice_line",
+            "x-codes": [
+              "invalid_invoice_line"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Invoice",
+        "tags": [
+          "billing"
         ]
       }
     },
@@ -41894,6 +47357,192 @@
           }
         ],
         "summary": "Save Config",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
+    "/api/v1/platform/orgs/{org_slug}/sso/saml": {
+      "get": {
+        "operationId": "sso_read_saml_connection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamlConnectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured, saml_connection_not_found",
+            "x-codes": [
+              "sso_not_configured",
+              "saml_connection_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Saml Connection",
+        "tags": [
+          "sso"
+        ]
+      },
+      "put": {
+        "operationId": "sso_save_saml_connection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSamlConnection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SamlConnectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sso_not_configured",
+            "x-codes": [
+              "sso_not_configured"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_saml_connection",
+            "x-codes": [
+              "invalid_saml_connection"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Saml Connection",
         "tags": [
           "sso"
         ]
@@ -43131,6 +48780,38 @@
     "/api/v1/platform/station-templates": {
       "get": {
         "operationId": "stations_list_platform_station_templates",
+        "parameters": [
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -43168,6 +48849,16 @@
             "x-codes": [
               "forbidden"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -46398,6 +52089,134 @@
         ]
       }
     },
+    "/api/v1/sso/saml/{connection_id}/acs": {
+      "post": {
+        "operationId": "sso_saml_acs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_sso_saml_acs"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "303": {
+            "description": "To the frontend SSO callback page, with `token` or `error`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "saml_connection_not_found",
+            "x-codes": [
+              "saml_connection_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "summary": "Saml Acs",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
+    "/api/v1/sso/saml/{connection_id}/metadata": {
+      "get": {
+        "operationId": "sso_saml_metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/samlmetadata+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "SAML 2.0 service-provider metadata."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "saml_connection_not_found",
+            "x-codes": [
+              "saml_connection_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Saml Metadata",
+        "tags": [
+          "sso"
+        ]
+      }
+    },
     "/api/v1/station-generation-profiles": {
       "get": {
         "operationId": "station_generation_profiles_list_station_generation_profiles",
@@ -46894,6 +52713,19 @@
             "x-codes": [
               "empty_content",
               "invalid_audience"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
             ]
           }
         },
@@ -47911,6 +53743,10 @@
     {
       "description": "Trainees, cohorts and groups",
       "name": "roster"
+    },
+    {
+      "description": "SCIM 2.0 provisioning of a roster by an identity provider",
+      "name": "scim"
     },
     {
       "description": "Human judgement about a slot",

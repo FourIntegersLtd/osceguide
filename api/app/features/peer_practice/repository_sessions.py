@@ -8,10 +8,10 @@ already exists.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from datetime import datetime
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.peer_practice.models import PracticeHistory, PracticeSession
@@ -200,3 +200,21 @@ async def set_doctor_attempt(session: AsyncSession, session_id: uuid.UUID, *, at
         .where(PracticeSession.id == session_id)
         .values(doctor_attempt_id=attempt_id, recording_state="scored", recording_error=None)
     )
+
+
+async def session_counts_by_station_version(
+    session: AsyncSession, station_version_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many peer practice sessions were played on each station version."""
+    if not station_version_ids:
+        return {}
+    stmt = (
+        select(PracticeSession.station_version_id, func.count(PracticeSession.id))
+        .where(PracticeSession.station_version_id.in_(list(station_version_ids)))
+        .group_by(PracticeSession.station_version_id)
+    )
+    return {
+        version_id: int(count)
+        for version_id, count in (await session.execute(stmt)).all()
+        if version_id is not None
+    }

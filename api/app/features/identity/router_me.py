@@ -15,7 +15,7 @@ from app.core.events import get_event_bus, user_topic
 from app.core.memberships import MembershipsFor
 from app.core.openapi import fan_in_responses
 from app.core.ports import ClockDep, EventBus
-from app.core.rate_limit import TooManyRequests, caller_key
+from app.core.rate_limit import USER_WRITE, TooManyRequests, caller_key, per_user
 from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS, fan_in_stream
 from app.core.streams import StreamPrincipal
@@ -75,7 +75,8 @@ async def read_me(
 @router.post(
     "/me/avatar",
     response_model=schemas.UserRead,
-    responses=error_responses(Unauthenticated, InvalidAvatarFile),
+    responses=error_responses(TooManyRequests, Unauthenticated, InvalidAvatarFile),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def upload_my_avatar(
     principal: CurrentPrincipal,

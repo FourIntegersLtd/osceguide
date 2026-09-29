@@ -52,7 +52,8 @@ async def settle_payment(
     takes exactly the same steps as the webhook.
     """
     if not plan_row.exam_code:
-        # Defaulting to one exam here silently sold the wrong thing (B-2).
+        # Defaulting to one exam here silently sold the wrong thing (B-2). The
+        # column is NOT NULL now; a row from before that holds '' and lands here.
         raise errors.UnknownPlanError(f"Plan {plan_row.code!r} names no exam, so there is nothing to grant.")
     plan = _as_plans([plan_row])[0]
     starts_at, ends_at = domain.access_window(plan, paid_at=now)
@@ -105,7 +106,7 @@ async def settle_payment(
                 receipt_id=receipt_id,
                 customer_email=email,
                 customer_name=customer_name,
-                exam_code=plan_row.exam_code or "",
+                exam_code=plan_row.exam_code,
                 plan_code=plan_row.code,
                 amount_total_pence=amount_total,
                 amount_tax_pence=amount_tax,

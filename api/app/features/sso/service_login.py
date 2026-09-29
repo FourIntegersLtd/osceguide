@@ -17,10 +17,10 @@ from urllib.parse import urlencode
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.memberships import MembershipLookup
-from app.core.ports import SsoBroker, SsoBrokerUnavailable
+from app.core.ports import SsoBroker, SsoBrokerUnavailable, SsoIdentity
 from app.core.settings import Settings, SettingsDep
 from app.features.identity import service_sso
-from app.features.sso import domain, errors, repository, schemas
+from app.features.sso import domain, errors, repository, schemas, service_saml
 from app.features.sso import state as sso_state
 from app.features.sso.models import OrganizationSso
 from app.features.tenancy import service as tenancy
@@ -115,7 +115,13 @@ async def build_login(
 ) -> schemas.SsoLoginResult:
     """Where to send this organisation's people to sign in."""
     config = await _enabled_config(session, org_slug)
-    broker = brokers.for_provider(_configured_provider(config))
+    provider = _configured_provider(config)
+    if provider is domain.Provider.SAML:
+        # SAML is not a broker call: the request is built and bound to the
+        # signed state here, and the IdP posts back to our own consumer.
+        url = await service_saml.sign_in_url(session, config.org_id, org_slug, settings=settings, now=now)
+        return schemas.SsoLoginResult(sign_in_url=url)
+    broker = brokers.for_provider(provider)
     # SEC-015: a signed, short-lived state carries a fresh nonce back to the
     # callback (the platform stores nothing between the two — ADR 0004).
     state, nonce = sso_state.issue_state(settings, org_slug=org_slug, now=now)
@@ -145,23 +151,25 @@ async def complete_callback(
     """Verify the broker's token, provision the person, answer with a session."""
     config = await _enabled_config(session, org_slug)
     provider = _configured_provider(config)
-    broker = brokers.for_provider(provider)
-    # SEC-015: on the OIDC code flow, the callback must carry the signed state
-    # this org's sign-in minted, and the nonce inside it must match the id
-    # token. A missing, tampered, expired or cross-org state fails here before
-    # the broker is asked, so a forged or replayed callback cannot mint a
-    # session.
-    expected_nonce: str | None = None
-    if _requires_state(provider):
-        if not state:
-            raise errors.SsoVerificationFailed()
-        expected_nonce = sso_state.verify_state(settings, state=state, org_slug=org_slug)
-        if expected_nonce is None:
-            raise errors.SsoVerificationFailed()
-    try:
-        identity = await broker.verify(token=token, issuer=config.issuer, expected_nonce=expected_nonce)
-    except SsoBrokerUnavailable as exc:
-        raise errors.SsoLoginUnavailable() from exc
+    if provider is domain.Provider.SAML:
+        # The assertion consumer has already verified the IdP's signed response
+        # and its `InResponseTo`; what arrives here is its signed hand-off.
+        identity = await service_saml.identity_from_handoff(settings, token=token, org_slug=org_slug)
+        # The IdP is the customer's own, so it may assert any address. It is
+        # believed only for an email domain the platform bound to this organisation;
+        # otherwise it could sign someone into another tenant's account.
+        if identity is not None and not await _email_domain_is_bound(session, config, identity.email):
+            identity = None
+    else:
+        identity = await _verified_by_broker(
+            brokers.for_provider(provider),
+            config,
+            provider,
+            token=token,
+            state=state,
+            settings=settings,
+            org_slug=org_slug,
+        )
     if identity is None:
         raise errors.SsoVerificationFailed()
 
@@ -184,3 +192,44 @@ async def complete_callback(
         token_type=auth.token_type,
         expires_in=auth.expires_in,
     )
+
+
+async def _email_domain_is_bound(session: AsyncSession, config: OrganizationSso, email: str) -> bool:
+    """Whether the address's domain is one this organisation's SSO configuration owns."""
+    _, _, email_domain = email.rpartition("@")
+    if not email_domain:
+        return False
+    kind = domain.BindingKind.EMAIL_DOMAIN
+    owner = await repository.binding_owner(
+        session, kind=kind.value, binding_value=domain.normalise_binding(kind, email_domain)
+    )
+    return owner == config.id
+
+
+async def _verified_by_broker(
+    broker: SsoBroker,
+    config: OrganizationSso,
+    provider: domain.Provider,
+    *,
+    token: str,
+    state: str | None,
+    settings: Settings,
+    org_slug: str,
+) -> SsoIdentity | None:
+    """Who an OIDC broker (Clerk, Entra) vouches for, with the SEC-015 state checked first."""
+    # SEC-015: on the OIDC code flow, the callback must carry the signed state
+    # this org's sign-in minted, and the nonce inside it must match the id
+    # token. A missing, tampered, expired or cross-org state fails here before
+    # the broker is asked, so a forged or replayed callback cannot mint a
+    # session.
+    expected_nonce: str | None = None
+    if _requires_state(provider):
+        if not state:
+            raise errors.SsoVerificationFailed()
+        expected_nonce = sso_state.verify_state(settings, state=state, org_slug=org_slug)
+        if expected_nonce is None:
+            raise errors.SsoVerificationFailed()
+    try:
+        return await broker.verify(token=token, issuer=config.issuer, expected_nonce=expected_nonce)
+    except SsoBrokerUnavailable as exc:
+        raise errors.SsoLoginUnavailable() from exc

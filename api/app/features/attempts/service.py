@@ -218,3 +218,11 @@ async def latest_attempt_for_set_entry(session: AsyncSession, set_entry_id: uuid
     """
     attempt = await repository.latest_for_set_entry(session, set_entry_id)
     return None if attempt is None else attempt.id
+
+
+async def attempt_counts_by_station_version(
+    session: AsyncSession, station_version_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many attempts were made against each station version, for an
+    author deciding whether a version is safe to throw away."""
+    return await repository.attempt_counts_by_station_version(session, station_version_ids)

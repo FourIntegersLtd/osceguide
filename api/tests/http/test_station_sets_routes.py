@@ -440,3 +440,82 @@ async def test_a_debrief_does_not_recheck_exam_access_after_the_source_attempt(
     )
     assert debrief.status_code == 201, debrief.text
     assert debrief.json()["kind"] == "debrief"
+
+
+async def test_a_station_can_be_flagged_to_come_back_to(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The legacy "Flagged Stations" tab: flag during practice, find it again later."""
+    token = await a_learner(client, db_session, make_actor, "flagger@example.com")
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "Week one", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    entry_id = created["entries"][0]["id"]
+    assert created["entries"][0]["flagged_at"] is None
+    flag_url = f"/api/v1/me/station-sets/{created['id']}/entries/{entry_id}/flag"
+
+    flagged = await client.put(flag_url, json={"flagged": True}, headers=bearer(token))
+    assert flagged.status_code == 200, flagged.text
+    first_flagged_at = flagged.json()["entries"][0]["flagged_at"]
+    assert first_flagged_at is not None
+
+    again = await client.put(flag_url, json={"flagged": True}, headers=bearer(token))
+    assert again.json()["entries"][0]["flagged_at"] == first_flagged_at, "a second tap keeps the first"
+
+    listed = await client.get("/api/v1/me/flagged-stations", headers=bearer(token))
+    assert listed.status_code == 200, listed.text
+    assert listed.json() == [
+        {
+            "set_id": created["id"],
+            "set_name": "Week one",
+            "exam_code": "sca",
+            "entry_id": entry_id,
+            "station_version_id": str(version),
+            "station_title": "Chest pain",
+            "flagged_at": first_flagged_at,
+        }
+    ]
+
+    stranger = await make_actor("flag-stranger@example.com")
+    assert (await client.get("/api/v1/me/flagged-stations", headers=bearer(stranger))).json() == []
+
+    cleared = await client.put(flag_url, json={"flagged": False}, headers=bearer(token))
+    assert cleared.json()["entries"][0]["flagged_at"] is None
+    assert (await client.get("/api/v1/me/flagged-stations", headers=bearer(token))).json() == []
+
+
+async def test_someone_elses_entry_cannot_be_flagged(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await a_learner(client, db_session, make_actor, "flag-owner@example.com")
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    entry_id = created["entries"][0]["id"]
+    stranger = await make_actor("flag-other@example.com")
+
+    refused = await client.put(
+        f"/api/v1/me/station-sets/{created['id']}/entries/{entry_id}/flag",
+        json={"flagged": True},
+        headers=bearer(stranger),
+    )
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "set_not_found"
+
+    unknown = await client.put(
+        f"/api/v1/me/station-sets/{created['id']}/entries/{uuid.uuid4()}/flag",
+        json={"flagged": True},
+        headers=bearer(token),
+    )
+    assert unknown.status_code == 404
+    assert unknown.json()["code"] == "set_entry_not_found"

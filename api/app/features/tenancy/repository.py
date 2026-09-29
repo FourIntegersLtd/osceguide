@@ -213,10 +213,22 @@ async def write_audit(
 
 
 async def list_audit(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    actor_email: str | None = None,
+    action: str | None = None,
 ) -> tuple[list[AuditEntry], str | None]:
-    """A page of one organisation's audit log, oldest first."""
+    """A page of one organisation's audit log, newest first, optionally narrowed
+    to one person's acts or to an action name or its prefix."""
     stmt = select(AuditEntry).where(AuditEntry.org_id == org_id)
+    if actor_email:
+        # Compared, not pattern-matched: a `%` in the filter must not widen it.
+        stmt = stmt.where(func.lower(AuditEntry.actor_email) == actor_email.strip().lower())
+    if action:
+        stmt = stmt.where(AuditEntry.action.startswith(action.strip(), autoescape=True))
     return await keyset_page(
         session, stmt, sort_col=AuditEntry.at, id_col=AuditEntry.id, limit=limit, cursor=cursor
     )

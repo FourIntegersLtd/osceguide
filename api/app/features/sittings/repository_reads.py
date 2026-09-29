@@ -8,11 +8,20 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee, Sitting, Slot
+from app.core.pagination import keyset_page
+from app.features.sittings.models import (
+    Circuit,
+    CircuitRunHistory,
+    CircuitStation,
+    CircuitTrainee,
+    Sitting,
+    Slot,
+)
 
 
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
@@ -172,3 +181,18 @@ async def circuit_trainee_ids(
         .order_by(CircuitTrainee.position)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def list_run_history(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+) -> tuple[list[CircuitRunHistory], str | None]:
+    """A page of this organisation's finished circuit runs, most recently ended first."""
+    stmt = select(CircuitRunHistory).where(CircuitRunHistory.org_id == org_id)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=CircuitRunHistory.ended_at,
+        id_col=CircuitRunHistory.id,
+        limit=limit,
+        cursor=cursor,
+    )

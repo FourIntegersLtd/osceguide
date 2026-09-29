@@ -43,6 +43,7 @@ TAGS: list[dict[str, str]] = [
     {"name": "billing", "description": "Plans, payment and what it grants"},
     {"name": "sittings", "description": "Scheduled examinations and training"},
     {"name": "roster", "description": "Trainees, cohorts and groups"},
+    {"name": "scim", "description": "SCIM 2.0 provisioning of a roster by an identity provider"},
     {"name": "reviews", "description": "Human judgement about a slot"},
     {"name": "results", "description": "Candidate outcomes and their release"},
     {"name": "dashboard", "description": "What a learner sees on opening the app"},
@@ -148,9 +149,10 @@ SSE_MEDIA_TYPE = "text/event-stream"
 # and so the route guard's exemption is stated rather than inferred.
 DOCUMENT_MEDIA_TYPE = "text/html"
 # A file the browser saves rather than a JSON object: a receipt, a spreadsheet,
-# a PDF. A route guard treats these as declared, so they do not need a
-# response model that would describe nothing.
-FILE_MEDIA_TYPES = frozenset({DOCUMENT_MEDIA_TYPE, "text/csv", "application/pdf"})
+# a PDF, a SAML metadata document. A route guard treats these as declared, so
+# they do not need a response model that would describe nothing.
+SAML_METADATA_MEDIA_TYPE = "application/samlmetadata+xml"
+FILE_MEDIA_TYPES = frozenset({DOCUMENT_MEDIA_TYPE, "text/csv", "application/pdf", SAML_METADATA_MEDIA_TYPE})
 
 
 def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[str, Any]]:

@@ -172,6 +172,13 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Mixpanel's Query API, read-only, used to corroborate the partner arrival
+    # ledger (G-1). Off unless enabled, and a missing secret reports the
+    # reconciliation as unconfigured rather than failing: the ledger in this
+    # database is what a partner is paid on, Mixpanel only checks it.
+    mixpanel_api_secret: str = ""
+    mixpanel_query_api_enabled: bool = False
+
     # A referrer's bank details (A1) are the one plaintext this platform would
     # otherwise store that a database dump could turn straight into fraud, so
     # they are encrypted at rest under this key (Fernet, symmetric). See
@@ -217,6 +224,10 @@ class Settings(BaseSettings):
     # comma-separated form in `.env.example` failed at startup.
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     frontend_url: str = "http://localhost:3000"
+    # This API's own public address. SAML needs it: the service provider's
+    # entity id and its assertion consumer URL are absolute, are pasted into
+    # an institution's IdP, and are checked against every response (E-20).
+    public_api_url: str = "http://localhost:8002"
     # Where a safety report (abuse, no-show) lands. The retiring backend sent
     # these straight to an inbox; this queues the same email through the
     # notification outbox rather than an ad-hoc send inside the request.

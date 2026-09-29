@@ -104,3 +104,22 @@ class SittingDetail:
 
     sitting: SittingRef
     circuits: list[CircuitDetail] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class CircuitRun:
+    """One finished run of a circuit, as it stood when it ended."""
+
+    id: uuid.UUID
+    circuit_id: uuid.UUID | None
+    circuit_name: str
+    sitting_id: uuid.UUID | None
+    sitting_name: str
+    mode: str
+    supervisor_user_id: uuid.UUID | None
+    started_at: datetime | None
+    ended_at: datetime
+    candidate_count: int
+    stations_total: int
+    stations_completed: int
+    status: str

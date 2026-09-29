@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -73,3 +73,32 @@ class OrganizationSsoBinding(Base, UUIDPrimaryKey, Timestamps):
     )
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     value: Mapped[str] = mapped_column(CITEXT, nullable=False)
+
+
+class OrganizationSamlConnection(Base, UUIDPrimaryKey, Timestamps):
+    """One organisation's SAML 2.0 identity provider (E-20), beside its `OrganizationSso`.
+
+    SAML is not OIDC: there is no discovery document and no client secret. The
+    IdP is described by what its own metadata says — an entity id, a sign-in
+    URL and the certificate it signs with — and which of its attributes carry
+    the person's address and name. The connection's id is the public handle
+    the service-provider metadata and assertion consumer URLs are built on.
+    """
+
+    __tablename__ = "organization_saml_connections"
+    __table_args__ = (UniqueConstraint("org_id", name="uq_organization_saml_connections_org_id"),)
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    idp_entity_id: Mapped[str] = mapped_column(String(500), nullable=False)
+    idp_sso_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    # PEM or bare base64. Public: it is what verifies the IdP's signature.
+    idp_x509_cert: Mapped[str] = mapped_column(Text, nullable=False)
+    # Which attribute carries what. Defaults are the claim URIs Entra sends;
+    # Okta and others are set per connection.
+    email_attribute: Mapped[str] = mapped_column(String(255), nullable=False)
+    first_name_attribute: Mapped[str | None] = mapped_column(String(255))
+    last_name_attribute: Mapped[str | None] = mapped_column(String(255))
+    display_name_attribute: Mapped[str | None] = mapped_column(String(255))
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

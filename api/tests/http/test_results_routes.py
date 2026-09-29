@@ -465,3 +465,57 @@ async def test_another_orgs_trainee_is_not_decidable(
 
     assert refused.status_code == 404
     assert refused.json()["code"] == "trainee_not_found"
+
+
+async def test_a_bulk_release_emails_each_candidate_and_skips_the_unready(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """One button for a whole sitting: the signed-off are released one email
+    each, and a draft is reported back instead of failing everybody else."""
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+    from app.features.roster.models import Trainee
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, first, first_email = await a_sitting_and_named_trainee(db_session, org_id)
+    second_email = f"c{uuid.uuid4().hex[:8]}@example.com"
+    draft_email = f"c{uuid.uuid4().hex[:8]}@example.com"
+    second_row = Trainee(org_id=org_id, email=second_email)
+    draft_row = Trainee(org_id=org_id, email=draft_email)
+    db_session.add_all([second_row, draft_row])
+    await db_session.flush()
+    second, draft = second_row.id, draft_row.id
+
+    decision = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
+    for trainee in (first, second, draft):
+        await client.put(url(sitting, trainee), json=decision, headers=bearer(admin))
+    for trainee in (first, second):
+        await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+
+    bulk = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting}/decisions/release",
+        json={
+            "candidates": [
+                {"trainee_id": str(trainee), "evidence": EVIDENCE} for trainee in (first, second, draft)
+            ]
+        },
+        headers=bearer(admin),
+    )
+    assert bulk.status_code == 200, bulk.text
+    released = bulk.json()["released"]
+    assert [entry["trainee_id"] for entry in released] == [str(first), str(second)]
+    assert {entry["decision"]["workflow_state"] for entry in released} == {"released"}
+    assert bulk.json()["skipped"] == [{"trainee_id": str(draft), "code": "invalid_workflow"}]
+
+    queued = (
+        await db_session.execute(
+            select(OutboundMessage.recipient).where(
+                OutboundMessage.template_key == "candidate_result_released"
+            )
+        )
+    ).scalars()
+    assert sorted(queued) == sorted([first_email, second_email])
+
+    still_draft = await client.get(url(sitting, draft), headers=bearer(admin))
+    assert still_draft.json()["workflow_state"] == "draft"

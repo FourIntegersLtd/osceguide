@@ -49,6 +49,20 @@ async def list_slot_reviews(
     return await service_summary.read_slot_reviews(session, workspace.org_id, slot_id)
 
 
+# The caller's own review of this slot, draft or complete.
+@router.get(
+    "/orgs/{org_slug}/slots/{slot_id}/reviews/mine",
+    response_model=schemas.SlotReviewRead,
+    responses=error_responses(Forbidden, errors.SlotNotFound, errors.ReviewNotFound),
+)
+async def read_my_review(
+    slot_id: uuid.UUID, workspace: OrgReader, session: Session
+) -> schemas.SlotReviewRead:
+    return await service.read_my_slot_review(
+        session, workspace.org_id, slot_id, submitted_by=workspace.principal.user_id
+    )
+
+
 @router.put(
     "/orgs/{org_slug}/slots/{slot_id}/reviews/mine",
     response_model=schemas.SlotReviewRead,
@@ -148,3 +162,15 @@ async def finalize_circuit_review(
         finalized_by=workspace.principal.user_id,
         now=clock.now(),
     )
+
+
+# Whether a circuit's merged review has been finalised, and by whom.
+@router.get(
+    "/orgs/{org_slug}/circuits/{circuit_id}/review",
+    response_model=schemas.CircuitReviewRead,
+    responses=error_responses(Forbidden, errors.ReviewNotFound),
+)
+async def read_circuit_review(
+    circuit_id: uuid.UUID, workspace: OrgReader, session: Session
+) -> schemas.CircuitReviewRead:
+    return await service.read_circuit_review(session, workspace.org_id, circuit_id)

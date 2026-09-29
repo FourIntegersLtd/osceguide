@@ -270,3 +270,33 @@ async def test_another_orgs_programmes_are_invisible(client: AsyncClient, make_a
         headers=bearer(await member(make_actor, guys, "guys", "owner")),
     )
     assert response.json()["items"] == []
+
+
+async def test_the_console_lists_platform_exams_in_every_status(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Drafts included, a page at a time, and narrowed by status on request."""
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="first-live")
+    await create_exam(client, admin, code="second-draft", publish=False)
+    await create_exam(client, admin, code="third-live")
+
+    first_page = await client.get("/api/v1/platform/exams", params={"limit": 2}, headers=bearer(admin))
+    assert first_page.status_code == 200, first_page.text
+    assert len(first_page.json()["items"]) == 2
+    rest = await client.get(
+        "/api/v1/platform/exams",
+        params={"limit": 2, "cursor": first_page.json()["next_cursor"]},
+        headers=bearer(admin),
+    )
+    assert rest.json()["next_cursor"] is None
+    # One test transaction gives every row the same `created_at`, so the id
+    # decides the order; what matters is that each exam appears exactly once.
+    listed = [exam["code"] for exam in first_page.json()["items"] + rest.json()["items"]]
+    assert sorted(listed) == ["first-live", "second-draft", "third-live"]
+
+    drafts = await client.get("/api/v1/platform/exams", params={"status": "draft"}, headers=bearer(admin))
+    assert [exam["code"] for exam in drafts.json()["items"]] == ["second-draft"]
+
+
+async def test_only_a_platform_admin_lists_platform_exams(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    refused = await client.get("/api/v1/platform/exams", headers=bearer(await make_actor("t@example.com")))
+    assert refused.status_code == 403

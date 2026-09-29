@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-70 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+76 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -160,6 +160,24 @@ A host, or an email domain, that means one organisation.
 UNIQUE `(kind, value)` — across the whole platform, not within an organisation.
 A hostname belongs to exactly one, and two rows claiming `nhs.net` would make
 home-realm discovery a coin toss.
+
+### `organization_saml_connections`
+One organisation's SAML 2.0 identity provider (E-20), for an institution whose IdP
+speaks only SAML. Owned by `sso`, beside `organization_sso`, whose `provider` is
+`saml` and whose `issuer` holds the IdP's entity id when this is the way in. At
+most one per organisation. The row's `id` is the public handle the SP metadata
+(`GET /sso/saml/{id}/metadata`) and assertion consumer (`POST /sso/saml/{id}/acs`)
+URLs are built on, under `PUBLIC_API_URL`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | UNIQUE `uq_organization_saml_connections_org_id` |
+| `idp_entity_id` | `varchar(500) not null` | checked against every response's issuer |
+| `idp_sso_url` | `varchar(1000) not null` | where the AuthnRequest is sent (HTTP-Redirect) |
+| `idp_x509_cert` | `text not null` | the IdP's signing certificate; public. Responses signed by anything else are refused by `python3-saml` |
+| `email_attribute` | `varchar(255) not null` | defaults to Entra's `emailaddress` claim URI |
+| `first_name_attribute` / `last_name_attribute` / `display_name_attribute` | `varchar(255) null` | Entra's claim URIs by default |
+| `enabled` | `bool not null` | a disabled connection answers `saml_connection_not_found` |
 
 ### `cvs`
 A learner's uploaded CV, and what was read out of it. The PDF is not stored:
@@ -543,8 +561,10 @@ a set is not a circuit: a slot is sat once.
 | `attempts` | `int not null default 0` | capped by `exams.station_attempt_limit` |
 | `debrief_attempts` | `int not null default 0` | |
 | `last_attempt_at` | `timestamptz null` | |
+| `flagged_at` | `timestamptz null` | when the owner flagged this station to come back to (legacy "Flagged Stations"); personal, unlike a `station_flags` report to the content team |
 
-UNIQUE `(set_id, position)`.
+UNIQUE `(set_id, position)`. Partial index `ix_station_set_entries_flagged` on
+`set_id` where `flagged_at IS NOT NULL`, for the flagged-stations list.
 
 ## media — 1 table
 
@@ -560,6 +580,7 @@ publish-and-read logic in each.
 | `title` | `varchar(300) not null` | |
 | `summary` | `text null` | |
 | `content` | `jsonb not null default {}` | shape differs by kind — slides have a deck, a podcast has an audio url |
+| `specialty` | `text null` | the public catalogue facet, written from `content` on every write (`domain.specialty_of`) so a locked item is filed without reading its body |
 | `exam_id` | `uuid null` → `exams.id` SET NULL | indexed |
 | `author_id` | `uuid null` → `users.id` SET NULL | |
 | `status` | `varchar(16) not null default 'draft'` | |
@@ -775,7 +796,7 @@ What a supervisor finalises for a whole circuit.
 
 # Institutions running exams
 
-## sittings — 6 tables
+## sittings — 7 tables
 
 Domain bounds: `EXAM_MAX_STATIONS = 12`, `DEFAULT_READING_MINUTES = 3`,
 `DEFAULT_SIMULATION_MINUTES = 10`, `READING_BOUNDS = (1, 30)`,
@@ -844,6 +865,29 @@ it and by whom, and before this the answer was nowhere.
 | `phase_seq_before` / `phase_seq_after` | `int not null` | places the intervention against the transition it displaced |
 | `at` | `timestamptz not null` | |
 
+### `circuit_run_history`
+One finished run of a circuit, as the exam-day board last saw it: written once by
+`service_steps.finish` in the transaction that ends the circuit, never edited. The
+board is built live from running circuits, so without this a circuit that ended
+left nothing to look back at. No `updated_at`. Read by
+`GET /orgs/{org_slug}/live/history`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | index `(org_id, ended_at)` — the history's query |
+| `circuit_id` | `uuid null` → `circuits.id` SET NULL | SET NULL so a later delete keeps what happened on the day |
+| `sitting_id` | `uuid null` → `sittings.id` SET NULL | |
+| `circuit_name` / `sitting_name` | `varchar(200) not null` | copied, as they were when it ended |
+| `mode` | `varchar(32) not null` | the sitting's mode |
+| `supervisor_user_id` | `uuid null` → `users.id` SET NULL | |
+| `started_at` | `timestamptz null` | |
+| `ended_at` | `timestamptz not null` | |
+| `candidate_count` | `int not null` | distinct candidates across the slots |
+| `stations_total` / `stations_completed` | `int not null` | completed counts slots actually sat, not skipped ones |
+| `status` | `varchar(16) not null` | `completed` \| `ended_early` (`domain_run.run_status`) |
+
+UNIQUE `(circuit_id, ended_at)`: a rescued circuit that ends again is a second run.
+
 ### `circuit_stations`
 Replaces b2b's `station_refs jsonb`. A real row per station, so a station cannot be
 deleted out from under a circuit and "which circuits use this station?" is a query.
@@ -888,7 +932,7 @@ coming.
 
 A slot carries no clock. That is the circuit's: see `circuits` above.
 
-## roster — 4 tables
+## roster — 5 tables
 
 ### `cohorts`
 `org_id` → `organizations.id` CASCADE, `name varchar(200) not null`,
@@ -928,6 +972,22 @@ group empties it, two groups sharing a label collide, and nobody can be in two g
 `group_id` → `trainee_groups.id` CASCADE, `trainee_id` → `trainees.id` CASCADE
 (indexed). UNIQUE `(group_id, trainee_id)`.
 
+### `scim_tokens`
+A bearer token an organisation's identity provider (Entra, Okta) uses to provision
+its roster over SCIM 2.0 (E-21), issued by the organisation's admin. Only the hash is
+kept: the token is shown once, and a dump must not let anybody add people to an
+institution. Revoked, never deleted.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | indexed |
+| `token_hash` | `varchar(64) not null unique` | sha256 hex; the token carries 256 bits, so there is nothing to salt against |
+| `token_prefix` | `varchar(16) not null` | the first characters, to tell tokens apart on screen |
+| `label` | `varchar(100) not null` | which connector it is for |
+| `created_by` | `uuid null` → `users.id` SET NULL | |
+| `last_used_at` | `timestamptz null` | stamped on every SCIM request, so a dead connector is visible |
+| `revoked_at` | `timestamptz null` | a revoked token is refused from the next request |
+
 ---
 
 # Access, money and growth
@@ -956,7 +1016,7 @@ Partial index `ix_entitlements_live` on `(user_id, exam_id)` WHERE
 `revoked_at IS NULL` — the only lookup the access check performs.
 Domain: `ALLOWED_TRIAL_STATIONS = 3`, `TRIAL_DAYS = 14`.
 
-## billing — 3 tables
+## billing — 5 tables
 
 ### `plans`
 What a Stripe price buys. A row rather than a hardcoded table keyed by pence: b2c
@@ -968,7 +1028,7 @@ breaks the purchase *after* the card has been charged.
 |---|---|---|
 | `code` | `varchar(32) not null unique` | `one_month` \| `three_month` \| `six_month` |
 | `stripe_price_id` | `varchar(100) not null unique` | |
-| `exam_code` | `varchar(32) null` | |
+| `exam_code` | `varchar(32) not null` | the exam the plan sells (B-2). Rows written before the constraint hold `''` and were taken off sale; settlement refuses an empty code with `unknown_plan` |
 | `amount_pence` | `int not null` | |
 | `currency` | `varchar(3) not null default 'gbp'` | |
 | `duration_days` | `int not null` | `DEFAULT_PLAN_DAYS = {one_month: 30, three_month: 90, six_month: 180}` |
@@ -1000,12 +1060,44 @@ retries until it gets a 2xx, and without this a retry re-runs the grant. No
 | `receipt_url` | `varchar(500) null` | |
 | `paid_at` | `timestamptz not null` | |
 | `entitlement_id` | `uuid null` → `entitlements.id` SET NULL | the entitlement this payment bought; nullable because a refund revokes the entitlement without deleting either record |
-| `receipt_id` | `varchar(32) null unique` | our own receipt number, minted when the webhook records the payment. Null for payments taken before receipts existed: those stay Stripe-only until a backfill decides otherwise |
+| `receipt_id` | `varchar(64) null unique` | our own receipt number (`RCP-<exam>-<8 hex>`), minted when the webhook records the payment. Payments taken before receipts existed were minted one by migration `e27eb81413ee` (B-4), naming the plan's exam, else the granted exam, else `all`; the column stays nullable because the legacy billing loader can still write a payment whose source document carried no receipt |
 | `customer_email` / `customer_name` | `varchar(320) null` / `varchar(200) null` | frozen at payment. A receipt shows who paid at the time, not who the account belongs to now |
 | `amount_tax_pence` | `int not null default 0` | |
 | `plan_starts_at` / `plan_ends_at` | `timestamptz null` | the window the payment bought, frozen so a later change to the plan cannot rewrite a document already sent |
 
-## growth — 5 tables
+### `invoices`
+What an organisation is billed, under the purchase order its finance team raised
+(E-22). An institution pays on an invoice rather than a card, and its finance
+office will not pay one that does not quote their PO number.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` **RESTRICT** | an organisation with invoices has a ledger; index `(org_id, issued_at)` |
+| `invoice_number` | `varchar(32) not null unique` | `INV-<year>-<6 digits>`, the digits from the `invoice_number_seq` sequence so two invoices raised at once never share one and none is reused |
+| `po_number` | `varchar(64) null` | the customer's purchase order; the org admin may set it while the invoice is `issued` |
+| `customer_name` | `varchar(200) not null` | the organisation's name as billed, frozen like a receipt's |
+| `status` | `varchar(16) not null default 'issued'` | `issued` \| `paid` \| `void`; CHECK `ck_invoices_status`. Paid and void are final |
+| `currency` | `varchar(3) not null default 'gbp'` | |
+| `total_pence` | `bigint not null` | the sum of the lines' `amount_pence` |
+| `issued_at` / `due_at` | `timestamptz` | `issued_at not null`, `due_at null` |
+| `paid_at` / `voided_at` | `timestamptz null` | set by the move to that status |
+| `notes` | `text null` | |
+| `created_by` | `uuid null` → `users.id` SET NULL | the console user who raised it |
+
+### `invoice_lines`
+One line on an invoice. No `updated_at`: lines are written with the invoice and
+never edited.
+
+| Field | Type | Notes |
+|---|---|---|
+| `invoice_id` | `uuid not null` → `invoices.id` CASCADE | |
+| `position` | `int not null` | UNIQUE `(invoice_id, position)` |
+| `description` | `varchar(300) not null` | from the payment's plan when a payment is named and no description is given |
+| `quantity` | `int not null` | |
+| `unit_amount_pence` / `amount_pence` | `bigint not null` | `amount = quantity × unit`; the unit defaults to the payment's total |
+| `payment_id` | `uuid null` → `payments.id` SET NULL | the settled payment (typically a console-entered bank transfer, `service_settlement`) this line bills for |
+
+## growth — 6 tables
 
 `PILOT_PARTNERS = {bmj}`, `PILOT_EXAMS = (sca, plab, ortho)`,
 `ATTRIBUTION_WINDOW = 90 days`, landing paths under `/exams/`.
@@ -1031,6 +1123,26 @@ partner's numbers stop being reconcilable.
 `user_id` → `users.id` CASCADE (UNIQUE), `partner varchar(32) not null`,
 `exam_code varchar(32) null`, `arrival_id` → `partner_arrivals.id` SET NULL,
 `acquired_at timestamptz not null default now()`.
+
+### `partner_pilot_configs`
+A partner pilot's commercial settings (G-1), ported from b2c's `partner_pilot_config`
+collection: what a click costs, and at which estimated spend to email the team. One
+row per partner, written on the first edit; until then the b2c defaults apply in
+code (`DEFAULT_COST_PER_CLICK_PENCE = 40`, thresholds £500 / £1,000 / £2,500), so an
+empty table changes nothing.
+
+| Field | Type | Notes |
+|---|---|---|
+| `partner` | `varchar(32) not null` | UNIQUE `uq_partner_pilot_configs_partner` |
+| `cost_per_click_pence` | `int not null` | every raw arrival is taken as a paid click |
+| `spend_alert_thresholds_pence` | `jsonb not null` | ascending pence amounts; each alerts once |
+| `spend_alert_recipients` | `jsonb not null` | email addresses; empty means `SUPPORT_EMAIL` |
+| `last_alerted_threshold_pence` | `int not null default 0` | the highest threshold already alerted; `reset_spend_alerts` clears it |
+
+The daily `check_partner_spend` job judges the whole pilot so far (from the
+partner's first arrival), not a screen's chosen range — b2c alerted from whichever
+range an admin happened to view, so the same spend alerted or not depending on the
+dates picked.
 
 ### `partner_reporters`
 Someone allowed to read one partner's numbers, and nothing else.
@@ -1206,7 +1318,7 @@ document is why the matcher reaches into four different collections to find it.
 | `user_id` | `uuid not null` → `users.id` CASCADE, UNIQUE | |
 | `last_role` | `varchar(16) null` | `doctor` \| `patient` |
 | `session_count` | `int not null default 0` | |
-| `never_doctor` | `bool not null default false` | replaces b2c's hardcoded list of three personal email addresses |
+| `never_doctor` | `bool not null default false` | replaces b2c's hardcoded list of three personal email addresses; those accounts were set by migration `39cc97f742b6` (P-2), which gave any of them without a history row one |
 
 ## assistant — 2 tables
 

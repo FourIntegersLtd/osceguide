@@ -14,6 +14,7 @@ from app.core.db import get_session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import PUBLISH, USER_WRITE, TooManyRequests, per_user
 from app.features.marketplace import errors, schemas, service
 
 router = APIRouter(tags=["marketplace"])
@@ -54,12 +55,14 @@ async def list_open_slots(
     response_model=schemas.PostRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         errors.UnknownExamError,
         errors.NotEntitled,
         Unauthenticated,
         InvalidAudience,
         AudienceNotYours,
     ),
+    dependencies=[Depends(per_user(PUBLISH))],
 )
 async def offer_slot(
     body: schemas.CreatePost, principal: CurrentPrincipal, session: Session, clock: ClockDep
@@ -81,6 +84,7 @@ async def offer_slot(
     response_model=schemas.PeerSessionRead,
     status_code=status.HTTP_201_CREATED,
     responses=error_responses(
+        TooManyRequests,
         Unauthenticated,
         errors.PostNotFound,
         errors.PostUnavailableError,
@@ -88,6 +92,7 @@ async def offer_slot(
         errors.CannotClaimOwnPostError,
         errors.NotEntitled,
     ),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def claim_slot(
     post_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep
@@ -144,8 +149,13 @@ async def list_my_sessions(
     "/me/peer-sessions/{session_id}/join",
     response_model=schemas.PeerSessionRead,
     responses=error_responses(
-        Unauthenticated, errors.SessionNotFound, errors.SessionNotOpen, errors.TooEarlyToJoinError
+        TooManyRequests,
+        Unauthenticated,
+        errors.SessionNotFound,
+        errors.SessionNotOpen,
+        errors.TooEarlyToJoinError,
     ),
+    dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def join_session(
     session_id: uuid.UUID, principal: CurrentPrincipal, session: Session, clock: ClockDep

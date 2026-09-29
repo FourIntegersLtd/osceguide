@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from app.core.ports import EmailDeliveryFailed, Passage, SsoBrokerUnavailable, SsoIdentity
@@ -463,3 +463,27 @@ class FakeSsoBroker:
         self.expected_nonces.append(expected_nonce)
         self.verified.append(token)
         return self.identity
+
+
+class FakeEventCounts:
+    """Answers an event count from a fixed number, or refuses as unavailable or failed.
+
+    Records what it was asked, so a test can check the filter Mixpanel would get.
+    """
+
+    def __init__(self, *, count: int = 0, unavailable: str | None = None, fails: str | None = None) -> None:
+        self.count_to_return = count
+        self.unavailable = unavailable
+        self.fails = fails
+        self.calls: list[dict[str, object]] = []
+
+    async def count(self, *, event: str, from_date: date, to_date: date, where: dict[str, str]) -> int:
+        """Record the question, then answer or refuse as configured."""
+        from app.core.ports import EventCountsFailed, EventCountsUnavailable
+
+        self.calls.append({"event": event, "from_date": from_date, "to_date": to_date, "where": dict(where)})
+        if self.unavailable is not None:
+            raise EventCountsUnavailable(self.unavailable)
+        if self.fails is not None:
+            raise EventCountsFailed(self.fails)
+        return self.count_to_return

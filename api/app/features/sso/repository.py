@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.sso.models import OrganizationSso, OrganizationSsoBinding
+from app.features.sso.models import OrganizationSamlConnection, OrganizationSso, OrganizationSsoBinding
 
 
 async def config_for_org(session: AsyncSession, org_id: uuid.UUID) -> OrganizationSso | None:
@@ -96,3 +98,35 @@ async def replace_bindings(
     for kind, binding_value in bindings:
         session.add(OrganizationSsoBinding(sso_id=sso_id, kind=kind, value=binding_value))
     await session.flush()
+
+
+async def saml_connection_for_org(
+    session: AsyncSession, org_id: uuid.UUID
+) -> OrganizationSamlConnection | None:
+    """This organisation's SAML connection, or None."""
+    stmt = select(OrganizationSamlConnection).where(OrganizationSamlConnection.org_id == org_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def saml_connection_by_id(
+    session: AsyncSession, connection_id: uuid.UUID
+) -> OrganizationSamlConnection | None:
+    """A SAML connection by its public id. Not org-scoped: the id is what an IdP posts to."""
+    stmt = select(OrganizationSamlConnection).where(OrganizationSamlConnection.id == connection_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def save_saml_connection(
+    session: AsyncSession, org_id: uuid.UUID, **values: Any
+) -> OrganizationSamlConnection:
+    """Write this organisation's SAML connection, creating it on first save."""
+    stmt = (
+        insert(OrganizationSamlConnection)
+        .values(id=uuid.uuid4(), org_id=org_id, **values)
+        .on_conflict_do_update(
+            constraint="uq_organization_saml_connections_org_id", set_={**values, "updated_at": func.now()}
+        )
+        .returning(OrganizationSamlConnection)
+        .execution_options(populate_existing=True)
+    )
+    return (await session.execute(stmt)).scalar_one()

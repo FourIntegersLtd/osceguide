@@ -7,6 +7,7 @@ queries that fill them.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +26,7 @@ from app.features.sittings.reads import timing_read
 # `CircuitRef`, so it should not have to know which file the dataclass is in.
 from app.features.sittings.reads_types import CircuitDetail as CircuitDetail
 from app.features.sittings.reads_types import CircuitRef as CircuitRef
+from app.features.sittings.reads_types import CircuitRun as CircuitRun
 from app.features.sittings.reads_types import SittingDetail as SittingDetail
 from app.features.sittings.reads_types import SittingRef as SittingRef
 from app.features.sittings.reads_types import SlotRef as SlotRef
@@ -207,6 +209,31 @@ async def live_circuits(session: AsyncSession, org_id: uuid.UUID) -> list[Circui
             )
         )
     return details
+
+
+async def run_history(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[CircuitRun], str | None]:
+    """A page of this organisation's finished circuit runs, most recently ended first."""
+    runs, next_cursor = await repository_reads.list_run_history(session, org_id, limit=limit, cursor=cursor)
+    return [
+        CircuitRun(
+            id=run.id,
+            circuit_id=run.circuit_id,
+            circuit_name=run.circuit_name,
+            sitting_id=run.sitting_id,
+            sitting_name=run.sitting_name,
+            mode=run.mode,
+            supervisor_user_id=run.supervisor_user_id,
+            started_at=run.started_at,
+            ended_at=run.ended_at,
+            candidate_count=run.candidate_count,
+            stations_total=run.stations_total,
+            stations_completed=run.stations_completed,
+            status=run.status,
+        )
+        for run in runs
+    ], next_cursor
 
 
 # The clock arithmetic and the alerts, re-exported so `dashboard` can compute

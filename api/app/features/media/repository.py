@@ -22,6 +22,7 @@ async def create(
     title: str,
     summary: str | None,
     content: dict[str, Any],
+    specialty: str | None,
     exam_id: uuid.UUID | None,
     author_id: uuid.UUID | None,
 ) -> MediaItem:
@@ -32,6 +33,7 @@ async def create(
         title=title,
         summary=summary,
         content=content,
+        specialty=specialty,
         exam_id=exam_id,
         author_id=author_id,
     )

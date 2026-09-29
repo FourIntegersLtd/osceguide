@@ -345,3 +345,21 @@ async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUI
         return set()
     stmt = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids))).distinct()
     return {slot_id for slot_id in (await session.execute(stmt)).scalars() if slot_id is not None}
+
+
+async def attempt_counts_by_station_version(
+    session: AsyncSession, station_version_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many attempts, by anybody, were made against each station version."""
+    if not station_version_ids:
+        return {}
+    stmt = (
+        select(Attempt.station_version_id, func.count(Attempt.id))
+        .where(Attempt.station_version_id.in_(list(station_version_ids)))
+        .group_by(Attempt.station_version_id)
+    )
+    return {
+        version_id: int(count)
+        for version_id, count in (await session.execute(stmt)).all()
+        if version_id is not None
+    }

@@ -203,10 +203,19 @@ async def suspend_organization(
 
 
 async def list_audit(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    actor_email: str | None = None,
+    action: str | None = None,
 ) -> tuple[list[AuditRead], str | None]:
-    """A page of one organisation's audit log."""
-    entries, next_cursor = await repository.list_audit(session, org_id, limit=limit, cursor=cursor)
+    """A page of one organisation's audit log, optionally narrowed to what one
+    person did or to one kind of action."""
+    entries, next_cursor = await repository.list_audit(
+        session, org_id, limit=limit, cursor=cursor, actor_email=actor_email, action=action
+    )
     return [
         AuditRead(
             id=entry.id,
@@ -241,4 +250,5 @@ def _org_read(org: Any) -> OrganizationRead:
         contract_starts_at=org.contract_starts_at,
         contract_ends_at=org.contract_ends_at,
         require_staff_mfa=org.require_staff_mfa,
+        parent_org_id=org.parent_org_id,
     )

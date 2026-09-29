@@ -14,6 +14,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import OUTBOUND_EMAIL, TooManyRequests, per_user
 from app.core.tenancy import OrgAdmin, OrgReader
 from app.features.roster import errors, router_admin, schemas, service, service_groups
 
@@ -44,7 +45,8 @@ async def list_trainees(
     "/orgs/{org_slug}/trainees",
     response_model=schemas.TraineeRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden, errors.TraineeExists),
+    responses=error_responses(TooManyRequests, Forbidden, errors.TraineeExists),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_trainee(
     body: schemas.CreateTrainee, workspace: OrgAdmin, session: Session, clock: ClockDep
@@ -65,7 +67,8 @@ async def add_trainee(
     "/orgs/{org_slug}/trainees/bulk",
     response_model=schemas.BulkTraineesResult,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(Forbidden),
+    responses=error_responses(TooManyRequests, Forbidden),
+    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_trainees(
     body: schemas.BulkCreateTrainees, workspace: OrgAdmin, session: Session, clock: ClockDep
@@ -150,6 +153,24 @@ async def set_group_members(
     return await service_groups.set_group_members(
         session, workspace.org_id, group_id, trainee_ids=body.trainee_ids
     )
+
+
+# Who is in a trainee group, a page at a time.
+@router.get(
+    "/orgs/{org_slug}/trainee-groups/{group_id}/members",
+    response_model=Page[schemas.TraineeRead],
+    responses=error_responses(Forbidden, errors.GroupNotFound),
+)
+async def list_group_members(
+    group_id: uuid.UUID,
+    workspace: OrgReader,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+) -> Page[schemas.TraineeRead]:
+    trainees, next_cursor = await service_groups.list_group_members(
+        session, workspace.org_id, group_id, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=trainees, next_cursor=next_cursor)
 
 
 @router.post(

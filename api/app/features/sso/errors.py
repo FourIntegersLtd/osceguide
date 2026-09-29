@@ -80,3 +80,17 @@ class SsoBindingTaken(Conflict):
 
     code = "sso_binding_taken"
     default_message = "Another organisation already claims that host or email domain"
+
+
+class SamlConnectionNotFound(NotFound):
+    """No SAML connection by that id, or one that is switched off."""
+
+    code = "saml_connection_not_found"
+    default_message = "No such SAML connection"
+
+
+class InvalidSamlConnection(InvalidInput):
+    """A SAML connection that cannot work: a missing URL, or a certificate that is not one."""
+
+    code = "invalid_saml_connection"
+    default_message = "That SAML connection is not usable"

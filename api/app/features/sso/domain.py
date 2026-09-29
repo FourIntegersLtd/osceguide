@@ -22,6 +22,9 @@ class Provider(StrEnum):
 
     CLERK = "clerk"
     ENTRA = "entra"
+    # SAML 2.0 (E-20): the IdP is an `OrganizationSamlConnection`, and
+    # `issuer` holds its entity id.
+    SAML = "saml"
 
 
 class BindingKind(StrEnum):

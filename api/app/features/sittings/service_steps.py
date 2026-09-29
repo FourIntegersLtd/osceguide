@@ -177,7 +177,36 @@ async def finish(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, 
     circuit.ended_at = now
     circuit.phase = None
     circuit.phase_seq = seq
+    await _record_run(session, org_id, circuit, now=now)
     await _close_sitting_if_over(session, org_id, circuit)
+
+
+async def _record_run(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, now: datetime) -> None:
+    """Keep what this run looked like when it stopped, for the board's history.
+
+    Read after the unsat slots are marked skipped, so `completed` means every
+    station was actually sat. Here because every way a circuit ends goes
+    through `finish`.
+    """
+    slots = await repository.slots_for_circuit(session, org_id, circuit.id)
+    sitting = await repository.sitting_by_id(session, org_id, circuit.sitting_id)
+    sat = sum(1 for slot in slots if slot.status == domain.SlotStatus.COMPLETED)
+    await repository_run.record_run_history(
+        session,
+        org_id,
+        circuit_id=circuit.id,
+        sitting_id=circuit.sitting_id,
+        circuit_name=circuit.name,
+        sitting_name=sitting.name if sitting is not None else "",
+        mode=sitting.mode if sitting is not None else "",
+        supervisor_user_id=circuit.supervisor_user_id,
+        started_at=circuit.started_at,
+        ended_at=now,
+        candidate_count=len({slot.trainee_id for slot in slots}),
+        stations_total=len(slots),
+        stations_completed=sat,
+        status=domain_run.run_status(stations_total=len(slots), stations_completed=sat),
+    )
 
 
 async def _close_sitting_if_over(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit) -> None:
