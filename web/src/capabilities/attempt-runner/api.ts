@@ -12,6 +12,7 @@ export type CandidateScenario = components["schemas"]["CandidateScenarioRead"];
 export type ManagementPlan = components["schemas"]["ManagementPlanRead"];
 export type PatientReview = components["schemas"]["PatientReviewRead"];
 export type StationTeaching = components["schemas"]["StationTeachingRead"];
+export type VoiceQueueStanding = components["schemas"]["VoiceQueueStanding"];
 
 /**
  * The kinds of attempt, which are all one row in one table.
@@ -45,12 +46,26 @@ export function readAttempt(attemptId: string, signal?: AbortSignal): Promise<At
   return platformRequest<Attempt>(`/api/v1/attempts/${encodeURIComponent(attemptId)}`, { signal });
 }
 
-/** Mint the room token. `voice` decides Cloud or self-hosted; the browser never does. */
-export function attemptVoiceToken(attemptId: string, signal?: AbortSignal): Promise<RoomGrant> {
-  return platformRequest<RoomGrant>(
+/**
+ * Mint the room token, or learn the candidate's place in line.
+ *
+ * `voice` decides Cloud or self-hosted; the browser never does. When every
+ * seat is taken it answers 202 with a place instead: a token then would join a
+ * room no patient ever enters. Watch `voiceQueuePath` and ask again on `ready`.
+ */
+export function attemptVoiceToken(
+  attemptId: string,
+  signal?: AbortSignal,
+): Promise<RoomGrant | VoiceQueueStanding> {
+  return platformRequest<RoomGrant | VoiceQueueStanding>(
     `/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-token`,
     { method: "POST", signal },
   );
+}
+
+/** The candidate's place in line, pushed until a seat is theirs. For `useEventStream`. */
+export function voiceQueuePath(attemptId: string): string {
+  return `/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-queue`;
 }
 
 /** Give up on an attempt that was never really run. */

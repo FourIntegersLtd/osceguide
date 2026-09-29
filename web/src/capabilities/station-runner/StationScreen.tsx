@@ -398,6 +398,7 @@ export function StationScreen(props: StationScreenProps) {
                 duration={simulationSeconds}
                 stationId={attempt.attemptId}
                 timerType="simulation"
+                running={session.patientJoined}
                 onTimeUp={() => void handleSimulationTimeUp()}
                 onFinalCountdown={session.warnTimeRemaining}
               />

@@ -17,6 +17,7 @@ import { AGENT_STATE_LABEL } from "@/foundation/livekit/types";
 import type { AttemptSession } from "@/capabilities/attempt-runner/useAttemptSession";
 import type { ConsultationPatient } from "@/capabilities/attempt-runner/consultation/patientIdentity";
 import { ConsultationPatientHeader } from "@/capabilities/attempt-runner/consultation/ConsultationPatientHeader";
+import { WaitingInLine } from "@/capabilities/attempt-runner/WaitingInLine";
 
 const { b2cLivekitEndButton } = productTokens;
 
@@ -71,6 +72,8 @@ export function ConsultationPanel({
           <Spinner />
           <p className="text-osce-body text-b2c-text-muted">Connecting you to the patient…</p>
         </div>
+      ) : session.phase === "queued" ? (
+        <WaitingInLine position={session.queuePosition} onLeave={session.leaveQueue} />
       ) : session.phase === "ending" ? (
         <div className="flex items-center justify-center gap-3 py-8 text-osce-body text-b2c-text-muted">
           <Spinner /> Wrapping up…

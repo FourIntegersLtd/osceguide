@@ -307,6 +307,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attempts/{attempt_id}/voice-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Voice Queue */
+        get: operations["voice_stream_voice_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attempts/{attempt_id}/voice-token": {
         parameters: {
             query?: never;
@@ -6499,10 +6516,11 @@ export interface paths {
         put?: never;
         /**
          * Extend Cloud Slot
-         * @description A worker has connected, so hold the slot for a whole session.
+         * @description A worker has connected, so hold the room's seat for a whole session.
          *
-         *     Only lengthens a room that already holds one: a self-hosted session in a
-         *     room nobody reserved must not start being counted against the Cloud cap.
+         *     Every worker calls this, on Cloud or ours, so it lengthens whichever seat
+         *     the room holds. Only ever one that exists: a room nobody reserved must not
+         *     start being counted against either.
          */
         post: operations["worker_extend_cloud_slot"];
         delete?: never;
@@ -6522,7 +6540,7 @@ export interface paths {
         put?: never;
         /**
          * Release Cloud Slot
-         * @description The session is over. Give the slot back before its expiry would.
+         * @description The session is over. Give the seat back before its expiry would, and tell the line.
          */
         post: operations["worker_release_cloud_slot"];
         delete?: never;
@@ -13243,6 +13261,20 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * VoiceQueueStanding
+         * @description A candidate's place in line while every voice seat is taken.
+         *
+         *     `position` is 1 at the front. `ready` means a seat is free for them now:
+         *     ask for the token again and it is theirs. Sent as the 202 body of the
+         *     token request and as each frame of the waiting stream.
+         */
+        VoiceQueueStanding: {
+            /** Position */
+            position: number;
+            /** Ready */
+            ready: boolean;
+        };
         /** WebhookResult */
         WebhookResult: {
             /** Status */
@@ -14508,6 +14540,69 @@ export interface operations {
             };
         };
     };
+    voice_stream_voice_queue: {
+        parameters: {
+            query?: {
+                /** @description A stream ticket from POST /auth/stream-ticket */
+                ticket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `VoiceQueueStanding` each time the state changes, and `ping` every 25 seconds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["VoiceQueueStanding"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_yours */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     voice_issue_voice_token: {
         parameters: {
             query?: never;
@@ -14526,6 +14621,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceGrant"];
+                };
+            };
+            /** @description Every seat is taken: the candidate is in line. Watch `voice-queue`, then retry. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceQueueStanding"];
                 };
             };
             /** @description unauthenticated, account_suspended */

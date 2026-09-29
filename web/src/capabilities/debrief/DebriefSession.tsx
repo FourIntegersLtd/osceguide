@@ -62,7 +62,7 @@ export function DebriefSession({
     });
   }, [session.error, toast]);
 
-  const busy = session.phase === "connecting" || session.phase === "ending";
+  const busy = session.phase === "connecting" || session.phase === "queued" || session.phase === "ending";
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-osce-lg border border-b2c-border bg-osce-surface text-osce-body">
       <div className="flex min-h-[min(360px,42dvh)] flex-1 flex-col items-center justify-center bg-b2c-surface-muted px-5 py-6 lg:min-h-0">
@@ -85,7 +85,9 @@ export function DebriefSession({
                   if (mic.status !== "ready" && !await mic.request()) return;
                   await session.startConsultation();
                 }}>
-                {busy ? session.phase === "ending" ? "Wrapping up..." : "Connecting..." : "Start voice debrief"}
+                {session.phase === "queued"
+                  ? `Athena is busy. You are number ${session.queuePosition ?? 1} in line...`
+                  : busy ? session.phase === "ending" ? "Wrapping up..." : "Connecting..." : "Start voice debrief"}
               </Button>
             </>
           )}

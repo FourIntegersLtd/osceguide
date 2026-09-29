@@ -9,6 +9,7 @@ import { AgentTile, VoiceRoom, useMicPreflight } from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner/ExamClock";
 import { useCountdown } from "@/capabilities/attempt-runner/useCountdown";
 import { useAttemptSession, type AttemptSessionInput } from "@/capabilities/attempt-runner/useAttemptSession";
+import { WaitingInLine } from "@/capabilities/attempt-runner/WaitingInLine";
 
 export interface AttemptRunnerProps extends AttemptSessionInput {
   stationTitle: string;
@@ -44,7 +45,7 @@ export function AttemptRunner(props: AttemptRunnerProps) {
     void session.startConsultation();
   });
 
-  const consultation = useCountdown(simulationSeconds, session.phase === "live", () => {
+  const consultation = useCountdown(simulationSeconds, session.phase === "live" && session.patientJoined, () => {
     void session.end();
   });
 
@@ -131,6 +132,12 @@ export function AttemptRunner(props: AttemptRunnerProps) {
           <div className="flex items-center gap-3 text-sm text-ink-muted">
             <Spinner /> Connecting you to the patient…
           </div>
+        </Card>
+      )}
+
+      {session.phase === "queued" && (
+        <Card>
+          <WaitingInLine position={session.queuePosition} onLeave={session.leaveQueue} />
         </Card>
       )}
 
