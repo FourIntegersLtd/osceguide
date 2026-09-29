@@ -156,6 +156,35 @@ export function releaseDecision(
   });
 }
 
+export type BulkReleaseResult = components["schemas"]["BulkReleaseResult"];
+
+/**
+ * Release several candidates' decisions in one request.
+ *
+ * The backend loops them through the single release, so each keeps its own
+ * evidence re-check and its own `candidate_result_released` email, and a
+ * refused candidate comes back under `skipped` with its code rather than
+ * failing the rest.
+ */
+export function releaseDecisions(
+  slug: string,
+  sittingId: string,
+  candidates: { traineeId: string; evidence: Evidence }[],
+): Promise<BulkReleaseResult> {
+  return platformRequest<BulkReleaseResult>(
+    `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/decisions/release`,
+    {
+      method: "POST",
+      body: {
+        candidates: candidates.map((candidate) => ({
+          trainee_id: candidate.traineeId,
+          evidence: candidate.evidence,
+        })),
+      },
+    },
+  );
+}
+
 /* ---------- the GP lead's review of one station ---------- */
 
 export function readGpLeadReview(

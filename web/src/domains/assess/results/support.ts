@@ -259,3 +259,23 @@ export function readoutAsMarkdown(readout: SittingReadout): string {
 function cell(value: string): string {
   return value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
+
+/**
+ * Why the backend skipped one candidate in a bulk release, for the lead.
+ *
+ * The bulk answer carries each refusal's code, not its message.
+ */
+export function releaseRefusal(code: string): string {
+  switch (code) {
+    case "evidence_changed":
+      return "the marking changed after sign-off, so sign it off again";
+    case "invalid_workflow":
+      return "not signed off, or already released";
+    case "decision_revised":
+      return "the decision was changed by somebody else; reload and check it";
+    case "result_not_found":
+      return "no decision recorded";
+    default:
+      return `refused (${code})`;
+  }
+}

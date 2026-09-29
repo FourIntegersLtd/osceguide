@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { describe, it } from "node:test";
 import type { CandidateReport, SittingReadout, StationReport } from "@/domains/assess/results/api";
 import {
+  releaseRefusal,
   ASSESSMENT_OUTCOMES,
   evidenceFor,
   outcomeTone,
@@ -197,4 +198,14 @@ test("an examination nobody sat still renders a document", () => {
 
 test("the file is named for what it now is", () => {
   assert.equal(readoutFilename(readout()), "s1-exam-readout.md");
+});
+
+describe("why a bulk release skipped somebody", () => {
+  it("says what to do about marking that moved", () => {
+    assert.match(releaseRefusal("evidence_changed"), /sign it off again/);
+  });
+
+  it("names an unknown refusal by its code rather than hiding it", () => {
+    assert.equal(releaseRefusal("something_new"), "refused (something_new)");
+  });
 });

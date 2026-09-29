@@ -4,11 +4,11 @@ import { useCallback, useMemo, useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Badge, Button, EmptyState, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { readSittingReport, releaseDecision } from "@/domains/assess/results/api";
+import { readSittingReport, releaseDecisions } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
 import { CandidateCard } from "@/domains/assess/results/CandidateCard";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
-import { evidenceFor, releasable } from "@/domains/assess/results/support";
+import { evidenceFor, releasable, releaseRefusal } from "@/domains/assess/results/support";
 
 /**
  * What a course lead reads back after an examination.
@@ -113,10 +113,10 @@ function Report({
  * Offers exactly what is signed off and not yet out, because that is the only
  * set the backend will accept anyway, each ticked by name so a lead can hold
  * one back (the retiring screen released a selection behind a
- * `window.confirm`). Each is released by its own request, so each emits its
- * own `candidate_result_released` exactly as a single release does. A
- * candidate whose marking moved since sign-off is refused by the backend and
- * named here rather than silently skipped.
+ * `window.confirm`). One request releases the lot; the backend runs each
+ * through the single release, so each keeps its evidence check and its own
+ * `candidate_result_released` email. A candidate whose marking moved since
+ * sign-off is skipped by the backend and named here with the reason.
  */
 function ReleaseAll({
   orgSlug,
@@ -153,27 +153,33 @@ function ReleaseAll({
     setBusy(true);
     setFailures([]);
     setReleased(null);
-    const problems: string[] = [];
-    let done = 0;
-
-    // One at a time, and every failure kept: a release refused because the
-    // evidence moved is the single most important thing this screen can say,
-    // and a `Promise.all` would lose all but the first.
-    for (const candidate of chosen) {
-      if (!candidate.trainee_id) continue;
-      try {
-        await releaseDecision(orgSlug, sittingId, candidate.trainee_id, evidenceFor(candidate));
-        done += 1;
-      } catch (cause) {
-        const name = candidate.name ?? candidate.email ?? "A candidate";
-        problems.push(`${name}: ${errorMessage(cause instanceof Error ? cause : new Error(String(cause)))}`);
-      }
+    const entries = chosen.flatMap((candidate) =>
+      candidate.trainee_id ? [{ traineeId: candidate.trainee_id, candidate }] : [],
+    );
+    const byTrainee = new Map(entries.map((entry) => [entry.traineeId, entry.candidate]));
+    try {
+      const result = await releaseDecisions(
+        orgSlug,
+        sittingId,
+        entries.map(({ traineeId, candidate }) => ({
+          traineeId,
+          evidence: evidenceFor(candidate),
+        })),
+      );
+      setReleased((result.released ?? []).length);
+      setFailures(
+        (result.skipped ?? []).map((skip) => {
+          const candidate = byTrainee.get(skip.trainee_id);
+          const name = candidate?.name ?? candidate?.email ?? "A candidate";
+          return `${name}: ${releaseRefusal(skip.code)}`;
+        }),
+      );
+    } catch (cause) {
+      setFailures([errorMessage(cause instanceof Error ? cause : new Error(String(cause)))]);
+    } finally {
+      setBusy(false);
+      onChanged();
     }
-
-    setReleased(done);
-    setFailures(problems);
-    setBusy(false);
-    onChanged();
   }, [orgSlug, sittingId, chosen, onChanged]);
 
   return (
