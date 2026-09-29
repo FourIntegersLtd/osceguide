@@ -120,6 +120,16 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     # The person's own photo, as an S3 object URL. Null until they upload one;
     # cleared, and the object deleted, when the account is erased.
     avatar_url: Mapped[str | None] = mapped_column(Text)
+    # When `identity.jobs.send_engagement_emails` queued the "come try a
+    # station" nudge for this person. Null until then, and the job's own
+    # idempotency check: claimed with an atomic
+    # `UPDATE ... WHERE engagement_email_sent_at IS NULL`, so two workers
+    # polling at once never both queue the email for the same person, and a
+    # person already emailed once is never emailed again. Backfilled from
+    # legacy's `inactive_engagement_email_sent_at` by `app.migration` for
+    # anyone imported from Firestore, so the first run here does not re-email
+    # someone legacy already reached.
+    engagement_email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class UserIdentity(Base, UUIDPrimaryKey, Timestamps):

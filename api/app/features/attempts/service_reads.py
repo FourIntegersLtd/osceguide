@@ -239,3 +239,8 @@ async def count_debriefs(session: AsyncSession) -> int:
 async def count_feedback(session: AsyncSession) -> int:
     """Every attempt that has been marked — the feedback counter."""
     return await repository.count_evaluated(session)
+
+
+async def has_completed_any(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether this person has ever finished a station. See `repository.has_completed_any`."""
+    return await repository.has_completed_any(session, user_id)

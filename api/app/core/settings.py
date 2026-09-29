@@ -162,6 +162,12 @@ class Settings(BaseSettings):
     livekit_cloud_slot_pending_ttl_seconds: int = 300
     livekit_cloud_slot_ttl_seconds: int = 2100
 
+    # Gates `identity.jobs.send_engagement_emails`, the daily nudge to a
+    # signed-up person who never ran a practice station. Off by default so a
+    # freshly migrated environment — staging, or prod before this ships —
+    # cannot fire it on real inboxes until the owner turns it on deliberately.
+    engagement_email_enabled: bool = False
+
     # Email. Resend is the only provider b2c uses, and the key is the only
     # configuration it needs.
     resend_api_key: str = ""
