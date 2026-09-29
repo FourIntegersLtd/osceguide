@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Badge, Button, EmptyState, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -77,6 +77,8 @@ function Report({
 
           {waiting.length > 0 ? (
             <ReleaseAll
+              // A fresh selection whenever who is waiting changes (after a release).
+              key={waiting.map((candidate) => candidate.user_id).join(",")}
               orgSlug={orgSlug}
               sittingId={sittingId}
               waiting={waiting}
@@ -106,13 +108,15 @@ function Report({
 }
 
 /**
- * Releasing everything that has been signed off.
+ * Releasing signed-off decisions, several at once.
  *
- * The retiring screen released a selection with a `window.confirm`. This
- * releases exactly what is signed off and not yet out, because that is the
- * only set the backend will accept anyway — and it says who, by name, before
- * it does it. A candidate whose marking moved since sign-off is refused by the
- * backend and named here rather than silently skipped.
+ * Offers exactly what is signed off and not yet out, because that is the only
+ * set the backend will accept anyway, each ticked by name so a lead can hold
+ * one back (the retiring screen released a selection behind a
+ * `window.confirm`). Each is released by its own request, so each emits its
+ * own `candidate_result_released` exactly as a single release does. A
+ * candidate whose marking moved since sign-off is refused by the backend and
+ * named here rather than silently skipped.
  */
 function ReleaseAll({
   orgSlug,
@@ -128,6 +132,22 @@ function ReleaseAll({
   const [busy, setBusy] = useState(false);
   const [failures, setFailures] = useState<string[]>([]);
   const [released, setReleased] = useState<number | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(
+    () => new Set(waiting.map((candidate) => candidate.user_id)),
+  );
+  const chosen = useMemo(
+    () => waiting.filter((candidate) => picked.has(candidate.user_id)),
+    [waiting, picked],
+  );
+  const allPicked = chosen.length === waiting.length;
+
+  const toggle = (userId: string) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
 
   const release = useCallback(async () => {
     setBusy(true);
@@ -139,7 +159,7 @@ function ReleaseAll({
     // One at a time, and every failure kept: a release refused because the
     // evidence moved is the single most important thing this screen can say,
     // and a `Promise.all` would lose all but the first.
-    for (const candidate of waiting) {
+    for (const candidate of chosen) {
       if (!candidate.trainee_id) continue;
       try {
         await releaseDecision(orgSlug, sittingId, candidate.trainee_id, evidenceFor(candidate));
@@ -154,7 +174,7 @@ function ReleaseAll({
     setFailures(problems);
     setBusy(false);
     onChanged();
-  }, [orgSlug, sittingId, waiting, onChanged]);
+  }, [orgSlug, sittingId, chosen, onChanged]);
 
   return (
     <section className="space-y-3 rounded-lg border border-b2b-border bg-b2b-cream/40 p-4 sm:p-5">
@@ -162,9 +182,42 @@ function ReleaseAll({
         {waiting.length} signed off and not yet released
       </h2>
       <p className="text-osce-body text-b2b-mid">
-        {waiting.map((candidate) => candidate.name ?? candidate.email ?? "Candidate").join(", ")}.
-        Releasing lets each of them read their outcome.
+        Releasing lets each of them read their outcome. Untick anyone to hold back.
       </p>
+
+      <fieldset className="space-y-2">
+        <legend className="sr-only">Candidates to release</legend>
+        {waiting.length > 1 ? (
+          <label className="flex items-center gap-2 text-osce-caption font-medium text-b2b-headline">
+            <input
+              type="checkbox"
+              checked={allPicked}
+              disabled={busy}
+              onChange={() =>
+                setPicked(
+                  allPicked ? new Set() : new Set(waiting.map((candidate) => candidate.user_id)),
+                )
+              }
+            />
+            All {waiting.length}
+          </label>
+        ) : null}
+        <ul className="grid gap-1 sm:grid-cols-2">
+          {waiting.map((candidate) => (
+            <li key={candidate.user_id}>
+              <label className="flex items-center gap-2 text-osce-body text-b2b-headline">
+                <input
+                  type="checkbox"
+                  checked={picked.has(candidate.user_id)}
+                  disabled={busy}
+                  onChange={() => toggle(candidate.user_id)}
+                />
+                {candidate.name ?? candidate.email ?? "Candidate"}
+              </label>
+            </li>
+          ))}
+        </ul>
+      </fieldset>
 
       {released !== null ? (
         <Alert tone={failures.length === 0 ? "success" : "warning"}>
@@ -181,9 +234,15 @@ function ReleaseAll({
         </Alert>
       ) : null}
 
-      <Button themeType="b2b" variant="commit" isLoading={busy} disabled={busy} onClick={() => void release()}>
-        <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden /> Release all{" "}
-        {waiting.length}
+      <Button
+        themeType="b2b"
+        variant="commit"
+        isLoading={busy}
+        disabled={busy || chosen.length === 0}
+        onClick={() => void release()}
+      >
+        <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden />
+        {allPicked ? `Release all ${waiting.length}` : `Release ${chosen.length} selected`}
       </Button>
     </section>
   );

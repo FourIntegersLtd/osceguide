@@ -30,7 +30,7 @@ Checked against the code on 2026-09-25.
 | Whether a circuit's review was published | Only `POST /orgs/{org_slug}/circuits/{circuit_id}/review/finalize` is served. There is no read. `CircuitFeedbackCard` already asks for one (`readCircuitReview`: a `CircuitReviewRead`, or `review_not_found` when nothing is published) and says what it did in this visit while the read is missing. Delete that fallback when the route ships |
 | An examiner's own slot review | `PUT .../slots/{slot_id}/reviews/mine` is a write only; there is no read of one's own review. `SlotReview` already asks for one (`readMySlotReview`: a `SlotReviewRead`, or `review_not_found`) and finds it in the slot's review list while the read is missing. Delete that fallback when the route ships |
 | A candidate reading their published review | No candidate-facing read of a circuit's supervisor review or their slot review. The largest thing the sittings port could not carry |
-| Release decisions in bulk, notify candidates | Release is per candidate only; there is no bulk release and no notification |
+| Notify candidates when a decision is released | The Results screen releases a chosen set of signed-off candidates in one action (one release request each, so each emits `candidate_result_released`), but nothing tells the candidate. A server-side bulk release would save the round trips; it is not needed for the screen |
 | Cohort export (the markdown readout) | Not built. Low priority |
 | Organisation hierarchy | `OrganizationRead` has no parent organisation |
 | Live board history | `/orgs/{slug}/live` shows now only; nothing shows what ran this morning |
