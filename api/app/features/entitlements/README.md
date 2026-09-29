@@ -40,6 +40,10 @@ recomputed on every request and stored nowhere.
 | GET | `/api/v1/orgs/{org_slug}/entitlements` | org admin | what the institution has granted, revoked included |
 | POST | `/api/v1/orgs/{org_slug}/entitlements` | org admin | grants by email, source `org_grant`; `user_not_found` (404), `unknown_exam` (404) |
 | POST | `/api/v1/orgs/{org_slug}/entitlements/{id}/revoke` | org admin | `entitlement_not_found` (404); the row stays |
+| GET | `/api/v1/orgs/{org_slug}/practice-access` | org admin | `{items}`: every `org_grant` row with `status` invited / active / revoked (a lapsed grant is `revoked`, `revoked_at` = its end) |
+| POST | `/api/v1/orgs/{org_slug}/practice-access` | org admin | `{email, exam_id}` → 201 `{item}`. An unknown address is invited (password-less account + `practice_access_invitation` email) and the grant attached now; an existing one gets `practice_access_granted`. Only exams the org offers (own published, or imported). `invalid_email` (422), `unknown_exam` (404), `practice_access_exists` (409) |
+| POST | `/api/v1/orgs/{org_slug}/practice-access/bulk` | org admin | `{rows}` (1-500) → `{results}` per row: granted / invited / already_active / invalid_email / unknown_exam; never refuses the batch |
+| POST | `/api/v1/orgs/{org_slug}/practice-access/{access_id}/revoke` | org admin | `{item}`; idempotent; another org's or another source's grant is `entitlement_not_found` (404) |
 | GET | `/api/v1/platform/users/{id}/entitlements` | platform admin | every grant the person has held, with source, `source_ref`, `granted_by` and `live`; `user_not_found` (404) |
 
 ## Jobs

@@ -85,6 +85,8 @@ rubric is. **Programme** is org-owned and references an exam it can see.
 | PATCH | `/api/v1/orgs/{org_slug}/exams/{id}` | org admin | `unknown_exam` (404) for a platform exam |
 | POST | `/api/v1/orgs/{org_slug}/exams/{id}/publish` | org admin | the org's own schedule |
 | POST | `/api/v1/orgs/{org_slug}/exams/{id}/retire` | org admin | past sittings keep working |
+| GET | `/api/v1/orgs/{org_slug}/exams/catalog` | org admin | published platform exams with `station_count` and `already_imported` (any programme for it) |
+| POST | `/api/v1/orgs/{org_slug}/exams/import` | org admin | `{platform_exam_id}` → 201 `{exam}`; writes an active programme, source `imported_osce_guide`, nothing copied. `unknown_exam` (404) unless a published platform exam, `exam_already_imported` (409) |
 | GET | `/api/v1/orgs/{org_slug}/programmes` | org member | |
 | POST | `/api/v1/orgs/{org_slug}/programmes` | org admin | `programme_exists` (409), `unknown_exam` (404) |
 | PATCH | `/api/v1/orgs/{org_slug}/programmes/{id}` | org admin | status |

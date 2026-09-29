@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
@@ -119,3 +119,25 @@ async def published_library_versions(
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
     return [(version, station) for version, station in (await session.execute(stmt)).all()]
+
+
+async def published_counts_by_exam(
+    session: AsyncSession, exam_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many published library stations each of these exams has, in one grouped query.
+
+    An exam with none is absent from the answer rather than present with zero; the caller
+    reads it with a default.
+    """
+    if not exam_ids:
+        return {}
+    stmt = (
+        select(Station.exam_id, func.count())
+        .where(
+            Station.owner_kind == "platform",
+            Station.status == "published",
+            Station.exam_id.in_(list(exam_ids)),
+        )
+        .group_by(Station.exam_id)
+    )
+    return {exam_id: int(station_count) for exam_id, station_count in (await session.execute(stmt)).all()}

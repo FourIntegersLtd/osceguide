@@ -2,7 +2,23 @@
 
 from __future__ import annotations
 
-from app.core.errors import Forbidden, NotFound
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
+
+
+class InvalidPracticeEmail(InvalidInput):
+    """The address given for practice access is not an email address. The bulk route reports
+    the same thing per row as the outcome `invalid_email` instead of refusing the batch."""
+
+    code = "invalid_email"
+    default_message = "That is not a valid email address"
+
+
+class PracticeAccessExists(Conflict):
+    """This person already holds live practice access to this exam from this organisation.
+    The bulk route reports it per row as the outcome `already_active`."""
+
+    code = "practice_access_exists"
+    default_message = "That person already has practice access to this exam"
 
 
 class NotEntitled(Forbidden):

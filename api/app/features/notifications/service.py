@@ -149,6 +149,36 @@ def _invitation(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _practice_access_invitation(escaped_fields: dict[str, str]) -> str:
+    """The body inviting someone with no account yet to practise an exam an organisation chose.
+
+    Same token and link as `_invitation`: choosing the password is what accepts it, and the
+    practice access is already attached to the account waiting behind the link.
+    """
+    link = (
+        f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
+    )
+    return (
+        f"<h1>{escaped_fields.get('invited_to', '')} has given you practice access</h1>"
+        f"<p>You can now practise <strong>{escaped_fields.get('exam_title', '')}</strong> on OSCE Guide. "
+        "An account has been created for this address. Choose a password to start; "
+        "the link expires in seven days.</p>"
+        f'<p><a href="{link}">Choose a password</a></p>'
+        "<p>If you were not expecting this, you can ignore it and the account stays locked.</p>"
+    )
+
+
+def _practice_access_granted(escaped_fields: dict[str, str]) -> str:
+    """The body telling an existing account holder an organisation gave them an exam to practise."""
+    link = f"{get_settings().frontend_url.rstrip('/')}/login"
+    return (
+        f"<h1>{escaped_fields.get('granted_by', '')} has given you practice access</h1>"
+        f"<p>You can now practise <strong>{escaped_fields.get('exam_title', '')}</strong> "
+        "with your existing OSCE Guide account.</p>"
+        f'<p><a href="{link}">Sign in to start</a></p>'
+    )
+
+
 def _payment_receipt(escaped_fields: dict[str, str]) -> str:
     """The receipt, in the body of the email rather than attached.
 
@@ -194,6 +224,8 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
     "payment_receipt": _payment_receipt,
     "invitation": _invitation,
+    "practice_access_invitation": _practice_access_invitation,
+    "practice_access_granted": _practice_access_granted,
     "candidate_result_released": _result_released,
     "peer_practice_abuse_report": _abuse_report,
     "peer_practice_no_show_report": _no_show_report,

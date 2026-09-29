@@ -136,6 +136,30 @@ def _exam_ref(exam: Exam) -> ExamRef:
     )
 
 
+async def exam_refs_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, ExamRef]:
+    """References for a set of exam ids, keyed by id, in one query rather than one per row."""
+    return {exam.id: _exam_ref(exam) for exam in await repository.exams_by_ids(session, list(exam_ids))}
+
+
+async def exam_offered_by_org(session: AsyncSession, org_id: uuid.UUID, exam_id: uuid.UUID) -> ExamRef:
+    """The exam, if this organisation may hand out access to it; otherwise `UnknownExamError`.
+
+    Two ways qualify, and the exam must be published either way: the institution wrote it
+    itself, or it is a platform exam the institution has imported (a programme names it).
+    Merely being visible is not enough — every institution can see the whole platform
+    catalogue, and seeing an exam is not the same as having taken it on. Another
+    organisation's exam and a missing one get the same refusal, so ids cannot be probed.
+    """
+    exam = await repository.exam_by_id(session, exam_id)
+    if exam is None or exam.status != domain.ExamStatus.PUBLISHED:
+        raise UnknownExamError(f"No exam with id {exam_id} is offered here.")
+    if exam.org_id == org_id:
+        return _exam_ref(exam)
+    if exam.org_id is None and await repository.programme_for_exam(session, org_id, exam.id) is not None:
+        return _exam_ref(exam)
+    raise UnknownExamError(f"No exam with id {exam_id} is offered here.")
+
+
 async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | None:
     """The code of one exam, for a row that stores only its id."""
     exam = await repository.exam_by_id(session, exam_id)

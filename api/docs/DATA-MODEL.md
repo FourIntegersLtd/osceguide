@@ -366,7 +366,7 @@ carries no content, it is the label a year's sittings are grouped under.
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | |
 | `exam_id` | `uuid not null` → `exams.id` RESTRICT | an exam this org can see |
 | `status` | `varchar(32) not null default 'draft'` | `OFFERABLE_PROGRAMME_STATUSES = {active}`. The institution's own status, separate from the exam's |
-| `source` | `varchar(32) not null default 'custom'` | |
+| `source` | `varchar(32) not null default 'custom'` | `imported_osce_guide` when adopted through `POST /orgs/{slug}/exams/import` |
 | `import_ref` | `jsonb null` | where an imported programme came from |
 
 UNIQUE `(org_id, exam_id)`.

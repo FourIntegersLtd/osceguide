@@ -4,8 +4,84 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# What a practice-access row says about the person: invited (the account is waiting for them
+# to choose a password), active, or revoked (no longer grants anything).
+PracticeAccessStatus = Literal["invited", "active", "revoked"]
+
+# What happened to one row of a bulk grant.
+PracticeAccessOutcome = Literal["granted", "invited", "already_active", "invalid_email", "unknown_exam"]
+
+
+class PracticeAccessRead(BaseModel):
+    """One person's practice access to one exam, granted by this organisation.
+
+    `access_id` is the entitlement's id. `user_id` is always set today, because an invitation
+    creates the account up front; it is nullable in the contract so a pending invitation that
+    holds no account could be listed without a breaking change.
+    """
+
+    access_id: uuid.UUID
+    email: str
+    user_id: uuid.UUID | None
+    exam_id: uuid.UUID
+    exam_code: str
+    exam_title: str
+    status: PracticeAccessStatus
+    granted_at: datetime
+    revoked_at: datetime | None
+
+
+class PracticeAccessList(BaseModel):
+    """Everything this organisation has granted as practice access, revoked rows included."""
+
+    items: list[PracticeAccessRead]
+
+
+class PracticeAccessItem(BaseModel):
+    """One practice-access row, wrapped the way the frontend reads a single item."""
+
+    item: PracticeAccessRead
+
+
+class GrantPracticeAccess(BaseModel):
+    """Give one person, who need not have an account yet, practice access to one exam."""
+
+    email: str = Field(min_length=1, max_length=320)
+    exam_id: uuid.UUID
+
+
+class PracticeAccessRow(BaseModel):
+    """One row of a bulk grant, as the client parsed it from a CSV.
+
+    `exam_id` is a string rather than a uuid so one malformed cell becomes that row's
+    `unknown_exam` outcome instead of refusing the whole file.
+    """
+
+    email: str = Field(max_length=320)
+    exam_id: str = Field(max_length=64)
+
+
+class BulkGrantPracticeAccess(BaseModel):
+    """Up to 500 rows granted in one request."""
+
+    rows: list[PracticeAccessRow] = Field(min_length=1, max_length=500)
+
+
+class PracticeAccessResult(BaseModel):
+    """What happened to one row of a bulk grant."""
+
+    email: str
+    outcome: PracticeAccessOutcome
+
+
+class BulkPracticeAccessResults(BaseModel):
+    """One result per row, in the order the rows were sent."""
+
+    results: list[PracticeAccessResult]
 
 
 class EntitlementRead(BaseModel):

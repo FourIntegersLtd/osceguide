@@ -24,17 +24,27 @@ INVITATION_TTL_DAYS = 7
 
 
 async def invite_user(
-    session: AsyncSession, *, email: str, name: str, invited_to: str, now: datetime
+    session: AsyncSession,
+    *,
+    email: str,
+    name: str,
+    invited_to: str,
+    now: datetime,
+    practice_exam_title: str | None = None,
 ) -> UserRef:
     """Create an account for `email` and queue the invitation, in one transaction.
 
     The caller has already established there is no account for this address. Sending a
     fresh link to a person who was asked and has not answered is `reissue_invitation`.
+    `practice_exam_title` names the exam an organisation is giving them practice access to,
+    which switches the email to the wording that says so; the link and token are the same.
     """
     user = await repository.create_user(
         session, email=email, name=name, password_hash=None, must_change_password=True
     )
-    await _queue_invitation(session, user=user, invited_to=invited_to, now=now)
+    await _queue_invitation(
+        session, user=user, invited_to=invited_to, now=now, practice_exam_title=practice_exam_title
+    )
     # The same hook registering runs: an invited person may already be on a
     # roster somewhere else, and those rows are waiting for this account.
     await _announce_registration(session, user.id, user.email)
@@ -42,7 +52,12 @@ async def invite_user(
 
 
 async def reissue_invitation(
-    session: AsyncSession, *, user_id: uuid.UUID, invited_to: str, now: datetime
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    invited_to: str,
+    now: datetime,
+    practice_exam_title: str | None = None,
 ) -> bool:
     """Send the choose-a-password link again, to an account that never used the first one.
 
@@ -63,14 +78,25 @@ async def reissue_invitation(
     if user.password_login_disabled:
         return False
     await repository.mark_unused_reset_tokens_used(session, user_id=user.id, at=now)
-    await _queue_invitation(session, user=user, invited_to=invited_to, now=now)
+    await _queue_invitation(
+        session, user=user, invited_to=invited_to, now=now, practice_exam_title=practice_exam_title
+    )
     return True
 
 
-async def _queue_invitation(session: AsyncSession, *, user: User, invited_to: str, now: datetime) -> None:
+async def _queue_invitation(
+    session: AsyncSession,
+    *,
+    user: User,
+    invited_to: str,
+    now: datetime,
+    practice_exam_title: str | None = None,
+) -> None:
     """The token and the message, which is all an invitation is.
 
     Shared by both ways of sending one so a re-issued invitation stays the same as the first.
+    With `practice_exam_title` it is the practice-access wording (`practice_access_invitation`),
+    otherwise the plain one; either way the link finishes through `password-reset/confirm`.
     """
     raw, token_hash = new_token()
     await repository.create_reset_token(
@@ -79,11 +105,21 @@ async def _queue_invitation(session: AsyncSession, *, user: User, invited_to: st
         token_hash=token_hash,
         expires_at=now + timedelta(days=INVITATION_TTL_DAYS),
     )
+    if practice_exam_title is None:
+        await notifications.enqueue_email(
+            session,
+            recipient=user.email,
+            subject=f"You have been invited to {invited_to}",
+            template_key="invitation",
+            payload={"token": raw, "invited_to": invited_to},
+            idempotency_key=f"invitation:{token_hash}",
+        )
+        return
     await notifications.enqueue_email(
         session,
         recipient=user.email,
-        subject=f"You have been invited to {invited_to}",
-        template_key="invitation",
-        payload={"token": raw, "invited_to": invited_to},
+        subject=f"{invited_to} has given you practice access to {practice_exam_title}",
+        template_key="practice_access_invitation",
+        payload={"token": raw, "invited_to": invited_to, "exam_title": practice_exam_title},
         idempotency_key=f"invitation:{token_hash}",
     )
