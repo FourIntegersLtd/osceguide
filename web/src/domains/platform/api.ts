@@ -18,10 +18,17 @@ import { platformRequest, type components } from "@/foundation/platform-client";
 type S = components["schemas"];
 
 export type Overview = S["PlatformOverview"];
-/** Contract dates may be present once the OpenAPI spec catches up with platform-api. */
+/**
+ * Contract dates may be present once the OpenAPI spec catches up with
+ * platform-api. `parent_org_id` is the organisation this one sits under (a
+ * deanery's trusts, say): the column exists on `organizations`, and
+ * `OrganizationRead` carries it from platform-api's
+ * `feat/backend-backlog-batch-1`. Absent means no parent, or not deployed yet.
+ */
 export type Organization = S["OrganizationRead"] & {
   contract_starts_at?: string | null;
   contract_ends_at?: string | null;
+  parent_org_id?: string | null;
 };
 export type OrganizationPage = S["Page_OrganizationRead_"];
 export type User = S["UserSummary"];

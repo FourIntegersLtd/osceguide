@@ -8,6 +8,7 @@ import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
+  listAllOrganizations,
   readOrganization,
   restoreOrganization,
   suspendOrganization,
@@ -67,6 +68,8 @@ export function OrganizationDetail({ slug }: { slug: string }) {
                 actions={<StatusBadge status={current.status} />}
               />
 
+              {current.parent_org_id ? <ParentOrganization parentId={current.parent_org_id} /> : null}
+
               <Lifecycle
                 organization={current}
                 onChanged={(updated) => {
@@ -91,6 +94,40 @@ export function OrganizationDetail({ slug }: { slug: string }) {
         }}
       </AsyncBoundary>
     </div>
+  );
+}
+
+/**
+ * The organisation this one sits under. Read-only: nothing in the console
+ * sets a parent yet.
+ *
+ * The parent arrives as an id, and there is no read of an organisation by id,
+ * so its name is found in the directory. Loaded only when there is a parent.
+ */
+function ParentOrganization({ parentId }: { parentId: string }) {
+  const { hrefFor } = useSurface();
+  const directory = useAsync((signal) => listAllOrganizations(null, signal), []);
+  return (
+    <AsyncBoundary state={directory} loading={null}>
+      {(organizations) => {
+        const parent = organizations.find((item) => item.id === parentId);
+        return (
+          <p className="-mt-4 text-sm text-ink-muted">
+            Part of{" "}
+            {parent ? (
+              <Link
+                href={hrefFor(`/organizations/${encodeURIComponent(parent.slug)}`)}
+                className="font-medium text-accent hover:text-accent-hover"
+              >
+                {parent.name}
+              </Link>
+            ) : (
+              <span className="font-mono">{parentId}</span>
+            )}
+          </p>
+        );
+      }}
+    </AsyncBoundary>
   );
 }
 
