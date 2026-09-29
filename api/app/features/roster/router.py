@@ -152,6 +152,24 @@ async def set_group_members(
     )
 
 
+# Who is in a trainee group, a page at a time.
+@router.get(
+    "/orgs/{org_slug}/trainee-groups/{group_id}/members",
+    response_model=Page[schemas.TraineeRead],
+    responses=error_responses(Forbidden, errors.GroupNotFound),
+)
+async def list_group_members(
+    group_id: uuid.UUID,
+    workspace: OrgReader,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+) -> Page[schemas.TraineeRead]:
+    trainees, next_cursor = await service_groups.list_group_members(
+        session, workspace.org_id, group_id, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=trainees, next_cursor=next_cursor)
+
+
 @router.post(
     "/orgs/{org_slug}/roster/resolve",
     response_model=schemas.ResolvedRoster,

@@ -594,3 +594,48 @@ async def test_anonymising_someone_never_decided_about_still_works(client: Async
     response = await client.post(f"{KINGS}/trainees/{trainee}/anonymise", headers=bearer(admin))
     assert response.status_code == 200, response.text
     assert response.json()["anonymised"] is True
+
+
+# --------------------------------------------------------------------------
+# GET /trainee-groups/{id}/members
+# --------------------------------------------------------------------------
+
+
+async def test_a_groups_members_can_be_read_a_page_at_a_time(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The membership screen shows names, not just the count the list returns."""
+    _, admin = await org_with_admin(client, make_actor)
+    group = await a_group(client, admin, "Readable")
+    first = await add_trainee(client, admin, "member1@example.com")
+    second = await add_trainee(client, admin, "member2@example.com")
+    await add_trainee(client, admin, "outsider@example.com")
+    await client.put(
+        f"{KINGS}/trainee-groups/{group}/members",
+        json={"trainee_ids": [first, second]},
+        headers=bearer(admin),
+    )
+
+    page_one = await client.get(
+        f"{KINGS}/trainee-groups/{group}/members", params={"limit": 1}, headers=bearer(admin)
+    )
+    assert page_one.status_code == 200, page_one.text
+    assert [trainee["id"] for trainee in page_one.json()["items"]] == [first]
+    cursor = page_one.json()["next_cursor"]
+    assert cursor is not None
+
+    page_two = await client.get(
+        f"{KINGS}/trainee-groups/{group}/members",
+        params={"limit": 1, "cursor": cursor},
+        headers=bearer(admin),
+    )
+    assert [trainee["id"] for trainee in page_two.json()["items"]] == [second]
+    assert page_two.json()["next_cursor"] is None
+
+
+async def test_another_orgs_group_members_cannot_be_read(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor, "kings")
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    group = await a_group(client, guys_admin, "Theirs", slug="guys")
+
+    refused = await client.get(f"{KINGS}/trainee-groups/{group}/members", headers=bearer(admin))
+    assert refused.status_code == 404, refused.text
+    assert refused.json()["code"] == "group_not_found"

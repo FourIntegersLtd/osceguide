@@ -5,10 +5,12 @@ groups. Org-scoped methods take `org_id` first.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import keyset_page
 from app.features.roster.domain import normalize_label
 from app.features.roster.models import Cohort, Trainee, TraineeGroup, TraineeGroupMember
 
@@ -182,6 +184,31 @@ async def group_member_ids(session: AsyncSession, group_id: uuid.UUID) -> list[u
         .order_by(Trainee.created_at)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def list_group_members(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    group_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+) -> tuple[list[Trainee], str | None]:
+    """A page of the trainees in one of this organisation's groups, oldest first."""
+    stmt = (
+        select(Trainee)
+        .join(TraineeGroupMember, TraineeGroupMember.trainee_id == Trainee.id)
+        .where(Trainee.org_id == org_id, TraineeGroupMember.group_id == group_id)
+    )
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Trainee.created_at,
+        id_col=Trainee.id,
+        limit=limit,
+        cursor=cursor,
+        descending=False,
+    )
 
 
 async def group_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:

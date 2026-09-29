@@ -7,6 +7,7 @@ from.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,9 +18,10 @@ from app.features.roster.schemas import (
     GroupRead,
     ResolvedRoster,
     RosterWarningRead,
+    TraineeRead,
     UpdateCohort,
 )
-from app.features.roster.service import _require_trainee
+from app.features.roster.service import _require_trainee, _trainee_read
 
 # `academic_year` can be cleared and `name` cannot, so the two are not treated
 # alike: an absent key leaves the value alone in both cases.
@@ -136,6 +138,24 @@ async def set_group_members(
         await _require_trainee(session, org_id, trainee_id)
     await repository_groups.set_group_members(session, group_id, trainee_ids=trainee_ids)
     return GroupRead(id=group.id, label=group.label, member_count=await _member_count(session, group_id))
+
+
+async def list_group_members(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    group_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+) -> tuple[list[TraineeRead], str | None]:
+    """A page of who is in a group, so the membership screen can show names
+    rather than a count. Refuses a group this organisation does not have.
+    """
+    await _require_group(session, org_id, group_id)
+    trainees, next_cursor = await repository_groups.list_group_members(
+        session, org_id, group_id, limit=limit, cursor=cursor
+    )
+    return [_trainee_read(trainee) for trainee in trainees], next_cursor
 
 
 async def resolve_roster(
