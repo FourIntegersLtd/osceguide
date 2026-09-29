@@ -38,6 +38,44 @@ class SaveDecision(BaseModel):
     expected_revision: int = Field(default=0, ge=0)
 
 
+MAX_BULK_RELEASE = 500
+
+
+# One candidate in a bulk release, with the evidence the screen is looking at.
+class BulkReleaseCandidate(BaseModel):
+    trainee_id: uuid.UUID
+    evidence: dict[str, Any] = Field(default_factory=dict)
+
+
+class BulkRelease(BaseModel):
+    """Several signed-off candidates to release at once.
+
+    Each carries its own evidence: a release re-checks it against what was
+    signed off, candidate by candidate.
+    """
+
+    candidates: list[BulkReleaseCandidate] = Field(min_length=1, max_length=MAX_BULK_RELEASE)
+
+
+class ReleasedCandidate(BaseModel):
+    trainee_id: uuid.UUID
+    decision: DecisionRead
+
+
+class SkippedRelease(BaseModel):
+    trainee_id: uuid.UUID
+    # The refusal the single release route would have returned, e.g.
+    # `invalid_workflow` or `evidence_changed`.
+    code: str
+
+
+class BulkReleaseResult(BaseModel):
+    """Who was released and who was not, so a partial release is not a mystery."""
+
+    released: list[ReleasedCandidate] = Field(default_factory=list)
+    skipped: list[SkippedRelease] = Field(default_factory=list)
+
+
 class TraineeResultRead(BaseModel):
     """A candidate's own view of their result.
 

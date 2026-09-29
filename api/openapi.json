@@ -1049,6 +1049,65 @@
         "title": "BulkMembershipsResult",
         "type": "object"
       },
+      "BulkRelease": {
+        "description": "Several signed-off candidates to release at once.\n\nEach carries its own evidence: a release re-checks it against what was\nsigned off, candidate by candidate.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/BulkReleaseCandidate"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Candidates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidates"
+        ],
+        "title": "BulkRelease",
+        "type": "object"
+      },
+      "BulkReleaseCandidate": {
+        "properties": {
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id"
+        ],
+        "title": "BulkReleaseCandidate",
+        "type": "object"
+      },
+      "BulkReleaseResult": {
+        "description": "Who was released and who was not, so a partial release is not a mystery.",
+        "properties": {
+          "released": {
+            "items": {
+              "$ref": "#/components/schemas/ReleasedCandidate"
+            },
+            "title": "Released",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRelease"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "title": "BulkReleaseResult",
+        "type": "object"
+      },
       "BulkTraineesResult": {
         "description": "Who was added and who was not, so a partial upload is not a mystery.",
         "properties": {
@@ -11552,6 +11611,24 @@
         "title": "ReindexReport",
         "type": "object"
       },
+      "ReleasedCandidate": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/DecisionRead"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "decision"
+        ],
+        "title": "ReleasedCandidate",
+        "type": "object"
+      },
       "RemoveStationPhoto": {
         "properties": {
           "photo_url": {
@@ -12822,6 +12899,25 @@
           "code"
         ],
         "title": "SkippedMembership",
+        "type": "object"
+      },
+      "SkippedRelease": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "trainee_id": {
+            "format": "uuid",
+            "title": "Trainee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trainee_id",
+          "code"
+        ],
+        "title": "SkippedRelease",
         "type": "object"
       },
       "SkippedTrainee": {
@@ -34315,6 +34411,89 @@
         "summary": "Read Cohort Summary",
         "tags": [
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/decisions/release": {
+      "post": {
+        "operationId": "results_release_many",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRelease"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkReleaseResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Release Many",
+        "tags": [
+          "results"
         ]
       }
     },

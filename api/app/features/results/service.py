@@ -12,7 +12,13 @@ from app.core.errors import AppError, raise_mapped
 from app.features.notifications import service as notifications
 from app.features.results import domain, errors, repository
 from app.features.results.models import CandidateResultRevision
-from app.features.results.schemas import DecisionRead
+from app.features.results.schemas import (
+    BulkReleaseCandidate,
+    BulkReleaseResult,
+    DecisionRead,
+    ReleasedCandidate,
+    SkippedRelease,
+)
 from app.features.roster import service as roster
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
@@ -157,6 +163,9 @@ async def release(
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
+    # Looked up before anything is written, so every refusal comes ahead of the
+    # first write and a bulk release can skip this candidate cleanly.
+    recipient = await roster.trainee_email(session, org_id, trainee_id)
 
     revision_row = await repository.append_revision(
         session,
@@ -190,13 +199,48 @@ async def release(
     # transaction, so it cannot exist for a release that rolled back.
     await notifications.enqueue_email(
         session,
-        recipient=await roster.trainee_email(session, org_id, trainee_id),
+        recipient=recipient,
         subject="Your result is available",
         template_key="candidate_result_released",
         payload={"sitting_id": str(sitting_id)},
         idempotency_key=f"result_released:{sitting_id}:{trainee_id}",
     )
     return _read(revision_row)
+
+
+async def release_many(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    sitting_id: uuid.UUID,
+    candidates: list[BulkReleaseCandidate],
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> BulkReleaseResult:
+    """Release several candidates' outcomes from one button press.
+
+    Each candidate goes through `release` exactly as the single route does, so
+    each gets their own evidence check and their own email. A candidate who is
+    refused is reported and skipped rather than failing the rest: `release`
+    raises every refusal before it writes anything.
+    """
+    outcome = BulkReleaseResult()
+    for candidate in candidates:
+        try:
+            decision = await release(
+                session,
+                org_id,
+                sitting_id=sitting_id,
+                trainee_id=candidate.trainee_id,
+                current_evidence=candidate.evidence,
+                actor_id=actor_id,
+                now=now,
+            )
+        except AppError as refusal:
+            outcome.skipped.append(SkippedRelease(trainee_id=candidate.trainee_id, code=refusal.code))
+            continue
+        outcome.released.append(ReleasedCandidate(trainee_id=candidate.trainee_id, decision=decision))
+    return outcome
 
 
 async def read_decision(
