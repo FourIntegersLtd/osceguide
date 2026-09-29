@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { Alert, Button, Card, Input } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import {
+  setStaffMfaPolicy,
   updateOrganization,
   type Organization,
   type OrganizationChanges,
@@ -111,7 +112,65 @@ export function OrganizationSettings({
       </Section>
 
       <ContractDates organization={organization} busy={busy} onCommit={commit} />
+      <StaffMfaPolicy organization={organization} onChanged={onChanged} />
     </div>
+  );
+}
+
+/**
+ * Whether this tenant's staff must use two-factor sign-in.
+ *
+ * Takes effect at each person's next password sign-in, where anyone without
+ * an authenticator is walked through setting one up. SSO sign-ins are the
+ * identity provider's business and are not affected.
+ */
+function StaffMfaPolicy({
+  organization,
+  onChanged,
+}: {
+  organization: Organization;
+  onChanged: (updated: Organization) => void;
+}) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const required = organization.require_staff_mfa;
+
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      onChanged(await setStaffMfaPolicy(organization.slug, !required));
+      toast.success(required ? "Two-factor sign-in no longer required" : "Two-factor sign-in required");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error(String(cause)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section title="Two-factor sign-in">
+      <Card padding="md">
+        <div className="flex max-w-lg flex-col gap-3">
+          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+          <p className="text-osce-body text-ink">
+            {required
+              ? "Staff must sign in with a password and an authenticator code."
+              : "Staff may sign in with a password alone. Each person can still turn two-factor sign-in on for themselves."}
+          </p>
+          <p className="text-osce-meta text-ink-muted">
+            Applies at each person&rsquo;s next password sign-in. Anyone without an authenticator
+            sets one up then. Organisation (SSO) sign-in is unaffected.
+          </p>
+          <div className="flex justify-end">
+            <Button variant={required ? "secondary" : "primary"} disabled={busy} onClick={() => void toggle()}>
+              {busy ? "Saving…" : required ? "Stop requiring it" : "Require for staff"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </Section>
   );
 }
 

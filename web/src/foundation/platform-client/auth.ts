@@ -29,6 +29,25 @@ import type { components } from "@/foundation/platform-client/schema";
  */
 
 type AuthResult = components["schemas"]["AuthResult"];
+type MfaEnrolmentStart = components["schemas"]["MfaEnrolmentStart"];
+type MfaEnrolmentConfirmed = components["schemas"]["MfaEnrolmentConfirmed"];
+
+/**
+ * What a password sign-in answers: a session, or a second step.
+ *
+ * `mfa_required` means an authenticator is set up and a code is owed;
+ * `mfa_enrolment_required` means policy demands one and none is set up yet.
+ * Both carry a short-lived `challenge_token` that only the `/auth/mfa/*`
+ * routes accept. Nothing is stored until the answer is `signed_in`: storing a
+ * challenge as a session is how a person with a second factor used to be
+ * refused with "Could not store the session".
+ */
+export type SignInResult =
+  | AuthResult
+  | components["schemas"]["MfaRequiredResponse"]
+  | components["schemas"]["MfaEnrolmentRequiredResponse"];
+
+export type MfaChallenge = Exclude<SignInResult, AuthResult>;
 
 /** Which retiring backend the caller's current session came from. */
 export type LegacyProvider = "consumer" | "institution";
@@ -152,10 +171,14 @@ export async function exchangeLegacyToken(
   token: string,
 ): Promise<AuthResult | null> {
   try {
-    const result = await platformRequest<AuthResult>("/api/v1/auth/exchange-legacy", {
+    const result = await platformRequest<SignInResult>("/api/v1/auth/exchange-legacy", {
       method: "POST",
       body: { provider, token },
     });
+    // A second factor cannot be asked for in the middle of a silent exchange,
+    // so an account that needs one stays on the old session and signs in here
+    // through the form, which can.
+    if (result.status !== "signed_in") return null;
     await remember(result);
     return result;
   } catch (error) {
@@ -262,11 +285,62 @@ export function peekPlatformAccessToken(): string | null {
 
 /* ---------- signing in and out ---------- */
 
-/** Sign in. One login for every product. */
-export async function login(email: string, password: string): Promise<AuthResult> {
-  const result = await platformRequest<AuthResult>("/api/v1/auth/login", {
+/**
+ * Sign in. One login for every product.
+ *
+ * Answers the session, or the second step the account owes (see
+ * `SignInResult`). Only a finished sign-in is stored.
+ */
+export async function login(email: string, password: string): Promise<SignInResult> {
+  const result = await platformRequest<SignInResult>("/api/v1/auth/login", {
     method: "POST",
     body: { email, password },
+  });
+  if (result.status === "signed_in") await remember(result);
+  return result;
+}
+
+/**
+ * Redeem a sign-in challenge with an authenticator code or a recovery code.
+ *
+ * Exactly one of the two is sent. A recovery code is spent by using it.
+ */
+export async function verifyMfaChallenge(
+  challengeToken: string,
+  answer: { code: string } | { recoveryCode: string },
+): Promise<AuthResult> {
+  const result = await platformRequest<AuthResult>("/api/v1/auth/mfa/verify", {
+    method: "POST",
+    body:
+      "code" in answer
+        ? { challenge_token: challengeToken, code: answer.code }
+        : { challenge_token: challengeToken, recovery_code: answer.recoveryCode },
+  });
+  await remember(result);
+  return result;
+}
+
+/** The secret to set up an authenticator with, when sign-in said one is required. */
+export function startMfaEnrolmentAtSignIn(challengeToken: string): Promise<MfaEnrolmentStart> {
+  return platformRequest<MfaEnrolmentStart>("/api/v1/auth/mfa/enrol/start", {
+    method: "POST",
+    body: { challenge_token: challengeToken },
+  });
+}
+
+/**
+ * Confirm that authenticator with its first code, and finish signing in.
+ *
+ * The answer carries the recovery codes, and this is the only time they are
+ * ever sent: the caller must show them before moving on.
+ */
+export async function confirmMfaEnrolmentAtSignIn(
+  challengeToken: string,
+  code: string,
+): Promise<MfaEnrolmentConfirmed> {
+  const result = await platformRequest<MfaEnrolmentConfirmed>("/api/v1/auth/mfa/enrol/confirm", {
+    method: "POST",
+    body: { challenge_token: challengeToken, code },
   });
   await remember(result);
   return result;
@@ -286,7 +360,7 @@ export async function register(input: {
   name: string;
   examCode?: string | null;
 }): Promise<AuthResult> {
-  const result = await platformRequest<AuthResult>("/api/v1/auth/register", {
+  const result = await platformRequest<SignInResult>("/api/v1/auth/register", {
     method: "POST",
     body: {
       email: input.email,
@@ -295,6 +369,12 @@ export async function register(input: {
       exam_code: input.examCode || null,
     },
   });
+  // A new consumer account belongs to no organisation that could require a
+  // second factor. The route shares sign-in's answer shape, so say so rather
+  // than store a challenge as a session.
+  if (result.status !== "signed_in") {
+    throw new Error("This account needs two-factor sign-in. Sign in to finish setting it up.");
+  }
   await remember(result);
   return result;
 }

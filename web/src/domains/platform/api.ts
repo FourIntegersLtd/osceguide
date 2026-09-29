@@ -250,6 +250,19 @@ export function updateOrganization(
   return platformRequest<Organization>(orgs(slug), { method: "PATCH", body: changes });
 }
 
+/**
+ * Whether this organisation's staff must sign in with a second factor (E-11).
+ *
+ * Its own route rather than a field on the PATCH: requiring MFA changes who
+ * can sign in at their next password login, so it is audited as its own act.
+ */
+export function setStaffMfaPolicy(slug: string, required: boolean): Promise<Organization> {
+  return platformRequest<Organization>(`${orgs(slug)}/mfa-policy`, {
+    method: "PATCH",
+    body: { require_staff_mfa: required },
+  });
+}
+
 /** Suspended, never deleted: a tenant's rows include results that must stay defensible. */
 export function suspendOrganization(slug: string): Promise<Organization> {
   return platformRequest<Organization>(`${orgs(slug)}/suspend`, { method: "POST" });

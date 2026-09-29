@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert, Button } from "@/foundation/ui";
-import { login } from "@/foundation/platform-client";
+import { login, type components, type MfaChallenge } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
@@ -27,6 +27,9 @@ import {
 } from "@/capabilities/account/support/validateAuthForm";
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
 import { readAuthNotice, type AuthNoticeTone } from "@/capabilities/account/support/authNotices";
+import { MfaSignIn } from "@/capabilities/account/mfa/MfaSignIn";
+
+type AuthResult = components["schemas"]["AuthResult"];
 
 type LoginField = "email" | "password";
 
@@ -79,6 +82,9 @@ export default function Login() {
   // be unconfigured, or the arrangement switched off since discovery answered.
   const [ssoNotice, setSsoNotice] = useState<string | null>(null);
   const [ssoBusy, setSsoBusy] = useState(false);
+  // The second step an account owes after a right password (E-11). While it
+  // is set the page is that step, not the password form.
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
   const arrivalNotice = readAuthNotice(new URLSearchParams(searchParams.toString()));
 
   /*
@@ -115,19 +121,13 @@ export default function Login() {
 
     setIsSubmitting(true);
     try {
-      const authenticated = await login(result.data.email, result.data.password);
-      rememberExamSelection(authenticated.user.id, examCode);
-      await refresh();
-      const returnTo = sanitizeReturnTo(searchParams.get("next") ?? searchParams.get("returnTo"));
-      // Keep the button pending; the page is about to change. Platform staff
-      // land on their console; everyone else goes to `/app`, which decides
-      // which workspace from where they were last.
-      const landing = authenticated.user.is_platform_admin
-        ? "/staff"
-        : examCode
-          ? `/app/${PERSONAL_SLUG}`
-          : "/app";
-      router.replace(returnTo ?? landing);
+      const outcome = await login(result.data.email, result.data.password);
+      if (outcome.status !== "signed_in") {
+        setChallenge(outcome);
+        setIsSubmitting(false);
+        return;
+      }
+      await land(outcome);
     } catch (error) {
       const mapped = mapAuthApiError<LoginField>(
         error,
@@ -138,6 +138,45 @@ export default function Login() {
       setIsSubmitting(false);
     }
   };
+
+  // Keep the button pending; the page is about to change. Platform staff land
+  // on their console; everyone else goes to `/app`, which decides which
+  // workspace from where they were last.
+  const land = async (authenticated: AuthResult) => {
+    rememberExamSelection(authenticated.user.id, examCode);
+    await refresh();
+    const returnTo = sanitizeReturnTo(searchParams.get("next") ?? searchParams.get("returnTo"));
+    const landing = authenticated.user.is_platform_admin
+      ? "/staff"
+      : examCode
+        ? `/app/${PERSONAL_SLUG}`
+        : "/app";
+    router.replace(returnTo ?? landing);
+  };
+
+  if (challenge) {
+    return (
+      <AuthShell
+        variant="split"
+        title="Two-factor sign-in"
+        subtitle={
+          challenge.status === "mfa_required"
+            ? "One more step to confirm it is you"
+            : "Your organisation requires a second factor"
+        }
+        sidePanel={<AuthQuotePanel />}
+      >
+        <MfaSignIn
+          challenge={challenge}
+          onSignedIn={(authenticated) => void land(authenticated)}
+          onRestart={() => {
+            setChallenge(null);
+            setFormData((prev) => ({ ...prev, password: "" }));
+          }}
+        />
+      </AuthShell>
+    );
+  }
 
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
     const { name, value } = event.target;

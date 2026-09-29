@@ -125,7 +125,6 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 | E-8 | Eng | Customer DPIA pack | Institutions must run a DPIA before using us. Write one they can adapt: data flows, AI marking, the human review and sign-off step, retention, subprocessors |
 | E-9 | Owner | Cyber Essentials Plus | The baseline UK public-sector buyers check. Weeks, not months. Needs E-1 first |
 | E-10 | Owner | NHS Data Security and Protection Toolkit | Required before handling data for NHS organisations (deaneries, trusts). Annual self-assessment |
-| E-11 | Eng | MFA | None for any user. Add TOTP; require it for platform admins, offer it to org admins and examiners, and let an org require it for its staff |
 | E-12 | Eng | Backup restore is untested | Railway PITR is on (chosen 2026-09-26), but no doc says how to restore, and a restore has never been run. Restore production into a scratch database once, time it, write the runbook, state RPO and RTO |
 | E-13 | Eng | Uptime monitoring and a status page | Sentry runs in platform-api and assessment-platform, not in platform-web (no `@sentry/nextjs`). No external check on `/health`, no alert rules, no status page |
 | E-14 | Eng | A supported concurrency number | Each worker runs 3 replicas with no autoscaling. The last load test (legacy stack, 2026-09-14) passed 27 of 30. Load-test the live stack and publish how many candidates a sitting supports |

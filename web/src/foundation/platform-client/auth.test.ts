@@ -5,6 +5,8 @@ import {
   clearPlatformSession,
   exchangeLegacyToken,
   hasStoredSession,
+  login,
+  verifyMfaChallenge,
   peekPlatformAccessToken,
   platformAccessToken,
 } from "@/foundation/platform-client/auth";
@@ -71,6 +73,7 @@ function json(body: unknown, status = 200): Response {
 }
 
 const PAIR = {
+  status: "signed_in",
   access_token: "access-1",
   refresh_token: "refresh-1",
   token_type: "bearer",
@@ -202,4 +205,29 @@ test("the synchronous peek never makes a request", async () => {
     throw new Error("peek must not make a request");
   });
   assert.equal(peekPlatformAccessToken(), "access-1");
+});
+
+const CHALLENGE = { status: "mfa_required", challenge_token: "challenge-1", expires_in: 300 };
+
+test("a sign-in that owes a second factor stores nothing", async () => {
+  const calls = respond(() => json(CHALLENGE));
+  const result = await login("a@b.c", "right-password");
+  assert.equal(result.status, "mfa_required");
+  // Storing the challenge as a session is what used to refuse these accounts.
+  assert.equal(calls().some((call) => call.url.includes("/api/session")), false);
+  assert.equal(hasStoredSession(), false);
+});
+
+test("the second factor finishes the sign-in and stores the pair", async () => {
+  const calls = exchangeThenStore();
+  const result = await verifyMfaChallenge("challenge-1", { code: "123456" });
+  assert.equal(result.access_token, "access-1");
+  assert.ok(calls().some((call) => call.url.endsWith("/api/v1/auth/mfa/verify")));
+  assert.equal(await platformAccessToken(), "access-1");
+});
+
+test("a legacy exchange that needs a second factor stays on the old session", async () => {
+  const calls = respond(() => json(CHALLENGE));
+  assert.equal(await exchangeLegacyToken("institution", "legacy-token"), null);
+  assert.equal(calls().some((call) => call.url.includes("/api/session")), false);
 });

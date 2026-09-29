@@ -365,3 +365,46 @@ export function uploadCv(file: File): Promise<components["schemas"]["CvUploadRes
     formData: form,
   });
 }
+
+/* ---------- two-factor sign-in (E-11) ---------- */
+
+export type MfaStatus = components["schemas"]["MfaStatusRead"];
+export type MfaEnrolment = components["schemas"]["MfaEnrolmentStart"];
+
+/** Whether this account has an authenticator, and whether policy requires one. */
+export function readMyMfa(signal?: AbortSignal): Promise<MfaStatus> {
+  return platformRequest<MfaStatus>("/api/v1/me/mfa", { signal });
+}
+
+/**
+ * Start setting up an authenticator from Settings.
+ *
+ * Nothing is on until `confirmMyMfa` proves the app holds the secret; starting
+ * again replaces a pending secret that was never confirmed.
+ */
+export function startMyMfaEnrolment(): Promise<MfaEnrolment> {
+  return platformRequest<MfaEnrolment>("/api/v1/me/mfa/enrol", { method: "POST" });
+}
+
+/** Confirm the authenticator with its first code. Answers the recovery codes, once. */
+export async function confirmMyMfa(code: string): Promise<string[]> {
+  const result = await platformRequest<components["schemas"]["MfaRecoveryCodesRead"]>(
+    "/api/v1/me/mfa/confirm",
+    { method: "POST", body: { code } },
+  );
+  return result.recovery_codes;
+}
+
+/** Replace every recovery code. The old ones stop working at once. */
+export async function regenerateRecoveryCodes(code: string): Promise<string[]> {
+  const result = await platformRequest<components["schemas"]["MfaRecoveryCodesRead"]>(
+    "/api/v1/me/mfa/recovery-codes",
+    { method: "POST", body: { code } },
+  );
+  return result.recovery_codes;
+}
+
+/** Turn two-factor sign-in off. Refused `mfa_required_by_policy` where it is required. */
+export async function disableMyMfa(code: string): Promise<void> {
+  await platformRequest<void>("/api/v1/me/mfa", { method: "DELETE", body: { code } });
+}

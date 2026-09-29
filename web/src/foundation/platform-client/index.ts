@@ -9,6 +9,9 @@ export {
 } from "@/foundation/platform-client/errors";
 export {
   login,
+  verifyMfaChallenge,
+  startMfaEnrolmentAtSignIn,
+  confirmMfaEnrolmentAtSignIn,
   register,
   logout,
   switchWorkspace,
@@ -24,5 +27,7 @@ export {
   exchangeLegacyToken,
   mintStreamTicket,
   type LegacyProvider,
+  type SignInResult,
+  type MfaChallenge,
 } from "@/foundation/platform-client/auth";
 export type { components, paths, operations } from "@/foundation/platform-client/schema";
