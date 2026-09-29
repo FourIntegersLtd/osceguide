@@ -29,12 +29,6 @@ Checked against the code on 2026-09-25.
 | A candidate reading their published review | No candidate-facing read of a circuit's supervisor review or their slot review. The largest thing the sittings port could not carry |
 | Cohort export (the markdown readout) | Not built. Low priority |
 
-### Staff console (platform)
-
-| Item | State |
-|---|---|
-| Audit search | Per-organisation audit (`GET /orgs/{org_slug}/audit`) takes no `actor_email` or `action` filter, though `GET /platform/audit` does. The Team History tab already sends both and, while they are ignored, filters the latest page itself and says so |
-
 ### Authoring
 
 `capabilities/authoring/api/scope.ts` names the backend's asymmetries:

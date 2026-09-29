@@ -5,7 +5,6 @@ import { AsyncBoundary, Button, Input, b2bTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatWhen } from "@/domains/assess/team/chrome";
 import { listAudit, type AuditFilters } from "@/domains/assess/team/api";
-import { auditMatches } from "@/domains/assess/team/support";
 
 /**
  * The history tab: who added, changed or removed people and groups.
@@ -14,10 +13,8 @@ import { auditMatches } from "@/domains/assess/team/support";
  * three pieces of state; this is the same list through `useAsync`, so a
  * failure is a failure with a retry rather than an empty log.
  *
- * Filtering by who and by what is the server's. A server that has not learnt
- * the filters yet answers unfiltered rows; those are filtered here, and the
- * screen says it only looked at the latest page, because "nothing matches"
- * over one page is not "nothing matches".
+ * Filtering by who (the address, exactly) and by what (an action or its
+ * prefix, such as `membership.`) is the server's, as on the platform audit.
  */
 export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
   const [draft, setDraft] = useState<AuditFilters>({ actorEmail: "", action: "" });
@@ -25,15 +22,7 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
   const filtering = Boolean(filters.actorEmail || filters.action);
 
   const state = useAsync(
-    async (signal) => {
-      const page = await listAudit(orgSlug, signal, undefined, filters);
-      const serverFiltered = page.items.every((entry) => auditMatches(entry, filters));
-      return {
-        items: page.items.filter((entry) => auditMatches(entry, filters)),
-        partial: !serverFiltered,
-        scanned: page.items.length,
-      };
-    },
+    (signal) => listAudit(orgSlug, signal, undefined, filters),
     [orgSlug, filters.actorEmail, filters.action],
   );
 
@@ -82,14 +71,12 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
 
       <AsyncBoundary
         state={state}
-        isEmpty={(result) => result.items.length === 0}
+        isEmpty={(page) => page.items.length === 0}
         empty={
           filtering
             ? {
                 title: "Nothing matches those filters.",
-                description: state.data?.partial
-                  ? `Only the latest ${state.data.scanned} entries were searched.`
-                  : "Try a different address or action.",
+                description: "Try a different address or action.",
               }
             : {
                 title: "Nothing here yet.",
@@ -98,16 +85,11 @@ export function ActivityPanel({ orgSlug }: { orgSlug: string }) {
               }
         }
       >
-        {(result) => (
+        {(page) => (
           <>
-            {filtering && result.partial ? (
-              <p className="text-osce-caption text-b2b-mid">
-                Showing matches among the latest {result.scanned} entries.
-              </p>
-            ) : null}
             <div className={b2bTokens.b2bGroupedShell}>
               <ul className="divide-y divide-b2b-border">
-                {result.items.map((event) => (
+                {page.items.map((event) => (
                   <li key={event.id} className="px-4 py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <p className="text-osce-body font-medium text-b2b-headline">

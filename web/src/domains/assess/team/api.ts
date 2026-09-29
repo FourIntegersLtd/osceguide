@@ -110,10 +110,7 @@ export interface AuditFilters {
 /**
  * Who added, changed or removed people and groups — the History tab.
  *
- * `actor_email` and `action` mean what they mean on `GET /platform/audit`;
- * the organisation's own read takes them from platform-api's
- * `feat/backend-backlog-batch-1` and ignores them before that, which the
- * screen detects (`auditMatches`) rather than trusting.
+ * `actor_email` and `action` mean what they mean on `GET /platform/audit`.
  */
 export function listAudit(
   slug: string,

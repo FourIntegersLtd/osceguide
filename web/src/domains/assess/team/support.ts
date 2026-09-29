@@ -1,4 +1,4 @@
-import type { AuditFilters, AuditPage, Membership } from "@/domains/assess/team/api";
+import type { Membership } from "@/domains/assess/team/api";
 
 /**
  * The roles a screen may offer, and what they are called.
@@ -89,16 +89,4 @@ export function sectionSubtitle(section: "members" | "invite" | "activity"): str
     case "activity":
       return "Who added, changed, or removed people and groups.";
   }
-}
-
-/**
- * Whether an audit row answers the filters, as `GET /platform/audit` decides
- * it: the actor's address exactly (any case), the action by prefix.
- */
-export function auditMatches(entry: AuditPage["items"][number], filters: AuditFilters): boolean {
-  const actor = filters.actorEmail?.trim().toLowerCase();
-  const action = filters.action?.trim();
-  if (actor && (entry.actor_email ?? "").toLowerCase() !== actor) return false;
-  if (action && !entry.action.startsWith(action)) return false;
-  return true;
 }
