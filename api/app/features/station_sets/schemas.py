@@ -23,6 +23,24 @@ class EntryRead(BaseModel):
     # for a consultation still in progress.
     last_attempt_status: str | None = None
     feedback_ready: bool = False
+    # When the owner flagged this station to come back to, or null.
+    flagged_at: datetime | None = None
+
+
+# Flag or unflag one station in your own set.
+class FlagEntry(BaseModel):
+    flagged: bool
+
+
+# A station you flagged, with the set it is in, for the "flagged stations" list.
+class FlaggedEntryRead(BaseModel):
+    set_id: uuid.UUID
+    set_name: str
+    exam_code: str
+    entry_id: uuid.UUID
+    station_version_id: uuid.UUID
+    station_title: str | None
+    flagged_at: datetime
 
 
 class SetRead(BaseModel):

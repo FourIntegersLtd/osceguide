@@ -254,3 +254,27 @@ async def set_counts_by_station_version(
         .group_by(StationSetEntry.station_version_id)
     )
     return {version_id: int(count) for version_id, count in (await session.execute(stmt)).all()}
+
+
+async def set_entry_flag(
+    session: AsyncSession, set_id: uuid.UUID, entry_id: uuid.UUID, *, flagged_at: datetime | None
+) -> None:
+    """Flag one entry of a set (a timestamp) or clear its flag (`None`)."""
+    await session.execute(
+        update(StationSetEntry)
+        .where(StationSetEntry.set_id == set_id, StationSetEntry.id == entry_id)
+        .values(flagged_at=flagged_at)
+    )
+
+
+async def flagged_entries_for_owner(
+    session: AsyncSession, owner_user_id: uuid.UUID
+) -> list[tuple[StationSetEntry, StationSet]]:
+    """Every flagged entry across this person's sets, most recently flagged first."""
+    stmt = (
+        select(StationSetEntry, StationSet)
+        .join(StationSet, StationSet.id == StationSetEntry.set_id)
+        .where(StationSet.owner_user_id == owner_user_id, StationSetEntry.flagged_at.is_not(None))
+        .order_by(StationSetEntry.flagged_at.desc(), StationSetEntry.id)
+    )
+    return [(entry, station_set) for entry, station_set in (await session.execute(stmt)).all()]

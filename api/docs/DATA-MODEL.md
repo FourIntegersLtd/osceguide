@@ -543,8 +543,10 @@ a set is not a circuit: a slot is sat once.
 | `attempts` | `int not null default 0` | capped by `exams.station_attempt_limit` |
 | `debrief_attempts` | `int not null default 0` | |
 | `last_attempt_at` | `timestamptz null` | |
+| `flagged_at` | `timestamptz null` | when the owner flagged this station to come back to (legacy "Flagged Stations"); personal, unlike a `station_flags` report to the content team |
 
-UNIQUE `(set_id, position)`.
+UNIQUE `(set_id, position)`. Partial index `ix_station_set_entries_flagged` on
+`set_id` where `flagged_at IS NOT NULL`, for the flagged-stations list.
 
 ## media — 1 table
 

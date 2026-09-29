@@ -4143,6 +4143,18 @@
             "title": "Feedback Ready",
             "type": "boolean"
           },
+          "flagged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flagged At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4962,6 +4974,19 @@
         "title": "FinalizeCircuitReview",
         "type": "object"
       },
+      "FlagEntry": {
+        "properties": {
+          "flagged": {
+            "title": "Flagged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "flagged"
+        ],
+        "title": "FlagEntry",
+        "type": "object"
+      },
       "FlagStationBody": {
         "description": "A report that one station is wrong.\n\nWas served by `identity` with a docstring saying persistence is TODO, so the\nbutton in the runner confirmed a report that went nowhere.",
         "properties": {
@@ -4975,6 +5000,60 @@
           "station_id"
         ],
         "title": "FlagStationBody",
+        "type": "object"
+      },
+      "FlaggedEntryRead": {
+        "properties": {
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "flagged_at": {
+            "format": "date-time",
+            "title": "Flagged At",
+            "type": "string"
+          },
+          "set_id": {
+            "format": "uuid",
+            "title": "Set Id",
+            "type": "string"
+          },
+          "set_name": {
+            "title": "Set Name",
+            "type": "string"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          },
+          "station_version_id": {
+            "format": "uuid",
+            "title": "Station Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "set_id",
+          "set_name",
+          "exam_code",
+          "entry_id",
+          "station_version_id",
+          "station_title",
+          "flagged_at"
+        ],
+        "title": "FlaggedEntryRead",
         "type": "object"
       },
       "ForgottenCounts": {
@@ -23215,6 +23294,50 @@
         ]
       }
     },
+    "/api/v1/me/flagged-stations": {
+      "get": {
+        "operationId": "station_sets_list_flagged_stations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FlaggedEntryRead"
+                  },
+                  "title": "Response Station Sets List Flagged Stations",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Flagged Stations",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
     "/api/v1/me/marketplace/posts": {
       "get": {
         "operationId": "marketplace_list_my_posts",
@@ -26539,6 +26662,102 @@
           }
         ],
         "summary": "Start Debrief",
+        "tags": [
+          "station-sets"
+        ]
+      }
+    },
+    "/api/v1/me/station-sets/{set_id}/entries/{entry_id}/flag": {
+      "put": {
+        "operationId": "station_sets_flag_set_entry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Set Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlagEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "set_not_found, set_entry_not_found",
+            "x-codes": [
+              "set_not_found",
+              "set_entry_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Flag Set Entry",
         "tags": [
           "station-sets"
         ]

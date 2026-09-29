@@ -110,6 +110,37 @@ async def delete_set(set_id: uuid.UUID, principal: CurrentPrincipal, session: Se
     await service.delete_set(session, principal.user_id, set_id)
 
 
+# Flag a station in your own set to come back to, or take the flag off.
+@router.put(
+    "/me/station-sets/{set_id}/entries/{entry_id}/flag",
+    response_model=schemas.SetRead,
+    responses=error_responses(Unauthenticated, errors.SetNotFound, errors.EntryNotFound),
+)
+async def flag_set_entry(
+    set_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    body: schemas.FlagEntry,
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.SetRead:
+    return await service.flag_entry(
+        session, principal.user_id, set_id, entry_id, flagged=body.flagged, now=clock.now()
+    )
+
+
+# Every station you have flagged across your sets, most recently flagged first.
+@router.get(
+    "/me/flagged-stations",
+    response_model=list[schemas.FlaggedEntryRead],
+    responses=error_responses(Unauthenticated),
+)
+async def list_flagged_stations(
+    principal: CurrentPrincipal, session: Session
+) -> list[schemas.FlaggedEntryRead]:
+    return await service.list_flagged(session, principal.user_id)
+
+
 @router.post(
     "/me/station-sets/{set_id}/entries/{entry_id}/attempts",
     response_model=schemas.StartedAttempt,

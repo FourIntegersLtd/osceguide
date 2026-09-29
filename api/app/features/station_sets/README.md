@@ -20,6 +20,9 @@ Both produce rows in the one `attempts` table.
 - As a **consumer**, I edit a set's stations — the legacy "edit session" screen —
   keeping, dropping and adding stations in one call.
 - As a **consumer** whose access lapsed, my sets are still there when I renew.
+- As a **consumer**, I flag a station in one of my sets to come back to, and list
+  every station I have flagged (the legacy "Flagged Stations" tab). Personal, and
+  separate from reporting a station as wrong (`stations`' `station_flags`).
 
 ## Aggregates & invariants
 **StationSet** owns its entries.
