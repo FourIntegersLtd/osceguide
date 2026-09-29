@@ -35,6 +35,10 @@ class MediaItem(Base, UUIDPrimaryKey, Timestamps):
     # Shape differs by kind — slides have a deck, a podcast has an audio url —
     # so the payload is document-shaped by intention.
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # The public catalogue facet, kept beside `content` rather than read out of
+    # it, so filing an item never needs the body a reader may not be shown.
+    # Written from the document on every write (`domain.specialty_of`).
+    specialty: Mapped[str | None] = mapped_column(Text)
     exam_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("exams.id", ondelete="SET NULL"))
     author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'draft'"))

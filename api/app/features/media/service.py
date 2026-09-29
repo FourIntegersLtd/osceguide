@@ -63,6 +63,7 @@ async def create(
         title=title.strip(),
         summary=summary,
         content=content,
+        specialty=domain.specialty_of(content),
         exam_id=exam_id,
         author_id=author_id,
     )
@@ -91,6 +92,7 @@ async def update(
         values["summary"] = summary
     if content is not None:
         values["content"] = content
+        values["specialty"] = domain.specialty_of(content)
     if values:
         await repository.update_item(session, item_id, **values)
     return await service_reads.read_one(session, await _require(session, item_id))
@@ -269,4 +271,4 @@ async def production_item(session: AsyncSession, item_id: uuid.UUID) -> Producti
 
 async def replace_content(session: AsyncSession, item_id: uuid.UUID, content: dict[str, Any]) -> None:
     """Overwrites an item's stored body, used by the AV production jobs to attach rendered media."""
-    await repository.update_item(session, item_id, content=content)
+    await repository.update_item(session, item_id, content=content, specialty=domain.specialty_of(content))

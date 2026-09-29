@@ -1,9 +1,8 @@
 """Turning `MediaItem` rows into `MediaRead`, for one row or a whole page.
 
 Writes, publish rules and the decision about whose body a reader may see live
-in `service.py`. This module knows two of the read model's fields are not
-columns — `specialty` and `updated_at` both live inside the document-shaped
-`content`.
+in `service.py`. This module knows one of the read model's fields is not a
+column — `updated_at` may come from inside the document-shaped `content`.
 """
 
 from __future__ import annotations
@@ -44,9 +43,10 @@ async def read_many(
     Exam codes are fetched for the whole page at once, avoiding one query per
     item.
 
-    `specialty` is derived whether or not the body is withheld — it is a
-    public catalogue facet like `kind` and `title`, so a locked item still
-    needs it to appear on a facet list. The body itself stays gated.
+    `specialty` is its own column, returned whether or not the body is
+    withheld — it is a public catalogue facet like `kind` and `title`, so a
+    locked item still needs it to appear on a facet list, and filing one no
+    longer means reading the body it is about to hide.
     """
     codes = await catalog.exam_codes_by_id(session, [item.exam_id for item in items if item.exam_id])
     reads: list[MediaRead] = []
@@ -63,7 +63,7 @@ async def read_many(
                 content=None if locked else content,
                 locked=locked,
                 exam_code=codes.get(item.exam_id) if item.exam_id else None,
-                specialty=domain.specialty_of(content),
+                specialty=item.specialty,
                 status=item.status,
                 created_at=item.created_at,
                 published_at=item.published_at,

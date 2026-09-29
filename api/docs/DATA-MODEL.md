@@ -560,6 +560,7 @@ publish-and-read logic in each.
 | `title` | `varchar(300) not null` | |
 | `summary` | `text null` | |
 | `content` | `jsonb not null default {}` | shape differs by kind — slides have a deck, a podcast has an audio url |
+| `specialty` | `text null` | the public catalogue facet, written from `content` on every write (`domain.specialty_of`) so a locked item is filed without reading its body |
 | `exam_id` | `uuid null` → `exams.id` SET NULL | indexed |
 | `author_id` | `uuid null` → `users.id` SET NULL | |
 | `status` | `varchar(16) not null default 'draft'` | |

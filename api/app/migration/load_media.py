@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.catalog.models import Exam
+from app.features.media.domain import specialty_of
 from app.features.media.models import MediaItem
 from app.migration.media import MigratedMedia
 from app.migration.report import LoadReport
@@ -63,6 +64,7 @@ async def load_media(
             title=migrated_item.title,
             summary=migrated_item.summary,
             content=migrated_item.content,
+            specialty=specialty_of(migrated_item.content),
             exam_id=exam_id,
             author_id=None,
             status="published",
