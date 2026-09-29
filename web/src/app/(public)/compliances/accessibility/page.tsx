@@ -104,7 +104,7 @@ export default function AccessibilityStatement() {
             Every change to the site is checked automatically against the jsx-a11y accessibility
             rules, which catch problems such as form fields without labels, images without text
             alternatives and controls that cannot be reached by keyboard. A change that breaks one
-            of these rules cannot be released.
+            of these rules fails our checks.
           </p>
           <p>
             Automated checks find only some problems. A full manual audit against WCAG 2.2 AA,
